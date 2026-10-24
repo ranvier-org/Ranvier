@@ -2,6 +2,8 @@
 // Decision P9). Usage: node --test experiments/Ranvier.View.Arms/Checks/pooled-interval.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { pairsOf, interval, pooled, roundUp, runs } from "./pooled-interval.mjs";
 import { budgets } from "./chromium-gate.mjs";
 
@@ -28,14 +30,25 @@ test("switch and payload budgets are the pooled upper bounds rounded up to 0.01"
 });
 
 test("the pool holds every committed run", () => {
-  assert.equal(runs.length, 5);
+  assert.equal(runs.length, 6);
   for (const operation of ["armsCreate1k", "armsSwitch1k", "armsPayload1k", "armsClear1k"])
-    assert.equal(pooled(operation).pairs, 225);
+    assert.equal(pooled(operation).pairs, 270);
 });
 
-test("the pool holds the gate input and the run on the rebased branch", () => {
+test("the pool holds the gate input and every earlier run", () => {
   const paths = runs.map(r => r.path);
   assert.ok(paths.includes("docs/research/arms-match/arms-match.json"));
+  assert.ok(paths.includes("docs/research/arms-match/arms-match-dc8b3d5b.json"));
   assert.ok(paths.includes("docs/research/arms-match/arms-match-5369d6a0.json"));
   assert.equal(new Set(runs.map(r => r.read().commit)).size, runs.length);
+});
+
+test("the gate input's source hashes match the working tree up to line endings", () => {
+  const playground = new URL("../../../examples/Fable.Ranvier.Playground/", import.meta.url);
+  const sha = text => createHash("sha256").update(text).digest("hex");
+  const { sourceHashes } = runs.find(r => r.path.endsWith("/arms-match.json")).read();
+  for (const [path, recorded] of Object.entries(sourceHashes)) {
+    const lf = readFileSync(new URL(path, playground), "utf8").replace(/\r\n/g, "\n");
+    assert.ok([sha(lf), sha(lf.replace(/\n/g, "\r\n"))].includes(recorded), path);
+  }
 });

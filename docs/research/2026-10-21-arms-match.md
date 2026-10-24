@@ -9,12 +9,13 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 ([#157](https://github.com/shayanhabibi/Ranvier/issues/157)): one `armOf` definition per target over the arm's values
 thunk, and no cells. The first site costs 189 B gzip over its twin (budget 400 B) and each further site 8 B (budget
 60 B). The retained heap per row is 1.2 % above `ranvier-sugar` after create and after a switch, at 1,000 and 10,000
-rows. The Chromium gate is a paired median against the sugared twin of at most 1.05 on create, switch and clear and
-1.10 on payload, under the user's concession of 2026-10-24 ("Chromium"); the cells release ran under a 1.12 allowance
-(plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload (1.096). Pooled over the
-five committed runs of #157 at 35-100 % load, the payload-direct shape's paired medians are create 1.003, switch 1.022,
-payload 1.040 and clear 1.014; the refreshed gate run measures 1.013, 1.009, 1.000 and 0.942 and passes, and the run on
-the rebased branch measures 0.992, 1.022, 1.040 and 1.119, its clear interval straddling 1.05. In a paired
+rows. The Chromium gate is a paired median against the sugared twin of at most 1.05 on create and clear, 1.04 on
+switch and 1.07 on payload, under the user's concession of 2026-10-24 ("Chromium"); the cells release ran under a 1.12
+allowance (plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload (1.096).
+Pooled over the six committed runs of #157 at 35-100 % load, the payload-direct shape's paired medians are create 1.004,
+switch 1.012, payload 1.030 and clear 1.012; the gate run on the rebased branch measures 1.004, 0.969, 0.971 and 0.996
+and passes, and the earlier run on the rebased branch measures 0.992, 1.022, 1.040 and 1.119, its clear interval
+straddling 1.05. In a paired
 run against the hand-written shape, the plugin's output is indistinguishable from it on every operation.
 
 ## Plugin discovery
@@ -171,11 +172,11 @@ How the first-site cost moved:
 
 The gate (spec, Testing 11) is a paired median of at most the operation's budget, the 95 % interval reported:
 `node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` checks the committed `arms-match/arms-match.json`. The
-budgets are create 1.05, switch 1.05, payload 1.10 and clear 1.05; the cells release ran under a 1.12 allowance (plan
+budgets are create 1.05, switch 1.04, payload 1.07 and clear 1.05; the cells release ran under a 1.12 allowance (plan
 Ruling 38), which the payload-direct lowering supersedes.
 
 **Concession (user ruling, 2026-10-24).** The payload-direct lowering targeted 1.05 on every operation. Create and
-clear keep it. Switch and payload take the upper bound of the pooled paired 95 % interval over the five committed runs
+clear keep it. Switch and payload take the upper bound of the pooled paired 95 % interval over the six committed runs
 below, rounded up to 0.01 (plan `2026-10-24-issue-157.md`, Decision P9), because the plugin's output is
 indistinguishable from the hand-written shape the spike measured ("Against the hand-written shape"). Pooling
 concatenates each run's per-pair ratios and applies the bootstrap of `keyed-rows.mjs`;
@@ -189,26 +190,28 @@ gate's budgets against it.
 | `fccc740c`, shape run (97-100 %) | 1.041 (0.969-1.068) | 0.993 (0.903-1.066) | 1.042 (0.906-1.193) | 1.014 (0.968-1.095) |
 | `dc8b3d5b`, refresh (35-68 %) | 1.013 (0.989-1.039) | 1.009 (0.990-1.027) | 1.000 (0.899-1.055) | 0.942 (0.843-1.111) |
 | `5369d6a0`, rebased branch (70-97 %) | 0.992 (0.958-1.045) | 1.022 (0.945-1.066) | 1.040 (0.948-1.108) | 1.119 (0.991-1.175) |
-| pooled, 225 pairs | 1.003 (0.991-1.033) | 1.022 (0.997-1.043) | 1.040 (1.000-1.093) | 1.014 (0.982-1.081) |
-| budget | 1.05 | 1.05 | 1.10 | 1.05 |
+| `4d00179e`, gate input (56-99 %) | 1.004 (0.962-1.055) | 0.969 (0.917-1.035) | 0.971 (0.943-1.053) | 0.996 (0.906-1.093) |
+| pooled, 270 pairs | 1.004 (0.993-1.031) | 1.012 (0.995-1.037) | 1.030 (0.992-1.066) | 1.012 (0.980-1.069) |
+| budget | 1.05 | 1.04 | 1.07 | 1.05 |
 
-`8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` predate the rebase of `issue/157` onto `integration/issues` at
-`0967cc02`; their source hashes match the rebased branch except `src/Ranvier/Core.fs`, which #165 changed and both modes
-share. `arms-match-5369d6a0.json` is a paired run on the rebased branch, with every source hash matching it: its clear
-median 1.119 exceeds 1.05 on an interval that straddles it, and the pooled clear interval (0.982-1.081) straddles 1.05
-as well.
+`8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` (`arms-match-dc8b3d5b.json`) predate the rebase of `issue/157` onto
+`integration/issues` at `0967cc02`; their source hashes match the rebased branch except `src/Ranvier/Core.fs`, which
+#165 changed and both modes share. `5369d6a0` and `4d00179e` are paired runs on the rebased branch, every source hash
+matching it. The `5369d6a0` clear median 1.119 exceeds 1.05 on an interval that straddles it, and the pooled clear
+interval (0.980-1.069) straddles 1.05 as well.
 
-**Refresh.** The gate input is the refreshed run: the Step 11 command with `--build` through `gate-lock.ps1 bench`
-at `dc8b3d5b`, CPU load 51, 68 and 46 % before the build and 47, 35 and 59 % after the run, source hashes matching the
-working tree (`Lower.fs` `9c7c6613…`, `Site.fs` `644adbf6…`). Every median is within its budget; create and switch
-intervals lie below theirs, payload's lies below 1.10 and clear's straddles 1.05.
+**Refresh.** The gate input `arms-match.json` is the refreshed run: the Step 11 command with `--build` through
+`gate-lock.ps1 bench` at `4d00179e`, CPU load 56, 79 and 88 % before the build and 62, 66 and 99 % after the run,
+source hashes matching the working tree (`Lower.fs` `9c7c6613…`, `Site.fs` `644adbf6…`, `Core.fs` `f2023ae6…`);
+`pooled-interval.test.mjs` checks them. Every median is within its budget; the switch and payload intervals lie below
+theirs, and the create and clear intervals straddle 1.05.
 
 | Operation | ranvier-sugar median (process medians), ms | ranvier-arms-match median (process medians), ms | paired median ratio | 95 % interval | arms slower in |
 |---|---|---|---|---|---|
-| armsCreate1k | 15.09 (15.06, 15.40, 14.61) | 15.28 (15.28, 15.75, 14.84) | 1.013 | 0.989-1.039 | 24/45 |
-| armsSwitch1k | 7.78 (7.82, 7.49, 8.29) | 7.88 (7.82, 7.71, 8.31) | 1.009 | 0.990-1.027 | 26/45 |
-| armsPayload1k | 1.25 (1.21, 1.30, 1.38) | 1.24 (1.24, 1.11, 1.34) | 1.000 | 0.899-1.055 | 22/45 |
-| armsClear1k | 2.66 (2.59, 2.52, 3.13) | 2.73 (2.56, 2.63, 2.87) | 0.942 | 0.843-1.111 | 20/45 |
+| armsCreate1k | 16.85 (19.17, 16.76, 16.47) | 17.09 (19.11, 15.66, 17.08) | 1.004 | 0.962-1.055 | 24/45 |
+| armsSwitch1k | 9.88 (9.88, 9.56, 10.81) | 9.63 (9.54, 9.00, 10.95) | 0.969 | 0.917-1.035 | 20/45 |
+| armsPayload1k | 1.97 (2.21, 1.88, 1.97) | 1.88 (2.00, 1.75, 1.82) | 0.971 | 0.943-1.053 | 20/45 |
+| armsClear1k | 4.73 (4.47, 4.40, 5.84) | 4.74 (3.98, 3.91, 6.22) | 0.996 | 0.906-1.093 | 22/45 |
 
 **Payload-direct shape.** `keyed-rows.mjs --bundle --modes=ranvier-sugar,ranvier-arms-match
 --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15

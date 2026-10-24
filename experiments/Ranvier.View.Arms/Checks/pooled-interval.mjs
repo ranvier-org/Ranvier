@@ -11,8 +11,9 @@ export const runs = [
   at("docs/.ai/benchmarks/arms-157-noisy-probe.json"),
   at("docs/research/arms-match/arms-match-299ab276.json"),
   at("docs/research/arms-match/arms-match-shape.json"),
-  at("docs/research/arms-match/arms-match.json"),
-  at("docs/research/arms-match/arms-match-5369d6a0.json")
+  at("docs/research/arms-match/arms-match-dc8b3d5b.json"),
+  at("docs/research/arms-match/arms-match-5369d6a0.json"),
+  at("docs/research/arms-match/arms-match.json")
 ];
 
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
