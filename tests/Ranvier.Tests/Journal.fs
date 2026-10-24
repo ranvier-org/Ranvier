@@ -154,6 +154,83 @@ let tests =
                 | other -> failtestf "expected an ArgumentException, got %A" other
             }
 
+            test "a key registered in a disposed root is free again" {
+                let journal, g = journaled ()
+
+                let mount () =
+                    g.Run (fun () ->
+                        createRoot (fun owner ->
+                            let s = Signal (g, 0) |> Journal.key "count" intCodec
+
+                            owner, s))
+
+                let first, _ = mount ()
+                first.Dispose ()
+                let second, s = mount ()
+                s.Value <- 4
+
+                match writes journal with
+                | [ entry ] -> Expect.equal entry.Key (Some "count") "the second mount's signal holds the key"
+                | entries -> failtestf "expected one write, got %A" entries
+
+                second.Dispose ()
+            }
+
+            test "a key registered in an owning memo's body is free again when the memo re-runs" {
+                let _, g = journaled ()
+                let trigger = Signal (g, 0)
+
+                let m =
+                    g.Run (fun () ->
+                        createMemoWith (fun _ ->
+                            Signal (g, trigger.Value)
+                            |> Journal.key "row" intCodec
+                            |> ignore
+
+                            trigger.Value))
+
+                Expect.equal m.Value 0 "the first run"
+                trigger.Value <- 1
+                Expect.equal m.Value 1 "the re-run registers the key again"
+            }
+
+            test "Journal.key in a pure memo's body raises the scope error" {
+                let _, g = journaled ()
+
+                let m =
+                    g.Run (fun () ->
+                        createMemo (fun _ ->
+                            Signal (g, 0)
+                            |> Journal.key "row" intCodec
+                            |> ignore
+
+                            0))
+
+                Expect.throwsT<System.InvalidOperationException> (fun () -> m.Value |> ignore) "the registration is owned"
+            }
+
+            test "a write after an await in an async memo's body is not journaled" {
+                let journal, g = journaled ()
+                let target = Signal (g, 0)
+                let gate = System.Threading.Tasks.TaskCompletionSource<int>()
+
+                let a =
+                    Make.AsyncMemo<int>(
+                        g,
+                        fun _ _ ->
+                            task {
+                                let! value = gate.Task
+                                target.Value <- value
+                                return value
+                            }
+                    )
+
+                a.TryValue |> ignore
+                gate.SetResult 3
+                Expect.equal target.Peek 3 "the continuation's write landed"
+                Expect.isEmpty (writes journal) "a continuation is part of the body"
+            }
+
             test "the same key on two graphs is allowed" {
                 let _, g1 = journaled ()
                 let _, g2 = journaled ()

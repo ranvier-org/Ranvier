@@ -1605,6 +1605,14 @@ type internal JournalRecorder(journal: IInputJournal) =
         keys[binding.Key] <- nodeId
         bindings[nodeId] <- binding
 
+    /// <summary>Removes the binding of the node <c>nodeId</c>, and frees its key for another node.</summary>
+    member _.Unbind(nodeId: int, key: string) =
+        match keys.TryGetValue key with
+        | true, holder when holder = nodeId ->
+            keys.Remove key |> ignore
+            bindings.Remove nodeId |> ignore
+        | _ -> ()
+
     /// <summary>The binding of the node <c>nodeId</c>, or null when the node is unkeyed.</summary>
     member _.BindingOf(nodeId: int) : JournalBinding =
         match bindings.TryGetValue nodeId with

@@ -66,6 +66,7 @@ module Journal =
         if not (Platform.isNull recorder) then
             graph.AssertOnGraphThread "Registering a journal key"
             recorder.Bind (node.Id, binding)
+            graph.AddCleanup (fun () -> recorder.Unbind (node.Id, key))
 #if RANVIER_TRACE
             let log = ((box graph) :?> ITraced).TraceLog
 
@@ -79,8 +80,13 @@ module Journal =
     /// record values encoded by <c>codec</c>, and returns <c>signal</c>. Does nothing when the graph has no journal.
     /// </summary>
     /// <remarks>
-    /// The key is the node's stable name across runs. The traced build also labels an unlabelled node with the key.
+    /// The key is the node's stable name across runs. The registration belongs to the innermost enclosing scope: when
+    /// that scope is disposed or its computation re-runs, the key is free for another node. The traced build also labels
+    /// an unlabelled node with the key.
     /// </remarks>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// The call runs in the body of a pure computation, such as a <c>createMemo</c> memo, as <c>onCleanup</c> does.
+    /// </exception>
     /// <exception cref="T:System.ArgumentException">
     /// <c>key</c> is null or empty, or the graph already has a node registered under <c>key</c>.
     /// </exception>
