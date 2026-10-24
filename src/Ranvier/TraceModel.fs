@@ -2173,10 +2173,14 @@ module TraceModel =
         sb.Append '}' |> ignore
 
     /// <summary>
-    /// The JSONL dump of <c>dumpText</c>; with <c>encode</c>, in schema 3 with each payload written in the form
-    /// <c>encode</c> gives.
+    /// The header line and snapshot line of the dump of <c>before</c> and <c>events</c>, each ending in <c>\n</c>.
     /// </summary>
-    let internal dumpTextEncoded
+    /// <remarks>
+    /// The header and the lines of <c>eventLines</c> concatenate to <c>dumpTextEncoded</c>. <c>events</c> sets the
+    /// header's <c>seqFrom</c> and <c>graph</c>, and its schema without <c>encode</c>: a prefix holding the first
+    /// event, and the <c>GraphNew</c> event when <c>before</c> has no root, gives the same header.
+    /// </remarks>
+    let internal dumpHeader
         (encode: (obj -> TracePayload) option)
         (target: string)
         (checkpoint: string)
@@ -2231,12 +2235,31 @@ module TraceModel =
 
         snapshotJson sb before
         sb.Append '\n' |> ignore
+        sb.ToString ()
+
+    /// <summary>One dump line per event, each ending in <c>\n</c>, with payloads written as for <c>dumpHeader</c>.</summary>
+    let internal eventLines (encode: (obj -> TracePayload) option) (events: TraceEvent[]) : string =
+        let sb = StringBuilder ()
 
         for e in events do
             eventJson sb encode e
             sb.Append '\n' |> ignore
 
         sb.ToString ()
+
+    /// <summary>
+    /// The JSONL dump of <c>dumpText</c>; with <c>encode</c>, in schema 3 with each payload written in the form
+    /// <c>encode</c> gives.
+    /// </summary>
+    let internal dumpTextEncoded
+        (encode: (obj -> TracePayload) option)
+        (target: string)
+        (checkpoint: string)
+        (before: TraceSnapshot)
+        (events: TraceEvent[])
+        : string =
+        dumpHeader encode target checkpoint before events
+        + eventLines encode events
 
     /// <summary>
     /// The JSONL dump: a header, the snapshot holding <c>before</c>, then one line per event. Timed nodes select schema 2.

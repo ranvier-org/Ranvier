@@ -146,6 +146,40 @@ let tests =
                     "the unregistered record raises"
             }
 
+            test "dumpHeader and eventLines concatenate to dumpTextWith, with and without a checkpoint" {
+                let encode = Some (TraceCodecs.encode codecs)
+
+                let parts (g: Graph) =
+                    let checkpoint = Trace.checkpointOf g
+                    let events = Trace.events g
+
+                    TraceModel.dumpHeader encode "net" checkpoint.Name checkpoint.Snapshot events
+                    + TraceModel.eventLines encode events
+
+                let whole, expected = dumpOf (fun g -> parts g, Trace.dumpTextWith g codecs)
+                Expect.equal whole expected "without a checkpoint"
+
+                let cut, expectedCut =
+                    dumpOf (fun g ->
+                        let write =
+                            Trace.events g
+                            |> Array.find (fun e -> e.Kind = TraceEventKind.Write)
+
+                        Trace.checkpoint g write.Seq "cut"
+                        parts g, Trace.dumpTextWith g codecs)
+
+                Expect.stringContains cut "\"checkpoint\":\"cut\"" "the header names the checkpoint"
+                Expect.equal cut expectedCut "after a checkpoint"
+
+                let header =
+                    dumpOf (fun g ->
+                        let checkpoint = Trace.checkpointOf g
+                        let events = Trace.events g
+                        TraceModel.dumpHeader encode "net" checkpoint.Name checkpoint.Snapshot events[..0])
+
+                Expect.isTrue (expected.StartsWith header) "a prefix holding the first event gives the same header"
+            }
+
 #if !FABLE_COMPILER
             // .NET only: TraceModel.parseDump is .NET only, and the fixtures are files.
             test "dumpText writes the committed schema 1 fixture byte for byte" { matchesFixture "dump-text-schema-1.jsonl" (dumpOf Trace.dumpText) }
