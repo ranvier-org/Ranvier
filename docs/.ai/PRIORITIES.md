@@ -44,7 +44,7 @@ PR on the branch below it. Merge bottom-up.
 | --- | --- | --- | --- |
 | integration/issues | — | https://github.com/shayanhabibi/Ranvier/pull/170 | master |
 | issue/164 | #164 | https://github.com/shayanhabibi/Ranvier/pull/172 | integration/issues |
-| issue/167 | #167 | https://github.com/shayanhabibi/Ranvier/pull/176 | issue/164 |
+| issue/167 | #167 | https://github.com/shayanhabibi/Ranvier/pull/176 | integration/issues |
 | issue/69 | #69 | https://github.com/shayanhabibi/Ranvier/pull/175 | integration/issues |
 | issue/70 | #70 | https://github.com/shayanhabibi/Ranvier/pull/174 | integration/issues |
 
