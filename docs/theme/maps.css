@@ -179,3 +179,8 @@
 .rv-map-node--row .rv-map-node__name { font-size: 10.5px; }
 .rv-map-node--member .rv-map-node__name,
 .rv-map-node--member .rv-map-node__value { display: none; }
+
+/* A cell whose page failed to build shows its diagnostics in place of the map. */
+.rv-map-failed { padding: 1rem 1.25rem; border-top: 1px solid var(--nacara-border); color: var(--rv-error); }
+.rv-map-failed__title { margin: 0 0 .5rem; font-weight: 600; }
+.rv-map-failed__text { margin: 0; white-space: pre-wrap; font-size: .8125rem; color: var(--nacara-text); }

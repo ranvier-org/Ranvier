@@ -7,7 +7,6 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Spec.fs" />
-        <Compile Include="MapWorkspace.fs" />
         <Compile Include="Maps.fs" />
         <Compile Include="Theme.fs" />
         <Compile Include="Directives.fs" />

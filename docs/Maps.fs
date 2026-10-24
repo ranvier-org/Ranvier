@@ -37,6 +37,7 @@ type private Compiled() =
     member val Flags: Map<string * string, MapFlags> = Map.empty with get, set
     member val Fragments: Map<string, string> = Map.empty with get, set
     member val Scripts: Map<string, string> = Map.empty with get, set
+    member val Messages: WorkspaceMessage list = [] with get, set
 
 let private cellOf (maps: Dictionary<string, MapFenceOutput * MapFlags>) (cell: SolidCell) : Result<PageCell, string> =
     let kind =
@@ -133,7 +134,7 @@ let private transformPage (context: TransformContext) (page: Page) =
             }
                 .WithData(dataKey, unit)
 
-let private report (context: HookContext) (message: MapWorkspace.Message) =
+let private report (context: HookContext) (message: WorkspaceMessage) =
     // Under watch an error is a warning, and the broken cell's host stays empty.
     let diagnostic =
         if message.IsError && not context.IsWatch then
@@ -167,6 +168,7 @@ let private compileAll (compiled: Compiled) (context: HookContext) =
 
     compiled.Fragments <- Map.empty
     compiled.Scripts <- Map.empty
+    compiled.Messages <- []
 
     compiled.Flags <- MapPage.flags units
 
@@ -176,28 +178,36 @@ let private compileAll (compiled: Compiled) (context: HookContext) =
         | Ok esbuild ->
             let started = System.Diagnostics.Stopwatch.StartNew ()
 
+            let root = AbsolutePath.value context.ProjectRoot
+
             let built =
                 MapWorkspace.build
-                    (AbsolutePath.value context.ProjectRoot)
-                    esbuild
-                    (not context.IsWatch)
-                    [ "animejs", "4.5.0" ]
-                    (fun line -> Log.info $"ranvier maps: %s{line}")
+                    {
+                        Workspace = System.IO.Path.Combine (root, ".nacara", "ranvier-maps")
+                        MapsProject = System.IO.Path.Combine (root, "maps", "Ranvier.Docs.Maps.fsproj")
+                        Repository = System.IO.Path.GetFullPath (System.IO.Path.Combine (root, ".."))
+                        Esbuild = esbuild
+                        Minify = not context.IsWatch
+                        Packages = [ "animejs", "4.5.0" ]
+                        Log = fun line -> Log.info $"ranvier maps: %s{line}"
+                    }
                     units
 
-            built.Messages |> List.iter (report context)
+            // Reported once the pages are written: an error here would stop Nacara rendering every page.
+            compiled.Messages <- built.Messages
 
-            if not built.Files.IsEmpty then
-                for name, text in built.Files do
-                    context.Write $"%s{outputPath}/%s{name}" text
-                    |> ignore
+            for name, text in built.Files do
+                context.Write $"%s{outputPath}/%s{name}" text
+                |> ignore
 
-                compiled.Fragments <- built.Fragments
+            // A failed page's hosts show its failure card and load no bundle.
+            compiled.Fragments <- built.Fragments
 
-                compiled.Scripts <-
-                    units
-                    |> List.map (fun unit -> unit.Key, context.Site.UrlOfAsset $"%s{outputPath}/%s{unit.Key}.js")
-                    |> Map.ofList
+            compiled.Scripts <-
+                units
+                |> List.filter (fun unit -> not (built.Failed.Contains unit.Key))
+                |> List.map (fun unit -> unit.Key, context.Site.UrlOfAsset $"%s{outputPath}/%s{unit.Key}.js")
+                |> Map.ofList
 
             if started.ElapsedMilliseconds > 1000L then
                 Log.info $"ranvier maps: %d{units.Length} page(s) in %d{started.ElapsedMilliseconds}ms"
@@ -233,6 +243,7 @@ let components =
                     Transforms = transforms
                 }
                 |> Registry.onPagesRouted (compileAll compiled)
+                |> Registry.onBuildComplete (fun context -> compiled.Messages |> List.iter (report context))
                 |> Registry.assetTransform
                     {
                         Name = "map-code"

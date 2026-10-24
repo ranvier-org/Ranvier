@@ -11,6 +11,7 @@
         <Compile Include="MapFence.fs" />
         <Compile Include="MapCode.fs" />
         <Compile Include="MapPage.fs" />
+        <Compile Include="MapWorkspace.fs" />
     </ItemGroup>
 
 </Project>

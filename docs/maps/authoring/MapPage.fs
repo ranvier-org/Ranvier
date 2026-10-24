@@ -347,7 +347,12 @@ module MapPage =
                 "            File.WriteAllText (Path.Combine (entries, name + \".fs\"), Page.clientSource (\"Ranvier.Docs.MapEntries.\" + name) declaration)"
                 "        with ex ->"
                 "            failed <- true"
-                "            let message = ex.Message.Replace('\\r', ' ').Replace('\\n', ' ')"
+                "            let mutable cause = ex"
+                ""
+                "            while not (isNull cause.InnerException) do"
+                "                cause <- cause.InnerException"
+                ""
+                "            let message = cause.Message.Replace('\\r', ' ').Replace('\\n', ' ')"
                 "            eprintfn \"ranvier-map\\t%s\\t%s\\t%s\" key cell message"
                 ""
                 "    if failed then 1 else 0"
@@ -380,6 +385,12 @@ module MapPage =
                 + "];\n"
                 + "for (const start of starts) start().catch(error => console.error(error));\n"
             )
+
+    /// <summary>The markup a host shows in place of a cell whose page failed to build: the diagnostics, as text.</summary>
+    let failureCard (diagnostics: string) =
+        "<div class=\"rv-map-failed\" role=\"alert\"><p class=\"rv-map-failed__title\">This example did not build.</p><pre class=\"rv-map-failed__text\">"
+        + WebUtility.HtmlEncode diagnostics
+        + "</pre></div>"
 
     let private hostElement =
         Regex (
