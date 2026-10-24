@@ -2107,6 +2107,28 @@ type Graph(options: GraphOptions) =
 #endif
 
     /// <summary>
+    /// Runs <c>work</c> in the graph's consistency domain, as <c>Dispatch</c> does, and returns a task that completes
+    /// with its result once it has run.
+    /// </summary>
+    /// <remarks>
+    /// On the graph thread the work runs before the call returns and the task is already complete. From another
+    /// thread the work joins the inbox behind earlier <c>Dispatch</c> and <c>DispatchAsync</c> items and runs on the
+    /// drain the dispatcher schedules. Continuations of the task run on the thread pool, outside the drain.
+    /// </remarks>
+    member this.DispatchAsync(work: Func<'T>) : Task<'T> =
+#if FABLE_COMPILER
+        let finished = Platform.completion<'T>()
+        this.Post (fun () -> finished.Resolve (work.Invoke ()))
+        finished.Task
+#else
+        let finished =
+            TaskCompletionSource<'T> TaskCreationOptions.RunContinuationsAsynchronously
+
+        this.Post (fun () -> finished.SetResult (work.Invoke ()))
+        finished.Task
+#endif
+
+    /// <summary>
     /// Work that arrived from another thread and has not been drained yet.
     /// </summary>
     member _.PendingWork =

@@ -922,4 +922,27 @@ let tests =
                 Expect.equal a.TryValue (Ready 6) "and that drain applied the settle"
             }
 #endif
+
+            testList
+                "DispatchAsync"
+                [
+                    testCaseAsync "on the graph thread the work runs at the call and the task carries its result"
+                    <| async {
+                        let g = new Graph ()
+                        let sawGraphThread = ref false
+
+                        let result =
+                            g.DispatchAsync (fun () ->
+                                sawGraphThread.Value <- g.IsOnGraphThread
+                                41 + 1)
+
+                        Expect.isTrue sawGraphThread.Value "the work ran before DispatchAsync returned, on the graph thread"
+                        Expect.equal g.PendingWork 0 "inline work must not touch the inbox"
+#if !FABLE_COMPILER
+                        Expect.equal result.Status TaskStatus.RanToCompletion "the task is already completed"
+#endif
+                        let! value = Async.AwaitTask result
+                        Expect.equal value 42 "the task carries the work's result"
+                    }
+                ]
         ]
