@@ -19,6 +19,9 @@
     <Project Path="examples/Fable.Ranvier.Playground/tests/DomTests.fsproj" />
     <Project Path="examples/Fable.Ranvier.Playground/benchmarks/ripple/RipplePerf.fsproj" />
   </Folder>
+  <Folder Name="/examples/Ranvier.Mcp.Sample/">
+    <Project Path="examples/Ranvier.Mcp.Sample/Ranvier.Mcp.Sample.fsproj" />
+  </Folder>
   <Folder Name="/examples/Ranvier.Motion/">
     <Project Path="examples/Ranvier.Motion/Motion.fsproj" />
     <Project Path="examples/Ranvier.Motion/tests/MotionTests.fsproj" />
