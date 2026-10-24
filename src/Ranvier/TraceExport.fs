@@ -250,12 +250,56 @@ type MemoryTraceSink(name: string) =
                     records.Add record
                     Platform.completedTask)
 
+#if !FABLE_COMPILER
+/// <summary>A sink that writes each record's <c>TraceExportRecord.text</c> to a JSONL file, on .NET.</summary>
+/// <remarks>
+/// The file is created, or truncated, when the sink is created. A write completes once its text is flushed to the
+/// file. The sink's name, and the name of its checkpoints, is the file's path. <c>Dispose</c> closes the file after
+/// the export's <c>Completion</c>.
+/// </remarks>
+[<Sealed>]
+type JsonlTraceSink(path: string) =
+    let file =
+        new System.IO.FileStream (
+            path,
+            System.IO.FileMode.Create,
+            System.IO.FileAccess.Write,
+            System.IO.FileShare.Read,
+            4096,
+            System.IO.FileOptions.Asynchronous
+        )
+
+    member _.Path = path
+
+    interface ITraceSink with
+        member _.Name = path
+
+        member _.Write(record: TraceExportRecord) : Task =
+            let bytes = System.Text.Encoding.UTF8.GetBytes (TraceExportRecord.text record)
+
+            task {
+                do! file.WriteAsync (bytes, 0, bytes.Length)
+                do! file.FlushAsync ()
+            }
+            :> Task
+
+    interface System.IDisposable with
+        member _.Dispose() =
+            file.Dispose ()
+#endif
+
 /// <summary>Reference trace sinks.</summary>
 [<RequireQualifiedAccess>]
 module TraceSinks =
     /// <summary>An empty <c>MemoryTraceSink</c> named <c>memory</c>.</summary>
     let memory () : MemoryTraceSink =
         MemoryTraceSink "memory"
+
+#if !FABLE_COMPILER
+    /// <summary>A <c>JsonlTraceSink</c> writing the file at <c>path</c>, created or truncated.</summary>
+    let jsonl (path: string) : JsonlTraceSink =
+        new JsonlTraceSink (path)
+#endif
 
 /// <summary>The checks of the trace operations that run between flushes on the graph's thread.</summary>
 module internal TraceGate =

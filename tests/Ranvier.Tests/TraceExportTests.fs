@@ -58,6 +58,21 @@ let private gaps (sink: MemoryTraceSink) =
 let private checkpointSeq (graph: Graph) =
     (Trace.checkpointOf graph).Snapshot.Seq
 
+#if !FABLE_COMPILER
+// Runs the graph's dispatched work until the export completes, for a sink whose writes complete off the graph's thread.
+let private pumpUntilComplete (graph: Graph) (export: TraceExport) =
+    let deadline = System.DateTime.UtcNow.AddSeconds 30.0
+
+    while not export.Completion.IsCompleted do
+        if System.DateTime.UtcNow > deadline then
+            failtest "the export did not complete within 30 s"
+
+        if graph.Pump () = 0 then
+            System.Threading.Thread.Sleep 1
+
+    Expect.isFalse export.Completion.IsFaulted "the export completes without a fault"
+#endif
+
 type private Opaque = { Value: int }
 
 type private ThrowingSink() =
@@ -528,6 +543,89 @@ let tests =
 
                 Expect.isTrue (export.Completion.Exception.GetBaseException () :? TraceCodecException) "a TraceCodecException"
             }
+
+#if !FABLE_COMPILER
+            // .NET only: the JSONL sink writes a file.
+            test "Wait loses no event in a JSONL file, and the file is the dumpTextWith text" {
+                let path = System.IO.Path.GetTempFileName ()
+
+                try
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let s = createSignal 0
+                    createEffect (fun () -> s.Value |> ignore)
+                    let sink = TraceSinks.jsonl path
+                    let export = Trace.export g sink waiting
+
+                    for i in 1..10000 do
+                        s.Value <- i
+
+                    let expected = Trace.dumpTextWith g waiting.Codecs
+                    export.Dispose ()
+                    pumpUntilComplete g export
+                    (sink :> System.IDisposable).Dispose()
+
+                    Expect.equal export.Dropped 0 "no event dropped"
+                    let text = System.IO.File.ReadAllText path
+                    Expect.equal text expected "the file is the dumpTextWith text"
+                    let dump = TraceContract.parseDumpWith waiting.Codecs text
+                    Expect.equal dump.Gaps [] "no gap"
+                    Expect.sequenceEqual (dump.Events |> Array.map _.Seq) [ 1 .. Trace.lastSeq g ] "every seq, once and in order"
+                finally
+                    System.IO.File.Delete path
+            }
+
+            test "Drop writes a JSONL file whose gaps name the dropped seqs" {
+                let path = System.IO.Path.GetTempFileName ()
+
+                try
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let s = createSignal 0
+                    createEffect (fun () -> s.Value |> ignore)
+                    let sink = TraceSinks.jsonl path
+
+                    let policy =
+                        { dropping with
+                            Capacity = 4
+                            Checkpoint = TraceExportCheckpoint.Enqueued
+                        }
+
+                    let export = Trace.export g sink policy
+
+                    for i in 1..10000 do
+                        s.Value <- i
+                        Expect.isLessThanOrEqual (TraceGate.logOf g).Events.Length policy.Capacity "the log retains at most a queue of events"
+
+                    let last = Trace.lastSeq g
+                    export.Dispose ()
+                    pumpUntilComplete g export
+                    (sink :> System.IDisposable).Dispose()
+
+                    Expect.isGreaterThan export.Dropped 0 "the full queue dropped events"
+
+                    let dump =
+                        TraceContract.parseDumpWith policy.Codecs (System.IO.File.ReadAllText path)
+
+                    let gapped =
+                        [
+                            for from, ``to`` in dump.Gaps do
+                                yield! [ from..``to`` ]
+                        ]
+
+                    Expect.equal gapped.Length export.Dropped "the gaps name every dropped seq"
+
+                    Expect.sequenceEqual
+                        (List.sort (
+                            (dump.Events |> Array.map _.Seq |> List.ofArray)
+                            @ gapped
+                        ))
+                        [ 1..last ]
+                        "the events and the gaps cover every seq once"
+                finally
+                    System.IO.File.Delete path
+            }
+#endif
 
             test "a gap record writes a gap line" {
                 Expect.equal (TraceExportRecord.text (TraceExportRecord.Gap (3, 7))) "{\"gap\":{\"from\":3,\"to\":7}}\n" "the gap line"
