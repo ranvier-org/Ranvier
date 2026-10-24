@@ -748,7 +748,8 @@ var state = Tracing.StateDocument(graph, Tracing.Codecs(point));
 ```
 
 Each per-node query accepts a node or its identity path, such as `"/changes"`. Use a path to reach a
-node without a handle, such as an `EffectOn`.
+node without a handle, such as an `EffectOn`. An unknown path raises `ArgumentException`, except in
+`LookupDocument`, whose body is then `Missing`; a node of another graph gives `Foreign` there.
 
 :::details Conditional labels
 `Tracing.Label` is `[Conditional("RANVIER_TRACE")]`. Its call is retained only when the calling

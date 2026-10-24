@@ -547,6 +547,33 @@ checkpoint drops its `Moved` or `Settle`, the state value is `Lossy "null"`.
 null payload as `Null`. `parseDumpWith` keeps a schema 1 or 2 payload as its text, and a strict list
 raises for it.
 
+:::details Read a dump without its graph
+
+`TraceContract` computes the contract values from a snapshot and the events after it. Use it to read a
+dump file without its graph, with the dump's snapshot as the checkpoint:
+
+```fsharp
+let dump = TraceContract.parseDumpWith codecs (System.IO.File.ReadAllText "cart.jsonl")
+let checkpoint: TraceCheckpoint = { Name = dump.Checkpoint; Snapshot = dump.Snapshot }
+let state = TraceContract.state codecs checkpoint dump.Events
+
+let runs =
+    match TraceContract.lookup dump.Snapshot dump.Events (TraceAddress.ByPath "/subtotal") with
+    | TraceLookup.Live node
+    | TraceLookup.Checkpointed node
+    | TraceLookup.Disposed (node, _) ->
+        TraceContract.runs codecs (TraceModel.history dump.Events dump.Checkpoint node.Node)
+    | TraceLookup.Missing
+    | TraceLookup.Foreign -> []
+```
+
+`TraceContract.why codecs why` encodes a `TraceModel.why` chain the same way, and
+`TraceContract.nodeRef snapshot id` gives the `TraceNodeRef` of a node in a snapshot, or `None`.
+`TraceContract.dumpTextWith` writes a schema 3 dump from a snapshot and events.
+The `TraceContract` functions are pure and run on any thread.
+
+:::
+
 ### Schema versions
 
 - One schema number covers dumps and documents. Documents and `dumpTextWith` write schema 3;
