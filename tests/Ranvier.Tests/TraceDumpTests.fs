@@ -209,7 +209,7 @@ let tests =
                     "an unregistered codec raises"
             }
 
-            test "schema 1 and 2 payloads read as Exact for scalar text and Lossy otherwise" {
+            test "schema 1 and 2 payloads read as Lossy text, and a null payload as Null" {
                 let text = dumpOf Trace.dumpText
 
                 for schema in [ 1; 2 ] do
@@ -222,19 +222,52 @@ let tests =
                     for form in
                         [
                             TracePayload.Null
-                            TracePayload.Exact (TraceScalar.Int 2)
-                            TracePayload.Exact (TraceScalar.Bool false)
-                            TracePayload.Exact (TraceScalar.Float 0.5)
+                            TracePayload.Lossy "2"
+                            TracePayload.Lossy "false"
+                            TracePayload.Lossy "0.5"
                             TracePayload.Lossy "c\"d"
                             TracePayload.Lossy "{ X = 3; Y = 4 }"
                         ] do
                         Expect.isTrue (forms.Contains form) (string form)
+
+                    for form in forms do
+                        match form with
+                        | TracePayload.Null
+                        | TracePayload.Lossy _ -> ()
+                        | other -> failtest $"a schema {schema} payload claims a type: {other}"
 
                     Expect.sequenceEqual
                         (dump.Events |> Array.map _.Payload)
                         ((TraceModel.parseDump text).Events
                          |> Array.map _.Payload)
                         "the event payloads stay text"
+            }
+
+            test "parseDumpWith keeps schema 1 payloads as their text, and a strict list raises for them" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal "a"
+                let f = createSignal 0.5
+                let w = createSignal 0L
+                s.Value <- "42"
+                s.Value <- "true"
+                f.Value <- 1.0
+                w.Value <- 42L
+                let text = Trace.dumpText g
+                let dump = TraceContract.parseDumpWith (TraceCodecs.ofList []) text
+
+                let payloads =
+                    dump.Events
+                    |> Array.filter (fun e -> e.Kind = TraceEventKind.Write && e.Flag = 1)
+                    |> Array.map _.Payload
+
+                Expect.sequenceEqual payloads [| box "42"; box "true"; box "1"; box (TraceModel.valueText (box 42L)) |] "each payload stays its text"
+
+                Expect.throwsT<TraceCodecException>
+                    (fun () ->
+                        TraceContract.parseDumpWith (TraceCodecs.strict (TraceCodecs.ofList [])) text
+                        |> ignore)
+                    "a schema 1 payload proves no type"
             }
 
             test "parseDump raises FormatException for schema 0 and 4" {

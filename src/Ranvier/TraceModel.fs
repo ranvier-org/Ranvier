@@ -399,8 +399,7 @@ type TraceDump =
         Events: TraceEvent[]
         /// <summary>
         /// The form of each event's payload, at the event's index. Schema 3 gives the form written. Schemas 1 and 2
-        /// carry no form: null gives <c>Null</c>, the round-trip text of an <c>int</c>, <c>bool</c> or <c>float</c>
-        /// gives <c>Exact</c> of that scalar, and other text gives <c>Lossy</c>. A <c>TimedState</c> event's payload is
+        /// carry no type: null gives <c>Null</c>, and text gives <c>Lossy</c>. A <c>TimedState</c> event's payload is
         /// its timing, and its form is <c>Null</c>.
         /// </summary>
         Payloads: TracePayload[]
@@ -2244,24 +2243,11 @@ module TraceModel =
         dumpTextEncoded None target checkpoint before events
 
 #if !FABLE_COMPILER
-    // The form of a schema 1 or 2 payload's text.
+    // The form of a schema 1 or 2 payload's text, which carries no type.
     let private textForm (text: string) =
-        let invariant = Globalization.CultureInfo.InvariantCulture
-
         match text with
         | null -> TracePayload.Null
-        | "true" -> TracePayload.Exact (TraceScalar.Bool true)
-        | "false" -> TracePayload.Exact (TraceScalar.Bool false)
-        | _ ->
-            match Int32.TryParse (text, Globalization.NumberStyles.AllowLeadingSign, invariant) with
-            | true, i when string i = text -> TracePayload.Exact (TraceScalar.Int i)
-            | _ ->
-                match Double.TryParse (text, Globalization.NumberStyles.Float, invariant) with
-                | true, f when f.ToString ("R", invariant) = text -> TracePayload.Exact (TraceScalar.Float f)
-                | _ when text = "NaN" -> TracePayload.Exact (TraceScalar.Float nan)
-                | _ when text = "Infinity" -> TracePayload.Exact (TraceScalar.Float infinity)
-                | _ when text = "-Infinity" -> TracePayload.Exact (TraceScalar.Float -infinity)
-                | _ -> TracePayload.Lossy text
+        | _ -> TracePayload.Lossy text
 
     // A schema 3 payload form, and the text an event of schema 1 or 2 would hold for it.
     let private readForm (e: Text.Json.JsonElement) =

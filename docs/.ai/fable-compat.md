@@ -37,9 +37,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 18 | 0 |
 | Tracing.fs | 2 | 2 | 2 | 106 | 101 | 101 | 3 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
-| TraceContractTests.fs | 0 | 0 | 0 | 32 | 32 | 32 | 0 | 0 |
+| TraceContractTests.fs | 0 | 0 | 0 | 33 | 33 | 33 | 0 | 0 |
 | TraceJsonTests.fs | 0 | 0 | 0 | 8 | 8 | 8 | 9 | 0 |
-| TraceDumpTests.fs | 0 | 0 | 0 | 3 | 3 | 3 | 7 | 0 |
+| TraceDumpTests.fs | 0 | 0 | 0 | 3 | 3 | 3 | 8 | 0 |
 | Observers.fs | 102 | 102 | 102 | 102 | 102 | 102 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
 | FanOut.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
@@ -84,7 +84,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1551 | 1530 | 1527 | 1759 | 1733 | 1730 | 141 | 1 |
+| **Total** | 1551 | 1530 | 1527 | 1760 | 1734 | 1731 | 142 | 1 |
 
 ## Tests.fs
 
@@ -690,7 +690,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## TraceContractTests.fs
 
-<details><summary>32 passed in every build and delivery that runs them</summary>
+<details><summary>33 passed in every build and delivery that runs them</summary>
 
 - a scalar payload encodes as Exact (traced only)
 - a fractional or non-finite float encodes as Float on every platform (traced only)
@@ -720,6 +720,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - state encodes retained values through the codecs (traced only)
 - lastSeq is the last event's seq, and the checkpoint's once the checkpoint drops every event (traced only)
 - state gives a memo that moved to a null value as Null (traced only)
+- state gives a memo that moved to null before a checkpoint as Lossy of null's text (traced only)
 - state gives a projection that moved without a value as None (traced only)
 - state gives a value folded into the checkpoint as Lossy of its folded text (traced only)
 - strict state raises for a retained value with no codec (traced only)
@@ -763,7 +764,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | the committed schema 1 and 3 fixtures parse to the program's events and payload forms | TraceModel.parseDump is .NET only, and the fixtures are files. |
 | a schema 3 dump parses to the forms written | TraceModel.parseDump is .NET only, and the fixtures are files. |
 | parseDumpWith decodes each payload through the codecs | TraceModel.parseDump is .NET only, and the fixtures are files. |
-| schema 1 and 2 payloads read as Exact for scalar text and Lossy otherwise | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| schema 1 and 2 payloads read as Lossy text, and a null payload as Null | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| parseDumpWith keeps schema 1 payloads as their text, and a strict list raises for them | TraceModel.parseDump is .NET only, and the fixtures are files. |
 | parseDump raises FormatException for schema 0 and 4 | TraceModel.parseDump is .NET only, and the fixtures are files. |
 
 <details><summary>3 passed in every build and delivery that runs them</summary>

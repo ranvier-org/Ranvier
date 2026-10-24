@@ -543,8 +543,9 @@ value as the text of null, so after the checkpoint drops its `Moved`, the state 
 
 `Trace.dumpTextWith graph codecs` writes the log in schema 3, with each payload in its form, and
 `TraceContract.parseDumpWith codecs text` decodes one back. `TraceModel.parseDump` reads schemas 1 to
-3; a schema 1 or 2 payload carries no form, so `TraceDump.Payloads` gives the text of an `int`, `bool`
-or `float` as `Exact` and other text as `Lossy`.
+3; a schema 1 or 2 payload carries no type, so `TraceDump.Payloads` gives its text as `Lossy` and a
+null payload as `Null`. `parseDumpWith` keeps a schema 1 or 2 payload as its text, and a strict list
+raises for it.
 
 ### Schema versions
 

@@ -42,11 +42,13 @@ provenance; `TraceModel.dumpText` and `parseDump` supply the dumps.
   development. `TraceCodecs.strict` gives the failure a replay consumer needs.
 - **Ambiguous log entries are marked, not guessed.** A null `Moved` payload is the value for a memo, async memo or
   boundary (`Null`), carries no value for a projection (`None`), and is ambiguous for a lookup cell, which records a
-  null value and a suspension alike (`Lossy "null"`). `TraceModel.fold` and `history` keep skipping null moves, so
-  `Trace.snapshot` and `Trace.render` are unchanged.
+  null value and a suspension alike (`Lossy "null"`).
+- **A folded null is recorded.** `TraceModel.fold` gives a node `Value = Some (valueText null)` for a null `Write` and
+  for a null `Moved` of a memo, async memo, boundary or lookup cell, so a checkpoint holds the null rather than the
+  earlier value, and `state` reads it as `Lossy "null"`. `history` keeps skipping null moves.
 - **Schemas 1 and 2 untouched.** `Trace.dumpText` keeps its bytes; schema 3 payload forms are opt-in through
-  `dumpTextWith`. Schema 1 and 2 payload text reads as `Exact` when it round-trips as an `int`, `bool` or `float`, so a
-  string payload whose text looks like a number reads back as that number.
+  `dumpTextWith`. Schema 1 and 2 payloads carry no type, so their text reads as `Lossy` and `parseDumpWith` keeps it
+  as text: the text `1` of an `int`, a `float` or a `string` is the same.
 - **Codec-taking dump functions live in `TraceContract`.** `TraceCodecs` is declared after `TraceModel`, so
   `dumpTextWith` and `parseDumpWith` are `TraceContract` functions over an internal `TraceModel.dumpTextEncoded`.
 - **Readers are .NET only,** as `parseDump` is: they use `System.Text.Json`.
