@@ -34,15 +34,20 @@ let private lastSeq (g: Graph) =
     | events -> events[events.Length - 1].Seq
 
 /// <summary><c>write</c> of a labelled graph with a debounced node, which selects dump schema 2.</summary>
-/// <remarks>The committed fixture holds this program's creation sites: an edit above its last line regenerates it.</remarks>
+/// <remarks>The fixture holds the creation sites: an edit above the last line regenerates it. Each creation is one line, as Debug and Release give a split one different sites.</remarks>
 let private timedOf (write: Graph -> 'T) : 'T =
     use g = new Graph ()
     use _ = g.Activate ()
     let clock = ManualClock ()
     let input = Trace.named "input" (fun () -> createSignal 0)
 
-    let output =
-        Trace.named "output" (fun () -> debounceWith { Clock = clock; Comparer = None } (TimeSpan.FromMilliseconds 100.) (fun () -> input.Value) g)
+    let options = { Clock = clock; Comparer = None }
+    let window = TimeSpan.FromMilliseconds 100.
+
+    let read () =
+        input.Value
+
+    let output = Trace.named "output" (fun () -> debounceWith options window read g)
 
     Trace.named "e" (fun () -> createEffect (fun () -> output.Value |> ignore))
     input.Value <- 1

@@ -29,7 +29,7 @@ let private codecs = TraceCodecs.ofList [ pointCodec ]
 /// <c>write</c> of a labelled graph whose writes record an int, a string, a bool, a float, a codec-encoded record,
 /// an unregistered record and null.
 /// </summary>
-/// <remarks>The committed fixture holds this program's creation sites: an edit above its last line regenerates it.</remarks>
+/// <remarks>The fixture holds the creation sites: an edit above the last line regenerates it. Each creation is one line, as Debug and Release give a split one different sites.</remarks>
 let private dumpOf (write: Graph -> 'T) : 'T =
     use g = new Graph ()
     use _ = g.Activate ()
@@ -41,8 +41,10 @@ let private dumpOf (write: Graph -> 'T) : 'T =
     let u = Trace.named "u" (fun () -> createSignal { Name = "u" })
     let o = Trace.named "o" (fun () -> createSignal (null: string))
 
-    let m =
-        Trace.named "m" (fun () -> createMemo (fun _ -> { X = n.Value; Y = p.Value.Y }))
+    let point () =
+        { X = n.Value; Y = p.Value.Y }
+
+    let m = Trace.named "m" (fun () -> createMemo (fun _ -> point ()))
 
     Trace.named "e" (fun () ->
         createEffect (fun () ->
