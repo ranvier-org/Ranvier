@@ -160,3 +160,56 @@ type TraceCostBenchmarks() =
     [<Benchmark>]
     member _.Batch() =
         batch.Step 10
+
+/// <summary>Rows built by <c>DisposeRows</c>.</summary>
+[<Literal>]
+let private Rows = 1000
+
+/// <summary>
+/// Builds a graph and disposes it, per invocation, so construction and teardown are measured apart from
+/// <c>TraceCostBenchmarks</c>' updates. Each construction case builds the graph of the steady-state case of the
+/// same name.
+/// </summary>
+[<MemoryDiagnoser; BenchmarkCategory "Trace"; Config.TracedConfig>]
+type TraceConstructionBenchmarks() =
+    let construct (build: Graph -> (unit -> unit)) =
+        let graph = new Graph ()
+        build graph |> ignore
+        (graph :> IDisposable).Dispose()
+
+    /// <summary>A graph with one signal observed by one effect.</summary>
+    [<Benchmark>]
+    member _.Signal() =
+        construct signalWorkload
+
+    /// <summary>A graph with one signal read by a memo and an effect.</summary>
+    [<Benchmark>]
+    member _.Memo() =
+        construct memoWorkload
+
+    /// <summary>A graph with a 4-deep memo chain observed at the tail by an effect.</summary>
+    [<Benchmark>]
+    member _.Chain() =
+        construct chainWorkload
+
+    /// <summary>A graph with one signal read by 64 memos, all read by one effect.</summary>
+    [<Benchmark>]
+    member _.Fanout() =
+        construct fanoutWorkload
+
+    /// <summary>A root of 1,000 effects, each reading one shared signal, created and then disposed.</summary>
+    [<Benchmark>]
+    member _.DisposeRows() =
+        let graph = new Graph ()
+        let source = Signal (graph, 0)
+
+        let root =
+            graph.CreateRoot (fun owner ->
+                for _ in 1..Rows do
+                    new Effect (graph, (fun () -> sink <- sink + source.Value))
+                    |> ignore
+
+                owner)
+
+        root.Dispose ()
+        (graph :> IDisposable).Dispose()
