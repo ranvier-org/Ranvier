@@ -1,15 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <!-- Compiled by Fable only, through the docs' Solid workspace. -->
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <LangVersion>latest</LangVersion>
-        <IsExcludedFromRootBuild>true</IsExcludedFromRootBuild>
         <IsPackable>false</IsPackable>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="PipelineFixture.fs" />
         <Compile Include="SignalMap.fs" />
     </ItemGroup>
 
@@ -19,6 +18,7 @@
 
     <ItemGroup>
         <ProjectReference Include="model\Ranvier.Docs.MapModel.fsproj" />
+        <ProjectReference Include="..\..\src\Ranvier.View.Dom\Ranvier.View.Dom.fsproj" />
         <ProjectReference Include="..\..\src\Fable.Ranvier.Anime\Fable.Ranvier.Anime.fsproj" />
     </ItemGroup>
 
