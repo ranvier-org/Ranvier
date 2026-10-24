@@ -1,4 +1,4 @@
-/// .NET only: FsCheck properties of checkpointed trace logs.
+/// .NET only: FsCheck properties and garbage collection of checkpointed trace logs.
 module Ranvier.Tests.TraceCheckpoints
 
 open System
@@ -85,6 +85,22 @@ let private cut (k: int) (name: string) (why: Why) =
                 Some (BeforeCheckpoint name)
     }
 
+type private Payload() = class end
+
+/// <summary>Writes a fresh payload to <c>signal</c> and then 0, and returns a weak reference to the payload.</summary>
+[<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+let private writeAndReplace (graph: Graph) (signal: Signal<obj>) =
+    let payload = Payload ()
+    graph.Run (fun () -> signal.Value <- box payload)
+    graph.Run (fun () -> signal.Value <- box 0)
+    WeakReference payload
+
+let private collected (weak: WeakReference) =
+    GC.Collect ()
+    GC.WaitForPendingFinalizers ()
+    GC.Collect ()
+    not weak.IsAlive
+
 let private config =
     { FsCheckConfig.defaultConfig with
         maxTest = 200
@@ -102,6 +118,15 @@ let tests =
                 ops |> List.iter script.Apply
                 let k = splitOf g cut
                 Expect.equal (TraceModel.fold (Trace.snapshotAt g k) (Trace.eventsSince g k)) (Trace.snapshot g) $"split at {k}"
+
+            test "a checkpoint releases the payloads of the events it drops" {
+                use g = new Graph ()
+                let signal = g.Run (fun () -> Signal<obj>(g, box 0))
+                let weak = writeAndReplace g signal
+                Expect.isFalse (collected weak) "the log holds the written payload"
+                Trace.checkpoint g (lastSeq g) "cut"
+                Expect.isTrue (collected weak) "the checkpoint releases the payload"
+            }
 
             testPropertyWithConfig config "a checkpointed graph answers as its uncheckpointed twin"
             <| fun (before: Op list) (after: Op list) (split: int) ->
