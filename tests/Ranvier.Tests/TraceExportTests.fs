@@ -184,6 +184,86 @@ let tests =
                 Expect.sequenceEqual (exportedSeqs sink) [ 1 .. Trace.lastSeq g ] "every seq, once and in order"
             }
 
+#if !FABLE_COMPILER
+            test "under Wait, Completion settles off the graph's thread after Dispose on a full queue" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+                let export = Trace.export g sink { waiting with Capacity = 8 }
+
+                for i in 1..50 do
+                    s.Value <- i
+
+                let last = Trace.lastSeq g
+                export.Dispose ()
+
+                let releasing =
+                    System.Threading.Thread (fun () ->
+                        System.Threading.Thread.Sleep 50
+                        sink.Release ())
+
+                releasing.Start ()
+                let settled = export.Completion.Wait 5000
+                releasing.Join ()
+
+                Expect.isTrue settled "Completion settles while the graph's thread waits on it"
+                Expect.sequenceEqual (exportedSeqs sink) [ 1..last ] "every seq up to Dispose, once and in order"
+            }
+
+            test "a checkpoint taken between an off-thread Dispose and its run ends the gap at Dispose" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                let export = Trace.export g sink waiting
+
+                for i in 1..10 do
+                    s.Value <- i
+
+                let last = Trace.lastSeq g
+                let disposing = System.Threading.Thread (fun () -> export.Dispose ())
+                disposing.Start ()
+                disposing.Join ()
+
+                for _ in 1..5 do
+                    createSignal 0 |> ignore
+
+                Trace.checkpoint g (Trace.lastSeq g) "elsewhere"
+                g.Pump () |> ignore
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.sequenceEqual (streamSeqs sink) [ 1..last ] "the stream ends at Dispose"
+            }
+#endif
+
+            test "under Wait, the stream ends at Dispose when the queue is full and events follow it" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+                let export = Trace.export g sink { waiting with Capacity = 7 }
+
+                for i in 1..50 do
+                    s.Value <- i
+
+                let last = Trace.lastSeq g
+                export.Dispose ()
+
+                for i in 51..100 do
+                    s.Value <- i
+
+                sink.Release ()
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.sequenceEqual (exportedSeqs sink) [ 1..last ] "every seq up to Dispose, once and in order"
+            }
+
             test "Drop writes the dropped seqs in one gap once the stalled sink frees a slot" {
                 use g = new Graph ()
                 use _ = g.Activate ()

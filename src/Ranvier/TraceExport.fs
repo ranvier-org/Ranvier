@@ -42,7 +42,10 @@ type ITraceSink =
 /// <summary>What an exporter does with a batch when its queue is full.</summary>
 [<RequireQualifiedAccess>]
 type TraceExportFull =
-    /// <summary>Leaves the batch in the trace log and queues it when the queue has room. The stream loses no event.</summary>
+    /// <summary>
+    /// Leaves the batch in the trace log and queues it when the queue has room. The stream loses no event. The
+    /// stream's end is queued past the capacity.
+    /// </summary>
     | Wait
     /// <summary>
     /// Drops the batch and records its seqs in a <c>Gap</c>, written before the next batch or once the queue has
@@ -70,7 +73,9 @@ type TraceExportCheckpoint =
 /// <summary>How an exporter queues, encodes and checkpoints.</summary>
 type SinkPolicy =
     {
-        /// <summary>The events the queue holds, queued or being written. A batch is split to fit.</summary>
+        /// <summary>
+        /// The events the queue holds, queued or being written, until the stream's end. A batch is split to fit.
+        /// </summary>
         Capacity: int
         Full: TraceExportFull
         Checkpoint: TraceExportCheckpoint
@@ -154,6 +159,15 @@ type internal TraceExportQueue(sink: ITraceSink, capacity: int) =
             this.Pump ()
 
         queued
+
+    /// <summary>Queues <c>record</c>, which holds <c>events</c> events, past the capacity.</summary>
+    member this.Append(record: TraceExportRecord, events: int) =
+        lock gate (fun () ->
+            if isNull fault then
+                items.Enqueue (struct (record, events))
+                held <- held + events)
+
+        this.Pump ()
 
     member private this.Pump() =
         let mutable go = true
@@ -439,7 +453,8 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
                 completion.TrySetException error |> ignore
 #endif
 
-    member private this.Enqueue(batch: TraceEvent[]) =
+    // Queues the batch, past the capacity when ending, and returns whether it was queued.
+    member private this.Enqueue(batch: TraceEvent[], ending: bool) =
         let last = batch[batch.Length - 1].Seq
 
         let record =
@@ -447,11 +462,17 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
 
         this.Close ()
 
-        if queue.TryWrite (record, batch.Length) then
+        let queued =
+            if ending then
+                queue.Append (record, batch.Length)
+                true
+            else
+                queue.TryWrite (record, batch.Length)
+
+        if queued then
             lock gate (fun () -> cursor <- last)
-            true
-        else
-            false
+
+        queued
 
     // Extends the pending gap to the seq last, and moves the cursor there.
     member private _.Pass(last: int) =
@@ -479,18 +500,29 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
             queue.TryWrite (TraceExportRecord.Gap (from, ``to``), 0)
             |> ignore
 
-    // Queues the events up to the stream's end while the queue has room. Graph thread.
+    // Queues the events up to the stream's end while the queue has room; once disposed under Wait, queues them all
+    // past the capacity. Graph thread.
     member private this.Pull() =
         let mutable go = true
 
         while go do
-            let floor = TraceGate.checkpointSeq log
+            let struct (last, ending) =
+                lock gate (fun () ->
+                    if disposed then
+                        struct (target, policy.Full = TraceExportFull.Wait)
+                    else
+                        struct (log.LastSeq, false))
+
+            let floor = min (TraceGate.checkpointSeq log) last
 
             if cursor < floor then
                 this.Pass floor
 
-            let last = lock gate (fun () -> if disposed then target else log.LastSeq)
-            let room = policy.Capacity - queue.Held
+            let room =
+                if ending then
+                    policy.Capacity
+                else
+                    policy.Capacity - queue.Held
 
             if not (isNull queue.Fault) then
                 go <- false
@@ -500,9 +532,9 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
 
                 go <- false
             elif room > 0 then
-                let batch = log.EventsAfter (cursor, room)
+                let batch = log.EventsAfter (cursor, min room (last - cursor))
 
-                if not (this.Enqueue batch) then
+                if not (this.Enqueue (batch, ending)) then
                     go <- this.Full last
             else
                 go <- this.Full last
@@ -642,7 +674,11 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
             this.Run ()
 
     /// <summary>Ends the stream at the last event recorded, and exports the events up to it.</summary>
-    /// <remarks>Runs on any thread: the export's end runs through <c>Graph.Dispatch</c>.</remarks>
+    /// <remarks>
+    /// Runs on any thread, and queues the stream's end through <c>Graph.Dispatch</c>. On the graph's thread the end
+    /// is queued before <c>Dispose</c> returns, past the capacity under <c>Wait</c>, and <c>Completion</c> settles
+    /// without the graph's thread. Off it, <c>Completion</c> settles after the graph runs the dispatched end.
+    /// </remarks>
     member this.Dispose() =
         let first =
             lock gate (fun () ->

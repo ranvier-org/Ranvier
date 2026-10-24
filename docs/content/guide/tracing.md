@@ -460,7 +460,9 @@ header of the current checkpoint and the retained events at once, then, at the e
 graph's thread, the events recorded since. `TraceExport.Drain ()` exports a write that ran no flush.
 Dispose the export to end the stream; its `Completion` task completes once the sink holds every record,
 and faults with the sink's error or a strict codec's `TraceCodecException`. The graph keeps running
-after a fault.
+after a fault. Called on the graph's thread, `Dispose` queues the rest of the stream before it returns,
+so `Completion.Wait ()` there settles without the graph's thread. Called off it, `Completion` settles
+once the graph runs the end `Dispose` dispatches.
 
 ```fsharp
 let sink = TraceSinks.jsonl "session.jsonl"
@@ -489,7 +491,7 @@ the export, the stream's text equals `Trace.dumpTextWith graph policy.Codecs`.
 `Capacity` bounds the events the export queues for the sink. `Full` sets what a full queue does:
 
 - `TraceExportFull.Wait` keeps the batch in the log and exports it once the sink frees room. The stream
-  loses no event, and the log holds the backlog.
+  loses no event, and the log holds the backlog. The stream's end is queued past `Capacity`.
 - `TraceExportFull.Drop` drops the batch and records its seqs in a gap. Consecutive drops share one gap,
   written as the line `{"gap":{"from":F,"to":T}}` once the queue has room or the stream ends.
   `TraceExport.Dropped` counts the dropped events.
