@@ -139,10 +139,12 @@ type TracePathStability =
     | Located
 
 /// <summary>A node's identity in each of its scopes.</summary>
+/// <remarks>
+/// Every field is graph-local: two graphs built by the same program give equal refs. A caller holding refs from
+/// several graphs keeps each with its graph.
+/// </remarks>
 type TraceNodeRef =
     {
-        /// <summary>The graph's root owner id. With <c>Node</c>, valid for one graph instance in one process.</summary>
-        Graph: int
         /// <summary>The graph-local node id, valid for the graph instance alone.</summary>
         Node: int
         /// <summary>The identity path, with its <c>@k</c> suffix when more than one node has held the path.</summary>
@@ -288,7 +290,6 @@ module TraceContract =
         snapshot.Nodes.TryFind node
         |> Option.map (fun n ->
             {
-                Graph = snapshot.Root
                 Node = node
                 Path = TraceModel.pathOf snapshot node
                 Stability =

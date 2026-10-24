@@ -236,8 +236,11 @@ let tests =
                     Expect.equal (count.Path, count.Stability, count.Label) ("/count", TracePathStability.Named, Some "count") "a labelled signal"
                     Expect.equal (outer.Path, outer.Stability) ("/outer", TracePathStability.Named) "a labelled memo"
                     Expect.equal (inner.Path, inner.Stability) ("/outer/inner@1", TracePathStability.Named) "a labelled memo under a labelled host"
-                    Expect.equal inner.Graph 1 "the graph is the root owner id"
                 | refs -> failtestf "expected three refs, got %A" refs
+            }
+
+            test "two graphs built by the same program give equal refs" {
+                Expect.equal (labelledProgram ()) (labelledProgram ()) "a ref holds graph-local identity alone"
             }
 
             test "an @k incarnation of a named path stays Named" {
