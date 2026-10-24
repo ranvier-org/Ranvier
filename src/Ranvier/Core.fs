@@ -2114,17 +2114,41 @@ type Graph(options: GraphOptions) =
     /// On the graph thread the work runs before the call returns and the task is already complete. From another
     /// thread the work joins the inbox behind earlier <c>Dispatch</c> and <c>DispatchAsync</c> items and runs on the
     /// drain the dispatcher schedules. Continuations of the task run on the thread pool, outside the drain.
+    ///
+    /// When the work throws, the task faults with that exception and the call itself does not throw; the failure is
+    /// not recorded in <c>Root.Errors</c>, and later inbox items still run.
     /// </remarks>
     member this.DispatchAsync(work: Func<'T>) : Task<'T> =
 #if FABLE_COMPILER
         let finished = Platform.completion<'T>()
-        this.Post (fun () -> finished.Resolve (work.Invoke ()))
+
+        this.Post (fun () ->
+            let outcome =
+                try
+                    Result.Ok (work.Invoke ())
+                with ex ->
+                    Result.Error ex
+
+            match outcome with
+            | Result.Ok value -> finished.Resolve value
+            | Result.Error ex -> finished.Reject ex)
+
         finished.Task
 #else
         let finished =
             TaskCompletionSource<'T> TaskCreationOptions.RunContinuationsAsynchronously
 
-        this.Post (fun () -> finished.SetResult (work.Invoke ()))
+        this.Post (fun () ->
+            let outcome =
+                try
+                    Result.Ok (work.Invoke ())
+                with ex ->
+                    Result.Error ex
+
+            match outcome with
+            | Result.Ok value -> finished.SetResult value
+            | Result.Error ex -> finished.SetException ex)
+
         finished.Task
 #endif
 

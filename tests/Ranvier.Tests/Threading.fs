@@ -1034,5 +1034,67 @@ let tests =
                         Expect.isFalse continuation.Result "a synchronous continuation still resumes off the graph thread"
                     }
 #endif
+
+                    testCaseAsync "inline work that throws faults the task with the same exception"
+                    <| async {
+                        let g = new Graph ()
+                        let boom = InvalidOperationException "boom"
+                        let result = g.DispatchAsync (fun () -> raise boom: int)
+
+                        let! outcome = Async.Catch (Async.AwaitTask result)
+
+                        match outcome with
+                        | Choice2Of2 caught ->
+#if !FABLE_COMPILER
+                            let caught =
+                                match caught with
+                                | :? AggregateException as aggregate -> aggregate.InnerException
+                                | other -> other
+
+                            Expect.isTrue (obj.ReferenceEquals (result.Exception.InnerException, boom)) "the fault wraps the original"
+#endif
+                            Expect.isTrue (obj.ReferenceEquals (caught, boom)) "awaiting rethrows the original exception"
+                        | Choice1Of2 _ -> failtest "the task must fault"
+
+                        Expect.isEmpty g.Root.Errors "the caller receives the failure; the graph does not record it"
+                    }
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "queued work that throws faults its task, and later items still run" {
+                        let g = new Graph ()
+                        let boom = InvalidOperationException "boom"
+                        let log = ResizeArray ()
+
+                        let failing, following =
+                            offThread (fun () ->
+                                let failing = g.DispatchAsync (fun () -> raise boom: int)
+
+                                let following =
+                                    g.DispatchAsync (fun () ->
+                                        log.Add "ran"
+                                        1)
+
+                                failing, following)
+
+                        let ran = g.Pump ()
+
+                        Expect.equal ran 2 "both items were run"
+                        Expect.sequenceEqual log [ "ran" ] "the item behind the failure still ran"
+
+                        Expect.isTrue
+                            (try
+                                failing.Wait (TimeSpan.FromSeconds 5.0)
+                             with :? AggregateException ->
+                                 true)
+                            "the failing task completed"
+
+                        Expect.equal failing.Status TaskStatus.Faulted "the task faulted"
+                        Expect.isTrue (obj.ReferenceEquals (failing.Exception.InnerException, boom)) "with the original exception"
+                        Expect.isTrue (following.Wait (TimeSpan.FromSeconds 5.0)) "the following task completed"
+                        Expect.equal following.Result 1 "with its result"
+                        Expect.isEmpty g.Root.Errors "the graph does not record a failure the caller receives"
+                    }
+#endif
                 ]
         ]
