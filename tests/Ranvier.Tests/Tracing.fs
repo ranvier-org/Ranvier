@@ -2313,6 +2313,109 @@ let tests =
                         Expect.isEmpty (Trace.reconcile g) "the checkpoint's and the tail's edges match the live lists"
                     }
 
+                    test "whyNot after a checkpoint reads the edges recorded before it" {
+                        let whyNotAfter (checkpointed: bool) =
+                            use g = new Graph ()
+                            use _ = g.Activate ()
+                            let a = Signal (g, 1)
+                            let x = createMemo (fun _ -> a.Value % 2)
+                            let m = createMemo (fun _ -> x.Value + 10)
+                            createEffect (fun () -> m.Value |> ignore)
+
+                            if checkpointed then
+                                let events = Trace.events g
+                                Trace.checkpoint g events[events.Length - 1].Seq "cut"
+
+                            a.Value <- 3
+                            Trace.whyNot g m, (x :> INode).Id
+
+                        let reason, x = whyNotAfter true
+
+                        match reason with
+                        | Some (CheckedClean (_, upstream)) -> Expect.equal upstream [ x ] "the upstream comes from the checkpoint's edges"
+                        | other -> failwith $"expected CheckedClean, got %A{other}"
+
+                        Expect.equal reason (fst (whyNotAfter false)) "the checkpointed graph answers as its twin"
+                    }
+
+                    test "a checkpoint releases disposed roots and their nodes" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+
+                        let sizes () =
+                            let events = Trace.events g
+                            Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                            let snap = (Trace.checkpointOf g).Snapshot
+
+                            snap.Nodes.Count,
+                            snap.Owners.Count,
+                            snap.Incarnations.Count,
+                            snap.Siblings.Count,
+                            snap.Sources.Count,
+                            snap.Observers.Count
+
+                        let round () =
+                            for _ in 1..50 do
+                                let root =
+                                    createRoot (fun owner ->
+                                        let m = createMemo (fun _ -> s.Value + 1)
+                                        createEffect (fun () -> m.Value |> ignore)
+                                        owner)
+
+                                s.Value <- s.Value + 1
+                                root.Dispose ()
+
+                            sizes ()
+
+                        let first = round ()
+
+                        for _ in 1..3 do
+                            round () |> ignore
+
+                        Expect.equal (round ()) first "the checkpoint keeps the live nodes and owners alone"
+                        Expect.equal (Trace.snapshot g).Nodes.Count 1 "the signal is the one live node"
+                    }
+
+                    test "a checkpoint keeps the incarnations of a live host's children" {
+                        let incarnations (checkpointed: bool) =
+                            use g = new Graph ()
+                            use _ = g.Activate ()
+                            let s = Signal (g, 0)
+
+                            // The host creates its child on even values, so the checkpoint at 3 holds no live child.
+                            let host =
+                                createMemoWith (fun _ ->
+                                    if s.Value % 2 = 0 then
+                                        let child = Trace.named "child" (fun () -> createMemo (fun _ -> s.Value))
+                                        child.Value
+                                    else
+                                        s.Value)
+
+                            createEffect (fun () -> host.Value |> ignore)
+
+                            for i in 1..3 do
+                                s.Value <- i
+
+                            if checkpointed then
+                                let events = Trace.events g
+                                Trace.checkpoint g events[events.Length - 1].Seq "cut"
+
+                            s.Value <- 4
+
+                            (Trace.snapshot g).Nodes
+                            |> Map.toList
+                            |> List.choose (fun (_, n) ->
+                                if n.Status <> TraceNodeStatus.Disposed then
+                                    Some (n.Path, n.Incarnation)
+                                else
+                                    None)
+
+                        let twin = incarnations false
+                        Expect.isTrue (twin |> List.exists (fun (_, k) -> k > 1)) "the child's path recurs"
+                        Expect.equal (incarnations true) twin "the live child keeps its incarnation"
+                    }
+
 #if !FABLE_COMPILER
                     // .NET only: TraceModel.parseDump is .NET only.
                     test "a checkpointed dump parses back to the live snapshot" {

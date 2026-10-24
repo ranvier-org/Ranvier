@@ -14,12 +14,22 @@ type Op =
     | Watch
     | Unwatch
 
-/// <summary>A graph of two signals, a lazy memo over both, and the nodes <c>Named</c> adds.</summary>
+/// <summary>
+/// A graph of two signals, a lazy memo over both, a lazy host memo that creates a child memo in each run, and the nodes
+/// <c>Named</c> and <c>Watch</c> add.
+/// </summary>
 type private Script(graph: Graph) =
     let a = graph.Run (fun () -> Trace.named "a" (fun () -> Signal (graph, 0)))
     let b = graph.Run (fun () -> Signal (graph, 0))
     let m = graph.Run (fun () -> createMemo (fun _ -> a.Value + b.Value))
-    let memos = ResizeArray<INode> [ m :> INode ]
+
+    let host =
+        graph.Run (fun () ->
+            createMemoWith (fun _ ->
+                let child = Trace.named "child" (fun () -> createMemo (fun _ -> a.Value))
+                child.Value + b.Value))
+
+    let memos = ResizeArray<INode> [ m :> INode; host :> INode ]
     let roots = System.Collections.Generic.Queue<Owner>()
 
     member _.Memos = List.ofSeq memos
@@ -35,7 +45,9 @@ type private Script(graph: Graph) =
                 batch (fun () ->
                     for first, value in writes do
                         (pick first).Value <- value)
-            | Read -> m.Value |> ignore
+            | Read ->
+                m.Value |> ignore
+                host.Value |> ignore
             | Named index ->
                 let index = abs index % 3
 
@@ -47,7 +59,8 @@ type private Script(graph: Graph) =
             | Watch ->
                 roots.Enqueue (
                     createRoot (fun owner ->
-                        createEffect (fun () -> m.Value |> ignore)
+                        let watched = Trace.named "watched" (fun () -> createMemo (fun _ -> m.Value))
+                        createEffect (fun () -> watched.Value |> ignore)
                         owner)
                 )
             | Unwatch ->
@@ -85,6 +98,21 @@ let private cut (k: int) (name: string) (why: Why) =
                 Some (BeforeCheckpoint name)
     }
 
+/// <summary>
+/// True when the events <c>whyNot</c> reads for <c>node</c>, from its last <c>RunStart</c>, <c>RunEnd</c> or
+/// <c>NodeNew</c> on, all follow <c>k</c>.
+/// </summary>
+let private windowAfter (k: int) (events: TraceEvent[]) (node: int) =
+    let last (kinds: TraceEventKind list) =
+        events
+        |> Array.tryFindBack (fun e -> e.Node = node && List.contains e.Kind kinds)
+        |> Option.map _.Seq
+
+    (last [ TraceEventKind.RunEnd; TraceEventKind.NodeNew ]
+     |> Option.exists (fun seq -> seq > k))
+    && (last [ TraceEventKind.RunStart ]
+        |> Option.forall (fun seq -> seq > k))
+
 type private Payload() = class end
 
 /// <summary>Writes a fresh payload to <c>signal</c> and then 0, and returns a weak reference to the payload.</summary>
@@ -118,6 +146,16 @@ let tests =
                 ops |> List.iter script.Apply
                 let k = splitOf g cut
                 Expect.equal (TraceModel.fold (Trace.snapshotAt g k) (Trace.eventsSince g k)) (Trace.snapshot g) $"split at {k}"
+
+            testPropertyWithConfig config "a pruned snapshot at a split folds and prunes to the pruned snapshot"
+            <| fun (ops: Op list) (cut: int) ->
+                use g = new Graph ()
+                let script = Script g
+                ops |> List.iter script.Apply
+                let k = splitOf g cut
+                let pruned = TraceModel.prune (Trace.snapshotAt g k)
+
+                Expect.equal (TraceModel.prune (TraceModel.fold pruned (Trace.eventsSince g k))) (TraceModel.prune (Trace.snapshot g)) $"split at {k}"
 
             test "a checkpoint releases the payloads of the events it drops" {
                 use g = new Graph ()
@@ -164,7 +202,7 @@ let tests =
                     twinScript.Apply op
                     script.Apply op
 
-                Expect.equal (Trace.snapshot g) (Trace.snapshot twin) $"snapshot after a checkpoint at {k}"
+                Expect.equal (TraceModel.prune (Trace.snapshot g)) (TraceModel.prune (Trace.snapshot twin)) $"snapshot after a checkpoint at {k}"
                 Expect.equal (shape (Trace.eventsSince g k)) (shape (Trace.eventsSince twin k)) "the events since the split"
                 Expect.isEmpty (Trace.reconcile g) "the checkpointed edges match the live lists"
 
@@ -181,5 +219,8 @@ let tests =
 
                     for r in runs do
                         Expect.equal (Trace.whyAt g node r.Run) (cut k "cut" (Trace.whyAt twin twinNode r.Run)) $"why run {r.Run} of node {node.Id}"
+
+                    if windowAfter k (Trace.events twin) twinNode.Id then
+                        Expect.equal (Trace.whyNot g node) (Trace.whyNot twin twinNode) $"whyNot of node {node.Id}"
         ]
 #endif

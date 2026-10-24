@@ -35,7 +35,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 18 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 100 | 95 | 95 | 2 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 103 | 98 | 98 | 2 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | Observers.fs | 102 | 102 | 102 | 102 | 102 | 102 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
@@ -81,7 +81,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1545 | 1524 | 1521 | 1704 | 1678 | 1675 | 109 | 1 |
+| **Total** | 1545 | 1524 | 1521 | 1707 | 1681 | 1678 | 109 | 1 |
 
 ## Tests.fs
 
@@ -533,7 +533,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | an Unchecked graph creating nodes from two threads records every NodeNew | JavaScript has one thread. |
 | a checkpointed dump parses back to the live snapshot | TraceModel.parseDump is .NET only. |
 
-<details><summary>95 passed in every build and delivery that runs them</summary>
+<details><summary>98 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -630,6 +630,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Cursors and checkpoints / why of a lazy memo's first run after the checkpoint ends at its creation (traced only)
 - Cursors and checkpoints / origin of a node created before the checkpoint comes from the snapshot (traced only)
 - Cursors and checkpoints / reconcile is empty after a checkpoint (traced only)
+- Cursors and checkpoints / whyNot after a checkpoint reads the edges recorded before it (traced only)
+- Cursors and checkpoints / a checkpoint releases disposed roots and their nodes (traced only)
+- Cursors and checkpoints / a checkpoint keeps the incarnations of a live host's children (traced only)
 
 </details>
 

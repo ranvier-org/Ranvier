@@ -234,9 +234,13 @@ module Trace =
         TraceModel.whyDepthWith (createdIn checkpoint) events checkpoint.Name depth node.Id 0
 
     /// <summary>Why <c>node</c> has not run since its last run ended, or <c>None</c> when the log shows no reason.</summary>
-    /// <remarks>Reads the retained events alone: a reason recorded before the checkpoint reads as <c>None</c>.</remarks>
+    /// <remarks>
+    /// The reason comes from the retained events, and its edges from the checkpoint's and the retained events. A reason
+    /// recorded before the checkpoint reads as <c>None</c>.
+    /// </remarks>
     let whyNot (graph: Graph) (node: INode) : WhyNotReason option =
-        TraceModel.whyNot (events graph) node.Id
+        let struct (checkpoint, events) = retained graph
+        TraceModel.whyNotFrom checkpoint.Snapshot.Sources checkpoint.Snapshot.Observers events node.Id
 
     /// <summary>Every recorded run of <c>node</c> in <c>graph</c>'s log, with its status, movement, cause and flush.</summary>
     /// <remarks>
@@ -395,7 +399,9 @@ module Trace =
     /// <c>name</c>, and drops them from the log.
     /// </summary>
     /// <remarks>
-    /// The dropped events release their payloads. A <c>seq</c> equal to the checkpoint's seq renames the checkpoint.
+    /// The dropped events release their payloads. The checkpoint's snapshot is pruned with <c>TraceModel.prune</c>
+    /// and releases the nodes and owners disposed by the dropped events. A <c>seq</c> equal to the checkpoint's seq
+    /// renames the checkpoint.
     /// </remarks>
     /// <exception cref="T:System.ArgumentNullException"><c>name</c> is null.</exception>
     /// <exception cref="T:System.ArgumentOutOfRangeException">
@@ -427,7 +433,10 @@ module Trace =
                 )
             )
 
-        let folded = TraceModel.fold (checkpointOf graph).Snapshot prefix
+        let folded =
+            TraceModel.fold (checkpointOf graph).Snapshot prefix
+            |> TraceModel.prune
+
         log.Truncate (seq, name, box folded)
 
     /// <summary>

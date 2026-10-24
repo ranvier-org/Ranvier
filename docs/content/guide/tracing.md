@@ -390,12 +390,16 @@ Trace.checkpoint graph events[events.Length - 1].Seq "session-1"
 
 After a checkpoint:
 
-- `Trace.snapshot` and `reconcile` return what they returned before it. `origin` of a node created
-  before it reads the snapshot, with `Run` 0. `dumpText` writes the checkpoint's name and snapshot in
+- The checkpoint releases the nodes and owners disposed before it, through `TraceModel.prune`.
+  `Trace.snapshot` returns what it returned before, without them, and `reconcile` returns what it
+  returned before. A disposed node is then absent: `origin` raises `ArgumentException` for it and
+  `resolve` returns `None`. `origin` of a live node created before the checkpoint reads the snapshot,
+  with `Run` 0. `dumpText` writes the checkpoint's name and snapshot in
   its header lines, then the retained events.
 - `why`, `whyAt`, `whyDepth` and `history` end a chain whose cause was dropped at
   `BeforeCheckpoint name`. A first run still ends at `Created`, with the node's `NodeNew` seq.
-- `snapshotAt` accepts a seq from the checkpoint's seq on. `whyNot` and `waitingOn` read the retained
+- `snapshotAt` accepts a seq from the checkpoint's seq on. `whyNot` reads its reason from the retained
+  events and its edges from the checkpoint and the retained events. `waitingOn` reads the retained
   events alone.
 - A cursor before the checkpoint's seq has expired: `eventsSince` raises `ArgumentOutOfRangeException`,
   naming the checkpoint's seq. Resync with `Trace.eventsSince graph (Trace.checkpointOf graph).Snapshot.Seq`.
@@ -419,6 +423,10 @@ Ship against the untraced `Ranvier` package.
   untraced `Ranvier` package.
 - **The log retains events.** Events stay in memory until a [checkpoint](#incremental-reads-and-checkpoints)
   drops them, up to the implementation's sequence limit. Nothing drops events automatically.
+- **A checkpoint retains the live graph and its recurring paths.** The checkpoint's snapshot holds the
+  live nodes and owners. Beneath a live node it also holds a sibling and an incarnation count per
+  distinct child path, for the node's lifetime: a host whose runs create children under ever-new labels
+  grows the snapshot by one count per label.
 - **Payloads retain values.** Writes, transitions and settlements can retain values or exceptions in
   event payloads. These are object references, not immutable historical snapshots: later mutation can
   affect their formatting. Retention can keep application objects alive until a checkpoint drops their events.
