@@ -34,9 +34,25 @@ let inline create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * 
 
 #if FABLE_COMPILER
 /// <summary>
+/// The values array of an arm of the site tagged <c>tag</c>, read from its values thunk; any other value raises AM006.
+/// A rewritten reader opens with it.
+/// </summary>
+let values (thunk: obj) (tag: obj) : obj array =
+    let values: obj array =
+        Fable.Core.JsInterop.emitJsExpr thunk "typeof $0 === \"function\" ? $0() : null"
+
+    if
+        not (isNull values)
+        && obj.ReferenceEquals (values[1], tag)
+    then
+        values
+    else
+        Errors.noArm ()
+
+/// <summary>
 /// One <c>armOf</c> definition per body, whose instance is the arm's values thunk. The selector's array
-/// <c>[target, pattern variables..., matched value, instance]</c> is the selected arm's payload; the same target keeps
-/// its arm and receives the new array, and another target remounts.
+/// <c>[target, site tag, pattern variables..., matched value, instance]</c> is the selected arm's payload; the same
+/// target keeps its arm and receives the new array, and another target remounts.
 /// </summary>
 let inline direct
     (read: 'inst -> 'u)

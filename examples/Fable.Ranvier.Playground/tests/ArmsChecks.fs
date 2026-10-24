@@ -59,11 +59,28 @@ let private twiceShown queued () =
     equal "e x5" (textOf third "pre")
     c.Dispose ()
 
-/// <summary>A reader with no arm for its instance raises AM006: the full text in Debug, the short text in Release.</summary>
+// Rows whose item type is the instance type: the row reader is rewritten as a reader of the site and receives the row
+// item (spec Risk 3).
+let private itemRows =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, _) -> ul () { forEachFixed id (fun (state: Signal<Load>) -> [| state |]) (li () { fun (_: Signal<Load>) -> text }) }
+                | _ -> span () { "Other" }
+            )
+        })
+
+/// <summary>A reader that receives a value other than its arm's values raises AM006: the full text in Debug, the short text in Release.</summary>
 let private noArm () =
     let message =
         try
-            Cells.values (Cells.create ()) (obj ()) 0
+            use graph = new Graph ()
+            let state = graph.Run (fun () -> Api.createSignal (Loaded ("a", 1)))
+
+            Server.render Server.Options.defaults itemRows state
             |> ignore
 
             ""
@@ -139,6 +156,8 @@ let private traces queued () =
             splicedTwin, spliced
             localsTwin, locals
             statusedTwin, statused
+            cardedTwin, carded
+            rowedTwin, rowed
         ] do
         pair queued initial (Component.render twin) (Component.render site) loadWrites
 
@@ -442,6 +461,8 @@ let private loadFixtures =
         "spliced", spliced, splicedTwin
         "locals", locals, localsTwin
         "statused", statused, statusedTwin
+        "carded", carded, cardedTwin
+        "rowed", rowed, rowedTwin
     ]
 
 let private laterWrites = [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ]
@@ -877,7 +898,9 @@ let cases: (string * (unit -> unit)) array =
                 templated "one site shown twice for one instance reads live values through either disposal" twiceShown
                 templated "an arm hidden and shown again follows later writes" remountAfterHide
                 templated "Arms.Prepare returns under Fable" prepares
-                [| "a reader with no arm for its instance raises AM006", noArm |]
+                [|
+                    "a row reader over the instance type that receives its row item raises AM006", noArm
+                |]
                 templated "each Load fixture's nine-step trace equals its twin's" traces
                 templated "value-type payload fields equal their twin" valueTraces
                 templated "three nested sites' trace equals its twin's" deepTrace

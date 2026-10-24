@@ -807,6 +807,133 @@ let statusedTwin =
                 | Idle, _ -> arm otherArm ())
         })
 
+// A helper view over the concrete instance type that takes a view built in the case body, as the whole body and inside
+// it; the view reads a function and a view bound in the body.
+let private card (content: TemplateView<Signal<Load>>) : TemplateView<Signal<Load>> =
+    b (Attrs.className "card") { content }
+
+let carded =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded (text, 0) ->
+                    let label (s: Signal<Load>) =
+                        text + nameOf s
+
+                    let note = i () { fun (_: Signal<Load>) -> text }
+
+                    card (
+                        span () {
+                            label
+                            fun (s: Signal<Load>) -> label s + "!"
+                            note
+                            note
+                        }
+                    )
+                | Loaded (text, _) -> card (span () { fun (s: Signal<Load>) -> text + nameOf s })
+                | Loading percent -> section () { card (pre () { fun _ -> string percent }) }
+                | Idle -> span () { "Other" }
+            )
+        })
+
+let private cardOf (content: TemplateView<Signal<Load>>) =
+    Component.define (fun _ (state: Signal<Load>) -> state) (fun _ -> card content)
+
+let private textOf (s: Signal<Load>) =
+    match s.Value with
+    | Loaded (text, _) -> text
+    | _ -> ""
+
+let private loadedCard =
+    cardOf (span () { fun (s: Signal<Load>) -> textOf s + nameOf s })
+
+// The site passes a view bound in the body to the helper through an adapter child over its values thunk.
+let private noteAdapter =
+    Component.define (fun _ (state: Signal<Load>) -> state) (fun _ -> i () { fun (s: Signal<Load>) -> textOf s })
+
+let private zeroCard =
+    cardOf (
+        span () {
+            fun (s: Signal<Load>) -> textOf s + nameOf s
+            fun (s: Signal<Load>) -> textOf s + nameOf s + "!"
+            render noteAdapter id
+            render noteAdapter id
+        }
+    )
+
+let private loadingCard =
+    cardOf (
+        pre () {
+            fun (s: Signal<Load>) ->
+                match s.Value with
+                | Loading percent -> string percent
+                | _ -> ""
+        }
+    )
+
+let private cardedLoadedArm =
+    armOf (render loadedCard (fun (payload: unit -> Signal<Load>) -> payload ()))
+
+let private cardedZeroArm =
+    armOf (render zeroCard (fun (payload: unit -> Signal<Load>) -> payload ()))
+
+let private cardedLoadingArm =
+    armOf (section () { render loadingCard (fun (payload: unit -> Signal<Load>) -> payload ()) })
+
+let cardedTwin =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            matchWith (fun (state: Signal<Load>) -> state.Value, state) (function
+                | Loaded (_, 0), state -> arm cardedZeroArm state
+                | Loaded _, state -> arm cardedLoadedArm state
+                | Loading _, state -> arm cardedLoadingArm state
+                | Idle, _ -> arm otherArm ())
+        })
+
+// A function bound in a case body that returns a view reading a pattern variable, called twice.
+let rowed =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded (text, _) ->
+                    let row (x: string) =
+                        span () { fun (_: Signal<Load>) -> text + x }
+
+                    section () {
+                        row "a"
+                        row "b"
+                    }
+                | _ -> span () { "Other" }
+            )
+        })
+
+let private rowedRow (x: string) =
+    span () { fun (payload: unit -> string) -> payload () + x }
+
+let private rowedArm =
+    armOf (
+        section () {
+            rowedRow "a"
+            rowedRow "b"
+        }
+    )
+
+let rowedTwin =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            matchWith read (function
+                | Loaded (text, _) -> arm rowedArm text
+                | _ -> arm otherArm ())
+        })
+
 // A site inside a case body reading the outer pattern variable.
 let private closedArm = armOf (span () { "closed" })
 
@@ -1225,6 +1352,8 @@ let all: Case list =
             cases "spliced" spliced splicedTwin (signals loadStates)
             cases "locals" locals localsTwin (signals (loadStates @ [ "Loaded one 1", Loaded ("one", 1) ]))
             cases "statused" statused statusedTwin (signals loadStates)
+            cases "carded" carded cardedTwin (signals loadStates)
+            cases "rowed" rowed rowedTwin (signals loadStates)
             cases "nested" nested nestedTwin panels
             cases "deep" deep deepTwin decks
             cases "editor" editor editorTwin editors
