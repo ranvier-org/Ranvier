@@ -23,6 +23,66 @@ let writes (journal: MemoryJournal) =
     journal.Entries
     |> List.filter (fun e -> e.Kind = JournalEntryKind.Write)
 
+/// <summary>An external input to the replay property's graph.</summary>
+type ReplayOp =
+    | WriteA of int
+    | WriteB of int
+    | WriteBoth of int * int
+    | SettleLoad of int
+    | FailLoad
+    | ExplicitFlush
+
+/// <summary>Two keyed signals and a keyed source, two memos over them, and an effect over both memos.</summary>
+type ReplayModel(journal: MemoryJournal, g: Graph) =
+    let a = Signal (g, 0) |> Journal.key "a" intCodec
+    let b = Signal (g, 0) |> Journal.key "b" intCodec
+
+    let load =
+        AsyncSource<int> g
+        |> Journal.keySource "load" intCodec
+
+    let sum = g.Run (fun () -> createMemo (fun _ -> a.Value * 10 + b.Value))
+
+    let loaded =
+        g.Run (fun () ->
+            createMemo (fun _ ->
+                match load.TryValue with
+                | Ready value -> value + a.Value
+                | Pending -> -1
+                | Failed _ -> -2))
+
+    let runs = ResizeArray<int * int>()
+
+    do g.Run (fun () -> createEffect (fun () -> runs.Add (sum.Value, loaded.Value)))
+
+    member _.Journal = journal
+    member _.Graph = g
+
+    member _.Apply(op: ReplayOp) =
+        match op with
+        | WriteA value -> a.Value <- value
+        | WriteB value -> b.Value <- value
+        | WriteBoth (x, y) ->
+            g.Run (fun () ->
+                batch (fun () ->
+                    a.Value <- x
+                    b.Value <- y))
+        | SettleLoad value -> load.Settle value
+        | FailLoad -> load.Fail (System.TimeoutException "late")
+        | ExplicitFlush -> g.Flush ()
+
+    /// <summary>Every keyed input's and memo's value, with the source's status as text.</summary>
+    member _.State =
+        let status =
+            match load.TryValue with
+            | Ready value -> "Ready " + string value
+            | Pending -> "Pending"
+            | Failed error -> "Failed " + error.Message
+
+        a.Peek, b.Peek, status, sum.Value, loaded.Value
+
+    member _.Runs = List.ofSeq runs
+
 [<Tests>]
 let tests =
     testList
@@ -621,6 +681,23 @@ let tests =
                         (entry JournalEntryKind.Settle (Some "a") (JournalPayload.Encoded ("int", 1, "3")))
                         "takes no Settle"
                 ]
+
+            testPropertyWithConfig
+                { FsCheckConfig.defaultConfig with
+                    maxTest = 200
+                }
+                "replay into a fresh untraced graph gives every keyed input and memo the recorded run's value"
+            <| fun (ops: ReplayOp list) ->
+                let live = ReplayModel (journaled ())
+
+                for op in ops do
+                    live.Apply op
+
+                let replayed = ReplayModel (journaled ())
+                Journal.replay ReplayMode.Diagnostic replayed.Graph live.Journal.Entries
+
+                Expect.equal replayed.State live.State "the inputs and memos"
+                Expect.equal replayed.Runs live.Runs "the effect's runs"
 
             testList
                 "Mvu.journal"
