@@ -22,7 +22,7 @@ proposed scope for each, and does not implement them.
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | todo |
 | 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
-| 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | todo |
+| 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | in-progress |
 | 13 | [#185](https://github.com/shayanhabibi/Ranvier/issues/185) store adapters for the input journal and persisted state | — | #184, #68 | implement | blocked |
 
 Statuses: `todo`, `in-progress` (an iteration left work; see the log), `done` (merged into
@@ -52,6 +52,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/165 | #165 | https://github.com/shayanhabibi/Ranvier/pull/178 | integration/issues |
 | issue/65 | #65 | https://github.com/shayanhabibi/Ranvier/pull/183 | integration/issues |
 | issue/166 | #166 | https://github.com/shayanhabibi/Ranvier/pull/182 | integration/issues |
+| issue/184 | #184 | — | integration/issues |
 
 ## Log
 
@@ -81,3 +82,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #166 in-progress — plan steps 1 to 4 done and `TraceNodeRef.Graph` dropped; gate failed under `test-fable` traced inline on `Texts.fs` trace text case `run` (diagnostic text differs under Fable), not pushed — 24e74b0e — next: fix the Fable `run` trace text mismatch, then plan step 5 (TraceJson writers)
 - 2026-10-24 #166 in-progress — checkpoint null-value fold and Lossy schema 1/2 payloads fixed and gate passes, but review found three new majors (TraceJson readers raise InvalidOperationException for wrong-shape JSON, Timed null Moved unrecorded and stale after checkpoint, AsyncSource null Settle becomes None after checkpoint), not pushed — 8002a109 — next: fix the three review findings in TraceContract.fs and TraceModel.fs
 - 2026-10-24 #166 done — four review findings fixed (invariant payload numbers, Timed and settled null values) and offline trace reads documented, gates pass — ec7d8c00 — next: open the stacked PR into integration/issues
+- 2026-10-25 #184 in-progress — user ruling: the snapshot-plus-tail replay criterion (6) waits on #68's stored-state format, which has no implement issue yet; every other criterion is built, and no format is invented. Plan steps 1 to 4 (recording) done; review fixes: a journal key is freed when its registering scope is disposed, and Fable's journaling of async-memo continuation writes is a recorded difference — fdff22fa — next: plan step 5 (Journal.replay, ReplayMode, JournalReplayException)
