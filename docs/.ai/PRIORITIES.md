@@ -16,7 +16,7 @@ proposed scope for each, and does not implement them.
 | 3 | [#165](https://github.com/shayanhabibi/Ranvier/issues/165) feat(trace): incremental event cursors and checkpointed truncation | P0 | #164 baseline | implement | done |
 | 4 | [#166](https://github.com/shayanhabibi/Ranvier/issues/166) feat(trace): stable diagnostics and provenance contracts | P0 | #165 | implement | done |
 | 5 | [#168](https://github.com/shayanhabibi/Ranvier/issues/168) spike(mcp): agent-observable graph | P1 | #165, #166, #167 | implement | todo |
-| 6 | [#157](https://github.com/shayanhabibi/Ranvier/issues/157) perf(arms): restore the 5% Chromium target | — | quiet machine for timings | implement | in-progress |
+| 6 | [#157](https://github.com/shayanhabibi/Ranvier/issues/157) perf(arms): restore the 5% Chromium target | — | quiet machine for timings | implement | done |
 | 7 | [#69](https://github.com/shayanhabibi/Ranvier/issues/69) Myriad expansion for traced and untraced primitives | 1.0.0-rc | — | research | done |
 | 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | todo |
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | done |
@@ -52,6 +52,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/165 | #165 | https://github.com/shayanhabibi/Ranvier/pull/178 | integration/issues |
 | issue/65 | #65 | https://github.com/shayanhabibi/Ranvier/pull/183 | integration/issues |
 | issue/166 | #166 | https://github.com/shayanhabibi/Ranvier/pull/182 | integration/issues |
+| issue/66 | #66 | https://github.com/shayanhabibi/Ranvier/pull/189 | integration/issues |
 | issue/157 | #157 | https://github.com/shayanhabibi/Ranvier/pull/181 | integration/issues |
 
 ## Log
@@ -93,3 +94,5 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-25 #157 done — review fixes: pooled runs must build their own bundle (--build into generated-keyed-pooled/<label> under a build lock, bundleHash recorded and checked at write); CI runs chromium-gate and pooled-interval.test only for changes to the lowering, its benchmark, its runs or the workflow (changes.cjs armsRuns); six runs at 22d86d44 pool to create 1.006, switch 1.015, payload 1.042, clear 0.991, all within budget (switch interval 0.997-1.048 and payload interval 1.009-1.089 straddle); da6d32e6 runs out of the pool as history; gate passes (format, build, test, test-fable, docs, test:arms, chromium-gate) — c173fee6 — next: user confirms plan P8 and the CI scope on PR #181
 - 2026-10-24 #157 in-progress — review findings fixed and full gate passes, but CI Analyzers (view) fails with RAN021 on the forEachFixed Signal<Load> key in tests/ArmsChecks.fs(71) — 1ab9b49a — next: give the AM006 fixture a structural key or suppress RAN021 with a reason, then let CI finish green
 - 2026-10-25 #157 done — RAN021 suppressed with a reason on the AM006 fixture's instance-keyed forEachFixed (tests/ArmsChecks.fs, not a hashed run source: the six 22d86d44 runs stay pooled, chromium-gate and pooled-interval.test pass unchanged); AGENTS.md puts the analyzers in the gate; gate passes (format, build, test, test-fable, docs, test:arms, analyze library/view/examples) — 1eb87bfb — next: user confirms plan P8 and the CI scope on PR #181
+- 2026-10-25 #66 research note written — docs/.ai/research/2026-10-25-issue-66.md — fced1b98 — next: user decides scope
+- 2026-10-25 #157 done — Arms.Match helpers documented in docs/content/view/arms.md on top of the RAN021 suppression and the analyzer gate; rebased onto origin/integration/issues (c374cfca) — 04b79e74 — next: user confirms plan P8 and the CI scope on PR #181
