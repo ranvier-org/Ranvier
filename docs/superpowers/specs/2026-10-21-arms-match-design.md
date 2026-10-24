@@ -30,7 +30,7 @@ Required by `.claude/rules/view-uses-core.md`.
 **View-owned state (new):** under Fable, the site's definitions array, one `armOf` per target, built once per evaluation
 of the call: a template table, holding no lookup state (Phased implementation 8). A site that passes a view to a helper
 over the concrete instance type also holds the `Cells` lookup below, as a `WeakMap` from the site's tag and the instance to
-that helper's mounts per target (`Site.spliceHeld`, plan Decision P8); other sites carry none of it in their bundle. On
+that helper's mounts per target (`Site.spliceHeld`, plan Decision P8, an exception to `.claude/rules/view-uses-core.md` accepted by the user on 2026-10-25); other sites carry none of it in their bundle. On
 .NET, one table per site, `Cells`, a
 `ConditionalWeakTable` from an instance to the entries of that instance's mounted arms, per target. It is a lookup, not a selection cache: the
 payload itself stays in the arm memo; an entry holds the arm's props accessor, which the region already hands the arm
