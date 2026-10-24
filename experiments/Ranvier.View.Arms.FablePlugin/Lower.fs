@@ -213,16 +213,28 @@ let private (|ThunkOver|_|) (id: Ident) : Type option =
     | _ -> None
 
 /// <summary>
-/// A reader parameter rewritten by a site over <c>instanceType</c> (<c>armsArm_[site]_[index]</c>): the site's name and the
-/// index of the instance in the thunk's array.
+/// A reader parameter rewritten by a site over <c>instanceType</c> (<c>armsArm_[tag]_[index]..._[index]</c>): the path of
+/// instance indexes from the parameter to the values of the innermost site that has not rewritten the reader, which
+/// <c>p ()[i1] ()[i2] ()...</c> reaches.
 /// </summary>
-let private (|Thunk|_|) (instanceType: Type) (id: Ident) : (string * int) option =
-    match id, id.Name.Split '_' with
-    | ThunkOver over, [| _; site; index |] when over = instanceType ->
-        match System.Int32.TryParse index with
-        | true, index -> Some (site, index)
-        | _ -> None
+let private (|Thunk|_|) (instanceType: Type) (id: Ident) : int list option =
+    match id with
+    | ThunkOver over when over = instanceType ->
+        let indexes =
+            id.Name.Split '_'
+            |> Array.skip 2
+            |> Array.map System.Int32.TryParse
+
+        if indexes.Length > 0 && Array.forall fst indexes then
+            Some [ for _, index in indexes -> index ]
+        else
+            None
     | _ -> None
+
+/// <summary>The JavaScript that reaches the values array at the end of a thunk parameter's path from <c>$0</c>.</summary>
+let private pathMacro (path: int list) =
+    "$0()"
+    + String.concat "" [ for index in path -> sprintf "[%d]()" index ]
 
 /// <summary>
 /// The binding of a reader's instance by a site nested in a case body: <c>let x = armsRead_[site][index]</c>, where
@@ -394,15 +406,71 @@ let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arm
 
             Delegate ([ instance; matched ], mapLeaves control pick tree, None, [])
 
+        // A tag per rewritten function: its emitted names stay distinct when Fable inlines one function into another.
+        let tags = ref 0
+
+        let nextTag () =
+            tags.Value <- tags.Value + 1
+            sprintf "%sn%d" name tags.Value
+
+        // The thunk parameters this site created.
+        let own = System.Collections.Generic.HashSet<string>()
+
+        let select = ident ("armsSelect_" + name) Any
+        let reader = ident ("armsReader_" + name) Any
+        let recomputed = ref false
+
+        let isView (t: Type) =
+            match t with
+            | Type.DeclaredType (ref, _) -> (helper.GetEntity ref).FullName.StartsWith "Ranvier.View"
+            | _ -> false
+
+        let isViewMember (info: CallInfo) =
+            info.MemberRef
+            |> Option.exists (fun ref -> (helper.GetMember ref).FullName.StartsWith "Ranvier.View")
+
+        let rec peel (expr: Expr) =
+            match expr with
+            | TypeCast (inner, _) -> peel inner
+            | _ -> expr
+
+        let isInstanceLambda (expr: Expr) =
+            match firstParameter (peel expr) with
+            | Some argument -> argument.Type = instanceType
+            | None -> false
+
+        // A call outside Ranvier.View with a non-view result: it calls the lambdas it receives with values of its own.
+        let isPlainCall (expr: Expr) =
+            match expr with
+            | Call (_, info, t, _) -> not (isViewMember info || isView t)
+            | CurriedApply (_, _, t, _) -> not (isView t)
+            | _ -> false
+
+        // A call of a helper whose view is over the concrete instance type rather than a type parameter.
+        let isConcreteHelper (expr: Expr) =
+            match expr with
+            | Call (_, ({ MemberRef = Some ref } as info), t, _) when t = tree.Type && not (isViewMember info) ->
+                match (helper.GetMember ref).ReturnParameter.Type with
+                | Type.DeclaredType (_, [ Type.GenericParam _ ]) -> false
+                | _ -> true
+            | _ -> false
+
+        let rename (from: Ident) (target: Ident) (expr: Expr) =
+            expr
+            |> Shape.map (function
+                | IdentExpr id when id.Name = from.Name -> Some (IdentExpr target)
+                | _ -> None)
+
         let rewrite (bound: Ident list) (body: Expr) =
             let slots = bound @ [ matched ]
             let names = set [ for id in slots -> id.Name ]
             let last = slots.Length + 1
-            let values = ident ("armsRead_" + name) Any
 
             // The reader body with the instance and the slots it uses bound from the array of source, or None when it
             // uses neither.
-            let opened (source: SourceLocation option -> Expr) (held: Ident option) (inner: Expr) : Expr option =
+            let opened (tag: string) (source: SourceLocation option -> Expr) (held: Ident option) (inner: Expr) : Expr option =
+                let values = ident ("armsRead_" + tag) Any
+
                 let instanceUsed =
                     held
                     |> Option.filter (fun id -> Shape.refersTo (Set.singleton id.Name) inner)
@@ -417,7 +485,7 @@ let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arm
                 else
                     let fresh =
                         [
-                            for index, id in used -> index, id, ident (sprintf "%s_%s" id.Name name) id.Type
+                            for index, id in used -> index, id, ident (sprintf "%s_%s" id.Name tag) id.Type
                         ]
 
                     let renamed =
@@ -450,8 +518,50 @@ let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arm
 
                     Some (Let (values, source range, withInstance))
 
+            // A new thunk parameter of this site, whose path is the instance index of this site's values.
             let thunk () =
-                ident (sprintf "armsArm_%s_%d" name last) (thunkType instanceType)
+                let tag = nextTag ()
+                let parameter = ident (sprintf "armsArm_%s_%d" tag last) (thunkType instanceType)
+                own.Add parameter.Name |> ignore
+                tag, parameter
+
+            // Applications of the functions in excluded to the instance, given the expression of the arm's values thunk.
+            let rec adapt (excluded: Set<string>) (instance: Ident) (values: Expr) (expr: Expr) =
+                let isInstance (arg: Expr) =
+                    match arg with
+                    | IdentExpr id -> id.Name = instance.Name
+                    | _ -> false
+
+                let isAdapted (f: Ident) =
+                    excluded.Contains f.Name
+                    && isReaderType instanceType f.Type
+
+                expr
+                |> Shape.map (function
+                    | CurriedApply (IdentExpr f as callee, arg :: rest, t, r) when isAdapted f && isInstance arg ->
+                        Some (
+                            CurriedApply (
+                                callee,
+                                values
+                                :: List.map (adapt excluded instance values) rest,
+                                t,
+                                r
+                            )
+                        )
+                    | Call (IdentExpr f as callee, ({ Args = arg :: rest } as info), t, r) when isAdapted f && isInstance arg ->
+                        Some (
+                            Call (
+                                callee,
+                                { info with
+                                    Args =
+                                        values
+                                        :: List.map (adapt excluded instance values) rest
+                                },
+                                t,
+                                r
+                            )
+                        )
+                    | _ -> None)
 
             // A helper view value over the instance, built outside the body: a reference, or a call with no function
             // argument and no view built in the body.
@@ -475,28 +585,64 @@ let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arm
                     )
                 | _ -> false
 
+            // The adapter of a splice: the instance of the arm's values thunk.
+            let instanceOf (range: SourceLocation option) =
+                let _, parameter = thunk ()
+                Lambda (parameter, emit "$0()[$1]" [ IdentExpr parameter; int32 last ] range, None)
+
+            // A lambda over the instance that a helper over the concrete instance type calls with the instance: it reads
+            // the slots it uses from the selector's array for that instance.
+            let recompute (lambda: Expr) =
+                let inner = peel lambda
+
+                match firstParameter inner with
+                | Some argument ->
+                    opened (nextTag ()) (emit "$0($1, $2($1))" [ IdentExpr select; IdentExpr argument; IdentExpr reader ]) None (bodyOf inner)
+                    |> Option.map (fun body ->
+                        recomputed.Value <- true
+                        withBody inner body)
+                    |> Option.defaultValue lambda
+                | None -> lambda
+
             // Function values over the instance bound by the names in excluded already take the values thunk.
             let rec lower (excluded: Set<string>) (body: Expr) =
                 body
                 |> Shape.map (fun expr ->
                     match expr, firstParameter expr with
-                    | HeldInstance instanceType (id, held, index, rest), _ -> opened (emit "$0[$1]()" [ IdentExpr held; index ]) (Some id) rest
+                    | HeldInstance instanceType (id, held, index, rest), _ ->
+                        let values = Get (IdentExpr held, ExprGet index, Any, None)
+                        opened (nextTag ()) (emit "$0[$1]()" [ IdentExpr held; index ]) (Some id) (adapt excluded id values rest)
                     | _, Some argument when argument.Type = instanceType ->
-                        let thunk = thunk ()
-                        let inner = bodyOf expr
+                        let tag, thunk = thunk ()
+                        let inner = adapt excluded argument (IdentExpr thunk) (bodyOf expr)
 
-                        opened (emit "$0()" [ IdentExpr thunk ]) (Some argument) inner
+                        opened tag (emit "$0()" [ IdentExpr thunk ]) (Some argument) inner
                         |> Option.defaultValue inner
                         |> withParameter expr thunk
                         |> Some
-                    | _, Some (Thunk instanceType (other, index) as thunk) when
-                        other <> name
+                    | _, Some (Thunk instanceType path as foreign) when
+                        not (own.Contains foreign.Name)
                         && not (Shape.exists (isHeldInstance instanceType) (bodyOf expr))
                         ->
-                        opened (emit "$0()[$1]()" [ IdentExpr thunk; int32 index ]) None (bodyOf expr)
-                        |> Option.map (withBody expr)
+                        // The parameter's path grows by this site's instance index, for the sites enclosing this one.
+                        let tag = nextTag ()
+
+                        let parameter =
+                            ident (sprintf "armsArm_%s_%s" tag (String.concat "_" [ for index in path @ [ last ] -> string index ])) foreign.Type
+
+                        own.Add parameter.Name |> ignore
+                        let inner = rename foreign parameter (bodyOf expr)
+
+                        opened tag (emit (pathMacro path) [ IdentExpr parameter ]) None inner
+                        |> Option.defaultValue inner
+                        |> withParameter expr parameter
+                        |> Some
                     | Let (id, value, rest), _ when isReaderType instanceType id.Type ->
-                        Some (Let (id, lower excluded value, lower (excluded.Add id.Name) rest))
+                        // A function that reads a slot takes the values thunk; any other keeps the instance.
+                        if Shape.refersTo names value then
+                            Some (Let (id, lower excluded value, lower (excluded.Add id.Name) rest))
+                        else
+                            Some (Let (id, value, lower excluded rest))
                     | CurriedApply (f, args, t, r), _ when isReaderType instanceType f.Type ->
                         Some (CurriedApply (f, List.map (lower excluded) args, t, r))
                     | Call (f, info, t, r), _ when isReaderType instanceType f.Type ->
@@ -513,16 +659,34 @@ let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arm
                         )
                     | IdentExpr id, _ when excluded.Contains id.Name -> Some expr
                     | Let (id, value, rest), _ when id.Type = tree.Type -> Some (Let (id, lower excluded value, lower (excluded.Add id.Name) rest))
-                    | view, _ when view.Type = tree.Type && spliceable excluded view ->
-                        let thunk = thunk ()
-                        Some (splice (Lambda (thunk, emit "$0()[$1]" [ IdentExpr thunk; int32 last ] view.Range, None)) view)
+                    | call, _ when isConcreteHelper call ->
+                        let args, rebuild = Shape.children call
+
+                        let lowered =
+                            [
+                                for arg in args ->
+                                    if isInstanceLambda arg then
+                                        recompute arg
+                                    else
+                                        lower excluded arg
+                            ]
+
+                        Some (splice (instanceOf call.Range) (rebuild lowered))
+                    | call, _ when
+                        isPlainCall call
+                        && List.exists isInstanceLambda (fst (Shape.children call))
+                        ->
+                        let args, rebuild = Shape.children call
+
+                        Some (rebuild [ for arg in args -> if isInstanceLambda arg then arg else lower excluded arg ])
+                    | view, _ when view.Type = tree.Type && spliceable excluded view -> Some (splice (instanceOf view.Range) view)
                     | value, _ when isReaderType instanceType value.Type ->
                         match value.Type with
                         | Type.LambdaType (_, range) ->
-                            let thunk = thunk ()
-                            let held = ident ("armsSelf_" + name) instanceType
+                            let tag, thunk = thunk ()
+                            let held = ident ("armsSelf_" + tag) instanceType
 
-                            opened (emit "$0()" [ IdentExpr thunk ]) (Some held) (CurriedApply (value, [ IdentExpr held ], range, value.Range))
+                            opened tag (emit "$0()" [ IdentExpr thunk ]) (Some held) (CurriedApply (value, [ IdentExpr held ], range, value.Range))
                             |> Option.map (fun inner -> Lambda (thunk, inner, None))
                         | _ -> None
                     | _ -> None)
@@ -564,7 +728,7 @@ let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arm
                     | None -> ()
             ]
 
-        Some (
+        let packed (selector: Expr) =
             Value (
                 NewTuple (
                     [
@@ -575,7 +739,12 @@ let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arm
                 ),
                 None
             )
-        )
+
+        // A recomputing reader calls the selector and the read by name.
+        if recomputed.Value then
+            Some (Let (select, selector, Let (reader, read, packed (IdentExpr select))))
+        else
+            Some (packed selector)
     | _ ->
         helper.LogError (Diagnostics.notLiteral, ?range = r)
         None

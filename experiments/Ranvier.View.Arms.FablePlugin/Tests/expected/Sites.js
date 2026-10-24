@@ -60,16 +60,16 @@ export const rich = Component_template((_arg, state) => state, (() => {
                 default:
                     return [4, count_2, text_2, _arg_1, armsInstance_S1];
             }
-        }, [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "Not started")))), (builder$0040_2 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z5833CC7(builder$0040_2, (armsArm_S1_3) => {
-            const armsRead_S1 = armsArm_S1_3();
-            return int32ToString(armsRead_S1[1]);
-        })))), (builder$0040_3 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_3, Element$2__Delay_3648B059(builder$0040_3, () => Element$2__Yield_Z721C83C5(builder$0040_3, "Empty")))), (builder$0040_4 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_4, Element$2__Delay_3648B059(builder$0040_4, () => Element$2__Yield_Z5833CC7(builder$0040_4, (armsArm_S1_4) => {
-            const armsRead_S1 = armsArm_S1_4();
-            return armsRead_S1[2];
-        })))), (builder$0040_5 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_5, Element$2__Delay_3648B059(builder$0040_5, () => Element$2__Yield_Z5833CC7(builder$0040_5, (armsArm_S1_4) => {
-            const armsRead_S1 = armsArm_S1_4();
-            const count_2_S1 = armsRead_S1[1] | 0;
-            return armsRead_S1[2] + int32ToString(count_2_S1);
+        }, [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "Not started")))), (builder$0040_2 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z5833CC7(builder$0040_2, (armsArm_S1n1_3) => {
+            const armsRead_S1n1 = armsArm_S1n1_3();
+            return int32ToString(armsRead_S1n1[1]);
+        })))), (builder$0040_3 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_3, Element$2__Delay_3648B059(builder$0040_3, () => Element$2__Yield_Z721C83C5(builder$0040_3, "Empty")))), (builder$0040_4 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_4, Element$2__Delay_3648B059(builder$0040_4, () => Element$2__Yield_Z5833CC7(builder$0040_4, (armsArm_S1n2_4) => {
+            const armsRead_S1n2 = armsArm_S1n2_4();
+            return armsRead_S1n2[2];
+        })))), (builder$0040_5 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_5, Element$2__Delay_3648B059(builder$0040_5, () => Element$2__Yield_Z5833CC7(builder$0040_5, (armsArm_S1n3_4) => {
+            const armsRead_S1n3 = armsArm_S1n3_4();
+            const count_2_S1n3 = armsRead_S1n3[1] | 0;
+            return armsRead_S1n3[2] + int32ToString(count_2_S1n3);
         }))))]]));
     }));
 })());
@@ -87,9 +87,9 @@ export const incomplete = Component_template((_arg, state) => state, (() => {
                 default:
                     throw new Exception("Match failure: Fixtures.Types.Load");
             }
-        }, [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "Not started")))), (builder$0040_2 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z5833CC7(builder$0040_2, (armsArm_S2_3) => {
-            const armsRead_S2 = armsArm_S2_3();
-            return int32ToString(armsRead_S2[1]);
+        }, [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "Not started")))), (builder$0040_2 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z5833CC7(builder$0040_2, (armsArm_S2n1_3) => {
+            const armsRead_S2n1 = armsArm_S2n1_3();
+            return int32ToString(armsRead_S2n1[1]);
         }))))]]));
     }));
 })());
@@ -98,9 +98,9 @@ export const held = Component_template((_arg, state) => state, (() => {
     const builder$0040 = div$1_$ctor_8589939();
     return Element$2__Run_706D0133(builder$0040, Element$2__Delay_3648B059(builder$0040, () => {
         let builder$0040_1, builder$0040_2;
-        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S3, _arg_1) => ((_arg_1.tag === 2) ? [0, _arg_1.fields[0], _arg_1, armsInstance_S3] : [1, _arg_1, armsInstance_S3]), [(builder$0040_1 = span$1_$ctor_ZA0E8E92(HookBuilder$1__exit_Z20F364BA(Hooks(), (armsArm_S3_3, _arg_3, finish) => {
-            const armsRead_S3 = armsArm_S3_3();
-            if (armsRead_S3[1] === "") {
+        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S3, _arg_1) => ((_arg_1.tag === 2) ? [0, _arg_1.fields[0], _arg_1, armsInstance_S3] : [1, _arg_1, armsInstance_S3]), [(builder$0040_1 = span$1_$ctor_ZA0E8E92(HookBuilder$1__exit_Z20F364BA(Hooks(), (armsArm_S3n1_3, _arg_3, finish) => {
+            const armsRead_S3n1 = armsArm_S3n1_3();
+            if (armsRead_S3n1[1] === "") {
                 finish();
             }
             return () => {
@@ -113,12 +113,12 @@ export const bodies = Component_template((_arg, state) => state, (() => {
     const builder$0040 = div$1_$ctor_8589939();
     return Element$2__Run_706D0133(builder$0040, Element$2__Delay_3648B059(builder$0040, () => {
         let builder$0040_1, builder$0040_2, builder$0040_3, builder$0040_4, builder$0040_5;
-        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S4, _arg_1) => ((_arg_1.tag === 2) ? ((_arg_1.fields[1] > 100) ? ((_arg_1.fields[1] > 1000) ? [0, _arg_1.fields[1], _arg_1, armsInstance_S4] : [1, _arg_1.fields[1], _arg_1, armsInstance_S4]) : ((_arg_1.fields[1] === 0) ? [2, _arg_1.fields[0], _arg_1.fields[0] + "!", _arg_1, armsInstance_S4] : [3, _arg_1.fields[0], _arg_1, armsInstance_S4])) : [4, _arg_1, armsInstance_S4]), [(builder$0040_1 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "huge")))), (builder$0040_2 = i$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z721C83C5(builder$0040_2, "big")))), (builder$0040_3 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_3, Element$2__Delay_3648B059(builder$0040_3, () => Element$2__Yield_Z5833CC7(builder$0040_3, (armsArm_S4_4) => {
-            const armsRead_S4 = armsArm_S4_4();
-            return armsRead_S4[2];
-        })))), (builder$0040_4 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_4, Element$2__Delay_3648B059(builder$0040_4, () => Element$2__Yield_Z5833CC7(builder$0040_4, (armsArm_S4_3) => {
-            const armsRead_S4 = armsArm_S4_3();
-            return armsRead_S4[1];
+        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S4, _arg_1) => ((_arg_1.tag === 2) ? ((_arg_1.fields[1] > 100) ? ((_arg_1.fields[1] > 1000) ? [0, _arg_1.fields[1], _arg_1, armsInstance_S4] : [1, _arg_1.fields[1], _arg_1, armsInstance_S4]) : ((_arg_1.fields[1] === 0) ? [2, _arg_1.fields[0], _arg_1.fields[0] + "!", _arg_1, armsInstance_S4] : [3, _arg_1.fields[0], _arg_1, armsInstance_S4])) : [4, _arg_1, armsInstance_S4]), [(builder$0040_1 = b$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "huge")))), (builder$0040_2 = i$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z721C83C5(builder$0040_2, "big")))), (builder$0040_3 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_3, Element$2__Delay_3648B059(builder$0040_3, () => Element$2__Yield_Z5833CC7(builder$0040_3, (armsArm_S4n1_4) => {
+            const armsRead_S4n1 = armsArm_S4n1_4();
+            return armsRead_S4n1[2];
+        })))), (builder$0040_4 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_4, Element$2__Delay_3648B059(builder$0040_4, () => Element$2__Yield_Z5833CC7(builder$0040_4, (armsArm_S4n2_3) => {
+            const armsRead_S4n2 = armsArm_S4n2_3();
+            return armsRead_S4n2[1];
         })))), (builder$0040_5 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_5, Element$2__Delay_3648B059(builder$0040_5, () => Element$2__Yield_Z721C83C5(builder$0040_5, "Other"))))]]));
     }));
 })());
@@ -129,12 +129,12 @@ export const nested = Component_template((_arg, panel) => panel, (() => {
         let builder$0040_1, builder$0040_4;
         return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892((panel_1) => Signal$1__get_Value(panel_1.State), null, [(armsInstance_S5, _arg_1) => ((_arg_1.tag === 2) ? [0, _arg_1.fields[0], _arg_1, armsInstance_S5] : [1, _arg_1, armsInstance_S5]), [(builder$0040_1 = section$1_$ctor_Z56A278BE(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => {
             let builder$0040_2, builder$0040_3;
-            return Element$2__Yield_Z6F190C48(builder$0040_1, Arms_Match_7CDE3892((armsArm_S5_3) => {
-                const armsRead_S5 = armsArm_S5_3();
-                return Signal$1__get_Value(armsRead_S5[3].Open);
-            }, null, [(armsInstance_S6, _arg_2) => (_arg_2 ? [0, _arg_2, armsInstance_S6] : [1, _arg_2, armsInstance_S6]), [(builder$0040_2 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z5833CC7(builder$0040_2, (armsArm_S6_2) => {
-                const armsRead_S5 = armsArm_S6_2()[2]();
-                return armsRead_S5[1];
+            return Element$2__Yield_Z6F190C48(builder$0040_1, Arms_Match_7CDE3892((armsArm_S5n1_3) => {
+                const armsRead_S5n1 = armsArm_S5n1_3();
+                return Signal$1__get_Value(armsRead_S5n1[3].Open);
+            }, null, [(armsInstance_S6, _arg_2) => (_arg_2 ? [0, _arg_2, armsInstance_S6] : [1, _arg_2, armsInstance_S6]), [(builder$0040_2 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z5833CC7(builder$0040_2, (armsArm_S5n2_2_3) => {
+                const armsRead_S5n2 = armsArm_S5n2_2_3()[2]();
+                return armsRead_S5n2[1];
             })))), (builder$0040_3 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_3, Element$2__Delay_3648B059(builder$0040_3, () => Element$2__Yield_Z721C83C5(builder$0040_3, "closed"))))]]));
         }))), (builder$0040_4 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_4, Element$2__Delay_3648B059(builder$0040_4, () => Element$2__Yield_Z721C83C5(builder$0040_4, "Other"))))]]));
     }));
@@ -165,10 +165,22 @@ export const spliced = Component_template((_arg, state) => state, (() => {
     const builder$0040 = div$1_$ctor_8589939();
     return Element$2__Run_706D0133(builder$0040, Element$2__Delay_3648B059(builder$0040, () => {
         let builder$0040_1;
-        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S8, _arg_1) => ((_arg_1.tag === 2) ? [0, _arg_1.fields[0], _arg_1, armsInstance_S8] : [1, _arg_1, armsInstance_S8]), [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Combine_E6026A0(builder$0040_1, Element$2__Yield_Z5833CC7(builder$0040_1, (armsArm_S8_3) => {
-            const armsRead_S8 = armsArm_S8_3();
-            return armsRead_S8[1];
-        }), Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z6F190C48(builder$0040_1, Arms_Match_7CDE3892((armsArm_S8_3) => (armsArm_S8_3()[3]), badge, null))))))), Arms_Match_7CDE3892((armsArm_S8_2) => (armsArm_S8_2()[2]), badge, null)]]));
+        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S8, _arg_1) => ((_arg_1.tag === 2) ? [0, _arg_1.fields[0], _arg_1, armsInstance_S8] : [1, _arg_1, armsInstance_S8]), [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Combine_E6026A0(builder$0040_1, Element$2__Yield_Z5833CC7(builder$0040_1, (armsArm_S8n1_3) => {
+            const armsRead_S8n1 = armsArm_S8n1_3();
+            return armsRead_S8n1[1];
+        }), Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z6F190C48(builder$0040_1, Arms_Match_7CDE3892((armsArm_S8n2_3) => (armsArm_S8n2_3()[3]), badge, null))))))), Arms_Match_7CDE3892((armsArm_S8n3_2) => (armsArm_S8n3_2()[2]), badge, null)]]));
+    }));
+})());
+
+export const locals = Component_template((_arg, state) => state, (() => {
+    const builder$0040 = div$1_$ctor_8589939();
+    return Element$2__Run_706D0133(builder$0040, Element$2__Delay_3648B059(builder$0040, () => {
+        let builder$0040_1, builder$0040_2;
+        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S9, _arg_1) => ((_arg_1.tag === 2) ? [0, _arg_1.fields[0], _arg_1, armsInstance_S9] : [1, _arg_1, armsInstance_S9]), [(builder$0040_1 = pre$1_$ctor_8201905(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z5833CC7(builder$0040_1, (armsArm_S9n2_3) => {
+            const armsRead_S9n1 = armsArm_S9n2_3();
+            const s = armsRead_S9n1[3];
+            return armsRead_S9n1[1] + toString(Signal$1__get_Value(s));
+        })))), (builder$0040_2 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_2, Element$2__Delay_3648B059(builder$0040_2, () => Element$2__Yield_Z721C83C5(builder$0040_2, "Other"))))]]));
     }));
 })());
 

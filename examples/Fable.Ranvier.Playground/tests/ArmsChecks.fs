@@ -137,6 +137,8 @@ let private traces queued () =
             functionsTwin, functions
             helperTwin, helper
             splicedTwin, spliced
+            localsTwin, locals
+            statusedTwin, statused
         ] do
         pair queued initial (Component.render twin) (Component.render site) loadWrites
 
@@ -164,6 +166,29 @@ let private valueTraces queued () =
         ]
 
     pair queued make (Component.render valuesTwin) (Component.render values) steps
+
+/// <summary>Three nested sites over one instance follow writes to each site's source as their twin does.</summary>
+let private deepTrace queued () =
+    let make (graph: Graph) =
+        graph.Run (fun () ->
+            ({
+                State = Api.createSignal (Loaded ("t", 1))
+                Mode = Api.createSignal 1
+                Open = Api.createSignal true
+            }
+            : Deck))
+
+    pair queued make (Component.render deepTwin) (Component.render deep) (fun deck ->
+        [
+            Write (fun () -> deck.State.Value <- Loaded ("u", 2))
+            Write (fun () -> deck.Mode.Value <- 2)
+            Write (fun () -> deck.Open.Value <- false)
+            Write (fun () -> deck.Open.Value <- true)
+            Write (fun () -> deck.Mode.Value <- 0)
+            Write (fun () -> deck.Mode.Value <- 3)
+            Write (fun () -> deck.State.Value <- Idle)
+            Write (fun () -> deck.State.Value <- Loaded ("v", 1))
+        ])
 
 let private editorState (graph: Graph) =
     graph.Run (fun () ->
@@ -415,6 +440,8 @@ let private loadFixtures =
         "functions", functions, functionsTwin
         "helper", helper, helperTwin
         "spliced", spliced, splicedTwin
+        "locals", locals, localsTwin
+        "statused", statused, statusedTwin
     ]
 
 let private laterWrites = [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ]
@@ -853,6 +880,7 @@ let cases: (string * (unit -> unit)) array =
                 [| "a reader with no arm for its instance raises AM006", noArm |]
                 templated "each Load fixture's nine-step trace equals its twin's" traces
                 templated "value-type payload fields equal their twin" valueTraces
+                templated "three nested sites' trace equals its twin's" deepTrace
                 templated "an event handler reads its arm's payload at event time" eventsReadLatest
                 templated "an event handler's trace equals its twin's" editorTrace
                 templated "rows fed by the items reader keep their elements across payload updates" rowsKeep

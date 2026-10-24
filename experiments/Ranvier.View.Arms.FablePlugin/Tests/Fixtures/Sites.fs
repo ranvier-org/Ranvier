@@ -137,3 +137,18 @@ let spliced =
                 | _ -> badge
             )
         })
+
+/// <summary>A function over the instance bound in a case body, applied inside a reader to the reader's instance.</summary>
+let locals =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded (text, _) ->
+                    let label (s: Signal<Load>) = text + string s.Value
+                    pre () { fun (s: Signal<Load>) -> label s }
+                | _ -> span () { "Other" }
+            )
+        })
