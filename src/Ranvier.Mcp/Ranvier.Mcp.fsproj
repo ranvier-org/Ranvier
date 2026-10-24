@@ -12,6 +12,7 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="GraphHost.fs" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="ModelContextProtocol" Version="2.3.0" />

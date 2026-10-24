@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <Compile Include="Scaffold.fs" />
+        <Compile Include="GraphHostTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
 
