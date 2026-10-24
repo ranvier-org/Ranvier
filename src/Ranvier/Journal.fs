@@ -380,7 +380,6 @@ module Journal =
     /// under the recorded keys. The replay's own inputs are recorded on that journal.
     /// </para>
     /// <para>
-    /// <para>
     /// <c>Diagnostic</c> applies every entry, and settles and fails async sources with the recorded outcomes; a failure
     /// arrives as a <c>JournalReplayedFailure</c> with the recorded message. The application's async work runs again,
     /// and each of its inputs is dropped while the replayed entries hold an unmatched <c>Produced</c> entry of the same
