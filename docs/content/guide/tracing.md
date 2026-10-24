@@ -188,8 +188,9 @@ Read it from the bottom: a write to `lines` marked `subtotal`; the banner's chec
 which pulled `subtotal`; each value moved, so the banner ran. `#n` is the event's position in the
 log, and `= value` is the value a write, move or settle recorded, as one line of at most 60 characters:
 its `ToString` text on .NET, its `%A` text under Fable. The chain ends at a root: a user
-write, the node's creation, a pull by a reader, an async source's settle, or a cause older than the
-log (`unrecorded after #n`).
+write, the node's creation, a pull by a reader, an async source's settle, a cause older than the
+retained events (`before the checkpoint`), or a step whose cause the log does not record
+(`unrecorded after #n`).
 
 :::details Earlier runs and shorter cause chains
 
@@ -457,7 +458,9 @@ C# callers use `Tracing.EventsSince`, `Tracing.Checkpoint` and `Tracing.Checkpoi
 
 `Trace.export graph sink policy` streams the log to a sink while the graph runs. The export writes a
 header of the current checkpoint and the retained events at once, then, at the end of each flush on the
-graph's thread, the events recorded since. `TraceExport.Drain ()` exports a write that ran no flush.
+graph's thread, the events recorded since. `TraceExport.Drain ()` exports a write that ran no flush; it
+runs on the graph's thread between flushes, like a dump. `Trace.export` has the same thread rule, and
+raises `ArgumentOutOfRangeException` when `policy.Capacity` is less than 1.
 Dispose the export to end the stream; its `Completion` task completes once the sink holds every record,
 and faults with the sink's error or a strict codec's `TraceCodecException`. The graph keeps running
 after a fault. Called on the graph's thread, `Dispose` queues the rest of the stream before it returns,
@@ -509,15 +512,18 @@ the stream's end. The log retains fewer than `Capacity` exported events. A check
 past the events the export has read becomes a gap in the stream.
 
 `TraceModel.parseDump` and `TraceContract.parseDumpWith` read an exported stream. Its gap lines go to
-`TraceDump.Gaps` as `(from, to)` ranges, absent from `Events`, and `TraceModel.why` over the parsed events
-ends a chain whose cause lies in a gap at `BeforeCheckpoint`.
+`TraceDump.Gaps` as inclusive `(from, to)` ranges in stream order, absent from `Events`. A dump with no
+gap lines parses to an empty `Gaps`. Code that constructs a `TraceDump` record itself sets `Gaps` too.
+`TraceModel.why` over the parsed events ends a chain at `BeforeCheckpoint` for any missing cause older
+than the event, including one inside a gap.
 
 Two reference sinks implement `ITraceSink`:
 
 - `TraceSinks.memory ()` holds the records in memory, on .NET and Fable. `Records` lists them, `Text`
   concatenates their lines, and `Stall` and `Release` hold back and complete the writes, for tests.
-- `TraceSinks.jsonl path` writes each record's lines to a file, on .NET. A write completes once its text
-  is flushed. The sink's name, and so its checkpoints' name, is the path.
+- `TraceSinks.jsonl path` writes each record's lines to a file, on .NET, creating or truncating it. A
+  write completes once its text is flushed. The sink's name, and so its checkpoints' name, is its
+  `Path`. Dispose the sink after the export's `Completion` to close the file.
 
 A sink of your own implements `Name` and `Write`, which returns a task that completes once the sink
 holds the record. The export writes one record at a time, in stream order.

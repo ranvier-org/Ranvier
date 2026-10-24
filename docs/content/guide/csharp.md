@@ -741,7 +741,8 @@ gap line, under `TraceExportFull.Drop`. `TraceExportCheckpoint.Enqueued` and `Ac
 the exported events so the log stays bounded. `JsonlSink` writes a file and `MemorySink` holds the
 records in memory. Dispose the export to end the stream; `Completion` completes once the sink holds
 every record. On the graph's thread, `Dispose` queues the rest of the stream before it returns, so
-`Completion.Wait()` there needs no pump. See [Exporting the trace](tracing.md#exporting-the-trace).
+`Completion.Wait()` there needs no pump. `Export` raises `ArgumentOutOfRangeException` for a capacity
+below 1. See [Exporting the trace](tracing.md#exporting-the-trace).
 
 ```csharp
 #if RANVIER_TRACE

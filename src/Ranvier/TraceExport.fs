@@ -62,6 +62,7 @@ type TraceExportFull =
 /// </remarks>
 [<RequireQualifiedAccess>]
 type TraceExportCheckpoint =
+    /// <summary>Leaves the log to the caller.</summary>
     | Never
     /// <summary>
     /// Once a batch is queued or dropped. Under <c>Drop</c> the log stays bounded under a stalled sink.
