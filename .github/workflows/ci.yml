@@ -454,7 +454,7 @@ jobs:
           dotnet fickl experiments/Ranvier.View.Arms/Checks/Discovery/Discovery.fsproj --outDir experiments/Ranvier.View.Arms/Checks/Discovery/out -c Release --noCache
           node experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js > discovery-fable.txt
           diff --strip-trailing-cr discovery-net.txt discovery-fable.txt
-          grep -q armsValues_L experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
+          grep -q armsTag_L experiments/Ranvier.View.Arms/Checks/Discovery/out/Main.js
           test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Ranvier.View.Arms.FablePlugin.dll
           test ! -e experiments/Ranvier.View.Arms/Checks/Discovery/bin/Release/net10.0/Fable.AST.dll
       - name: Run the arms suites

@@ -21,7 +21,8 @@ From `experiments/Ranvier.View.Arms/Checks/Discovery`, an app with a project ref
 import of `Ranvier.View.Arms.targets`:
 
 - **Discovery through a project reference and the `.targets`:** the plugin lowers the app's `Arms.Match` call; the
-  emitted `Main.js` holds the `armsValues_L…` prologues.
+  emitted `Main.js` held the `armsValues_L…` prologues of the cells release, and holds the site's `armsTag_L…` tag and
+  `armsRead_L…` readers of the payload-direct shape.
 - **`FABLE_COMPILER` during project cracking:** set; the `.targets` reference is conditional, and a .NET build carries
   no plugin assembly.
 - **netstandard2.0 plugin in Fable 5.18 and Fickl 0.3.0:** loads (Fable.AST 5.0.0 compile reference, FSharp.Core 10.1.203).
