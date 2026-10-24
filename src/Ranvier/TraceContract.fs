@@ -445,6 +445,18 @@ module TraceContract =
             Root = why.Root
         }
 
+/// <summary>A contract document read by a <c>TraceJson</c> reader.</summary>
+type TraceDocument<'T> =
+    {
+        /// <summary>The contract schema version the document was written in.</summary>
+        Schema: int
+        /// <summary>The document kind: <c>state</c>, <c>why</c>, <c>whyNot</c>, <c>waiting</c>, <c>runs</c> or <c>lookup</c>.</summary>
+        Kind: string
+        /// <summary>The seq the document was read at.</summary>
+        Seq: int
+        Body: 'T
+    }
+
 /// <summary>JSON text of the trace contract documents.</summary>
 /// <remarks>
 /// A document is <c>{"schema":3,"kind":K,"seq":S,"body":B}</c>, where <c>seq</c> is the read point. In a body a
@@ -707,3 +719,318 @@ module TraceJson =
             | TraceLookup.Foreign -> case "Foreign" []
 
         document "lookup" seq body
+
+#if !FABLE_COMPILER
+    // -----------------------------------------------------------------------------------------------------------
+    // Readers (.NET only)
+
+    type private Json = System.Text.Json.JsonElement
+
+    let private malformed (message: string) : 'T =
+        raise (System.FormatException message)
+
+    let private prop (e: Json) (name: string) =
+        match e.TryGetProperty name with
+        | true, p -> p
+        | _ -> malformed ("A trace document field is missing: " + name + ".")
+
+    let private isNull' (e: Json) =
+        e.ValueKind = System.Text.Json.JsonValueKind.Null
+
+    let private readStr (e: Json) =
+        if isNull' e then null else e.GetString ()
+
+    let private readInt (e: Json) =
+        e.GetInt32 ()
+
+    let private readBool (e: Json) =
+        e.GetBoolean ()
+
+    let private readOption (read: Json -> 'T) (e: Json) =
+        if isNull' e then None else Some (read e)
+
+    let private readList (read: Json -> 'T) (e: Json) =
+        [ for item in e.EnumerateArray () -> read item ]
+
+    let private readEnum<'T when 'T: struct and 'T: (new: unit -> 'T) and 'T :> System.ValueType> (e: Json) : 'T =
+        match System.Enum.TryParse<'T>(e.GetString ()) with
+        | true, value -> value
+        | _ ->
+            malformed (
+                "A trace document holds an unknown "
+                + typeof<'T>.Name
+                + ": "
+                + e.GetString ()
+                + "."
+            )
+
+    let private caseOf (e: Json) =
+        (prop e "case").GetString()
+
+    let private unknownCase (union: string) (e: Json) : 'T =
+        malformed (
+            "A trace document holds an unknown "
+            + union
+            + " case: "
+            + caseOf e
+            + "."
+        )
+
+    let private readNumber (e: Json) =
+        if e.ValueKind = System.Text.Json.JsonValueKind.String then
+            match e.GetString () with
+            | "NaN" -> nan
+            | "Infinity" -> infinity
+            | "-Infinity" -> -infinity
+            | other ->
+                malformed (
+                    "A trace document holds an unknown float: "
+                    + other
+                    + "."
+                )
+        else
+            e.GetDouble ()
+
+    let private readScalar (e: Json) =
+        let value = prop e "value"
+
+        match caseOf e with
+        | "Int" -> TraceScalar.Int (readInt value)
+        | "String" -> TraceScalar.String (readStr value)
+        | "Bool" -> TraceScalar.Bool (readBool value)
+        | "Float" -> TraceScalar.Float (readNumber value)
+        | _ -> unknownCase "TraceScalar" e
+
+    let private readPayload (e: Json) =
+        match caseOf e with
+        | "Null" -> TracePayload.Null
+        | "Exact" -> TracePayload.Exact (readScalar (prop e "value"))
+        | "Encoded" -> TracePayload.Encoded (readStr (prop e "codec"), readInt (prop e "version"), readStr (prop e "data"))
+        | "Lossy" -> TracePayload.Lossy (readStr (prop e "text"))
+        | _ -> unknownCase "TracePayload" e
+
+    let private readRoot (e: Json) =
+        match caseOf e with
+        | "UserWrite" -> UserWrite (readInt (prop e "write"))
+        | "Created" -> Created (readInt (prop e "nodeNew"))
+        | "Pulled" -> Pulled (readInt (prop e "reader"))
+        | "BeforeCheckpoint" -> BeforeCheckpoint (readStr (prop e "file"))
+        | "Unrecorded" -> Unrecorded (readInt (prop e "last"))
+        | "Settled" -> Settled (readInt (prop e "settle"))
+        | _ -> unknownCase "WhyRoot" e
+
+    let private readNodeRef (e: Json) : TraceNodeRef =
+        {
+            Node = readInt (prop e "node")
+            Path = readStr (prop e "path")
+            Stability =
+                let s = prop e "stability"
+
+                match caseOf s with
+                | "Named" -> TracePathStability.Named
+                | "Located" -> TracePathStability.Located
+                | _ -> unknownCase "TracePathStability" s
+            Label = readOption readStr (prop e "label")
+        }
+
+    let private readStatus (e: Json) =
+        match caseOf e with
+        | "Fresh" -> TraceNodeStatus.Fresh
+        | "Running" -> TraceNodeStatus.Running
+        | "Ended" -> TraceNodeStatus.Ended (readEnum<RunStatus>(prop e "status"))
+        | "Disposed" -> TraceNodeStatus.Disposed
+        | _ -> unknownCase "TraceNodeStatus" e
+
+    let private readNode (e: Json) : TraceNodeState =
+        {
+            Ref = readNodeRef (prop e "ref")
+            Kind = readEnum<TraceNodeKind>(prop e "kind")
+            Owner = readInt (prop e "owner")
+            Created = readInt (prop e "created")
+            Runs = readInt (prop e "runs")
+            LastRun = readInt (prop e "lastRun")
+            PendingMark = readInt (prop e "pendingMark")
+            Status = readStatus (prop e "status")
+            Value = readOption readPayload (prop e "value")
+        }
+
+    let private readOwner (e: Json) : TraceSnapshotOwner =
+        {
+            Id = readInt (prop e "id")
+            Parent = readInt (prop e "parent")
+            Host = readInt (prop e "host")
+            Root = readBool (prop e "root")
+            Path = readStr (prop e "path")
+            Label = readOption readStr (prop e "label")
+            Disposed = readBool (prop e "disposed")
+        }
+
+    let private readPairs (read: Json -> 'T) (e: Json) =
+        [ for pair in e.EnumerateArray () -> readInt pair[0], read pair[1] ]
+        |> Map.ofList
+
+    /// <summary>The envelope of <c>text</c>, with its body read by <c>read</c>.</summary>
+    /// <exception cref="T:System.FormatException">
+    /// The text is not a <c>kind</c> document, or its schema is outside 1 to <c>TraceContract.Schema</c>.
+    /// </exception>
+    let private read (kind: string) (body: int -> Json -> 'T) (text: string) : TraceDocument<'T> =
+        let parsed =
+            try
+                System.Text.Json.JsonDocument.Parse text
+            with :? System.Text.Json.JsonException as e ->
+                raise (System.FormatException ("A trace document is not JSON: " + e.Message, e))
+
+        use doc = parsed
+        let root = doc.RootElement
+        let schema = readInt (prop root "schema")
+
+        if schema < 1 || schema > TraceContract.Schema then
+            malformed (
+                "The trace document schema "
+                + string schema
+                + " is unsupported."
+            )
+
+        let actual = readStr (prop root "kind")
+
+        if actual <> kind then
+            malformed (
+                "The trace document is a "
+                + actual
+                + " document, not a "
+                + kind
+                + " document."
+            )
+
+        let seq = readInt (prop root "seq")
+
+        {
+            Schema = schema
+            Kind = kind
+            Seq = seq
+            Body = body schema (prop root "body")
+        }
+
+    /// <summary>The <c>state</c> document of <c>text</c>, written by <c>TraceJson.state</c>.</summary>
+    /// <exception cref="T:System.FormatException">The text is not a supported <c>state</c> document.</exception>
+    let readState (text: string) : TraceDocument<TraceGraphState> =
+        let body (schema: int) (e: Json) : TraceGraphState =
+            {
+                Schema = schema
+                Seq = 0
+                Root = readInt (prop e "root")
+                Checkpoint = readOption readStr (prop e "checkpoint")
+                SeqFrom = readInt (prop e "seqFrom")
+                Nodes =
+                    readList readNode (prop e "nodes")
+                    |> List.map (fun n -> n.Ref.Node, n)
+                    |> Map.ofList
+                Owners =
+                    readList readOwner (prop e "owners")
+                    |> List.map (fun o -> o.Id, o)
+                    |> Map.ofList
+                Sources = readPairs (readList readInt) (prop e "sources")
+                Observers = readPairs (readList readInt >> Set.ofList) (prop e "observers")
+            }
+
+        let d = read "state" body text
+
+        { d with
+            Body = { d.Body with Seq = d.Seq }
+        }
+
+    /// <summary>The <c>why</c> document of <c>text</c>, written by <c>TraceJson.why</c>.</summary>
+    /// <exception cref="T:System.FormatException">The text is not a supported <c>why</c> document.</exception>
+    let readWhy (text: string) : TraceDocument<TraceWhy> =
+        let step (e: Json) =
+            {
+                TraceWhyStep.Seq = readInt (prop e "seq")
+                TraceWhyStep.Kind = readEnum<TraceEventKind>(prop e "kind")
+                TraceWhyStep.Node = readInt (prop e "node")
+                TraceWhyStep.Other = readInt (prop e "other")
+                TraceWhyStep.Value = readOption readPayload (prop e "value")
+            }
+
+        let body _ (e: Json) =
+            {
+                TraceWhy.Node = readInt (prop e "node")
+                TraceWhy.Run = readInt (prop e "run")
+                TraceWhy.Steps = readList step (prop e "steps")
+                TraceWhy.Root = readOption readRoot (prop e "root")
+            }
+
+        read "why" body text
+
+    /// <summary>The <c>whyNot</c> document of <c>text</c>, written by <c>TraceJson.whyNot</c>.</summary>
+    /// <exception cref="T:System.FormatException">The text is not a supported <c>whyNot</c> document.</exception>
+    let readWhyNot (text: string) : TraceDocument<WhyNotReason option> =
+        let reason (e: Json) =
+            match caseOf e with
+            | "Disposed" -> WhyNotReason.Disposed (readInt (prop e "seq"))
+            | "Queued" -> Queued (readInt (prop e "schedule"))
+            | "Unobserved" -> Unobserved (readInt (prop e "mark"))
+            | "CheckedClean" -> CheckedClean (readInt (prop e "resolvedAt"), readList readInt (prop e "upstream"))
+            | "SkippedAsRunningReader" -> SkippedAsRunningReader (readInt (prop e "seq"))
+            | "NotReached" -> NotReached (readInt (prop e "stopAt"))
+            | _ -> unknownCase "WhyNotReason" e
+
+        read "whyNot" (fun _ e -> readOption reason e) text
+
+    /// <summary>The <c>waiting</c> document of <c>text</c>, written by <c>TraceJson.waiting</c>.</summary>
+    /// <exception cref="T:System.FormatException">The text is not a supported <c>waiting</c> document.</exception>
+    let readWaiting (text: string) : TraceDocument<TraceWaiting> =
+        let state (e: Json) =
+            match caseOf e with
+            | "InFlight" -> TraceFlightState.InFlight
+            | "Settled" -> TraceFlightState.Settled (readInt (prop e "seq"), readBool (prop e "held"))
+            | "Failed" -> TraceFlightState.Failed (readInt (prop e "seq"), readBool (prop e "cancelled"))
+            | "Dropped" -> TraceFlightState.Dropped (readInt (prop e "seq"), readEnum<TraceDropReason>(prop e "reason"))
+            | _ -> unknownCase "TraceFlightState" e
+
+        let flight (e: Json) : TraceFlight =
+            {
+                Flight = readInt (prop e "flight")
+                Start = readInt (prop e "start")
+                Run = readInt (prop e "run")
+                State = state (prop e "state")
+            }
+
+        let body _ (e: Json) : TraceWaiting =
+            {
+                Node = readInt (prop e "node")
+                Sources = readList readInt (prop e "sources")
+                Flights = readList flight (prop e "flights")
+            }
+
+        read "waiting" body text
+
+    /// <summary>The <c>runs</c> document of <c>text</c>, written by <c>TraceJson.runs</c>.</summary>
+    /// <exception cref="T:System.FormatException">The text is not a supported <c>runs</c> document.</exception>
+    let readRuns (text: string) : TraceDocument<TraceRunState list> =
+        let run (e: Json) =
+            {
+                TraceRunState.Run = readInt (prop e "run")
+                TraceRunState.Start = readInt (prop e "start")
+                TraceRunState.Status = readOption readEnum<RunStatus> (prop e "status")
+                TraceRunState.Moved = readBool (prop e "moved")
+                TraceRunState.Root = readRoot (prop e "root")
+                TraceRunState.Flush = readInt (prop e "flush")
+                TraceRunState.Value = readOption readPayload (prop e "value")
+            }
+
+        read "runs" (fun _ e -> readList run e) text
+
+    /// <summary>The <c>lookup</c> document of <c>text</c>, written by <c>TraceJson.lookup</c>.</summary>
+    /// <exception cref="T:System.FormatException">The text is not a supported <c>lookup</c> document.</exception>
+    let readLookup (text: string) : TraceDocument<TraceLookup> =
+        let body _ (e: Json) =
+            match caseOf e with
+            | "Live" -> TraceLookup.Live (readNodeRef (prop e "node"))
+            | "Disposed" -> TraceLookup.Disposed (readNodeRef (prop e "node"), readInt (prop e "seq"))
+            | "Checkpointed" -> TraceLookup.Checkpointed (readNodeRef (prop e "node"))
+            | "Missing" -> TraceLookup.Missing
+            | "Foreign" -> TraceLookup.Foreign
+            | _ -> unknownCase "TraceLookup" e
+
+        read "lookup" body text
+#endif
