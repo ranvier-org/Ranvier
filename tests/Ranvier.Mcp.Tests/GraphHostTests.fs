@@ -85,6 +85,42 @@ let tests =
                 Expect.isTrue (late :? ObjectDisposedException) $"an invocation after disposal faults, got {late}"
             }
 
+            test "Start with options rejects a thread affinity other than Guarded, and runs no setup" {
+                for affinity in [ Serialised; Unchecked ] do
+                    let ran = ref false
+
+                    Expect.throwsT<ArgumentException>
+                        (fun () ->
+                            GraphHost.Start (
+                                { GraphOptions.Default with
+                                    ThreadAffinity = affinity
+                                },
+                                fun _ -> ran.Value <- true
+                            )
+                            |> ignore)
+                        $"Start rejects {affinity}"
+
+                    Expect.isFalse ran.Value $"setup did not run under {affinity}"
+            }
+
+            test "Start with Guarded options hosts a graph that raises on a pool-thread touch" {
+                let leaked = ref Unchecked.defaultof<Signal<int>>
+
+                use host =
+                    GraphHost.Start (
+                        { GraphOptions.Default with
+                            ThreadAffinity = Guarded
+                        },
+                        fun graph ->
+                            leaked.Value <- Signal (graph, 0)
+                            leaked.Value
+                    )
+
+                let fault = faultOf (Task.Run (fun () -> leaked.Value.Value <- 5))
+                Expect.isTrue (fault :? InvalidOperationException) $"a pool-thread write raises, got {fault}"
+                Expect.equal (host.Invoke(fun signal -> signal.Value).Result) 0 "the signal kept its value"
+            }
+
             test "a touch from a pool thread raises under the host's Guarded graph" {
                 let leaked = ref Unchecked.defaultof<Signal<int>>
 

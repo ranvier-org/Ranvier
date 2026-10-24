@@ -174,5 +174,14 @@ type GraphHost =
     /// <summary>
     /// <c>Start</c>, with the graph built from <c>options</c>; the host replaces the dispatcher with its own.
     /// </summary>
+    /// <exception cref="T:System.ArgumentException">
+    /// <c>options.ThreadAffinity</c> is <c>Serialised</c> or <c>Unchecked</c>; no thread starts and <c>setup</c> does
+    /// not run.
+    /// </exception>
     static member Start(options: GraphOptions, setup: Graph -> 'App) : GraphHost<'App> =
+        if options.ThreadAffinity <> Guarded then
+            invalidArg
+                (nameof options)
+                $"A GraphHost graph is Guarded; ThreadAffinity {options.ThreadAffinity} would let a transport thread touch it."
+
         new GraphHost<'App> (options, setup)
