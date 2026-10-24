@@ -74,6 +74,7 @@ type Exposure() =
     let messageNames = ResizeArray<string>()
     let waiters = ResizeArray<struct (int64 * TaskCompletionSource<Snapshot>)>()
     let mutable graph = Unchecked.defaultof<Graph>
+    let nodes = ResizeArray<KeyValuePair<string, INode>>()
     let published = Event<Publication>()
     let mutable started = false
     let mutable snapshot = { Version = 0L; Values = Map.empty }
@@ -173,6 +174,38 @@ type Exposure() =
     /// <summary>The exposed message names, in registration order.</summary>
     member _.MessageNames = List.ofSeq messageNames
 
+    /// <summary>The nodes exposed to provenance queries, by name, in registration order.</summary>
+    member _.Nodes = List.ofSeq nodes
+
+    /// <summary>
+    /// Exposes <c>node</c> under <c>name</c> to the provenance queries of a traced build. An untraced build serves no
+    /// such queries, and the registration has no effect there.
+    /// </summary>
+    /// <exception cref="T:System.InvalidOperationException">Called after <c>Start</c>.</exception>
+    /// <exception cref="T:System.ArgumentException">
+    /// The node name is taken, or holds a character outside <c>[A-Za-z0-9_.~-]</c>.
+    /// </exception>
+    member _.Node(name: string, node: INode) =
+        checkName name
+
+        if
+            nodes
+            |> Seq.exists (fun (KeyValue (taken, _)) -> taken = name)
+        then
+            invalidArg (nameof name) $"The node '{name}' is already exposed."
+
+        nodes.Add (KeyValuePair (name, node))
+
+    /// <summary>
+    /// Runs <c>work</c> with the graph captured at <c>Start</c>, through <c>Graph.DispatchAsync</c>. Callable from any
+    /// thread after <c>Start</c>.
+    /// </summary>
+    member internal _.Enter(work: Graph -> 'T) : Task<'T> =
+        if not started then
+            invalidOp "Exposure has not started."
+
+        graph.DispatchAsync (Func<'T>(fun () -> work graph))
+
     /// <summary>
     /// Authorises each decoder's message for <c>Dispatch</c> under its name: a dispatch decodes the arguments and, on
     /// <c>Ok</c>, dispatches the message to <c>mvu</c>.
@@ -271,3 +304,7 @@ module Expose =
     /// <summary>Authorises each decoder's message, under its name, for dispatch to <c>mvu</c>.</summary>
     let messages (mvu: Mvu<'Model, 'Msg>) (decoders: (string * MessageDecoder<'Msg>) list) (exposure: Exposure) =
         exposure.Messages (mvu, decoders)
+
+    /// <summary>Exposes <c>node</c> under <c>name</c> to the provenance queries of a traced build.</summary>
+    let node (name: string) (node: INode) (exposure: Exposure) =
+        exposure.Node (name, node)

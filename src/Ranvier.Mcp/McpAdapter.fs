@@ -11,6 +11,7 @@ open System.Threading.Tasks
 open ModelContextProtocol
 open ModelContextProtocol.Protocol
 open ModelContextProtocol.Server
+open Ranvier
 
 /// <summary>A tool the adapter lists and runs.</summary>
 type internal AdapterTool =
@@ -64,6 +65,12 @@ module internal Resources =
 /// <c>Exposure.Dispatch</c> and returns the snapshot after the flush. An unknown message, a decoder <c>Error</c>, a
 /// decoder that raises, or a missing <c>message</c> is a tool error that dispatches nothing. <c>wait_version</c>
 /// (<c>{"version": n, "timeoutMs": ms}</c>) returns the first snapshot at or past <c>n</c>, or a tool error on timeout.
+/// </para>
+/// <para>
+/// A traced build (<c>RANVIER_TRACE</c>) also lists <c>trace_state</c>, <c>trace_lookup</c>, <c>why</c>,
+/// <c>why_not</c> and <c>waiting_on</c>, each over the nodes registered with <c>Expose.node</c> and returning the
+/// <c>TraceJson</c> document of the matching <c>Trace</c> query, run on the graph thread. An untraced build lists none
+/// of them.
 /// </para>
 /// <para>
 /// Each publication notifies the subscribers of <c>ranvier://state</c> and of each value whose encoding changed, in
@@ -281,12 +288,118 @@ type McpAdapter(exposure: Exposure) =
                     }
         }
 
+#if RANVIER_TRACE
+    let codecs = TraceCodecs.ofList []
+
+    let nodeNames = exposure.Nodes |> List.map _.Key
+
+    let nodeSchema (extra: string) =
+        let names = JsonArray ()
+
+        for name in nodeNames do
+            names.Add (JsonValue.Create name)
+
+        let node = JsonObject ()
+        node["type"] <- JsonValue.Create "string"
+        node["enum"] <- names
+        let properties = JsonObject ()
+        properties["node"] <- node
+
+        if extra <> "" then
+            properties[extra] <- JsonObject ([ KeyValuePair<string, JsonNode>("type", JsonValue.Create "string") ])
+
+        let schema = JsonObject ()
+        schema["type"] <- JsonValue.Create "object"
+        schema["properties"] <- properties
+        json (schema.ToJsonString ())
+
+    /// The exposed node a request names, or the reason it names none.
+    let nodeOf (tool: string) (request: CallToolRequestParams) =
+        match argument request "node" with
+        | Some value when value.ValueKind = JsonValueKind.String ->
+            let name = value.GetString ()
+
+            match
+                exposure.Nodes
+                |> List.tryFind (fun entry -> entry.Key = name)
+            with
+            | Some entry -> Result.Ok entry.Value
+            | None ->
+                let known = String.Join (", ", nodeNames)
+                Result.Error $"Unknown node '{name}'. Exposed nodes: {known}."
+        | _ -> Result.Error $"{tool} takes a string 'node' naming an exposed node."
+
+    /// A tool whose query runs on the graph thread and returns a TraceJson document.
+    let traced (name: string) (description: string) (schema: JsonElement) (query: Graph -> CallToolRequestParams -> Result<string, string>) =
+        {
+            Tool = Tool (Name = name, Description = description, InputSchema = schema)
+            Run =
+                fun request _ ->
+                    task {
+                        try
+                            match! exposure.Enter (fun graph -> query graph request) with
+                            | Result.Ok document -> return success document
+                            | Result.Error reason -> return failure reason
+                        with ex ->
+                            return failure $"{name} failed: {ex.Message}"
+                    }
+        }
+
+    let onNode (tool: string) (query: Graph -> int -> INode -> string) =
+        fun (graph: Graph) request ->
+            nodeOf tool request
+            |> Result.map (query graph (Trace.lastSeq graph))
+
+    let traceTools =
+        [
+            traced
+                "trace_state"
+                "The graph state folded from the trace log: every node, owner, source edge and observer (TraceJson 'state' document)."
+                emptySchema
+                (fun graph _ -> Result.Ok (TraceJson.state (Trace.state graph codecs)))
+            traced
+                "trace_lookup"
+                "Resolves an exposed node, or an identity 'path', in the trace log (TraceJson 'lookup' document)."
+                (nodeSchema "path")
+                (fun graph request ->
+                    let seq = Trace.lastSeq graph
+
+                    match argument request "path" with
+                    | Some path when
+                        path.ValueKind = JsonValueKind.String
+                        && (argument request "node").IsNone
+                        ->
+                        Result.Ok (TraceJson.lookup seq (Trace.lookup graph (TraceAddress.ByPath (path.GetString ()))))
+                    | _ ->
+                        nodeOf "trace_lookup" request
+                        |> Result.map (fun node -> TraceJson.lookup seq (Trace.lookupNode graph node)))
+            traced
+                "why"
+                "The cause chain of an exposed node's last run, back to the write or creation that started it (TraceJson 'why' document)."
+                (nodeSchema "")
+                (onNode "why" (fun graph seq node -> TraceJson.why seq (Trace.whyWith graph codecs node)))
+            traced
+                "why_not"
+                "Why an exposed node has not re-run: disposed, queued, unobserved or checked clean; null when it is up to date (TraceJson 'whyNot' document)."
+                (nodeSchema "")
+                (onNode "why_not" (fun graph seq node -> TraceJson.whyNot seq (Trace.whyNot graph node)))
+            traced
+                "waiting_on"
+                "The pending sources and flights an exposed node waits on (TraceJson 'waiting' document)."
+                (nodeSchema "")
+                (onNode "waiting_on" (fun graph seq node -> TraceJson.waiting seq (Trace.waitingOn graph node)))
+        ]
+#endif
+
     let tools: AdapterTool list =
         [
             snapshotTool
             if not exposure.MessageNames.IsEmpty then
                 dispatchTool
             waitVersionTool
+#if RANVIER_TRACE
+            yield! traceTools
+#endif
         ]
 
     let resource (uri: string) (name: string) (description: string) =
