@@ -246,3 +246,148 @@ type TraceConstructionBenchmarks() =
 
         root.Dispose ()
         (graph :> IDisposable).Dispose()
+
+/// <summary>Updates written after a <c>MemoLog</c>'s recorded read position, for <c>TailRead</c>.</summary>
+[<Literal>]
+let private TailUpdates = 100
+
+/// <summary>
+/// A <c>memo</c>-workload graph after <c>updates</c> signal writes. <c>Read</c> is the log's length
+/// <c>TailUpdates</c> writes before the end, or 0 in an untraced build.
+/// </summary>
+type private MemoLog(updates: int) =
+    let graph = new Graph ()
+    let source = Signal (graph, 0)
+    let doubled = Memo (graph, (fun _ -> source.Value * 2))
+
+    do
+        new Effect (graph, (fun () -> sink <- sink + doubled.Value))
+        |> ignore
+
+        for _ in 1 .. updates - TailUpdates do
+            source.Value <- source.Peek + 1
+
+    let read =
+#if RANVIER_TRACE
+        (Trace.events graph).Length
+#else
+        0
+#endif
+
+    do
+        for _ in 1..TailUpdates do
+            source.Value <- source.Peek + 1
+
+    member _.Graph = graph
+    member _.Node = doubled :> INode
+    member _.Read = read
+
+    member _.Dispose() =
+        (graph :> IDisposable).Dispose()
+
+/// <summary>
+/// Trace export and query operations on a <c>MemoLog</c> of <c>Updates</c> writes, run by the <c>Traced</c> job only.
+/// Each operation reads the log without appending to it, so every invocation sees the same history.
+/// </summary>
+/// <remarks>
+/// The class compiles into the untraced host process too, where its benchmarks return <c>null</c>. BenchmarkDotNet
+/// generates the traced job's runner from the host's signatures, so every benchmark returns <c>obj</c> in both builds.
+/// </remarks>
+[<MemoryDiagnoser; BenchmarkCategory "Trace"; Config.TracedOnlyConfig>]
+type TraceQueryBenchmarks() =
+    let mutable log = Unchecked.defaultof<MemoLog>
+
+    /// <summary>Signal writes recorded in the log before measurement.</summary>
+    [<Params(1000, 10000, 100000)>]
+    member val Updates = 0 with get, set
+
+    [<GlobalSetup>]
+    member this.Build() =
+        log <- MemoLog this.Updates
+
+    [<GlobalCleanup>]
+    member _.Dispose() =
+        log.Dispose ()
+
+#if RANVIER_TRACE
+    /// <summary>A copy of the full log.</summary>
+    [<Benchmark>]
+    member _.Events() : obj =
+        box (Trace.events log.Graph)
+
+    /// <summary>The state folded from the full log.</summary>
+    [<Benchmark>]
+    member _.Snapshot() : obj =
+        box (Trace.snapshot log.Graph)
+
+    /// <summary>The cause chain of the memo's last run.</summary>
+    [<Benchmark>]
+    member _.Why() : obj =
+        box (Trace.why log.Graph log.Node)
+
+    /// <summary>The memo's origin.</summary>
+    [<Benchmark>]
+    member _.Origin() : obj =
+        box (Trace.origin log.Graph log.Node)
+
+    /// <summary>The JSONL dump of the full log.</summary>
+    [<Benchmark>]
+    member _.DumpText() : obj =
+        box (Trace.dumpText log.Graph)
+
+    /// <summary>
+    /// The events recorded by the last 100 updates, read as the signal maps read them: a copy of the full log, sliced
+    /// from the previous read's length.
+    /// </summary>
+    [<Benchmark>]
+    member _.TailRead() : obj =
+        let events = Trace.events log.Graph
+        box events[log.Read ..]
+#else
+    [<Benchmark>]
+    member _.Events() : obj = null
+
+    [<Benchmark>]
+    member _.Snapshot() : obj = null
+
+    [<Benchmark>]
+    member _.Why() : obj = null
+
+    [<Benchmark>]
+    member _.Origin() : obj = null
+
+    [<Benchmark>]
+    member _.DumpText() : obj = null
+
+    [<Benchmark>]
+    member _.TailRead() : obj = null
+#endif
+
+/// <summary>
+/// <c>Trace.history</c> of the memo in a <c>MemoLog</c>, run by the <c>Traced</c> job only. Its cost grows with the
+/// square of the run count (about 14 ms at 1,000 updates and 1.2 s at 10,000), so the series stops at 10,000.
+/// </summary>
+[<MemoryDiagnoser; BenchmarkCategory "Trace"; Config.TracedOnlyConfig>]
+type TraceHistoryBenchmarks() =
+    let mutable log = Unchecked.defaultof<MemoLog>
+
+    /// <summary>Signal writes recorded in the log before measurement.</summary>
+    [<Params(1000, 3000, 10000)>]
+    member val Updates = 0 with get, set
+
+    [<GlobalSetup>]
+    member this.Build() =
+        log <- MemoLog this.Updates
+
+    [<GlobalCleanup>]
+    member _.Dispose() =
+        log.Dispose ()
+
+    /// <summary>Every recorded run of the memo.</summary>
+    [<Benchmark>]
+    member _.History() : obj =
+#if RANVIER_TRACE
+        box (Trace.history log.Graph log.Node)
+#else
+        null
+#endif

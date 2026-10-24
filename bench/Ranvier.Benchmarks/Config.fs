@@ -106,3 +106,21 @@ type TracedConfigAttribute() =
                 Environment.GetCommandLineArgs ()
                 |> Array.contains "--short"
             )
+
+/// <summary>
+/// The <c>Traced</c> job of <c>traced</c> alone, for benchmarks of operations that exist only in a traced build.
+/// </summary>
+let tracedOnly (isShort: bool) =
+    ManualConfig.CreateEmpty().AddJob((runShape isShort).WithArguments([| MsBuildArgument "/p:RanvierTrace=true" :> Argument |]).WithId "Traced")
+
+/// <summary>Runs the benchmarks of a class under the <c>tracedOnly</c> job, short when the process has <c>--short</c>.</summary>
+[<AttributeUsage(AttributeTargets.Class)>]
+type TracedOnlyConfigAttribute() =
+    inherit Attribute()
+
+    interface IConfigSource with
+        member _.Config =
+            tracedOnly (
+                Environment.GetCommandLineArgs ()
+                |> Array.contains "--short"
+            )
