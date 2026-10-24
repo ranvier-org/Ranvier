@@ -453,7 +453,6 @@ module Trace =
 
         gate graph "Trace.checkpoint"
         let log = logOf graph
-        let prefix = log.EventsThrough seq
 
         if log.LabelFollows seq then
             raise (
@@ -469,13 +468,7 @@ module Trace =
                 )
             )
 
-        let released = log.Collected seq
-
-        let folded =
-            TraceModel.fold (checkpointOf graph).Snapshot prefix
-            |> TraceModel.pruneReleasing released
-
-        log.Truncate (seq, name, box folded, released)
+        TraceGate.truncate log seq name
 
     /// <summary>
     /// The JSONL dump of <c>graph</c>'s checkpoint and retained events: schema 2 with timed nodes, otherwise schema 1.

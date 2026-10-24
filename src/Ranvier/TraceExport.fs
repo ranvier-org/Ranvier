@@ -34,7 +34,7 @@ module TraceExportRecord =
 /// <summary>The destination of an exported trace stream.</summary>
 /// <remarks>The exporter calls <c>Write</c> for one record at a time, in stream order.</remarks>
 type ITraceSink =
-    /// <summary>The sink's name; a checkpoint the exporter takes carries it.</summary>
+    /// <summary>The name of the checkpoints taken under <c>Enqueued</c> and <c>Acknowledged</c>.</summary>
     abstract Name: string
     /// <summary>Stores <c>record</c>. The returned task completes when the sink holds it.</summary>
     abstract Write: record: TraceExportRecord -> Task
@@ -44,16 +44,25 @@ type ITraceSink =
 type TraceExportFull =
     /// <summary>Leaves the batch in the trace log and queues it when the queue has room. The stream loses no event.</summary>
     | Wait
-    /// <summary>Drops the batch and records its seqs in a <c>Gap</c>.</summary>
+    /// <summary>
+    /// Drops the batch and records its seqs in a <c>Gap</c>, written before the next batch or once the queue has
+    /// room. Consecutive drops share one <c>Gap</c>.
+    /// </summary>
     | Drop
 
 /// <summary>When an exporter checkpoints the graph's log at the events it has exported.</summary>
+/// <remarks>
+/// The exporter checkpoints between flushes, on the graph's thread. A checkpoint at a <c>NodeNew</c> or an
+/// <c>OwnerNew</c> whose <c>Label</c> follows it is taken one seq earlier.
+/// </remarks>
 [<RequireQualifiedAccess>]
 type TraceExportCheckpoint =
     | Never
-    /// <summary>Once a batch is queued or dropped. The log stays bounded under a stalled sink.</summary>
+    /// <summary>
+    /// Once a batch is queued or dropped. Under <c>Drop</c> the log stays bounded under a stalled sink.
+    /// </summary>
     | Enqueued
-    /// <summary>Once the sink completes a batch's <c>Write</c>.</summary>
+    /// <summary>Once the sink completes the <c>Write</c> of a batch or a gap.</summary>
     | Acknowledged
 
 /// <summary>How an exporter queues, encodes and checkpoints.</summary>
@@ -82,12 +91,12 @@ type internal TraceExportQueue(sink: ITraceSink, capacity: int) =
     let mutable held = 0
     let mutable writing = false
     let mutable fault: exn = null
-    let mutable freed: unit -> unit = ignore
+    let mutable freed: TraceExportRecord -> unit = ignore
 
-    // Records the outcome of the head record's write, and returns whether the queue may write the next one.
+    // Records the outcome of the head record's write, and returns the record.
     let settle (outcome: Platform.FlightOutcome<unit>) =
         lock gate (fun () ->
-            let struct (_, count) = items.Dequeue ()
+            let struct (record, count) = items.Dequeue ()
             held <- held - count
             writing <- false
 
@@ -97,7 +106,9 @@ type internal TraceExportQueue(sink: ITraceSink, capacity: int) =
             | Platform.FlightOutcome.Canceled error ->
                 fault <- error
                 items.Clear ()
-                held <- 0)
+                held <- 0
+
+            record)
 
     // Takes the head record for writing, or none while a write is in flight, the queue is empty or the sink faulted.
     let take () =
@@ -117,9 +128,9 @@ type internal TraceExportQueue(sink: ITraceSink, capacity: int) =
     /// <summary>The error the sink's write raised or faulted with, or null.</summary>
     member _.Fault = lock gate (fun () -> fault)
 
-    /// <summary>Runs after each completed write, on the thread that completed it.</summary>
+    /// <summary>Runs with the written record after each completed write, on the thread that completed it.</summary>
     member _.Freed
-        with set (callback: unit -> unit) = freed <- callback
+        with set (callback: TraceExportRecord -> unit) = freed <- callback
 
     /// <summary>
     /// Queues <c>record</c>, which holds <c>events</c> events, and returns true; returns false when the queue lacks
@@ -153,8 +164,7 @@ type internal TraceExportQueue(sink: ITraceSink, capacity: int) =
                     try
                         sink.Write record
                     with error ->
-                        settle (Platform.FlightOutcome.Faulted error)
-                        freed ()
+                        freed (settle (Platform.FlightOutcome.Faulted error))
                         null
 
                 if not (isNull written) then
@@ -162,27 +172,25 @@ type internal TraceExportQueue(sink: ITraceSink, capacity: int) =
                     go <- false
 
                     Platform.whenDone written (fun outcome ->
-                        settle outcome
-                        freed ()
+                        freed (settle outcome)
                         this.Pump ())
 #else
                     if written.IsCompleted then
-                        settle (
-                            if written.IsFaulted then
-                                Platform.FlightOutcome.Faulted (written.Exception.GetBaseException ())
-                            elif written.IsCanceled then
-                                Platform.FlightOutcome.Canceled (TaskCanceledException written)
-                            else
-                                Platform.FlightOutcome.Completed ()
+                        freed (
+                            settle (
+                                if written.IsFaulted then
+                                    Platform.FlightOutcome.Faulted (written.Exception.GetBaseException ())
+                                elif written.IsCanceled then
+                                    Platform.FlightOutcome.Canceled (TaskCanceledException written)
+                                else
+                                    Platform.FlightOutcome.Completed ()
+                            )
                         )
-
-                        freed ()
                     else
                         go <- false
 
                         Platform.whenDone written (fun outcome ->
-                            settle outcome
-                            freed ()
+                            freed (settle outcome)
                             this.Pump ())
 #endif
 
@@ -253,6 +261,36 @@ module internal TraceGate =
     let logOf (graph: Graph) =
         ((box graph) :?> ITraced).TraceLog
 
+    /// <summary>The seq of <c>log</c>'s checkpoint, 0 before the first truncation.</summary>
+    let checkpointSeq (log: TraceLog) =
+        let struct (_, snapshot) = log.Checkpoint
+
+        if Platform.isNull snapshot then
+            0
+        else
+            (snapshot :?> TraceSnapshot).Seq
+
+    /// <summary>
+    /// Folds the events in <c>log</c> up to and including seq <c>seq</c> into the checkpoint named <c>name</c>, and
+    /// drops them from the log.
+    /// </summary>
+    let truncate (log: TraceLog) (seq: int) (name: string) =
+        let prefix = log.EventsThrough seq
+        let released = log.Collected seq
+        let struct (_, snapshot) = log.Checkpoint
+
+        let before =
+            if Platform.isNull snapshot then
+                TraceModel.emptySnapshot
+            else
+                snapshot :?> TraceSnapshot
+
+        let folded =
+            TraceModel.fold before prefix
+            |> TraceModel.pruneReleasing released
+
+        log.Truncate (seq, name, box folded, released)
+
     /// <summary>Raises unless the caller is on <c>graph</c>'s thread with no flush, discharge or run in progress.</summary>
     /// <exception cref="T:System.InvalidOperationException">Off the graph's thread, or inside a flush, a discharge or a run.</exception>
     let check (graph: Graph) (operation: string) =
@@ -283,8 +321,9 @@ module internal TraceGate =
 /// </summary>
 /// <remarks>
 /// The stream starts with a <c>Header</c> of the checkpoint at <c>Trace.export</c> time. <c>Dispose</c> ends the
-/// stream at the last event recorded before it. A sink's failure or a strict codec's
-/// <c>TraceCodecException</c> ends the export and faults <c>Completion</c>; the graph keeps running.
+/// stream at the last event recorded before it. Events folded into a checkpoint taken elsewhere before their export
+/// are recorded in a <c>Gap</c>. A sink's failure or a strict codec's <c>TraceCodecException</c> ends the export and
+/// faults <c>Completion</c>; the graph keeps running.
 /// </remarks>
 [<Sealed>]
 type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
@@ -303,9 +342,14 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
     let mutable fault: exn = null
     let mutable settled = false
     let mutable pulling = false
+    // True while a dispatched run waits to start.
+    let mutable scheduled = false
+    // The pending gap, written before the next batch or once the queue has room; gapTo is 0 for none.
     let mutable gapFrom = 0
     let mutable gapTo = 0
     let mutable dropped = 0
+    // The last seq of the records the sink completed.
+    let mutable acknowledged = 0
 #if FABLE_COMPILER
     let completion = Platform.completion<unit>()
 #else
@@ -324,7 +368,12 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
                     if not (isNull error) then
                         settled <- true
                         ValueSome error
-                    elif disposed && cursor >= target && queue.Idle then
+                    elif
+                        disposed
+                        && cursor >= target
+                        && gapTo = 0
+                        && queue.Idle
+                    then
                         settled <- true
                         ValueSome null
                     else
@@ -346,12 +395,7 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
         let record =
             TraceExportRecord.Events (batch[0].Seq, last, TraceModel.eventLines encode batch)
 
-        if
-            gapTo <> 0
-            && queue.TryWrite (TraceExportRecord.Gap (gapFrom, gapTo), 0)
-        then
-            gapFrom <- 0
-            gapTo <- 0
+        this.Close ()
 
         if queue.TryWrite (record, batch.Length) then
             lock gate (fun () -> cursor <- last)
@@ -359,23 +403,51 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
         else
             false
 
-    member private this.Skip(last: int) =
-        if gapTo = 0 then
-            gapFrom <- cursor + 1
+    // Extends the pending gap to the seq last, and moves the cursor there.
+    member private _.Pass(last: int) =
+        lock gate (fun () ->
+            if gapTo = 0 then
+                gapFrom <- cursor + 1
 
-        gapTo <- last
+            gapTo <- last
+            cursor <- last)
+
+    member private this.Skip(last: int) =
         dropped <- dropped + (last - cursor)
-        lock gate (fun () -> cursor <- last)
+        this.Pass last
+
+    // Queues the pending gap.
+    member private _.Close() =
+        let struct (from, ``to``) =
+            lock gate (fun () ->
+                let pending = struct (gapFrom, gapTo)
+                gapFrom <- 0
+                gapTo <- 0
+                pending)
+
+        if ``to`` <> 0 then
+            queue.TryWrite (TraceExportRecord.Gap (from, ``to``), 0)
+            |> ignore
 
     // Queues the events up to the stream's end while the queue has room. Graph thread.
     member private this.Pull() =
         let mutable go = true
 
         while go do
+            let floor = TraceGate.checkpointSeq log
+
+            if cursor < floor then
+                this.Pass floor
+
             let last = lock gate (fun () -> if disposed then target else log.LastSeq)
             let room = policy.Capacity - queue.Held
 
-            if cursor >= last || not (isNull queue.Fault) then
+            if not (isNull queue.Fault) then
+                go <- false
+            elif cursor >= last then
+                if room > 0 || disposed then
+                    this.Close ()
+
                 go <- false
             elif room > 0 then
                 let batch = log.EventsAfter (cursor, room)
@@ -400,14 +472,31 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
             else
                 false
 
+    // Checkpoints the log at the seq the policy names, unless a flush, a discharge or a run is in progress. Graph thread.
+    member private _.Checkpoint() =
+        let mark =
+            match policy.Checkpoint with
+            | TraceExportCheckpoint.Never -> 0
+            | TraceExportCheckpoint.Enqueued -> cursor
+            | TraceExportCheckpoint.Acknowledged -> lock gate (fun () -> acknowledged)
+
+        if mark > TraceGate.checkpointSeq log && not log.Busy then
+            let mark = if log.LabelFollows mark then mark - 1 else mark
+
+            if mark > TraceGate.checkpointSeq log then
+                TraceGate.truncate log mark sink.Name
+
     // Runs a pull unless one is in progress lower on the stack. Graph thread.
     member private this.Run() =
+        lock gate (fun () -> scheduled <- false)
+
         if not pulling && isNull fault then
             pulling <- true
 
             try
                 try
                     this.Pull ()
+                    this.Checkpoint ()
                 with error ->
                     lock gate (fun () -> fault <- error)
                     log.RemoveFlushed this
@@ -416,12 +505,34 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
 
         this.Settle ()
 
-    member private this.Freed() =
+    // Records an acknowledged write, and dispatches a run when a batch, a gap or a checkpoint waits for it.
+    member private this.Freed(record: TraceExportRecord) =
+        let written = isNull queue.Fault
+
         let resume =
             lock gate (fun () ->
-                let was = waiting
+                let acknowledges =
+                    written
+                    && policy.Checkpoint = TraceExportCheckpoint.Acknowledged
+
+                let advanced =
+                    match record with
+                    | TraceExportRecord.Events (_, ``to``, _)
+                    | TraceExportRecord.Gap (_, ``to``) when acknowledges ->
+                        acknowledged <- ``to``
+                        true
+                    | _ -> false
+
+                let go =
+                    (waiting || gapTo <> 0 || advanced)
+                    && not scheduled
+
                 waiting <- false
-                was)
+
+                if go then
+                    scheduled <- true
+
+                go)
 
         if resume then
             try
@@ -444,7 +555,7 @@ type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
 
         cursor <- before.Seq
         let header = TraceModel.dumpHeader encode "net" name before (log.EventsSince cursor)
-        queue.Freed <- fun () -> this.Freed ()
+        queue.Freed <- this.Freed
 
         queue.TryWrite (TraceExportRecord.Header header, 0)
         |> ignore

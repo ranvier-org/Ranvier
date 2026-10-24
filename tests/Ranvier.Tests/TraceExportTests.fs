@@ -33,6 +33,39 @@ let private exportedSeqs (sink: MemoryTraceSink) =
         | TraceExportRecord.Events (from, ``to``, _) -> [ from..``to`` ]
         | TraceExportRecord.Gap (from, ``to``) -> failtestf "a gap from %d to %d" from ``to``
         | TraceExportRecord.Header _ -> [])
+
+let private dropping =
+    { waiting with
+        Full = TraceExportFull.Drop
+    }
+
+// The seqs of the events and gaps the sink holds, in stream order.
+let private streamSeqs (sink: MemoryTraceSink) =
+    sink.Records
+    |> List.collect (fun record ->
+        match record with
+        | TraceExportRecord.Events (from, ``to``, _)
+        | TraceExportRecord.Gap (from, ``to``) -> [ from..``to`` ]
+        | TraceExportRecord.Header _ -> [])
+
+let private gaps (sink: MemoryTraceSink) =
+    sink.Records
+    |> List.choose (fun record ->
+        match record with
+        | TraceExportRecord.Gap (from, ``to``) -> Some (from, ``to``)
+        | _ -> None)
+
+let private checkpointSeq (graph: Graph) =
+    (Trace.checkpointOf graph).Snapshot.Seq
+
+type private Opaque = { Value: int }
+
+type private ThrowingSink() =
+    interface ITraceSink with
+        member _.Name = "throwing"
+
+        member _.Write _ =
+            raise (System.InvalidOperationException "the sink is down")
 #endif
 
 [<Tests>]
@@ -73,7 +106,7 @@ let tests =
                 sink.Stall ()
                 let queue = TraceExportQueue (sink, 4)
                 let mutable freed = 0
-                queue.Freed <- fun () -> freed <- freed + 1
+                queue.Freed <- fun _ -> freed <- freed + 1
 
                 queue.TryWrite (events 1 2, 2) |> ignore
                 queue.TryWrite (events 3 4, 2) |> ignore
@@ -203,7 +236,10 @@ let tests =
                 for i in 1..1000 do
                     s.Value <- i
 
-                (System.Threading.Tasks.Task.Run (fun () -> sink.Release ())).Wait()
+                // A dedicated thread: Task.Wait may run a queued task inline on the graph's thread.
+                let releasing = System.Threading.Thread (fun () -> sink.Release ())
+                releasing.Start ()
+                releasing.Join ()
                 Expect.isLessThan (exportedTo sink) (Trace.lastSeq g) "the rest waits for the graph's thread"
 
                 Expect.equal (g.Pump ()) 1 "the pump ran the dispatched resume"
@@ -212,6 +248,234 @@ let tests =
                 export.Dispose ()
                 Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
                 Expect.sequenceEqual (exportedSeqs sink) [ 1 .. Trace.lastSeq g ] "every seq, once and in order"
+            }
+
+            test "Drop writes the dropped seqs in one gap once the stalled sink frees a slot" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+                let export = Trace.export g sink dropping
+
+                for i in 1..1000 do
+                    s.Value <- i
+
+                let last = Trace.lastSeq g
+                Expect.isGreaterThan export.Dropped 0 "the full queue dropped events"
+
+                sink.Release ()
+
+                match gaps sink with
+                | [ (from, ``to``) ] -> Expect.equal (``to`` - from + 1) export.Dropped "the gap names every dropped seq"
+                | other -> failtestf "one gap before Dispose: %A" other
+
+                export.Dispose ()
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.sequenceEqual (streamSeqs sink) [ 1..last ] "the events and the gap cover every seq once, in order"
+            }
+
+            test "Drop writes the pending gap when Dispose follows the drop" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+                let export = Trace.export g sink dropping
+
+                for i in 1..1000 do
+                    s.Value <- i
+
+                let last = Trace.lastSeq g
+                export.Dispose ()
+                sink.Release ()
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.equal (List.length (gaps sink)) 1 "one gap"
+                Expect.sequenceEqual (streamSeqs sink) [ 1..last ] "the events and the gap cover every seq once, in order"
+            }
+
+            // Sequenced: the memory reading is process-wide.
+            testSequenced
+            <| test "Enqueued keeps the log and the process memory bounded under a stalled sink with Drop" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+
+                let export =
+                    Trace.export
+                        g
+                        sink
+                        { dropping with
+                            Checkpoint = TraceExportCheckpoint.Enqueued
+                        }
+
+                for i in 1..10000 do
+                    s.Value <- i
+
+                let bound = System.GC.GetTotalMemory true
+
+                for i in 10001..100000 do
+                    s.Value <- i
+
+                let used = System.GC.GetTotalMemory true
+                let last = Trace.lastSeq g
+                Expect.isLessThan used (bound + 1_000_000L) "90,000 more writes hold under 1 MB more"
+
+                Expect.isLessThanOrEqual (TraceGate.logOf g).Events.Length dropping.Capacity "the log retains at most a queue of events"
+
+                Expect.equal (Trace.checkpointOf g).Name "memory" "the checkpoint carries the sink's name"
+
+                sink.Release ()
+                export.Dispose ()
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.equal (List.length (gaps sink)) 1 "one gap"
+                Expect.sequenceEqual (streamSeqs sink) [ 1..last ] "the events and the gap cover every seq once, in order"
+            }
+
+            test "Enqueued checkpoints before a NodeNew whose Label follows it" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = Trace.named "count" (fun () -> createSignal 0)
+
+                let created, _ =
+                    Trace.eventsSince g 0
+                    |> Array.pairwise
+                    |> Array.find (fun (e, l) ->
+                        e.Kind = TraceEventKind.NodeNew
+                        && l.Kind = TraceEventKind.Label)
+
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+
+                let export =
+                    Trace.export
+                        g
+                        sink
+                        { waiting with
+                            Capacity = created.Seq
+                            Checkpoint = TraceExportCheckpoint.Enqueued
+                        }
+
+                Expect.equal (checkpointSeq g) (created.Seq - 1) "the checkpoint precedes the NodeNew"
+
+                s.Value <- 1
+                sink.Release ()
+                export.Dispose ()
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.equal (checkpointSeq g) (Trace.lastSeq g) "the checkpoint follows the stream's end"
+                Expect.equal (Trace.checkpointOf g).Snapshot.Nodes[created.Node].Label (Some "count") "the checkpoint keeps the label"
+            }
+
+            test "Acknowledged checkpoints once the sink completes a write" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+
+                let export =
+                    Trace.export
+                        g
+                        sink
+                        { waiting with
+                            Checkpoint = TraceExportCheckpoint.Acknowledged
+                        }
+
+                for i in 1..100 do
+                    s.Value <- i
+
+                Expect.equal (checkpointSeq g) 0 "a stalled sink acknowledges nothing"
+
+                sink.Release ()
+
+                Expect.equal (checkpointSeq g) (exportedTo sink) "the checkpoint is at the last acknowledged seq"
+                Expect.equal (Trace.checkpointOf g).Name "memory" "the checkpoint carries the sink's name"
+
+                export.Dispose ()
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.equal (checkpointSeq g) (Trace.lastSeq g) "every event is acknowledged"
+            }
+
+            test "a checkpoint taken past the cursor yields a gap" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                createEffect (fun () -> s.Value |> ignore)
+                let sink = TraceSinks.memory ()
+                sink.Stall ()
+                let export = Trace.export g sink waiting
+
+                for i in 1..100 do
+                    s.Value <- i
+
+                let folded = Trace.lastSeq g
+                Trace.checkpoint g folded "elsewhere"
+
+                for i in 101..110 do
+                    s.Value <- i
+
+                sink.Release ()
+                export.Dispose ()
+
+                Expect.isTrue export.Completion.IsCompleted "the sink holds every record"
+                Expect.equal export.Dropped 0 "a checkpoint drops no event"
+
+                match gaps sink with
+                | [ (_, ``to``) ] -> Expect.equal ``to`` folded "the gap ends at the checkpoint"
+                | other -> failtestf "one gap: %A" other
+
+                Expect.sequenceEqual (streamSeqs sink) [ 1 .. Trace.lastSeq g ] "the events and the gap cover every seq once, in order"
+            }
+
+            test "a throwing sink faults Completion, and the graph keeps running" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                let mutable seen = 0
+                createEffect (fun () -> seen <- s.Value)
+                let export = Trace.export g (ThrowingSink ()) waiting
+
+                s.Value <- 1
+                s.Value <- 2
+
+                Expect.equal seen 2 "the effect ran"
+                Expect.isTrue export.Completion.IsFaulted "the sink's error faults Completion"
+
+                Expect.equal (export.Completion.Exception.GetBaseException ()).Message "the sink is down" "the sink's error"
+            }
+
+            test "a strict codec faults Completion, and the graph keeps running" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let sink = TraceSinks.memory ()
+
+                let export =
+                    Trace.export
+                        g
+                        sink
+                        { waiting with
+                            Codecs = TraceCodecs.strict (TraceCodecs.ofList [])
+                        }
+
+                let s = createSignal { Value = 0 }
+                let mutable seen = 0
+                createEffect (fun () -> seen <- s.Value.Value)
+                s.Value <- { Value = 1 }
+                s.Value <- { Value = 2 }
+
+                Expect.equal seen 2 "the effect ran"
+                Expect.isTrue export.Completion.IsFaulted "the codec's error faults Completion"
+
+                Expect.isTrue (export.Completion.Exception.GetBaseException () :? TraceCodecException) "a TraceCodecException"
             }
 
             test "a gap record writes a gap line" {
