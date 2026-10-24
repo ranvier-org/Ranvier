@@ -1,4 +1,4 @@
-module Ranvier.Tests.Journal
+module Ranvier.Tests.InputJournal
 
 open Expecto
 open Ranvier
@@ -6,6 +6,22 @@ open Ranvier
 let journaled () =
     let journal = MemoryJournal "test"
     journal, new Graph (GraphOptions.Default.WithJournal journal)
+
+let intCodec: JournalCodec<int> =
+    {
+        Name = "int"
+        Version = 1
+        Encode = string
+        Decode =
+            fun text ->
+                match System.Int32.TryParse text with
+                | true, value -> Ok value
+                | _ -> Error ("not an int: " + text)
+    }
+
+let writes (journal: MemoryJournal) =
+    journal.Entries
+    |> List.filter (fun e -> e.Kind = JournalEntryKind.Write)
 
 [<Tests>]
 let tests =
@@ -97,6 +113,107 @@ let tests =
                     1
                     "only the external write to s"
             }
+
+            test "a keyed write records its key and encoded value" {
+                let journal, g = journaled ()
+                let s = Signal (g, 1) |> Journal.key "count" intCodec
+                s.Value <- 7
+
+                match writes journal with
+                | [ entry ] ->
+                    Expect.equal entry.Key (Some "count") "the key"
+                    Expect.equal entry.Payload (JournalPayload.Encoded ("int", 1, "7")) "the codec's text"
+                | entries -> failtestf "expected one write, got %A" entries
+            }
+
+            test "Journal.key returns the signal it registers" {
+                let _, g = journaled ()
+                let s = Signal (g, 1)
+                Expect.isTrue (obj.ReferenceEquals (Journal.key "count" intCodec s, s)) "the same signal"
+            }
+
+            test "a duplicate key on one graph raises, naming the key" {
+                let _, g = journaled ()
+
+                Signal (g, 1)
+                |> Journal.key "count" intCodec
+                |> ignore
+
+                let error =
+                    try
+                        Signal (g, 2)
+                        |> Journal.key "count" intCodec
+                        |> ignore
+
+                        None
+                    with ex ->
+                        Some ex
+
+                match error with
+                | Some (:? System.ArgumentException as ex) -> Expect.stringContains ex.Message "count" "names the key"
+                | other -> failtestf "expected an ArgumentException, got %A" other
+            }
+
+            test "the same key on two graphs is allowed" {
+                let _, g1 = journaled ()
+                let _, g2 = journaled ()
+
+                Signal (g1, 1)
+                |> Journal.key "count" intCodec
+                |> ignore
+
+                Signal (g2, 1)
+                |> Journal.key "count" intCodec
+                |> ignore
+            }
+
+            test "Journal.key on a graph without a journal is a no-op" {
+                let g = new Graph ()
+                let s = Signal (g, 1) |> Journal.key "count" intCodec
+
+                Signal (g, 2)
+                |> Journal.key "count" intCodec
+                |> ignore
+
+                s.Value <- 3
+                Expect.equal s.Peek 3 "the write lands"
+            }
+
+            test "an Encode that raises records a non-replayable entry and the write lands" {
+                let journal, g = journaled ()
+
+                let failing =
+                    { intCodec with
+                        Encode = fun _ -> failwith "no"
+                    }
+
+                let s = Signal (g, 1) |> Journal.key "count" failing
+                s.Value <- 4
+
+                Expect.equal s.Peek 4 "the write lands"
+
+                match writes journal with
+                | [ entry ] ->
+                    Expect.equal entry.Key (Some "count") "the key"
+                    Expect.equal entry.Payload (JournalPayload.NonReplayable entry.PayloadType) "not encodable"
+                | entries -> failtestf "expected one write, got %A" entries
+            }
+
+#if RANVIER_TRACE
+            test "a traced Journal.key labels an unlabelled node with the key" {
+                let _, g = journaled ()
+                let s = Signal (g, 1) |> Journal.key "count" intCodec
+                Expect.equal (Trace.resolve g "/count") (Some (s :> INode).Id) "the key is the trace label"
+            }
+
+            test "a traced Journal.key keeps an existing label" {
+                let _, g = journaled ()
+                let s = Signal (g, 1)
+                Trace.label (g, s, "mine")
+                Journal.key "count" intCodec s |> ignore
+                Expect.equal (Trace.resolve g "/mine") (Some (s :> INode).Id) "the label stays"
+            }
+#endif
 
             test "the entry unions print their case names" {
                 Expect.equal (JournalEntryKind.Settle.ToString ()) "Settle" "a kind"

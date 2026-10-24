@@ -3332,6 +3332,8 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
     /// </summary>
     member _.Peek = value
 
+    member internal _.Graph = graph
+
     /// <summary>
     /// How many computations currently read this signal. Exposed for tests
     /// that need to assert an edge was dropped, or not duplicated.
@@ -3450,6 +3452,8 @@ type AsyncSource<'T>(graph: Graph) =
             this :> INode
         else
             Unchecked.defaultof<INode>
+
+    member internal _.Graph = graph
 
 /// <summary>
 /// A derived, cached computation.
