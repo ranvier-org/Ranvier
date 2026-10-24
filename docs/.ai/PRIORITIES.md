@@ -18,10 +18,12 @@ proposed scope for each, and does not implement them.
 | 5 | [#168](https://github.com/shayanhabibi/Ranvier/issues/168) spike(mcp): agent-observable graph | P1 | #165, #166, #167 | implement | todo |
 | 6 | [#157](https://github.com/shayanhabibi/Ranvier/issues/157) perf(arms): restore the 5% Chromium target | — | quiet machine for timings | implement | todo |
 | 7 | [#69](https://github.com/shayanhabibi/Ranvier/issues/69) Myriad expansion for traced and untraced primitives | 1.0.0-rc | — | research | done |
-| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) event sourcing adapters for traced builds | 1.0.0-rc | #165, #166 | research | done |
+| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | todo |
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | todo |
 | 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
+| 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | todo |
+| 13 | [#185](https://github.com/shayanhabibi/Ranvier/issues/185) store adapters for the input journal and persisted state | � | #184, #68 | implement | blocked |
 
 Statuses: `todo`, `in-progress` (an iteration left work; see the log), `done` (merged into
 `integration/issues`), `blocked` (the log names what it needs from the user).
@@ -74,3 +76,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #165 in-progress — the three major review findings fixed (collected signals released by weak tracking, escaped signals kept live, owner labels no longer leak dropped entries) and gates pass, not pushed — a302b435 — next: resolve the unresolved review findings, then push `issue/165` to update PR #178
 - 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope (untraced journal hook, order against #166)
 - 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope
+- 2026-10-24 #65 rescoped by the user � trace export sink (implement, 1.0.0-rc); input journal and replay split to #184 (milestone 3), store adapters to #185 (blocked until a user names a store, after #184) � next: #65 after #166 merges
