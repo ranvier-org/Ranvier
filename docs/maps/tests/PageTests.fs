@@ -254,12 +254,20 @@ controls [ button \"Add\" (fun () -> count.Value <- 2) ]"
                     "\"p0123456789\", \"c2\", \"Ranvier.Docs.MapPages.P0123456789.page_c2\", (fun () -> Ranvier.Docs.MapPages.P0123456789.page_c2)"
                     "the second definition"
 
-                let entry = MapPage.pageEntry "../entries" first
+                let path (cell: PageCell) =
+                    Some (
+                        "./entries/"
+                        + MapPage.entryName first.Key cell.Id
+                        + ".js"
+                    )
 
                 Expect.equal
-                    entry
-                    "import \"../entries/P0123456789_c1.js\";\nimport \"../entries/P0123456789_c2.js\";\n"
-                    "one import per rendered cell"
+                    (MapPage.pageEntry path first)
+                    (Some
+                        "const starts = [\n  () => import(\"./entries/P0123456789_c1.js\"),\n  () => import(\"./entries/P0123456789_c2.js\"),\n];\nfor (const start of starts) start().catch(error => console.error(error));\n")
+                    "each cell starts on its own"
+
+                Expect.isNone (MapPage.pageEntry (fun _ -> None) first) "a cell without a compiled entry"
             }
 
             test "fragment hosts are filled after minification and minified attributes still match" {

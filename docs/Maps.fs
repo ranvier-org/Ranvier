@@ -107,11 +107,16 @@ let private transformPage (context: TransformContext) (page: Page) =
             for line, problem in scan.Problems do
                 report line problem
 
+            let names = HashSet<string>()
+
             let cells =
                 scan.Cells
                 |> List.choose (fun cell ->
                     if not (validId.IsMatch cell.Id) then
                         report (cell.Line - 1) $"id=%s{cell.Id} must hold only letters, digits, '_' and '-'"
+                        None
+                    elif not (names.Add (MapPage.componentName cell.Id)) then
+                        report (cell.Line - 1) $"id=%s{cell.Id} names the same generated module value as an earlier cell; '-' reads as '_'"
                         None
                     else
                         match cellOf maps cell with
@@ -129,7 +134,7 @@ let private transformPage (context: TransformContext) (page: Page) =
                 .WithData(dataKey, unit)
 
 let private report (context: HookContext) (message: MapWorkspace.Message) =
-    // Watch keeps serving while a cell is broken; its host stays empty.
+    // Under watch an error is a warning, and the broken cell's host stays empty.
     let diagnostic =
         if message.IsError && not context.IsWatch then
             Diagnostic.error "compile" message.Text
@@ -219,8 +224,7 @@ let components =
                             Transform = transformPage
                         }
 
-                // First in line, so the fences are rewritten before the markdown renderer and the Solid scanner read
-                // them.
+                // First in line: the fences are rewritten before the markdown renderer and the Solid scanner run.
                 let transforms =
                     List.last registry.Transforms
                     :: List.take (registry.Transforms.Length - 1) registry.Transforms

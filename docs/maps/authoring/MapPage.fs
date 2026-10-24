@@ -8,7 +8,7 @@ open System.Text.RegularExpressions
 /// <summary>How a component cell's code compiles.</summary>
 [<RequireQualifiedAccess>]
 type PageCellKind =
-    /// <summary>Module-level declarations; the cell renders nothing.</summary>
+    /// <summary>Module-level declarations, compiled for later cells; the cell has no host.</summary>
     | Declarations
     /// <summary>An expression of type <c>Component&lt;unit&gt;</c>, rendered as the cell.</summary>
     | Expression
@@ -41,7 +41,7 @@ type PageUnit =
         Cells: PageCell list
         /// <summary>The generated module.</summary>
         Code: string
-        /// <summary>The page body lines of the module's lines; <c>Body</c> counts page body lines from 1.</summary>
+        /// <summary>The page body line each run of module lines came from; <c>Body</c> counts from 1.</summary>
         Spans: MapSpan list
     }
 
@@ -324,13 +324,30 @@ module MapPage =
 
         builder.ToString ()
 
-    /// <summary>The JavaScript entry of a page: one import of each rendered cell's compiled entry.</summary>
-    /// <param name="entries">The directory of the compiled entries, relative to the page entry.</param>
+    /// <summary>
+    /// The JavaScript entry of a page: a dynamic import of each rendered cell's compiled entry, each started on its own,
+    /// so a cell whose startup throws leaves the page's other cells running. A startup failure is written to the console.
+    /// </summary>
+    /// <param name="entry">The path of a cell's compiled entry relative to the page entry, when it compiled.</param>
     /// <param name="unit">The page.</param>
-    let pageEntry (entries: string) (unit: PageUnit) =
-        rendered unit
-        |> List.map (fun cell -> $"import \"%s{entries}/%s{entryName unit.Key cell.Id}.js\";\n")
-        |> String.concat ""
+    /// <returns>The entry, or None when a rendered cell has no compiled entry.</returns>
+    let pageEntry (entry: PageCell -> string option) (unit: PageUnit) =
+        let paths = rendered unit |> List.map entry
+
+        if paths |> List.exists Option.isNone then
+            None
+        else
+            let starts =
+                paths
+                |> List.map (fun path -> $"  () => import(%s{literal path.Value}),\n")
+                |> String.concat ""
+
+            Some (
+                "const starts = [\n"
+                + starts
+                + "];\n"
+                + "for (const start of starts) start().catch(error => console.error(error));\n"
+            )
 
     let private hostElement =
         Regex (
@@ -371,6 +388,7 @@ module MapPage =
         let scripts =
             keys
             |> Seq.choose script
+            |> Seq.filter (fun url -> not (html.Contains ("src=\"" + WebUtility.HtmlEncode url + "\"")))
             |> Seq.map (fun url -> $"<script type=\"module\" src=\"%s{WebUtility.HtmlEncode url}\"></script>")
             |> String.concat ""
 

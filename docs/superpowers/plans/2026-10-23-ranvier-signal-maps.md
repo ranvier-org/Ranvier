@@ -25,7 +25,9 @@
 - Source-line highlight classes on the card's highlighted code lines: an ownership claim on native nodes outside the
   map's own template, taken through a lent hook and released by its cleanup.
 - Browser timer and animation-frame handles for playback pacing and trace polling: no core equivalent; released by
-  instance cleanup.
+  instance cleanup. Each frame reads the scenario graph's new trace events and its bound controls' values with `Peek`.
+  An effect on the scenario graph would itself be traced and drawn on the map, so the view reads that graph from
+  outside instead.
 - Server HTML for each map host, rendered by `Server.renderPage`.
 
 No view-side ownership tree, key matcher, reconciler, selection cache or commit queue is introduced.
@@ -160,6 +162,9 @@ Renderer and plugin work can proceed independently after the shared contract is 
   handle the snippet keeps.
 - Browser callbacks (timers, animation frames, animation completions) activate the view's graph before writing display
   signals; event handlers already run inside it.
+- Known limits from the independent review: an expression cell's lines are indented four columns, so a multi-line
+  string literal in one changes; a compile error on a generated header line names the file without a line; and in a
+  production build one failed cell leaves every page's maps unhydrated, because the build fails.
 
 ## Acceptance gates
 

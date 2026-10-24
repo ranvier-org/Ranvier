@@ -425,19 +425,16 @@ let build (root: string) (esbuild: string) (minify: bool) (packages: (string * s
                             let missing =
                                 [
                                     for unit in units do
-                                        let imports =
-                                            MapPage.rendered unit
-                                            |> List.choose (fun cell ->
-                                                compiledEntries
-                                                |> Map.tryFind (MapPage.entryName unit.Key cell.Id)
-                                                |> Option.map (fun path ->
-                                                    let relative = (Path.GetRelativePath (entries, path)).Replace('\\', '/')
-                                                    $"import \"./%s{relative}\";\n"))
+                                        let path (cell: PageCell) =
+                                            compiledEntries
+                                            |> Map.tryFind (MapPage.entryName unit.Key cell.Id)
+                                            |> Option.map (fun path ->
+                                                "./"
+                                                + (Path.GetRelativePath (entries, path)).Replace('\\', '/'))
 
-                                        if imports.Length <> (MapPage.rendered unit).Length then
-                                            unit.Key
-                                        elif not imports.IsEmpty then
-                                            write (Path.Combine (entries, unit.Key + ".js")) (String.concat "" imports)
+                                        match MapPage.pageEntry path unit with
+                                        | None -> unit.Key
+                                        | Some entry -> write (Path.Combine (entries, unit.Key + ".js")) entry
                                 ]
 
                             if not missing.IsEmpty then

@@ -541,6 +541,7 @@ type internal MapMachine(settings: MapSettings) as this =
     let movers = Dictionary<int, Animatable>()
     let paths = Dictionary<string, obj>()
     let timers = HashSet<float>()
+    let flashes = ResizeArray<JSAnimation>()
     let mutable root: obj = null
     let mutable reduced = false
     let mutable scheduled = false
@@ -596,10 +597,17 @@ type internal MapMachine(settings: MapSettings) as this =
     let unlight (node: int) =
         match lit.TryGetValue node with
         | true, lines ->
-            for line in lines do
-                Browser.removeClass line "rv-map-line--run"
-
             lit.Remove node |> ignore
+
+            // A line stays lit while another running node's binding holds it.
+            for line in lines do
+                if
+                    not (
+                        lit.Values
+                        |> Seq.exists (List.exists (fun other -> obj.ReferenceEquals (other, line)))
+                    )
+                then
+                    Browser.removeClass line "rv-map-line--run"
         | _ -> ()
 
     let unlightAll () =
@@ -689,15 +697,20 @@ type internal MapMachine(settings: MapSettings) as this =
         | Cue.Flash id ->
             shape id
             |> Option.iter (fun (body, _, fx) ->
-                Anime.animate (
-                    unbox<TS.Dom.Element> body,
-                    Anim (
-                        scale = Value.keys [| Value.op_Implicit 1.0; Value.op_Implicit 1.35; Value.op_Implicit 1.0 |],
-                        duration = duration 420,
-                        ease = Ease.outQuad
+                let mutable animation = Unchecked.defaultof<JSAnimation>
+
+                animation <-
+                    Anime.animate (
+                        unbox<TS.Dom.Element> body,
+                        Anim (
+                            scale = Value.keys [| Value.op_Implicit 1.0; Value.op_Implicit 1.35; Value.op_Implicit 1.0 |],
+                            duration = duration 420,
+                            ease = Ease.outQuad,
+                            onComplete = fun _ -> flashes.Remove animation |> ignore
+                        )
                     )
-                )
-                |> ignore
+
+                flashes.Add animation
 
                 flash fx "is-flash" (duration 700))
         | Cue.Pulse (s, t) -> travel s t false
@@ -798,8 +811,17 @@ type internal MapMachine(settings: MapSettings) as this =
 
         refresh ()
 
+    let stopAll () =
+        for handle in List.ofSeq timers do
+            cancel handle
+
+        for animation in List.ofSeq flashes do
+            animation.cancel () |> ignore
+
+        flashes.Clear ()
+
     let clear () =
-        cancel timer
+        stopAll ()
         scheduled <- false
         history.Clear ()
         captions.Clear ()
@@ -1159,9 +1181,7 @@ type internal MapMachine(settings: MapSettings) as this =
             mounted <- false
             run <- run + 1
 
-            for handle in List.ofSeq timers do
-                cancel handle
-
+            stopAll ()
             Browser.cancelFrame frame
             unlightAll ()
 
