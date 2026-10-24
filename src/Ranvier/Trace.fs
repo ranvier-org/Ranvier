@@ -629,7 +629,7 @@ type internal TraceLog(locked: bool) =
     /// </summary>
     /// <remarks>
     /// <c>OtherAt</c> and <c>Describe</c> return the same results after the truncation, for the dirty marks pending
-    /// and the nodes not disposed in the dropped events.
+    /// and the nodes not disposed in the dropped events. The log's storage shrinks to the retained events.
     /// </remarks>
     /// <exception cref="T:System.ArgumentOutOfRangeException">
     /// <c>seq</c> is past the last seq, or before the seq preceding the first retained event.
@@ -675,6 +675,9 @@ type internal TraceLog(locked: bool) =
                         dropped[e.Node] <- describeStep state e
 
             events.RemoveRange (0, count)
+#if !FABLE_COMPILER
+            events.TrimExcess ()
+#endif
             droppedOthers <- others
             checkpointName <- name
             checkpointSnapshot <- snapshot)

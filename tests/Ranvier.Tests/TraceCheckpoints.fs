@@ -128,6 +128,24 @@ let tests =
                 Expect.isTrue (collected weak) "the checkpoint releases the payload"
             }
 
+            test "a checkpoint releases the storage of the events it drops" {
+                use g = new Graph ()
+                let signal = g.Run (fun () -> Signal (g, 0))
+
+                let heap () =
+                    float (GC.GetTotalMemory true)
+
+                let start = heap ()
+
+                for i in 1..20000 do
+                    g.Run (fun () -> signal.Value <- i)
+
+                let grown = heap () - start
+                Trace.checkpoint g (lastSeq g) "cut"
+                let kept = heap () - start
+                Expect.isLessThan kept (grown / 4.) $"the checkpoint keeps {kept} of {grown} bytes"
+            }
+
             testPropertyWithConfig config "a checkpointed graph answers as its uncheckpointed twin"
             <| fun (before: Op list) (after: Op list) (split: int) ->
                 use twin = new Graph ()
