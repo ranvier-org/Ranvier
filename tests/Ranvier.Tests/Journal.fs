@@ -83,6 +83,86 @@ type ReplayModel(journal: MemoryJournal, g: Graph) =
 
     member _.Runs = List.ofSeq runs
 
+type CartLine =
+    {
+        Sku: string
+        Price: decimal
+        Qty: int
+    }
+
+type CartMsg =
+    | AddLine of CartLine
+    | SetQty of sku: string * qty: int
+
+let cartCodec: JournalCodec<CartMsg> =
+    let invariant = System.Globalization.CultureInfo.InvariantCulture
+
+    {
+        Name = "cart"
+        Version = 1
+        Encode =
+            function
+            | AddLine line -> $"add|{line.Sku}|{line.Price.ToString invariant}|{line.Qty}"
+            | SetQty (sku, qty) -> $"qty|{sku}|{qty}"
+        Decode =
+            fun text ->
+                match text.Split '|' with
+                | [| "add"; sku; price; qty |] ->
+                    Ok (
+                        AddLine
+                            {
+                                Sku = sku
+                                Price = System.Decimal.Parse (price, invariant)
+                                Qty = int qty
+                            }
+                    )
+                | [| "qty"; sku; qty |] -> Ok (SetQty (sku, int qty))
+                | _ -> Error ("not a cart message: " + text)
+    }
+
+let decimalCodec: JournalCodec<decimal> =
+    let invariant = System.Globalization.CultureInfo.InvariantCulture
+
+    {
+        Name = "decimal"
+        Version = 1
+        Encode = fun value -> value.ToString invariant
+        Decode =
+            fun text ->
+                match System.Decimal.TryParse (text, System.Globalization.NumberStyles.Number, invariant) with
+                | true, value -> Ok value
+                | _ -> Error ("not a decimal: " + text)
+    }
+
+/// <summary>The tracing guide's cart: the lines in a journaled MVU loop, a keyed discount, two memos and a banner.</summary>
+let cart (g: Graph) =
+    g.Run (fun () ->
+        let update msg (lines: CartLine list) =
+            match msg with
+            | AddLine line -> lines @ [ line ]
+            | SetQty (sku, qty) ->
+                lines
+                |> List.map (fun l -> if l.Sku = sku then { l with Qty = qty } else l)
+
+        let app =
+            Trace.named "lines" (fun () -> Ranvier.Elmish.Mvu.create [] update)
+            |> Ranvier.Elmish.Mvu.journal "cart" cartCodec
+
+        let discount =
+            Trace.named "discount" (fun () -> createSignal 0m)
+            |> Journal.key "discount" decimalCodec
+
+        let subtotal =
+            Trace.named "subtotal" (fun () -> app.Select (List.sumBy (fun l -> l.Price * decimal l.Qty)))
+
+        let total =
+            Trace.named "total" (fun () -> createMemo (fun _ -> subtotal.Value - discount.Value))
+
+        let banner =
+            Trace.named "banner" (fun () -> createEffectNode (fun () -> total.Value |> ignore))
+
+        app, discount, banner)
+
 [<Tests>]
 let tests =
     testList
@@ -698,6 +778,37 @@ let tests =
 
                 Expect.equal replayed.State live.State "the inputs and memos"
                 Expect.equal replayed.Runs live.Runs "the effect's runs"
+
+#if RANVIER_TRACE
+            test "a diagnostic replay of the traced cart gives the live run's snapshot and the why of every banner run" {
+                let journal, g = journaled ()
+                let app, discount, banner = cart g
+
+                app.Dispatch (AddLine { Sku = "tea"; Price = 4m; Qty = 1 })
+
+                discount.Value <- 1m
+                app.Dispatch (SetQty ("tea", 3))
+
+                g.Run (fun () ->
+                    batch (fun () ->
+                        discount.Value <- 2m
+
+                        app.Dispatch (AddLine { Sku = "jam"; Price = 2.5m; Qty = 2 })))
+
+                let _, g2 = journaled ()
+                let _, _, banner2 = cart g2
+                Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+
+                Expect.equal (Trace.snapshot g2) (Trace.snapshot g) "the final snapshot"
+
+                let runs = (Trace.history g banner).Runs.Length
+                Expect.equal (Trace.history g2 banner2).Runs.Length runs "the banner's run count"
+                Expect.isGreaterThan runs 3 "the banner ran for each flush"
+
+                for run in 1..runs do
+                    Expect.equal (Trace.whyAt g2 banner2 run) (Trace.whyAt g banner run) $"the why of banner run {run}"
+            }
+#endif
 
             testList
                 "Mvu.journal"

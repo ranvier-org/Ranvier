@@ -1591,6 +1591,9 @@ type internal JournalRecorder(journal: IInputJournal) =
     let mutable derivedDepth = 0
     let mutable nextSite = 0
 
+    /// <summary>True when an entry was recorded after the last <c>Flush</c> entry.</summary>
+    member _.Unflushed = unflushed
+
     /// <summary>The mode of the replay running on the graph, if any.</summary>
     member val Replaying: ReplayMode option = None with get, set
 

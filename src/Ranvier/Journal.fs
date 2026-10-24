@@ -290,6 +290,10 @@ module Journal =
     /// </summary>
     /// <remarks>
     /// <para>
+    /// A segment of one entry runs unbatched, as an unbatched write in the recorded run did, so a traced replay of a
+    /// run whose batches each end in a flush records the recorded run's trace events.
+    /// </para>
+    /// <para>
     /// The keys are resolved on <c>graph</c>'s journal, so the target graph needs a journal and the inputs registered
     /// under the recorded keys. The replay's own inputs are recorded on that journal.
     /// </para>
@@ -324,7 +328,11 @@ module Journal =
             let pending = List<unit -> unit>()
 
             let applyPending () =
-                if pending.Count > 0 then
+                if pending.Count = 1 then
+                    let run = pending[0]
+                    pending.Clear ()
+                    run ()
+                elif pending.Count > 1 then
                     let runs = pending.ToArray ()
                     pending.Clear ()
 
@@ -335,7 +343,10 @@ module Journal =
             for entry in entries |> Seq.sortBy (fun entry -> entry.Seq) do
                 if entry.Kind = JournalEntryKind.Flush then
                     applyPending ()
-                    graph.Flush ()
+
+                    // A segment that queued effects has already flushed.
+                    if recorder.Unflushed then
+                        graph.Flush ()
                 else
                     match prepare mode recorder entry with
                     | Some run -> pending.Add run
