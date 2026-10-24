@@ -28,7 +28,14 @@ test("switch and payload budgets are the pooled upper bounds rounded up to 0.01"
 });
 
 test("the pool holds every committed run", () => {
-  assert.equal(runs.length, 4);
+  assert.equal(runs.length, 5);
   for (const operation of ["armsCreate1k", "armsSwitch1k", "armsPayload1k", "armsClear1k"])
-    assert.equal(pooled(operation).pairs, 180);
+    assert.equal(pooled(operation).pairs, 225);
+});
+
+test("the pool holds the gate input and the run on the rebased branch", () => {
+  const paths = runs.map(r => r.path);
+  assert.ok(paths.includes("docs/research/arms-match/arms-match.json"));
+  assert.ok(paths.includes("docs/research/arms-match/arms-match-5369d6a0.json"));
+  assert.equal(new Set(runs.map(r => r.read().commit)).size, runs.length);
 });

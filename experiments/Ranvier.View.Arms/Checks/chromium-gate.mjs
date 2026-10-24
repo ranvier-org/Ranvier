@@ -10,10 +10,11 @@ import { readFileSync } from "node:fs";
 /**
  * The paired median budget per operation. Create and clear hold the original 1.05 target. Switch and payload hold the
  * upper bound of the pooled paired 95 % interval, rounded up to 0.01, over the committed runs 8ee10018, 299ab276,
- * fccc740c and dc8b3d5b (plan 2026-10-24-issue-157.md, Decision P9; pooled-interval.mjs rederives them): pooled switch
- * 1.022 (0.999-1.046), payload 1.042 (0.986-1.103).
+ * fccc740c, dc8b3d5b and 5369d6a0 (plan 2026-10-24-issue-157.md, Decision P9; pooled-interval.mjs rederives them):
+ * pooled switch 1.022 (0.997-1.043), payload 1.040 (1.000-1.093). The first four commits predate the rebase onto
+ * integration/issues at 0967cc02; 5369d6a0 is on the rebased branch.
  */
-export const budgets = { armsCreate1k: 1.05, armsSwitch1k: 1.05, armsPayload1k: 1.11, armsClear1k: 1.05 };
+export const budgets = { armsCreate1k: 1.05, armsSwitch1k: 1.05, armsPayload1k: 1.10, armsClear1k: 1.05 };
 const heapBudget = 1.10;
 
 const results = new URL("../../../docs/research/arms-match/", import.meta.url);

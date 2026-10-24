@@ -170,17 +170,17 @@ publish warns at each call.
 
 **Cost in the browser.** In Chromium a site runs within a few percent of the same view written with `matchWith`. The
 figures are paired median ratios over the `matchWith` twin, each sample paired with the twin's sample of the same
-process and round, 1,000 rows and four runs of 45 pairs on a shared machine at 35-100 % CPU load:
+process and round, 1,000 rows and five runs of 45 pairs on a shared machine at 35-100 % CPU load:
 
 | Operation | pooled median (95 % interval) | budget |
 |---|---|---|
-| Create | 1.013 (0.993-1.035) | 1.05 |
-| Switch every row to another arm | 1.022 (0.999-1.046) | 1.05 |
-| Update every row's payload | 1.042 (0.986-1.103) | 1.11 |
-| Clear | 1.007 (0.939-1.066) | 1.05 |
+| Create | 1.003 (0.991-1.033) | 1.05 |
+| Switch every row to another arm | 1.022 (0.997-1.043) | 1.05 |
+| Update every row's payload | 1.040 (1.000-1.093) | 1.10 |
+| Clear | 1.014 (0.982-1.081) | 1.05 |
 
 The target was 1.05 on every operation. The switch and payload budgets are a concession: each is the pooled
-interval's upper bound rounded up to 0.01, which keeps 1.05 for switch and gives 1.11 for payload, because the lowered
+interval's upper bound rounded up to 0.01, which keeps 1.05 for switch and gives 1.10 for payload, because the lowered
 code is indistinguishable in these timings from the same shape written by hand. The retained heap is 1.2 % above the
 twin's per row, after create and after a switch. The runs, their load readings and the gate are in the
 [research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-arms-match.md#chromium).
