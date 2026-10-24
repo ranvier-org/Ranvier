@@ -12,6 +12,7 @@
         <Compile Include="ModelTests.fs" />
         <Compile Include="AuthoringTests.fs" />
         <Compile Include="ControlTests.fs" />
+        <Compile Include="SceneViewTests.fs" />
         <Compile Include="PageTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>

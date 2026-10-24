@@ -109,8 +109,8 @@ Renderer and plugin work can proceed independently after the shared contract is 
 
 **Interface:** `SceneView.project : Scene -> SceneView.Projection`. The projection contains stable node IDs, positions and labels, edge source/target IDs and paths, collection rectangles/column labels, and SVG dimensions. It contains no DOM nodes or animation handles.
 
-- [ ] Add cases for an empty scene, ordinary dependency chain, expanded collection rows/members, collapsed grouping, and removed nodes. Assert finite dimensions, stable identity, correct member-to-row external ports, and no overlapping collection bounds.
-- [ ] Extract the existing geometry from `SignalMap.sync`, preserving its layer ordering, port alignment, box extents, and spacing rather than redesigning layout.
+- [x] Add cases for an empty scene, ordinary dependency chain, expanded collection rows/members, collapsed grouping, and removed nodes. Assert finite dimensions, stable identity, correct member-to-row external ports, and no overlapping collection bounds.
+- [x] Extract the existing geometry from `SignalMap.sync`, preserving its layer ordering, port alignment, box extents, and spacing rather than redesigning layout.
 - [ ] Keep model/replay changes out of this extraction. Run the full traced map suite and compare representative projections with the current renderer's geometry.
 
 ### Task 3: Replace DOM construction with a Ranvier component
