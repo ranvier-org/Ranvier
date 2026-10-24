@@ -390,9 +390,10 @@ Trace.checkpoint graph events[events.Length - 1].Seq "session-1"
 
 After a checkpoint:
 
-- The checkpoint releases the nodes and owners disposed before it, through `TraceModel.prune`.
-  `Trace.snapshot` returns what it returned before, without them, and `reconcile` returns what it
-  returned before. A disposed node is then absent: `origin` raises `ArgumentException` for it and
+- The checkpoint releases the nodes and owners disposed before it, through `TraceModel.prune`. On
+  .NET it also releases the signals and async sources created before it that the garbage collector has
+  reclaimed. `Trace.snapshot` returns what it returned before, without them, and `reconcile` returns what
+  it returned before. A released node is then absent: `origin` raises `ArgumentException` for it and
   `resolve` returns `None`. `origin` of a live node created before the checkpoint reads the snapshot,
   with `Run` 0. `dumpText` writes the checkpoint's name and snapshot in
   its header lines, then the retained events.
@@ -423,15 +424,13 @@ Ship against the untraced `Ranvier` package.
   untraced `Ranvier` package.
 - **The log retains events.** Events stay in memory until a [checkpoint](#incremental-reads-and-checkpoints)
   drops them, up to the implementation's sequence limit. Nothing drops events automatically.
-- **A signal or async source is disposed with its creator.** The trace records `Dispose` for it when
-  the owner current at its creation is disposed or discharged, or, created during a run before the run
-  resolves a scope, when its computation runs again or is disposed. A signal that outlives its creator
-  still records writes, under the `Disposed` status. One created under the graph root outside every run
-  stays live.
 - **A checkpoint retains the live graph and its recurring paths.** The checkpoint's snapshot holds the
   live nodes and owners. Beneath a live node it also holds a sibling and an incarnation count per
   distinct child path, for the node's lifetime: a host whose runs create children under ever-new labels
   grows the snapshot by one count per label.
+- **A signal or async source stays until it is collected.** A checkpoint keeps it live until the garbage
+  collector reclaims it; the next checkpoint then releases it and its description. A Fable build keeps
+  every one for the log's lifetime.
 - **Payloads retain values.** Writes, transitions and settlements can retain values or exceptions in
   event payloads. These are object references, not immutable historical snapshots: later mutation can
   affect their formatting. Retention can keep application objects alive until a checkpoint drops their events.

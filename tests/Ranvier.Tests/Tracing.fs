@@ -2068,7 +2068,7 @@ let tests =
                         let mark = log.FirstDirty id
                         Expect.equal (log.OtherAt mark) (s :> INode).Id "the first dirty mark names the written signal"
                         let last = (Trace.events g |> Array.last).Seq
-                        log.Truncate (last, "cut", null)
+                        log.Truncate (last, "cut", null, System.Collections.Generic.HashSet ())
                         Expect.isEmpty (Trace.events g) "the truncation drops every event"
                         Expect.isEmpty (Trace.eventsSince g last) "the cursor at the truncation seq reads nothing"
                         Expect.equal (log.Describe id) description "the description survives the truncation"
@@ -2084,10 +2084,18 @@ let tests =
                         Signal (g, 0) |> ignore
                         let log = ((box g) :?> ITraced).TraceLog
                         let last = (Trace.events g |> Array.last).Seq
-                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> log.Truncate (last + 1, "cut", null)) "a future seq throws"
-                        log.Truncate (1, "first", null)
-                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> log.Truncate (0, "cut", null)) "an expired seq throws"
-                        log.Truncate (1, "renamed", null)
+
+                        Expect.throwsT<System.ArgumentOutOfRangeException>
+                            (fun () -> log.Truncate (last + 1, "cut", null, System.Collections.Generic.HashSet ()))
+                            "a future seq throws"
+
+                        log.Truncate (1, "first", null, System.Collections.Generic.HashSet ())
+
+                        Expect.throwsT<System.ArgumentOutOfRangeException>
+                            (fun () -> log.Truncate (0, "cut", null, System.Collections.Generic.HashSet ()))
+                            "an expired seq throws"
+
+                        log.Truncate (1, "renamed", null, System.Collections.Generic.HashSet ())
                         Expect.equal (Trace.events g |> Array.map _.Seq) [| 2..last |] "a truncation at the checkpoint seq drops nothing"
                     }
 
@@ -2377,14 +2385,16 @@ let tests =
                         Expect.equal (Trace.snapshot g).Nodes.Count 1 "the signal is the one live node"
                     }
 
-                    test "a checkpoint releases the signals and async sources of disposed roots" {
+#if !FABLE_COMPILER
+                    // .NET only: Fable holds every signal for the log's lifetime.
+                    test "a checkpoint releases the collected signals and async sources of disposed roots" {
                         use g = new Graph ()
                         use _ = g.Activate ()
                         let s = Signal (g, 0)
                         let log = ((box g) :?> ITraced).TraceLog
                         let mutable last = 0
 
-                        let round () =
+                        let churn () =
                             for _ in 1..50 do
                                 let root =
                                     createRoot (fun owner ->
@@ -2398,6 +2408,11 @@ let tests =
                                 s.Value <- s.Value + 1
                                 root.Dispose ()
 
+                        let round () =
+                            churn ()
+                            System.GC.Collect ()
+                            System.GC.WaitForPendingFinalizers ()
+                            System.GC.Collect ()
                             let events = Trace.events g
                             Trace.checkpoint g events[events.Length - 1].Seq "cut"
                             (Trace.checkpointOf g).Snapshot.Nodes.Count
@@ -2406,29 +2421,84 @@ let tests =
                         Expect.equal first 1 "the top-level signal is the one live node"
                         Expect.equal (round ()) first "the checkpoint keeps the live nodes alone"
                         Expect.equal (log.Describe last) ("node " + string last) "the released signal drops its description"
+                        Expect.equal log.Descriptions 1 "the log keeps the top-level signal's description alone"
                     }
+#endif
 
-                    test "a signal created in a run is disposed when its host runs again" {
+                    test "a checkpoint keeps no description for a labelled root" {
                         use g = new Graph ()
                         use _ = g.Activate ()
-                        let s = Signal (g, 0)
-                        let mutable created = []
+                        let log = ((box g) :?> ITraced).TraceLog
 
-                        let m =
-                            createMemo (fun _ ->
-                                let local = Signal (g, s.Value)
-                                created <- (local :> INode).Id :: created
-                                local.Value)
+                        let round () =
+                            for _ in 1..50 do
+                                let root = Trace.named "r" (fun () -> createRoot id)
+                                root.Dispose ()
 
-                        createEffect (fun () -> m.Value |> ignore)
-                        s.Value <- 1
-                        let nodes = (Trace.snapshot g).Nodes
+                            let events = Trace.events g
+                            Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                            log.Descriptions
 
-                        match created with
-                        | [ latest; previous ] ->
-                            Expect.equal nodes[previous].Status TraceNodeStatus.Disposed "the previous run's signal is disposed"
-                            Expect.notEqual nodes[latest].Status TraceNodeStatus.Disposed "the latest run's signal is live"
-                        | _ -> failtestf "expected two runs, got %A" created
+                        let first = round ()
+                        Expect.equal (round ()) first "labelled roots leave no descriptions behind"
+                        Expect.equal (round ()) first "labelled roots leave no descriptions behind"
+                    }
+
+                    test "a signal that outlives its creating root stays live across a checkpoint" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let mutable escaped = Unchecked.defaultof<Signal<int>>
+
+                        let first =
+                            createRoot (fun owner ->
+                                escaped <- Signal (g, 0)
+                                owner)
+
+                        let seen = ResizeArray<int>()
+
+                        let reader =
+                            createRoot (fun owner ->
+                                createEffect (fun () -> seen.Add escaped.Value)
+                                owner)
+
+                        first.Dispose ()
+                        escaped.Value <- 1
+                        let id = (escaped :> INode).Id
+                        Expect.notEqual (Trace.snapshot g).Nodes[id].Status TraceNodeStatus.Disposed "the signal is live"
+                        let events = Trace.events g
+                        Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                        escaped.Value <- 2
+                        Expect.equal (List.ofSeq seen) [ 0; 1; 2 ] "the effect follows the signal"
+                        Expect.isEmpty (Trace.reconcile g) "the checkpoint keeps the signal's observers"
+                        Expect.notEqual (Trace.snapshot g).Nodes[id].Status TraceNodeStatus.Disposed "the signal stays live"
+                        Expect.equal (Trace.origin g escaped).Node id "origin reads the live signal"
+                        reader.Dispose ()
+                    }
+
+                    test "a signal created in a run stays live when the run's computation runs again" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let trigger = Signal (g, 0)
+                        let mutable lazySignal = Unchecked.defaultof<Signal<int>>
+
+                        createEffect (fun () ->
+                            trigger.Value |> ignore
+
+                            if isNull (box lazySignal) then
+                                lazySignal <- Signal (g, 10))
+
+                        let reader = createMemo (fun _ -> lazySignal.Value * 2)
+                        createEffect (fun () -> reader.Value |> ignore)
+                        trigger.Value <- 1
+                        let id = (lazySignal :> INode).Id
+                        Expect.notEqual (Trace.snapshot g).Nodes[id].Status TraceNodeStatus.Disposed "the signal is live"
+                        Expect.isEmpty (Trace.reconcile g) "the edges fold to the live lists"
+                        let events = Trace.events g
+                        Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                        Expect.isEmpty (Trace.reconcile g) "the checkpoint keeps the signal's observers"
+                        Expect.isTrue ((Trace.snapshot g).Nodes.ContainsKey id) "the checkpoint keeps the signal"
+                        lazySignal.Value <- 11
+                        Expect.equal reader.Value 22 "writes still propagate"
                     }
 
                     test "a checkpoint keeps the incarnations of a live host's children" {

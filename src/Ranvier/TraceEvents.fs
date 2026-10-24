@@ -68,10 +68,7 @@ type TraceEventKind =
     /// or 0. <c>Flag</c>: 1 for a <c>createRoot</c> scope. <c>Cause</c>: as for <c>NodeNew</c>.
     /// </summary>
     | OwnerNew = 3
-    /// <summary>
-    /// A node was disposed. A signal or async source is disposed with the owner current at its creation, or with the
-    /// next run of the computation whose run created it.
-    /// </summary>
+    /// <summary>A node was disposed.</summary>
     | Dispose = 4
     /// <summary>An owner was disposed.</summary>
     | OwnerDispose = 5

@@ -400,7 +400,8 @@ module Trace =
     /// </summary>
     /// <remarks>
     /// The dropped events release their payloads. The checkpoint's snapshot is pruned with <c>TraceModel.prune</c>
-    /// and releases the nodes and owners disposed by the dropped events. A <c>seq</c> equal to the checkpoint's seq
+    /// and releases the nodes and owners disposed by the dropped events. On .NET it also releases the signals and async
+    /// sources created by the dropped events and reclaimed by the garbage collector. A <c>seq</c> equal to the checkpoint's seq
     /// renames the checkpoint.
     /// </remarks>
     /// <exception cref="T:System.ArgumentNullException"><c>name</c> is null.</exception>
@@ -433,11 +434,13 @@ module Trace =
                 )
             )
 
+        let released = log.Collected seq
+
         let folded =
             TraceModel.fold (checkpointOf graph).Snapshot prefix
-            |> TraceModel.prune
+            |> TraceModel.pruneReleasing released
 
-        log.Truncate (seq, name, box folded)
+        log.Truncate (seq, name, box folded, released)
 
     /// <summary>
     /// The JSONL dump of <c>graph</c>'s checkpoint and retained events: schema 2 with timed nodes, otherwise schema 1.

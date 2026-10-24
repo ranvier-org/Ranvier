@@ -1988,9 +1988,6 @@ type Graph(options: GraphOptions) =
             body ()
 #endif
 
-    /// <summary>The owner set by the innermost root, owner scope or resolved run scope, or null.</summary>
-    member internal _.TraceOwner = currentOwner
-
     member internal _.CurrentOwner =
         if Platform.isNull (box currentOwner) then
             let host =
@@ -3106,7 +3103,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
     do Counters.SignalCreated ()
 #endif
 
-    do Tracer.SignalNew (graph, id, graph.TraceOwner)
+    do Tracer.SignalNew (graph, id, observers)
 
     // Resolved once, here, rather than per write: the policy's generic member
     // is the only place the value type is known, and a typed comparer keeps the
@@ -3219,7 +3216,7 @@ type AsyncSource<'T>(graph: Graph) =
 
     let mutable status = Status.Pending ||| Status.Uninitialized
 
-    do Tracer.AsyncSourceNew (graph, id, graph.TraceOwner)
+    do Tracer.AsyncSourceNew (graph, id, observers)
 
     interface INode with
         member _.Id = id

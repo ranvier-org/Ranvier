@@ -1333,14 +1333,9 @@ module TraceModel =
         if cut < 0 then "" else path.Substring (0, cut)
 
     /// <summary>
-    /// <c>snapshot</c> restricted to its live nodes and owners, the disposed ones a kept entry references as owner,
-    /// parent or host, their edges, and the sibling and incarnation counts of the paths that can recur.
+    /// <c>snapshot</c> pruned as by <c>prune</c>, with the nodes in <c>released</c> treated as disposed.
     /// </summary>
-    /// <remarks>
-    /// Pruning, folding later events and pruning again will give the pruned snapshot of the unpruned fold. A path
-    /// beneath a kept node can recur, so its counts stay for the node's lifetime.
-    /// </remarks>
-    let prune (snapshot: TraceSnapshot) : TraceSnapshot =
+    let internal pruneReleasing (released: HashSet<int>) (snapshot: TraceSnapshot) : TraceSnapshot =
         let nodes = HashSet<int>()
         let owners = HashSet<int>()
 
@@ -1369,7 +1364,10 @@ module TraceModel =
                 keepOwner id
 
         for KeyValue (id, n) in snapshot.Nodes do
-            if n.Status <> TraceNodeStatus.Disposed then
+            if
+                n.Status <> TraceNodeStatus.Disposed
+                && not (released.Contains id)
+            then
                 keepNode id
 
         let kept = Map.filter (fun id _ -> nodes.Contains id) snapshot.Nodes
@@ -1403,6 +1401,17 @@ module TraceModel =
             Siblings = Map.filter reachable snapshot.Siblings
             Incarnations = Map.filter reachable snapshot.Incarnations
         }
+
+    /// <summary>
+    /// <c>snapshot</c> restricted to its live nodes and owners, the disposed ones a kept entry references as owner,
+    /// parent or host, their edges, and the sibling and incarnation counts of the paths that can recur.
+    /// </summary>
+    /// <remarks>
+    /// Pruning, folding later events and pruning again will give the pruned snapshot of the unpruned fold. A path
+    /// beneath a kept node can recur, so its counts stay for the node's lifetime.
+    /// </remarks>
+    let prune (snapshot: TraceSnapshot) : TraceSnapshot =
+        pruneReleasing (HashSet<int>()) snapshot
 
     /// <summary>The state folded from the events up to and including seq <c>seq</c>.</summary>
     let snapshotAt (events: TraceEvent[]) (seq: int) : TraceSnapshot =
