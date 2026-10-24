@@ -18,7 +18,7 @@ proposed scope for each, and does not implement them.
 | 5 | [#168](https://github.com/shayanhabibi/Ranvier/issues/168) spike(mcp): agent-observable graph | P1 | #165, #166, #167 | implement | todo |
 | 6 | [#157](https://github.com/shayanhabibi/Ranvier/issues/157) perf(arms): restore the 5% Chromium target | — | quiet machine for timings | implement | todo |
 | 7 | [#69](https://github.com/shayanhabibi/Ranvier/issues/69) Myriad expansion for traced and untraced primitives | 1.0.0-rc | — | research | done |
-| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | todo |
+| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | in-progress |
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | todo |
 | 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
@@ -81,3 +81,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #166 in-progress — plan steps 1 to 4 done and `TraceNodeRef.Graph` dropped; gate failed under `test-fable` traced inline on `Texts.fs` trace text case `run` (diagnostic text differs under Fable), not pushed — 24e74b0e — next: fix the Fable `run` trace text mismatch, then plan step 5 (TraceJson writers)
 - 2026-10-24 #166 in-progress — checkpoint null-value fold and Lossy schema 1/2 payloads fixed and gate passes, but review found three new majors (TraceJson readers raise InvalidOperationException for wrong-shape JSON, Timed null Moved unrecorded and stale after checkpoint, AsyncSource null Settle becomes None after checkpoint), not pushed — 8002a109 — next: fix the three review findings in TraceContract.fs and TraceModel.fs
 - 2026-10-24 #166 done — four review findings fixed (invariant payload numbers, Timed and settled null values) and offline trace reads documented, gates pass — ec7d8c00 — next: open the stacked PR into integration/issues
+- 2026-10-24 #65 in-progress — gap lines, JSONL sink, Fable export tests, C# surface and docs landed and the gate passed; review found Wait-mode Dispose then Completion.Wait deadlocks on the graph thread (src/Ranvier/TraceExport.fs:594) — a4276db6 — next: fix the Wait-mode Dispose drain or document pumping and fix the examples, then commit the regenerated docs/.ai/fable-compat.md
