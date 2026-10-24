@@ -79,6 +79,15 @@ type JournalSite<'Msg> internal (graph: Graph, id: int) =
     member internal _.Graph = graph
     member internal _.Id = id
 
+/// <summary>
+/// The application's async work on a graph, captured where the work starts. The inputs passed through it to
+/// <c>Journal.produce</c> record <c>Produced</c> entries.
+/// </summary>
+[<Sealed>]
+type JournalWork internal (graph: Graph, generation: JournalGeneration) =
+    member internal _.Graph = graph
+    member internal _.Generation = generation
+
 /// <summary>An input journal that keeps its entries in memory, in recording order.</summary>
 type MemoryJournal(stream: string) =
     let entries = List<JournalEntry>()
@@ -215,10 +224,78 @@ module Journal =
             finally
                 recorder.LeaveDerived ()
 
+    /// <summary>
+    /// The async work starting on <c>graph</c>, for <c>produce</c>. Captured in the synchronous part of the work, such as
+    /// an effect's body before its first <c>await</c>.
+    /// </summary>
+    let work (graph: Graph) : JournalWork =
+        let recorder = graph.Journal
+
+        JournalWork (
+            graph,
+            (if Platform.isNull recorder then
+                 null
+             else
+                 recorder.Generation)
+        )
+
+    /// <summary>
+    /// Runs <c>input</c> on the graph's thread as an input of <c>work</c>: its writes, settles, failures and messages
+    /// record <c>Produced</c> entries. Called off the graph's thread, it is queued, as <c>Graph.Dispatch</c> queues work.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>Reenact</c> skips the <c>Produced</c> entries, and the re-run work produces them again. Once a
+    /// <c>Diagnostic</c> replay starts on the graph, <c>produce</c> drops the inputs of work captured before the replay
+    /// returns, and the replay applies their recorded entries instead.
+    /// </para>
+    /// <para>
+    /// Inside a computation, a flush or another derived section, <c>input</c> always runs, unrecorded.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code lang="fsharp">
+    /// createEffect (fun () ->
+    ///     let q = query.Value
+    ///     let work = Journal.work graph
+    ///
+    ///     task {
+    ///         let! found = service.Search q
+    ///         Journal.produce work (fun () -> results.Settle found)
+    ///     }
+    ///     |> ignore)
+    /// </code>
+    /// </example>
+    let produce (work: JournalWork) (input: unit -> unit) : unit =
+        let graph = work.Graph
+
+        let run () =
+            let recorder = graph.Journal
+
+            if
+                Platform.isNull recorder
+                || Platform.isNull work.Generation
+                || graph.Running
+                || recorder.DerivedDepth > 0
+            then
+                input ()
+            elif not work.Generation.Covered then
+                recorder.EnterProduced ()
+
+                try
+                    input ()
+                finally
+                    recorder.LeaveProduced ()
+
+        if graph.IsOnGraphThread then
+            run ()
+        else
+            graph.Dispatch (fun () -> run ())
+
     /// <summary>The mode of the replay running on <c>graph</c>, or <c>None</c> outside a replay.</summary>
     /// <remarks>
-    /// An effect that calls an external service reads it to skip the call under <c>Diagnostic</c>, where the recorded
-    /// settle arrives instead.
+    /// An effect that calls an external service reads it to skip the call under <c>Diagnostic</c>. The call's outcome,
+    /// passed to <c>produce</c>, is dropped either way.
     /// </remarks>
     let replaying (graph: Graph) : ReplayMode option =
         let recorder = graph.Journal
@@ -234,6 +311,11 @@ module Journal =
 
         match entry.Kind with
         | JournalEntryKind.Flush -> None
+        | _ when
+            mode = ReplayMode.Reenact
+            && entry.Origin = JournalOrigin.Produced
+            ->
+            None
         | JournalEntryKind.Settle
         | JournalEntryKind.Fail when mode = ReplayMode.Reenact -> None
         | kind ->
@@ -282,6 +364,14 @@ module Journal =
                     )
 
                 match binding.Prepare (kind, data) with
+                | Ok run when entry.Origin = JournalOrigin.Produced ->
+                    Some (fun () ->
+                        recorder.EnterProduced ()
+
+                        try
+                            run ()
+                        finally
+                            recorder.LeaveProduced ())
                 | Ok run -> Some run
                 | Error error -> failWith ("decode error: " + error)
 
@@ -299,9 +389,12 @@ module Journal =
     /// under the recorded keys. The replay's own inputs are recorded on that journal.
     /// </para>
     /// <para>
-    /// <c>Diagnostic</c> settles and fails async sources with the recorded outcomes; a failure arrives as a
-    /// <c>JournalReplayedFailure</c> with the recorded message. <c>Reenact</c> skips the recorded settles and failures.
-    /// <c>replaying</c> returns the mode while the replay runs.
+    /// <c>Diagnostic</c> applies every entry, and settles and fails async sources with the recorded outcomes; a failure
+    /// arrives as a <c>JournalReplayedFailure</c> with the recorded message. The inputs of the attributed async work
+    /// started before the replay returns are dropped. <c>Reenact</c> skips the <c>Produced</c> entries and the recorded
+    /// settles and failures, and the re-run work produces its inputs. Either way, each recorded input reaches the graph
+    /// once. An applied <c>Produced</c> entry records a <c>Produced</c> entry. <c>replaying</c> returns the mode while
+    /// the replay runs.
     /// </para>
     /// <para>
     /// The entries of a batch are checked and decoded before the batch runs, so a failing entry leaves the preceding
@@ -324,6 +417,9 @@ module Journal =
         graph.AssertOnGraphThread "A journal replay"
         let previous = recorder.Replaying
         recorder.Replaying <- Some mode
+
+        if mode = ReplayMode.Diagnostic then
+            recorder.Generation.Covered <- true
 
         try
             let pending = List<unit -> unit>()
@@ -356,3 +452,6 @@ module Journal =
             applyPending ()
         finally
             recorder.Replaying <- previous
+
+            if mode = ReplayMode.Diagnostic then
+                recorder.Renew ()

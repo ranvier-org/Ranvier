@@ -1580,6 +1580,14 @@ type internal JournalBinding(key: string, codec: string, version: int) =
     abstract Prepare: kind: JournalEntryKind * data: string -> Result<unit -> unit, string>
 
 /// <summary>
+/// The async work started on a graph between two diagnostic replays. Its inputs are dropped once <c>Covered</c>.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal JournalGeneration() =
+    /// <summary>True when a diagnostic replay applies the generation's recorded inputs.</summary>
+    member val Covered = false with get, set
+
+/// <summary>
 /// A graph's journal state: the journal, the bindings of its keyed input nodes, and the position of the last entry.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
@@ -1589,6 +1597,8 @@ type internal JournalRecorder(journal: IInputJournal) =
     let mutable position = 0
     let mutable unflushed = false
     let mutable derivedDepth = 0
+    let mutable producedDepth = 0
+    let mutable generation = JournalGeneration ()
     let mutable nextSite = 0
 
     /// <summary>True when an entry was recorded after the last <c>Flush</c> entry.</summary>
@@ -1616,6 +1626,22 @@ type internal JournalRecorder(journal: IInputJournal) =
 
     member _.LeaveDerived() =
         derivedDepth <- derivedDepth - 1
+
+    /// <summary>The generation of the async work starting now.</summary>
+    member _.Generation = generation
+
+    /// <summary>Starts a new generation; the work started before it keeps the previous one.</summary>
+    member _.Renew() =
+        generation <- JournalGeneration ()
+
+    /// <summary>The nesting depth of produced sections: inputs that arrive from attributed async work.</summary>
+    member _.ProducedDepth = producedDepth
+
+    member _.EnterProduced() =
+        producedDepth <- producedDepth + 1
+
+    member _.LeaveProduced() =
+        producedDepth <- producedDepth - 1
 
     /// <summary>Registers <c>binding</c> for the node <c>nodeId</c>.</summary>
     /// <exception cref="T:System.ArgumentException">
@@ -1662,18 +1688,28 @@ type internal JournalRecorder(journal: IInputJournal) =
     member private _.Emit(kind: JournalEntryKind, key: string option, payloadType: string, payload: JournalPayload) =
         position <- position + 1
 
+        let origin =
+            if
+                producedDepth > 0
+                && kind <> JournalEntryKind.Flush
+            then
+                JournalOrigin.Produced
+            else
+                JournalOrigin.External
+
         if kind <> JournalEntryKind.Flush then
             unflushed <- true
 
         journal.Record
             {
-                Schema = 1
+                Schema = 2
                 Stream = journal.Stream
                 Seq = position
                 Kind = kind
                 Key = key
                 PayloadType = payloadType
                 Payload = payload
+                Origin = origin
             }
 
     /// <summary>

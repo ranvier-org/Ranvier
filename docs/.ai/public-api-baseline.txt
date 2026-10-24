@@ -9,6 +9,8 @@ field Ranvier.JournalEntryKind+Tags Flush : Int32
 field Ranvier.JournalEntryKind+Tags Message : Int32
 field Ranvier.JournalEntryKind+Tags Settle : Int32
 field Ranvier.JournalEntryKind+Tags Write : Int32
+field Ranvier.JournalOrigin+Tags External : Int32
+field Ranvier.JournalOrigin+Tags Produced : Int32
 field Ranvier.JournalPayload+Tags Empty : Int32
 field Ranvier.JournalPayload+Tags Encoded : Int32
 field Ranvier.JournalPayload+Tags NonReplayable : Int32
@@ -207,15 +209,17 @@ member Ranvier.ImmediateDispatcher .ctor() : Void
 member Ranvier.Journal static key<1>(String,Ranvier.JournalCodec`1<!!0>,Ranvier.Signal`1<!!0>) : Ranvier.Signal`1<!!0>
 member Ranvier.Journal static keySource<1>(String,Ranvier.JournalCodec`1<!!0>,Ranvier.AsyncSource`1<!!0>) : Ranvier.AsyncSource`1<!!0>
 member Ranvier.Journal static messages<1>(String,Ranvier.JournalCodec`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.Unit>,Ranvier.Graph) : Ranvier.JournalSite`1<!!0>
+member Ranvier.Journal static produce(Ranvier.JournalWork,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Microsoft.FSharp.Core.Unit>) : Void
 member Ranvier.Journal static recordMessage<1>(Ranvier.JournalSite`1<!!0>,!!0,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Microsoft.FSharp.Core.Unit>) : Void
 member Ranvier.Journal static replay(Ranvier.ReplayMode,Ranvier.Graph,System.Collections.Generic.IEnumerable`1<Ranvier.JournalEntry>) : Void
 member Ranvier.Journal static replaying(Ranvier.Graph) : Microsoft.FSharp.Core.FSharpOption`1<Ranvier.ReplayMode>
+member Ranvier.Journal static work(Ranvier.Graph) : Ranvier.JournalWork
 member Ranvier.JournalCodec`1 .ctor(String,Int32,Microsoft.FSharp.Core.FSharpFunc`2<!0,String>,Microsoft.FSharp.Core.FSharpFunc`2<String,Microsoft.FSharp.Core.FSharpResult`2<!0,String>>) : Void
 member Ranvier.JournalCodec`1 get_Decode() : Microsoft.FSharp.Core.FSharpFunc`2<String,Microsoft.FSharp.Core.FSharpResult`2<!0,String>>
 member Ranvier.JournalCodec`1 get_Encode() : Microsoft.FSharp.Core.FSharpFunc`2<!0,String>
 member Ranvier.JournalCodec`1 get_Name() : String
 member Ranvier.JournalCodec`1 get_Version() : Int32
-member Ranvier.JournalEntry .ctor(Int32,String,Int32,Ranvier.JournalEntryKind,Microsoft.FSharp.Core.FSharpOption`1<String>,String,Ranvier.JournalPayload) : Void
+member Ranvier.JournalEntry .ctor(Int32,String,Int32,Ranvier.JournalEntryKind,Microsoft.FSharp.Core.FSharpOption`1<String>,String,Ranvier.JournalPayload,Ranvier.JournalOrigin) : Void
 member Ranvier.JournalEntry CompareTo(Object) : Int32
 member Ranvier.JournalEntry CompareTo(Object,System.Collections.IComparer) : Int32
 member Ranvier.JournalEntry CompareTo(Ranvier.JournalEntry) : Int32
@@ -227,6 +231,7 @@ member Ranvier.JournalEntry GetHashCode() : Int32
 member Ranvier.JournalEntry GetHashCode(System.Collections.IEqualityComparer) : Int32
 member Ranvier.JournalEntry get_Key() : Microsoft.FSharp.Core.FSharpOption`1<String>
 member Ranvier.JournalEntry get_Kind() : Ranvier.JournalEntryKind
+member Ranvier.JournalEntry get_Origin() : Ranvier.JournalOrigin
 member Ranvier.JournalEntry get_Payload() : Ranvier.JournalPayload
 member Ranvier.JournalEntry get_PayloadType() : String
 member Ranvier.JournalEntry get_Schema() : Int32
@@ -253,6 +258,21 @@ member Ranvier.JournalEntryKind static get_Flush() : Ranvier.JournalEntryKind
 member Ranvier.JournalEntryKind static get_Message() : Ranvier.JournalEntryKind
 member Ranvier.JournalEntryKind static get_Settle() : Ranvier.JournalEntryKind
 member Ranvier.JournalEntryKind static get_Write() : Ranvier.JournalEntryKind
+member Ranvier.JournalOrigin CompareTo(Object) : Int32
+member Ranvier.JournalOrigin CompareTo(Object,System.Collections.IComparer) : Int32
+member Ranvier.JournalOrigin CompareTo(Ranvier.JournalOrigin) : Int32
+member Ranvier.JournalOrigin Equals(Object) : Boolean
+member Ranvier.JournalOrigin Equals(Object,System.Collections.IEqualityComparer) : Boolean
+member Ranvier.JournalOrigin Equals(Ranvier.JournalOrigin) : Boolean
+member Ranvier.JournalOrigin Equals(Ranvier.JournalOrigin,System.Collections.IEqualityComparer) : Boolean
+member Ranvier.JournalOrigin GetHashCode() : Int32
+member Ranvier.JournalOrigin GetHashCode(System.Collections.IEqualityComparer) : Int32
+member Ranvier.JournalOrigin ToString() : String
+member Ranvier.JournalOrigin get_IsExternal() : Boolean
+member Ranvier.JournalOrigin get_IsProduced() : Boolean
+member Ranvier.JournalOrigin get_Tag() : Int32
+member Ranvier.JournalOrigin static get_External() : Ranvier.JournalOrigin
+member Ranvier.JournalOrigin static get_Produced() : Ranvier.JournalOrigin
 member Ranvier.JournalPayload CompareTo(Object) : Int32
 member Ranvier.JournalPayload CompareTo(Object,System.Collections.IComparer) : Int32
 member Ranvier.JournalPayload CompareTo(Ranvier.JournalPayload) : Int32
@@ -597,6 +617,13 @@ type Ranvier.JournalEntryKind implements System.IComparable
 type Ranvier.JournalEntryKind implements System.IComparable`1<Ranvier.JournalEntryKind>
 type Ranvier.JournalEntryKind implements System.IEquatable`1<Ranvier.JournalEntryKind>
 type Ranvier.JournalEntryKind+Tags : System.Object
+type Ranvier.JournalOrigin : System.Object
+type Ranvier.JournalOrigin implements System.Collections.IStructuralComparable
+type Ranvier.JournalOrigin implements System.Collections.IStructuralEquatable
+type Ranvier.JournalOrigin implements System.IComparable
+type Ranvier.JournalOrigin implements System.IComparable`1<Ranvier.JournalOrigin>
+type Ranvier.JournalOrigin implements System.IEquatable`1<Ranvier.JournalOrigin>
+type Ranvier.JournalOrigin+Tags : System.Object
 type Ranvier.JournalPayload : System.Object
 type Ranvier.JournalPayload implements System.Collections.IStructuralComparable
 type Ranvier.JournalPayload implements System.Collections.IStructuralEquatable
@@ -609,6 +636,7 @@ type Ranvier.JournalPayload+Tags : System.Object
 type Ranvier.JournalReplayException : System.Exception
 type Ranvier.JournalReplayedFailure : System.Exception
 type Ranvier.JournalSite`1 : System.Object
+type Ranvier.JournalWork : System.Object
 type Ranvier.JsIdentityPolicy : System.Object
 type Ranvier.JsIdentityPolicy implements Ranvier.IEqualityPolicy
 type Ranvier.KeyChange : System.Enum

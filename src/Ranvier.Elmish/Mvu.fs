@@ -44,20 +44,29 @@ type Mvu<'Model, 'Msg>
                 root.Value <- model
                 this.Run commands
 
-    /// <summary>Runs <c>commands</c> in order with <c>Dispatch</c>, stopping once the owning scope is torn down.</summary>
+    /// <summary>
+    /// Runs <c>commands</c> in order with a dispatch of their shared <c>JournalWork</c>, stopping once the owning scope
+    /// is torn down.
+    /// </summary>
     member internal this.Run(commands: (('Msg -> unit) -> unit) list) =
-        let mutable rest = commands
+        if not commands.IsEmpty then
+            let work = Journal.work graph
 
-        while not disposed && not rest.IsEmpty do
-            rest.Head this.Dispatch
-            rest <- rest.Tail
+            let dispatch (msg: 'Msg) =
+                Journal.produce work (fun () -> this.Arrive msg)
+
+            let mutable rest = commands
+
+            while not disposed && not rest.IsEmpty do
+                rest.Head dispatch
+                rest <- rest.Tail
 
     /// <summary>A tracked read of the model.</summary>
     member _.Model = root.Value
 
     /// <summary>
-    /// Applies <c>update msg</c> to the model and writes the result, then runs the commands it returned, in order, with
-    /// <c>Dispatch</c> as their argument.
+    /// Applies <c>update msg</c> to the model and writes the result, then runs the commands it returned, in order. Each
+    /// command receives a dispatch that delivers as <c>Dispatch</c> does.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -121,8 +130,8 @@ module Mvu =
         Mvu<'Model, 'Msg>(Graph.Current, init, update, Unchecked.defaultof<_>, false)
 
     /// <summary>
-    /// A model from <c>init</c> whose <c>update</c> also returns commands. Each command receives <c>Dispatch</c>, after the
-    /// model write it came with.
+    /// A model from <c>init</c> whose <c>update</c> also returns commands. Each command runs after the model write it came
+    /// with, and receives a dispatch that delivers as <c>Dispatch</c> does.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -131,7 +140,7 @@ module Mvu =
     /// </para>
     /// <para>
     /// The model belongs to the current scope: once the scope is torn down, a dispatch drops its message, including a
-    /// dispatch from a command holding <c>Dispatch</c>, and a command list stops at the teardown. In the graph's root
+    /// dispatch from a command, and a command list stops at the teardown. In the graph's root
     /// scope the model stays live for the graph's lifetime.
     /// </para>
     /// </remarks>
@@ -155,9 +164,10 @@ module Mvu =
     /// <remarks>
     /// <para>
     /// A message dispatched from outside every computation records a <c>Message</c> entry. The model write and the
-    /// synchronous commands are derived from the message and record nothing; a message a command dispatches later, after
-    /// an <c>await</c>, records an entry of its own. A message dispatched by an effect or other computation records
-    /// nothing.
+    /// synchronous commands are derived from the message and record nothing. A message a command dispatches later, after
+    /// an <c>await</c>, records a <c>Produced</c> entry: <c>Reenact</c> skips it and the re-run command dispatches it
+    /// again, and under <c>Diagnostic</c> the entry is applied and the re-run command's dispatch is dropped. A message
+    /// dispatched by an effect or other computation records nothing.
     /// </para>
     /// <para>
     /// <c>Journal.replay</c> applies a <c>Message</c> entry by dispatching the decoded message. The registration belongs

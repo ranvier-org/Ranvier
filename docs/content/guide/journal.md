@@ -35,6 +35,7 @@ Each entry is a `JournalEntry`:
 | `Key` | The application key of the input; `None` for an unkeyed input and for `Flush`. |
 | `PayloadType` | The runtime type name of the value. |
 | `Payload` | `Encoded (codec, version, data)`, `NonReplayable payloadType`, or `Empty` for `Flush`. |
+| `Origin` | `External`, or `Produced` for an input of the application's attributed async work. |
 
 A `Flush` entry ends each flush pass that followed a recorded entry. Replay flushes at the same
 points, so effects run as often as they did in the recorded run.
@@ -49,6 +50,34 @@ from the inputs before it, and is not recorded:
 - the model write and the synchronous commands of a journaled MVU message.
 
 An equal write is recorded, as the traced log records it.
+
+### Async work
+
+An input that the application's own async work makes after an `await` is recorded with
+`Origin = Produced`: a re-run of that work makes the input again. Replay uses the origin so that each
+recorded input reaches the graph once in either mode. The journal attributes two kinds of work:
+
+- an `Mvu` command: a message it dispatches after its synchronous part;
+- work captured with `Journal.work`: an input passed to `Journal.produce`.
+
+Capture the work in its synchronous part, such as an effect's body before its first `await`, and pass
+each later write, settle or failure through `Journal.produce`:
+
+```fsharp
+createEffect (fun () ->
+    let q = query.Value
+    let work = Journal.work graph
+
+    task {
+        let! hits = service.Search q
+        Journal.produce work (fun () -> results.Settle hits)
+    }
+    |> ignore)
+```
+
+`Journal.produce` runs the input on the graph's thread, and queues it when called from another
+thread. An input of async work that bypasses `Journal.produce` is recorded as `External`, and a replay
+of a run that re-runs the work applies it twice.
 
 ## Keys and codecs
 
@@ -104,9 +133,9 @@ let app =
 ```
 
 A message dispatched from outside every computation records one `Message` entry. A message a command
-dispatches later, after an `await`, is a new external message and records its own entry. Another
-adapter registers its message site with `Journal.messages` and wraps each external message in
-`Journal.recordMessage`.
+dispatches later, after an `await`, records a `Produced` entry; the command needs no journal code.
+Another adapter registers its message site with `Journal.messages`, wraps each external message in
+`Journal.recordMessage`, and passes the messages of its async work through `Journal.produce`.
 
 ## Replay
 
@@ -126,15 +155,22 @@ replay's own inputs are recorded on the target's journal.
 
 ### Diagnostic replay
 
-`ReplayMode.Diagnostic` reproduces the recorded run. Async sources settle with the recorded values,
-and a recorded failure arrives as a `JournalReplayedFailure` carrying the recorded message. The
-application's async work skips its external calls: a gateway reads `Journal.replaying`.
+`ReplayMode.Diagnostic` reproduces the recorded run. Every entry is applied: async sources settle
+with the recorded values, a recorded failure arrives as a `JournalReplayedFailure` carrying the
+recorded message, and the `Produced` messages and writes are applied in their recorded order. The
+attributed async work still runs, and its inputs are dropped: a command started by a replayed message
+dispatches into nothing, as does `Journal.produce` for work captured before the replay returns. Work
+captured after the replay returns is live.
+
+A gateway that also wants to skip its external call reads `Journal.replaying` in its synchronous part:
 
 ```fsharp
 createEffect (fun () ->
     let q = query.Value
+    let work = Journal.work graph
+
     if Journal.replaying graph <> Some ReplayMode.Diagnostic then
-        startSearch q (fun hits -> results.Settle hits))
+        startSearch q (fun hits -> Journal.produce work (fun () -> results.Settle hits)))
 ```
 
 Under a traced build, a diagnostic replay of a run whose batches each end in a flush gives the recorded
@@ -142,8 +178,10 @@ run's `Trace.snapshot` and the `Trace.why` of every effect run.
 
 ### Re-enactment
 
-`ReplayMode.Reenact` applies the writes and messages and skips the recorded settles and failures. The
-application's async work runs again, and a changed result flows through the graph. Use it to check a
+`ReplayMode.Reenact` applies the `External` writes and messages, and skips the `Produced` entries and
+the recorded settles and failures. The application's async work runs again and makes those inputs,
+and a changed result flows through the graph. The re-run inputs arrive when the work completes, after
+the replay returns. Use it to check a
 recorded session against a new service or a changed `update`.
 
 ### Errors
@@ -172,5 +210,6 @@ graph.
 ## Fable
 
 The journal, `Mvu.journal` and both replay modes behave the same under Fable, with one difference: a
-write or settle after an `await` in an async memo's body is recorded as an external input. See
-[Fable](../fable/index.md).
+write or settle after an `await` in an async memo's body is recorded as an `External` input, where
+.NET records nothing. Pass it through `Journal.produce`, with the work captured before the `await`,
+to record it as `Produced`. See [Fable](../fable/index.md).

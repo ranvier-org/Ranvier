@@ -389,10 +389,28 @@ type JournalPayload =
             + ")"
         | JournalPayload.NonReplayable payloadType -> "NonReplayable " + payloadType
 
-/// <summary>One external input to a graph, in the order the graph thread observed it.</summary>
+/// <summary>Where a journaled input came from.</summary>
+[<RequireQualifiedAccess>]
+type JournalOrigin =
+    /// <summary>From outside the graph's computations and the application's attributed async work.</summary>
+    | External
+    /// <summary>
+    /// From the application's own async work: a message an <c>Mvu</c> command dispatches after its synchronous part, or
+    /// an input passed to <c>Journal.produce</c>. A re-run of that work produces the input again.
+    /// </summary>
+    | Produced
+
+    // AoT compat
+    /// <summary>The case name.</summary>
+    override this.ToString() =
+        match this with
+        | JournalOrigin.External -> "External"
+        | JournalOrigin.Produced -> "Produced"
+
+/// <summary>One input to a graph, in the order the graph thread observed it.</summary>
 type JournalEntry =
     {
-        /// <summary>The entry format version, 1.</summary>
+        /// <summary>The entry format version, 2.</summary>
         Schema: int
 
         /// <summary>The <c>Stream</c> of the journal that recorded the entry.</summary>
@@ -413,6 +431,9 @@ type JournalEntry =
         PayloadType: string
 
         Payload: JournalPayload
+
+        /// <summary><c>External</c> for <c>Flush</c>.</summary>
+        Origin: JournalOrigin
     }
 
 /// <summary>Receives a graph's external inputs as they happen, on the graph thread.</summary>
@@ -427,13 +448,14 @@ type IInputJournal =
 [<RequireQualifiedAccess>]
 type ReplayMode =
     /// <summary>
-    /// Reproduces the recorded run: async sources settle and fail with the recorded values, and the application's async
-    /// work is expected to skip its external calls.
+    /// Reproduces the recorded run: every entry is applied, and async sources settle and fail with the recorded
+    /// values. The inputs of attributed async work started before the replay returns are dropped, so each recorded
+    /// input reaches the graph once.
     /// </summary>
     | Diagnostic
     /// <summary>
-    /// Re-enacts the recorded run: writes and messages are applied, the recorded settles and failures are skipped, and
-    /// the application's async work runs again.
+    /// Re-enacts the recorded run: the <c>External</c> writes and messages are applied, and the <c>Produced</c> entries
+    /// and the recorded settles and failures are skipped. The application's async work runs again and produces them.
     /// </summary>
     | Reenact
 
