@@ -1175,5 +1175,138 @@ let tests =
                         Expect.isEmpty g.Root.Errors "the graph does not record a failure the caller receives"
                     }
 #endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "disposal faults an item still in the inbox, with no drain after it" {
+                        let g = new Graph ()
+                        let ran = ref false
+
+                        let result =
+                            offThread (fun () ->
+                                g.DispatchAsync (fun () ->
+                                    ran.Value <- true
+                                    1))
+
+                        Expect.equal result.Status TaskStatus.WaitingForActivation "the item waits in the inbox"
+
+                        g.Dispose ()
+
+                        Expect.equal result.Status TaskStatus.Faulted "disposal faulted the task"
+                        Expect.isTrue (isDisposedError result.Exception.InnerException) "with ObjectDisposedException"
+
+                        g.Pump () |> ignore
+                        Expect.isFalse ran.Value "a later drain skips the work"
+                        Expect.isEmpty g.Root.Errors "the graph does not record a failure the caller receives"
+                    }
+#endif
+
+                    testCaseAsync "an already-cancelled token cancels the task and does not run the work"
+                    <| async {
+                        let g = new Graph ()
+                        use source = new CancellationTokenSource ()
+                        source.Cancel ()
+                        let ran = ref false
+
+                        let result =
+                            g.DispatchAsync (
+                                (fun () ->
+                                    ran.Value <- true
+                                    1),
+                                source.Token
+                            )
+
+                        Expect.isFalse ran.Value "the work did not run"
+                        Expect.equal g.PendingWork 0 "nothing was queued"
+#if !FABLE_COMPILER
+                        Expect.equal result.Status TaskStatus.Canceled "the task is cancelled"
+#else
+                        let! outcome = Async.Catch (Async.AwaitTask result)
+
+                        match outcome with
+                        // Fable's type test does not distinguish OperationCanceledException from Exception.
+                        | Choice2Of2 caught -> Expect.equal caught.Message "The operation was canceled." "the task is cancelled"
+                        | Choice1Of2 _ -> failtest "the task must be cancelled"
+#endif
+                    }
+
+                    testCaseAsync "a token cancelled by the work itself leaves the task completed with the result"
+                    <| async {
+                        let g = new Graph ()
+                        use source = new CancellationTokenSource ()
+
+                        let result =
+                            g.DispatchAsync (
+                                (fun () ->
+                                    source.Cancel ()
+                                    5),
+                                source.Token
+                            )
+
+                        let! value = Async.AwaitTask result
+                        Expect.equal value 5 "the work started, so the token no longer applies"
+                    }
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "an off-thread call with an already-cancelled token queues nothing" {
+                        let g = new Graph ()
+                        use source = new CancellationTokenSource ()
+                        source.Cancel ()
+
+                        let result = offThread (fun () -> g.DispatchAsync ((fun () -> 1), source.Token))
+
+                        Expect.equal result.Status TaskStatus.Canceled "the task is cancelled"
+                        Expect.equal g.PendingWork 0 "nothing was queued"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "a token cancelled while the item waits cancels the task, and the drain skips the work" {
+                        let g = new Graph ()
+                        use source = new CancellationTokenSource ()
+                        let ran = ref false
+
+                        let result =
+                            offThread (fun () ->
+                                g.DispatchAsync (
+                                    (fun () ->
+                                        ran.Value <- true
+                                        1),
+                                    source.Token
+                                ))
+
+                        Expect.equal g.PendingWork 1 "the item waits in the inbox"
+                        source.Cancel ()
+                        Expect.equal result.Status TaskStatus.Canceled "cancellation completed the task at once"
+
+                        g.Pump () |> ignore
+                        Expect.isFalse ran.Value "the drain skipped the work"
+                        Expect.isEmpty g.Root.Errors "a skipped item records nothing"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "a queued item whose work cancels the token completes with the result" {
+                        let g = new Graph ()
+                        use source = new CancellationTokenSource ()
+
+                        let result =
+                            offThread (fun () ->
+                                g.DispatchAsync (
+                                    (fun () ->
+                                        source.Cancel ()
+                                        9),
+                                    source.Token
+                                ))
+
+                        g.Pump () |> ignore
+
+                        Expect.isTrue (result.Wait (TimeSpan.FromSeconds 5.0)) "the task completed"
+                        Expect.equal result.Result 9 "with the work's result"
+                    }
+#endif
                 ]
         ]

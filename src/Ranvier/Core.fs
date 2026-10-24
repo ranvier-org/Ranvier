@@ -1524,6 +1524,42 @@ type internal PassDrain(run: unit -> unit) =
     interface IScheduled with
         member _.Execute() = run ()
 
+#if !FABLE_COMPILER
+/// <summary>
+/// A <c>Graph.DispatchAsync</c> item waiting in a graph's inbox, faulted by <c>Abandon</c> when the graph is
+/// disposed first.
+/// </summary>
+type internal IPendingDispatch =
+    abstract Abandon: error: exn -> unit
+
+/// <summary>
+/// The task of a queued <c>Graph.DispatchAsync</c> item. Exactly one of <c>TryClaim</c>, <c>Cancel</c> and
+/// <c>Abandon</c> takes effect; once the drain claims the item, the task completes with the work's outcome.
+/// </summary>
+[<Sealed>]
+type internal PendingDispatch<'T>() =
+    inherit TaskCompletionSource<'T>(TaskCreationOptions.RunContinuationsAsynchronously)
+
+    /// <summary>0 while waiting, 1 once claimed by the drain, 2 once cancelled or abandoned.</summary>
+    let mutable state = 0
+
+    member private _.TryClose() =
+        Interlocked.CompareExchange (&state, 2, 0) = 0
+
+    /// <summary>True for the caller that moves the item from waiting to running.</summary>
+    member _.TryClaim() =
+        Interlocked.CompareExchange (&state, 1, 0) = 0
+
+    member this.Cancel(token: CancellationToken) =
+        if this.TryClose () then
+            this.SetCanceled token
+
+    interface IPendingDispatch with
+        member this.Abandon error =
+            if this.TryClose () then
+                this.SetException error
+#endif
+
 /// <summary>
 /// Owns the tracking context and the construction-time policy. One graph is a
 /// single consistency domain; on .NET that also means a single thread of
@@ -1724,6 +1760,17 @@ type Graph(options: GraphOptions) =
     /// run it. See <c>Platform.Inbox</c> for why it is the queue it is.
     /// </summary>
     let inbox = Platform.Inbox<unit -> unit>()
+
+    /// <summary>
+    /// The <c>DispatchAsync</c> items in the inbox, faulted at disposal. Its lock also guards <c>dispatchClosed</c>.
+    /// </summary>
+    let pendingDispatches = HashSet<IPendingDispatch>(HashIdentity.Reference)
+
+    /// <summary>
+    /// True once disposal has faulted <c>pendingDispatches</c>; a later off-thread <c>DispatchAsync</c> faults at
+    /// the call.
+    /// </summary>
+    let mutable dispatchClosed = false
 #endif
 
     let dispatcher =
@@ -2008,13 +2055,25 @@ type Graph(options: GraphOptions) =
             currentOwner <- previous
 
     /// <summary>
-    /// Tears down every scope the graph owns.
+    /// Tears down every scope the graph owns, and faults the task of every <c>DispatchAsync</c> item still in the
+    /// inbox with <c>ObjectDisposedException</c>.
     /// </summary>
     member this.Dispose() =
         this.Entered (
             "Disposing a graph",
             fun () ->
                 root.Dispose ()
+#if !FABLE_COMPILER
+                let abandoned =
+                    lock pendingDispatches (fun () ->
+                        dispatchClosed <- true
+                        let items = Seq.toArray pendingDispatches
+                        pendingDispatches.Clear ()
+                        items)
+
+                for item in abandoned do
+                    item.Abandon (ObjectDisposedException (nameof Graph))
+#endif
 
                 if
                     not (Platform.isNull ownerAmbient)
@@ -2113,38 +2172,100 @@ type Graph(options: GraphOptions) =
     /// <remarks>
     /// On the graph thread the work runs before the call returns and the task is already complete. From another
     /// thread the work joins the inbox behind earlier <c>Dispatch</c> and <c>DispatchAsync</c> items and runs on the
-    /// drain the dispatcher schedules. Continuations of the task run on the thread pool, outside the drain.
+    /// drain the dispatcher schedules; under <c>ManualDispatcher</c> that is the owner's next <c>Pump</c>. Continuations
+    /// of the task run on the thread pool, outside the drain. Blocking on the task from the owning thread deadlocks when
+    /// that thread is the only one that drains.
+    ///
+    /// Completion marks the end of the work, not of what it triggers: effects it schedules run in the flush after the
+    /// drain, or in the enclosing batch's flush when the call is inline, and async memos it starts settle later.
     ///
     /// When the work throws, the task faults with that exception, and the caller is its only recipient:
     /// <c>Root.Errors</c> stays unchanged and later inbox items still run.
     ///
-    /// On a disposed graph the task faults with <c>ObjectDisposedException</c> and the work is skipped, both for a
-    /// call made after disposal and for an item queued before disposal and drained after it.
+    /// On a disposed graph the task faults with <c>ObjectDisposedException</c> and the work does not run. Disposal
+    /// faults the task of every item still in the inbox in the same way, without waiting for a drain.
     /// </remarks>
     member this.DispatchAsync(work: Func<'T>) : Task<'T> =
+        this.DispatchAsync (work, CancellationToken.None)
+
+    /// <summary>
+    /// Runs <c>work</c> in the graph's consistency domain as the single-argument overload does, and cancels the task
+    /// instead when <c>cancellationToken</c> is cancelled before the work starts.
+    /// </summary>
+    /// <remarks>
+    /// A token already cancelled at the call returns a cancelled task and queues nothing. A token cancelled while the
+    /// item waits in the inbox cancels the task at once, and the drain skips the work. Once the work starts it runs to
+    /// completion and the token no longer applies. Cancellation is checked before disposal.
+    /// </remarks>
+    member this.DispatchAsync(work: Func<'T>, cancellationToken: CancellationToken) : Task<'T> =
 #if FABLE_COMPILER
         let finished = Platform.completion<'T>()
-        let resolve, reject = finished.Resolve, finished.Reject
-#else
-        let finished =
-            TaskCompletionSource<'T> TaskCreationOptions.RunContinuationsAsynchronously
 
-        let resolve (value: 'T) =
-            finished.SetResult value
-
-        let reject (ex: exn) =
-            finished.SetException ex
-#endif
-        let disposed () =
-            ObjectDisposedException (nameof Graph) :> exn
-
-        if root.IsDisposed then
-            reject (disposed ())
+        if cancellationToken.IsCancellationRequested then
+            finished.Reject (OperationCanceledException "The operation was canceled.")
+        elif root.IsDisposed then
+            finished.Reject (ObjectDisposedException (nameof Graph))
         else
-            this.Post (fun () ->
-                if root.IsDisposed then
-                    reject (disposed ())
+            let outcome =
+                try
+                    Result.Ok (work.Invoke ())
+                with ex ->
+                    Result.Error ex
+
+            match outcome with
+            | Result.Ok value -> finished.Resolve value
+            | Result.Error ex -> finished.Reject ex
+
+        finished.Task
+#else
+        if cancellationToken.IsCancellationRequested then
+            Task.FromCanceled<'T> cancellationToken
+        elif root.IsDisposed then
+            Task.FromException<'T>(ObjectDisposedException (nameof Graph))
+        elif this.IsOnGraphThread then
+            let outcome =
+                try
+                    Result.Ok (work.Invoke ())
+                with ex ->
+                    Result.Error ex
+
+            match outcome with
+            | Result.Ok value -> Task.FromResult value
+            | Result.Error ex -> Task.FromException<'T> ex
+        else
+            this.EnqueueDispatch (work, cancellationToken)
+
+    /// <summary>
+    /// Queues <c>work</c> from another thread as a <c>DispatchAsync</c> item, registered for disposal and
+    /// cancellation.
+    /// </summary>
+    member private this.EnqueueDispatch(work: Func<'T>, cancellationToken: CancellationToken) : Task<'T> =
+        let pending = PendingDispatch<'T>()
+
+        let admitted =
+            lock pendingDispatches (fun () ->
+                not dispatchClosed
+                && pendingDispatches.Add pending)
+
+        if not admitted then
+            Task.FromException<'T>(ObjectDisposedException (nameof Graph))
+        else
+            let forget () =
+                lock pendingDispatches (fun () -> pendingDispatches.Remove pending |> ignore)
+
+            let registration =
+                if cancellationToken.CanBeCanceled then
+                    cancellationToken.Register (fun () ->
+                        pending.Cancel cancellationToken
+                        forget ())
                 else
+                    new CancellationTokenRegistration ()
+
+            this.Post (fun () ->
+                if pending.TryClaim () then
+                    forget ()
+                    registration.Dispose ()
+
                     let outcome =
                         try
                             Result.Ok (work.Invoke ())
@@ -2152,10 +2273,11 @@ type Graph(options: GraphOptions) =
                             Result.Error ex
 
                     match outcome with
-                    | Result.Ok value -> resolve value
-                    | Result.Error ex -> reject ex)
+                    | Result.Ok value -> pending.SetResult value
+                    | Result.Error ex -> pending.SetException ex)
 
-        finished.Task
+            pending.Task
+#endif
 
     /// <summary>
     /// Work that arrived from another thread and has not been drained yet.
