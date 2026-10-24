@@ -88,8 +88,8 @@ The two servers own different things:
 - **SageFs** owns evaluation: loading the projects, F# sessions, the REPL, hot reload and test runs. It sees the
   source and runs code you send it.
 - **The Ranvier adapter** owns one running application's graph: the values the application chose to expose,
-  the messages it authorised, and, traced, the provenance of its nodes. It evaluates no code and reaches no
-  node the application did not expose.
+  the messages it authorised, and, traced, the provenance of the whole graph. It evaluates no code. The traced
+  tools read every node in the trace log; the exposed node names are only the names they accept as `node`.
 
 An agent edits and checks code through SageFs, then restarts the sample (the client restarts a stdio server
 when it reconnects) and observes the running cart through `ranvier-cart`.

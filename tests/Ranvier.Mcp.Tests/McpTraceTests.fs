@@ -11,17 +11,21 @@ type private App =
     {
         A: Signal<int>
         Sum: Memo<int>
+        Hidden: Memo<int>
         Adapter: McpAdapter
     }
 
 let private traceTools =
     [ "trace_state"; "trace_lookup"; "why"; "why_not"; "waiting_on" ]
 
-/// A host exposing <c>sum</c> (a memo of <c>a + 2</c>) as a value, and <c>a</c> and <c>sum</c> as nodes.
+/// A host exposing <c>sum</c> (a memo of <c>a + 2</c>) as a value, and <c>a</c> and <c>sum</c> as nodes. <c>hidden</c>
+/// (a memo of <c>a * 3</c>) is registered as neither.
 let private startHost () =
     GraphHost.Start (fun _ ->
         let a = createSignal 1
         let sum = createMemo (fun _ -> a.Value + 2)
+        let hidden = createMemo (fun _ -> a.Value * 3)
+        hidden.Value |> ignore
         let exposure = Exposure ()
 
         exposure
@@ -34,6 +38,7 @@ let private startHost () =
         {
             A = a
             Sum = sum
+            Hidden = hidden
             Adapter = new McpAdapter (exposure)
         })
 
@@ -98,7 +103,27 @@ let tests =
                 Expect.isEmpty waiting.Body.Sources "a synchronous memo waits on nothing"
             }
 
-            testTask "a trace tool over an unexposed node is a tool error" {
+            testTask "trace_state and trace_lookup by path read a node registered with neither Expose.value nor Expose.node" {
+                use! session = connect ()
+                let! hiddenId = session.Host.Invoke (fun app -> (app.Hidden :> INode).Id)
+
+                let! state = call session "trace_state" "{}"
+                let state = TraceJson.readState (textOf state)
+
+                match state.Body.Nodes |> Map.tryFind hiddenId with
+                | None -> failtest "trace_state lists the unexposed memo"
+                | Some (hidden: TraceNodeState) ->
+                    let args = JsonObject ()
+                    args["path"] <- JsonValue.Create hidden.Ref.Path
+                    let! lookup = call session "trace_lookup" (args.ToJsonString ())
+                    Expect.isFalse (isError lookup) $"trace_lookup by path succeeds: {textOf lookup}"
+
+                    match (TraceJson.readLookup (textOf lookup)).Body with
+                    | TraceLookup.Live reference -> Expect.equal reference.Node hiddenId "the unexposed memo resolves live"
+                    | other -> failtest $"expected a live node, got {other}"
+            }
+
+            testTask "a trace tool's node argument naming an unexposed node is a tool error" {
                 use! session = connect ()
 
                 for tool in [ "why"; "why_not"; "waiting_on"; "trace_lookup" ] do

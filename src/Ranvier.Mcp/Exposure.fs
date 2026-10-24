@@ -174,12 +174,13 @@ type Exposure() =
     /// <summary>The exposed message names, in registration order.</summary>
     member _.MessageNames = List.ofSeq messageNames
 
-    /// <summary>The nodes exposed to provenance queries, by name, in registration order.</summary>
+    /// <summary>The nodes a provenance tool's <c>node</c> argument can name, in registration order.</summary>
     member _.Nodes = List.ofSeq nodes
 
     /// <summary>
-    /// Exposes <c>node</c> under <c>name</c> to the provenance queries of a traced build. An untraced build serves no
-    /// such queries, and the registration has no effect there.
+    /// Names <c>node</c> as <c>name</c> for the <c>node</c> argument of a traced build's provenance tools. The registration
+    /// is a name, not an access limit: the traced tools read the whole graph's trace log. An untraced build serves no
+    /// provenance tools, and the registration has no effect there.
     /// </summary>
     /// <exception cref="T:System.InvalidOperationException">Called after <c>Start</c>.</exception>
     /// <exception cref="T:System.ArgumentException">
@@ -305,6 +306,6 @@ module Expose =
     let messages (mvu: Mvu<'Model, 'Msg>) (decoders: (string * MessageDecoder<'Msg>) list) (exposure: Exposure) =
         exposure.Messages (mvu, decoders)
 
-    /// <summary>Exposes <c>node</c> under <c>name</c> to the provenance queries of a traced build.</summary>
+    /// <summary>Names <c>node</c> as <c>name</c> for the <c>node</c> argument of a traced build's provenance tools.</summary>
     let node (name: string) (node: INode) (exposure: Exposure) =
         exposure.Node (name, node)

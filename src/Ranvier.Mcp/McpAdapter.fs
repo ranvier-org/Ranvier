@@ -68,9 +68,10 @@ module internal Resources =
 /// </para>
 /// <para>
 /// A traced build (<c>RANVIER_TRACE</c>) also lists <c>trace_state</c>, <c>trace_lookup</c>, <c>why</c>,
-/// <c>why_not</c> and <c>waiting_on</c>, each over the nodes registered with <c>Expose.node</c> and returning the
-/// <c>TraceJson</c> document of the matching <c>Trace</c> query, run on the graph thread. An untraced build lists none
-/// of them.
+/// <c>why_not</c> and <c>waiting_on</c>, each returning the <c>TraceJson</c> document of the matching <c>Trace</c>
+/// query, run on the graph thread. Their <c>node</c> argument names a node registered with <c>Expose.node</c>, but
+/// their results read the whole graph's trace log: <c>trace_state</c> lists every node, <c>trace_lookup</c> resolves any
+/// identity <c>path</c>, and a <c>why</c> chain names each node it passes through. An untraced build lists none of them.
 /// </para>
 /// <para>
 /// Each publication notifies the subscribers of <c>ranvier://state</c> and of each value whose encoding changed, in

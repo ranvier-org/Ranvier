@@ -8,8 +8,10 @@ Spike — `Ranvier.Mcp` is an experiment for #168 and is not packed. Its names, 
 :::
 
 `Ranvier.Mcp` serves a running application's graph to an MCP client, such as a coding agent. The application
-chooses what the client sees: named values, authorised Elmish messages and, in a traced build, the nodes whose
-provenance the client may ask about. The client evaluates no code and reaches nothing else in the graph.
+chooses what the client reads and writes: named values and authorised Elmish messages. The client evaluates no code.
+A traced build also serves provenance tools, and those read the whole graph's trace log: `trace_state` and a
+`trace_lookup` by `path` cover every node, and the `why` chains name the nodes they pass through. The nodes
+registered with `Expose.node` are the names a client can pass as `node`, not a limit on what it can read.
 
 The runnable sample, a cart over stdio, is
 [examples/Ranvier.Mcp.Sample](https://github.com/shayanhabibi/Ranvier/tree/master/examples/Ranvier.Mcp.Sample). Its
@@ -110,7 +112,9 @@ With `RANVIER_TRACE` (Debug builds, or `-p:RanvierTrace=true`), the adapter also
 | `why_not` | `node` | `whyNot`: why the node has not re-run, or `null` |
 | `waiting_on` | `node` | `waiting`: pending sources and flights |
 
-`node` names a node registered with `Expose.node`; any other name is a tool error that lists the exposed nodes. Values
+`node` names a node registered with `Expose.node`; any other name is a tool error that lists the exposed nodes. The
+results still cover the whole graph: `trace_state` lists every node, `trace_lookup` resolves any identity `path`, and
+a `why` chain names each node it passes through. Values
 are encoded without codecs, so a non-scalar value appears as `Lossy` text.
 
 An untraced build lists none of these tools, and calling one is an unknown-tool error.
