@@ -2053,6 +2053,43 @@ let tests =
 
                         Expect.stringContains message (string last) "a future cursor throws, naming the last seq"
                     }
+
+                    test "a truncated log keeps a lazy memo's dirty source and description" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let m = Trace.named "doubled" (fun () -> createMemo (fun _ -> s.Value * 2))
+                        let reader = createMemo (fun _ -> m.Value + 1)
+                        reader.Value |> ignore
+                        s.Value <- 1
+                        let log = ((box g) :?> ITraced).TraceLog
+                        let id = (m :> INode).Id
+                        let description = log.Describe id
+                        let mark = log.FirstDirty id
+                        Expect.equal (log.OtherAt mark) (s :> INode).Id "the first dirty mark names the written signal"
+                        let last = (Trace.events g |> Array.last).Seq
+                        log.Truncate (last, "cut", null)
+                        Expect.isEmpty (Trace.events g) "the truncation drops every event"
+                        Expect.isEmpty (Trace.eventsSince g last) "the cursor at the truncation seq reads nothing"
+                        Expect.equal (log.Describe id) description "the description survives the truncation"
+                        Expect.stringContains description "\"doubled\"" "the description carries the label"
+                        Expect.equal (log.FirstDirty id) mark "the first dirty mark stays pending"
+                        Expect.equal (log.OtherAt mark) (s :> INode).Id "the dropped mark still names the written signal"
+                        Expect.equal reader.Value 3 "the reader recomputes"
+                    }
+
+                    test "Truncate rejects a seq outside the retained log" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        Signal (g, 0) |> ignore
+                        let log = ((box g) :?> ITraced).TraceLog
+                        let last = (Trace.events g |> Array.last).Seq
+                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> log.Truncate (last + 1, "cut", null)) "a future seq throws"
+                        log.Truncate (1, "first", null)
+                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> log.Truncate (0, "cut", null)) "an expired seq throws"
+                        log.Truncate (1, "renamed", null)
+                        Expect.equal (Trace.events g |> Array.map _.Seq) [| 2..last |] "a truncation at the checkpoint seq drops nothing"
+                    }
                 ]
 #endif
         ]
