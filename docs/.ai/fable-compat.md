@@ -66,7 +66,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
-| Journal.fs | 52 | 51 | 51 | 55 | 54 | 54 | 2 | 0 |
+| Journal.fs | 55 | 54 | 54 | 58 | 57 | 57 | 2 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1603 | 1581 | 1578 | 1824 | 1797 | 1794 | 146 | 1 |
+| **Total** | 1606 | 1584 | 1581 | 1827 | 1800 | 1797 | 146 | 1 |
 
 ## Tests.fs
 
@@ -2033,7 +2033,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | an effect continuation's direct settle reaches each replay once | Fable has no async context to carry the work into a continuation. |
 | an external dispatch drained under an effect run's execution context records an External entry | Fable has no async context to carry the work into a continuation. |
 
-<details><summary>54 passed in every build and delivery that runs them</summary>
+<details><summary>57 passed in every build and delivery that runs them</summary>
 
 - GraphOptions.Default has no journal
 - WithJournal sets the journal
@@ -2081,10 +2081,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Mvu.journal / a diagnostic replay after a commanded message on the target applies each message once
 - Mvu.journal / a diagnostic replay into a fresh graph applies the dispatch of an initial command once
 - Mvu.journal / a second diagnostic replay into the same graph applies each message once
+- Mvu.journal / each replay mode applies a command's synchronous dispatch and its dispatch after an await once
+- Mvu.journal / a diagnostic replay after the gate opens applies a command's synchronous dispatch and its dispatch after an await once
 - Mvu.journal / a replay records the entries of the run it replays
 - Journal.produce / a write in a continuation records a Produced entry
 - Journal.produce / each replay mode applies a write in a continuation once
 - Journal.produce / an async memo's continuation write through Journal.produce reaches each replay once
+- Journal.produce / each replay mode applies a work's synchronous produce and its produce after an await once
 - Journal.produce / work captured with no journal runs its input
 - a traced Journal.key labels an unlabelled node with the key (traced only)
 - a traced Journal.key keeps an existing label (traced only)
