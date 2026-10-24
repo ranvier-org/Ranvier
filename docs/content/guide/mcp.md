@@ -73,10 +73,10 @@ reads every value. The effect publishes a `Snapshot { Version; Values }`:
 
 | URI | Document |
 |---|---|
-| `ranvier://state` | `{"version": n, "values": {name: value}}` |
-| `ranvier://state/{name}` | `{"version": n, "value": value}` |
+| ranvier://state | `{"version": n, "values": {name: value}}` |
+| ranvier://state/{name} | `{"version": n, "value": value}` |
 
-Both support `resources/subscribe`. Each publication sends `notifications/resources/updated` for `ranvier://state` and
+Both support `resources/subscribe`. Each publication sends `notifications/resources/updated` for ranvier://state and
 for each value whose encoding changed. The adapter pins MCP protocol `2025-11-25`, since `2026-07-28` replaces
 `resources/subscribe` with `subscriptions/listen`.
 
@@ -84,7 +84,7 @@ for each value whose encoding changed. The adapter pins MCP protocol `2025-11-25
 
 | Tool | Arguments | Result |
 |---|---|---|
-| `snapshot` | none | the `ranvier://state` document |
+| `snapshot` | none | the ranvier://state document |
 | `dispatch` | `message`: an exposed name; `args`: JSON for its decoder | the snapshot published once the message and its effects have run |
 | `wait_version` | `version`; `timeoutMs` (default 5000, at most 60000) | the first snapshot at or past `version` |
 
