@@ -197,15 +197,15 @@ the pooled medians against them.
 | budget | 1.05 | 1.04 | 1.07 | 1.05 |
 
 `8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` (`arms-match-dc8b3d5b.json`) predate the rebase of `issue/157` onto
-`integration/issues` at `0967cc02`; their source hashes match the rebased branch except `src/Ranvier/Core.fs`, which
-#165 changed and both modes share. `5369d6a0` and `4d00179e` are paired runs on the rebased branch, every source hash
+`integration/issues` at `0967cc02`; their source hashes differ from the rebased branch in `src/Ranvier/Core.fs`, which
+#165 changed and both modes share. `8ee10018`, `299ab276` and `fccc740c` predate `eb9fad95`, which changed `experiments/Ranvier.View.Arms/Site.fs` (`5ce539ae…` to `644adbf6…`) and `experiments/Ranvier.View.Arms.FablePlugin/Lower.fs` (`51311ec0…` to `9c7c6613…`). That change lowers only sites with a helper over the concrete instance type, and `KeyedRowsArmsMatchPerf.fs` has none: compiled under the `Site.fs`, `Lower.fs` and `Plugin.fs` of `eb9fad95^` and of `4d00179e`, the benchmark's Fable output is byte-identical, and `Site.js` gains only `spliceHeld` and `heldValues`, which it does not call. The three runs therefore measure the benchmark code of the current lowering and stay in the pool, pending the user's confirmation. `5369d6a0` and `4d00179e` are paired runs on the rebased branch, every source hash
 matching it. The `5369d6a0` clear median 1.119 exceeds 1.05 on an interval that straddles it, and the pooled clear
 interval (0.980-1.069) straddles 1.05 as well.
 
 **Refresh.** The gate input `arms-match.json` is the refreshed run: the Step 11 command with `--build` through
 `gate-lock.ps1 bench` at `4d00179e`, CPU load 56, 79 and 88 % before the build and 62, 66 and 99 % after the run,
 source hashes matching the working tree (`Lower.fs` `9c7c6613…`, `Site.fs` `644adbf6…`, `Core.fs` `f2023ae6…`);
-`pooled-interval.test.mjs` checks them when a change touches `docs/research/arms-match/`. Every median of the run is
+`keyed-rows.mjs` writes a run into `docs/research/arms-match/` only from committed sources unchanged during the run. Every median of the run is
 within its budget; its switch and payload intervals lie below theirs, and its create and clear intervals straddle 1.05.
 
 | Operation | ranvier-sugar median (process medians), ms | ranvier-arms-match median (process medians), ms | paired median ratio | 95 % interval | arms slower in |

@@ -513,7 +513,7 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
     written as `Arms.Match`; run `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match
     --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar` under `bench.lock`
     (`mkdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/bench.lock` before, `rmdir` after) and the browser lock. Gate, per
-    operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) pooled over every committed run of the current lowering (`Checks/pooled-interval.mjs`), has a median of at most the operation's budget; its pooled 95 % bootstrap interval is reported as below, above or straddling the budget. `Checks/chromium-gate.mjs` checks the committed results. Every committed run with matching sources stays in the pool. Runs record the CPU load in `notes`, source hashes and tool versions.
+    operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) pooled over every committed run of the benchmark (`Checks/pooled-interval.mjs`), has a median of at most the operation's budget; its pooled 95 % bootstrap interval is reported as below, above or straddling the budget. `Checks/chromium-gate.mjs` checks the committed results. Every committed run with matching sources stays in the pool. Runs record the CPU load in `notes`, source hashes and tool versions.
     The budgets are create 1.05, switch 1.04, payload 1.07 and clear 1.05. The first release shipped under a 1.12
     allowance the user accepted on 2026-10-22 (plan Ruling 38, superseded); the payload-direct lowering
     ([#157](https://github.com/shayanhabibi/Ranvier/issues/157), Phased implementation 8) targeted 1.05 on every
@@ -535,10 +535,10 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
     Every pooled median is within its budget. The create, switch and payload pooled intervals lie below their budgets;
     the pooled clear interval (0.980-1.069) straddles 1.05, and the clear medians of the two runs on the rebased branch
     spread from 1.119 (`5369d6a0`) to 0.996 (`4d00179e`). `Checks/pooled-interval.mjs` prints the pool and each run;
-    `pooled-interval.test.mjs` checks the fixed budgets, the pooled medians against them and, when a change touches
-    `docs/research/arms-match/`, that the latest run's source hashes (`arms-match.json`, at `4d00179e`) match the tree. `8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` (`arms-match-dc8b3d5b.json`) predate
-    the rebase of `issue/157` onto `integration/issues` at `0967cc02`; their source hashes match the rebased branch
-    except `src/Ranvier/Core.fs`, which #165 changed and both modes share. The earlier run on the rebased branch,
+    `pooled-interval.test.mjs` checks the fixed budgets and the pooled medians against them; `keyed-rows.mjs` writes a
+    run into `docs/research/arms-match/` only from committed sources unchanged during the run. `8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` (`arms-match-dc8b3d5b.json`) predate
+    the rebase of `issue/157` onto `integration/issues` at `0967cc02`; their source hashes differ from the rebased
+    branch in `src/Ranvier/Core.fs`, which #165 changed and both modes share. `8ee10018`, `299ab276` and `fccc740c` predate `eb9fad95`, which changed `experiments/Ranvier.View.Arms/Site.fs` (`5ce539ae…` to `644adbf6…`) and `experiments/Ranvier.View.Arms.FablePlugin/Lower.fs` (`51311ec0…` to `9c7c6613…`). That change lowers only sites with a helper over the concrete instance type, and `KeyedRowsArmsMatchPerf.fs` has none: compiled under the `Site.fs`, `Lower.fs` and `Plugin.fs` of `eb9fad95^` and of `4d00179e`, the benchmark's Fable output is byte-identical, and `Site.js` gains only `spliceHeld` and `heldValues`, which it does not call. The three runs therefore measure the benchmark code of the current lowering and stay in the pool, pending the user's confirmation. The earlier run on the rebased branch,
     `5369d6a0`, measures clear 1.119 on an interval straddling 1.05, and the pooled clear interval (0.980-1.069)
     straddles 1.05 as well.
 12. **Heap profile (new)**: `keyed-heap.mjs --fixture=arms` with the new mode at 1,000 and 10,000 rows; retained bytes

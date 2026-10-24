@@ -1,7 +1,8 @@
 // Paths whose changes affect no build, test or measurement. The package READMEs of Ranvier.View and Ranvier.View.Anime and the analyzer rule pages are the exceptions: CheckDocs compiles the Ranvier.View README's samples, readme.test.mjs matches the Ranvier.View.Anime README's samples against its fixtures, and the analyzer suite compiles each rule page's examples. Formatting still checks the F# sources under docs/.
 // docs/maps holds the signal map model and its tests; docs/samples/server-backends holds compiled server examples.
+// docs/research/arms-match and docs/.ai/benchmarks/arms-* hold the committed Arms.Match runs that the Arms.Match job gates.
 const docsPatterns = [
-  /^docs\/(?!maps\/|content\/analyzers\/|samples\/server-backends\/)/,
+  /^docs\/(?!maps\/|content\/analyzers\/|samples\/server-backends\/|research\/arms-match\/|\.ai\/benchmarks\/arms-)/,
   /^brand\//,
   /^\.claude\//,
   /^(?!src\/Ranvier\.View(\.Anime)?\/README\.md$|docs\/content\/analyzers\/).*\.md$/i,
@@ -16,11 +17,13 @@ function docsOnly(paths) {
 }
 
 // Paths the Arms.Match job builds or measures: the view and core sources it compiles, the Playground's tests and
-// benchmark scripts, the toolchain pins and the workflow.
+// benchmark scripts, the committed runs its budget gate reads, the toolchain pins and the workflow.
 const armsPatterns = [
   /^experiments\/Ranvier\.View/,
   /^src\/Ranvier(\.View[^/]*)?\//,
   /^examples\/Fable\.Ranvier\.Playground\//,
+  /^docs\/research\/arms-match\//,
+  /^docs\/\.ai\/benchmarks\/arms-/,
   /^\.config\/dotnet-tools\.json$/,
   /^global\.json$/,
   /^Directory\.(Build|Packages)\.(props|targets)$/,
@@ -31,6 +34,12 @@ const armsPatterns = [
 function armsAffected(paths) {
   const files = (paths ?? []).map(p => p.trim()).filter(Boolean);
   return files.length === 0 || files.some(file => armsPatterns.some(pattern => pattern.test(file)));
+}
+
+// The job outputs for a diff: docs is true when every path is documentation, arms when the Arms.Match job runs.
+function classify(paths) {
+  const docs = docsOnly(paths);
+  return { docs, arms: !docs && armsAffected(paths) };
 }
 
 const zero = /^0{40}$/;
@@ -44,7 +53,7 @@ function range({ eventName, before, after, base, head }) {
   return null;
 }
 
-module.exports = { docsOnly, armsAffected, range };
+module.exports = { docsOnly, armsAffected, classify, range };
 
 if (require.main === module) {
   // node changes.cjs <event> <from> <to>: prints docs=true|false and arms=true|false for $GITHUB_OUTPUT.
@@ -57,8 +66,7 @@ if (require.main === module) {
       ? execFileSync('git', ['merge-base', r.from, r.to], { encoding: 'utf8' }).trim()
       : r.from;
     const paths = execFileSync('git', ['diff', '--name-only', '--no-renames', base, r.to], { encoding: 'utf8' }).split('\n');
-    docs = docsOnly(paths);
-    arms = !docs && armsAffected(paths);
+    ({ docs, arms } = classify(paths));
   }
   console.log(`docs=${docs}`);
   console.log(`arms=${arms}`);

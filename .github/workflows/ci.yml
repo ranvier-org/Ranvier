@@ -424,10 +424,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      # The full history lets the pooled-interval test find the merge base it diffs against.
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       # global.json pins the SDK; DotnetCost also runs on net8.0, the library's other target, which needs the .NET 8 runtime.
       - uses: actions/setup-dotnet@v6
         with:
@@ -473,11 +470,9 @@ jobs:
       # The committed Chromium and heap results hold their gates (the benchmark itself needs a quiet machine, not CI).
       - name: Check the committed Chromium and heap results
         run: node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs
-      # The budgets are fixed (plan 2026-10-24-issue-157.md, P9). The source hashes of the latest run are checked only when
-      # the change touches docs/research/arms-match/.
+      # The budgets are fixed (plan 2026-10-24-issue-157.md, P9). keyed-rows.mjs checks a run's source hashes when it
+      # writes the run.
       - name: Check the Chromium budgets against the pooled interval
-        env:
-          ARMS_MATCH_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node --test experiments/Ranvier.View.Arms/Checks/pooled-interval.test.mjs
       # The timings print without a budget (shared runners are not the budget's machine); a raise or a wrong render from
       # Arms.Prepare, called twice and on four threads at once, fails the step.

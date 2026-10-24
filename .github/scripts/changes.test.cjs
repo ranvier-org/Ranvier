@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { docsOnly, armsAffected, range } = require('./changes.cjs');
+const { docsOnly, armsAffected, classify, range } = require('./changes.cjs');
 const a = 'a'.repeat(40), b = 'b'.repeat(40), z = '0'.repeat(40);
 
 test('documentation paths alone are docs only', () => {
@@ -24,6 +24,12 @@ test('the Arms.Match job runs for the view, core, Playground and toolchain, and 
   for (const p of [['src/Ranvier.Wire/Codec.fs'], ['examples/Ranvier.Motion/src/Kanban.fs'], ['tools/Ranvier.Analyzers/Rules.fs'], ['build.fsx']]) {
     assert.equal(armsAffected(p), false, JSON.stringify(p));
   }
+});
+test('a committed Arms.Match run runs the Arms.Match job, which holds its budget gate', () => {
+  for (const p of [['docs/research/arms-match/arms-match.json'], ['docs/research/arms-match/arms-match-5369d6a0.json'], ['docs/.ai/benchmarks/arms-157-noisy-probe.json'], ['docs/research/arms-match/bundle.json', 'docs/content/view/arms.md']]) {
+    assert.deepEqual(classify(p), { docs: false, arms: true }, JSON.stringify(p));
+  }
+  assert.deepEqual(classify(['docs/research/2026-10-21-arms-match.md']), { docs: true, arms: false });
 });
 test('ranges need two commits; new branches and manual runs have none', () => {
   assert.deepEqual(range({ eventName: 'pull_request', base: a, head: b }), { from: a, to: b });

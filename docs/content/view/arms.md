@@ -194,7 +194,8 @@ An operation passes when its pooled median is within budget. The pooled clear in
 | 4d00179e | 1.004 | 0.969 | 0.971 | 0.996 |
 
 The clear medians of the two runs on the current branch, 5369d6a0 and 4d00179e, spread from 1.119 to 0.996. The
-retained heap is 1.2 % above the
+runs 8ee10018, 299ab276 and fccc740c predate a lowering change for helpers over the concrete instance type; the
+benchmark has no such helper, and its compiled code is the same under both lowerings. The retained heap is 1.2 % above the
 twin's per row, after create and after a switch. The runs, their load readings and the gate are in the
 [research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-arms-match.md#chromium).
 

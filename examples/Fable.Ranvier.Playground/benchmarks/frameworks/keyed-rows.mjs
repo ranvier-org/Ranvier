@@ -6,6 +6,8 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
+import { resolve } from "node:path";
+import { staleSources, uncommittedOf } from "./run-sources.mjs";
 
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -20,6 +22,20 @@ const rounds = Number(argument("rounds", 15)), warmups = 3;
 const outDir = argument("dist") ?? (profile ? "generated-keyed-profile" : "generated-keyed-dist");
 const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir, ...(profile ? { RANVIER_PERF_PROFILE: "true" } : {}) };
 const port = Number(argument("port", 5187));
+
+// The sources a result records by hash.
+const files = ["benchmarks/frameworks/keyed-rows.mjs", "benchmarks/frameworks/keyed-page.mjs", "benchmarks/frameworks/keyed-solid.jsx", "benchmarks/frameworks/vite.config.mjs", "tests/KeyedRowsPerf.fs", "package-lock.json",
+  ...["Lifetime.fs", "Representation.fs", "Template.fs"].map(path => `../../src/Ranvier.View/${path}`), ...["TemplateDom.fs", "Mounting.fs"].map(path => `../../src/Ranvier.View.Dom/${path}`), "../../src/Ranvier/Core.fs", "../../src/Ranvier/Projections.fs", "../../src/Ranvier/Api.fs", "../../src/Ranvier/Combinators.fs",
+  "tests/KeyedRowsSugarPerf.fs", "tests/KeyedRowsArmsMatchPerf.fs", ...["Arms.fs", "Cells.fs", "Site.fs", "Errors.fs", "Diagnostics.fs"].map(path => `../../experiments/Ranvier.View.Arms/${path}`),
+  "../../experiments/Ranvier.View.Arms.FablePlugin/Lower.fs"];
+const sha = async path => createHash("sha256").update(await readFile(new URL(path, new URL("../../", import.meta.url)))).digest("hex");
+const hashes = async () => Object.fromEntries(await Promise.all(files.map(async path => [path, await sha(path)])));
+// A run into docs/research/arms-match/, the pool of the Arms.Match budget gate, is measured and written only from
+// committed sources unchanged from the build to the write.
+const pooled = resolve(output) === fileURLToPath(new URL("../../../../docs/research/arms-match", import.meta.url));
+const sourcesAtStart = await hashes();
+const uncommittedAtStart = pooled ? uncommittedOf(cwd, files) : [];
+if (uncommittedAtStart.length > 0) throw Error(`Not measuring a pooled run: these sources are uncommitted: ${uncommittedAtStart.join(", ")}`);
 
 if (process.argv.includes("--build")) {
   for (const [args, extra] of [
@@ -51,8 +67,6 @@ function permutation(list, seed) {
   return out;
 }
 const only = (list, flag) => argument(flag) ? list.filter(value => argument(flag).split(",").includes(value)) : list;
-const sha = async path => createHash("sha256").update(await readFile(new URL(path, new URL("../../", import.meta.url)))).digest("hex");
-
 async function open() {
   browser = await chromium.launch();
   const page = await browser.newPage();
@@ -190,10 +204,9 @@ try {
     const medians = Array.from({ length: 10000 }, () => median(Array.from(sorted, () => sorted[Math.floor(random() * sorted.length)]))).sort((a, b) => a - b);
     return { operation: name, numerator: top, denominator: bottom, pairs: sorted.length, medianRatio: median(sorted), ci95: [medians[249], medians[9750]], numeratorSlowerIn: sorted.filter(ratio => ratio > 1).length, q1: sorted[Math.floor(sorted.length / 4)], q3: sorted[Math.floor(3 * sorted.length / 4)], byProcess: [...Array(processes).keys()].map(r => median(pairs.filter(pair => pair.replicate === r).map(pair => pair.ratio))) };
   }));
-  const files = ["benchmarks/frameworks/keyed-rows.mjs", "benchmarks/frameworks/keyed-page.mjs", "benchmarks/frameworks/keyed-solid.jsx", "benchmarks/frameworks/vite.config.mjs", "tests/KeyedRowsPerf.fs", "package-lock.json",
-    ...["Lifetime.fs", "Representation.fs", "Template.fs"].map(path => `../../src/Ranvier.View/${path}`), ...["TemplateDom.fs", "Mounting.fs"].map(path => `../../src/Ranvier.View.Dom/${path}`), "../../src/Ranvier/Core.fs", "../../src/Ranvier/Projections.fs", "../../src/Ranvier/Api.fs", "../../src/Ranvier/Combinators.fs",
-    "tests/KeyedRowsSugarPerf.fs", "tests/KeyedRowsArmsMatchPerf.fs", ...["Arms.fs", "Cells.fs", "Site.fs", "Errors.fs", "Diagnostics.fs"].map(path => `../../experiments/Ranvier.View.Arms/${path}`),
-    "../../experiments/Ranvier.View.Arms.FablePlugin/Lower.fs"];
+  const sourceHashes = await hashes();
+  const stale = pooled ? staleSources({ before: sourcesAtStart, after: sourceHashes, uncommitted: uncommittedOf(cwd, files) }) : [];
+  if (stale.length > 0) throw Error(`Not writing a pooled run: these sources are uncommitted or changed during the run: ${stale.join(", ")}`);
   const fickl = JSON.parse(await readFile(new URL("../../../../.config/dotnet-tools.json", import.meta.url), "utf8")).tools.fickl.version;
   const fableLibrary = (await readdir(new URL("../../generated-tests/fable_modules/", import.meta.url))).find(name => name.startsWith("fable-library-js."));
   const result = {
@@ -211,7 +224,7 @@ try {
       "pairRatios divide each numerator sample by the denominator sample of the same process and round; ci95 is a percentile bootstrap of their median.",
       ...(argument("note") ? [argument("note")] : [])
     ],
-    sourceHashes: Object.fromEntries(await Promise.all(files.map(async path => [path, await sha(path)]))),
+    sourceHashes,
     modes, operations: names, summaries, ratios, pairRatios, heaps, domCalls, samples, profiles, allocations
   };
   await mkdir(output, { recursive: true });

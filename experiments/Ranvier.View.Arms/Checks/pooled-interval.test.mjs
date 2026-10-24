@@ -1,12 +1,7 @@
 // The per-operation Chromium budgets of chromium-gate.mjs against the committed runs (plan 2026-10-24-issue-157.md,
 // Decision P9). Usage: node --test experiments/Ranvier.View.Arms/Checks/pooled-interval.test.mjs
-// ARMS_MATCH_BASE names the commit the source-hash check diffs against (default origin/master).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { pairsOf, interval, pooled, runs } from "./pooled-interval.mjs";
 import { budgets, judge } from "./chromium-gate.mjs";
 
@@ -53,22 +48,4 @@ test("the pool holds the gate input and every earlier run", () => {
   assert.ok(paths.includes("docs/research/arms-match/arms-match-dc8b3d5b.json"));
   assert.ok(paths.includes("docs/research/arms-match/arms-match-5369d6a0.json"));
   assert.equal(new Set(runs.map(r => r.read().commit)).size, runs.length);
-});
-
-const repository = fileURLToPath(new URL("../../../", import.meta.url));
-const git = (...args) => execFileSync("git", args, { cwd: repository, encoding: "utf8" }).trim();
-const resultsChanged = () => {
-  const base = git("merge-base", process.env.ARMS_MATCH_BASE || "origin/master", "HEAD");
-  return git("diff", "--name-only", base, "--", "docs/research/arms-match/") !== "";
-};
-
-test("the latest run's source hashes match the working tree up to line endings", t => {
-  if (!resultsChanged()) return t.skip("docs/research/arms-match/ is unchanged against the merge base");
-  const playground = new URL("../../../examples/Fable.Ranvier.Playground/", import.meta.url);
-  const sha = text => createHash("sha256").update(text).digest("hex");
-  const { sourceHashes } = runs.find(r => r.path.endsWith("/arms-match.json")).read();
-  for (const [path, recorded] of Object.entries(sourceHashes)) {
-    const lf = readFileSync(new URL(path, playground), "utf8").replace(/\r\n/g, "\n");
-    assert.ok([sha(lf), sha(lf.replace(/\n/g, "\r\n"))].includes(recorded), path);
-  }
 });
