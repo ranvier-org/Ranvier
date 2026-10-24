@@ -1,41 +1,48 @@
 module Ranvier.Benchmarks.Tracing
 
 open System
+open System.Threading
 open BenchmarkDotNet.Attributes
 open Ranvier
 
-/// <summary>Writes between rebuilds of a <c>Rig</c>'s graph, which bounds a traced graph's log.</summary>
-[<Literal>]
-let private Period = 4096
-
 /// <summary>
-/// A graph built by <c>build</c>, which returns the graph's write. The graph is disposed and rebuilt every
-/// <c>Period</c> writes, in traced and untraced builds alike.
+/// Benchmark invocations per iteration of <c>TraceCostBenchmarks</c>. A traced graph's log will hold at most this
+/// many invocations' events.
 /// </summary>
+[<Literal>]
+let private Invocations = 4096
+
+/// <summary>A graph built by <c>build</c>, which returns the graph's write.</summary>
 type private Rig(build: Graph -> (unit -> unit)) =
     let mutable graph = Unchecked.defaultof<Graph>
     let mutable write = ignore
-    let mutable remaining = 0
 
-    member _.Rebuild() =
-        if not (isNull (box graph)) then
-            (graph :> IDisposable).Dispose()
-
+    /// <summary>Disposes the current graph, if any, and builds a new one.</summary>
+    member this.Rebuild() =
+        this.Dispose ()
         graph <- new Graph ()
         write <- build graph
-        remaining <- Period
 
-    /// <summary>Runs the write, counting <c>writes</c> signal writes against the rebuild period.</summary>
-    member this.Step(writes: int) =
-        if remaining <= 0 then
-            this.Rebuild ()
-
-        remaining <- remaining - writes
-        write ()
+    member _.Step() = write ()
 
     member _.Dispose() =
         if not (isNull (box graph)) then
             (graph :> IDisposable).Dispose()
+            graph <- Unchecked.defaultof<Graph>
+
+    /// <summary>
+    /// Runs five rounds of <c>Invocations</c> writes on fresh graphs, each followed by a pause, so the write path
+    /// will run as tier-1 code from the first measured iteration.
+    /// </summary>
+    member this.Warm() =
+        for _ in 1..5 do
+            this.Rebuild ()
+
+            for _ in 1..Invocations do
+                this.Step ()
+
+            this.Dispose ()
+            Thread.Sleep 150
 
 /// <summary>Written by every reaction, so no reaction's result is provably unused.</summary>
 let mutable private sink = 0
@@ -102,16 +109,18 @@ let private batchWorkload (graph: Graph) =
     new Effect (graph, (fun () -> sink <- sink + source.Value))
     |> ignore
 
-    fun () ->
-        graph.Batch (fun () ->
+    let body =
+        Func<unit>(fun () ->
             for _ in 1..10 do
                 source.Value <- source.Peek + 1)
 
+    fun () -> graph.Batch body
+
 /// <summary>
-/// Updates on a built graph, the same source in traced and untraced builds. Each graph is rebuilt every
-/// 4,096 writes, so a traced log holds at most that many writes' events.
+/// Updates on a built graph, the same source in traced and untraced builds. Every iteration runs 4,096 invocations
+/// on graphs rebuilt before it and disposed after it, outside the measurement.
 /// </summary>
-[<MemoryDiagnoser; BenchmarkCategory "Trace"; Config.TracedConfig>]
+[<MemoryDiagnoser; BenchmarkCategory "Trace"; Config.TracedConfig; InvocationCount(Invocations, 16)>]
 type TraceCostBenchmarks() =
     let signal = Rig signalWorkload
     let memo = Rig memoWorkload
@@ -121,12 +130,36 @@ type TraceCostBenchmarks() =
     let batch = Rig batchWorkload
     let rigs = [ signal; memo; chain; fanout; cutoff; batch ]
 
-    [<GlobalSetup>]
+    [<GlobalSetup(Target = "Signal")>]
+    member _.WarmSignal() =
+        signal.Warm ()
+
+    [<GlobalSetup(Target = "Memo")>]
+    member _.WarmMemo() =
+        memo.Warm ()
+
+    [<GlobalSetup(Target = "Chain")>]
+    member _.WarmChain() =
+        chain.Warm ()
+
+    [<GlobalSetup(Target = "Fanout")>]
+    member _.WarmFanout() =
+        fanout.Warm ()
+
+    [<GlobalSetup(Target = "Cutoff")>]
+    member _.WarmCutoff() =
+        cutoff.Warm ()
+
+    [<GlobalSetup(Target = "Batch")>]
+    member _.WarmBatch() =
+        batch.Warm ()
+
+    [<IterationSetup>]
     member _.Setup() =
         for rig in rigs do
             rig.Rebuild ()
 
-    [<GlobalCleanup>]
+    [<IterationCleanup>]
     member _.Cleanup() =
         for rig in rigs do
             rig.Dispose ()
@@ -134,32 +167,32 @@ type TraceCostBenchmarks() =
     /// <summary>One signal write observed by one effect.</summary>
     [<Benchmark>]
     member _.Signal() =
-        signal.Step 1
+        signal.Step ()
 
     /// <summary>One signal write read by a memo and an effect.</summary>
     [<Benchmark>]
     member _.Memo() =
-        memo.Step 1
+        memo.Step ()
 
     /// <summary>One write to the head of a 4-deep memo chain, observed at the tail by an effect.</summary>
     [<Benchmark>]
     member _.Chain() =
-        chain.Step 1
+        chain.Step ()
 
     /// <summary>One signal write read by 64 memos, all read by one effect.</summary>
     [<Benchmark>]
     member _.Fanout() =
-        fanout.Step 1
+        fanout.Step ()
 
     /// <summary>One signal write whose memo recomputes to an equal value, so the observing effect stays clean.</summary>
     [<Benchmark>]
     member _.Cutoff() =
-        cutoff.Step 1
+        cutoff.Step ()
 
     /// <summary>Ten writes to one effect-observed signal inside one <c>Batch</c>.</summary>
     [<Benchmark>]
     member _.Batch() =
-        batch.Step 10
+        batch.Step ()
 
 /// <summary>Rows built by <c>DisposeRows</c>.</summary>
 [<Literal>]
