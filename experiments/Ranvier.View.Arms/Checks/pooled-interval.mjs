@@ -16,7 +16,12 @@ export const committed = [
   at("docs/research/arms-match/arms-match-shape.json"),
   at("docs/research/arms-match/arms-match-dc8b3d5b.json"),
   at("docs/research/arms-match/arms-match-5369d6a0.json"),
-  at("docs/research/arms-match/arms-match.json")
+  at("docs/research/arms-match/arms-match.json"),
+  at("docs/research/arms-match/arms-match-da6d32e6-1.json"),
+  at("docs/research/arms-match/arms-match-da6d32e6-2.json"),
+  at("docs/research/arms-match/arms-match-da6d32e6-3.json"),
+  at("docs/research/arms-match/arms-match-da6d32e6-4.json"),
+  at("docs/research/arms-match/arms-match-da6d32e6-5.json")
 ];
 
 /** The hashed sources whose recorded hash in the run differs from the tree's. */
