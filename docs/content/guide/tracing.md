@@ -557,18 +557,40 @@ let dump = TraceContract.parseDumpWith codecs (System.IO.File.ReadAllText "cart.
 let checkpoint: TraceCheckpoint = { Name = dump.Checkpoint; Snapshot = dump.Snapshot }
 let state = TraceContract.state codecs checkpoint dump.Events
 
+// The Created root with the NodeNew seq held by the dump's snapshot.
+let createdRoot (id: int) (root: WhyRoot) =
+    match root with
+    | WhyRoot.Created 0 ->
+        match dump.Snapshot.Nodes.TryFind id with
+        | Some n -> WhyRoot.Created n.Created
+        | None -> root
+    | _ -> root
+
 let runs =
     match TraceContract.lookup dump.Snapshot dump.Events (TraceAddress.ByPath "/subtotal") with
     | TraceLookup.Live node
     | TraceLookup.Checkpointed node
     | TraceLookup.Disposed (node, _) ->
-        TraceContract.runs codecs (TraceModel.history dump.Events dump.Checkpoint node.Node)
+        let history = TraceModel.history dump.Events dump.Checkpoint node.Node
+        let runs = history.Runs |> List.map (fun r -> { r with Root = createdRoot node.Node r.Root })
+        TraceContract.runs codecs { history with Runs = runs }
     | TraceLookup.Missing
     | TraceLookup.Foreign -> []
 ```
 
-`TraceContract.why codecs why` encodes a `TraceModel.why` chain the same way, and
-`TraceContract.nodeRef snapshot id` gives the `TraceNodeRef` of a node in a snapshot, or `None`.
+Two values read this way differ from the graph's:
+
+- A `Lossy` payload decodes to its text, and the text encodes as `Exact (String text)`. A value that
+  `Trace.state` reports as `Lossy "{ X = 1; Y = 2 }"`, and every payload of a schema 1 or 2 dump, is
+  `Exact (String ...)` in `state` and `runs`. `dump.Payloads[i]` holds the form of `dump.Events[i]`,
+  `Lossy` included.
+- `TraceModel.history` and `TraceModel.why` end a first run at `Created 0` when its `NodeNew` is folded
+  into the checkpoint. `createdRoot` above replaces that root with the snapshot node's `Created` seq,
+  the root `Trace.runs` and `Trace.why` report.
+
+`TraceContract.why codecs why` encodes a `TraceModel.why` chain the same way; map its `Root` with
+`Option.map (createdRoot why.Node)` first. `TraceContract.nodeRef snapshot id` gives the `TraceNodeRef` of a node in a
+snapshot, or `None`.
 `TraceContract.dumpTextWith` writes a schema 3 dump from a snapshot and events.
 The `TraceContract` functions are pure and run on any thread.
 
