@@ -1,8 +1,40 @@
 # Ranvier Signal Maps Implementation Plan
 
+## Core and view state
+
+**Core primitives used:**
+
+- `createSignal` / `createMemo` in component setup: the displayed scene, cursor, playback state, speed, caption,
+  log, explanation, inspection text, error, and the control list. A memo over the displayed scene computes
+  `SceneView.project`.
+- `each` / `forEach` / `forEachFixed` (core projections): nodes, edges, collection boxes, column labels, flight dots,
+  log entries, timeline ticks, controls and speed options, keyed by node id, edge pair, dot sequence number or index.
+- `show` / `showElse` / `matchWith` (a memo with an owner per arm): the timeline bar, live versus replayed controls,
+  and the error panel.
+- `Setup.OnCleanup` on the map instance's owner: disposes the scenario `Graph`, cancels playback timers, animation
+  frames and running animations, and removes source-line highlights.
+- `batch`: groups the writes of one replay frame so the view commits once per frame.
+- A separate `Graph` per scenario run: the traced scenario graph, kept apart from the view's graph so view updates
+  never appear in the trace.
+
+**View-owned state:**
+
+- DOM nodes created by the templates and their attribute and property writes.
+- anime.js animatables and animations on node groups, shapes and dots: animation state written to native nodes,
+  created in mounted hooks and cancelled by their cleanup.
+- Source-line highlight classes on the card's highlighted code lines: an ownership claim on native nodes outside the
+  map's own template, taken through a lent hook and released by its cleanup.
+- Browser timer and animation-frame handles for playback pacing and trace polling: no core equivalent; released by
+  instance cleanup.
+- Server HTML for each map host, rendered by `Server.renderPage`.
+
+No view-side ownership tree, key matcher, reconciler, selection cache or commit queue is introduced.
+
+## Overview
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkboxes for tracking.
 
-**Status:** Planning only. The user requested a draft PR containing this plan and deferred implementation. No renderer, loader, dependency, or test changes have been made for this migration. Do not start implementation without a later instruction to resume it.
+**Status:** In progress. The user asked for implementation on 2026-10-24; steps are ticked as they land.
 
 **Goal:** Render the documentation's interactive signal maps with Ranvier.View, preserving their controls, trace playback, source highlighting, and authoring experience.
 
