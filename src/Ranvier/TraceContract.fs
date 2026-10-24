@@ -1,24 +1,5 @@
 namespace Ranvier
 
-/// <summary>A payload value of one of the four types every trace schema writes losslessly.</summary>
-[<RequireQualifiedAccess>]
-type TraceScalar =
-    | Int of int
-    | String of string
-    | Bool of bool
-    | Float of float
-
-/// <summary>A recorded value in a trace contract document, marked as lossless or lossy.</summary>
-[<RequireQualifiedAccess>]
-type TracePayload =
-    | Null
-    /// <summary>An <c>int</c>, <c>string</c>, <c>bool</c> or <c>float</c>, held exactly.</summary>
-    | Exact of TraceScalar
-    /// <summary>The <c>data</c> written by version <c>version</c> of the codec named <c>codec</c>; lossless.</summary>
-    | Encoded of codec: string * version: int * data: string
-    /// <summary>The value's <c>TraceModel.valueText</c>: diagnostic text that will not decode to a value.</summary>
-    | Lossy of text: string
-
 /// <summary>An application codec for payload values of one shape.</summary>
 /// <remarks>
 /// <c>Encode</c> claims a value by returning its data, and returns <c>None</c> for a value of another shape.
@@ -444,6 +425,46 @@ module TraceContract =
                     })
             Root = why.Root
         }
+
+    /// <summary>
+    /// The schema 3 JSONL dump of <c>before</c> and <c>events</c>, as <c>TraceModel.dumpText</c> writes it, with each
+    /// payload written in the form <c>codecs</c> gives.
+    /// </summary>
+    /// <remarks>
+    /// A payload is <c>null</c> or an object: <c>{"form":"exact","type":"int"|"string"|"bool"|"float","value":V}</c>,
+    /// <c>{"form":"encoded","codec":C,"version":N,"data":D}</c> or <c>{"form":"lossy","text":T}</c>.
+    /// </remarks>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a payload.</exception>
+    let dumpTextWith (codecs: TraceCodecs) (target: string) (checkpoint: string) (before: TraceSnapshot) (events: TraceEvent[]) : string =
+        TraceModel.dumpTextEncoded (Some (TraceCodecs.encode codecs)) target checkpoint before events
+
+#if !FABLE_COMPILER
+    /// <summary>
+    /// The dump of <c>TraceModel.parseDump</c>, with each event payload decoded by <c>codecs</c> from its form in
+    /// <c>Payloads</c>; a <c>Lossy</c> payload stays its text.
+    /// </summary>
+    /// <exception cref="T:System.FormatException">The text is not a supported trace dump.</exception>
+    /// <exception cref="T:Ranvier.TraceCodecException">
+    /// A payload's codec and version are not in <c>codecs</c>, or <c>codecs</c> is strict and a payload is <c>Lossy</c>.
+    /// </exception>
+    let parseDumpWith (codecs: TraceCodecs) (text: string) : TraceDump =
+        let dump = TraceModel.parseDump text
+
+        let decode (i: int) (e: TraceEvent) =
+            if e.Kind = TraceEventKind.TimedState then
+                e
+            else
+                match dump.Payloads[i] with
+                | TracePayload.Lossy text when not codecs.Strict -> { e with Payload = box text }
+                | payload ->
+                    { e with
+                        Payload = TraceCodecs.decode codecs payload
+                    }
+
+        { dump with
+            Events = Array.mapi decode dump.Events
+        }
+#endif
 
 /// <summary>A contract document read by a <c>TraceJson</c> reader.</summary>
 type TraceDocument<'T> =

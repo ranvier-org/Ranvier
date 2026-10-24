@@ -174,11 +174,13 @@ let cases () : (string * string * obj) list =
         box
             {
                 Target = "net"
+                Schema = 1
                 Graph = 1
                 Checkpoint = null
                 SeqFrom = 2
                 Snapshot = snapshot
                 Events = [||]
+                Payloads = [||]
             }
         "timing",
         "{ Mode = \"debounce\"\n  CapturedStatus = "

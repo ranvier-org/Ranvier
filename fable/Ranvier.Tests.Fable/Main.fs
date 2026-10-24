@@ -40,6 +40,7 @@ let all =
             testList "TraceModelTests.fs" [ Ranvier.Tests.TraceModelTests.tests ]
             testList "TraceContractTests.fs" [ Ranvier.Tests.TraceContractTests.tests ]
             testList "TraceJsonTests.fs" [ Ranvier.Tests.TraceJsonTests.tests ]
+            testList "TraceDumpTests.fs" [ Ranvier.Tests.TraceDumpTests.tests ]
             testList
                 "Observers.fs"
                 [

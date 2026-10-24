@@ -502,6 +502,18 @@ module Trace =
         let struct (checkpoint, events) = retained graph
         TraceModel.dumpText "net" checkpoint.Name checkpoint.Snapshot events
 
+    /// <summary>
+    /// The schema 3 JSONL dump of <c>graph</c>'s checkpoint and retained events, with payloads encoded by
+    /// <c>codecs</c>.
+    /// </summary>
+    /// <remarks>The dump of <c>dumpText</c>, with each payload in the form of <c>TraceContract.dumpTextWith</c>.</remarks>
+    /// <exception cref="T:System.InvalidOperationException">As for <c>dumpText</c>.</exception>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a payload.</exception>
+    let dumpTextWith (graph: Graph) (codecs: TraceCodecs) : string =
+        gate graph "Trace.dumpTextWith"
+        let struct (checkpoint, events) = retained graph
+        TraceContract.dumpTextWith codecs "net" checkpoint.Name checkpoint.Snapshot events
+
 #if !FABLE_COMPILER
     /// <summary>Writes the JSONL dump of <c>graph</c>'s log to <c>path</c>, and returns the full path.</summary>
     /// <remarks>Absent from a Fable build.</remarks>
