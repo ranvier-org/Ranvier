@@ -32,6 +32,38 @@ let private throws<'E when 'E :> exn> (f: unit -> unit) (message: string) =
             true
 
     Expect.isTrue raised message
+
+let private refOf (g: Graph) (node: INode) =
+    match TraceContract.nodeRef (Trace.snapshot g) node.Id with
+    | Some r -> r
+    | None -> failwith "the node must have a ref"
+
+/// <summary>
+/// A labelled memo whose body creates a labelled memo, run twice by a write; the refs of both inner memos and the
+/// outer memo.
+/// </summary>
+let private labelledProgram () =
+    use g = new Graph ()
+    use _ = g.Activate ()
+    let count = Trace.named "count" (fun () -> createSignal 1)
+    let inners = ResizeArray<INode>()
+
+    let outer =
+        Trace.named "outer" (fun () ->
+            createMemoWith (fun _ ->
+                inners.Add (Trace.named "inner" (fun () -> createMemo (fun _ -> 0)))
+                count.Value))
+
+    outer.Value |> ignore
+    count.Value <- 2
+    outer.Value |> ignore
+
+    [
+        yield refOf g count
+        yield refOf g outer
+        for inner in inners do
+            yield refOf g inner
+    ]
 #endif
 
 [<Tests>]
@@ -123,5 +155,60 @@ let tests =
                 Expect.equal (TraceCodecs.decode codecs (TracePayload.Exact (TraceScalar.String "s"))) (box "s") "a string"
                 Expect.isNull (TraceCodecs.decode codecs TracePayload.Null) "null"
             }
+
+            test "a chain of Trace.named labels gives a Named ref" {
+                match labelledProgram () with
+                | count :: outer :: inner :: _ ->
+                    Expect.equal (count.Path, count.Stability, count.Label) ("/count", TracePathStability.Named, Some "count") "a labelled signal"
+                    Expect.equal (outer.Path, outer.Stability) ("/outer", TracePathStability.Named) "a labelled memo"
+                    Expect.equal (inner.Path, inner.Stability) ("/outer/inner@1", TracePathStability.Named) "a labelled memo under a labelled host"
+                    Expect.equal inner.Graph 1 "the graph is the root owner id"
+                | refs -> failtestf "expected three refs, got %A" refs
+            }
+
+            test "an @k incarnation of a named path stays Named" {
+                let second = List.last (labelledProgram ())
+                Expect.equal (second.Path, second.Stability) ("/outer/inner@2", TracePathStability.Named) "the rerun's inner memo"
+            }
+
+            test "an unlabelled node, or a labelled node under one, gives a Located ref" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let site = createSignal 1
+                let mutable inner = Unchecked.defaultof<Memo<int>>
+
+                let host =
+                    createMemoWith (fun _ ->
+                        inner <- Trace.named "inner" (fun () -> createMemo (fun _ -> 0))
+                        site.Value)
+
+                host.Value |> ignore
+                Expect.equal (refOf g site).Stability TracePathStability.Located "a site segment"
+                Expect.equal (refOf g host).Stability TracePathStability.Located "an unlabelled memo"
+                Expect.equal (refOf g inner).Stability TracePathStability.Located "a label under a site segment"
+                Expect.equal (refOf g inner).Label (Some "inner") "the node's own label"
+            }
+
+            test "a labelled node under createRoot gives a Named ref" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let mutable inner = Unchecked.defaultof<Memo<int>>
+
+                createRoot (fun _ -> inner <- Trace.named "inner" (fun () -> createMemo (fun _ -> 1)))
+                |> ignore
+
+                Expect.equal
+                    ((refOf g inner).Path, (refOf g inner).Stability)
+                    ("/root#0/inner", TracePathStability.Named)
+                    "a root scope counts by order"
+            }
+
+            test "two runs of the same program give equal refs" {
+                let first = labelledProgram ()
+                let second = labelledProgram ()
+                Expect.equal second first "the refs must not depend on the run"
+            }
+
+            test "a node absent from the snapshot has no ref" { Expect.isNone (TraceContract.nodeRef TraceModel.emptySnapshot 7) "no node, no ref" }
 #endif
         ]

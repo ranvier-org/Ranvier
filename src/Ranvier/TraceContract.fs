@@ -112,3 +112,89 @@ module TraceCodecs =
                     )
                 )
         | TracePayload.Lossy text -> raise (TraceCodecException ("A lossy payload holds text alone: " + text))
+
+/// <summary>How far a node's identity path is stable.</summary>
+[<RequireQualifiedAccess>]
+type TracePathStability =
+    /// <summary>
+    /// Every segment is a label, a <c>createRoot</c> scope or a node kind. Equal across reruns and across code edits
+    /// that keep the labelled tree and its creation order.
+    /// </summary>
+    | Named
+    /// <summary>
+    /// A segment is a creation site. Equal across reruns of the same build; an edit that moves the site changes it.
+    /// </summary>
+    | Located
+
+/// <summary>A node's identity in each of its scopes.</summary>
+type TraceNodeRef =
+    {
+        /// <summary>The graph's root owner id. With <c>Node</c>, valid for one graph instance in one process.</summary>
+        Graph: int
+        /// <summary>The graph-local node id, valid for the graph instance alone.</summary>
+        Node: int
+        /// <summary>The identity path, with its <c>@k</c> suffix when more than one node has held the path.</summary>
+        Path: string
+        Stability: TracePathStability
+        Label: string option
+    }
+
+/// <summary>Contract values over a trace snapshot.</summary>
+[<RequireQualifiedAccess>]
+module TraceContract =
+    // The last segment of an owner path, without its `#n` sibling suffix.
+    let private bareSegment (path: string) =
+        let mutable start = 0
+        let mutable hash = -1
+        let mutable i = 0
+
+        while i < path.Length do
+            match path[i] with
+            | '\\' -> i <- i + 1
+            | '/' ->
+                start <- i + 1
+                hash <- -1
+            | '#' -> hash <- i
+            | _ -> ()
+
+            i <- i + 1
+
+        if hash >= 0 then
+            path.Substring (start, hash - start)
+        else
+            path.Substring start
+
+    let rec private nodeLocated (s: TraceSnapshot) (node: int) =
+        match s.Nodes.TryFind node with
+        | Some n ->
+            (n.Label.IsNone && n.Site <> "?")
+            || ownerLocated s n.Owner
+        | None -> false
+
+    and private ownerLocated (s: TraceSnapshot) (owner: int) =
+        let owner = if owner = 0 then s.Root else owner
+
+        match s.Owners.TryFind owner with
+        | None -> false
+        | Some o when o.Id = s.Root -> false
+        | Some o when o.Host <> 0 -> nodeLocated s o.Host
+        | Some o when o.Root -> ownerLocated s o.Parent
+        | Some o ->
+            (o.Label.IsNone && bareSegment o.Path <> "owner")
+            || ownerLocated s o.Parent
+
+    /// <summary>The ref of node <c>node</c> in <c>snapshot</c>, or <c>None</c> when the snapshot does not hold it.</summary>
+    let nodeRef (snapshot: TraceSnapshot) (node: int) : TraceNodeRef option =
+        snapshot.Nodes.TryFind node
+        |> Option.map (fun n ->
+            {
+                Graph = snapshot.Root
+                Node = node
+                Path = TraceModel.pathOf snapshot node
+                Stability =
+                    if nodeLocated snapshot node then
+                        TracePathStability.Located
+                    else
+                        TracePathStability.Named
+                Label = n.Label
+            })
