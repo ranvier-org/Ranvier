@@ -63,12 +63,14 @@
     <Project Path="src/Ranvier.View/Ranvier.View.fsproj" />
     <Project Path="src/Ranvier.View.Dom/Ranvier.View.Dom.fsproj" />
     <Project Path="src/Ranvier.View.Anime/Ranvier.View.Anime.fsproj" />
+    <Project Path="src/Ranvier.Mcp/Ranvier.Mcp.fsproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Ranvier.Tests/Ranvier.Tests.fsproj" />
     <Project Path="tests/Ranvier.View.Twin.Tests/Ranvier.View.Twin.Tests.fsproj" />
     <Project Path="tests/Ranvier.Wire.Tests/Ranvier.Wire.Tests.fsproj" />
     <Project Path="tests/Ranvier.CSharp.Tests/Ranvier.CSharp.Tests.csproj" />
+    <Project Path="tests/Ranvier.Mcp.Tests/Ranvier.Mcp.Tests.fsproj" />
     <Project Path="fable/Ranvier.Tests.Fable/Ranvier.Tests.Fable.fsproj" />
     <Project Path="fable/Ranvier.Anime.Tests/Ranvier.Anime.Tests.fsproj" />
     <Project Path="fable/Ranvier.View.Anime.Tests/Ranvier.View.Anime.Tests.fsproj" />
