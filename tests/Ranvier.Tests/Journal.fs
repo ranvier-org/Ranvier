@@ -762,6 +762,60 @@ let tests =
                         "takes no Settle"
                 ]
 
+            test "re-enactment re-runs the async work, and a changed async result flows through the replay" {
+                // A query signal, a gateway effect that queues a call per query outside a diagnostic replay, a
+                // keyed source the completed calls settle, and a memo over the source.
+                let build () =
+                    let journal, g = journaled ()
+                    let query = Signal (g, 0) |> Journal.key "query" intCodec
+
+                    let result =
+                        AsyncSource<int> g
+                        |> Journal.keySource "result" intCodec
+
+                    let calls = System.Collections.Generic.Queue<int>()
+
+                    g.Run (fun () ->
+                        createEffect (fun () ->
+                            let q = query.Value
+
+                            if
+                                q > 0
+                                && Journal.replaying g <> Some ReplayMode.Diagnostic
+                            then
+                                calls.Enqueue q))
+
+                    let shown =
+                        g.Run (fun () ->
+                            createMemo (fun _ ->
+                                match result.TryValue with
+                                | Ready value -> value
+                                | _ -> -1))
+
+                    let complete (service: int -> int) =
+                        while calls.Count > 0 do
+                            result.Settle (service (calls.Dequeue ()))
+
+                    journal, g, query, shown, calls, complete
+
+                let journal, _, query, shown, _, complete = build ()
+                query.Value <- 2
+                complete (fun q -> q * 10)
+                Expect.equal shown.Value 20 "the live result"
+
+                let _, g2, _, shown2, calls2, _ = build ()
+                Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+                Expect.equal calls2.Count 0 "the diagnostic replay makes no call"
+                Expect.equal shown2.Value 20 "the recorded settle"
+
+                let _, g3, _, shown3, calls3, complete3 = build ()
+                Journal.replay ReplayMode.Reenact g3 journal.Entries
+                Expect.equal (List.ofSeq calls3) [ 2 ] "the re-enactment calls the service again"
+                Expect.equal shown3.Value -1 "the recorded settle is skipped"
+                complete3 (fun q -> q * 100)
+                Expect.equal shown3.Value 200 "the changed result reaches the memo"
+            }
+
             testPropertyWithConfig
                 { FsCheckConfig.defaultConfig with
                     maxTest = 200
