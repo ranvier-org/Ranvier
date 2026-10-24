@@ -622,6 +622,70 @@ let tests =
                         "takes no Settle"
                 ]
 
+            testList
+                "Mvu.journal"
+                [
+                    let counter (g: Graph) =
+                        g.Run (fun () ->
+                            Ranvier.Elmish.Mvu.withCmd (0, []) (fun (msg: int) model ->
+                                if msg = 0 then
+                                    model, []
+                                else
+                                    model + msg, [ fun dispatch -> dispatch 0 ])
+                            |> Ranvier.Elmish.Mvu.journal "counter" intCodec)
+
+                    test "an external dispatch records one Message entry and its flush" {
+                        let journal, g = journaled ()
+                        let app = counter g
+                        let seen = ResizeArray<int>()
+                        g.Run (fun () -> createEffect (fun () -> seen.Add app.Model))
+                        app.Dispatch 2
+
+                        Expect.equal
+                            (journal.Entries
+                             |> List.map (fun e -> e.Kind, e.Key, e.Payload))
+                            [
+                                JournalEntryKind.Message, Some "counter", JournalPayload.Encoded ("int", 1, "2")
+                                JournalEntryKind.Flush, None, JournalPayload.Empty
+                            ]
+                            "the model write and the command's dispatch are derived"
+                    }
+
+                    test "a dispatch from an effect records nothing" {
+                        let journal, g = journaled ()
+                        let app = counter g
+                        let s = Signal (g, 0)
+
+                        g.Run (fun () ->
+                            createEffect (fun () ->
+                                if s.Value > 0 then
+                                    app.Dispatch s.Value))
+
+                        s.Value <- 3
+
+                        Expect.equal app.Model 3 "the dispatch landed"
+
+                        Expect.equal
+                            (journal.Entries |> List.map (fun e -> e.Kind))
+                            [ JournalEntryKind.Write; JournalEntryKind.Flush ]
+                            "only the external write"
+                    }
+
+                    test "replay dispatches the recorded messages" {
+                        let journal, g = journaled ()
+                        let app = counter g
+                        app.Dispatch 2
+                        app.Dispatch 5
+
+                        let replayed, g2 = journaled ()
+                        let app2 = counter g2
+                        Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+
+                        Expect.equal app2.Model app.Model "the model"
+                        Expect.equal replayed.Entries journal.Entries "the replay records the same entries"
+                    }
+                ]
+
             test "the entry unions print their case names" {
                 Expect.equal (JournalEntryKind.Settle.ToString ()) "Settle" "a kind"
                 Expect.equal (JournalPayload.Empty.ToString ()) "Empty" "Empty"

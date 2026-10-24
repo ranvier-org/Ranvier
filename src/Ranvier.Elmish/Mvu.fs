@@ -29,6 +29,7 @@ type Mvu<'Model, 'Msg>
     (graph: Graph, init: 'Model, update: 'Msg -> 'Model -> 'Model, step: 'Msg -> 'Model -> 'Model * (('Msg -> unit) -> unit) list, commanded: bool) =
     let root = Signal<'Model>(graph, init)
     let mutable disposed = false
+    let mutable site: JournalSite<'Msg> = null
 
     do
         if not (obj.ReferenceEquals (getOwner (), graph.Root)) then
@@ -72,9 +73,19 @@ type Mvu<'Model, 'Msg>
     /// </remarks>
     member this.Dispatch(msg: 'Msg) : unit =
         if graph.IsOnGraphThread then
+            this.Arrive msg
+        else
+            graph.Dispatch (fun () -> this.Arrive msg)
+
+    member private this.Arrive(msg: 'Msg) =
+        if isNull site then
             graph.Untrack (fun () -> this.Apply msg)
         else
-            graph.Dispatch (fun () -> this.Apply msg)
+            Journal.recordMessage site msg (fun () -> graph.Untrack (fun () -> this.Apply msg))
+
+    /// <summary>Registers the messages on the graph's journal under <c>key</c>.</summary>
+    member internal this.Journal(key: string, codec: JournalCodec<'Msg>) =
+        site <- Journal.messages key codec this.Dispatch graph
 
     /// <summary>A memo holding <c>select model</c>, owned by the current scope.</summary>
     /// <remarks>
@@ -135,4 +146,27 @@ module Mvu =
             Mvu<'Model, 'Msg>(Graph.Current, model, Unchecked.defaultof<_>, update, true)
 
         mvu.Run commands
+        mvu
+
+    /// <summary>
+    /// Registers <c>mvu</c>'s messages on its graph's journal under the application key <c>key</c>, encoded by
+    /// <c>codec</c>, and returns <c>mvu</c>. Does nothing when the graph has no journal.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A message dispatched from outside every computation records a <c>Message</c> entry. The model write and the
+    /// synchronous commands are derived from the message and record nothing; a message a command dispatches later, after
+    /// an <c>await</c>, records an entry of its own. A message dispatched by an effect or other computation records
+    /// nothing.
+    /// </para>
+    /// <para>
+    /// <c>Journal.replay</c> applies a <c>Message</c> entry by dispatching the decoded message. The registration belongs
+    /// to the current scope, as <c>Journal.key</c>'s does.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentException">
+    /// <c>key</c> is null or empty, or the graph already has an input registered under <c>key</c>.
+    /// </exception>
+    let journal (key: string) (codec: JournalCodec<'Msg>) (mvu: Mvu<'Model, 'Msg>) : Mvu<'Model, 'Msg> =
+        mvu.Journal (key, codec)
         mvu
