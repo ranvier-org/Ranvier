@@ -12,7 +12,7 @@ proposed scope for each, and does not implement them.
 | # | Issue | Priority | Depends on | Kind | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | [#164](https://github.com/shayanhabibi/Ranvier/issues/164) perf(trace): traced/untraced performance and memory baselines | P0 foundation | — | implement | done |
-| 2 | [#167](https://github.com/shayanhabibi/Ranvier/issues/167) feat(graph): public awaitable graph dispatch | P0 | — | implement | todo |
+| 2 | [#167](https://github.com/shayanhabibi/Ranvier/issues/167) feat(graph): public awaitable graph dispatch | P0 | — | implement | in-progress |
 | 3 | [#165](https://github.com/shayanhabibi/Ranvier/issues/165) feat(trace): incremental event cursors and checkpointed truncation | P0 | #164 baseline | implement | todo |
 | 4 | [#166](https://github.com/shayanhabibi/Ranvier/issues/166) feat(trace): stable diagnostics and provenance contracts | P0 | #165 | implement | todo |
 | 5 | [#168](https://github.com/shayanhabibi/Ranvier/issues/168) spike(mcp): agent-observable graph | P1 | #165, #166, #167 | implement | todo |
@@ -58,3 +58,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #70 research note written — docs/.ai/research/2026-10-24-issue-70.md — 92585c4e — next: user decides scope
 - 2026-10-24 #68 research note written — docs/.ai/research/2026-10-24-issue-68.md — c0e402fe — next: user decides scope
 - 2026-10-24 #167 gate passed — plan steps 1 to 12 done on `issue/167` after review fixes (disposal faults queued `DispatchAsync` tasks; `CancellationToken` overload; batching, `Serialised`, Fable, AOT, C# and sample coverage; contracts.md and async-graph.md). Gates: `build.fsx -- test` unfiltered (Ranvier.Tests 1476, CSharp 95, Twin 1067, Wire 290, Maps 76; 0 failed), traced Ranvier.Tests (1608 passed, 13 skipped), `build.fsx -- test-fable` (untraced and traced, inline and promise), `format --dry-format`, NativeAOT publish win-x64 traced and untraced with no IL warnings — 4d62da4b — next: integrate `issue/167` on `issue/164`
+- 2026-10-24 #167 in-progress — gate failed: netstandard2.1 build of `src/Ranvier/Core.fs(1555)` rejects `SetCanceled token` (FS0501; overload is .NET 5+), net10.0 build and tests pass — 9c1707f0 — next: replace `SetCanceled token` with `TrySetCanceled token` (or a parameterless call) for netstandard2.1, then re-run the gate
