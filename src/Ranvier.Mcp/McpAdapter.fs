@@ -2,6 +2,7 @@ namespace Ranvier.Mcp
 
 open System
 open System.Collections.Concurrent
+open System.Collections.Generic
 open System.Text.Json
 open System.Text.Json.Nodes
 open System.Threading
@@ -51,12 +52,18 @@ module internal Resources =
 
 /// <summary>
 /// An MCP server surface over an <c>Exposure</c>: resources for the published state, subscriptions with
-/// <c>notifications/resources/updated</c>, and the <c>snapshot</c> tool.
+/// <c>notifications/resources/updated</c>, and the <c>snapshot</c>, <c>dispatch</c> and <c>wait_version</c> tools.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Resources: <c>ranvier://state</c> holds the whole snapshot, and <c>ranvier://state/{name}</c> one exposed value with
 /// the snapshot's version. Reads come from the published snapshot and never enter the graph.
+/// </para>
+/// <para>
+/// <c>dispatch</c> (<c>{"message": name, "args": json}</c>, listed when the exposure has messages) runs
+/// <c>Exposure.Dispatch</c> and returns the snapshot after the flush. An unknown message, a decoder <c>Error</c>, a
+/// decoder that raises, or a missing <c>message</c> is a tool error that dispatches nothing. <c>wait_version</c>
+/// (<c>{"version": n, "timeoutMs": ms}</c>) returns the first snapshot at or past <c>n</c>, or a tool error on timeout.
 /// </para>
 /// <para>
 /// Each publication notifies the subscribers of <c>ranvier://state</c> and of each value whose encoding changed, in
@@ -135,26 +142,151 @@ type McpAdapter(exposure: Exposure) =
 
     let emptySchema = json """{"type":"object","properties":{}}"""
 
+    let nullElement = json "null"
+
+    let blocks (text: string) =
+        ResizeArray<ContentBlock> [ TextContentBlock (Text = text) :> ContentBlock ]
+
+    /// A result holding a JSON document as text and as structured content.
+    let success (text: string) =
+        CallToolResult (Content = blocks text, StructuredContent = Nullable (json text))
+
+    /// A tool error: the client sees the reason, and the call has changed nothing.
+    let failure (reason: string) =
+        CallToolResult (Content = blocks reason, IsError = Nullable true)
+
+    let argument (request: CallToolRequestParams) (name: string) =
+        match request.Arguments with
+        | null -> None
+        | arguments ->
+            match arguments.TryGetValue name with
+            | true, value -> Some value
+            | _ -> None
+
+    let snapshotTool =
+        {
+            Tool =
+                Tool (
+                    Name = "snapshot",
+                    Description = "The latest published snapshot of the exposed graph state: {\"version\": n, \"values\": {name: value}}.",
+                    InputSchema = emptySchema
+                )
+            Run = fun _ _ -> Task.FromResult (success (Resources.state exposure.Snapshot))
+        }
+
+    let dispatchSchema =
+        let messages = JsonArray ()
+
+        for name in exposure.MessageNames do
+            messages.Add (JsonValue.Create name)
+
+        let schema = JsonObject ()
+        schema["type"] <- JsonValue.Create "object"
+
+        schema["properties"] <-
+            JsonObject (
+                [
+                    KeyValuePair<string, JsonNode>(
+                        "message",
+                        JsonObject (
+                            [
+                                KeyValuePair<string, JsonNode>("type", JsonValue.Create "string")
+                                KeyValuePair<string, JsonNode>("enum", messages)
+                            ]
+                        )
+                    )
+                    KeyValuePair<string, JsonNode>(
+                        "args",
+                        JsonObject (
+                            [
+                                KeyValuePair<string, JsonNode>("description", JsonValue.Create "The message's arguments, read by its decoder.")
+                            ]
+                        )
+                    )
+                ]
+            )
+
+        schema["required"] <- JsonArray (JsonValue.Create "message")
+        json (schema.ToJsonString ())
+
+    let dispatchTool =
+        {
+            Tool =
+                Tool (
+                    Name = "dispatch",
+                    Description =
+                        "Dispatches an exposed message, decoded from 'args', and returns the snapshot published once it and its effects have run. A rejected message is a tool error and changes nothing.",
+                    InputSchema = dispatchSchema
+                )
+            Run =
+                fun request _ ->
+                    task {
+                        match argument request "message" with
+                        | Some message when message.ValueKind = JsonValueKind.String ->
+                            let args =
+                                argument request "args"
+                                |> Option.defaultValue nullElement
+
+                            try
+                                match! exposure.Dispatch (message.GetString (), args) with
+                                | Result.Ok snapshot -> return success (Resources.state snapshot)
+                                | Result.Error reason -> return failure reason
+                            with ex ->
+                                return failure $"The dispatch failed: {ex.Message}"
+                        | _ -> return failure "dispatch takes a string 'message' naming an exposed message."
+                    }
+        }
+
+    let maximumWait = 60000
+
+    let waitVersionTool =
+        {
+            Tool =
+                Tool (
+                    Name = "wait_version",
+                    Description =
+                        $"Waits until the published snapshot reaches 'version', and returns it; a tool error after 'timeoutMs' (default 5000, at most {maximumWait}).",
+                    InputSchema =
+                        json
+                            """{"type":"object","properties":{"version":{"type":"integer"},"timeoutMs":{"type":"integer","minimum":0}},"required":["version"]}"""
+                )
+            Run =
+                fun request _ ->
+                    task {
+                        let integer name =
+                            argument request name
+                            |> Option.bind (fun value ->
+                                match value.ValueKind, value.TryGetInt64 () with
+                                | JsonValueKind.Number, (true, number) -> Some number
+                                | _ -> None)
+
+                        let timeout =
+                            match argument request "timeoutMs" with
+                            | None -> Some 5000L
+                            | Some _ ->
+                                integer "timeoutMs"
+                                |> Option.filter (fun ms -> ms >= 0L)
+
+                        match integer "version", timeout with
+                        | Some version, Some ms ->
+                            let ms = min ms (int64 maximumWait)
+
+                            match! exposure.WaitVersion (version, TimeSpan.FromMilliseconds (float ms)) with
+                            | Some snapshot -> return success (Resources.state snapshot)
+                            | None ->
+                                return
+                                    failure $"wait_version timed out after {ms} ms at version {exposure.Snapshot.Version}, before version {version}."
+                        | None, _ -> return failure "wait_version takes an integer 'version'."
+                        | _, None -> return failure "'timeoutMs' must be a non-negative integer."
+                    }
+        }
+
     let tools: AdapterTool list =
         [
-            {
-                Tool =
-                    Tool (
-                        Name = "snapshot",
-                        Description = "The latest published snapshot of the exposed graph state: {\"version\": n, \"values\": {name: value}}.",
-                        InputSchema = emptySchema
-                    )
-                Run =
-                    fun _ _ ->
-                        let text = Resources.state exposure.Snapshot
-
-                        Task.FromResult (
-                            CallToolResult (
-                                Content = ResizeArray<ContentBlock> [ TextContentBlock (Text = text) :> ContentBlock ],
-                                StructuredContent = Nullable (json text)
-                            )
-                        )
-            }
+            snapshotTool
+            if not exposure.MessageNames.IsEmpty then
+                dispatchTool
+            waitVersionTool
         ]
 
     let resource (uri: string) (name: string) (description: string) =

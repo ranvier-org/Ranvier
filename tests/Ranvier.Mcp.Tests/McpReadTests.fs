@@ -13,6 +13,7 @@ open ModelContextProtocol.Protocol
 open ModelContextProtocol.Server
 open Ranvier
 open Ranvier.Mcp
+open Ranvier.Mcp.Tests.McpSession
 
 type private App =
     {
@@ -50,57 +51,8 @@ let private startHost () =
             Adapter = new McpAdapter (exposure)
         })
 
-/// An in-process MCP client connected to the host's adapter over a pair of pipes.
-type private Session =
-    {
-        Host: GraphHost<App>
-        Client: McpClient
-        Cancel: CancellationTokenSource
-        Server: Task
-    }
-
-    interface IAsyncDisposable with
-        member this.DisposeAsync() =
-            ValueTask (
-                task {
-                    do! this.Client.DisposeAsync ()
-                    this.Cancel.Cancel ()
-
-                    try
-                        do! this.Server
-                    with _ ->
-                        ()
-
-                    do! this.Host.Invoke (fun app -> (app.Adapter :> IDisposable).Dispose())
-                    this.Host.Dispose ()
-                }
-            )
-
-let private connect () =
-    task {
-        let host = startHost ()
-        let! adapter = host.Invoke _.Adapter
-        let toServer = Pipe ()
-        let toClient = Pipe ()
-        let cancel = new CancellationTokenSource ()
-
-        let transport =
-            new StreamServerTransport (toServer.Reader.AsStream (), toClient.Writer.AsStream ())
-
-        let server = McpServer.Create (transport, adapter.Options)
-        let running = server.RunAsync cancel.Token
-
-        let! client =
-            McpClient.CreateAsync (new StreamClientTransport (toServer.Writer.AsStream (), toClient.Reader.AsStream ()))
-
-        return
-            {
-                Host = host
-                Client = client
-                Cancel = cancel
-                Server = running
-            }
-    }
+let private connect () : Task<McpSession.Session<App>> =
+    McpSession.connect startHost _.Adapter
 
 let private textOf (result: ReadResourceResult) =
     match Seq.exactlyOne result.Contents with

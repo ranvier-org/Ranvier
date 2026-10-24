@@ -12,7 +12,9 @@
         <Compile Include="Scaffold.fs" />
         <Compile Include="GraphHostTests.fs" />
         <Compile Include="ExposureTests.fs" />
+        <Compile Include="McpSession.fs" />
         <Compile Include="McpReadTests.fs" />
+        <Compile Include="McpDispatchTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
 
