@@ -702,6 +702,11 @@ graph.Run(() =>
 | `Resolve`, `Reconcile`, `Events`, `DumpText`, `Dump` | `Trace.resolve`, `reconcile`, `events`, `dumpText`, `dump` |
 | `EventsSince(graph, seq)` | `Trace.eventsSince` |
 | `Checkpoint(graph, seq, name)`, `CheckpointOf(graph)` | `Trace.checkpoint`, `Trace.checkpointOf` |
+| `DumpText(graph, codecs)` | `Trace.dumpTextWith` |
+| `Codec`, `Codecs`, `StrictCodecs` | a `TraceCodec` record, `TraceCodecs.ofList`, `TraceCodecs.strict` |
+| `StateDocument`, `RunsDocument`, `WhyDocument` | `Trace.state`, `runs`, `whyWith`, written by `TraceJson` |
+| `WhyNotDocument`, `WaitingDocument`, `LookupDocument` | `Trace.whyNot`, `waitingOn`, `lookup`, written by `TraceJson` |
+| `LastSeq` | `Trace.lastSeq` |
 
 :::
 
@@ -727,6 +732,20 @@ Console.WriteLine($"{checkpoint.Name} at seq {checkpoint.Snapshot.Seq}");
 ```
 
 :::
+
+The `…Document` methods return the schema 3 JSON documents of the
+[machine-readable diagnostics](tracing.md#machine-readable-diagnostics), for a tool that reads the
+graph without parsing rendered text. A codec claims a value by returning its data, and returns null for
+a value of another shape:
+
+```csharp
+var point = Tracing.Codec(
+    "point", 1,
+    value => value is Point p ? $"{p.X},{p.Y}" : null,
+    data => { var xy = data.Split(','); return new Point(int.Parse(xy[0]), int.Parse(xy[1])); });
+
+var state = Tracing.StateDocument(graph, Tracing.Codecs(point));
+```
 
 Each per-node query accepts a node or its identity path, such as `"/changes"`. Use a path to reach a
 node without a handle, such as an `EffectOn`.
