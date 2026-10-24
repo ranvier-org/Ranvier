@@ -57,7 +57,7 @@ No view-side ownership tree, key matcher, reconciler, selection cache or commit 
 
 ## Feasibility evidence and remaining proof
 
-The source audit supports this migration. It does not establish that the proposed integration compiles or works in a browser.
+The source audit below motivated the migration; the implementation notes record what the built integration showed.
 
 | Observed source behavior | Consequence |
 | --- | --- |
@@ -162,13 +162,17 @@ Renderer and plugin work can proceed independently after the shared contract is 
   handle the snippet keeps.
 - Browser callbacks (timers, animation frames, animation completions) activate the view's graph before writing display
   signals; event handlers already run inside it.
-- Known limits from the independent review: an expression cell's lines are indented four columns, so a multi-line
-  string literal in one changes; a compile error on a generated header line names the file without a line; and in a
-  production build one failed cell leaves every page's maps unhydrated, because the build fails.
+- Closed after the independent review: lines inside a string literal of an expression cell are copied as written, so
+  a multi-line literal keeps its value; every generated line maps to a page line, the module header to the first
+  fence; and a page whose module fails to compile or whose cell throws on the server is left out of the bundle. Its
+  hosts show a failure card, every other page is rendered and hydrated, and the build still fails with the mapped
+  diagnostic, reported once the pages are written.
+- `build.fsx -- format` passes relative paths in batches, so it starts in a deep worktree. Its glob still includes
+  untracked generated sources (`dist/`, `docs/.nacara/`); CI checks tracked files only.
 
 ## Acceptance gates
 
-Run these only when implementation is resumed. A passing plan review does not satisfy them.
+All five gates passed on 2026-10-24; PR #171 records the counts.
 
 1. `rtk dotnet test docs/maps/tests -c Release -p:RanvierTrace=true` — full model, authoring, control, and new projection/render tests pass.
 2. Build the native maps library and generated exporter/client with tracing enabled; verify both .NET rendering and Fickl compilation. Run formatting and XML-comment checks on changed F# files.
@@ -176,4 +180,5 @@ Run these only when implementation is resumed. A passing plan review does not sa
 4. Run the persistent browser suite against that production output, including `/Ranvier/` paths and at least two maps on one page. Record passed test count and any remaining warnings.
 5. Independently review the renderer lifetime, source-span mapping, cached transform behavior, and generated startup. Check that no imperative whole-map widget or handwritten startup remains.
 
-Implementation is complete only when these gates pass and the preserved behaviors above are demonstrated. Until then, this document remains an unexecuted migration plan.
+The plan is implemented: the gates pass and the preserved behaviors above are demonstrated by the .NET, twin and
+browser suites.
