@@ -614,6 +614,54 @@ let helperTwin =
                 | _ -> arm otherArm ())
         })
 
+// A helper view value of the enclosing instance type, spliced beside the generic helper and as a whole case body.
+let private badge: TemplateView<Signal<Load>> =
+    i (Attrs.className "badge") {
+        fun (state: Signal<Load>) ->
+            match state.Value with
+            | Loaded (_, count) -> string count
+            | _ -> "none"
+    }
+
+let spliced =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded (text, _) ->
+                    span () {
+                        labelled (fun _ -> text)
+                        badge
+                    }
+                | _ -> badge
+            )
+        })
+
+let private badgeAdapter =
+    Component.define (fun _ (state: Signal<Load>) -> state) (fun _ -> badge)
+
+let private splicedArm =
+    armOf (
+        span () {
+            labelled (fun (payload: unit -> string * Signal<Load>) -> fst (payload ()))
+            render badgeAdapter (fun (payload: unit -> string * Signal<Load>) -> snd (payload ()))
+        }
+    )
+
+let private badgeArm =
+    armOf (render badgeAdapter (fun (payload: unit -> Signal<Load>) -> payload ()))
+
+let splicedTwin =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            matchWith (fun (state: Signal<Load>) -> state.Value, state) (function
+                | Loaded (text, _), state -> arm splicedArm (text, state)
+                | _, state -> arm badgeArm state)
+        })
+
 // A site inside a case body reading the outer pattern variable.
 let private closedArm = armOf (span () { "closed" })
 
@@ -911,6 +959,7 @@ let all: Case list =
                     ])
             cases "functions" functions functionsTwin (signals loadStates)
             cases "helper" helper helperTwin (signals loadStates)
+            cases "spliced" spliced splicedTwin (signals loadStates)
             cases "nested" nested nestedTwin panels
             cases "editor" editor editorTwin editors
             cases

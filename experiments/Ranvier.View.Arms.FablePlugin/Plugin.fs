@@ -18,7 +18,18 @@ module internal Calls =
         | Call (callee, info, t, r) when isMatch helper info ->
             match info.Args with
             | [ read; arms ] ->
-                Lower.site helper read arms r
+                // A splice is a call of Match with the instance mapper and the view, and no lowered argument.
+                let splice (mapper: Expr) (view: Expr) =
+                    Call (
+                        callee,
+                        { info with
+                            Args = [ mapper; view; Value (Null Any, None) ]
+                        },
+                        view.Type,
+                        view.Range
+                    )
+
+                Lower.site helper splice read arms r
                 |> Option.map (fun packed ->
                     Call (
                         callee,

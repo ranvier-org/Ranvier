@@ -136,6 +136,7 @@ let private traces queued () =
             formsTwin, forms
             functionsTwin, functions
             helperTwin, helper
+            splicedTwin, spliced
         ] do
         pair queued initial (Component.render twin) (Component.render site) loadWrites
 
@@ -413,6 +414,7 @@ let private loadFixtures =
         "whole", whole, wholeTwin
         "functions", functions, functionsTwin
         "helper", helper, helperTwin
+        "spliced", spliced, splicedTwin
     ]
 
 let private laterWrites = [ Loaded ("later", 4); Loading 5; Loaded ("again", 1) ]

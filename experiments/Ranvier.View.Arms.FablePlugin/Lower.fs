@@ -331,7 +331,7 @@ let private report (helper: PluginHelper) (matched: Ident) (instanceType: Type) 
 /// The lowered argument of a call, the selector over (instance, value) and the case bodies; or None after reporting AM003
 /// or AM004.
 /// </summary>
-let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation option) : Expr option =
+let site (helper: PluginHelper) (splice: Expr -> Expr -> Expr) (read: Expr) (arms: Expr) (r: SourceLocation option) : Expr option =
     let instanceType =
         match read.Type with
         | LambdaType (instance, _) -> instance
@@ -453,6 +453,28 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
             let thunk () =
                 ident (sprintf "armsArm_%s_%d" name last) (thunkType instanceType)
 
+            // A helper view value over the instance, built outside the body: a reference, or a call with no function
+            // argument and no view built in the body.
+            let rec spliceable (excluded: Set<string>) (view: Expr) =
+                match view with
+                | IdentExpr id -> not (excluded.Contains id.Name)
+                | Import _
+                | Get _ -> true
+                | TypeCast (inner, _) -> spliceable excluded inner
+                | Call _
+                | CurriedApply _ ->
+                    fst (Shape.children view)
+                    |> List.forall (
+                        Shape.exists (fun expr ->
+                            match expr with
+                            | Lambda _
+                            | Delegate _ -> true
+                            | IdentExpr id -> excluded.Contains id.Name
+                            | expr -> isReaderType instanceType expr.Type)
+                        >> not
+                    )
+                | _ -> false
+
             // Function values over the instance bound by the names in excluded already take the values thunk.
             let rec lower (excluded: Set<string>) (body: Expr) =
                 body
@@ -490,6 +512,10 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                             )
                         )
                     | IdentExpr id, _ when excluded.Contains id.Name -> Some expr
+                    | Let (id, value, rest), _ when id.Type = tree.Type -> Some (Let (id, lower excluded value, lower (excluded.Add id.Name) rest))
+                    | view, _ when view.Type = tree.Type && spliceable excluded view ->
+                        let thunk = thunk ()
+                        Some (splice (Lambda (thunk, emit "$0()[$1]" [ IdentExpr thunk; int32 last ] view.Range, None)) view)
                     | value, _ when isReaderType instanceType value.Type ->
                         match value.Type with
                         | Type.LambdaType (_, range) ->

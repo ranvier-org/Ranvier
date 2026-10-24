@@ -1,11 +1,12 @@
 
 import { Signal$1__get_Value } from "./src/Ranvier/Core.js";
-import { Hooks, Element$2__Yield_Z5833CC7, Element$2__Yield_Z721C83C5, Element$2__Yield_Z6F190C48, Element$2__Delay_3648B059, Element$2__Run_706D0133, Component_template } from "./src/Ranvier.View/TemplateSugar.js";
+import { Element$2__Combine_E6026A0, Hooks, Element$2__Yield_Z5833CC7, Element$2__Yield_Z721C83C5, Element$2__Yield_Z6F190C48, Element$2__Delay_3648B059, Element$2__Run_706D0133, Component_template } from "./src/Ranvier.View/TemplateSugar.js";
 import { section$1_$ctor_Z56A278BE, i$1_$ctor_Z56A278BE, pre$1_$ctor_8201905, b$1_$ctor_Z56A278BE, span$1_$ctor_ZA0E8E92, div$1_$ctor_8589939 } from "./src/Ranvier.View/Generated/HtmlTemplateSugar.js";
 import { Arms_Match_7CDE3892 } from "./Ranvier.View.Arms/Arms.js";
 import { Exception, int32ToString } from "./fable_modules/fable-library-js/Util.js";
 import { HookBuilder$1__exit_Z20F364BA } from "./src/Ranvier.View/Template.js";
 import { printf, toFail } from "./fable_modules/fable-library-js/String.js";
+import { toString } from "./fable_modules/fable-library-js/Types.js";
 
 export function read(state) {
     return Signal$1__get_Value(state);
@@ -152,6 +153,22 @@ export const failing = Component_template((_arg, state) => state, (() => {
                 return [0, _arg_1, armsInstance_S7];
             }
         }, [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z721C83C5(builder$0040_1, "Other"))))]]));
+    }));
+})());
+
+const badge = (() => {
+    const builder$0040 = i$1_$ctor_Z56A278BE();
+    return Element$2__Run_706D0133(builder$0040, Element$2__Delay_3648B059(builder$0040, () => Element$2__Yield_Z5833CC7(builder$0040, (state) => toString(Signal$1__get_Value(state)))));
+})();
+
+export const spliced = Component_template((_arg, state) => state, (() => {
+    const builder$0040 = div$1_$ctor_8589939();
+    return Element$2__Run_706D0133(builder$0040, Element$2__Delay_3648B059(builder$0040, () => {
+        let builder$0040_1;
+        return Element$2__Yield_Z6F190C48(builder$0040, Arms_Match_7CDE3892(read, null, [(armsInstance_S8, _arg_1) => ((_arg_1.tag === 2) ? [0, _arg_1.fields[0], _arg_1, armsInstance_S8] : [1, _arg_1, armsInstance_S8]), [(builder$0040_1 = span$1_$ctor_ZA0E8E92(), Element$2__Run_706D0133(builder$0040_1, Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Combine_E6026A0(builder$0040_1, Element$2__Yield_Z5833CC7(builder$0040_1, (armsArm_S8_3) => {
+            const armsRead_S8 = armsArm_S8_3();
+            return armsRead_S8[1];
+        }), Element$2__Delay_3648B059(builder$0040_1, () => Element$2__Yield_Z6F190C48(builder$0040_1, Arms_Match_7CDE3892((armsArm_S8_3) => (armsArm_S8_3()[3]), badge, null))))))), Arms_Match_7CDE3892((armsArm_S8_2) => (armsArm_S8_2()[2]), badge, null)]]));
     }));
 })());
 
