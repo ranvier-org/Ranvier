@@ -40,6 +40,7 @@
         <Compile Include="History.fs" />
         <Compile Include="Report.fs" />
         <Compile Include="Charts.fs" />
+        <Compile Include="TraceReport.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

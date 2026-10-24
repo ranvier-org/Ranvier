@@ -129,4 +129,26 @@ let probeTests =
                         |> ignore)
                     "first checkpoint under TailUpdates"
             }
+
+            test "the reader accepts the Fable harness's JSON" {
+                let json =
+                    """{"Runtime":"node","Traced":true,"Checkpoints":[{"Workload":"memo","Updates":1000,"Events":14017,"RetainedBytes":1941904,"EventsMs":0.0029,"SnapshotMs":7.1,"DumpTextMs":6.2,"TailReadMs":0.0034,"TailEvents":1400}],"Summaries":[]}"""
+
+                let file =
+                    System.IO.Path.Combine (
+                        System.IO.Path.GetTempPath (),
+                        "ranvier-trace-growth-node-"
+                        + string (System.Guid.NewGuid ())
+                        + ".json"
+                    )
+
+                try
+                    System.IO.File.WriteAllText (file, json)
+                    let growth = TraceGrowth.read file
+                    Expect.equal growth.Runtime "node" "runtime"
+                    Expect.equal growth.Checkpoints[0].Events 14017 "events"
+                    Expect.equal growth.Checkpoints[0].RetainedBytes 1941904. "retained bytes"
+                finally
+                    System.IO.File.Delete file
+            }
         ]

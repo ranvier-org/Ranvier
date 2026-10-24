@@ -15,6 +15,7 @@
     <Compile Include="CompareTests.fs" />
     <Compile Include="HistoryTests.fs" />
     <Compile Include="TraceGrowthTests.fs" />
+    <Compile Include="TraceReportTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

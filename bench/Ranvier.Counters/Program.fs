@@ -38,6 +38,8 @@ Usage: Ranvier.Counters [options]
   trace-growth --out <file>
                     Write the trace growth probe: retained heap, event count
                     and export timings after sustained updates on one graph.
+  trace-report --dir <dir>
+                    Write <dir>/report.md from a `perf trace` output directory.
   compare --ab <file> [--ab <file>] --out <dir>
                     Write verdict.json and comment.md. Overrides: --label true,
                     --messages <NUL-separated file>, --accept <names|all>
@@ -593,6 +595,9 @@ let private traceGrowth (args: string list) =
 let main argv =
     match List.ofArray argv with
     | "trace-growth" :: rest -> traceGrowth rest
+    | [ "trace-report"; "--dir"; directory ] ->
+        eprintfn "Wrote %s" (TraceReport.write directory)
+        0
     | "ab" :: rest -> Ab.main rest
     | "compare" :: rest -> Compare.main rest
     | ("record" | "timeline") :: _ -> History.main (List.ofArray argv)
