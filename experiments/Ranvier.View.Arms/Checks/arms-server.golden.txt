@@ -53,6 +53,12 @@ forms|big|ceae8987|<!--[r--><div><!--[a:15178f24--><i>big</i><!--]--></div><!--]
 forms|zero|ceae8987|<!--[r--><div><!--[a:867a2172--><pre>x!</pre><!--]--></div><!--]-->
 forms|three|ceae8987|<!--[r--><div><!--[a:867a2172--><pre>y</pre><!--]--></div><!--]-->
 forms|Idle|ceae8987|<!--[r--><div><!--[a:fddcd338--><span>Other</span><!--]--></div><!--]-->
+functions|Idle|ceae8987|<!--[r--><div><!--[a:fddcd338--><span>Other</span><!--]--></div><!--]-->
+functions|Loading 0|ceae8987|<!--[r--><div><!--[a:fddcd338--><span>Other</span><!--]--></div><!--]-->
+functions|Loading 40|ceae8987|<!--[r--><div><!--[a:fddcd338--><span>Other</span><!--]--></div><!--]-->
+functions|Loaded done 3|ceae8987|<!--[r--><div><!--[a:7f75a908--><b title="title done3">done3</b><!--]--></div><!--]-->
+functions|Loaded none 0|ceae8987|<!--[r--><div><!--[a:7f75a908--><b title="title none0">none0</b><!--]--></div><!--]-->
+functions|Loaded big 120|ceae8987|<!--[r--><div><!--[a:7f75a908--><b title="title big120">big120</b><!--]--></div><!--]-->
 helper|Idle|ceae8987|<!--[r--><div><!--[a:fddcd338--><span>Other</span><!--]--></div><!--]-->
 helper|Loading 0|ceae8987|<!--[r--><div><!--[a:fddcd338--><span>Other</span><!--]--></div><!--]-->
 helper|Loading 40|ceae8987|<!--[r--><div><!--[a:fddcd338--><span>Other</span><!--]--></div><!--]-->

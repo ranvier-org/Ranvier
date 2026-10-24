@@ -237,6 +237,12 @@ let private (|HeldInstance|_|) (instanceType: Type) (expr: Expr) : (Ident * Iden
         Some (id, values, index, body)
     | _ -> None
 
+/// <summary>Whether a value of the type is a function over the instance, such as a reader passed by name.</summary>
+let private isReaderType (instanceType: Type) (t: Type) =
+    match t with
+    | Type.LambdaType (domain, _) -> domain = instanceType
+    | _ -> false
+
 let private isHeldInstance (instanceType: Type) (expr: Expr) =
     (|HeldInstance|_|) instanceType expr
     |> Option.isSome
@@ -444,25 +450,58 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
 
                     Some (Let (values, source range, withInstance))
 
-            body
-            |> Shape.map (fun expr ->
-                match expr, firstParameter expr with
-                | HeldInstance instanceType (id, held, index, rest), _ -> opened (emit "$0[$1]()" [ IdentExpr held; index ]) (Some id) rest
-                | _, Some argument when argument.Type = instanceType ->
-                    let thunk = ident (sprintf "armsArm_%s_%d" name last) (thunkType instanceType)
-                    let inner = bodyOf expr
+            let thunk () =
+                ident (sprintf "armsArm_%s_%d" name last) (thunkType instanceType)
 
-                    opened (emit "$0()" [ IdentExpr thunk ]) (Some argument) inner
-                    |> Option.defaultValue inner
-                    |> withParameter expr thunk
-                    |> Some
-                | _, Some (Thunk instanceType (other, index) as thunk) when
-                    other <> name
-                    && not (Shape.exists (isHeldInstance instanceType) (bodyOf expr))
-                    ->
-                    opened (emit "$0()[$1]()" [ IdentExpr thunk; int32 index ]) None (bodyOf expr)
-                    |> Option.map (withBody expr)
-                | _ -> None)
+            // Function values over the instance bound by the names in excluded already take the values thunk.
+            let rec lower (excluded: Set<string>) (body: Expr) =
+                body
+                |> Shape.map (fun expr ->
+                    match expr, firstParameter expr with
+                    | HeldInstance instanceType (id, held, index, rest), _ -> opened (emit "$0[$1]()" [ IdentExpr held; index ]) (Some id) rest
+                    | _, Some argument when argument.Type = instanceType ->
+                        let thunk = thunk ()
+                        let inner = bodyOf expr
+
+                        opened (emit "$0()" [ IdentExpr thunk ]) (Some argument) inner
+                        |> Option.defaultValue inner
+                        |> withParameter expr thunk
+                        |> Some
+                    | _, Some (Thunk instanceType (other, index) as thunk) when
+                        other <> name
+                        && not (Shape.exists (isHeldInstance instanceType) (bodyOf expr))
+                        ->
+                        opened (emit "$0()[$1]()" [ IdentExpr thunk; int32 index ]) None (bodyOf expr)
+                        |> Option.map (withBody expr)
+                    | Let (id, value, rest), _ when isReaderType instanceType id.Type ->
+                        Some (Let (id, lower excluded value, lower (excluded.Add id.Name) rest))
+                    | CurriedApply (f, args, t, r), _ when isReaderType instanceType f.Type ->
+                        Some (CurriedApply (f, List.map (lower excluded) args, t, r))
+                    | Call (f, info, t, r), _ when isReaderType instanceType f.Type ->
+                        Some (
+                            Call (
+                                f,
+                                { info with
+                                    ThisArg = Option.map (lower excluded) info.ThisArg
+                                    Args = List.map (lower excluded) info.Args
+                                },
+                                t,
+                                r
+                            )
+                        )
+                    | IdentExpr id, _ when excluded.Contains id.Name -> Some expr
+                    | value, _ when isReaderType instanceType value.Type ->
+                        match value.Type with
+                        | Type.LambdaType (_, range) ->
+                            let thunk = thunk ()
+                            let held = ident ("armsSelf_" + name) instanceType
+
+                            opened (emit "$0()" [ IdentExpr thunk ]) (Some held) (CurriedApply (value, [ IdentExpr held ], range, value.Range))
+                            |> Option.map (fun inner -> Lambda (thunk, inner, None))
+                        | _ -> None
+                    | _ -> None)
+
+            lower Set.empty body
 
         let check (bound: Ident list) (body: Expr) =
             let names = set [ for id in bound @ [ matched ] -> id.Name ]

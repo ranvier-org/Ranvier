@@ -546,6 +546,46 @@ let formsTwin =
                 | _ -> arm otherArm ())
         })
 
+// Function values over the instance, bound outside the site, as a text reader and an attribute reader.
+let private nameOf (state: Signal<Load>) =
+    match state.Value with
+    | Loaded (text, count) -> text + string count
+    | _ -> "-"
+
+let private titleOf (state: Signal<Load>) =
+    Some ("title " + nameOf state)
+
+let functions =
+    let text: Signal<Load> -> string = nameOf
+    let title: Signal<Load> -> string option = titleOf
+
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                read,
+                function
+                | Loaded _ -> b (Attrs.attribute ("title", title)) { text }
+                | _ -> span () { "Other" }
+            )
+        })
+
+let private functionsArm =
+    armOf (
+        b (Attrs.attribute ("title", fun (payload: unit -> Signal<Load>) -> titleOf (payload ()))) {
+            fun (payload: unit -> Signal<Load>) -> nameOf (payload ())
+        }
+    )
+
+let functionsTwin =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            matchWith (fun (state: Signal<Load>) -> state.Value, state) (function
+                | Loaded _, state -> arm functionsArm state
+                | _ -> arm otherArm ())
+        })
+
 // A helper view of the enclosing instance type that takes a reader (Review Focus 3).
 let private labelled (label: 'inst -> string) : TemplateView<'inst> =
     b (Attrs.className "label") { label }
@@ -869,6 +909,7 @@ let all: Case list =
                         "three", Loaded ("y", 3)
                         "Idle", Idle
                     ])
+            cases "functions" functions functionsTwin (signals loadStates)
             cases "helper" helper helperTwin (signals loadStates)
             cases "nested" nested nestedTwin panels
             cases "editor" editor editorTwin editors
