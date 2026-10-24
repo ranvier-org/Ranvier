@@ -2090,6 +2090,104 @@ let tests =
                         log.Truncate (1, "renamed", null)
                         Expect.equal (Trace.events g |> Array.map _.Seq) [| 2..last |] "a truncation at the checkpoint seq drops nothing"
                     }
+
+                    test "checkpointOf before any checkpoint is unnamed and empty" {
+                        use g = new Graph ()
+
+                        Expect.equal
+                            (Trace.checkpointOf g)
+                            {
+                                Name = null
+                                Snapshot = TraceModel.emptySnapshot
+                            }
+                            "no checkpoint yet"
+                    }
+
+                    test "checkpoint folds the dropped events into its snapshot" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Trace.named "count" (fun () -> Signal (g, 0))
+                        let m = createMemo (fun _ -> s.Value * 2)
+                        createEffect (fun () -> m.Value |> ignore)
+
+                        for i in 1..5 do
+                            s.Value <- i
+
+                        let events = Trace.events g
+                        let last = events[events.Length - 1].Seq
+                        let k = last / 2
+                        let before = Trace.snapshot g
+                        let at = Trace.snapshotAt g k
+                        Trace.checkpoint g k "cut"
+                        let checkpoint = Trace.checkpointOf g
+                        Expect.equal checkpoint.Name "cut" "the checkpoint takes its name"
+                        Expect.equal checkpoint.Snapshot at "the checkpoint holds the state at its seq"
+                        Expect.equal (Trace.events g |> Array.map _.Seq) [| k + 1 .. last |] "the log retains the events after the seq"
+
+                        Expect.equal
+                            (TraceModel.fold checkpoint.Snapshot (Trace.events g))
+                            before
+                            "the checkpoint and the tail fold to the full state"
+
+                        Trace.checkpoint g last "end"
+                        Expect.equal (Trace.checkpointOf g).Snapshot before "a second checkpoint folds onto the first"
+                        Expect.isEmpty (Trace.events g) "the log is empty at its last seq"
+                    }
+
+                    test "checkpoint rejects a seq outside the retained log" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        s.Value <- 1
+                        let last = (Trace.events g |> Array.last).Seq
+                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> Trace.checkpoint g (-1) "cut") "a negative seq throws"
+                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> Trace.checkpoint g (last + 1) "cut") "a future seq throws"
+                        Trace.checkpoint g 2 "cut"
+                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> Trace.checkpoint g 1 "cut") "an expired seq throws"
+                        Expect.throwsT<System.ArgumentNullException> (fun () -> Trace.checkpoint g 2 null) "a checkpoint is named"
+                        Trace.checkpoint g 2 "renamed"
+                        Expect.equal (Trace.checkpointOf g).Name "renamed" "a checkpoint at its own seq renames it"
+                        Expect.equal (Trace.checkpointOf g).Snapshot.Seq 2 "a rename drops nothing"
+                    }
+
+                    test "checkpoint inside an effect's run raises" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let mutable raised = false
+
+                        createEffect (fun () ->
+                            try
+                                Trace.checkpoint g 1 "cut"
+                            with :? System.InvalidOperationException ->
+                                raised <- true)
+
+                        Expect.isTrue raised "a run in progress refuses the checkpoint"
+                        Expect.equal (Trace.checkpointOf g).Name null "the refused checkpoint changes nothing"
+                    }
+
+                    test "eventsSince rejects an expired cursor, and the checkpoint's seq resyncs" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+
+                        for i in 1..3 do
+                            s.Value <- i
+
+                        let events = Trace.events g
+                        let last = events[events.Length - 1].Seq
+                        Trace.checkpoint g 3 "cut"
+
+                        let message =
+                            try
+                                Trace.eventsSince g 2 |> ignore
+                                ""
+                            with :? System.ArgumentOutOfRangeException as ex ->
+                                ex.Message
+
+                        Expect.stringContains message "checkpoint at seq 3" "an expired cursor throws, naming the checkpoint seq"
+                        let resync = Trace.eventsSince g (Trace.checkpointOf g).Snapshot.Seq
+                        Expect.equal (resync |> Array.map _.Seq) [| 4..last |] "the resync reads the retained tail"
+                    }
                 ]
 #endif
         ]

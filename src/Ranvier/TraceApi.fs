@@ -305,6 +305,43 @@ module Trace =
                 )
             )
 
+    /// <summary>The checkpoint of <c>graph</c>'s log: its name, null before the first, and its folded snapshot.</summary>
+    let checkpointOf (graph: Graph) : TraceCheckpoint =
+        let struct (name, snapshot) = (logOf graph).Checkpoint
+
+        {
+            Name = name
+            Snapshot =
+                if Platform.isNull snapshot then
+                    TraceModel.emptySnapshot
+                else
+                    snapshot :?> TraceSnapshot
+        }
+
+    /// <summary>
+    /// Folds the events in <c>graph</c>'s log up to and including seq <c>seq</c> into the checkpoint named
+    /// <c>name</c>, and drops them from the log.
+    /// </summary>
+    /// <remarks>
+    /// The dropped events release their payloads. A <c>seq</c> equal to the checkpoint's seq renames the checkpoint.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>name</c> is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">
+    /// <c>seq</c> is before the checkpoint's seq or past the log's last seq.
+    /// </exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// Called off the graph's thread, or while a flush, a discharge or a run is in progress. A <c>batch</c> is allowed.
+    /// </exception>
+    let checkpoint (graph: Graph) (seq: int) (name: string) : unit =
+        if isNull name then
+            raise (System.ArgumentNullException (nameof name))
+
+        gate graph "Trace.checkpoint"
+        let log = logOf graph
+        let prefix = log.EventsThrough seq
+        let folded = TraceModel.fold (checkpointOf graph).Snapshot prefix
+        log.Truncate (seq, name, box folded)
+
     /// <summary>The JSONL dump of <c>graph</c>'s log: schema 2 with timed nodes, otherwise schema 1.</summary>
     /// <exception cref="T:System.InvalidOperationException">
     /// Called off the graph's thread, or while a flush, a discharge or a run is in progress. A <c>batch</c> is allowed.

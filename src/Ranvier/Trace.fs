@@ -676,6 +676,32 @@ type internal TraceLog(locked: bool) =
             checkpointName <- name
             checkpointSnapshot <- snapshot)
 
+    /// <summary>A copy of the retained events with <c>Seq</c> up to and including <c>seq</c>, oldest first.</summary>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">
+    /// <c>seq</c> is past the last seq, or before the seq preceding the first retained event.
+    /// </exception>
+    member _.EventsThrough(seq: int) : TraceEvent[] =
+        sync (fun () ->
+            let floor = clock - events.Count
+
+            if seq < floor || seq > clock then
+                raise (
+                    ArgumentOutOfRangeException (
+                        nameof seq,
+                        seq,
+                        String.Concat ("A checkpoint seq lies between ", string floor, " and ", string clock, ".")
+                    )
+                )
+
+#if FABLE_COMPILER
+            events.GetRange(0, seq - floor).ToArray()
+#else
+            let prefix = Array.zeroCreate (seq - floor)
+            events.CopyTo (0, prefix, 0, prefix.Length)
+            prefix
+#endif
+        )
+
     /// <summary>A copy of the retained events with <c>Seq</c> greater than <c>seq</c>, oldest first.</summary>
     /// <exception cref="T:System.ArgumentOutOfRangeException">
     /// <c>seq</c> is negative, past the last seq, or before the seq preceding the first retained event.

@@ -386,6 +386,19 @@ type TraceDump =
                 "Events", TraceText.array string this.Events
             ]
 
+/// <summary>A graph's trace checkpoint: its name and the state folded from the events dropped from the log.</summary>
+type TraceCheckpoint =
+    {
+        /// <summary>The name given to <c>Trace.checkpoint</c>, or null before the first checkpoint.</summary>
+        Name: string
+        /// <summary>The state folded from the dropped events. <c>Snapshot.Seq</c> is the last dropped seq, or 0.</summary>
+        Snapshot: TraceSnapshot
+    }
+
+    /// <summary>The checkpoint's name and snapshot in F# record syntax.</summary>
+    override this.ToString() =
+        TraceText.record [ "Name", TraceText.value this.Name; "Snapshot", string this.Snapshot ]
+
 /// <summary>Pure queries over an array of trace events, oldest first.</summary>
 /// <remarks>
 /// An array may start after seq 1 when earlier events were written to a checkpoint; a cause before the first event
