@@ -246,3 +246,252 @@ module TraceSinks =
     /// <summary>An empty <c>MemoryTraceSink</c> named <c>memory</c>.</summary>
     let memory () : MemoryTraceSink =
         MemoryTraceSink "memory"
+
+/// <summary>The checks of the trace operations that run between flushes on the graph's thread.</summary>
+module internal TraceGate =
+    /// <summary>The log of <c>graph</c>.</summary>
+    let logOf (graph: Graph) =
+        ((box graph) :?> ITraced).TraceLog
+
+    /// <summary>Raises unless the caller is on <c>graph</c>'s thread with no flush, discharge or run in progress.</summary>
+    /// <exception cref="T:System.InvalidOperationException">Off the graph's thread, or inside a flush, a discharge or a run.</exception>
+    let check (graph: Graph) (operation: string) =
+        if graph.Options.ThreadAffinity = Serialised then
+            graph.AssertOnGraphThread operation
+        elif not graph.IsOnGraphThread then
+            raise (
+                System.InvalidOperationException (
+                    operation
+                    + " ran off the graph's thread. Marshal it through Graph.Dispatch."
+                )
+            )
+
+        if Platform.isNull (box graph.CurrentComputation) then
+            Tracer.AbandonStale (logOf graph)
+
+        if (logOf graph).Busy then
+            raise (
+                System.InvalidOperationException (
+                    operation
+                    + " ran inside a flush, a discharge or a computation's run. Call it between flushes."
+                )
+            )
+
+/// <summary>
+/// A running export of a graph's trace log to a sink: after each flush, on the graph's thread, the events since the
+/// last export are encoded as schema 3 dump lines and queued for the sink.
+/// </summary>
+/// <remarks>
+/// The stream starts with a <c>Header</c> of the checkpoint at <c>Trace.export</c> time. <c>Dispose</c> ends the
+/// stream at the last event recorded before it. A sink's failure or a strict codec's
+/// <c>TraceCodecException</c> ends the export and faults <c>Completion</c>; the graph keeps running.
+/// </remarks>
+[<Sealed>]
+type TraceExport internal (graph: Graph, sink: ITraceSink, policy: SinkPolicy) =
+    let log = TraceGate.logOf graph
+    let encode = Some (TraceCodecs.encode policy.Codecs)
+    let queue = TraceExportQueue (sink, policy.Capacity)
+    let gate = obj ()
+
+    // The seq of the last event queued, dropped or folded before the export.
+    let mutable cursor = 0
+    // True while a full queue under Wait holds back the next batch.
+    let mutable waiting = false
+    let mutable disposed = false
+    // The last seq of the stream once disposed.
+    let mutable target = 0
+    let mutable fault: exn = null
+    let mutable settled = false
+    let mutable pulling = false
+    let mutable gapFrom = 0
+    let mutable gapTo = 0
+    let mutable dropped = 0
+#if FABLE_COMPILER
+    let completion = Platform.completion<unit>()
+#else
+    let completion =
+        TaskCompletionSource<unit> TaskCreationOptions.RunContinuationsAsynchronously
+#endif
+
+    member private _.Settle() =
+        let outcome =
+            lock gate (fun () ->
+                if settled then
+                    ValueNone
+                else
+                    let error = if isNull fault then queue.Fault else fault
+
+                    if not (isNull error) then
+                        settled <- true
+                        ValueSome error
+                    elif disposed && cursor >= target && queue.Idle then
+                        settled <- true
+                        ValueSome null
+                    else
+                        ValueNone)
+
+        match outcome with
+        | ValueNone -> ()
+#if FABLE_COMPILER
+        | ValueSome null -> completion.Resolve ()
+        | ValueSome error -> completion.Reject error
+#else
+        | ValueSome null -> completion.TrySetResult () |> ignore
+        | ValueSome error -> completion.TrySetException error |> ignore
+#endif
+
+    member private this.Enqueue(batch: TraceEvent[]) =
+        let last = batch[batch.Length - 1].Seq
+
+        let record =
+            TraceExportRecord.Events (batch[0].Seq, last, TraceModel.eventLines encode batch)
+
+        if
+            gapTo <> 0
+            && queue.TryWrite (TraceExportRecord.Gap (gapFrom, gapTo), 0)
+        then
+            gapFrom <- 0
+            gapTo <- 0
+
+        if queue.TryWrite (record, batch.Length) then
+            lock gate (fun () -> cursor <- last)
+            true
+        else
+            false
+
+    member private this.Skip(last: int) =
+        if gapTo = 0 then
+            gapFrom <- cursor + 1
+
+        gapTo <- last
+        dropped <- dropped + (last - cursor)
+        lock gate (fun () -> cursor <- last)
+
+    // Queues the events up to the stream's end while the queue has room. Graph thread.
+    member private this.Pull() =
+        let mutable go = true
+
+        while go do
+            let last = lock gate (fun () -> if disposed then target else log.LastSeq)
+            let room = policy.Capacity - queue.Held
+
+            if cursor >= last || not (isNull queue.Fault) then
+                go <- false
+            elif room > 0 then
+                let batch = log.EventsAfter (cursor, room)
+
+                if not (this.Enqueue batch) then
+                    go <- this.Full last
+            else
+                go <- this.Full last
+
+    // Handles a full queue, and returns whether the pull continues.
+    member private this.Full(last: int) =
+        match policy.Full with
+        | TraceExportFull.Drop ->
+            this.Skip last
+            true
+        | TraceExportFull.Wait ->
+            lock gate (fun () -> waiting <- true)
+
+            if policy.Capacity - queue.Held > 0 then
+                lock gate (fun () -> waiting <- false)
+                true
+            else
+                false
+
+    // Runs a pull unless one is in progress lower on the stack. Graph thread.
+    member private this.Run() =
+        if not pulling && isNull fault then
+            pulling <- true
+
+            try
+                try
+                    this.Pull ()
+                with error ->
+                    lock gate (fun () -> fault <- error)
+                    log.RemoveFlushed this
+            finally
+                pulling <- false
+
+        this.Settle ()
+
+    member private this.Freed() =
+        let resume =
+            lock gate (fun () ->
+                let was = waiting
+                waiting <- false
+                was)
+
+        if resume then
+            try
+                graph.Dispatch (System.Action this.Run)
+            with error ->
+                lock gate (fun () ->
+                    if isNull fault then
+                        fault <- error)
+
+        this.Settle ()
+
+    member internal this.Start() =
+        let struct (name, snapshot) = log.Checkpoint
+
+        let before =
+            if Platform.isNull snapshot then
+                TraceModel.emptySnapshot
+            else
+                snapshot :?> TraceSnapshot
+
+        cursor <- before.Seq
+        let header = TraceModel.dumpHeader encode "net" name before (log.EventsSince cursor)
+        queue.Freed <- fun () -> this.Freed ()
+
+        queue.TryWrite (TraceExportRecord.Header header, 0)
+        |> ignore
+
+        log.AddFlushed this
+        this.Run ()
+
+    /// <summary>Exports the events recorded since the last export, as a flush's end does.</summary>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// Called off the graph's thread, or while a flush, a discharge or a run is in progress.
+    /// </exception>
+    member this.Drain() =
+        TraceGate.check graph "TraceExport.Drain"
+        this.Run ()
+
+    /// <summary>
+    /// Completes after <c>Dispose</c> once the sink holds every record of the stream; faults with the sink's or the
+    /// codec's error.
+    /// </summary>
+    member _.Completion: Task = completion.Task :> Task
+
+    /// <summary>The events dropped by a full queue under <c>Drop</c>.</summary>
+    member _.Dropped = dropped
+
+    interface ITraceFlushed with
+        member this.Flushed() =
+            this.Run ()
+
+    /// <summary>Ends the stream at the last event recorded, and exports the events up to it.</summary>
+    /// <remarks>Runs on any thread: the export's end runs through <c>Graph.Dispatch</c>.</remarks>
+    member this.Dispose() =
+        let first =
+            lock gate (fun () ->
+                if disposed then
+                    false
+                else
+                    disposed <- true
+                    target <- log.LastSeq
+                    true)
+
+        if first then
+            graph.Dispatch (
+                System.Action (fun () ->
+                    log.RemoveFlushed this
+                    this.Run ())
+            )
+
+    interface System.IDisposable with
+        member this.Dispose() =
+            this.Dispose ()
