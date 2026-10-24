@@ -638,6 +638,81 @@ let private heldExit queued () =
     equal (null, "Other") (textOf target "pre", textOf target "span")
     mounted.Dispose ()
 
+/// <summary>One site per keyed row whose Loaded body holds its root on exit until <c>finish</c> runs.</summary>
+let private heldRows =
+    Component.template
+        (fun _ (rows: Signal<Row array>) -> rows)
+        (ul () {
+            forEachFixed
+                (fun (row: Row) -> row.Id)
+                (fun (rows: Signal<Row array>) -> rows.Value)
+                (li () {
+                    Arms.Match (
+                        (fun (row: Row) -> row.State.Value),
+                        function
+                        | Loaded (text, count) ->
+                            pre (
+                                Hooks.exit (
+                                    Func<_, _, _, _>(fun (_: Row) (_: HTMLPreElement) finish ->
+                                        exitReads.Add (text, count)
+                                        finishes.Add finish
+                                        ignore)
+                                )
+                            ) {
+                                fun _ -> text
+                                " x"
+                                fun _ -> string count
+                            }
+                        | _ -> span () { "Other" }
+                    )
+                })
+        })
+
+/// <summary>
+/// A held arm of a keyed row reads its own row's values while another row's payload changes and its own row remounts the
+/// same target (Testing 9).
+/// </summary>
+let private heldRowReadsOwnRow queued () =
+    finishes.Clear ()
+    exitReads.Clear ()
+    use graph = new Graph ()
+
+    let rows =
+        graph.Run (fun () ->
+            Api.createSignal
+                [|
+                    for id, text in [ 1, "a"; 2, "b" ] ->
+                        {
+                            Id = id
+                            State = Api.createSignal (Loaded (text, id))
+                        }
+                |])
+
+    let target = host ()
+
+    let mounted =
+        mountTemplate queued graph strict target (Component.render heldRows rows)
+
+    mounted.Flush ()
+    equal [| "a x1"; "b x2" |] (textsOf target "pre")
+    write graph [ mounted ] (fun () -> rows.Value[0].State.Value <- Idle)
+    equal ([ "a", 1 ], [| "a x1"; "b x2" |], [| "Other" |]) (List.ofSeq exitReads, textsOf target "pre", textsOf target "span")
+    write graph [ mounted ] (fun () -> rows.Value[1].State.Value <- Loaded ("c", 3))
+    equal [| "a x1"; "c x3" |] (textsOf target "pre")
+    write graph [ mounted ] (fun () -> rows.Value[0].State.Value <- Loaded ("d", 4))
+    equal [| "a x1"; "c x3"; "d x4" |] (Array.sort (textsOf target "pre"))
+    write graph [ mounted ] (fun () -> rows.Value[1].State.Value <- Idle)
+    equal ([ "a", 1; "c", 3 ], [| "a x1"; "c x3"; "d x4" |]) (List.ofSeq exitReads, Array.sort (textsOf target "pre"))
+    let pending = List.ofSeq finishes
+    finishes.Clear ()
+
+    for finish in pending do
+        finish ()
+
+    mounted.Flush ()
+    equal [| "d x4"; "Other" |] (rowTexts target)
+    mounted.Dispose ()
+
 [<Emit("$0.querySelectorAll($1).length")>]
 let private countOf (target: HTMLElement) (selector: string) : int = jsNative
 
@@ -910,6 +985,7 @@ let cases: (string * (unit -> unit)) array =
                 templated "one site per keyed row follows its own row through a reorder" siteInRows
                 templated "a batch that leaves a target and returns to it shows the last payload" switchBackInOneBatch
                 templated "an outgoing arm's exit reads its own case's values after the arm's cleanup" heldExit
+                templated "a held arm of a keyed row reads its own row's values" heldRowReadsOwnRow
                 templated "a source read inside a boundary pends, settles and fails as its twin does" pendingSource
                 templated "an arm read only by its exit reads its own case's latest values" exitOnlyReadsOwnCase
                 templated "an arm read only by a click handler reads its own case's values through a remount" handlerOnlyReadsOwnCase
