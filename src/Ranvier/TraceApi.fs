@@ -335,6 +335,31 @@ module Trace =
     let resolve (graph: Graph) (path: string) : int option =
         TraceModel.resolve (snapshot graph) path
 
+    /// <summary>The node at <c>address</c> in <c>graph</c>'s checkpoint and retained events.</summary>
+    let lookup (graph: Graph) (address: TraceAddress) : TraceLookup =
+        let struct (checkpoint, events) = retained graph
+        TraceContract.lookup checkpoint.Snapshot events address
+
+    /// <summary>
+    /// The lookup of <c>node</c> by id in <c>graph</c>'s log, or <c>Foreign</c> when another graph created
+    /// <c>node</c> or it records no <c>NodeNew</c>.
+    /// </summary>
+    let lookupNode (graph: Graph) (node: INode) : TraceLookup =
+#if FABLE_COMPILER
+        let ours =
+            Platform.hasMember node "TraceGraph"
+            && obj.ReferenceEquals ((node :?> ITracedNode).TraceGraph, graph)
+#else
+        let ours =
+            match node with
+            | :? ITracedNode as traced -> obj.ReferenceEquals (traced.TraceGraph, graph)
+            | _ -> false
+#endif
+        if ours then
+            lookup graph (TraceAddress.ById node.Id)
+        else
+            TraceLookup.Foreign
+
     /// <summary>
     /// <c>value</c> as text, with node ids shown as <c>graph</c>'s identity paths: a <c>Why</c>, a
     /// <c>WhyNotReason option</c>, a <c>TraceSnapshot</c>, a <c>TraceEvent[]</c> with repeated marks folded, a

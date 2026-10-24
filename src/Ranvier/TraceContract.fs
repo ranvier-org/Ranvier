@@ -139,6 +139,31 @@ type TraceNodeRef =
         Label: string option
     }
 
+/// <summary>A node address in a trace lookup.</summary>
+[<RequireQualifiedAccess>]
+type TraceAddress =
+    /// <summary>A graph-local node id.</summary>
+    | ById of node: int
+    /// <summary>An identity path, resolved as by <c>TraceModel.resolve</c>.</summary>
+    | ByPath of path: string
+
+/// <summary>The node at a <c>TraceAddress</c> in a graph's checkpoint and retained events.</summary>
+[<RequireQualifiedAccess>]
+type TraceLookup =
+    /// <summary>A live node created in the retained events.</summary>
+    | Live of TraceNodeRef
+    /// <summary>A disposed node: the <c>Dispose</c> seq, or 0 when the dispose is folded into the checkpoint.</summary>
+    | Disposed of node: TraceNodeRef * seq: int
+    /// <summary>A live node created before the checkpoint: its <c>NodeNew</c> and earlier causes are folded into it.</summary>
+    | Checkpointed of TraceNodeRef
+    /// <summary>
+    /// The address matches no node in the checkpoint or the retained events, including a node released by the
+    /// checkpoint.
+    /// </summary>
+    | Missing
+    /// <summary>A node created by another graph, or a node that records no <c>NodeNew</c>.</summary>
+    | Foreign
+
 /// <summary>Contract values over a trace snapshot.</summary>
 [<RequireQualifiedAccess>]
 module TraceContract =
@@ -198,3 +223,31 @@ module TraceContract =
                         TracePathStability.Named
                 Label = n.Label
             })
+
+    /// <summary>The node at <c>address</c> in <c>checkpoint</c> advanced by <c>events</c>, which follow it.</summary>
+    let lookup (checkpoint: TraceSnapshot) (events: TraceEvent[]) (address: TraceAddress) : TraceLookup =
+        let snap = TraceModel.fold checkpoint events
+
+        let id =
+            match address with
+            | TraceAddress.ById id when snap.Nodes.ContainsKey id -> Some id
+            | TraceAddress.ById _ -> None
+            | TraceAddress.ByPath path -> TraceModel.resolve snap path
+
+        match
+            id
+            |> Option.bind (fun id ->
+                nodeRef snap id
+                |> Option.map (fun r -> r, snap.Nodes[id]))
+        with
+        | None -> TraceLookup.Missing
+        | Some (r, n) when n.Status = TraceNodeStatus.Disposed ->
+            let seq =
+                events
+                |> Array.tryFindBack (fun e -> e.Kind = TraceEventKind.Dispose && e.Node = r.Node)
+                |> Option.map _.Seq
+                |> Option.defaultValue 0
+
+            TraceLookup.Disposed (r, seq)
+        | Some (r, n) when n.Created <= checkpoint.Seq -> TraceLookup.Checkpointed r
+        | Some (r, _) -> TraceLookup.Live r

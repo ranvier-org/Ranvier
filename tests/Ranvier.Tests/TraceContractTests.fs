@@ -64,6 +64,14 @@ let private labelledProgram () =
         for inner in inners do
             yield refOf g inner
     ]
+
+let private lastSeq (g: Graph) =
+    (Array.last (Trace.events g)).Seq
+
+type private Untraced() =
+    interface INode with
+        member _.Id = 1
+        member _.Status = Status.None
 #endif
 
 [<Tests>]
@@ -210,5 +218,86 @@ let tests =
             }
 
             test "a node absent from the snapshot has no ref" { Expect.isNone (TraceContract.nodeRef TraceModel.emptySnapshot 7) "no node, no ref" }
+
+            test "lookup finds a live node by id and by path" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let count = Trace.named "count" (fun () -> createSignal 1)
+                let live = TraceLookup.Live (refOf g count)
+                Expect.equal (Trace.lookup g (TraceAddress.ById (count :> INode).Id)) live "by id"
+                Expect.equal (Trace.lookup g (TraceAddress.ByPath "/count")) live "by path"
+                Expect.equal (Trace.lookupNode g count) live "by node"
+            }
+
+            test "lookup reports a node disposed in the retained events with its Dispose seq" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let m = Trace.named "total" (fun () -> createMemo (fun _ -> 1))
+                m.Value |> ignore
+                let r = refOf g m
+                m.Dispose ()
+
+                let disposed =
+                    Trace.events g
+                    |> Array.findBack (fun e -> e.Kind = TraceEventKind.Dispose && e.Node = r.Node)
+
+                Expect.equal (Trace.lookupNode g m) (TraceLookup.Disposed (r, disposed.Seq)) "the ref and the Dispose seq"
+            }
+
+            test "lookup reports a node disposed before the checkpoint as Missing once the checkpoint releases it" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let m = Trace.named "total" (fun () -> createMemo (fun _ -> 1))
+                m.Value |> ignore
+                m.Dispose ()
+                Trace.checkpoint g (lastSeq g) "cut"
+                Expect.equal (Trace.lookupNode g m) TraceLookup.Missing "the pruned checkpoint holds no such node"
+                Expect.equal (Trace.lookup g (TraceAddress.ByPath "/total")) TraceLookup.Missing "nor its path"
+            }
+
+            test "lookup reports a disposed node held by an unpruned checkpoint with seq 0" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let m = createMemo (fun _ -> 1)
+                m.Value |> ignore
+                m.Dispose ()
+                let folded = TraceModel.snapshot (Trace.events g)
+                let r = (TraceContract.nodeRef folded (m :> INode).Id).Value
+
+                Expect.equal
+                    (TraceContract.lookup folded [||] (TraceAddress.ById r.Node))
+                    (TraceLookup.Disposed (r, 0))
+                    "the checkpoint holds no Dispose seq"
+            }
+
+            test "lookup reports a live node created before the checkpoint as Checkpointed" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let count = Trace.named "count" (fun () -> createSignal 1)
+                Trace.checkpoint g (lastSeq g) "cut"
+                count.Value <- 2
+                let r = refOf g count
+                Expect.equal (Trace.lookupNode g count) (TraceLookup.Checkpointed r) "by node"
+                Expect.equal (Trace.lookup g (TraceAddress.ByPath "/count")) (TraceLookup.Checkpointed r) "by path"
+            }
+
+            test "lookup reports an unknown id or path as Missing" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                createSignal 1 |> ignore
+                Expect.equal (Trace.lookup g (TraceAddress.ById 999)) TraceLookup.Missing "an id past every node"
+                Expect.equal (Trace.lookup g (TraceAddress.ByPath "/nowhere")) TraceLookup.Missing "a path no node holds"
+            }
+
+            test "lookupNode reports a node of another graph or an untraced node as Foreign" {
+                use g = new Graph ()
+                use other = new Graph ()
+                let mine = using (g.Activate ()) (fun _ -> createSignal 1)
+                let theirs = using (other.Activate ()) (fun _ -> createSignal 1)
+                Expect.equal (theirs :> INode).Id (mine :> INode).Id "both graphs number their first node alike"
+                Expect.equal (Trace.lookupNode g theirs) TraceLookup.Foreign "another graph's node"
+                Expect.equal (Trace.lookupNode g (Untraced ())) TraceLookup.Foreign "a node no graph traces"
+                Expect.equal (Trace.lookupNode g mine) (TraceLookup.Live (refOf g mine)) "the graph's own node"
+            }
 #endif
         ]
