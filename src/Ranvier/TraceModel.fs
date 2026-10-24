@@ -8,7 +8,7 @@ open System.Text
 type WhyRoot =
     /// <summary>A write from outside every run: the <c>Write</c> seq.</summary>
     | UserWrite of write: int
-    /// <summary>The node's first run, with no dirty mark: the <c>NodeNew</c> seq, or 0 when it is not in the log.</summary>
+    /// <summary>The node's first run, with no dirty mark: the <c>NodeNew</c> seq, or 0 when neither the log nor its checkpoint holds it.</summary>
     | Created of nodeNew: int
     /// <summary>A run with no dirty mark, started by a reader's pull: the reader's node id.</summary>
     | Pulled of reader: int
@@ -559,12 +559,10 @@ module TraceModel =
         |> Map.ofSeq
 
     /// <summary>
-    /// The cause chain of run number <c>run</c> of <c>node</c>, or of its last run when <c>run</c> is 0, stopped after
-    /// <c>depth</c> steps when <c>depth</c> is positive. <c>checkpoint</c> names the file holding earlier events, or is
-    /// null.
+    /// <c>whyDepth</c>, with <c>created</c> giving the <c>NodeNew</c> seq of a node whose <c>NodeNew</c> precedes the
+    /// events, or 0.
     /// </summary>
-    /// <exception cref="T:System.ArgumentException">The events hold no matching <c>RunStart</c> for <c>node</c>.</exception>
-    let whyDepth (events: TraceEvent[]) (checkpoint: string) (depth: int) (node: int) (run: int) : Why =
+    let internal whyDepthWith (created: int -> int) (events: TraceEvent[]) (checkpoint: string) (depth: int) (node: int) (run: int) : Why =
         let start =
             events
             |> Array.tryFindBack (fun e ->
@@ -625,7 +623,7 @@ module TraceModel =
                                 events
                                 |> Array.tryFind (fun n -> n.Kind = TraceEventKind.NodeNew && n.Node = e.Node)
                                 |> Option.map (fun n -> n.Seq)
-                                |> Option.defaultValue 0
+                                |> Option.defaultWith (fun () -> created e.Node)
                                 |> Created
                             elif e.Other <> 0 then
                                 Pulled e.Other
@@ -648,6 +646,15 @@ module TraceModel =
                 Steps = List.ofSeq steps
                 Root = root
             }
+
+    /// <summary>
+    /// The cause chain of run number <c>run</c> of <c>node</c>, or of its last run when <c>run</c> is 0, stopped after
+    /// <c>depth</c> steps when <c>depth</c> is positive. <c>checkpoint</c> names the file holding earlier events, or is
+    /// null.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentException">The events hold no matching <c>RunStart</c> for <c>node</c>.</exception>
+    let whyDepth (events: TraceEvent[]) (checkpoint: string) (depth: int) (node: int) (run: int) : Why =
+        whyDepthWith (fun _ -> 0) events checkpoint depth node run
 
     /// <summary>The full cause chain of run number <c>run</c> of <c>node</c>, or of its last run when <c>run</c> is 0.</summary>
     let why (events: TraceEvent[]) (checkpoint: string) (node: int) (run: int) : Why =
@@ -675,10 +682,10 @@ module TraceModel =
         defaultValueArg fromFlight moved.Arg
 
     /// <summary>
-    /// Every recorded run of <c>node</c>, oldest first. <c>checkpoint</c> names the file holding earlier events, or is
-    /// null.
+    /// <c>history</c>, with <c>created</c> giving the <c>NodeNew</c> seq of a node whose <c>NodeNew</c> precedes the
+    /// events, or 0.
     /// </summary>
-    let history (events: TraceEvent[]) (checkpoint: string) (node: int) : TraceHistory =
+    let internal historyWith (created: int -> int) (events: TraceEvent[]) (checkpoint: string) (node: int) : TraceHistory =
         let ends = Dictionary<int, RunStatus>()
         let moved = Dictionary<int, obj>()
         let flushes = ResizeArray<int>()
@@ -713,7 +720,7 @@ module TraceModel =
                             | _ -> None
                         Moved = moved.ContainsKey start.Arg
                         Root =
-                            (why events checkpoint node start.Arg).Root
+                            (whyDepthWith created events checkpoint 0 node start.Arg).Root
                             |> Option.defaultValue (Unrecorded start.Seq)
                         Flush = flush
                         Value = value
@@ -721,6 +728,13 @@ module TraceModel =
             ]
 
         { Node = node; Runs = runs }
+
+    /// <summary>
+    /// Every recorded run of <c>node</c>, oldest first. <c>checkpoint</c> names the file holding earlier events, or is
+    /// null.
+    /// </summary>
+    let history (events: TraceEvent[]) (checkpoint: string) (node: int) : TraceHistory =
+        historyWith (fun _ -> 0) events checkpoint node
 
     /// <summary>The pending sources read by <c>node</c>'s last run, and the node's flights.</summary>
     let waitingOn (events: TraceEvent[]) (node: int) : TraceWaiting =

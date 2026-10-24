@@ -60,6 +60,12 @@ module Trace =
         let struct (name, snapshot, events) = (logOf graph).Retained
         struct (checkpointOfPair name snapshot, events)
 
+    // The NodeNew seq of a node folded into the checkpoint, or 0.
+    let private createdIn (checkpoint: TraceCheckpoint) (id: int) =
+        match checkpoint.Snapshot.Nodes.TryFind id with
+        | Some n -> n.Created
+        | None -> 0
+
     /// <summary>A copy of the events retained in <c>graph</c>'s log, oldest first.</summary>
     /// <remarks>The events up to the checkpoint's seq are folded into <c>checkpointOf graph</c>.</remarks>
     let events (graph: Graph) : TraceEvent[] =
@@ -195,28 +201,37 @@ module Trace =
             }
 
     /// <summary>The cause chain of <c>node</c>'s last run in <c>graph</c>'s log.</summary>
-    /// <remarks>A cause before the first retained event ends the chain at <c>BeforeCheckpoint</c>, naming the checkpoint.</remarks>
+    /// <remarks>
+    /// A cause before the first retained event ends the chain at <c>BeforeCheckpoint</c>, naming the checkpoint. A
+    /// first run ends at <c>Created</c> with the node's <c>NodeNew</c> seq, from the checkpoint when it was dropped.
+    /// </remarks>
     /// <exception cref="T:System.ArgumentException">The log holds no <c>RunStart</c> for <c>node</c>.</exception>
     let why (graph: Graph) (node: INode) : Why =
         let struct (checkpoint, events) = retained graph
-        TraceModel.why events checkpoint.Name node.Id 0
+        TraceModel.whyDepthWith (createdIn checkpoint) events checkpoint.Name 0 node.Id 0
 
     /// <summary>The cause chain of run number <c>run</c>, from 1, of <c>node</c> in <c>graph</c>'s log.</summary>
-    /// <remarks>A cause before the first retained event ends the chain at <c>BeforeCheckpoint</c>, naming the checkpoint.</remarks>
+    /// <remarks>
+    /// A cause before the first retained event ends the chain at <c>BeforeCheckpoint</c>, naming the checkpoint. A
+    /// first run ends at <c>Created</c> with the node's <c>NodeNew</c> seq, from the checkpoint when it was dropped.
+    /// </remarks>
     /// <exception cref="T:System.ArgumentException">The log holds no such run.</exception>
     let whyAt (graph: Graph) (node: INode) (run: int) : Why =
         if run < 1 then
             raise (System.ArgumentException ("A run number starts at 1.", nameof run))
 
         let struct (checkpoint, events) = retained graph
-        TraceModel.why events checkpoint.Name node.Id run
+        TraceModel.whyDepthWith (createdIn checkpoint) events checkpoint.Name 0 node.Id run
 
     /// <summary>The first <c>depth</c> steps of the cause chain of <c>node</c>'s last run in <c>graph</c>'s log.</summary>
-    /// <remarks>A cause before the first retained event ends the chain at <c>BeforeCheckpoint</c>, naming the checkpoint.</remarks>
+    /// <remarks>
+    /// A cause before the first retained event ends the chain at <c>BeforeCheckpoint</c>, naming the checkpoint. A
+    /// first run ends at <c>Created</c> with the node's <c>NodeNew</c> seq, from the checkpoint when it was dropped.
+    /// </remarks>
     /// <exception cref="T:System.ArgumentException">The log holds no <c>RunStart</c> for <c>node</c>.</exception>
     let whyDepth (graph: Graph) (depth: int) (node: INode) : Why =
         let struct (checkpoint, events) = retained graph
-        TraceModel.whyDepth events checkpoint.Name depth node.Id 0
+        TraceModel.whyDepthWith (createdIn checkpoint) events checkpoint.Name depth node.Id 0
 
     /// <summary>Why <c>node</c> has not run since its last run ended, or <c>None</c> when the log shows no reason.</summary>
     /// <remarks>Reads the retained events alone: a reason recorded before the checkpoint reads as <c>None</c>.</remarks>
@@ -224,10 +239,13 @@ module Trace =
         TraceModel.whyNot (events graph) node.Id
 
     /// <summary>Every recorded run of <c>node</c> in <c>graph</c>'s log, with its status, movement, cause and flush.</summary>
-    /// <remarks>Lists the retained runs. A cause before the first retained event is <c>BeforeCheckpoint</c>.</remarks>
+    /// <remarks>
+    /// Lists the retained runs. A cause before the first retained event is <c>BeforeCheckpoint</c>, and a first run's
+    /// root is <c>Created</c> with the node's <c>NodeNew</c> seq, from the checkpoint when it was dropped.
+    /// </remarks>
     let history (graph: Graph) (node: INode) : TraceHistory =
         let struct (checkpoint, events) = retained graph
-        TraceModel.history events checkpoint.Name node.Id
+        TraceModel.historyWith (createdIn checkpoint) events checkpoint.Name node.Id
 
     /// <summary>
     /// The pending sources read by <c>node</c>'s last run in <c>graph</c>'s log, and the node's flights with their
@@ -382,7 +400,8 @@ module Trace =
     /// </remarks>
     /// <exception cref="T:System.ArgumentNullException"><c>name</c> is null.</exception>
     /// <exception cref="T:System.ArgumentOutOfRangeException">
-    /// <c>seq</c> is before the checkpoint's seq or past the log's last seq.
+    /// <c>seq</c> is before the checkpoint's seq or past the log's last seq, or is the seq of a <c>NodeNew</c> or an
+    /// <c>OwnerNew</c> whose <c>Label</c> follows it.
     /// </exception>
     /// <exception cref="T:System.InvalidOperationException">
     /// Called off the graph's thread, or while a flush, a discharge or a run is in progress. A <c>batch</c> is allowed.
@@ -394,6 +413,22 @@ module Trace =
         gate graph "Trace.checkpoint"
         let log = logOf graph
         let prefix = log.EventsThrough seq
+
+        if log.LabelFollows seq then
+            raise (
+                System.ArgumentOutOfRangeException (
+                    nameof seq,
+                    seq,
+                    "Seq "
+                    + string seq
+                    + " creates a node or owner whose Label is seq "
+                    + string (seq + 1)
+                    + ". Checkpoint at seq "
+                    + string (seq + 1)
+                    + " instead."
+                )
+            )
+
         let folded = TraceModel.fold (checkpointOf graph).Snapshot prefix
         log.Truncate (seq, name, box folded)
 

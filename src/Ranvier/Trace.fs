@@ -739,6 +739,27 @@ type internal TraceLog(locked: bool) =
 #endif
         )
 
+    /// <summary>
+    /// True when the retained event at <c>seq</c> is a <c>NodeNew</c> or an <c>OwnerNew</c> whose <c>Label</c> is the
+    /// event at <c>seq + 1</c>.
+    /// </summary>
+    member _.LabelFollows(seq: int) : bool =
+        sync (fun () ->
+            let i = seq - (clock - events.Count) - 1
+
+            if i < 0 || i + 1 >= events.Count then
+                false
+            else
+                let e = events[i]
+                let l = events[i + 1]
+
+                (e.Kind = TraceEventKind.NodeNew
+                 || e.Kind = TraceEventKind.OwnerNew && e.Arg = 0)
+                && l.Kind = TraceEventKind.Label
+                && l.Arg = 0
+                && l.Node = e.Node
+                && e.Node <> 0)
+
 /// <summary>Traced state carried by an engine object: its graph's log and its own trace id.</summary>
 type internal ITraced =
     abstract TraceLog: TraceLog with get, set

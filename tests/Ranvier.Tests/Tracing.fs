@@ -2150,6 +2150,41 @@ let tests =
                         Expect.equal (Trace.checkpointOf g).Snapshot.Seq 2 "a rename drops nothing"
                     }
 
+                    test "checkpoint rejects a seq between a NodeNew and its label" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Trace.named "count" (fun () -> Signal (g, 0))
+
+                        let created =
+                            ofKind TraceEventKind.NodeNew g
+                            |> Array.find (fun e -> e.Node = (s :> INode).Id)
+
+                        let before = Trace.snapshot g
+
+                        let message =
+                            try
+                                Trace.checkpoint g created.Seq "cut"
+                                ""
+                            with :? System.ArgumentOutOfRangeException as ex ->
+                                ex.Message
+
+                        Expect.stringContains message (string (created.Seq + 1)) "the split throws, naming the label's seq"
+                        Expect.equal (Trace.checkpointOf g).Name null "the refused checkpoint changes nothing"
+                        Trace.checkpoint g (created.Seq + 1) "cut"
+                        Expect.equal (Trace.snapshot g) before "a checkpoint after the label keeps the snapshot"
+                        Expect.equal (Trace.origin g s).Label (Some "count") "the label survives the checkpoint"
+                    }
+
+                    test "checkpoint rejects a seq between an OwnerNew and its label" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        Trace.named "scope" (fun () -> createRoot ignore)
+
+                        let created = ofKind TraceEventKind.OwnerNew g |> Array.last
+
+                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> Trace.checkpoint g created.Seq "cut") "the split throws"
+                    }
+
                     test "checkpoint inside an effect's run raises" {
                         use g = new Graph ()
                         use _ = g.Activate ()
@@ -2228,6 +2263,26 @@ let tests =
                         Expect.equal (Trace.whyDepth g 0 m).Root (Some (BeforeCheckpoint "cut")) "whyDepth names the checkpoint"
                         let history = Trace.history g m
                         Expect.equal (history.Runs |> List.map _.Root) [ BeforeCheckpoint "cut" ] "history keeps the retained run"
+                    }
+
+                    test "why of a lazy memo's first run after the checkpoint ends at its creation" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let m = createMemo (fun _ -> s.Value * 2)
+
+                        let created =
+                            ofKind TraceEventKind.NodeNew g
+                            |> Array.find (fun e -> e.Node = (m :> INode).Id)
+
+                        let events = Trace.events g
+                        Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                        Expect.equal m.Value 0 "the memo runs after the checkpoint"
+                        Expect.equal (Trace.why g m).Root (Some (Created created.Seq)) "the root is the dropped NodeNew"
+                        Expect.equal (Trace.whyAt g m 1).Root (Some (Created created.Seq)) "whyAt reads the creation seq"
+                        Expect.equal (Trace.whyDepth g 0 m).Root (Some (Created created.Seq)) "whyDepth reads the creation seq"
+
+                        Expect.equal ((Trace.history g m).Runs |> List.map _.Root) [ Created created.Seq ] "history reads the creation seq"
                     }
 
                     test "origin of a node created before the checkpoint comes from the snapshot" {
