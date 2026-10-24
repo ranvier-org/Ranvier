@@ -1552,7 +1552,7 @@ type internal PendingDispatch<'T>() =
 
     member this.Cancel(token: CancellationToken) =
         if this.TryClose () then
-            this.SetCanceled token
+            this.TrySetCanceled token |> ignore
 
     interface IPendingDispatch with
         member this.Abandon error =
