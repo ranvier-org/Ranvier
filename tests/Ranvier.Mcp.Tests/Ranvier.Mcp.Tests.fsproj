@@ -12,6 +12,7 @@
         <Compile Include="Scaffold.fs" />
         <Compile Include="GraphHostTests.fs" />
         <Compile Include="ExposureTests.fs" />
+        <Compile Include="McpReadTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
 
