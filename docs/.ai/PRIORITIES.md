@@ -18,10 +18,12 @@ proposed scope for each, and does not implement them.
 | 5 | [#168](https://github.com/shayanhabibi/Ranvier/issues/168) spike(mcp): agent-observable graph | P1 | #165, #166, #167 | implement | in-progress |
 | 6 | [#157](https://github.com/shayanhabibi/Ranvier/issues/157) perf(arms): restore the 5% Chromium target | — | quiet machine for timings | implement | todo |
 | 7 | [#69](https://github.com/shayanhabibi/Ranvier/issues/69) Myriad expansion for traced and untraced primitives | 1.0.0-rc | — | research | done |
-| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) event sourcing adapters for traced builds | 1.0.0-rc | #165, #166 | research | todo |
+| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | todo |
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | todo |
 | 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
+| 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | todo |
+| 13 | [#185](https://github.com/shayanhabibi/Ranvier/issues/185) store adapters for the input journal and persisted state | — | #184, #68 | implement | blocked |
 
 Statuses: `todo`, `in-progress` (an iteration left work; see the log), `done` (merged into
 `integration/issues`), `blocked` (the log names what it needs from the user).
@@ -48,6 +50,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/69 | #69 | https://github.com/shayanhabibi/Ranvier/pull/175 | integration/issues |
 | issue/70 | #70 | https://github.com/shayanhabibi/Ranvier/pull/174 | integration/issues |
 | issue/165 | #165 | https://github.com/shayanhabibi/Ranvier/pull/178 | integration/issues |
+| issue/65 | #65 | https://github.com/shayanhabibi/Ranvier/pull/183 | integration/issues |
 | issue/166 | #166 | https://github.com/shayanhabibi/Ranvier/pull/182 | integration/issues |
 
 ## Log
@@ -77,3 +80,6 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #166 done — four review findings fixed (invariant payload numbers, Timed and settled null values) and offline trace reads documented, gates pass — ec7d8c00 — next: open the stacked PR into integration/issues
 - 2026-10-25 #168 in-progress — review fixes: `GraphHost.Start (options, setup)` rejects a non-`Guarded` affinity; plan steps 5 to 9 done (dispatch and wait_version, traced provenance tools with an untraced absence test, `examples/Ranvier.Mcp.Sample` with `--defect`, its README beside SageFs, `docs/content/guide/mcp.md`); step 10 partly done (protocol, prompt and a test-backed diagnosis of the seeded defect in `docs/.ai/research/2026-10-24-issue-168-experiment.md`; the comparative agent runs are not run). Gates passed: `format --dry-format`, `build.fsx -- test` unfiltered (CSharp 95, Mcp 31, Ranvier.Tests 1,477, Twin 1,067, Wire 290, maps 101), the traced Mcp stage (36), `build.fsx -- build`; not pushed — next: run the baseline and MCP agent workflows of the experiment, then push `issue/168` and open its PR
 - 2026-10-24 #168 in-progress — review fixes landed (traced tools documented as reading the whole graph; comparative evaluation marked unmet) and build and tests pass, but the docs gate fails on four ranvier:// code spans in docs/content/guide/mcp.md (lines 75, 76, 78, 86) read as component references; not pushed — 18dd28e1 — next: rewrite those ranvier:// mentions so the maps linter accepts them, rerun the docs gate
+- 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope (untraced journal hook, order against #166)
+- 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope
+- 2026-10-24 #65 rescoped by the user — trace export sink (implement, 1.0.0-rc); input journal and replay split to #184 (milestone 3), store adapters to #185 (blocked until a user names a store, after #184) — next: #65 after #166 merges
