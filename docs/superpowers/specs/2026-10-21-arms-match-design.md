@@ -513,14 +513,14 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
     written as `Arms.Match`; run `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match
     --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar` under `bench.lock`
     (`mkdir C:/Users/shaya/.claude/jobs/7fee9ca9/tmp/bench.lock` before, `rmdir` after) and the browser lock. Gate, per
-    operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) has a median of at most the operation's budget; its 95 % bootstrap interval is reported. `Checks/chromium-gate.mjs` checks the committed results. Runs record the CPU load in `notes`, source hashes and tool versions.
+    operation: the paired ratio (each `ranvier-arms-match` sample over the `ranvier-sugar` sample of the same process and round, `--pairs=ranvier-arms-match:ranvier-sugar`) pooled over every committed run of the current lowering (`Checks/pooled-interval.mjs`), has a median of at most the operation's budget; its pooled 95 % bootstrap interval is reported as below, above or straddling the budget. `Checks/chromium-gate.mjs` checks the committed results. Every committed run with matching sources stays in the pool. Runs record the CPU load in `notes`, source hashes and tool versions.
     The budgets are create 1.05, switch 1.04, payload 1.07 and clear 1.05. The first release shipped under a 1.12
     allowance the user accepted on 2026-10-22 (plan Ruling 38, superseded); the payload-direct lowering
     ([#157](https://github.com/shayanhabibi/Ranvier/issues/157), Phased implementation 8) targeted 1.05 on every
     operation. **Concession (user ruling, 2026-10-24; plan `2026-10-24-issue-157.md`, Decision P9):** create and clear
-    keep 1.05; switch and payload take the upper bound of the pooled paired 95 % interval over the six committed runs of
-    #157, rounded up to 0.01, because the plugin's output is indistinguishable from the hand-written payload-direct shape
-    (`arms-match-shape.json`). Paired medians and intervals per run, at the CPU load recorded in each:
+    keep 1.05; switch takes 1.04 and payload 1.07, because the plugin's output is indistinguishable from the hand-written
+    payload-direct shape (`arms-match-shape.json`). The budgets are fixed and are not refitted when a run joins the pool;
+    an operation whose pooled interval straddles its budget passes when its pooled median is within it. Paired medians and intervals per run, at the CPU load recorded in each:
 
     | Run (CPU load) | create | switch | payload | clear |
     |---|---|---|---|---|
@@ -532,11 +532,11 @@ Each item names its suite; the research's unprobed items are marked **(new)**.
     | `4d00179e`, gate input (56-99 %) | 1.004 (0.962-1.055) | 0.969 (0.917-1.035) | 0.971 (0.943-1.053) | 0.996 (0.906-1.093) |
     | pooled, 270 pairs | 1.004 (0.993-1.031) | 1.012 (0.995-1.037) | 1.030 (0.992-1.066) | 1.012 (0.980-1.069) |
 
-    Switch's pooled upper bound 1.037 gives a budget of 1.04 and payload's 1.066 gives 1.07.
-    `Checks/pooled-interval.mjs` rederives them and `pooled-interval.test.mjs` checks the gate's table against it, and
-    checks that the gate input's source hashes match the tree. The gate input `arms-match.json` is the paired run at
-    `4d00179e` on the rebased branch, every source hash matching it; it passes every budget, with the create and clear
-    intervals straddling 1.05. `8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` (`arms-match-dc8b3d5b.json`) predate
+    Every pooled median is within its budget. The create, switch and payload pooled intervals lie below their budgets;
+    the pooled clear interval (0.980-1.069) straddles 1.05, and the clear medians of the two runs on the rebased branch
+    spread from 1.119 (`5369d6a0`) to 0.996 (`4d00179e`). `Checks/pooled-interval.mjs` prints the pool and each run;
+    `pooled-interval.test.mjs` checks the fixed budgets, the pooled medians against them and, when a change touches
+    `docs/research/arms-match/`, that the latest run's source hashes (`arms-match.json`, at `4d00179e`) match the tree. `8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` (`arms-match-dc8b3d5b.json`) predate
     the rebase of `issue/157` onto `integration/issues` at `0967cc02`; their source hashes match the rebased branch
     except `src/Ranvier/Core.fs`, which #165 changed and both modes share. The earlier run on the rebased branch,
     `5369d6a0`, measures clear 1.119 on an interval straddling 1.05, and the pooled clear interval (0.980-1.069)
@@ -623,8 +623,8 @@ Each phase lands with its tests green and is reviewable alone.
    row counts. The Step 11 paired medians on the shared machine were create 1.003, switch 1.078, payload 1.073 and
    clear 1.011, every 95 % interval straddling 1.05. A paired run against the spike's hand-written shape finds the
    plugin's output indistinguishable from it (research note, "Chromium"). Under the user's ruling of 2026-10-24 the
-   Chromium budgets are per operation (Testing 11): create and clear 1.05, switch 1.04 and payload 1.07, the pooled
-   upper bounds over the six runs rounded up to 0.01. The gate input, a paired run on the rebased branch (`4d00179e`,
-   CPU load 56-99 %), measures create 1.004, switch 0.969, payload 0.971 and clear 0.996, and `chromium-gate.mjs`
-   passes. The earlier run on the rebased branch (`5369d6a0`, CPU load 70-97 %) measures create 0.992, switch 1.022,
+   Chromium budgets are per operation (Testing 11): create and clear 1.05, switch 1.04 and payload 1.07, fixed, judged by
+   the pooled paired median over the six runs: create 1.004, switch 1.012, payload 1.030 and clear 1.012, and
+   `chromium-gate.mjs` passes; the pooled clear interval (0.980-1.069) straddles 1.05. The latest run on the rebased
+   branch (`4d00179e`, CPU load 56-99 %) measures create 1.004, switch 0.969, payload 0.971 and clear 0.996. The earlier run on the rebased branch (`5369d6a0`, CPU load 70-97 %) measures create 0.992, switch 1.022,
    payload 1.040 and clear 1.119 (0.991-1.175).

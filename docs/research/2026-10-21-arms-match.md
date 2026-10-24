@@ -13,8 +13,9 @@ rows. The Chromium gate is a paired median against the sugared twin of at most 1
 switch and 1.07 on payload, under the user's concession of 2026-10-24 ("Chromium"); the cells release ran under a 1.12
 allowance (plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload (1.096).
 Pooled over the six committed runs of #157 at 35-100 % load, the payload-direct shape's paired medians are create 1.004,
-switch 1.012, payload 1.030 and clear 1.012; the gate run on the rebased branch measures 1.004, 0.969, 0.971 and 0.996
-and passes, and the earlier run on the rebased branch measures 0.992, 1.022, 1.040 and 1.119, its clear interval
+switch 1.012, payload 1.030 and clear 1.012; the gate judges these pooled medians and passes, with the pooled clear
+interval (0.980-1.069) straddling 1.05. The latest run on the rebased branch measures 1.004, 0.969, 0.971 and 0.996,
+and the earlier run on the rebased branch measures 0.992, 1.022, 1.040 and 1.119, its clear interval
 straddling 1.05. In a paired
 run against the hand-written shape, the plugin's output is indistinguishable from it on every operation.
 
@@ -176,12 +177,13 @@ budgets are create 1.05, switch 1.04, payload 1.07 and clear 1.05; the cells rel
 Ruling 38), which the payload-direct lowering supersedes.
 
 **Concession (user ruling, 2026-10-24).** The payload-direct lowering targeted 1.05 on every operation. Create and
-clear keep it. Switch and payload take the upper bound of the pooled paired 95 % interval over the six committed runs
-below, rounded up to 0.01 (plan `2026-10-24-issue-157.md`, Decision P9), because the plugin's output is
+clear keep it. Switch takes 1.04 and payload 1.07 (plan `2026-10-24-issue-157.md`, Decision P9), fixed and not
+refitted when a run joins the pool, because the plugin's output is
 indistinguishable from the hand-written shape the spike measured ("Against the hand-written shape"). Pooling
 concatenates each run's per-pair ratios and applies the bootstrap of `keyed-rows.mjs`;
-`experiments/Ranvier.View.Arms/Checks/pooled-interval.mjs` prints the result and `pooled-interval.test.mjs` checks the
-gate's budgets against it.
+`experiments/Ranvier.View.Arms/Checks/pooled-interval.mjs` prints the result, `chromium-gate.mjs` judges each
+operation by the pooled median over the six runs below, and `pooled-interval.test.mjs` checks the fixed budgets and
+the pooled medians against them.
 
 | Run (CPU load) | create | switch | payload | clear |
 |---|---|---|---|---|
@@ -203,8 +205,8 @@ interval (0.980-1.069) straddles 1.05 as well.
 **Refresh.** The gate input `arms-match.json` is the refreshed run: the Step 11 command with `--build` through
 `gate-lock.ps1 bench` at `4d00179e`, CPU load 56, 79 and 88 % before the build and 62, 66 and 99 % after the run,
 source hashes matching the working tree (`Lower.fs` `9c7c6613…`, `Site.fs` `644adbf6…`, `Core.fs` `f2023ae6…`);
-`pooled-interval.test.mjs` checks them. Every median is within its budget; the switch and payload intervals lie below
-theirs, and the create and clear intervals straddle 1.05.
+`pooled-interval.test.mjs` checks them when a change touches `docs/research/arms-match/`. Every median of the run is
+within its budget; its switch and payload intervals lie below theirs, and its create and clear intervals straddle 1.05.
 
 | Operation | ranvier-sugar median (process medians), ms | ranvier-arms-match median (process medians), ms | paired median ratio | 95 % interval | arms slower in |
 |---|---|---|---|---|---|

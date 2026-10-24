@@ -1,6 +1,6 @@
 // The pooled paired interval of ranvier-arms-match over ranvier-sugar across the committed Chromium runs of #157 (plan
-// 2026-10-24-issue-157.md, Decision P9). The armsSwitch1k and armsPayload1k budgets of chromium-gate.mjs are the pooled
-// upper bounds rounded up to 0.01; this script rederives them.
+// 2026-10-24-issue-157.md, Decision P9). chromium-gate.mjs judges each operation by the pooled median against its fixed
+// budget; this script prints the pooled interval and every run's median and interval.
 // Usage: node experiments/Ranvier.View.Arms/Checks/pooled-interval.mjs
 import { readFileSync } from "node:fs";
 
@@ -37,14 +37,11 @@ export const interval = ratios => {
 /** The interval over the pairs of every run in `runs`. */
 export const pooled = operation => interval(runs.flatMap(run => pairsOf(run.read(), operation)));
 
-/** The value rounded up to 0.01, ignoring floating-point error below 1e-6. */
-export const roundUp = value => Math.ceil(Math.round(value * 1e6) / 1e4) / 100;
-
 if (import.meta.main) {
   const loaded = runs.map(run => ({ ...run, data: run.read() }));
   for (const operation of ["armsCreate1k", "armsSwitch1k", "armsPayload1k", "armsClear1k"]) {
     const each = loaded.map(run => { const r = interval(pairsOf(run.data, operation)); return `${run.data.commit.slice(0, 8)} ${r.median.toFixed(3)} (${r.ci95.map(x => x.toFixed(3)).join("-")})`; });
     const all = pooled(operation);
-    console.log(`${operation}: pooled ${all.median.toFixed(3)} (95 % ${all.ci95.map(x => x.toFixed(3)).join("-")}, ${all.pairs} pairs), upper bound rounded up ${roundUp(all.ci95[1]).toFixed(2)}; ${each.join("; ")}`);
+    console.log(`${operation}: pooled ${all.median.toFixed(3)} (95 % ${all.ci95.map(x => x.toFixed(3)).join("-")}, ${all.pairs} pairs); ${each.join("; ")}`);
   }
 }

@@ -7,3 +7,5 @@ docs/samples/
 experiments/Ranvier.View.Arms.FablePlugin/Tests/Fixtures/
 experiments/Ranvier.View.Arms.FablePlugin/Tests/NoTargets/
 experiments/Ranvier.View.Twin/Generated/
+# The maps tests leave their generated site behind.
+docs/.nacara/ranvier-maps-test/

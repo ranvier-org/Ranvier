@@ -179,9 +179,22 @@ process and round, 1,000 rows and six runs of 45 pairs on a shared machine at 35
 | Update every row's payload | 1.030 (0.992-1.066) | 1.07 |
 | Clear | 1.012 (0.980-1.069) | 1.05 |
 
-The target was 1.05 on every operation. The switch and payload budgets are a concession: each is the pooled
-interval's upper bound rounded up to 0.01, which gives 1.04 for switch and 1.07 for payload, because the lowered
-code is indistinguishable in these timings from the same shape written by hand. The retained heap is 1.2 % above the
+The budgets are fixed. The target was 1.05 on every operation; the switch budget of 1.04 and the payload budget of
+1.07 are a concession, as the lowered code is indistinguishable in these timings from the same shape written by hand.
+An operation passes when its pooled median is within budget. The pooled clear interval, 0.980-1.069, straddles its
+1.05 budget; the create, switch and payload intervals lie below theirs. Each run's median varies more than the pool:
+
+| Run | Create | Switch | Payload | Clear |
+|---|---|---|---|---|
+| 8ee10018 | 1.002 | 1.014 | 1.065 | 1.016 |
+| 299ab276 | 1.003 | 1.078 | 1.073 | 1.011 |
+| fccc740c | 1.041 | 0.993 | 1.042 | 1.014 |
+| dc8b3d5b | 1.013 | 1.009 | 1.000 | 0.942 |
+| 5369d6a0 | 0.992 | 1.022 | 1.040 | 1.119 |
+| 4d00179e | 1.004 | 0.969 | 0.971 | 0.996 |
+
+The clear medians of the two runs on the current branch, 5369d6a0 and 4d00179e, spread from 1.119 to 0.996. The
+retained heap is 1.2 % above the
 twin's per row, after create and after a switch. The runs, their load readings and the gate are in the
 [research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-arms-match.md#chromium).
 

@@ -1,18 +1,16 @@
 // The Chromium and heap gates of Arms.Match (spec, Testing 11-12) over the committed results in docs/research/arms-match:
-// - for each arm operation, the median paired ratio of ranvier-arms-match over ranvier-sugar (same process and round)
-//   is at most the operation's entry in `budgets`; its 95 % bootstrap interval is printed as below, above or
-//   straddling the budget;
+// - for each arm operation, the pooled median paired ratio of ranvier-arms-match over ranvier-sugar (same process and
+//   round) over every run of pooled-interval.mjs is at most the operation's entry in `budgets`; its pooled 95 %
+//   bootstrap interval is printed as below, above or straddling the budget;
 // - the retained JavaScript heap per row after create is within 10 % of ranvier-sugar at 1,000 and 10,000 rows;
 // - the retained JavaScript heap per row after one switch of every row is printed against ranvier-sugar at both counts.
 // Exits 1 on a breach. Usage: node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs
 import { readFileSync } from "node:fs";
+import { pooled, runs } from "./pooled-interval.mjs";
 
 /**
- * The paired median budget per operation. Create and clear hold the original 1.05 target. Switch and payload hold the
- * upper bound of the pooled paired 95 % interval, rounded up to 0.01, over the committed runs 8ee10018, 299ab276,
- * fccc740c, dc8b3d5b, 5369d6a0 and 4d00179e (plan 2026-10-24-issue-157.md, Decision P9; pooled-interval.mjs rederives
- * them): pooled switch 1.012 (0.995-1.037), payload 1.030 (0.992-1.066). The first four commits predate the rebase onto
- * integration/issues at 0967cc02; 5369d6a0 and 4d00179e, the gate input, are on the rebased branch.
+ * The fixed pooled paired median budget per operation (plan 2026-10-24-issue-157.md, Decision P9). A pooled interval
+ * that straddles its budget passes on the median and is recorded in the spec, the plan and docs/content/view/arms.md.
  */
 export const budgets = { armsCreate1k: 1.05, armsSwitch1k: 1.04, armsPayload1k: 1.07, armsClear1k: 1.05 };
 const heapBudget = 1.10;
@@ -20,18 +18,22 @@ const heapBudget = 1.10;
 const results = new URL("../../../docs/research/arms-match/", import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, results), "utf8"));
 
+/** The pooled median and 95 % interval of the operation, whether the median is within budget, and where the interval lies. */
+export const judge = operation => {
+  const { median, ci95, pairs } = pooled(operation);
+  const budget = budgets[operation];
+  const interval = ci95[1] <= budget ? "below" : ci95[0] > budget ? "above" : "straddles";
+  return { median, ci95, pairs, budget, ok: median <= budget, interval };
+};
+
 if (import.meta.main) {
   let failed = false;
 
-  const timings = read("arms-match.json");
-  for (const [operation, budget] of Object.entries(budgets)) {
-    const pair = timings.pairRatios.find(r => r.operation === operation && r.numerator === "ranvier-arms-match" && r.denominator === "ranvier-sugar");
-    if (!pair) { console.log(`MISSING ${operation}: no ranvier-arms-match:ranvier-sugar pair`); failed = true; continue; }
-    const ok = pair.medianRatio <= budget;
-    const [low, high] = pair.ci95;
-    const interval = high <= budget ? "below" : low > budget ? "above" : "straddles";
+  for (const operation of Object.keys(budgets)) {
+    const { median, ci95, pairs, budget, ok, interval } = judge(operation);
+    if (pairs === 0) { console.log(`MISSING ${operation}: no ranvier-arms-match:ranvier-sugar pairs`); failed = true; continue; }
     failed ||= !ok;
-    console.log(`${ok ? "PASS" : "FAIL"} ${operation} paired median ${pair.medianRatio.toFixed(3)} (95 % ${pair.ci95.map(x => x.toFixed(3)).join("-")}, ${interval} the budget), budget ${budget}`);
+    console.log(`${ok ? "PASS" : "FAIL"} ${operation} pooled paired median ${median.toFixed(3)} over ${pairs} pairs (95 % ${ci95.map(x => x.toFixed(3)).join("-")}, ${interval} the budget), budget ${budget}`);
   }
 
   const heapRows = [1000, 10000];
@@ -54,6 +56,7 @@ if (import.meta.main) {
       } else console.log(`INFO heap after switch, ${rows} rows: ${delta}`);
     }
 
-  for (const note of timings.notes.filter(note => note.startsWith("CPU load"))) console.log(`load: ${note}`);
+  for (const run of runs.map(r => r.read()))
+    for (const note of (run.notes ?? []).filter(note => note.startsWith("CPU load"))) console.log(`load ${run.commit.slice(0, 8)}: ${note}`);
   if (failed) process.exitCode = 1;
 }
