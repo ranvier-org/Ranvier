@@ -6,6 +6,8 @@
         <LangVersion>latest</LangVersion>
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
+        <!-- The Playwright suite under browser/ has its own npm project. -->
+        <DefaultItemExcludes>$(DefaultItemExcludes);browser/**</DefaultItemExcludes>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,6 +16,7 @@
         <Compile Include="ControlTests.fs" />
         <Compile Include="SceneViewTests.fs" />
         <Compile Include="PageTests.fs" />
+        <Compile Include="ControlBarTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
 
@@ -27,6 +30,8 @@
         <ProjectReference Include="..\model\Ranvier.Docs.MapModel.fsproj" />
         <ProjectReference Include="..\authoring\Ranvier.Docs.MapAuthoring.fsproj" />
         <ProjectReference Include="..\Ranvier.Docs.Maps.fsproj" />
+        <ProjectReference Include="..\..\..\experiments\Ranvier.View.Twin\Ranvier.View.Twin.fsproj" />
+        <ProjectReference Include="..\..\..\experiments\Ranvier.View.Testing\Ranvier.View.Testing.fsproj" />
     </ItemGroup>
 
 </Project>

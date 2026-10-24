@@ -39,6 +39,53 @@ let tests =
                 Expect.equal second first "a second render"
             }
 
+            test "a map renders its empty scene and controls shell without running its scenario" {
+                let mutable ran = 0
+
+                let scenario _ =
+                    ran <- ran + 1
+                    controls []
+
+                let live =
+                    SignalMap (Live scenario) Ranvier.FlightPolicy.CancelPrevious [||] false Grouping.Expand
+
+                let replay =
+                    SignalMapWithSpeed 0.5 (Replayed scenario) Ranvier.FlightPolicy.Queue [||] true Grouping.Expand
+
+                let liveHtml = Server.render omit live ()
+                let replayHtml = Server.render omit replay ()
+
+                Expect.equal ran 0 "no scenario runs on the server"
+                Expect.equal (Server.render omit live ()) liveHtml "a second render"
+                Expect.stringContains liveHtml "class=\"rv-map\"" "the map's root"
+                Expect.stringContains liveHtml "rv-map__button--reset" "a live map's Reset"
+                Expect.isFalse (liveHtml.Contains "rv-map__timeline") "a live map without a timeline"
+                Expect.stringContains replayHtml "rv-map__timeline" "a replay's timeline"
+                Expect.stringContains replayHtml ">Play</button>" "a paused replay"
+                Expect.stringContains replayHtml "--rv-map-speed: 0.5" "the initial speed"
+                Expect.stringContains replayHtml "<option value=\"0.5\" selected=\"\">0.5×</option>" "the selected speed"
+                Expect.isFalse (replayHtml.Contains "rv-map-node") "no nodes before the scenario runs"
+            }
+
+            test "two maps of one definition render independently, and their speeds are validated" {
+                let map =
+                    SignalMap (Live (fun _ -> controls [])) Ranvier.FlightPolicy.CancelPrevious [||] true Grouping.Collapse
+
+                let pair =
+                    Component.define (fun _ () -> ()) (fun t -> t.fragment [| t.render map ignore; t.render map ignore |])
+
+                let html = Server.render omit pair ()
+                let single = Server.render omit map ()
+                Expect.equal (html.Split "class=\"rv-map\"").Length 3 "two roots"
+                Expect.isGreaterThan html.Length single.Length "both rendered"
+
+                Expect.throwsT<System.ArgumentException>
+                    (fun () ->
+                        SignalMapWithSpeed 5.0 (Live (fun _ -> controls [])) Ranvier.FlightPolicy.CancelPrevious [||] true Grouping.Expand
+                        |> ignore)
+                    "a speed above 4"
+            }
+
             test "each rendered cell gets a distinct host and id prefix" {
                 let page = unit' [ fixtureCell "c1"; fixtureCell "c2" ]
 
@@ -49,7 +96,7 @@ let tests =
                 Expect.equal hosts [ "rvm-p0123456789-c1"; "rvm-p0123456789-c2" ] "host ids"
                 Expect.stringContains page.Code "HostId = \"rvm-p0123456789-c1\"" "the first definition's host"
                 Expect.stringContains page.Code "IdPrefix = \"rvm-p0123456789-c2\"" "the second definition's prefix"
-                Expect.stringContains page.Code "let page_c1: Page.Definition<unit>" "a definition per cell"
+                Expect.stringContains page.Code "let page_c1: Ranvier.View.Page.Definition<unit>" "a definition per cell"
                 Expect.stringContains page.Code "State = None" "no state codec"
             }
 
@@ -88,8 +135,61 @@ let tests =
                             ]
 
                     Expect.stringContains page.Code "module Map_c1 =" "the scenario module"
-                    Expect.stringContains page.Code ("let Cell_c1: Component<unit> = " + output.Render) "the render call"
+
+                    Expect.stringContains
+                        page.Code
+                        ("let Cell_c1: Ranvier.View.Template.Component<unit> = "
+                         + output.Render)
+                        "the render call"
                 | _ -> failtest "the fence compiles"
+            }
+
+            test "a page's map flags and diagnostics come from its stored unit, so a cached page keeps them" {
+                let code =
+                    "let count = createSignal 1
+let doubled = createMemo (fun _ -> count.Value * 2)
+controls [ button \"Add\" (fun () -> count.Value <- 2) ]"
+
+                let raw = [ "replay"; "code=collapsed"; "code-max-height=24rem" ]
+
+                match MapFence.compile "c2" raw code, MapFlags.parse raw with
+                | Ok output, Ok parsed ->
+                    let make () =
+                        unit'
+                            [
+                                fixtureCell "c1"
+                                {
+                                    Id = "c2"
+                                    Kind = PageCellKind.Map (output, parsed)
+                                    Code = code
+                                    Line = 20
+                                }
+                            ]
+
+                    let page = make ()
+                    Expect.equal (make ()) page "the same page yields the same unit"
+                    Expect.equal (MapPage.flags [ page ]) (Map.ofList [ ("p0123456789", "c2"), parsed ]) "the map's flags"
+
+                    let lines = page.Code.Split '\n'
+
+                    let doubled =
+                        lines
+                        |> Array.findIndex (fun l -> l.TrimStart().StartsWith "let doubled")
+
+                    Expect.equal
+                        (MapPage.locate page.Spans (doubled + 1) 26)
+                        (Some (21, 26 - 8))
+                        "a scenario line maps to its fence line, moved left by the scenario's indent"
+
+                    Expect.equal (List.map snd (MapPage.flags [ page ] |> Map.toList)) [ parsed ] "one map cell"
+                | _ -> failtest "the fence compiles"
+            }
+
+            test "page keys name stable modules, hosts and entries" {
+                Expect.equal (MapPage.moduleName "p0123456789") "Ranvier.Docs.MapPages.P0123456789" "the module"
+                Expect.equal (MapPage.fileName "p0123456789") "P0123456789.fs" "the file"
+                Expect.equal (MapPage.entryName "p0123456789" "map-1") "P0123456789_map_1" "the entry"
+                Expect.equal (MapPage.hostId "p0123456789" "map-1") "rvm-p0123456789-map-1" "the host"
             }
 
             test "declarations render no host and a named component renders its value" {
@@ -111,7 +211,12 @@ let tests =
                         ]
 
                 Expect.isFalse (page.Code.Contains "page_c1") "declarations have no page"
-                Expect.stringContains page.Code "let Cell_c2: Component<unit> = Ranvier.Docs.Maps.PipelineFixture.counter" "the named component"
+
+                Expect.stringContains
+                    page.Code
+                    "let Cell_c2: Ranvier.View.Template.Component<unit> = Ranvier.Docs.Maps.PipelineFixture.counter"
+                    "the named component"
+
                 Expect.equal (MapPage.rendered page |> List.map _.Id) [ "c2" ] "rendered cells"
             }
 
