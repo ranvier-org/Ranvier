@@ -215,6 +215,131 @@ let tests =
             }
 #endif
 
+            test "settles and failures of a keyed source record in graph-thread order" {
+                let journal, g = journaled ()
+
+                let source =
+                    AsyncSource<int> g
+                    |> Journal.keySource "load" intCodec
+
+                source.Settle 3
+                source.Fail (System.InvalidOperationException "boom")
+
+                Expect.equal
+                    (journal.Entries
+                     |> List.map (fun e -> e.Kind, e.Key, e.Payload))
+                    [
+                        JournalEntryKind.Settle, Some "load", JournalPayload.Encoded ("int", 1, "3")
+                        JournalEntryKind.Fail, Some "load", JournalPayload.Encoded ("exn", 1, "boom")
+                    ]
+                    "a settle, then a failure carrying its message"
+
+                Expect.equal (journal.Entries |> List.map (fun e -> e.Seq)) [ 1; 2 ] "consecutive positions"
+#if !FABLE_COMPILER
+                Expect.equal journal.Entries[1].PayloadType "System.InvalidOperationException" "the exception's type"
+#endif
+            }
+
+            test "settles of an unkeyed source record non-replayable entries" {
+                let journal, g = journaled ()
+                let source = AsyncSource<int> g
+                source.Settle 3
+                source.Fail (System.InvalidOperationException "boom")
+
+                Expect.all
+                    journal.Entries
+                    (fun e ->
+                        e.Key = None
+                        && e.Payload = JournalPayload.NonReplayable e.PayloadType)
+                    "no codec"
+
+                Expect.equal (journal.Entries.Length) 2 "both recorded"
+            }
+
+            test "a settle made by a running computation is not journaled" {
+                let journal, g = journaled ()
+                let s = Signal (g, 0)
+
+                let source =
+                    AsyncSource<int> g
+                    |> Journal.keySource "load" intCodec
+
+                g.Run (fun () -> createEffect (fun () -> source.Settle s.Value))
+                s.Value <- 1
+
+                match source.TryValue with
+                | Ready value -> Expect.equal value 1 "the derived settle landed"
+                | other -> failtestf "expected Ready 1, got %O" other
+
+                Expect.equal
+                    (journal.Entries |> List.map (fun e -> e.Kind))
+                    [ JournalEntryKind.Write; JournalEntryKind.Flush ]
+                    "only the external write and its flush"
+            }
+
+            test "one Flush follows each flush pass that followed recorded entries" {
+                let journal, g = journaled ()
+                let s = Signal (g, 0)
+                let seen = ResizeArray ()
+                g.Run (fun () -> createEffect (fun () -> seen.Add s.Value))
+                s.Value <- 1
+                s.Value <- 2
+
+                Expect.sequenceEqual seen [ 0; 1; 2 ] "each write ran the effect"
+
+                Expect.equal
+                    (journal.Entries |> List.map (fun e -> e.Kind))
+                    [
+                        JournalEntryKind.Write
+                        JournalEntryKind.Flush
+                        JournalEntryKind.Write
+                        JournalEntryKind.Flush
+                    ]
+                    "a boundary after each pass"
+
+                Expect.equal (journal.Entries |> List.map (fun e -> e.Seq)) [ 1; 2; 3; 4 ] "consecutive positions"
+
+                Expect.all
+                    (journal.Entries
+                     |> List.filter (fun e -> e.Kind = JournalEntryKind.Flush))
+                    (fun e ->
+                        e.Key = None
+                        && e.Payload = JournalPayload.Empty
+                        && e.PayloadType = "")
+                    "a Flush carries nothing"
+            }
+
+            test "a batch of two writes gives two Write entries and one Flush" {
+                let journal, g = journaled ()
+                let s = Signal (g, 0)
+                let t = Signal (g, 0)
+                g.Run (fun () -> createEffect (fun () -> s.Value + t.Value |> ignore))
+
+                g.Batch (fun () ->
+                    s.Value <- 1
+                    t.Value <- 2)
+
+                Expect.equal
+                    (journal.Entries |> List.map (fun e -> e.Kind))
+                    [ JournalEntryKind.Write; JournalEntryKind.Write; JournalEntryKind.Flush ]
+                    "one boundary for the batch"
+            }
+
+            test "a write that queues nothing records no Flush" {
+                let journal, g = journaled ()
+                let s = Signal (g, 0)
+                s.Value <- 1
+
+                Expect.equal (journal.Entries |> List.map (fun e -> e.Kind)) [ JournalEntryKind.Write ] "no flush pass followed"
+
+                g.Flush ()
+
+                Expect.equal
+                    (journal.Entries |> List.map (fun e -> e.Kind))
+                    [ JournalEntryKind.Write; JournalEntryKind.Flush ]
+                    "an explicit flush after the write is a boundary"
+            }
+
             test "the entry unions print their case names" {
                 Expect.equal (JournalEntryKind.Settle.ToString ()) "Settle" "a kind"
                 Expect.equal (JournalPayload.Empty.ToString ()) "Empty" "Empty"

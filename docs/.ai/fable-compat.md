@@ -65,6 +65,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
+| Journal.fs | 19 | 19 | 19 | 21 | 21 | 21 | 0 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -84,7 +85,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1551 | 1530 | 1527 | 1762 | 1736 | 1733 | 143 | 1 |
+| **Total** | 1570 | 1549 | 1546 | 1783 | 1757 | 1754 | 143 | 1 |
 
 ## Tests.fs
 
@@ -2001,6 +2002,34 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - trace text: snapshot maps (traced only)
 - trace text: dump (traced only)
 - trace text: timing (traced only)
+
+</details>
+
+## Journal.fs
+
+<details><summary>21 passed in every build and delivery that runs them</summary>
+
+- GraphOptions.Default has no journal
+- WithJournal sets the journal
+- an external write to an unkeyed signal records a non-replayable Write
+- an equal write is recorded
+- a graph without a journal records nothing and writes as before
+- writes made by a running computation are not journaled
+- a keyed write records its key and encoded value
+- Journal.key returns the signal it registers
+- a duplicate key on one graph raises, naming the key
+- the same key on two graphs is allowed
+- Journal.key on a graph without a journal is a no-op
+- an Encode that raises records a non-replayable entry and the write lands
+- settles and failures of a keyed source record in graph-thread order
+- settles of an unkeyed source record non-replayable entries
+- a settle made by a running computation is not journaled
+- one Flush follows each flush pass that followed recorded entries
+- a batch of two writes gives two Write entries and one Flush
+- a write that queues nothing records no Flush
+- the entry unions print their case names
+- a traced Journal.key labels an unlabelled node with the key (traced only)
+- a traced Journal.key keeps an existing label (traced only)
 
 </details>
 

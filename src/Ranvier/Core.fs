@@ -1630,7 +1630,8 @@ type internal JournalRecorder(journal: IInputJournal) =
 
     /// <summary>
     /// Records <c>value</c> arriving at the node <c>nodeId</c>: encoded by the node's codec when the node is keyed and the
-    /// codec succeeds, and non-replayable otherwise.
+    /// codec succeeds, and non-replayable otherwise. A <c>Fail</c> entry of a keyed node carries the exception's message
+    /// under the <c>exn</c> codec, version 1.
     /// </summary>
     member this.Input(kind: JournalEntryKind, nodeId: int, value: obj) =
         let payloadType = Platform.typeName value
@@ -1641,7 +1642,10 @@ type internal JournalRecorder(journal: IInputJournal) =
         else
             let payload =
                 try
-                    JournalPayload.Encoded (binding.Codec, binding.Version, binding.Encode value)
+                    if kind = JournalEntryKind.Fail then
+                        JournalPayload.Encoded ("exn", 1, (value :?> exn).Message)
+                    else
+                        JournalPayload.Encoded (binding.Codec, binding.Version, binding.Encode value)
                 with _ ->
                     JournalPayload.NonReplayable payloadType
 
@@ -2667,6 +2671,9 @@ type Graph(options: GraphOptions) =
                 Tracer.FlushEnd this
                 this.LeaveAmbient previousAmbient
 
+                if not (Platform.isNull journal) then
+                    journal.Boundary ()
+
     /// <summary>
     /// Runs the queued effects. Inside a batch they run when the batch ends.
     /// Inside a computation's body, including <c>untrack</c> within one, or a
@@ -3394,6 +3401,9 @@ type AsyncSource<'T>(graph: Graph) =
     /// </remarks>
     member _.Settle(v: 'T) =
         graph.Post (fun () ->
+            if not (Platform.isNull graph.Journal) then
+                graph.RecordInput (JournalEntryKind.Settle, id, box v)
+
             value <- v
             status <- Status.None
             Tracer.SourceSettled (observers, false, box v)
@@ -3412,6 +3422,9 @@ type AsyncSource<'T>(graph: Graph) =
             raise (ArgumentNullException (nameof reason))
 
         graph.Post (fun () ->
+            if not (Platform.isNull graph.Journal) then
+                graph.RecordInput (JournalEntryKind.Fail, id, reason)
+
             failure <- Failure (reason, (this :> INode))
             status <- Status.Error
             Tracer.SourceSettled (observers, true, reason)

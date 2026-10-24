@@ -87,3 +87,15 @@ module Journal =
     let key (key: string) (codec: JournalCodec<'T>) (signal: Signal<'T>) : Signal<'T> =
         register signal.Graph signal key (CodecBinding<'T>(key, codec))
         signal
+
+    /// <summary>
+    /// Registers <c>source</c> on its graph's journal under the application key <c>key</c>, as <c>key</c> registers a
+    /// signal, and returns <c>source</c>. Its external settles record values encoded by <c>codec</c>; its external
+    /// failures record the exception's message.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentException">
+    /// <c>key</c> is null or empty, or the graph already has a node registered under <c>key</c>.
+    /// </exception>
+    let keySource (key: string) (codec: JournalCodec<'T>) (source: AsyncSource<'T>) : AsyncSource<'T> =
+        register source.Graph source key (CodecBinding<'T>(key, codec))
+        source
