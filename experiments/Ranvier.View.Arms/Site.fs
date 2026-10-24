@@ -1,4 +1,4 @@
-/// <summary>The runtime shape every Arms.Match site lowers to, on both targets.</summary>
+/// <summary>The runtime shapes Arms.Match sites lower to: payload-direct under Fable, cells on .NET.</summary>
 module internal Ranvier.View.Arms.Site
 
 open Ranvier.View.Template
@@ -30,4 +30,22 @@ let inline create (cells: Cells.Cells) (read: 'inst -> 'u) (select: 'u -> int * 
         arm (Fable.Core.JsInterop.emitJsExpr (definitions, target) "$0[$1]") (instance, values))
 #else
         arm definitions[target] (instance, values))
+#endif
+
+#if FABLE_COMPILER
+/// <summary>
+/// One <c>armOf</c> definition per body, whose instance is the arm's values thunk. The selector's array
+/// <c>[target, pattern variables..., matched value, instance]</c> is the selected arm's payload; the same target keeps
+/// its arm and receives the new array, and another target remounts.
+/// </summary>
+let inline direct
+    (read: 'inst -> 'u)
+    (select: System.Func<'inst, 'u, obj array>)
+    (bodies: TemplateView<unit -> obj array> array)
+    : TemplateView<'inst> =
+    let definitions = Array.map armOf bodies
+
+    matchWith id (fun instance ->
+        let values = select.Invoke (instance, read instance)
+        arm (Fable.Core.JsInterop.emitJsExpr (definitions, values) "$0[$1[0]]") values)
 #endif

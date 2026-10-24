@@ -192,12 +192,54 @@ let private isEtaExpansion (expr: Expr) =
         && not (Shape.refersTo (Set.singleton argument.Name) f)
     | _ -> false
 
-/// <summary>The parameter of a lambda or delegate over the instance type.</summary>
-let private readerArgument (instanceType: Type) (expr: Expr) : Ident option =
+/// <summary>The first parameter of a lambda or delegate.</summary>
+let private firstParameter (expr: Expr) : Ident option =
     match expr with
-    | Lambda (argument, _, _) when argument.Type = instanceType -> Some argument
-    | Delegate (argument :: _, _, _, _) when argument.Type = instanceType -> Some argument
+    | Lambda (argument, _, _)
+    | Delegate (argument :: _, _, _, _) -> Some argument
     | _ -> None
+
+/// <summary>
+/// The type of a rewritten reader's parameter, the values thunk of an arm of a site over <c>instanceType</c>. The
+/// element type records the site's instance type.
+/// </summary>
+let private thunkType (instanceType: Type) =
+    Type.LambdaType (Type.Unit, Type.Array (instanceType, MutableArray))
+
+/// <summary>The instance type of the site whose rewritten reader takes the parameter.</summary>
+let private (|ThunkOver|_|) (id: Ident) : Type option =
+    match id.Type with
+    | Type.LambdaType (Type.Unit, Type.Array (instanceType, _)) when id.Name.StartsWith "armsArm_" -> Some instanceType
+    | _ -> None
+
+/// <summary>
+/// A reader parameter rewritten by a site over <c>instanceType</c> (<c>armsArm_[site]_[index]</c>): the site's name and the
+/// index of the instance in the thunk's array.
+/// </summary>
+let private (|Thunk|_|) (instanceType: Type) (id: Ident) : (string * int) option =
+    match id, id.Name.Split '_' with
+    | ThunkOver over, [| _; site; index |] when over = instanceType ->
+        match System.Int32.TryParse index with
+        | true, index -> Some (site, index)
+        | _ -> None
+    | _ -> None
+
+/// <summary>
+/// The binding of a reader's instance by a site nested in a case body: <c>let x = armsRead_[site][index]</c>, where
+/// <c>x</c> holds the values thunk of the enclosing arm.
+/// </summary>
+let private (|HeldInstance|_|) (instanceType: Type) (expr: Expr) : (Ident * Ident * Expr * Expr) option =
+    match expr with
+    | Let (id, Get (IdentExpr values, ExprGet index, _, _), body) when
+        id.Type = instanceType
+        && values.Name.StartsWith "armsRead_"
+        ->
+        Some (id, values, index, body)
+    | _ -> None
+
+let private isHeldInstance (instanceType: Type) (expr: Expr) =
+    (|HeldInstance|_|) instanceType expr
+    |> Option.isSome
 
 let private bodyOf (expr: Expr) =
     match expr with
@@ -209,6 +251,12 @@ let private withBody (expr: Expr) (body: Expr) =
     match expr with
     | Lambda (argument, _, n) -> Lambda (argument, body, n)
     | Delegate (args, _, n, tags) -> Delegate (args, body, n, tags)
+    | other -> other
+
+let private withParameter (expr: Expr) (parameter: Ident) (body: Expr) =
+    match expr with
+    | Lambda (_, _, n) -> Lambda (parameter, body, n)
+    | Delegate (_ :: rest, _, n, tags) -> Delegate (parameter :: rest, body, n, tags)
     | other -> other
 
 /// <summary>Whether an identifier is a computation expression's builder binding (<c>builder@</c>).</summary>
@@ -240,6 +288,9 @@ let rec private find (names: Set<string>) (over: Type option) (expr: Expr) : Fou
                 Over = over
             }
     | Lambda (argument, body, _) when argument.Type = Type.Unit || isBuilder argument -> find names over body
+    | Lambda (ThunkOver instanceType, body, _)
+    | Delegate (ThunkOver instanceType :: _, body, _, _) -> find names (Some instanceType) body
+    | Delegate (instance :: argument :: _, body, _, _) when instance.Name.StartsWith "armsInstance_" -> find names (Some argument.Type) body
     | Lambda (argument, body, _) -> find names (Some argument.Type) body
     | Delegate (argument :: _, body, _, _) -> find names (Some argument.Type) body
     | _ ->
@@ -270,7 +321,10 @@ let private report (helper: PluginHelper) (matched: Ident) (instanceType: Type) 
     | None, Some (name, case, r) -> helper.LogError (Diagnostics.fieldOutsideReader name case, ?range = at r)
     | None, None -> helper.LogError (Diagnostics.outsideReader found.Ident.DisplayName, ?range = at found.Ident.Range)
 
-/// <summary>The packed function of a call, or None after reporting AM003 or AM004.</summary>
+/// <summary>
+/// The lowered argument of a call, the selector over (instance, value) and the case bodies; or None after reporting AM003
+/// or AM004.
+/// </summary>
 let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation option) : Expr option =
     let instanceType =
         match read.Type with
@@ -313,16 +367,8 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
             |> List.rev
             |> Array.ofList
 
-        let valuesFn = ident ("armsValues_" + name) Any
-
-        let selectType =
-            Type.Tuple (
-                [
-                    Type.Number (NumberKind.Int32, NumberInfo.Empty)
-                    Type.Array (Any, MutableArray)
-                ],
-                false
-            )
+        let instance = ident ("armsInstance_" + name) Any
+        let valuesType = Type.Array (Any, MutableArray)
 
         let selector =
             let position = ref 0
@@ -332,61 +378,94 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                 position.Value <- leaf + 1
 
                 match targets[leaf] with
-                | None -> raiseAs selectType body
+                | None -> raiseAs valuesType body
                 | Some target ->
-                    let values = [ for id in bound @ [ matched ] -> IdentExpr id ]
-                    Value (NewTuple ([ int32 target; Value (NewArray (ArrayValues values, Any, MutableArray), None) ], false), None)
+                    let values =
+                        int32 target
+                        :: [ for id in bound @ [ matched; instance ] -> IdentExpr id ]
 
-            Lambda (matched, mapLeaves control pick tree, None)
+                    Value (NewArray (ArrayValues values, Any, MutableArray), None)
 
-        let rewrite (target: int) (bound: Ident list) (body: Expr) =
+            Delegate ([ instance; matched ], mapLeaves control pick tree, None, [])
+
+        let rewrite (bound: Ident list) (body: Expr) =
             let slots = bound @ [ matched ]
             let names = set [ for id in slots -> id.Name ]
+            let last = slots.Length + 1
+            let values = ident ("armsRead_" + name) Any
 
-            let lowered =
-                body
-                |> Shape.map (fun expr ->
-                    match readerArgument instanceType expr with
-                    | Some argument when Shape.refersTo names (bodyOf expr) ->
-                        let inner = bodyOf expr
+            // The reader body with the instance and the slots it uses bound from the array of source, or None when it
+            // uses neither.
+            let opened (source: SourceLocation option -> Expr) (held: Ident option) (inner: Expr) : Expr option =
+                let instanceUsed =
+                    held
+                    |> Option.filter (fun id -> Shape.refersTo (Set.singleton id.Name) inner)
 
-                        let used =
-                            slots
-                            |> List.filter (fun id -> Shape.refersTo (Set.singleton id.Name) inner)
+                let used =
+                    slots
+                    |> List.indexed
+                    |> List.filter (fun (_, id) -> Shape.refersTo (Set.singleton id.Name) inner)
 
-                        let fresh = [ for id in used -> id, ident (sprintf "%s_%s" id.Name name) id.Type ]
+                if instanceUsed.IsNone && used.IsEmpty then
+                    None
+                else
+                    let fresh =
+                        [
+                            for index, id in used -> index, id, ident (sprintf "%s_%s" id.Name name) id.Type
+                        ]
 
-                        let renamed =
-                            inner
-                            |> Shape.map (function
-                                | IdentExpr id ->
-                                    fresh
-                                    |> List.tryFind (fun (slot, _) -> slot.Name = id.Name)
-                                    |> Option.map (snd >> IdentExpr)
-                                | _ -> None)
-
-                        let values = ident ("armsRead_" + name) Any
-
-                        let prologue =
-                            List.foldBack
-                                (fun (slot: Ident, local: Ident) acc ->
-                                    let position =
-                                        slots
-                                        |> List.findIndex (fun s -> s.Name = slot.Name)
-
-                                    Let (local, Get (IdentExpr values, ExprGet (int32 position), local.Type, None), acc))
+                    let renamed =
+                        inner
+                        |> Shape.map (function
+                            | IdentExpr id ->
                                 fresh
-                                renamed
+                                |> List.tryFind (fun (_, slot, _) -> slot.Name = id.Name)
+                                |> Option.map (fun (_, _, local) -> IdentExpr local)
+                            | _ -> None)
 
-                        let range =
-                            Shape.firstReference names inner
-                            |> Option.bind _.Range
+                    let withSlots =
+                        List.foldBack
+                            (fun (index, _, local: Ident) acc ->
+                                Let (local, Get (IdentExpr values, ExprGet (int32 (index + 1)), local.Type, None), acc))
+                            fresh
+                            renamed
 
-                        let current =
-                            emit "$0($1, $2)" [ IdentExpr valuesFn; IdentExpr argument; int32 target ] range
+                    let withInstance =
+                        match instanceUsed with
+                        | Some id -> Let (id, Get (IdentExpr values, ExprGet (int32 last), id.Type, None), withSlots)
+                        | None -> withSlots
 
-                        Some (withBody expr (Let (values, current, prologue)))
-                    | _ -> None)
+                    let range =
+                        Shape.firstReference
+                            (names
+                             + set [ for id in Option.toList instanceUsed -> id.Name ])
+                            inner
+                        |> Option.bind _.Range
+
+                    Some (Let (values, source range, withInstance))
+
+            body
+            |> Shape.map (fun expr ->
+                match expr, firstParameter expr with
+                | HeldInstance instanceType (id, held, index, rest), _ -> opened (emit "$0[$1]()" [ IdentExpr held; index ]) (Some id) rest
+                | _, Some argument when argument.Type = instanceType ->
+                    let thunk = ident (sprintf "armsArm_%s_%d" name last) (thunkType instanceType)
+                    let inner = bodyOf expr
+
+                    opened (emit "$0()" [ IdentExpr thunk ]) (Some argument) inner
+                    |> Option.defaultValue inner
+                    |> withParameter expr thunk
+                    |> Some
+                | _, Some (Thunk instanceType (other, index) as thunk) when
+                    other <> name
+                    && not (Shape.exists (isHeldInstance instanceType) (bodyOf expr))
+                    ->
+                    opened (emit "$0()[$1]()" [ IdentExpr thunk; int32 index ]) None (bodyOf expr)
+                    |> Option.map (withBody expr)
+                | _ -> None)
+
+        let check (bound: Ident list) (body: Expr) =
+            let names = set [ for id in bound @ [ matched ] -> id.Name ]
 
             match hidden names body with
             | Some range ->
@@ -401,36 +480,33 @@ let site (helper: PluginHelper) (read: Expr) (arms: Expr) (r: SourceLocation opt
                 let outsideReaders =
                     body
                     |> Shape.map (fun expr ->
-                        match readerArgument instanceType expr with
-                        | Some _ -> Some (Value (UnitConstant, None))
-                        | None -> None)
+                        match firstParameter expr with
+                        | Some argument when argument.Type = instanceType -> Some (Value (UnitConstant, None))
+                        | Some (Thunk instanceType _) -> Some (Value (UnitConstant, None))
+                        | _ -> None)
 
                 match find names None outsideReaders with
                 | Some found -> report helper matched instanceType r found
                 | None -> ()
 
-            lowered
-
         let bodies =
             [
                 for leaf, (bound, body) in Seq.indexed leaves do
                     match targets[leaf] with
-                    | Some target -> yield rewrite target bound body
+                    | Some _ ->
+                        check bound body
+                        yield rewrite bound body
                     | None -> ()
             ]
 
         Some (
-            Lambda (
-                valuesFn,
-                Value (
-                    NewTuple (
-                        [
-                            selector
-                            Value (NewArray (ArrayValues bodies, tree.Type, MutableArray), None)
-                        ],
-                        false
-                    ),
-                    None
+            Value (
+                NewTuple (
+                    [
+                        selector
+                        Value (NewArray (ArrayValues bodies, tree.Type, MutableArray), None)
+                    ],
+                    false
                 ),
                 None
             )
