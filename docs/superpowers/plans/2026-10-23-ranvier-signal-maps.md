@@ -111,7 +111,7 @@ Renderer and plugin work can proceed independently after the shared contract is 
 
 - [x] Add cases for an empty scene, ordinary dependency chain, expanded collection rows/members, collapsed grouping, and removed nodes. Assert finite dimensions, stable identity, correct member-to-row external ports, and no overlapping collection bounds.
 - [x] Extract the existing geometry from `SignalMap.sync`, preserving its layer ordering, port alignment, box extents, and spacing rather than redesigning layout.
-- [ ] Keep model/replay changes out of this extraction. Run the full traced map suite and compare representative projections with the current renderer's geometry.
+- [x] Keep model/replay changes out of this extraction. Run the full traced map suite and compare representative projections with the current renderer's geometry.
 
 ### Task 3: Replace DOM construction with a Ranvier component
 
@@ -119,13 +119,13 @@ Renderer and plugin work can proceed independently after the shared contract is 
 
 **Interface:** The two public component factories above consume the unchanged map source and the pure projection from Task 2.
 
-- [ ] Reference Ranvier.View and remove the maps library's Partas.Solid reference. Make top-level initialization .NET-safe; browser operations occur only in browser lifecycle hooks.
-- [ ] Create display signals during component setup. Keep the scenario's traced `Graph` separate from the view's graph so UI updates do not appear as diagram events.
-- [ ] Author the full control bar, inspection/error panels, logs, timeline, and SVG structure with Sugar. Use keyed lists for dynamic nodes, edges, boxes, dots, controls, and ticks; preserve row identity during updates.
-- [ ] Preserve hover/focus inspection, Enter/click cause explanation, all five control kinds, external binding refresh, Play/Step/scrub/Reset, speed range `0.25..4`, selected speed across Reset, and reduced-motion behavior.
-- [ ] Keep Anime position/cue effects and source-line highlighting in small mounted/lent adapters. Animation completion removes a dot through its reactive list, not by deleting a view-owned node.
-- [ ] Own the scenario graph, animation handles, animation frames, replay/flash timers, and source-highlight cleanup through the component lifetime. Guard callbacks from an earlier reset or disposed graph.
-- [ ] Test deterministic SSR without scenario execution, multiple component instances, and cleanup. Run control tests covering external writes and unfinished edits before browser integration.
+- [x] Reference Ranvier.View and remove the maps library's Partas.Solid reference. Make top-level initialization .NET-safe; browser operations occur only in browser lifecycle hooks.
+- [x] Create display signals during component setup. Keep the scenario's traced `Graph` separate from the view's graph so UI updates do not appear as diagram events.
+- [x] Author the full control bar, inspection/error panels, logs, timeline, and SVG structure with Sugar. Use keyed lists for dynamic nodes, edges, boxes, dots, controls, and ticks; preserve row identity during updates.
+- [x] Preserve hover/focus inspection, Enter/click cause explanation, all five control kinds, external binding refresh, Play/Step/scrub/Reset, speed range `0.25..4`, selected speed across Reset, and reduced-motion behavior.
+- [x] Keep Anime position/cue effects and source-line highlighting in small mounted/lent adapters. Animation completion removes a dot through its reactive list, not by deleting a view-owned node.
+- [x] Own the scenario graph, animation handles, animation frames, replay/flash timers, and source-highlight cleanup through the component lifetime. Guard callbacks from an earlier reset or disposed graph.
+- [x] Test deterministic SSR without scenario execution, multiple component instances, and cleanup. Run control tests covering external writes and unfinished edits before browser integration.
 
 ### Task 4: Complete authoring, caching, and code-card integration
 
@@ -133,21 +133,33 @@ Renderer and plugin work can proceed independently after the shared contract is 
 
 **Interface:** Existing map fences and new ordinary Ranvier component fences produce the card/host and generated-page contracts above.
 
-- [ ] Transform fences before Markdown rendering. Reusing the pinned public `SolidScan.scanWith` parser at build time is acceptable; ensure its output cannot be claimed by the Solid client loader.
-- [ ] Store per-page cell metadata with `Page.WithData`, including flags, spans, and bindings; do not depend solely on a mutable dictionary populated by uncached transforms.
-- [ ] Compile/export after pages are routed. Generate highlighted code and native disclosure before Nuglify; inject hydratable host contents after Nuglify. Preserve no-JavaScript disclosure and keyboard operation.
-- [ ] Preserve diagnostic span mapping: generated declaration offsets, the existing `Indent = Int32.MaxValue` body convention, page body offsets, and adjusted columns. Avoid introducing `#line` directives that Fable diagnostics cannot place.
-- [ ] Test every existing flag, invalid/missing controls, automatic labels, code height/disclosure, cached transforms, nested pages, and stable output paths. Keep existing authoring tests passing; add tests for native card ownership and generated host uniqueness.
+- [x] Transform fences before Markdown rendering. Reusing the pinned public `SolidScan.scanWith` parser at build time is acceptable; ensure its output cannot be claimed by the Solid client loader.
+- [x] Store per-page cell metadata with `Page.WithData`, including flags, spans, and bindings; do not depend solely on a mutable dictionary populated by uncached transforms.
+- [x] Compile/export after pages are routed. Generate highlighted code and native disclosure before Nuglify; inject hydratable host contents after Nuglify. Preserve no-JavaScript disclosure and keyboard operation.
+- [x] Preserve diagnostic span mapping: generated declaration offsets, the existing `Indent = Int32.MaxValue` body convention, page body offsets, and adjusted columns. Avoid introducing `#line` directives that Fable diagnostics cannot place.
+- [x] Test every existing flag, invalid/missing controls, automatic labels, code height/disclosure, cached transforms, nested pages, and stable output paths. Keep existing authoring tests passing; add tests for native card ownership and generated host uniqueness.
 
 ### Task 5: Migrate documented entry points and establish the browser gate
 
 **Files:** `docs/content/guide/signal-maps.md`, `docs/literate.fsx`, `docs/maps/tests/fixtures/literate.fsx`, browser test files under `docs/maps/tests/`, and existing docs/CI test wiring as needed.
 
-- [ ] Convert the bespoke Solid thermometer example to the native Ranvier fence. Update the editable F# example to explicitly mount the returned component with a retained lifetime, using the documented Ranvier mounting API. Keep that explicit editor lifecycle distinct from generated documentation startup.
-- [ ] Update literate references and explanations. Retain the existing Fable/Node trace-expectation validator unchanged unless an import path requires adjustment.
-- [ ] Add a persistent Playwright smoke suite using the repository's existing Playwright version. Serve production `docs/output` under `/Ranvier/`; test representative live, replayed, async/timed, and collection maps.
-- [ ] Cover all controls, speed/step/scrub/reset, external binding changes, source highlighting, disclosure, keyboard inspection, reduced motion, multiple maps, and disposal/reset during pending work. Assert no console errors or hydration mismatch reports.
-- [ ] Confirm the unrelated Solid landing animation and editable Run action still work, and that native map bundles contain no Solid renderer startup.
+- [x] Convert the bespoke Solid thermometer example to the native Ranvier fence. Update the editable F# example to explicitly mount the returned component with a retained lifetime, using the documented Ranvier mounting API. Keep that explicit editor lifecycle distinct from generated documentation startup.
+- [x] Update literate references and explanations. Retain the existing Fable/Node trace-expectation validator unchanged unless an import path requires adjustment.
+- [x] Add a persistent Playwright smoke suite using the repository's existing Playwright version. Serve production `docs/output` under `/Ranvier/`; test representative live, replayed, async/timed, and collection maps.
+- [x] Cover all controls, speed/step/scrub/reset, external binding changes, source highlighting, disclosure, keyboard inspection, reduced motion, multiple maps, and disposal/reset during pending work. Assert no console errors or hydration mismatch reports.
+- [x] Confirm the unrelated Solid landing animation and editable Run action still work, and that native map bundles contain no Solid renderer startup.
+
+### Implementation notes
+
+- Geometry: on the guide, aggregates and landing pages, the native maps' view boxes, node positions and edge paths
+  equal the published Solid renderer's, map for map.
+- Controls: the DOM twin tests text, checkbox and button controls, including an external write beside an unfinished
+  edit. The twin does not sanitise number and range values, so those two controls are covered by the browser suite.
+- Editable example: the browser compiler of `LiveExample` has no `Fable.Core.TS` assembly, so a snippet cannot name the
+  DOM types `Mounting.mount` takes. `MapMount.body` in the maps library calls `Mounting.mount` for it and returns the
+  handle the snippet keeps.
+- Browser callbacks (timers, animation frames, animation completions) activate the view's graph before writing display
+  signals; event handlers already run inside it.
 
 ## Acceptance gates
 
