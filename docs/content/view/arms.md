@@ -155,6 +155,32 @@ let private folderView =
     )
 ```
 
+**Helpers.** A case body can call a function that returns a view over the instance, and can use a view value over
+the instance type, such as a shared `badge`. Pass a pattern variable to the helper inside a reader:
+
+```fsharp
+let private labelled (label: 'inst -> string) : TemplateView<'inst> =
+    b (Attrs.className "label") { label }
+
+let private loaderLabel =
+    Component.template (fun _ (state: Signal<Load>) -> state) (
+        div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded text -> labelled (fun _ -> text)
+                | _ -> span () { "Other" }
+            )
+        }
+    )
+```
+
+The helper renders as if it were written in the case body, with the same server HTML and structural hash. A helper
+may also be typed over the concrete instance type, as `Signal<Load> -> string` and `TemplateView<Signal<Load>>`, and
+may take a view built in the case body. A lambda over the instance passed to such a helper receives the instance and
+reads the pattern variables of the arm mounted for it. An exit animation or an event handler inside the helper reads
+its own case's values after the instance has moved to another target.
+
 **What remounts.** Each row of the match (each *target*) is one arm. The same target keeps its arm and replaces its
 payload; another target remounts, including a guard, a literal pattern or an `if` at the top of a case body that
 selects another branch. `Loaded "x"` to `Loaded ""` above remounts from the `<pre>` to the "Empty" `<span>`.
