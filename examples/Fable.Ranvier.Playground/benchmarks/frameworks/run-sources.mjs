@@ -3,7 +3,8 @@
 // hashes match the tree (plan 2026-10-24-issue-157.md, Decision P9).
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 
 /**
  * The paths keyed-rows.mjs records by hash, relative to examples/Fable.Ranvier.Playground: the benchmark and its page,
@@ -43,3 +44,40 @@ export const staleSources = ({ before, after, uncommitted }) =>
 /** The paths of `files` that differ from HEAD in the working tree or the index, untracked paths included. */
 export const uncommittedOf = (cwd, files) =>
   files.filter(path => execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", path], { cwd, encoding: "utf8" }).trim() !== "");
+
+/** The sha256 over the relative path and bytes of every file under `dir`, in path order. */
+export const bundleHash = dir => {
+  const hash = createHash("sha256");
+  const files = readdirSync(dir, { recursive: true, withFileTypes: true }).filter(entry => entry.isFile())
+    .map(entry => join(entry.parentPath, entry.name)).map(path => [relative(dir, path).split(sep).join("/"), path]).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  for (const [name, path] of files) hash.update(`${name}\0`).update(readFileSync(path)).update("\0");
+  return hash.digest("hex");
+};
+
+/**
+ * The reasons a run into docs/research/arms-match/ may not be written: a pooled run is built with `--build` and serves
+ * the bundle it built, so `bundleBefore`, hashed after the build, equals `bundleAfter`, hashed at the write.
+ */
+export const pooledRunProblems = ({ pooled, build, bundleBefore, bundleAfter }) =>
+  !pooled ? [] : !build ? ["a pooled run builds its own bundle: pass --build"]
+    : bundleBefore !== bundleAfter ? ["the bundle changed during the run"] : [];
+
+const alive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === "EPERM"; } };
+
+/**
+ * Runs `body` while holding the lock directory `path`, waiting `pollMs` between attempts while another live process
+ * holds it. A lock left by an exited process is taken over.
+ */
+export const withLock = async (path, body, pollMs = 1000) => {
+  for (;;) {
+    try { mkdirSync(path); break; } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      let holder;
+      try { holder = Number(readFileSync(join(path, "pid"), "utf8")); } catch {}
+      if (holder && holder !== process.pid && !alive(holder)) { rmSync(path, { recursive: true, force: true }); continue; }
+      await new Promise(resolve => setTimeout(resolve, pollMs));
+    }
+  }
+  writeFileSync(join(path, "pid"), String(process.pid));
+  try { return await body(); } finally { rmSync(path, { recursive: true, force: true }); }
+};

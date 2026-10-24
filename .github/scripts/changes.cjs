@@ -36,10 +36,30 @@ function armsAffected(paths) {
   return files.length === 0 || files.some(file => armsPatterns.some(pattern => pattern.test(file)));
 }
 
-// The job outputs for a diff: docs is true when every path is documentation, arms when the Arms.Match job runs.
+// Paths that own the committed Chromium runs of Arms.Match: the lowering and its plugin, the gate scripts, the keyed-rows
+// benchmark and its Arms.Match fixture, the runs themselves and the workflow. A change to the core, the view or the
+// Playground's lock file also changes a hashed source, and its runs are recorded with the next change to these paths.
+const armsRunsPatterns = [
+  /^experiments\/Ranvier\.View\.Arms/,
+  /^examples\/Fable\.Ranvier\.Playground\/benchmarks\/frameworks\//,
+  /^examples\/Fable\.Ranvier\.Playground\/tests\/KeyedRows[^/]*Perf\.fs$/,
+  /^docs\/research\/arms-match\//,
+  /^docs\/\.ai\/benchmarks\/arms-/,
+  /^\.github\/(workflows\/ci\.yml|scripts\/changes\.cjs)$/,
+];
+
+// True when a path touches what the committed Chromium runs measure; an empty or missing list is true.
+function armsRunsAffected(paths) {
+  const files = (paths ?? []).map(p => p.trim()).filter(Boolean);
+  return files.length === 0 || files.some(file => armsRunsPatterns.some(pattern => pattern.test(file)));
+}
+
+// The job outputs for a diff: docs is true when every path is documentation, arms when the Arms.Match job runs, and
+// armsRuns when that job checks the committed Chromium runs against their budgets.
 function classify(paths) {
   const docs = docsOnly(paths);
-  return { docs, arms: !docs && armsAffected(paths) };
+  const arms = !docs && armsAffected(paths);
+  return { docs, arms, armsRuns: arms && armsRunsAffected(paths) };
 }
 
 const zero = /^0{40}$/;
@@ -53,21 +73,22 @@ function range({ eventName, before, after, base, head }) {
   return null;
 }
 
-module.exports = { docsOnly, armsAffected, classify, range };
+module.exports = { docsOnly, armsAffected, armsRunsAffected, classify, range };
 
 if (require.main === module) {
-  // node changes.cjs <event> <from> <to>: prints docs=true|false and arms=true|false for $GITHUB_OUTPUT.
+  // node changes.cjs <event> <from> <to>: prints docs, arms and armsRuns, each true or false, for $GITHUB_OUTPUT.
   const { execFileSync } = require('node:child_process');
   const [eventName, from, to] = process.argv.slice(2);
   const r = range(eventName === 'pull_request' ? { eventName, base: from, head: to } : { eventName, before: from, after: to });
-  let docs = false, arms = true;
+  let docs = false, arms = true, armsRuns = true;
   if (r) {
     const base = eventName === 'pull_request'
       ? execFileSync('git', ['merge-base', r.from, r.to], { encoding: 'utf8' }).trim()
       : r.from;
     const paths = execFileSync('git', ['diff', '--name-only', '--no-renames', base, r.to], { encoding: 'utf8' }).split('\n');
-    ({ docs, arms } = classify(paths));
+    ({ docs, arms, armsRuns } = classify(paths));
   }
   console.log(`docs=${docs}`);
   console.log(`arms=${arms}`);
+  console.log(`armsRuns=${armsRuns}`);
 }

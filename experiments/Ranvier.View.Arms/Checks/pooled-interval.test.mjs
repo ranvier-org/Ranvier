@@ -60,6 +60,23 @@ test("the runs recorded before the rebase onto aae54f2e are out of the pool", ()
   }
 });
 
+test("the runs recorded before keyed-rows.mjs built and hashed its own bundle are out of the pool", () => {
+  for (const n of [1, 2, 3, 4, 5]) {
+    const run = committed.find(r => r.path === `docs/research/arms-match/arms-match-da6d32e6-${n}.json`);
+    assert.ok(run, String(n));
+    assert.ok(outOfDate(run).includes("benchmarks/frameworks/keyed-rows.mjs"), String(n));
+    assert.ok(!runs.includes(run), String(n));
+  }
+});
+
+test("every pooled run built the bundle it measured and records the bundle's hash", () => {
+  for (const run of runs) {
+    const data = run.read();
+    assert.equal(data.built, true, run.path);
+    assert.match(data.bundleHash ?? "", /^[0-9a-f]{64}$/, run.path);
+  }
+});
+
 test("the pool holds at least four runs of 45 pairs per operation", () => {
   assert.ok(runs.length >= 4, `${runs.length} runs`);
   for (const operation of operations) assert.equal(pooled(operation).pairs, 45 * runs.length, operation);

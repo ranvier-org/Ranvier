@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { resolve } from "node:path";
-import { hashedSources, staleSources, uncommittedOf } from "./run-sources.mjs";
+import { bundleHash, hashedSources, pooledRunProblems, staleSources, uncommittedOf, withLock } from "./run-sources.mjs";
 
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -18,30 +18,36 @@ const profile = process.argv.includes("--profile");
 const label = argument("label", profile ? "profile" : "timings");
 const processes = Number(argument("processes", profile ? 1 : 3));
 const rounds = Number(argument("rounds", 15)), warmups = 3;
+// A run into docs/research/arms-match/, the pool of the Arms.Match budget gate, is measured and written only from
+// committed sources unchanged from the build to the write, with a bundle the run built into a directory of its own.
+const pooled = resolve(output) === fileURLToPath(new URL("../../../../docs/research/arms-match", import.meta.url));
+const build = process.argv.includes("--build");
 // `--dist=<dir>` serves an already-built bundle, e.g. one built from another commit.
-const outDir = argument("dist") ?? (profile ? "generated-keyed-profile" : "generated-keyed-dist");
+const outDir = argument("dist") ?? (pooled ? `generated-keyed-pooled/${label}` : profile ? "generated-keyed-profile" : "generated-keyed-dist");
 const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir, ...(profile ? { RANVIER_PERF_PROFILE: "true" } : {}) };
 const port = Number(argument("port", 5187));
 
 const files = hashedSources;
 const sha = async path => createHash("sha256").update(await readFile(new URL(path, new URL("../../", import.meta.url)))).digest("hex");
 const hashes = async () => Object.fromEntries(await Promise.all(files.map(async path => [path, await sha(path)])));
-// A run into docs/research/arms-match/, the pool of the Arms.Match budget gate, is measured and written only from
-// committed sources unchanged from the build to the write.
-const pooled = resolve(output) === fileURLToPath(new URL("../../../../docs/research/arms-match", import.meta.url));
 const sourcesAtStart = await hashes();
 const uncommittedAtStart = pooled ? uncommittedOf(cwd, files) : [];
 if (uncommittedAtStart.length > 0) throw Error(`Not measuring a pooled run: these sources are uncommitted: ${uncommittedAtStart.join(", ")}`);
 
-if (process.argv.includes("--build")) {
-  for (const [args, extra] of [
+const unbuilt = pooledRunProblems({ pooled, build });
+if (unbuilt.length > 0) throw Error(`Not measuring a pooled run: ${unbuilt.join(", ")}`);
+
+// Builds hold a lock per checkout, so concurrent runs never read each other's half-written outputs.
+const lock = resolve(os.tmpdir(), `ranvier-keyed-build-${createHash("sha256").update(cwd).digest("hex").slice(0, 16)}`);
+const builtBundle = !(build || process.argv.includes("--bundle")) ? undefined : await withLock(lock, () => {
+  if (build) for (const [args, extra] of [
     [["dotnet", "build", "../../experiments/Ranvier.View.Arms.FablePlugin/Ranvier.View.Arms.FablePlugin.fsproj", "-c", "Release", "-v", "q"], {}],
     [["dotnet", "fickl", "tests/DomTests.fsproj", "--outDir", "generated-tests", "--configuration", "Release", "--noCache"], {}],
     [["dotnet", "fickl", "benchmarks/ripple/RipplePerf.fsproj", "--outDir", "generated-ripple", "--configuration", "Release", "--noCache"], {}]
   ]) execFileSync("rtk", args, { cwd, stdio: "inherit", windowsHide: true, env: { ...env, ...extra } });
-}
-if (process.argv.includes("--build") || process.argv.includes("--bundle"))
   execFileSync("rtk", ["node", "node_modules/vite/bin/vite.js", "build", "--config", "benchmarks/frameworks/vite.config.mjs"], { cwd, stdio: "inherit", windowsHide: true, env });
+  return bundleHash(resolve(cwd, outDir));
+});
 
 const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "preview", "--config", "benchmarks/frameworks/vite.config.mjs", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], { cwd, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
 let serverOutput = "", browser;
@@ -203,6 +209,9 @@ try {
   const sourceHashes = await hashes();
   const stale = pooled ? staleSources({ before: sourcesAtStart, after: sourceHashes, uncommitted: uncommittedOf(cwd, files) }) : [];
   if (stale.length > 0) throw Error(`Not writing a pooled run: these sources are uncommitted or changed during the run: ${stale.join(", ")}`);
+  const servedBundle = bundleHash(resolve(cwd, outDir));
+  const changed = pooledRunProblems({ pooled, build, bundleBefore: builtBundle, bundleAfter: servedBundle });
+  if (changed.length > 0) throw Error(`Not writing a pooled run: ${changed.join(", ")}`);
   const fickl = JSON.parse(await readFile(new URL("../../../../.config/dotnet-tools.json", import.meta.url), "utf8")).tools.fickl.version;
   const fableLibrary = (await readdir(new URL("../../generated-tests/fable_modules/", import.meta.url))).find(name => name.startsWith("fable-library-js."));
   const result = {
@@ -220,7 +229,7 @@ try {
       "pairRatios divide each numerator sample by the denominator sample of the same process and round; ci95 is a percentile bootstrap of their median.",
       ...(argument("note") ? [argument("note")] : [])
     ],
-    sourceHashes,
+    sourceHashes, built: build, bundleHash: servedBundle,
     modes, operations: names, summaries, ratios, pairRatios, heaps, domCalls, samples, profiles, allocations
   };
   await mkdir(output, { recursive: true });

@@ -1,10 +1,12 @@
 // Usage: node --test benchmarks/frameworks/run-sources.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { posix } from "node:path";
 import { fileURLToPath } from "node:url";
-import { hashedSources, lineEndingHashes, mismatchedSources, staleSources, uncommittedOf } from "./run-sources.mjs";
+import { bundleHash, hashedSources, lineEndingHashes, mismatchedSources, pooledRunProblems, staleSources, uncommittedOf, withLock } from "./run-sources.mjs";
 
 const plugin = "../../experiments/Ranvier.View.Arms.FablePlugin/";
 
@@ -45,4 +47,35 @@ test("an uncommitted source is stale", () => {
 test("a committed, unmodified file is not uncommitted", () => {
   const cwd = fileURLToPath(new URL("../../", import.meta.url));
   assert.deepEqual(uncommittedOf(cwd, ["benchmarks/frameworks/keyed-page.mjs"]), []);
+});
+
+test("a bundle's hash covers every file's path and bytes", () => {
+  const dir = mkdtempSync(join(tmpdir(), "bundle-"));
+  try {
+    mkdirSync(join(dir, "assets"));
+    writeFileSync(join(dir, "index.html"), "<p>");
+    writeFileSync(join(dir, "assets", "a.js"), "a");
+    const first = bundleHash(dir);
+    assert.equal(bundleHash(dir), first);
+    writeFileSync(join(dir, "assets", "a.js"), "b");
+    const edited = bundleHash(dir);
+    assert.notEqual(edited, first);
+    writeFileSync(join(dir, "assets", "b.js"), "");
+    assert.notEqual(bundleHash(dir), edited);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("a pooled run is built by the run and serves the bundle it built", () => {
+  assert.deepEqual(pooledRunProblems({ pooled: false, build: false }), []);
+  assert.deepEqual(pooledRunProblems({ pooled: true, build: true, bundleBefore: "1", bundleAfter: "1" }), []);
+  assert.equal(pooledRunProblems({ pooled: true, build: false }).length, 1);
+  assert.equal(pooledRunProblems({ pooled: true, build: true, bundleBefore: "1", bundleAfter: "2" }).length, 1);
+});
+
+test("a lock admits one holder at a time", async () => {
+  const lock = join(mkdtempSync(join(tmpdir(), "lock-")), "build.lock");
+  const order = [];
+  const hold = name => withLock(lock, async () => { order.push(`${name} in`); await new Promise(r => setTimeout(r, 50)); order.push(`${name} out`); }, 10);
+  await Promise.all([hold("a"), hold("b")]);
+  assert.deepEqual(order.map(s => s.split(" ")[1]), ["in", "out", "in", "out"]);
 });
