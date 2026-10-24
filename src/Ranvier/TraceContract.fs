@@ -178,6 +178,9 @@ type TraceNodeState =
         /// <summary>
         /// The latest value or exception recorded by a moving <c>Write</c>, a <c>Moved</c>, or an async source's
         /// <c>Settle</c> or <c>Fail</c>, or <c>None</c>. A value folded into the checkpoint is <c>Lossy</c>.
+        /// A memo, async memo or boundary that moved to a null value gives <c>Null</c>; a projection's
+        /// <c>Moved</c> carries no value and gives <c>None</c>; a lookup cell's null <c>Moved</c>, which records
+        /// a null value or a suspension, gives <c>Lossy "null"</c>.
         /// </summary>
         Value: TracePayload option
     }
@@ -340,6 +343,15 @@ module TraceContract =
     [<Literal>]
     let Schema = 3
 
+    // A node's latest value event in the retained events.
+    [<RequireQualifiedAccess>]
+    type private RetainedValue =
+        | Value of obj
+        // A lookup cell's null `Moved`: a null value or a suspension.
+        | Ambiguous
+        // A `Moved` that carries no value, such as a projection's.
+        | Unrecorded
+
     /// <summary>
     /// The state folded from <c>checkpoint</c> and <c>events</c>, which follow it, with retained values encoded by
     /// <c>codecs</c>.
@@ -349,15 +361,26 @@ module TraceContract =
     /// </exception>
     let state (codecs: TraceCodecs) (checkpoint: TraceCheckpoint) (events: TraceEvent[]) : TraceGraphState =
         let snap = TraceModel.fold checkpoint.Snapshot events
-        let values = System.Collections.Generic.Dictionary<int, obj>()
+        let values = System.Collections.Generic.Dictionary<int, RetainedValue>()
 
-        // The value events of `TraceModel.fold`, the latest per node.
+        // The latest value event per node.
         for e in events do
             match e.Kind with
-            | TraceEventKind.Write when e.Flag = 1 -> values[e.Node] <- e.Payload
-            | TraceEventKind.Moved when not (Platform.isNull e.Payload) -> values[e.Node] <- e.Payload
+            | TraceEventKind.Write when e.Flag = 1 -> values[e.Node] <- RetainedValue.Value e.Payload
+            | TraceEventKind.Moved when not (Platform.isNull e.Payload) -> values[e.Node] <- RetainedValue.Value e.Payload
+            | TraceEventKind.Moved ->
+                values[e.Node] <-
+                    match snap.Nodes.TryFind e.Node with
+                    | Some n when
+                        n.Kind = TraceNodeKind.Memo
+                        || n.Kind = TraceNodeKind.AsyncMemo
+                        || n.Kind = TraceNodeKind.Boundary
+                        ->
+                        RetainedValue.Value null
+                    | Some n when n.Kind = TraceNodeKind.LookupCell -> RetainedValue.Ambiguous
+                    | _ -> RetainedValue.Unrecorded
             | TraceEventKind.Settle
-            | TraceEventKind.Fail when e.Arg = 0 -> values[e.Node] <- e.Payload
+            | TraceEventKind.Fail when e.Arg = 0 -> values[e.Node] <- RetainedValue.Value e.Payload
             | _ -> ()
 
         let node (id: int) (n: TraceSnapshotNode) =
@@ -372,7 +395,9 @@ module TraceContract =
                 Status = n.Status
                 Value =
                     match values.TryGetValue id with
-                    | true, value -> Some (TraceCodecs.encode codecs value)
+                    | true, RetainedValue.Value value -> Some (TraceCodecs.encode codecs value)
+                    | true, RetainedValue.Ambiguous -> Some (TracePayload.Lossy (TraceModel.valueText null))
+                    | true, RetainedValue.Unrecorded -> None
                     | _ -> n.Value |> Option.map TracePayload.Lossy
             }
 

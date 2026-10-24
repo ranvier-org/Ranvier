@@ -436,6 +436,46 @@ let tests =
                 Expect.equal (valueOf other) (Some (TracePayload.Lossy (TraceModel.valueText (box { Name = "b" })))) "a value with no codec"
             }
 
+            test "state gives a memo that moved to a null value as Null" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let x = createSignal 1
+                let text = createMemo (fun _ -> if x.Value = 1 then "a" else null)
+                let opt = createMemo (fun _ -> if x.Value = 1 then Some 1 else None)
+                text.Value |> ignore
+                opt.Value |> ignore
+
+                let valueOf (node: INode) =
+                    (Trace.state g (TraceCodecs.ofList [])).Nodes[node.Id].Value
+
+                Expect.equal (valueOf text) (Some (TracePayload.Exact (TraceScalar.String "a"))) "before the move"
+                x.Value <- 2
+                text.Value |> ignore
+                opt.Value |> ignore
+                Expect.equal (valueOf text) (Some TracePayload.Null) "a null string"
+                Expect.equal (valueOf opt) (Some TracePayload.Null) "None"
+            }
+
+            test "state gives a projection that moved without a value as None" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let rows = createSignal [ 1; 2 ]
+                let p = createProjection id id (fun () -> rows.Value)
+                p.Keys |> ignore
+                rows.Value <- [ 2; 3 ]
+                p.Keys |> ignore
+                let state = Trace.state g (TraceCodecs.ofList [])
+
+                let projections =
+                    state.Nodes
+                    |> Map.filter (fun _ n -> n.Kind = TraceNodeKind.Projection)
+
+                Expect.isNonEmpty projections "the projection is traced"
+
+                for KeyValue (_, n) in projections do
+                    Expect.equal n.Value None "a projection records no value"
+            }
+
             test "state gives a value folded into the checkpoint as Lossy of its folded text" {
                 use g = new Graph ()
                 use _ = g.Activate ()
