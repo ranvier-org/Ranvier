@@ -123,7 +123,6 @@ module MapPage =
         add $"module %s{moduleName key}"
         add ""
         add "open Ranvier"
-        add "open Ranvier.View"
         add "open Ranvier.Docs.Maps"
 
         for cell in cells do
@@ -132,12 +131,12 @@ module MapPage =
             match cell.Kind with
             | PageCellKind.Declarations -> code 0 cell
             | PageCellKind.Expression ->
-                pinned cell $"let %s{componentName cell.Id}: Component<unit> ="
+                pinned cell $"let %s{componentName cell.Id}: Ranvier.View.Template.Component<unit> ="
                 code 4 cell
             | PageCellKind.Render name ->
                 code 0 cell
                 add ""
-                pinned cell $"let %s{componentName cell.Id}: Component<unit> = %s{name}"
+                pinned cell $"let %s{componentName cell.Id}: Ranvier.View.Template.Component<unit> = %s{name}"
             | PageCellKind.Map (output, _) ->
                 let start = lines.Count
 
@@ -156,7 +155,7 @@ module MapPage =
                     add (line.TrimEnd '\r')
 
                 add ""
-                pinned cell $"let %s{componentName cell.Id}: Component<unit> = %s{output.Render}"
+                pinned cell $"let %s{componentName cell.Id}: Ranvier.View.Template.Component<unit> = %s{output.Render}"
 
         for cell in cells do
             match cell.Kind with
@@ -167,17 +166,17 @@ module MapPage =
 
                 for line in
                     [
-                        $"let %s{definitionName cell.Id}: Page.Definition<unit> ="
+                        $"let %s{definitionName cell.Id}: Ranvier.View.Page.Definition<unit> ="
                         "    {"
                         $"        Component = %s{componentName cell.Id}"
                         "        InitialProps = ignore"
                         "        Document ="
-                        "            { Server.DocumentShell.defaults with"
+                        "            { Ranvier.View.Server.DocumentShell.defaults with"
                         $"                HostId = \"%s{host}\""
                         "            }"
                         "        Options ="
-                        "            { Server.Options.defaults with"
-                        "                Policy = Omit"
+                        "            { Ranvier.View.Server.Options.defaults with"
+                        "                Policy = Ranvier.View.Representation.Omit"
                         $"                IdPrefix = \"%s{host}\""
                         "            }"
                         "        State = None"
@@ -193,6 +192,17 @@ module MapPage =
             Code = String.concat "\n" lines + "\n"
             Spans = List.ofSeq spans
         }
+
+    /// <summary>The flags of every map cell of <c>units</c>, by page key and cell id.</summary>
+    let flags (units: PageUnit list) : Map<string * string, MapFlags> =
+        units
+        |> List.collect (fun unit ->
+            unit.Cells
+            |> List.choose (fun cell ->
+                match cell.Kind with
+                | PageCellKind.Map (_, flags) -> Some ((unit.Key, cell.Id), flags)
+                | _ -> None))
+        |> Map.ofList
 
     /// <summary>The page body line and column of a module line and column, when the line came from a cell.</summary>
     /// <remarks>A line generated for a cell maps to the fence's opening line, column 1.</remarks>

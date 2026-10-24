@@ -1,5 +1,7 @@
+/// <summary>
 /// The generated projects of the documentation's component fences: a shared project of page modules, a .NET exporter
 /// that writes each cell's server HTML and browser entry, and a Fable client bundled per page.
+/// </summary>
 module Docs.MapWorkspace
 
 open System
