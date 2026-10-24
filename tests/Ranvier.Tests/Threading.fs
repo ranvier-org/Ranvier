@@ -1393,5 +1393,53 @@ let tests =
                         let! value = Async.AwaitTask result
                         Expect.equal value 1 "with the work's result"
                     }
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "Serialised: an item queued while another thread holds the graph completes after the holder's release" {
+                        let context = RecordingContext ()
+                        let g = serialisedUnder context
+                        let held = holdFlush context g
+
+                        let result, continuation =
+                            try
+                                let result = offThread (fun () -> g.DispatchAsync (fun () -> g.IsOnGraphThread))
+
+                                let continuation =
+                                    result.ContinueWith ((fun (_: Task<bool>) -> g.IsOnGraphThread), TaskContinuationOptions.ExecuteSynchronously)
+
+                                Expect.equal context.Posted.Count 1 "the call posted a drain"
+                                within context (fun () -> context.Drain ())
+                                Expect.equal g.PendingWork 1 "the drain found the graph held and left the item"
+                                Expect.isFalse result.IsCompleted "the task waits for the holder"
+                                result, continuation
+                            finally
+                                held.Release.Set ()
+                                held.Worker.Join ()
+
+                        Expect.equal context.Posted.Count 1 "the holder's release posted a new drain"
+                        within context (fun () -> context.Drain ())
+
+                        Expect.isTrue (result.Wait (TimeSpan.FromSeconds 5.0)) "that drain completed the task"
+                        Expect.isTrue result.Result "the work ran inside the graph"
+                        Expect.isTrue (continuation.Wait (TimeSpan.FromSeconds 5.0)) "the continuation ran"
+                        Expect.isFalse continuation.Result "the continuation ran outside the graph"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "Serialised: a call from inside the graph runs inline" {
+                        let context = RecordingContext ()
+                        let g = serialisedUnder context
+
+                        let result =
+                            within context (fun () -> g.Batch (fun () -> g.DispatchAsync (fun () -> g.IsOnGraphThread)))
+
+                        Expect.equal result.Status TaskStatus.RanToCompletion "the task completed at the call"
+                        Expect.isTrue result.Result "the work ran inside the graph"
+                        Expect.equal g.PendingWork 0 "nothing was queued"
+                    }
+#endif
                 ]
         ]
