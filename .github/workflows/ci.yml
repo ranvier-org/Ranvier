@@ -470,6 +470,9 @@ jobs:
       # The committed Chromium and heap results hold their gates (the benchmark itself needs a quiet machine, not CI).
       - name: Check the committed Chromium and heap results
         run: node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs
+      # The switch and payload budgets are the pooled interval of the committed runs, rounded up (plan 2026-10-24-issue-157.md, P9).
+      - name: Check the Chromium budgets against the pooled interval
+        run: node --test experiments/Ranvier.View.Arms/Checks/pooled-interval.test.mjs
       # The timings print without a budget (shared runners are not the budget's machine); a raise or a wrong render from
       # Arms.Prepare, called twice and on four threads at once, fails the step.
       - name: Run Arms.Prepare and the lowering costs on net10.0 and net8.0
