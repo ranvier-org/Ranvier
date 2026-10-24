@@ -2,38 +2,38 @@
   "defines": [],
   "sizes": {
     "explicitOne": {
-      "raw": 206936,
-      "gzip": 60178,
-      "brotli": 52828
+      "raw": 206940,
+      "gzip": 60176,
+      "brotli": 52815
     },
     "matchOne": {
-      "raw": 207678,
-      "gzip": 60555,
-      "brotli": 53177
+      "raw": 207416,
+      "gzip": 60359,
+      "brotli": 53018
     },
     "explicitTwo": {
-      "raw": 207778,
-      "gzip": 60355,
-      "brotli": 52968
+      "raw": 207783,
+      "gzip": 60382,
+      "brotli": 53032
     },
     "matchTwo": {
-      "raw": 208523,
-      "gzip": 60735,
-      "brotli": 53333
+      "raw": 208283,
+      "gzip": 60566,
+      "brotli": 53161
     },
     "plain": {
-      "raw": 204972,
-      "gzip": 59622,
-      "brotli": 52346
+      "raw": 204976,
+      "gzip": 59624,
+      "brotli": 52379
     }
   },
   "one": {
-    "deltaGzip": 377,
+    "deltaGzip": 183,
     "budgetGzip": 400,
     "withinBudget": true
   },
   "perSite": {
-    "deltaGzip": 3,
+    "deltaGzip": 1,
     "budgetGzip": 60,
     "withinBudget": true
   },
@@ -48,6 +48,12 @@
   },
   "helpers": {
     "count": 0,
+    "withinBudget": true
+  },
+  "cells": {
+    "compiledModule": false,
+    "cellsModule": false,
+    "weakMap": false,
     "withinBudget": true
   }
 }

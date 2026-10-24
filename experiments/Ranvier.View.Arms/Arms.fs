@@ -17,7 +17,7 @@ type Arms =
     /// <summary>One arm per match target of <c>arms</c>; the Ranvier.View.Arms Fable plugin supplies <c>lowered</c>.</summary>
     [<Ranvier.View.Arms.FablePlugin.CaseArms>]
     static member Match(read: 'inst -> 'u, arms: 'u -> TemplateView<'inst>, ?lowered: obj) : TemplateView<'inst> =
-        let lowered = Cells.erased lowered
+        let lowered = Site.erased lowered
 
         // The plugin calls Match with no lowered argument to splice a helper view: arms holds the view and read maps the
         // arm's values thunk to the instance.
