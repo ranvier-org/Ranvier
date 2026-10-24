@@ -192,6 +192,17 @@ controls [ button \"Add\" (fun () -> count.Value <- 2) ]"
                 Expect.equal (MapPage.hostId "p0123456789" "map-1") "rvm-p0123456789-map-1" "the host"
             }
 
+            test "every generated line maps to a page line, and the header blames the first fence" {
+                let page = unit' [ fixtureCell "c1"; { fixtureCell "c2" with Line = 9 } ]
+                let count = (page.Code.TrimEnd '\n').Split('\n').Length
+
+                for line in 1..count do
+                    Expect.isSome (MapPage.locate page.Spans line 1) $"line {line} maps"
+
+                Expect.equal (MapPage.locate page.Spans 1 8) (Some (3, 1)) "the module line blames the first fence's opening line"
+                Expect.equal (MapPage.locate page.Spans 3 1) (Some (3, 1)) "an open line blames it too"
+            }
+
             test "an expression cell keeps a multi-line string literal's text exactly" {
                 let code =
                     String.concat

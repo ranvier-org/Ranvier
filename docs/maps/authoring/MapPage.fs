@@ -94,8 +94,30 @@ module MapPage =
     let unit (key: string) (source: string option) (bodyLine: int) (cells: PageCell list) : PageUnit =
         let lines = ResizeArray<string>()
         let spans = ResizeArray<MapSpan>()
+        // The cell a line without a span of its own is blamed on: the header's is the first cell.
+        let mutable blamed = List.tryHead cells
 
         let add (line: string) =
+            let next = lines.Count + 1
+
+            match blamed with
+            | Some cell when
+                not (
+                    spans
+                    |> Seq.exists (fun s ->
+                        next >= s.Generated
+                        && next < s.Generated + s.Length)
+                )
+                ->
+                spans.Add
+                    {
+                        Generated = next
+                        Length = 1
+                        Body = cell.Line - 1
+                        Indent = Int32.MaxValue
+                    }
+            | _ -> ()
+
             lines.Add line
 
         let span body indent length =
@@ -133,6 +155,7 @@ module MapPage =
         add "open Ranvier.Docs.Maps"
 
         for cell in cells do
+            blamed <- Some cell
             add ""
 
             match cell.Kind with
@@ -165,6 +188,8 @@ module MapPage =
                 pinned cell $"let %s{componentName cell.Id}: Ranvier.View.Template.Component<unit> = %s{output.Render}"
 
         for cell in cells do
+            blamed <- Some cell
+
             match cell.Kind with
             | PageCellKind.Declarations -> ()
             | _ ->
