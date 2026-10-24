@@ -194,5 +194,13 @@ let tests =
 
                 let! bad = call session "wait_version" """{"version":"soon"}"""
                 Expect.isTrue (isError bad) "a non-integer version is a tool error"
+                Expect.equal (textOf bad) "wait_version takes an integer 'version'." "a string version names the version"
+
+                let! fractional = call session "wait_version" """{"version":1.5}"""
+                Expect.equal (textOf fractional) "wait_version takes an integer 'version'." "a fractional version names the version"
+
+                let! badTimeout = call session "wait_version" """{"version":1,"timeoutMs":"x"}"""
+                Expect.isTrue (isError badTimeout) "a non-integer timeout is a tool error"
+                Expect.equal (textOf badTimeout) "'timeoutMs' must be a non-negative integer." "a string timeout names the timeout"
             }
         ]

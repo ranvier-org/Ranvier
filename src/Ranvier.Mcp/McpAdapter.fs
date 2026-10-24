@@ -264,8 +264,11 @@ type McpAdapter(exposure: Exposure) =
                         let integer name =
                             argument request name
                             |> Option.bind (fun value ->
-                                match value.ValueKind, value.TryGetInt64 () with
-                                | JsonValueKind.Number, (true, number) -> Some number
+                                match value.ValueKind with
+                                | JsonValueKind.Number ->
+                                    match value.TryGetInt64 () with
+                                    | true, number -> Some number
+                                    | false, _ -> None
                                 | _ -> None)
 
                         let timeout =
