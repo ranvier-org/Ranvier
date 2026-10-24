@@ -610,11 +610,41 @@ let private held =
             )
         })
 
+/// <summary>A helper over the concrete instance type whose root is the view built in a case body.</summary>
+let private framed (content: TemplateView<Signal<Load>>) : TemplateView<Signal<Load>> = content
+
+/// <summary>The site of <c>held</c> with its Loaded body passed to the concrete helper <c>framed</c>.</summary>
+let private heldFramed =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, count) ->
+                    framed (
+                        pre (
+                            Hooks.exit (
+                                Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLPreElement) finish ->
+                                    exitReads.Add (text, count)
+                                    finishes.Add finish
+                                    ignore)
+                            )
+                        ) {
+                            fun _ -> text
+                            " x"
+                            fun _ -> string count
+                        }
+                    )
+                | _ -> span () { "Other" }
+            )
+        })
+
 /// <summary>
 /// The exit of an outgoing arm, run after the arm's cleanup, reads its own case's values, also while another arm of the
 /// same target is live (Testing 9).
 /// </summary>
-let private heldExit queued () =
+let private heldExit (held: Component<Signal<Load>>) queued () =
     finishes.Clear ()
     exitReads.Clear ()
     use graph = new Graph ()
@@ -668,11 +698,46 @@ let private heldRows =
                 })
         })
 
+/// <summary>A helper over the concrete row type whose root is the view built in a case body.</summary>
+let private rowFramed (content: TemplateView<Row>) : TemplateView<Row> = content
+
+/// <summary>The rows of <c>heldRows</c> with each Loaded body passed to the concrete helper <c>rowFramed</c>.</summary>
+let private heldRowsFramed =
+    Component.template
+        (fun _ (rows: Signal<Row array>) -> rows)
+        (ul () {
+            forEachFixed
+                (fun (row: Row) -> row.Id)
+                (fun (rows: Signal<Row array>) -> rows.Value)
+                (li () {
+                    Arms.Match (
+                        (fun (row: Row) -> row.State.Value),
+                        function
+                        | Loaded (text, count) ->
+                            rowFramed (
+                                pre (
+                                    Hooks.exit (
+                                        Func<_, _, _, _>(fun (_: Row) (_: HTMLPreElement) finish ->
+                                            exitReads.Add (text, count)
+                                            finishes.Add finish
+                                            ignore)
+                                    )
+                                ) {
+                                    fun _ -> text
+                                    " x"
+                                    fun _ -> string count
+                                }
+                            )
+                        | _ -> span () { "Other" }
+                    )
+                })
+        })
+
 /// <summary>
 /// A held arm of a keyed row reads its own row's values while another row's payload changes and its own row remounts the
 /// same target (Testing 9).
 /// </summary>
-let private heldRowReadsOwnRow queued () =
+let private heldRowReadsOwnRow (heldRows: Component<Signal<Row array>>) queued () =
     finishes.Clear ()
     exitReads.Clear ()
     use graph = new Graph ()
@@ -827,6 +892,31 @@ let private exitOnly =
             )
         })
 
+/// <summary>The site of <c>exitOnly</c> with its Loaded body passed to the concrete helper <c>framed</c>.</summary>
+let private exitOnlyFramed =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, count) ->
+                    framed (
+                        pre (
+                            Hooks.exit (
+                                Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLPreElement) finish ->
+                                    exitOnlyReads.Add (sprintf "%s %d" text count)
+                                    finish ()
+                                    ignore)
+                            )
+                        ) {
+                            "held"
+                        }
+                    )
+                | _ -> span () { "Other" }
+            )
+        })
+
 let private exitOnlyLoaded =
     armOf (
         pre (
@@ -876,6 +966,7 @@ let private exitOnlyReadsOwnCase queued () =
     let twin = exitReadsOf queued exitOnlyTwin
     equal [ "b 2"; "c 3" ] twin
     equal twin (exitReadsOf queued exitOnly)
+    equal twin (exitReadsOf queued exitOnlyFramed)
 
 let private handlerClicks = ResizeArray<string>()
 let private handlerHolds = ResizeArray<unit -> unit>()
@@ -902,6 +993,31 @@ let private handlerOnly =
                     ) {
                         "go"
                     }
+                | _ -> span () { "Other" }
+            )
+        })
+
+/// <summary>The site of <c>handlerOnly</c> with its Loaded body passed to the concrete helper <c>framed</c>.</summary>
+let private handlerOnlyFramed =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded (text, count) ->
+                    framed (
+                        button (
+                            Events.onClick (fun (_: Signal<Load>) _ -> handlerClicks.Add (sprintf "%s %d" text count)),
+                            Hooks.exit (
+                                Func<_, _, _, _>(fun (_: Signal<Load>) (_: HTMLButtonElement) finish ->
+                                    handlerHolds.Add finish
+                                    ignore)
+                            )
+                        ) {
+                            "go"
+                        }
+                    )
                 | _ -> span () { "Other" }
             )
         })
@@ -965,6 +1081,7 @@ let private handlerOnlyReadsOwnCase queued () =
     let twin = clicksOf queued handlerTwin
     equal [ []; [ "b 2" ]; [] ] twin
     equal twin (clicksOf queued handlerOnly)
+    equal twin (clicksOf queued handlerOnlyFramed)
 
 let cases: (string * (unit -> unit)) array =
     strictCases (
@@ -984,8 +1101,10 @@ let cases: (string * (unit -> unit)) array =
                 templated "rows fed by the items reader keep their elements across payload updates" rowsKeep
                 templated "one site per keyed row follows its own row through a reorder" siteInRows
                 templated "a batch that leaves a target and returns to it shows the last payload" switchBackInOneBatch
-                templated "an outgoing arm's exit reads its own case's values after the arm's cleanup" heldExit
-                templated "a held arm of a keyed row reads its own row's values" heldRowReadsOwnRow
+                templated "an outgoing arm's exit reads its own case's values after the arm's cleanup" (heldExit held)
+                templated "an outgoing arm's exit inside a concrete helper reads its own case's values after the arm's cleanup" (heldExit heldFramed)
+                templated "a held arm of a keyed row reads its own row's values" (heldRowReadsOwnRow heldRows)
+                templated "a held arm of a keyed row inside a concrete helper reads its own row's values" (heldRowReadsOwnRow heldRowsFramed)
                 templated "a source read inside a boundary pends, settles and fails as its twin does" pendingSource
                 templated "an arm read only by its exit reads its own case's latest values" exitOnlyReadsOwnCase
                 templated "an arm read only by a click handler reads its own case's values through a remount" handlerOnlyReadsOwnCase

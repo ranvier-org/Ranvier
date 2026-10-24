@@ -358,6 +358,7 @@ let site
     (helper: PluginHelper)
     (splice: Expr -> Expr -> Expr)
     (values: Expr -> Expr -> SourceLocation option -> Expr)
+    (siteCall: (string -> Expr list -> Type -> SourceLocation option -> Expr) option)
     (read: Expr)
     (arms: Expr)
     (r: SourceLocation option)
@@ -480,7 +481,7 @@ let site
                 | IdentExpr id when id.Name = from.Name -> Some (IdentExpr target)
                 | _ -> None)
 
-        let rewrite (bound: Ident list) (body: Expr) =
+        let rewrite (target: int) (bound: Ident list) (body: Expr) =
             let slots = bound @ [ matched ]
             let names = set [ for id in slots -> id.Name ]
             let last = slots.Length + 2
@@ -626,11 +627,20 @@ let site
                 let _, parameter = thunk ()
                 Lambda (parameter, Get (valuesOf (IdentExpr parameter) range, ExprGet (int32 last), Any, range), None)
 
-            // The selector's values array for an instance.
-            let selected (instance: Expr) (range: SourceLocation option) =
-                emit "$0($1, $2($1))" [ IdentExpr select; instance; IdentExpr reader ] range
+            // A splice of a helper view over the concrete instance type, whose mounts serve heldValues.
+            let spliceHeld (view: Expr) =
+                match siteCall with
+                | Some call -> call "spliceHeld" [ IdentExpr siteTag; int32 target; int32 last; view ] view.Type view.Range
+                | None -> splice (instanceOf view.Range) view
 
-            // A values thunk of an instance, built from the selector's array for it.
+            // The values array of this arm for an instance under a helper over the concrete instance type: its own mount's
+            // values, also after the instance moves to another target.
+            let selected (instance: Expr) (range: SourceLocation option) =
+                match siteCall with
+                | Some call -> call "heldValues" [ instance; IdentExpr siteTag; int32 target ] Any range
+                | None -> emit "$0($1, $2($1))" [ IdentExpr select; instance; IdentExpr reader ] range
+
+            // A values thunk of an instance, built from its values array.
             let thunkOf (instance: Expr) =
                 Lambda (ident "armsUnit" Type.Unit, selected instance None, None)
 
@@ -643,8 +653,8 @@ let site
                 | _ -> false
 
             // An argument of a helper over the concrete instance type, which receives the instance. A lambda over the
-            // instance reads the slots it uses from the selector's array for its instance; a function or view bound in
-            // the body receives the values thunk of that instance.
+            // instance reads the slots it uses from its arm's values for its instance; a function or view bound in the
+            // body receives the values thunk of that instance.
             let concrete (excluded: Set<string>) (arg: Expr) =
                 arg
                 |> Shape.map (fun expr ->
@@ -736,7 +746,7 @@ let site
                         Some (Let (id, lower excluded value, lower (excluded.Add id.Name) rest))
                     | call, _ when isConcreteHelper call ->
                         let args, rebuild = Shape.children call
-                        Some (splice (instanceOf call.Range) (rebuild (List.map (concrete excluded) args)))
+                        Some (spliceHeld (rebuild (List.map (concrete excluded) args)))
                     | call, _ when
                         isPlainCall call
                         && List.exists isInstanceLambda (fst (Shape.children call))
@@ -787,9 +797,9 @@ let site
             [
                 for leaf, (bound, body) in Seq.indexed leaves do
                     match targets[leaf] with
-                    | Some _ ->
+                    | Some target ->
                         check bound body
-                        yield rewrite bound body
+                        yield rewrite target bound body
                     | None -> ()
             ]
 

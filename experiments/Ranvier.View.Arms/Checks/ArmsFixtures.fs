@@ -776,34 +776,36 @@ let statused =
             )
         })
 
-let private statusOf (label: Signal<Load> -> string) =
-    Component.define (fun _ (state: Signal<Load>) -> state) (fun _ -> status label)
+// The twin of status over the arm's payload thunk and the instance. The label reads the payload, which keeps the arm's
+// values after the instance moves to another case.
+let private statusOf (label: (unit -> 'payload) -> string) =
+    Component.define (fun _ (current: (unit -> 'payload) * Signal<Load>) -> current) (fun _ ->
+        b (Attrs.className "status") {
+            fun (payload: unit -> 'payload, _: Signal<Load>) -> label payload
+            fun (_: unit -> 'payload, state: Signal<Load>) -> nameOf state
+        })
 
 let private loadedStatus =
-    statusOf (fun state ->
-        match state.Value with
-        | Loaded (text, _) -> text
-        | _ -> "")
+    statusOf (fun (payload: unit -> string * Signal<Load>) -> fst (payload ()))
 
 let private loadingStatus =
-    statusOf (fun state ->
-        match state.Value with
-        | Loading percent -> string percent + nameOf state
-        | _ -> "")
+    statusOf (fun (payload: unit -> int * Signal<Load>) ->
+        let percent, state = payload ()
+        string percent + nameOf state)
 
 let private statusedLoadedArm =
-    armOf (span () { render loadedStatus (fun (payload: unit -> Signal<Load>) -> payload ()) })
+    armOf (span () { render loadedStatus (fun (payload: unit -> string * Signal<Load>) -> payload, snd (payload ())) })
 
 let private statusedLoadingArm =
-    armOf (render loadingStatus (fun (payload: unit -> Signal<Load>) -> payload ()))
+    armOf (render loadingStatus (fun (payload: unit -> int * Signal<Load>) -> payload, snd (payload ())))
 
 let statusedTwin =
     Component.template
         (fun _ (state: Signal<Load>) -> state)
         (div () {
             matchWith (fun (state: Signal<Load>) -> state.Value, state) (function
-                | Loaded _, state -> arm statusedLoadedArm state
-                | Loading _, state -> arm statusedLoadingArm state
+                | Loaded (text, _), state -> arm statusedLoadedArm (text, state)
+                | Loading percent, state -> arm statusedLoadingArm (percent, state)
                 | Idle, _ -> arm otherArm ())
         })
 
@@ -839,58 +841,49 @@ let carded =
             )
         })
 
-let private cardOf (content: TemplateView<Signal<Load>>) =
-    Component.define (fun _ (state: Signal<Load>) -> state) (fun _ -> card content)
-
-let private textOf (s: Signal<Load>) =
-    match s.Value with
-    | Loaded (text, _) -> text
-    | _ -> ""
+// The twin of card over the arm's payload thunk and the instance. Its readers read the payload, which keeps the arm's
+// values after the instance moves to another case.
+let private cardOf (content: TemplateView<(unit -> 'payload) * Signal<Load>>) =
+    Component.define (fun _ (current: (unit -> 'payload) * Signal<Load>) -> current) (fun _ -> b (Attrs.className "card") { content })
 
 let private loadedCard =
-    cardOf (span () { fun (s: Signal<Load>) -> textOf s + nameOf s })
+    cardOf (span () { fun (payload: unit -> string * Signal<Load>, state: Signal<Load>) -> fst (payload ()) + nameOf state })
 
 // The site passes a view bound in the body to the helper through an adapter child over its values thunk.
 let private noteAdapter =
-    Component.define (fun _ (state: Signal<Load>) -> state) (fun _ -> i () { fun (s: Signal<Load>) -> textOf s })
+    Component.define (fun _ (current: (unit -> string * Signal<Load>) * Signal<Load>) -> current) (fun _ ->
+        i () { fun (payload: unit -> string * Signal<Load>, _: Signal<Load>) -> fst (payload ()) })
 
 let private zeroCard =
     cardOf (
         span () {
-            fun (s: Signal<Load>) -> textOf s + nameOf s
-            fun (s: Signal<Load>) -> textOf s + nameOf s + "!"
+            fun (payload: unit -> string * Signal<Load>, state: Signal<Load>) -> fst (payload ()) + nameOf state
+            fun (payload: unit -> string * Signal<Load>, state: Signal<Load>) -> fst (payload ()) + nameOf state + "!"
             render noteAdapter id
             render noteAdapter id
         }
     )
 
 let private loadingCard =
-    cardOf (
-        pre () {
-            fun (s: Signal<Load>) ->
-                match s.Value with
-                | Loading percent -> string percent
-                | _ -> ""
-        }
-    )
+    cardOf (pre () { fun (payload: unit -> int * Signal<Load>, _: Signal<Load>) -> string (fst (payload ())) })
 
 let private cardedLoadedArm =
-    armOf (render loadedCard (fun (payload: unit -> Signal<Load>) -> payload ()))
+    armOf (render loadedCard (fun (payload: unit -> string * Signal<Load>) -> payload, snd (payload ())))
 
 let private cardedZeroArm =
-    armOf (render zeroCard (fun (payload: unit -> Signal<Load>) -> payload ()))
+    armOf (render zeroCard (fun (payload: unit -> string * Signal<Load>) -> payload, snd (payload ())))
 
 let private cardedLoadingArm =
-    armOf (section () { render loadingCard (fun (payload: unit -> Signal<Load>) -> payload ()) })
+    armOf (section () { render loadingCard (fun (payload: unit -> int * Signal<Load>) -> payload, snd (payload ())) })
 
 let cardedTwin =
     Component.template
         (fun _ (state: Signal<Load>) -> state)
         (div () {
             matchWith (fun (state: Signal<Load>) -> state.Value, state) (function
-                | Loaded (_, 0), state -> arm cardedZeroArm state
-                | Loaded _, state -> arm cardedLoadedArm state
-                | Loading _, state -> arm cardedLoadingArm state
+                | Loaded (text, 0), state -> arm cardedZeroArm (text, state)
+                | Loaded (text, _), state -> arm cardedLoadedArm (text, state)
+                | Loading percent, state -> arm cardedLoadingArm (percent, state)
                 | Idle, _ -> arm otherArm ())
         })
 

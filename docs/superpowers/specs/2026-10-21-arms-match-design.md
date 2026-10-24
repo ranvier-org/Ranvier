@@ -28,7 +28,10 @@ Required by `.claude/rules/view-uses-core.md`.
   so concurrent server renders (one request graph each, `Server.fs:136`, `Server.fs:217`) stay apart.
 
 **View-owned state (new):** under Fable, the site's definitions array, one `armOf` per target, built once per evaluation
-of the call: a template table, holding no lookup state (Phased implementation 8). On .NET, one table per site, `Cells`, a
+of the call: a template table, holding no lookup state (Phased implementation 8). A site that passes a view to a helper
+over the concrete instance type also holds the `Cells` lookup below, as a `WeakMap` from the site's tag and the instance to
+that helper's mounts per target (`Site.spliceHeld`, plan Decision P8); other sites carry none of it in their bundle. On
+.NET, one table per site, `Cells`, a
 `ConditionalWeakTable` from an instance to the entries of that instance's mounted arms, per target. It is a lookup, not a selection cache: the
 payload itself stays in the arm memo; an entry holds the arm's props accessor, which the region already hands the arm
 (`CaseArms.fs:61-64`), its graph and its last values, seeded at mount (plan Rulings 28, 32 and 37). The core cannot hold it because a reader receives only the

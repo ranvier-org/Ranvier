@@ -29,29 +29,37 @@ module internal Calls =
                         view.Range
                     )
 
-                // The values array of a thunk: a call of Site.values, beside Arms.fs, with the site's tag (AM006).
-                let values (thunk: Expr) (tag: Expr) (range: Fable.AST.SourceLocation option) =
+                // A call of a function of Site.fs, beside Arms.fs, of the given result type; None when Arms.Match is not
+                // imported.
+                let siteCall =
                     match callee with
                     | Import (import, _, _) ->
                         let site =
                             import.Path.Substring (0, import.Path.LastIndexOf '/' + 1)
                             + "Site.fs"
 
-                        Call (
-                            Import (
-                                {
-                                    Selector = "values"
-                                    Path = site
-                                    Kind = UserImport false
-                                },
-                                Any,
-                                None
-                            ),
-                            CallInfo.Create (args = [ thunk; tag ]),
-                            Any,
-                            range
-                        )
-                    | _ ->
+                        Some (fun (selector: string) (args: Expr list) (t: Type) (range: Fable.AST.SourceLocation option) ->
+                            Call (
+                                Import (
+                                    {
+                                        Selector = selector
+                                        Path = site
+                                        Kind = UserImport false
+                                    },
+                                    Any,
+                                    None
+                                ),
+                                CallInfo.Create (args = args),
+                                t,
+                                range
+                            ))
+                    | _ -> None
+
+                // The values array of a thunk: a call of Site.values with the site's tag (AM006).
+                let values (thunk: Expr) (tag: Expr) (range: Fable.AST.SourceLocation option) =
+                    match siteCall with
+                    | Some call -> call "values" [ thunk; tag ] Any range
+                    | None ->
                         Emit (
                             {
                                 Macro = "$0()"
@@ -62,7 +70,7 @@ module internal Calls =
                             range
                         )
 
-                Lower.site helper splice values read arms r
+                Lower.site helper splice values siteCall read arms r
                 |> Option.map (fun packed ->
                     Call (
                         callee,
