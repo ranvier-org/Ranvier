@@ -1570,6 +1570,15 @@ type internal JournalBinding(key: string, codec: string, version: int) =
     /// <summary>The codec's text for <c>value</c>. Raises when the codec raises.</summary>
     abstract Encode: value: obj -> string
 
+    /// <summary>True when the node accepts entries of <c>kind</c>.</summary>
+    abstract Accepts: kind: JournalEntryKind -> bool
+
+    /// <summary>
+    /// The application of a <c>kind</c> entry carrying <c>data</c> to the node, or the decode error. A <c>Fail</c>
+    /// entry's <c>data</c> is the exception's message.
+    /// </summary>
+    abstract Prepare: kind: JournalEntryKind * data: string -> Result<unit -> unit, string>
+
 /// <summary>
 /// A graph's journal state: the journal, the bindings of its keyed input nodes, and the position of the last entry.
 /// </summary>
@@ -1580,6 +1589,21 @@ type internal JournalRecorder(journal: IInputJournal) =
     let mutable position = 0
     let mutable unflushed = false
     let mutable derivedDepth = 0
+    let mutable nextSite = 0
+
+    /// <summary>The mode of the replay running on the graph, if any.</summary>
+    member val Replaying: ReplayMode option = None with get, set
+
+    /// <summary>A fresh negative id for an input site that is not a node, such as an MVU loop's messages.</summary>
+    member _.NextSiteId() =
+        nextSite <- nextSite - 1
+        nextSite
+
+    /// <summary>The binding registered under <c>key</c>, or null.</summary>
+    member _.BindingOfKey(key: string) : JournalBinding =
+        match keys.TryGetValue key with
+        | true, nodeId -> bindings[nodeId]
+        | _ -> Unchecked.defaultof<JournalBinding>
 
     /// <summary>The nesting depth of derived sections: bodies that run outside the tracking context.</summary>
     member _.DerivedDepth = derivedDepth

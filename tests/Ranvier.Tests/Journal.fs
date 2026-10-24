@@ -453,6 +453,175 @@ let tests =
                     "an explicit flush after the write is a boundary"
             }
 
+            test "replay of writes, settles and failures into a fresh graph gives equal values" {
+                let build () =
+                    let journal, g = journaled ()
+                    let a = Signal (g, 0) |> Journal.key "a" intCodec
+                    let b = Signal (g, 0) |> Journal.key "b" intCodec
+
+                    let load =
+                        AsyncSource<int> g
+                        |> Journal.keySource "load" intCodec
+
+                    let fails =
+                        AsyncSource<int> g
+                        |> Journal.keySource "fails" intCodec
+
+                    let sum = g.Run (fun () -> createMemo (fun _ -> a.Value + b.Value))
+                    let runs = ResizeArray<int>()
+                    g.Run (fun () -> createEffect (fun () -> runs.Add sum.Value))
+                    journal, g, a, b, load, fails, sum, runs
+
+                let journal, g, a, b, load, fails, sum, runs = build ()
+                a.Value <- 2
+
+                g.Run (fun () ->
+                    batch (fun () ->
+                        a.Value <- 3
+                        b.Value <- 4))
+
+                load.Settle 9
+                fails.Fail (System.TimeoutException "late")
+
+                let _, g2, a2, b2, load2, fails2, sum2, runs2 = build ()
+                Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+
+                Expect.equal (a2.Peek, b2.Peek) (a.Peek, b.Peek) "the signals"
+                Expect.equal sum2.Value sum.Value "the memo"
+                Expect.equal (List.ofSeq runs2) (List.ofSeq runs) "the effect ran once per recorded flush"
+
+                match load2.TryValue with
+                | Ready value -> Expect.equal value 9 "the recorded settle"
+                | other -> failtestf "expected Ready 9, got %O" other
+
+                match fails2.TryValue with
+                | Failed (:? JournalReplayedFailure as ex) -> Expect.equal ex.Message "late" "the recorded message"
+                | other -> failtestf "expected the replayed failure, got %O" other
+
+                match fails.TryValue with
+                | Failed _ -> ()
+                | other -> failtestf "expected the live failure, got %O" other
+            }
+
+            test "re-enactment skips the recorded settles" {
+                let journal, g = journaled ()
+                let a = Signal (g, 0) |> Journal.key "a" intCodec
+
+                let load =
+                    AsyncSource<int> g
+                    |> Journal.keySource "load" intCodec
+
+                a.Value <- 1
+                load.Settle 9
+
+                let _, g2 = journaled ()
+                let a2 = Signal (g2, 0) |> Journal.key "a" intCodec
+
+                let load2 =
+                    AsyncSource<int> g2
+                    |> Journal.keySource "load" intCodec
+
+                Journal.replay ReplayMode.Reenact g2 journal.Entries
+
+                Expect.equal a2.Peek 1 "the write is applied"
+                Expect.equal load2.TryValue Pending "the settle is left to the re-run async work"
+            }
+
+            test "Journal.replaying returns the mode while the replay runs" {
+                let journal, g = journaled ()
+                let a = Signal (g, 0) |> Journal.key "a" intCodec
+                a.Value <- 1
+
+                let _, g2 = journaled ()
+                let a2 = Signal (g2, 0) |> Journal.key "a" intCodec
+                let seen = ResizeArray<ReplayMode option>()
+
+                g2.Run (fun () ->
+                    createEffect (fun () ->
+                        seen.Add (
+                            a2.Value |> ignore
+                            Journal.replaying g2
+                        )))
+
+                Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+
+                Expect.equal (List.ofSeq seen) [ None; Some ReplayMode.Diagnostic ] "the effect's run inside the replay"
+                Expect.isNone (Journal.replaying g2) "after the replay"
+            }
+
+            test "replay requires a graph with a journal" {
+                let g = new Graph (GraphOptions.Default)
+                Expect.throwsT<System.InvalidOperationException> (fun () -> Journal.replay ReplayMode.Diagnostic g []) "no journal"
+            }
+
+            testList
+                "replay raises JournalReplayException"
+                [
+                    let entry kind key payload =
+                        {
+                            Schema = 1
+                            Stream = "test"
+                            Seq = 7
+                            Kind = kind
+                            Key = key
+                            PayloadType = "System.Int32"
+                            Payload = payload
+                        }
+
+                    let raises name (entry: JournalEntry) (reason: string) =
+                        test name {
+                            let _, g = journaled ()
+                            let a = Signal (g, 0) |> Journal.key "a" intCodec
+
+                            match
+                                (try
+                                    Journal.replay ReplayMode.Diagnostic g [ entry ]
+                                    None
+                                 with ex ->
+                                     Some ex)
+                            with
+                            | Some (:? JournalReplayException as ex) ->
+                                Expect.equal ex.Seq 7 "names the seq"
+                                Expect.equal ex.Key entry.Key "names the key"
+                                Expect.equal ex.PayloadType "System.Int32" "names the payload type"
+                                Expect.stringContains ex.Reason reason "says why"
+                                Expect.stringContains ex.Message "Journal entry 7" "the message names the entry"
+                            | other -> failtestf "expected a JournalReplayException, got %A" other
+
+                            Expect.equal a.Peek 0 "nothing is applied"
+                        }
+
+                    raises
+                        "on a non-replayable entry"
+                        (entry JournalEntryKind.Write None (JournalPayload.NonReplayable "System.Int32"))
+                        "non-replayable"
+
+                    raises
+                        "on a key the target graph lacks"
+                        (entry JournalEntryKind.Write (Some "b") (JournalPayload.Encoded ("int", 1, "3")))
+                        "not registered"
+
+                    raises
+                        "on a codec name mismatch"
+                        (entry JournalEntryKind.Write (Some "a") (JournalPayload.Encoded ("text", 1, "3")))
+                        "codec text version 1"
+
+                    raises
+                        "on a codec version mismatch"
+                        (entry JournalEntryKind.Write (Some "a") (JournalPayload.Encoded ("int", 2, "3")))
+                        "version 2"
+
+                    raises
+                        "on a decode error"
+                        (entry JournalEntryKind.Write (Some "a") (JournalPayload.Encoded ("int", 1, "three")))
+                        "not an int: three"
+
+                    raises
+                        "on an entry kind the key's input does not take"
+                        (entry JournalEntryKind.Settle (Some "a") (JournalPayload.Encoded ("int", 1, "3")))
+                        "takes no Settle"
+                ]
+
             test "the entry unions print their case names" {
                 Expect.equal (JournalEntryKind.Settle.ToString ()) "Settle" "a kind"
                 Expect.equal (JournalPayload.Empty.ToString ()) "Empty" "Empty"

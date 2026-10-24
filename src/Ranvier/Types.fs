@@ -423,6 +423,27 @@ type IInputJournal =
     /// <summary>Stores <c>entry</c>. An exception raised here propagates to the input that produced the entry.</summary>
     abstract Record: entry: JournalEntry -> unit
 
+/// <summary>How a journal replay treats the async inputs it reaches.</summary>
+[<RequireQualifiedAccess>]
+type ReplayMode =
+    /// <summary>
+    /// Reproduces the recorded run: async sources settle and fail with the recorded values, and the application's async
+    /// work is expected to skip its external calls.
+    /// </summary>
+    | Diagnostic
+    /// <summary>
+    /// Re-enacts the recorded run: writes and messages are applied, the recorded settles and failures are skipped, and
+    /// the application's async work runs again.
+    /// </summary>
+    | Reenact
+
+    // AoT compat
+    /// <summary>The case name.</summary>
+    override this.ToString() =
+        match this with
+        | ReplayMode.Diagnostic -> "Diagnostic"
+        | ReplayMode.Reenact -> "Reenact"
+
 /// <summary>
 /// Construction-time policy/configuration.
 /// </summary>
