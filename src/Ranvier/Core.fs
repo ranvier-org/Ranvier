@@ -1591,8 +1591,21 @@ type internal JournalRecorder(journal: IInputJournal) =
         derivedDepth <- derivedDepth - 1
 
     /// <summary>Registers <c>binding</c> for the node <c>nodeId</c>.</summary>
-    /// <exception cref="T:System.ArgumentException">The graph already has a node with the binding's key.</exception>
+    /// <exception cref="T:System.ArgumentException">
+    /// The graph already has a node with the binding's key, or the node already has a key.
+    /// </exception>
     member _.Bind(nodeId: int, binding: JournalBinding) =
+        match bindings.TryGetValue nodeId with
+        | true, held ->
+            raise (
+                ArgumentException (
+                    "The node is already registered under the journal key \""
+                    + held.Key
+                    + "\"."
+                )
+            )
+        | _ -> ()
+
         if keys.ContainsKey binding.Key then
             raise (
                 ArgumentException (

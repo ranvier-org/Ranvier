@@ -207,6 +207,42 @@ let tests =
                             0))
 
                 Expect.throwsT<System.InvalidOperationException> (fun () -> m.Value |> ignore) "the registration is owned"
+
+                g.Run (fun () ->
+                    Signal (g, 1)
+                    |> Journal.key "row" intCodec
+                    |> ignore)
+            }
+
+            test "a keyed node registered under a second key raises and keeps its first key" {
+                let journal, g = journaled ()
+
+                let owner, s =
+                    g.Run (fun () -> createRoot (fun owner -> owner, Signal (g, 0) |> Journal.key "a" intCodec))
+
+                let error =
+                    try
+                        g.Run (fun () -> s |> Journal.key "b" intCodec |> ignore)
+                        None
+                    with ex ->
+                        Some ex
+
+                match error with
+                | Some (:? System.ArgumentException as ex) -> Expect.stringContains ex.Message "\"a\"" "names the held key"
+                | other -> failtestf "expected an ArgumentException, got %A" other
+
+                s.Value <- 5
+
+                match writes journal with
+                | [ entry ] -> Expect.equal entry.Key (Some "a") "the first key still records"
+                | entries -> failtestf "expected one write, got %A" entries
+
+                owner.Dispose ()
+
+                g.Run (fun () ->
+                    Signal (g, 1)
+                    |> Journal.key "b" intCodec
+                    |> ignore)
             }
 
             test "a write after an await in an async memo's body is not journaled" {

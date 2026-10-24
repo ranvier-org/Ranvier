@@ -65,8 +65,8 @@ module Journal =
 
         if not (Platform.isNull recorder) then
             graph.AssertOnGraphThread "Registering a journal key"
-            recorder.Bind (node.Id, binding)
             graph.AddCleanup (fun () -> recorder.Unbind (node.Id, key))
+            recorder.Bind (node.Id, binding)
 #if RANVIER_TRACE
             let log = ((box graph) :?> ITraced).TraceLog
 
@@ -88,7 +88,8 @@ module Journal =
     /// The call runs in the body of a pure computation, such as a <c>createMemo</c> memo, as <c>onCleanup</c> does.
     /// </exception>
     /// <exception cref="T:System.ArgumentException">
-    /// <c>key</c> is null or empty, or the graph already has a node registered under <c>key</c>.
+    /// <c>key</c> is null or empty, the graph already has a node registered under <c>key</c>, or <c>signal</c> is
+    /// already registered under a key.
     /// </exception>
     let key (key: string) (codec: JournalCodec<'T>) (signal: Signal<'T>) : Signal<'T> =
         register signal.Graph signal key (CodecBinding<'T>(key, codec))
@@ -100,7 +101,8 @@ module Journal =
     /// failures record the exception's message.
     /// </summary>
     /// <exception cref="T:System.ArgumentException">
-    /// <c>key</c> is null or empty, or the graph already has a node registered under <c>key</c>.
+    /// <c>key</c> is null or empty, the graph already has a node registered under <c>key</c>, or <c>source</c> is
+    /// already registered under a key.
     /// </exception>
     let keySource (key: string) (codec: JournalCodec<'T>) (source: AsyncSource<'T>) : AsyncSource<'T> =
         register source.Graph source key (CodecBinding<'T>(key, codec))
