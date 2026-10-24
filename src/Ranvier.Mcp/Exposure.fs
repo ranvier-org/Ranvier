@@ -148,7 +148,7 @@ type Exposure() =
     /// <summary>The latest published snapshot. Readable from any thread.</summary>
     member _.Snapshot = Volatile.Read &snapshot
 
-    /// <summary>The exposed names, in registration order.</summary>
+    /// <summary>The exposed value names, in registration order.</summary>
     member _.Names = entries |> Seq.map _.Name |> List.ofSeq
 
     /// <summary>

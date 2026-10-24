@@ -25,6 +25,13 @@ inbox drains on that thread, so `Graph.DispatchAsync` from a transport thread co
 ```fsharp
 type Msg = Add of int
 
+type App =
+    {
+        Mvu: Mvu<int, Msg>
+        Exposure: Exposure
+        Adapter: McpAdapter
+    }
+
 let decoders: (string * MessageDecoder<Msg>) list =
     [ "add", fun args -> Result.Ok (Add (args.GetProperty("amount").GetInt32 ())) ]
 
@@ -37,18 +44,31 @@ use host =
         exposure |> Expose.messages mvu decoders
         exposure |> Expose.node "count" count
         exposure.Start ()
-        new McpAdapter (exposure))
+        { Mvu = mvu; Exposure = exposure; Adapter = new McpAdapter (exposure) })
 
-let adapter = host.Invoke(id).Result
-let server = McpServer.Create (new StdioServerTransport ("counter", NullLoggerFactory.Instance), adapter.Options)
-do! server.RunAsync ()
+let adapter = host.Invoke(_.Adapter).Result
+let transport = new StdioServerTransport ("counter", NullLoggerFactory.Instance)
+let server = McpServer.Create (transport, adapter.Options)
+server.RunAsync(CancellationToken.None).GetAwaiter().GetResult()
+server.DisposeAsync().AsTask().GetAwaiter().GetResult()
+host.Invoke(fun app -> app.Adapter.Dispose ()).Wait()
 ```
 
-- `host.Invoke work` runs `work` on the graph thread with the setup's value and returns a task of its result. It is the
-  only way into the graph from another thread.
-- A node touched from any other thread raises `InvalidOperationException`. `GraphHost.Start (options, setup)` raises
-  `ArgumentException` for a `ThreadAffinity` other than `Guarded`.
-- After disposal, `Invoke` faults with `ObjectDisposedException`, and so does work still queued.
+- `host.Invoke work` runs `work` on the graph thread with the setup's value and returns a task of its result, once the
+  work and the effects it triggers have run. It is the only way into the graph from another thread. A `work` that
+  throws faults the task. Called on the graph thread, the work runs before `Invoke` returns.
+- `host.Invoke (work, cancellationToken)` cancels the task instead when the token is cancelled before the work starts.
+- `host.GraphThreadId` is the managed thread id of the graph thread.
+- A node touched from any other thread raises `InvalidOperationException`. `GraphHost.Start (options, setup)` builds
+  the graph from `options` with the host's own dispatcher, and raises `ArgumentException` for a `ThreadAffinity` other
+  than `Guarded`.
+- An exception from `setup` is rethrown by `Start`, after the host thread has stopped.
+- `host.Dispose ()` disposes the graph on its thread, after any work already running, and returns once the thread has
+  stopped. After disposal, `Invoke` faults with `ObjectDisposedException`, and so does work still queued. It is
+  idempotent.
+- Construct the `McpAdapter` on the graph thread, after `exposure.Start ()`. `adapter.Options` is safe to use from any
+  thread, and several servers may share it; each server's subscriptions are its own. `adapter.Dispose ()` stops
+  notifying subscribers and is idempotent.
 
 ## Exposing state
 
@@ -68,6 +88,41 @@ reads every value. The effect publishes a `Snapshot { Version; Values }`:
 - A memo cutoff, an equal write, or a re-run whose encodings all match the previous snapshot publishes nothing.
 
 `exposure.Snapshot` is safe to read from any thread and does not enter the graph.
+
+### Reading and dispatching in process
+
+The adapter's tools are thin over `Exposure` members, which application code and tests call directly:
+
+| Member | Result |
+|---|---|
+| `exposure.Dispatch (name, args)` | a task of `Ok snapshot`, published once the message and its effects have run, or `Error reason` |
+| `exposure.WaitVersion (version, timeout)` | a task of `Some snapshot`, the first at or past `version`, or `None` once `timeout` elapses |
+| `exposure.Published` | an event of `Publication { Snapshot; Changed }`, where `Changed` lists the names whose encoding changed, in registration order |
+| `exposure.Names`, `exposure.MessageNames`, `exposure.Nodes` | the registered values, messages and name/node pairs, in registration order |
+
+`Dispatch` and `WaitVersion` are callable from any thread after `Start`. `Dispatch` decodes on the graph thread; a
+rejected message dispatches nothing, and the task faults when `update` raises. `WaitVersion` does not enter the graph.
+`Published` is raised on the graph thread, inside the publishing flush, after `Snapshot` holds the new snapshot, so
+subscribe to it through `host.Invoke`:
+
+```fsharp
+let run (host: GraphHost<App>) =
+    task {
+        do! host.Invoke (fun app ->
+            app.Exposure.Published.Add (fun publication ->
+                printfn "version %d changed %A" publication.Snapshot.Version publication.Changed))
+
+        let! exposure = host.Invoke _.Exposure
+        let args = JsonDocument.Parse("""{"amount": 2}""").RootElement
+
+        match! exposure.Dispatch ("add", args) with
+        | Result.Ok snapshot -> printfn "count is %O at version %d" snapshot.Values["count"] snapshot.Version
+        | Result.Error reason -> printfn "rejected: %s" reason
+
+        let! later = exposure.WaitVersion (exposure.Snapshot.Version + 1L, TimeSpan.FromSeconds 1.0)
+        printfn "%A" (later |> Option.map _.Version)
+    }
+```
 
 ## Resources
 
