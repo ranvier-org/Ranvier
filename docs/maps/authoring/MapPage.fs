@@ -112,13 +112,20 @@ module MapPage =
             span (cell.Line - 1) Int32.MaxValue 1
             add line
 
+        // A line inside a string literal is copied as written, so the literal's value is unchanged.
         let code (indent: int) (cell: PageCell) =
             let source = cell.Code.Split '\n' |> Array.map _.TrimEnd('\r')
-            span cell.Line indent source.Length
+            let literal = MapFence.literalLines cell.Code
             let pad = String (' ', indent)
 
-            for line in source do
-                add (if line.Trim () = "" then "" else pad + line)
+            source
+            |> Array.iteri (fun index line ->
+                if literal[index] then
+                    span (cell.Line + index) 0 1
+                    add line
+                else
+                    span (cell.Line + index) indent 1
+                    add (if line.Trim () = "" then "" else pad + line))
 
         add $"module %s{moduleName key}"
         add ""

@@ -192,6 +192,47 @@ controls [ button \"Add\" (fun () -> count.Value <- 2) ]"
                 Expect.equal (MapPage.hostId "p0123456789" "map-1") "rvm-p0123456789-map-1" "the host"
             }
 
+            test "an expression cell keeps a multi-line string literal's text exactly" {
+                let code =
+                    String.concat
+                        "\n"
+                        [
+                            "let note = \"\"\"first"
+                            "    second"
+                            "  "
+                            "third\"\"\""
+                            "Ranvier.Docs.Maps.PipelineFixture.counter"
+                        ]
+
+                let page =
+                    unit'
+                        [
+                            {
+                                Id = "c1"
+                                Kind = PageCellKind.Expression
+                                Code = code
+                                Line = 4
+                            }
+                        ]
+
+                Expect.stringContains page.Code "let note = \"\"\"first\n    second\n  \nthird\"\"\"\n" "the literal's lines are copied as written"
+                Expect.stringContains page.Code "\n    Ranvier.Docs.Maps.PipelineFixture.counter" "code outside the literal is indented"
+
+                let lines = page.Code.Split '\n'
+
+                let second =
+                    lines
+                    |> Array.findIndex (fun l -> l = "    second")
+
+                Expect.equal (MapPage.locate page.Spans (second + 1) 5) (Some (5, 5)) "a literal line keeps its columns"
+
+                let first =
+                    lines
+                    |> Array.findIndex (fun l -> l.Contains "let note")
+
+                Expect.equal (MapPage.locate page.Spans (first + 1) 9) (Some (4, 5)) "a code line moves left by the indent"
+            }
+
             test "declarations render no host and a named component renders its value" {
                 let page =
                     unit'
