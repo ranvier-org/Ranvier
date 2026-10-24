@@ -383,6 +383,25 @@ let private hydratesLine (fixture: string) (state: string) (served: string) () =
     equal [ "adopted=true"; "insertions=[]" ] [ twin.Head; List.last twin ]
     equal twin site
 
+/// <summary>
+/// The hand-lowered array loader hydrates a loader golden line's .NET server HTML under Strict and leaves the markup the
+/// Arms.Match loader and its twin leave.
+/// </summary>
+let private arrayHydratesLine (state: string) (served: string) () =
+    let case =
+        arrayShape
+        |> List.find (fun case -> case.State = state)
+
+    let matched =
+        all
+        |> List.find (fun other -> other.Fixture = "loader" && other.State = state)
+
+    let array, _ = case.Run (strictRunner served)
+    let site, twin = matched.Run (strictRunner served)
+
+    equal [ "adopted=true"; "insertions=[]" ] [ array.Head; List.last array ]
+    equal (twin, twin) (site, array)
+
 let private loadFixtures =
     [
         "loader", loader, loaderTwin
@@ -494,6 +513,12 @@ let hydrations (lines: (string * string * string) array) =
                 [|
                     for fixture, state, served in lines ->
                         sprintf "%s %s hydrates its .NET server HTML under Strict like its twin" fixture state, hydratesLine fixture state served
+                |]
+                [|
+                    for fixture, state, served in lines do
+                        if fixture = "loader" then
+                            sprintf "the hand-lowered array loader hydrates loader %s under Strict like Arms.Match" state,
+                            arrayHydratesLine state served
                 |]
                 [|
                     for name, site, twin in loadFixtures do

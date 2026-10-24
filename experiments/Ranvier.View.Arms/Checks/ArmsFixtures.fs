@@ -160,6 +160,41 @@ let loaderTwin =
                 | Loaded (text, count) -> arm loadedArm (text, count))
         })
 
+// The payload-direct shape of loader, written by hand: one armOf per target over the values thunk of
+// [target, pattern variables..., matched value, instance], selected by element 0.
+let private loaderArrayArms: Component<unit -> obj array> array =
+    [|
+        armOf (span () { "Not started" })
+        armOf (
+            progress (
+                Attrs.attribute ("max", "100"),
+                Attrs.attribute ("value", fun (values: unit -> obj array) -> Some (string (unbox<int> (values ()).[1])))
+            ) {
+                }
+        )
+        armOf (
+            pre () {
+                fun (values: unit -> obj array) -> unbox<string> (values ()).[1]
+                " x"
+                fun (values: unit -> obj array) -> string (unbox<int> (values ()).[2])
+            }
+        )
+    |]
+
+let loaderArray =
+    Component.template
+        (fun _ (state: Signal<Load>) -> state)
+        (div (Attrs.className "loader") {
+            matchWith id (fun (instance: Signal<Load>) ->
+                let values =
+                    match read instance with
+                    | Idle as value -> [| box 0; box value; box instance |]
+                    | Loading percent as value -> [| box 1; box percent; box value; box instance |]
+                    | Loaded (text, count) as value -> [| box 2; box text; box count; box value; box instance |]
+
+                arm loaderArrayArms[unbox<int> values[0]] values)
+        })
+
 // Or-pattern, literal nested pattern, guard.
 let rich =
     Component.template
@@ -854,6 +889,9 @@ let all: Case list =
                     ])
             cases "incomplete" incomplete incompleteTwin (signals [ "Idle", Idle; "Loading 40", Loading 40 ])
         ]
+
+/// <summary>The loader states with the hand-lowered array loader as the site and the Arms.Match loader as the twin.</summary>
+let arrayShape: Case list = cases "loader" loaderArray loader (signals loadStates)
 
 /// <summary>Whether the incomplete site raises for its unmatched case.</summary>
 let incompleteRaises () =
