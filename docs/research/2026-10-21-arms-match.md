@@ -5,22 +5,14 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 
 **Summary.** The plugin is found through a project reference and the `.targets`. On .NET a site lowers in about
 1.1-1.4 ms once the process is warm; the first five-target site of a process costs 125-146 ms, 9-12 ms after
-`Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable the first `Arms.Match` site costs 374 B gzip over
-its twin (budget 400 B) and each further site 10 B (budget 60 B). The retained heap per row is within 10 % of
-`ranvier-sugar` after create and about 13 % above it after a switch. In Chromium every arm operation holds this
-release's gate, a paired median of at most 1.12 against the sugared twin (create 1.049, switch 1.075, payload 1.096,
-clear 1.041); the payload-direct follow-up measured 1.007-1.031 in a spike.
-
-The user explicitly accepted the 1.12 allowance for this release on 2026-10-22, requiring the cost to remain visible
-and a tracked follow-up. Measured overhead is +4.9 % create, +7.5 % switch, +9.6 % payload and +4.1 % clear.
-The latest switch and payload medians miss the original 1.05 gate; a passing release check does not erase that
-shortfall. The payload-direct follow-up targets the original gate. Merge also awaits the requested primitive
-instruction-count comparison. The performance work is tracked in [issue #157](https://github.com/shayanhabibi/Ranvier/issues/157).
-
-These Chromium medians are the recorded pre-#151 measurements, with their original source hashes and tool versions
-in `arms-match.json`; they were not remeasured during finalization. Integrating #151 updates Vite from 8.3.3 to 8.3.4
-and the Anime size checks' Rolldown from 1.2.12 to 1.2.14. Regenerated bundle records use the new locked tool versions.
-The committed-results timing check continues to validate historical evidence; it does not measure the new bundle.
+`Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable, `Arms.Match` lowers to the payload-direct shape
+([#157](https://github.com/shayanhabibi/Ranvier/issues/157)): one `armOf` definition per target over the arm's values
+thunk, and no cells. The first site costs 183 B gzip over its twin (budget 400 B) and each further site 1 B (budget
+60 B). The retained heap per row is 1.2 % above `ranvier-sugar` after create and after a switch, at 1,000 and 10,000
+rows. The Chromium gate is the original paired median of at most 1.05 against the sugared twin; the cells release ran
+under a 1.12 allowance (plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload
+(1.096). The paired timings of the payload-direct shape are pending a quiet machine; the spike of the shape measured
+1.007-1.031.
 
 ## Plugin discovery
 
@@ -137,24 +129,27 @@ emitted sites.
 ## Bundle
 
 `experiments/Ranvier.View.Arms/Checks/size.mjs` compiles the Playground's DomTests in Release with no defines into
-`generated-size-tests`, then bundles each entry with Vite 8.3.3 (minified), gzip level 9 and Brotli quality 11; the
+`generated-size-tests`, then bundles each entry with Vite 8.3.4 (minified), gzip level 9 and Brotli quality 11; the
 numbers are in [`arms-match/bundle.json`](arms-match/bundle.json).
 
 | Entry | raw | gzip | Brotli |
 |---|---|---|---|
-| explicit loader | 206,791 | 60,147 | 52,825 |
-| Arms.Match loader | 207,533 | 60,518 | 53,136 |
-| two explicit sites | 207,634 | 60,337 | 52,937 |
-| two Arms.Match sites | 208,378 | 60,720 | 53,306 |
+| explicit loader | 206,940 | 60,176 | 52,815 |
+| Arms.Match loader | 207,416 | 60,359 | 53,018 |
+| two explicit sites | 207,783 | 60,382 | 53,032 |
+| two Arms.Match sites | 208,283 | 60,566 | 53,161 |
 
-The first site costs 374 B gzip over its twin (budget 400 B) and the second 10 B (budget 60 B), after the view's
-graduation to `src/Ranvier.View` (#155). The method is a
-whole-bundle gzip difference, so it resolves about ±20 B: a build with `RANVIER_VIEW_COUNTERS` moves the first figure by
-19 B and the second by 25 B without touching `Ranvier.View.Arms`. An entry that calls no `Arms.Match` holds no
-`Ranvier.View.Arms` module, the `Arms.Match` entry holds no quotation code and no curry helper, and `Arms.Prepare ()`
-in the entry adds no bytes.
+With the payload-direct lowering the first site costs 183 B gzip over its twin (budget 400 B) and the second 1 B
+(budget 60 B). The method is a whole-bundle gzip difference, so it resolves about ±20 B: a build with
+`RANVIER_VIEW_COUNTERS` moves the first figure by 19 B and the second by 25 B without touching `Ranvier.View.Arms`. An
+entry that calls no `Arms.Match` holds no `Ranvier.View.Arms` module; the `Arms.Match` entry holds no quotation code,
+no curry helper, no cells module and no `WeakMap`, and the Fable output of `Ranvier.View.Arms` holds no `Cells` module.
+`Arms.Prepare ()` in the entry adds no bytes.
 
-How the first-site cost came down from 771 B:
+The 183 B are the definitions array and its selection, the AM006 guard (`Site.values`, a tag at element 1 of each
+values array) with its Release text, and the splice adapter. The cells release cost 374 B.
+
+How the first-site cost moved:
 
 | Change | First site, gzip |
 |---|---|
@@ -165,21 +160,25 @@ How the first-site cost came down from 771 B:
 | live entries linked through the entries; the withdrawn entry reused by the next arm of its target; one withdrawal per entry (for the switch); the short text without the URL scheme | 394 |
 | after #155; entries seeded with their mount-time values and refreshed on withdrawal (final review I1); withdrawn entries kept in the chain and rebound in place | 371 |
 | after #151 updates the locked bundler; unchanged Arms sources and size budgets | 374 |
-
-The remaining cost is the cells' code: entry registration, rebinding and withdrawal, the read over live and withdrawn
-entries with graph tags, and the site's arm table. Dropping graph tags under Fable would save about 36 B and let a
-reader under one graph read another graph's arm.
+| payload-direct lowering (#157): one `armOf` per target, the selector's array, the AM006 tag guard, the splice adapter; the Fable cells removed | 183 |
 
 ## Chromium
 
-`keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match --ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k
---processes=3 --rounds=15 --pairs=ranvier-arms-match:ranvier-sugar`, under the benchmark and browser locks, at `2667e8e5`
-(Fickl 0.3.0, Fable 5.22.0; source hashes in the JSON); results in `arms-match/arms-match.json`. The run started after
-three load readings below 20 % (25, 8, 3, 3 %); the load read 53 % right after the smoke build and 97 % at the end, and
-the third process ran under other work (its sugar switch median is 10.97 ms against 7.38-7.57 ms in the other two).
+The gate (spec, Testing 11) is a paired median of at most 1.05 per operation, the 95 % interval reported:
+`node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` checks the committed `arms-match/arms-match.json`. It is
+the original target; the cells release ran under a 1.12 allowance (plan Ruling 38), which the payload-direct lowering
+supersedes.
 
-The gate for this release (spec, Testing 11; plan Ruling 38) is a paired median of at most 1.12 per operation, the
-95 % interval reported; `node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` checks the committed results.
+**Payload-direct shape: pending.** The run is `keyed-rows.mjs --modes=ranvier-sugar,ranvier-arms-match
+--ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15
+--pairs=ranvier-arms-match:ranvier-sugar` under the benchmark and browser locks, after three load readings below 20 %,
+with source hashes, tool versions and load notes in `arms-match.json` (plan `2026-10-24-issue-157.md`, Step 11). Until
+it lands, `arms-match.json` holds the cells release's timings below and the gate fails on switch and payload.
+
+**Cells release (history).** At `2667e8e5`, before #151 updated the locked bundler (Fickl 0.3.0, Fable 5.22.0; source
+hashes in the JSON). The run started after three load readings below 20 % (25, 8, 3, 3 %); the load read 53 % right after the smoke build and 97 % at the
+end, and the third process ran under other work (its sugar switch median is 10.97 ms against 7.38-7.57 ms in the other
+two).
 
 | Operation | ranvier-sugar median (process medians), ms | ranvier-arms-match median (process medians), ms | paired median ratio | 95 % interval | arms slower in |
 |---|---|---|---|---|---|
@@ -188,28 +187,32 @@ The gate for this release (spec, Testing 11; plan Ruling 38) is a paired median 
 | armsPayload1k | 1.10 (1.08, 0.88, 2.20) | 1.16 (1.12, 1.01, 2.32) | 1.096 | 1.060-1.144 | 31/45 |
 | armsClear1k | 2.40 (2.32, 1.96, 4.90) | 2.38 (2.38, 1.74, 5.28) | 1.041 | 0.978-1.130 | 26/45 |
 
-Every operation holds the 1.12 gate. The quiet spike run below (load 7 % and 3 %) agrees: create 1.063, switch 1.106,
+Switch and payload miss 1.05. The quiet spike run below (load 7 % and 3 %) agrees: create 1.063, switch 1.106,
 payload 1.075 and clear 1.059. Earlier runs, all under 31-77 % load: before the entry reuse (`945dd4ca`) switch
 1.144 (1.111-1.176) and payload 1.112; after it, switch 1.122 (1.103-1.145) and payload 1.126 (1.071-1.201).
 
-The remaining cost is per remount and per read: the selector's two arrays per selection and the arm's
+The cells release's cost is per remount and per read: the selector's two arrays per selection and the arm's
 `(instance, values)` props; each reader's `values` lookup (a `WeakMap` lookup, the graph tag and the chain); each
-arm's entry registration and cleanup. The payload-direct lowering (spec, Phased implementation 8) removes them.
+arm's entry registration and cleanup. The payload-direct lowering replaces them with one array per selection and a
+read of the arm's own values thunk; the spike of that shape measured create 1.019, switch 1.031, payload 1.007 and
+clear 1.026.
 
 ## Heap
 
 `keyed-heap.mjs --modes=ranvier-sugar,ranvier-arms-match --fixture=arms --counts=1000,10000`, after create and, with
-`--after=switch`, after one switch of every row; results in `arms-match/arms-match-heap.json` and
-`arms-match/arms-match-heap-switch.json`.
+`--after=switch`, after one switch of every row; two processes, under the exclusive gate lock, at `28c69104` with the
+payload-direct lowering (CPU load 32 % before, 16 % after); results in `arms-match/arms-match-heap.json` and
+`arms-match/arms-match-heap-switch.json`. `chromium-gate.mjs` checks the after-create figure against 10 % and prints the
+after-switch figure.
 
 | Rows | ranvier-sugar bytes per row | ranvier-arms-match after create | Δ | ranvier-arms-match after a switch | Δ |
 |---|---|---|---|---|---|
-| 1,000 | 3,511 | 3,839 | +328 (+9.3 %) | 3,959 | +448 (+12.8 %) |
-| 10,000 | 3,528 | 3,869 | +341 (+9.7 %) | 3,989 | +461 (+13.1 %) |
+| 1,000 | 3,511 | 3,553 | +42 (+1.2 %) | 3,553 | +42 (+1.2 %) |
+| 10,000 | 3,528 | 3,570 | +42 (+1.2 %) | 3,570 | +42 (+1.2 %) |
 
-After create the gate holds: both counts stay within 10 % of `ranvier-sugar`. After a switch each row keeps its
-withdrawn entry with its last values in the target's chain, where the next arm of the target rebinds it; the entry
-releases the disposed arm's props. The sugared twin keeps nothing after a switch.
+Both processes agree to the byte. A switched row retains its new arm only, as the twin does; the spike's array shape
+measured +38 B after a switch. The cells release retained 3,839 and 3,869 B per row after create (+9.3 % and +9.7 %)
+and 3,959 and 3,989 after a switch (+12.8 % and +13.1 %): each row's withdrawn entry with its last values.
 
 ## Payload-direct spike
 

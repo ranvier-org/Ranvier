@@ -1,6 +1,7 @@
 // The Chromium and heap gates of Arms.Match (spec, Testing 11-12) over the committed results in docs/research/arms-match:
 // - for each arm operation, the median paired ratio of ranvier-arms-match over ranvier-sugar (same process and round)
-//   is at most 1.12; its 95 % bootstrap interval is printed;
+//   is at most 1.05 (the original target; the payload-direct lowering of #157 supersedes the 1.12 allowance of plan
+//   Ruling 38); its 95 % bootstrap interval is printed;
 // - the retained JavaScript heap per row after create is within 10 % of ranvier-sugar at 1,000 and 10,000 rows;
 // - the retained JavaScript heap per row after one switch of every row is printed against ranvier-sugar at both counts.
 // Exits 1 on a breach. Usage: node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs
@@ -9,7 +10,7 @@ import { readFileSync } from "node:fs";
 const results = new URL("../../../docs/research/arms-match/", import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, results), "utf8"));
 const operations = ["armsCreate1k", "armsSwitch1k", "armsPayload1k", "armsClear1k"];
-const budget = 1.12, heapBudget = 1.10;
+const budget = 1.05, heapBudget = 1.10;
 let failed = false;
 
 const timings = read("arms-match.json");
