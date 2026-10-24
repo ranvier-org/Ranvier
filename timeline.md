@@ -72,6 +72,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 83,081 | 127,141 | 1,734,016 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 83,132 | 127,079 | 1,734,045 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 83,017 | 127,154 | 1,733,979 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 82,999 | 127,122 | 1,733,999 |
 
 ## app-table
 
@@ -145,6 +146,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 4,416,278 | 9,320,024 | 107,301,725 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 4,416,231 | 9,203,874 | 107,694,957 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 4,416,206 | 9,480,484 | 107,694,590 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 4,416,188 | 9,205,959 | 107,707,951 |
 
 ## async-recover
 
@@ -218,6 +220,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 139,064 | 39,718 | 440,650 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 139,064 | 39,733 | 440,651 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 139,064 | 39,718 | 440,654 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 139,064 | 39,723 | 440,655 |
 
 ## async-resolve
 
@@ -291,6 +294,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,793,110 | 1,085,526 | 12,317,430 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,793,108 | 1,085,316 | 12,317,611 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 2,793,109 | 1,085,488 | 12,313,966 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 2,793,109 | 1,085,700 | 12,317,496 |
 
 ## chain
 
@@ -364,6 +368,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 13,035 | 318 | 2,450 | 4,491 | 3,179 | 72,782 | 66,618 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,618 |
 
 ## chain-affinity
 
@@ -437,6 +442,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,549 | 3,067 | 2,496 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,549 | 3,067 | 2,496 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 2,549 | 3,067 | 2,496 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 2,549 | 3,067 | 2,496 |
 
 ## control
 
@@ -510,6 +516,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 74,709 | 833,760 | 2,597,060 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 74,709 | 838,556 | 2,597,110 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 74,709 | 833,862 | 2,597,154 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 74,709 | 833,914 | 2,596,994 |
 
 ## create
 
@@ -583,6 +590,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 13,465,945 | 2,859,679 | 2,532,363 | 2,131,573 | 4,002,853 | 33,868,016 | 49,401,172 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 13,450,057 | 2,859,678 | 2,532,364 | 2,131,537 | 4,003,184 | 33,867,549 | 49,401,072 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 13,450,091 | 2,859,678 | 2,532,363 | 2,130,981 | 4,003,216 | 33,868,056 | 49,401,145 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 13,449,957 | 2,859,678 | 2,564,363 | 2,131,698 | 4,003,313 | 33,868,255 | 49,401,076 |
 
 ## create-on
 
@@ -656,6 +664,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,910,484 | 4,147,316 | 54,424,712 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,942,484 | 4,147,489 | 54,424,570 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 2,910,484 | 4,147,499 | 54,424,718 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 2,910,484 | 4,147,689 | 54,424,523 |
 
 ## cutoff
 
@@ -729,6 +738,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 
 ## derive-effect
 
@@ -802,6 +812,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 765 | 768 | 16,102 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 765 | 768 | 16,102 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 765 | 768 | 16,102 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 765 | 768 | 16,102 |
 
 ## derive-on
 
@@ -875,6 +886,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 737 | 775 | 16,261 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 769 | 775 | 16,261 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 737 | 775 | 16,261 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 737 | 775 | 16,261 |
 
 ## dispose
 
@@ -948,6 +960,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 2,706,757 | 806,290 | 367,497 | 465,559 | 485,089 | 13,193,697 | 9,106,101 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 2,707,643 | 806,291 | 367,497 | 466,319 | 485,204 | 13,193,892 | 9,106,272 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 2,707,644 | 806,291 | 367,497 | 466,175 | 485,281 | 13,193,888 | 9,105,996 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 2,707,644 | 806,291 | 367,497 | 466,079 | 485,114 | 13,195,543 | 9,106,268 |
 
 ## dispose-on
 
@@ -1021,6 +1034,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 346,497 | 478,276 | 8,902,420 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 346,497 | 478,790 | 8,902,289 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 346,497 | 478,565 | 8,902,783 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 346,497 | 478,314 | 8,903,258 |
 
 ## editable-edit
 
@@ -1094,6 +1108,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 180,106 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 180,106 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 180,106 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 180,106 |
 
 ## editable-upstream
 
@@ -1167,6 +1182,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 231,255 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 231,255 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 231,255 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 231,255 |
 
 ## fail-recompute
 
@@ -1240,6 +1256,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 65,106 | 1,366 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 65,106 | 1,366 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 65,106 | 1,366 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 65,106 | 1,366 |
 
 ## flight
 
@@ -1313,6 +1330,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 10,993 | 6,215 | 6,216 | 11,315 | 10,761 | 22,339 |
 
 ## keyed-insert
 
@@ -1386,6 +1404,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,922,001 | 53,981 | 55,041 | 3,218,693 | 661,653 | 176,513 | 44,869,054 | 2,634,996 | 2,654,375 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,921,809 | 53,951 | 54,946 | 3,218,650 | 661,698 | 176,436 | 44,869,121 | 2,634,987 | 2,654,332 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 1,921,825 | 53,951 | 54,964 | 3,218,615 | 661,693 | 176,538 | 44,869,065 | 2,635,016 | 2,654,403 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 1,921,809 | 53,951 | 54,948 | 3,218,804 | 661,699 | 176,560 | 44,870,299 | 2,635,014 | 2,654,376 |
 
 ## keyed-remove
 
@@ -1459,6 +1478,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,920,940 | 43,641 | 45,362 | 3,245,009 | 593,219 | 604,990 | 44,804,921 | 1,924,909 | 1,958,800 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,920,744 | 43,611 | 45,267 | 3,245,079 | 593,209 | 605,186 | 44,805,451 | 1,924,925 | 1,958,821 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 1,920,756 | 43,611 | 45,284 | 3,244,948 | 593,215 | 605,025 | 44,804,916 | 1,924,933 | 1,958,884 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 1,920,744 | 43,611 | 45,266 | 3,245,098 | 593,179 | 604,953 | 44,804,886 | 1,924,957 | 1,958,859 |
 
 ## keyed-swap
 
@@ -1532,6 +1552,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,973,624 | 46,181 | 47,011 | 3,558,316 | 148,834 | 511,464 | 45,973,023 | 916,687 | 932,822 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,973,432 | 46,162 | 46,915 | 3,563,272 | 148,799 | 511,460 | 45,980,314 | 916,709 | 932,874 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 1,973,448 | 46,162 | 46,931 | 3,564,630 | 149,079 | 511,296 | 45,972,673 | 916,699 | 932,874 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 1,973,432 | 46,161 | 46,915 | 3,563,238 | 148,790 | 511,212 | 45,972,978 | 916,697 | 932,827 |
 
 ## mvu-dispatch
 
@@ -1605,6 +1626,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 58,261 | 772 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 58,261 | 772 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 58,261 | 772 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 58,261 | 772 |
 
 ## project-chain
 
@@ -1678,6 +1700,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,070,385 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,070,279 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 1,070,245 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 1,070,249 |
 
 ## project-churn
 
@@ -1751,6 +1774,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 36,490 | 34,326 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 36,490 | 34,326 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 36,474 | 34,310 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 36,490 | 34,326 |
 
 ## project-edit
 
@@ -1824,6 +1848,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 50,415 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 50,431 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 50,431 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 50,431 |
 
 ## project-reorder
 
@@ -1897,6 +1922,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 779,147 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 779,164 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 779,164 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 779,147 |
 
 ## server-render
 
@@ -1970,6 +1996,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 677,319 | 1,130,889 | 9,833,171 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 675,756 | 1,130,590 | 9,833,904 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 675,788 | 1,130,390 | 9,834,176 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 675,756 | 1,130,648 | 9,833,736 |
 
 ## shape-diamond
 
@@ -2043,6 +2070,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 59,899 | 79,968 | 1,763,357 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 59,899 | 79,968 | 1,763,357 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 59,899 | 79,967 | 1,763,357 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 59,899 | 79,967 | 1,763,357 |
 
 ## shape-dynamic
 
@@ -2116,6 +2144,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 82,921 | 107,035 | 2,006,148 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 82,921 | 107,035 | 2,006,148 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 82,921 | 107,035 | 2,006,148 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 82,921 | 107,035 | 2,006,148 |
 
 ## stream-burst-1
 
@@ -2189,6 +2218,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,974 | 1,572 | 2,542 | 4,672 | 3,644 | 13,376 | 47,202 | 45,417 | 55,168 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,974 | 1,572 | 2,538 | 4,671 | 3,644 | 13,370 | 47,202 | 45,417 | 55,169 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 1,974 | 1,572 | 2,490 | 4,671 | 3,644 | 13,368 | 47,202 | 45,417 | 55,167 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 1,974 | 1,572 | 2,526 | 4,672 | 3,644 | 13,370 | 47,202 | 45,417 | 55,171 |
 
 ## stream-burst-16
 
@@ -2262,6 +2292,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 5,631 | 25,017 | 5,752 | 9,503 | 49,601 | 8,049 | 120,965 | 714,180 | 113,517 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 5,631 | 25,017 | 5,748 | 9,500 | 49,601 | 8,050 | 120,972 | 714,180 | 113,522 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 5,631 | 25,017 | 5,700 | 9,498 | 49,601 | 8,048 | 120,973 | 714,180 | 113,522 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 5,631 | 25,017 | 5,736 | 9,501 | 49,601 | 8,049 | 120,971 | 714,183 | 113,521 |
 
 ## stream-burst-256
 
@@ -2335,6 +2366,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 64,131 | 400,101 | 57,091 | 126,882 | 787,152 | 74,561 | 1,301,492 | 11,413,283 | 1,046,482 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 64,131 | 400,101 | 57,087 | 126,921 | 787,222 | 74,563 | 1,301,579 | 11,413,283 | 1,046,548 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 64,131 | 400,101 | 57,039 | 126,833 | 787,250 | 74,565 | 1,301,581 | 11,413,283 | 1,046,549 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 64,131 | 400,101 | 57,075 | 127,267 | 787,247 | 74,509 | 1,301,557 | 11,413,399 | 1,046,481 |
 
 ## stream-restart
 
@@ -2408,6 +2440,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 4,187 | 5,048 | 6,355 | 16,584 | 42,491 | 71,400 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 4,187 | 5,016 | 6,355 | 16,583 | 42,487 | 71,401 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 4,187 | 4,968 | 6,357 | 16,583 | 42,490 | 71,400 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 4,187 | 5,024 | 6,356 | 16,586 | 42,487 | 71,399 |
 
 ## timed-admit-both
 
@@ -2481,6 +2514,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 118,591 | 134,964 | 2,679,829 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 118,591 | 134,963 | 2,679,816 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 118,591 | 134,963 | 2,679,828 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 120,639 | 134,963 | 2,679,817 |
 
 ## timed-admit-debounce
 
@@ -2554,6 +2588,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 117,496 | 133,553 | 2,640,303 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 117,496 | 133,555 | 2,640,303 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 117,496 | 133,554 | 2,640,303 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 119,544 | 133,556 | 2,640,329 |
 
 ## timed-admit-first
 
@@ -2627,6 +2662,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 69,479 | 79,053 | 1,611,692 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 69,479 | 79,053 | 1,611,692 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 69,479 | 79,053 | 1,611,692 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 71,527 | 79,052 | 1,611,692 |
 
 ## timed-admit-last
 
@@ -2700,6 +2736,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 117,758 | 133,878 | 2,650,159 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 117,758 | 133,865 | 2,650,179 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 117,758 | 133,876 | 2,650,159 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 119,806 | 133,876 | 2,650,133 |
 
 ## timed-capture-both
 
@@ -2773,6 +2810,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,726 | 44,806 | 846,890 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 35,726 | 44,806 | 846,890 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 35,726 | 44,807 | 846,890 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 35,726 | 44,808 | 846,890 |
 
 ## timed-capture-debounce
 
@@ -2846,6 +2884,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,598 | 44,104 | 847,376 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 35,598 | 44,104 | 847,376 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 35,598 | 44,104 | 847,380 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 35,598 | 44,104 | 847,376 |
 
 ## timed-capture-first
 
@@ -2919,6 +2958,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 32,078 | 36,612 | 745,370 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 32,078 | 36,612 | 745,370 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 32,078 | 36,612 | 745,370 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 32,078 | 36,611 | 745,371 |
 
 ## timed-capture-last
 
@@ -2992,6 +3032,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 35,534 | 44,038 | 839,509 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 35,534 | 44,040 | 839,504 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 35,534 | 44,040 | 839,504 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 35,534 | 44,040 | 839,504 |
 
 ## update
 
@@ -3065,6 +3106,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 1,087,690 | 38,805 | 82,505 | 262,806 | 151,732 | 3,350,288 | 2,502,722 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 1,089,283 | 38,805 | 82,505 | 262,846 | 151,638 | 3,350,261 | 2,502,817 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 1,087,683 | 38,805 | 82,505 | 262,598 | 151,683 | 3,350,262 | 2,502,821 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 1,087,690 | 38,805 | 82,505 | 262,776 | 151,716 | 3,350,319 | 2,502,807 |
 
 ## update-on
 
@@ -3138,6 +3180,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 93,005 | 165,229 | 2,830,302 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 96,205 | 165,182 | 2,830,411 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 93,005 | 165,259 | 2,830,363 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 93,005 | 165,222 | 2,830,329 |
 
 ## work-form
 
@@ -3211,6 +3254,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 170,300 | 167,392 | 295,933 | 291,314 | 5,349,277 | 5,295,444 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 170,300 | 163,392 | 295,875 | 291,326 | 5,349,323 | 5,295,442 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 170,300 | 163,392 | 295,912 | 291,350 | 5,349,238 | 5,295,440 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 170,300 | 163,392 | 295,900 | 291,354 | 5,349,270 | 5,295,443 |
 
 ## work-status
 
@@ -3284,6 +3328,7 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 100,445 | 78,815 | 264,836 | 152,959 | 2,611,010 | 2,360,821 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 100,445 | 82,015 | 264,825 | 152,938 | 2,611,040 | 2,360,854 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 100,445 | 78,815 | 264,837 | 152,966 | 2,610,994 | 2,360,869 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 100,445 | 78,815 | 264,854 | 152,903 | 2,611,049 | 2,360,808 |
 
 ## work-value
 
@@ -3357,4 +3402,5 @@
 | `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | 107,571 | 119,470 | 265,088 | 279,918 | 2,595,611 | 2,920,176 |
 | `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | 107,569 | 122,669 | 265,043 | 279,926 | 2,595,654 | 2,920,185 |
 | `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | 107,569 | 119,469 | 265,020 | 279,930 | 2,595,656 | 2,920,191 |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | 107,571 | 119,470 | 265,094 | 279,895 | 2,595,657 | 2,920,099 |
 
