@@ -1,7 +1,11 @@
 # #168 validation experiment: does graph introspection over MCP help an agent repair a reactive defect?
 
-Status: protocol fixed and the debugging task reproduced through an automated MCP client. The comparative agent
-runs (baseline against MCP) have **not** been run; see [Runs](#runs). No conclusion about agent benefit is drawn.
+Status: **incomplete; #168's deliverable is not met.** The issue asks for a comparative evaluation of the baseline
+workflow against the MCP-introspection workflow (success, tool calls, repair iterations, tokens, wall clock and an
+independent verdict). Neither workflow has been run; see [Runs](#runs). The protocol is fixed and the debugging task is
+reproduced through an automated MCP client, which shows the task is solvable through the tools, not that the tools
+help an agent. Whether MCP introspection gives measurable development value remains open, and no conclusion about
+agent benefit is drawn. The branch's PR references #168 and does not close it.
 
 ## Question
 
@@ -76,7 +80,8 @@ Steps 4 and 5 name the cause: `total` holds no dependency on `discount`, so the 
 
 The comparative runs need independent agent sessions started from a clean checkout, with no knowledge of the seeded
 defect. The ralph lane that built the spike seeded the defect itself, so its own attempt would not be an independent
-run, and it cannot start new agent sessions. The runs remain to be done.
+run, and it cannot start new agent sessions. The runs remain to be done, at least five per workflow, and #168 stays
+open until the table holds them and the independent verdict for each.
 
 ## Findings so far
 
@@ -93,3 +98,7 @@ run, and it cannot start new agent sessions. The runs remain to be done.
 4. **Protocol pin.** SDK 2.3.0 negotiates `2026-07-28` by default, which drops `resources/subscribe`. The adapter pins
    `2025-11-25`; a client that needs `2026-07-28` gets no subscriptions until the adapter serves
    `subscriptions/listen`.
+5. **The trace tools read the whole graph.** `Expose.node` names the nodes a `node` argument accepts, but
+   `trace_state` lists every node, `trace_lookup` resolves any identity `path`, and a `why` chain names each node it
+   passes through. The experimental workflow therefore sees nodes the sample did not expose, such as the cells `Mvu`
+   creates. The guide and the adapter docs state this boundary.
