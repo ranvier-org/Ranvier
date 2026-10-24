@@ -436,6 +436,21 @@ let tests =
                 Expect.equal (valueOf other) (Some (TracePayload.Lossy (TraceModel.valueText (box { Name = "b" })))) "a value with no codec"
             }
 
+            test "lastSeq is the last event's seq, and the checkpoint's once the checkpoint drops every event" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let count = createSignal 1
+                count.Value <- 2
+                let events = Trace.events g
+                let last = events[events.Length - 1].Seq
+                Expect.equal (Trace.lastSeq g) last "the last event"
+                Trace.checkpoint g last "cut"
+                Expect.equal (Trace.lastSeq g) last "the checkpoint's seq"
+                count.Value <- 3
+                Expect.isGreaterThan (Trace.lastSeq g) last "a later write"
+                Expect.equal (Trace.lastSeq g) (Trace.state g (TraceCodecs.ofList [])).Seq "the state's read point"
+            }
+
             test "state gives a memo that moved to a null value as Null" {
                 use g = new Graph ()
                 use _ = g.Activate ()

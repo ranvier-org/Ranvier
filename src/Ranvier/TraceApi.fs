@@ -71,6 +71,11 @@ module Trace =
     let events (graph: Graph) : TraceEvent[] =
         (logOf graph).Events
 
+    /// <summary>The seq of the last event recorded in <c>graph</c>'s log, 0 before the first.</summary>
+    /// <remarks>A checkpoint keeps it: with no event retained, it is the checkpoint's seq.</remarks>
+    let lastSeq (graph: Graph) : int =
+        (logOf graph).LastSeq
+
     /// <summary>A copy of the events in <c>graph</c>'s log with <c>Seq</c> greater than <c>seq</c>, oldest first.</summary>
     /// <remarks>
     /// A cursor is the seq of the last event read, 0 before the first. The read copies the returned events alone. A
