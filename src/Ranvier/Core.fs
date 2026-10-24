@@ -2115,42 +2115,47 @@ type Graph(options: GraphOptions) =
     /// thread the work joins the inbox behind earlier <c>Dispatch</c> and <c>DispatchAsync</c> items and runs on the
     /// drain the dispatcher schedules. Continuations of the task run on the thread pool, outside the drain.
     ///
-    /// When the work throws, the task faults with that exception and the call itself does not throw; the failure is
-    /// not recorded in <c>Root.Errors</c>, and later inbox items still run.
+    /// When the work throws, the task faults with that exception, and the caller is its only recipient:
+    /// <c>Root.Errors</c> stays unchanged and later inbox items still run.
+    ///
+    /// On a disposed graph the task faults with <c>ObjectDisposedException</c> and the work is skipped, both for a
+    /// call made after disposal and for an item queued before disposal and drained after it.
     /// </remarks>
     member this.DispatchAsync(work: Func<'T>) : Task<'T> =
 #if FABLE_COMPILER
         let finished = Platform.completion<'T>()
-
-        this.Post (fun () ->
-            let outcome =
-                try
-                    Result.Ok (work.Invoke ())
-                with ex ->
-                    Result.Error ex
-
-            match outcome with
-            | Result.Ok value -> finished.Resolve value
-            | Result.Error ex -> finished.Reject ex)
-
-        finished.Task
+        let resolve, reject = finished.Resolve, finished.Reject
 #else
         let finished =
             TaskCompletionSource<'T> TaskCreationOptions.RunContinuationsAsynchronously
 
-        this.Post (fun () ->
-            let outcome =
-                try
-                    Result.Ok (work.Invoke ())
-                with ex ->
-                    Result.Error ex
+        let resolve (value: 'T) =
+            finished.SetResult value
 
-            match outcome with
-            | Result.Ok value -> finished.SetResult value
-            | Result.Error ex -> finished.SetException ex)
+        let reject (ex: exn) =
+            finished.SetException ex
+#endif
+        let disposed () =
+            ObjectDisposedException (nameof Graph) :> exn
+
+        if root.IsDisposed then
+            reject (disposed ())
+        else
+            this.Post (fun () ->
+                if root.IsDisposed then
+                    reject (disposed ())
+                else
+                    let outcome =
+                        try
+                            Result.Ok (work.Invoke ())
+                        with ex ->
+                            Result.Error ex
+
+                    match outcome with
+                    | Result.Ok value -> resolve value
+                    | Result.Error ex -> reject ex)
 
         finished.Task
-#endif
 
     /// <summary>
     /// Work that arrived from another thread and has not been drained yet.

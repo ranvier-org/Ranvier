@@ -1096,5 +1096,84 @@ let tests =
                         Expect.isEmpty g.Root.Errors "the graph does not record a failure the caller receives"
                     }
 #endif
+
+                    testCaseAsync "a call on a disposed graph faults the task and does not run the work"
+                    <| async {
+                        let g = new Graph ()
+                        g.Dispose ()
+                        let ran = ref false
+
+                        let result =
+                            g.DispatchAsync (fun () ->
+                                ran.Value <- true
+                                1)
+
+                        let! outcome = Async.Catch (Async.AwaitTask result)
+
+                        match outcome with
+                        | Choice2Of2 caught ->
+#if !FABLE_COMPILER
+                            let caught =
+                                match caught with
+                                | :? AggregateException as aggregate -> aggregate.InnerException
+                                | other -> other
+#endif
+                            Expect.isTrue (isDisposedError caught) "the task faults with ObjectDisposedException"
+                        | Choice1Of2 _ -> failtest "the task must fault"
+
+                        Expect.isFalse ran.Value "the work did not run"
+                        Expect.equal g.PendingWork 0 "nothing was queued"
+                    }
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "an off-thread call on a disposed graph faults the task and queues nothing" {
+                        let g = new Graph ()
+                        g.Dispose ()
+                        let ran = ref false
+
+                        let result =
+                            offThread (fun () ->
+                                g.DispatchAsync (fun () ->
+                                    ran.Value <- true
+                                    1))
+
+                        Expect.equal result.Status TaskStatus.Faulted "the task is already faulted"
+                        Expect.isTrue (isDisposedError result.Exception.InnerException) "with ObjectDisposedException"
+                        Expect.equal g.PendingWork 0 "nothing was queued"
+                        g.Pump () |> ignore
+                        Expect.isFalse ran.Value "the work never runs"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "an item queued before disposal and drained after it faults and does not run" {
+                        let g = new Graph ()
+                        let ran = ref false
+
+                        let result =
+                            offThread (fun () ->
+                                g.DispatchAsync (fun () ->
+                                    ran.Value <- true
+                                    1))
+
+                        g.Dispose ()
+                        g.Pump () |> ignore
+
+                        Expect.isFalse ran.Value "the work did not run"
+
+                        Expect.isTrue
+                            (try
+                                result.Wait (TimeSpan.FromSeconds 5.0)
+                             with :? AggregateException ->
+                                 true)
+                            "the task completed"
+
+                        Expect.equal result.Status TaskStatus.Faulted "the task faulted"
+                        Expect.isTrue (isDisposedError result.Exception.InnerException) "with ObjectDisposedException"
+                        Expect.isEmpty g.Root.Errors "the graph does not record a failure the caller receives"
+                    }
+#endif
                 ]
         ]
