@@ -71,7 +71,7 @@ new capability.
 
 **Every `await` suspends.** A Fable `task` continues on a later microtask, outside every computation, so a read after an `await` is untracked even when the awaited promise had already resolved. On .NET a read after awaiting a completed task is tracked.
 A signal write or an `AsyncSource` settle after an `await` in an async memo's body is recorded in the graph's
-input journal (`GraphOptions.Journal`) as an external input. On .NET the continuation is part of the body, and the write
+[input journal](../guide/journal.md) as an external input. On .NET the continuation is part of the body, and the write
 records no entry.
 
 **Cancellation is recognised by type.** A rejection counts as cancelled when its reason is Fable's `OperationCanceledException`, as produced by a cancelled `TaskCompletionSource`. Other rejections read as Failed.

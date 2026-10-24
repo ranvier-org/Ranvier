@@ -141,7 +141,8 @@ module Journal =
     /// an unlabelled node with the key.
     /// </remarks>
     /// <exception cref="T:System.InvalidOperationException">
-    /// The call runs in the body of a pure computation, such as a <c>createMemo</c> memo, as <c>onCleanup</c> does.
+    /// The graph has a journal, and the call runs off the graph's thread or in the body of a pure computation, such as
+    /// a <c>createMemo</c> memo, as <c>onCleanup</c> does.
     /// </exception>
     /// <exception cref="T:System.ArgumentException">
     /// <c>key</c> is null or empty, the graph already has a node registered under <c>key</c>, or <c>signal</c> is
