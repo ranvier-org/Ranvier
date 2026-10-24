@@ -2843,6 +2843,7 @@ type Graph(options: GraphOptions) =
                     lastRaised <- null
 
                 Tracer.FlushEnd this
+                Tracer.Flushed this
                 this.LeaveAmbient previousAmbient
 
                 if not (Platform.isNull journal) then
