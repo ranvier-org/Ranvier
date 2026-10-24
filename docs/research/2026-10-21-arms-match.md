@@ -7,7 +7,7 @@ Measurements of the `Arms.Match` implementation ([spec](../superpowers/specs/202
 1.1-1.4 ms once the process is warm; the first five-target site of a process costs 125-146 ms, 9-12 ms after
 `Arms.Prepare ()` and about 7 ms with ReadyToRun as well. Under Fable, `Arms.Match` lowers to the payload-direct shape
 ([#157](https://github.com/shayanhabibi/Ranvier/issues/157)): one `armOf` definition per target over the arm's values
-thunk, and no cells. The first site costs 183 B gzip over its twin (budget 400 B) and each further site 1 B (budget
+thunk, and no cells. The first site costs 189 B gzip over its twin (budget 400 B) and each further site 8 B (budget
 60 B). The retained heap per row is 1.2 % above `ranvier-sugar` after create and after a switch, at 1,000 and 10,000
 rows. The Chromium gate is a paired median against the sugared twin of at most 1.05 on create, switch and clear and
 1.11 on payload, under the user's concession of 2026-10-24 ("Chromium"); the cells release ran under a 1.12 allowance
@@ -137,19 +137,20 @@ numbers are in [`arms-match/bundle.json`](arms-match/bundle.json).
 
 | Entry | raw | gzip | Brotli |
 |---|---|---|---|
-| explicit loader | 206,940 | 60,176 | 52,815 |
-| Arms.Match loader | 207,416 | 60,359 | 53,018 |
-| two explicit sites | 207,783 | 60,382 | 53,032 |
-| two Arms.Match sites | 208,283 | 60,566 | 53,161 |
+| explicit loader | 206,936 | 60,178 | 52,828 |
+| Arms.Match loader | 207,413 | 60,367 | 52,995 |
+| two explicit sites | 207,778 | 60,355 | 52,968 |
+| two Arms.Match sites | 208,279 | 60,552 | 53,165 |
 
-With the payload-direct lowering the first site costs 183 B gzip over its twin (budget 400 B) and the second 1 B
-(budget 60 B). The method is a whole-bundle gzip difference, so it resolves about ±20 B: a build with
+With the payload-direct lowering the first site costs 189 B gzip over its twin (budget 400 B) and the second 8 B
+(budget 60 B), measured after the rebase onto `integration/issues` (183 B and 1 B before it, within the method's
+resolution). The method is a whole-bundle gzip difference, so it resolves about ±20 B: a build with
 `RANVIER_VIEW_COUNTERS` moves the first figure by 19 B and the second by 25 B without touching `Ranvier.View.Arms`. An
 entry that calls no `Arms.Match` holds no `Ranvier.View.Arms` module; the `Arms.Match` entry holds no quotation code,
 no curry helper, no cells module and no `WeakMap`, and the Fable output of `Ranvier.View.Arms` holds no `Cells` module.
 `Arms.Prepare ()` in the entry adds no bytes.
 
-The 183 B are the definitions array and its selection, the AM006 guard (`Site.values`, a tag at element 1 of each
+The 189 B are the definitions array and its selection, the AM006 guard (`Site.values`, a tag at element 1 of each
 values array) with its Release text, and the splice adapter. The cells release cost 374 B.
 
 How the first-site cost moved:

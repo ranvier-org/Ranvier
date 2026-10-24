@@ -451,7 +451,7 @@ through `Mounting.mountWith`.
 
 | Check | Budget |
 |---|---|
-| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 183 B with the payload-direct lowering of #157: the definitions array, the selector, the AM006 guard and its Release text, and the splice adapter; 374 B with the cells; the method resolves about ±20 B) |
+| `Arms.Match` entry vs its explicit `armOf` + `matchWith` twin | ≤ 400 B gzip (measured 189 B with the payload-direct lowering of #157: the definitions array, the selector, the AM006 guard and its Release text, and the splice adapter; 374 B with the cells; the method resolves about ±20 B) |
 | Each further site in the same bundle, against its twin | ≤ 60 B gzip per site |
 | An app that references `Ranvier.View.Arms` and calls no `Arms.Match`, vs the same app without the reference | 0 B (byte-identical bundle) |
 | The Playground `sugar-size.mjs` explicit entry before and after this work | 0 B |
@@ -610,7 +610,7 @@ Each phase lands with its tests green and is reviewable alone.
    +12.8 %), and its loader at 31 B gzip (today 371 B). The final review estimates 1-1.5 weeks for Fable with the .NET
    quotation and cells path kept, about 3 weeks with .NET parity; the AM006 guard (15-25 B) and splice adapters
    (30-50 B) remain to be measured. The lowering targeted the original median of 1.05.
-   Measured on the shipped lowering: the first site 183 B gzip over its twin and each later site 1 B (`bundle.json`),
+   Measured on the shipped lowering: the first site 189 B gzip over its twin and each later site 8 B (`bundle.json`),
    the Fable output holding no cells module; the heap at +1.2 % over the twin after create and after a switch, at both
    row counts. The Step 11 paired medians on the shared machine were create 1.003, switch 1.078, payload 1.073 and
    clear 1.011, every 95 % interval straddling 1.05. A paired run against the spike's hand-written shape finds the
