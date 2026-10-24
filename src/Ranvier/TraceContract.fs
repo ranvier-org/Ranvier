@@ -223,6 +223,8 @@ type TraceGraphState =
     }
 
 /// <summary>One run of a node, in <c>Trace.runs</c>.</summary>
+/// <remarks>A literal names the type in its first label, so an unqualified <c>TraceRun</c> literal stays a <c>TraceRun</c>.</remarks>
+[<RequireQualifiedAccess>]
 type TraceRunState =
     {
         /// <summary>The run number, from 1.</summary>
@@ -239,6 +241,31 @@ type TraceRunState =
         Flush: int
         /// <summary>The value recorded by the run's <c>Moved</c>, else by the latest earlier run's.</summary>
         Value: TracePayload option
+    }
+
+/// <summary>One event of a <c>TraceWhy</c> chain.</summary>
+[<RequireQualifiedAccess>]
+type TraceWhyStep =
+    {
+        Seq: int
+        Kind: TraceEventKind
+        Node: int
+        Other: int
+        /// <summary>The value or exception recorded by a <c>Write</c>, <c>Moved</c>, <c>Settle</c> or <c>Fail</c>.</summary>
+        Value: TracePayload option
+    }
+
+/// <summary>The cause chain of one run, in <c>Trace.whyWith</c>: a <c>Why</c> with its step values encoded.</summary>
+[<RequireQualifiedAccess>]
+type TraceWhy =
+    {
+        Node: int
+        /// <summary>The run number explained.</summary>
+        Run: int
+        /// <summary>The steps from the run's <c>RunStart</c> outwards, newest first.</summary>
+        Steps: TraceWhyStep list
+        /// <summary>The chain's end, or <c>None</c> when <c>whyDepth</c> stopped it first.</summary>
+        Root: WhyRoot option
     }
 
 /// <summary>Contract values over a trace snapshot.</summary>
@@ -390,7 +417,7 @@ module TraceContract =
         history.Runs
         |> List.map (fun r ->
             {
-                Run = r.Run
+                TraceRunState.Run = r.Run
                 Start = r.Start
                 Status = r.Status
                 Moved = r.Moved
@@ -398,3 +425,285 @@ module TraceContract =
                 Flush = r.Flush
                 Value = r.Value |> Option.map (TraceCodecs.encode codecs)
             })
+
+    /// <summary><c>why</c> with its step values encoded by <c>codecs</c>.</summary>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a step's value.</exception>
+    let why (codecs: TraceCodecs) (why: Why) : TraceWhy =
+        {
+            TraceWhy.Node = why.Node
+            Run = why.Run
+            Steps =
+                why.Steps
+                |> List.map (fun s ->
+                    {
+                        TraceWhyStep.Seq = s.Seq
+                        Kind = s.Kind
+                        Node = s.Node
+                        Other = s.Other
+                        Value = s.Value |> Option.map (TraceCodecs.encode codecs)
+                    })
+            Root = why.Root
+        }
+
+/// <summary>JSON text of the trace contract documents.</summary>
+/// <remarks>
+/// A document is <c>{"schema":3,"kind":K,"seq":S,"body":B}</c>, where <c>seq</c> is the read point. In a body a
+/// record is an object with camel-case field names; a union case is <c>{"case":"Name",...}</c> with its named fields;
+/// an enum is its case name; an option is <c>null</c> or its value; a list is an array; <c>nodes</c> and
+/// <c>owners</c> are arrays of objects in id order; <c>sources</c> and <c>observers</c> are arrays of
+/// <c>[id,[ids]]</c> pairs in id order. A float NaN or infinity is the string <c>"NaN"</c>, <c>"Infinity"</c> or
+/// <c>"-Infinity"</c>. The same value gives the same text.
+/// </remarks>
+[<RequireQualifiedAccess>]
+module TraceJson =
+    let private quote (text: string) : string =
+        if Platform.isNull text then
+            "null"
+        else
+            let sb = System.Text.StringBuilder (text.Length + 2)
+            sb.Append '"' |> ignore
+
+            for c in text do
+                match c with
+                | '"' -> sb.Append "\\\"" |> ignore
+                | '\\' -> sb.Append "\\\\" |> ignore
+                | '\n' -> sb.Append "\\n" |> ignore
+                | '\r' -> sb.Append "\\r" |> ignore
+                | '\t' -> sb.Append "\\t" |> ignore
+                | c when c < ' ' ->
+                    sb.Append("\\u").Append((int c).ToString "x4")
+                    |> ignore
+                | c -> sb.Append c |> ignore
+
+            sb.Append('"').ToString()
+
+    let private number (value: float) : string =
+        if System.Double.IsNaN value then
+            "\"NaN\""
+        elif value = infinity then
+            "\"Infinity\""
+        elif value = -infinity then
+            "\"-Infinity\""
+        else
+#if FABLE_COMPILER
+            Fable.Core.JsInterop.emitJsExpr value "String($0)"
+#else
+            value.ToString ("R", System.Globalization.CultureInfo.InvariantCulture)
+#endif
+
+    let private bool' (value: bool) =
+        if value then "true" else "false"
+
+    let private obj' (fields: (string * string) list) =
+        "{"
+        + (fields
+           |> List.map (fun (name, value) -> "\"" + name + "\":" + value)
+           |> String.concat ",")
+        + "}"
+
+    let private array (items: string seq) =
+        "[" + String.concat "," items + "]"
+
+    let private ints (values: int seq) =
+        values |> Seq.map string |> array
+
+    let private option (write: 'T -> string) (value: 'T option) =
+        match value with
+        | Some v -> write v
+        | None -> "null"
+
+    let private case (name: string) (fields: (string * string) list) =
+        obj' (("case", quote name) :: fields)
+
+    let private scalar (value: TraceScalar) =
+        match value with
+        | TraceScalar.Int i -> case "Int" [ "value", string i ]
+        | TraceScalar.String s -> case "String" [ "value", quote s ]
+        | TraceScalar.Bool b -> case "Bool" [ "value", bool' b ]
+        | TraceScalar.Float f -> case "Float" [ "value", number f ]
+
+    let private payload (value: TracePayload) =
+        match value with
+        | TracePayload.Null -> case "Null" []
+        | TracePayload.Exact s -> case "Exact" [ "value", scalar s ]
+        | TracePayload.Encoded (codec, version, data) -> case "Encoded" [ "codec", quote codec; "version", string version; "data", quote data ]
+        | TracePayload.Lossy text -> case "Lossy" [ "text", quote text ]
+
+    let private root (value: WhyRoot) =
+        match value with
+        | UserWrite write -> case "UserWrite" [ "write", string write ]
+        | Created nodeNew -> case "Created" [ "nodeNew", string nodeNew ]
+        | Pulled reader -> case "Pulled" [ "reader", string reader ]
+        | BeforeCheckpoint file -> case "BeforeCheckpoint" [ "file", quote file ]
+        | Unrecorded last -> case "Unrecorded" [ "last", string last ]
+        | Settled settle -> case "Settled" [ "settle", string settle ]
+
+    let private runStatus (value: RunStatus) =
+        quote (TraceNames.runStatus value)
+
+    let private stability (value: TracePathStability) =
+        match value with
+        | TracePathStability.Named -> case "Named" []
+        | TracePathStability.Located -> case "Located" []
+
+    let private nodeRef (value: TraceNodeRef) =
+        obj'
+            [
+                "node", string value.Node
+                "path", quote value.Path
+                "stability", stability value.Stability
+                "label", option quote value.Label
+            ]
+
+    let private status (value: TraceNodeStatus) =
+        match value with
+        | TraceNodeStatus.Fresh -> case "Fresh" []
+        | TraceNodeStatus.Running -> case "Running" []
+        | TraceNodeStatus.Ended s -> case "Ended" [ "status", runStatus s ]
+        | TraceNodeStatus.Disposed -> case "Disposed" []
+
+    let private node (value: TraceNodeState) =
+        obj'
+            [
+                "ref", nodeRef value.Ref
+                "kind", quote (TraceNames.nodeKind value.Kind)
+                "owner", string value.Owner
+                "created", string value.Created
+                "runs", string value.Runs
+                "lastRun", string value.LastRun
+                "pendingMark", string value.PendingMark
+                "status", status value.Status
+                "value", option payload value.Value
+            ]
+
+    let private owner (value: TraceSnapshotOwner) =
+        obj'
+            [
+                "id", string value.Id
+                "parent", string value.Parent
+                "host", string value.Host
+                "root", bool' value.Root
+                "path", quote value.Path
+                "label", option quote value.Label
+                "disposed", bool' value.Disposed
+            ]
+
+    let private pairs (write: 'T -> string) (map: Map<int, 'T>) =
+        map
+        |> Seq.map (fun (KeyValue (id, value)) -> "[" + string id + "," + write value + "]")
+        |> array
+
+    let private document (kind: string) (seq: int) (body: string) =
+        obj'
+            [
+                "schema", string TraceContract.Schema
+                "kind", quote kind
+                "seq", string seq
+                "body", body
+            ]
+
+    /// <summary>The <c>state</c> document of <c>state</c>, read at <c>state.Seq</c>.</summary>
+    /// <remarks>The body holds every field except <c>Schema</c> and <c>Seq</c>, which the envelope carries.</remarks>
+    let state (state: TraceGraphState) : string =
+        obj'
+            [
+                "root", string state.Root
+                "checkpoint", option quote state.Checkpoint
+                "seqFrom", string state.SeqFrom
+                "nodes", state.Nodes.Values |> Seq.map node |> array
+                "owners", state.Owners.Values |> Seq.map owner |> array
+                "sources", pairs ints state.Sources
+                "observers", pairs ints state.Observers
+            ]
+        |> document "state" state.Seq
+
+    /// <summary>The <c>why</c> document of <c>why</c>, read at <c>seq</c>.</summary>
+    let why (seq: int) (why: TraceWhy) : string =
+        let step (s: TraceWhyStep) =
+            obj'
+                [
+                    "seq", string s.Seq
+                    "kind", quote (TraceNames.eventKind s.Kind)
+                    "node", string s.Node
+                    "other", string s.Other
+                    "value", option payload s.Value
+                ]
+
+        obj'
+            [
+                "node", string why.Node
+                "run", string why.Run
+                "steps", why.Steps |> Seq.map step |> array
+                "root", option root why.Root
+            ]
+        |> document "why" seq
+
+    /// <summary>The <c>whyNot</c> document of <c>reason</c>, read at <c>seq</c>.</summary>
+    let whyNot (seq: int) (reason: WhyNotReason option) : string =
+        let write (reason: WhyNotReason) =
+            match reason with
+            | WhyNotReason.Disposed s -> case "Disposed" [ "seq", string s ]
+            | Queued schedule -> case "Queued" [ "schedule", string schedule ]
+            | Unobserved mark -> case "Unobserved" [ "mark", string mark ]
+            | CheckedClean (resolvedAt, upstream) -> case "CheckedClean" [ "resolvedAt", string resolvedAt; "upstream", ints upstream ]
+            | SkippedAsRunningReader s -> case "SkippedAsRunningReader" [ "seq", string s ]
+            | NotReached stopAt -> case "NotReached" [ "stopAt", string stopAt ]
+
+        option write reason |> document "whyNot" seq
+
+    /// <summary>The <c>waiting</c> document of <c>waiting</c>, read at <c>seq</c>.</summary>
+    let waiting (seq: int) (waiting: TraceWaiting) : string =
+        let state (value: TraceFlightState) =
+            match value with
+            | TraceFlightState.InFlight -> case "InFlight" []
+            | TraceFlightState.Settled (s, held) -> case "Settled" [ "seq", string s; "held", bool' held ]
+            | TraceFlightState.Failed (s, cancelled) -> case "Failed" [ "seq", string s; "cancelled", bool' cancelled ]
+            | TraceFlightState.Dropped (s, reason) -> case "Dropped" [ "seq", string s; "reason", quote (TraceNames.dropReason reason) ]
+
+        let flight (f: TraceFlight) =
+            obj'
+                [
+                    "flight", string f.Flight
+                    "start", string f.Start
+                    "run", string f.Run
+                    "state", state f.State
+                ]
+
+        obj'
+            [
+                "node", string waiting.Node
+                "sources", ints waiting.Sources
+                "flights", waiting.Flights |> Seq.map flight |> array
+            ]
+        |> document "waiting" seq
+
+    /// <summary>The <c>runs</c> document of <c>runs</c>, read at <c>seq</c>: an array of runs, oldest first.</summary>
+    let runs (seq: int) (runs: TraceRunState list) : string =
+        let run (r: TraceRunState) =
+            obj'
+                [
+                    "run", string r.Run
+                    "start", string r.Start
+                    "status", option runStatus r.Status
+                    "moved", bool' r.Moved
+                    "root", root r.Root
+                    "flush", string r.Flush
+                    "value", option payload r.Value
+                ]
+
+        runs
+        |> Seq.map run
+        |> array
+        |> document "runs" seq
+
+    /// <summary>The <c>lookup</c> document of <c>lookup</c>, read at <c>seq</c>.</summary>
+    let lookup (seq: int) (lookup: TraceLookup) : string =
+        let body =
+            match lookup with
+            | TraceLookup.Live r -> case "Live" [ "node", nodeRef r ]
+            | TraceLookup.Disposed (r, s) -> case "Disposed" [ "node", nodeRef r; "seq", string s ]
+            | TraceLookup.Checkpointed r -> case "Checkpointed" [ "node", nodeRef r ]
+            | TraceLookup.Missing -> case "Missing" []
+            | TraceLookup.Foreign -> case "Foreign" []
+
+        document "lookup" seq body

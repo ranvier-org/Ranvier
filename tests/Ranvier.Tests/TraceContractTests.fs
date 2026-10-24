@@ -502,6 +502,7 @@ let tests =
                     [
                         typeof<TraceGraphState>
                         typeof<TraceRunState>
+                        typeof<TraceWhy>
                         typeof<TraceLookup>
                         typeof<TraceAddress>
                         typeof<TracePayload>

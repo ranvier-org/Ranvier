@@ -378,6 +378,12 @@ module Trace =
     let runs (graph: Graph) (codecs: TraceCodecs) (node: INode) : TraceRunState list =
         TraceContract.runs codecs (history graph node)
 
+    /// <summary>The cause chain of <c>node</c>'s last run, with its step values encoded by <c>codecs</c>.</summary>
+    /// <remarks>The chain of <c>why graph node</c>.</remarks>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a step's value.</exception>
+    let whyWith (graph: Graph) (codecs: TraceCodecs) (node: INode) : TraceWhy =
+        TraceContract.why codecs (why graph node)
+
     /// <summary>
     /// <c>value</c> as text, with node ids shown as <c>graph</c>'s identity paths: a <c>Why</c>, a
     /// <c>WhyNotReason option</c>, a <c>TraceSnapshot</c>, a <c>TraceEvent[]</c> with repeated marks folded, a
