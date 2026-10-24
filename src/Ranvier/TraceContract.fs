@@ -164,6 +164,69 @@ type TraceLookup =
     /// <summary>A node created by another graph, or a node that records no <c>NodeNew</c>.</summary>
     | Foreign
 
+/// <summary>A node in a <c>TraceGraphState</c>.</summary>
+type TraceNodeState =
+    {
+        Ref: TraceNodeRef
+        Kind: TraceNodeKind
+        /// <summary>The owner id recorded by the node's <c>NodeNew</c>, or 0.</summary>
+        Owner: int
+        /// <summary>The seq of the node's <c>NodeNew</c>.</summary>
+        Created: int
+        /// <summary>The number of runs recorded.</summary>
+        Runs: int
+        /// <summary>The seq of the node's last <c>RunStart</c>, or 0.</summary>
+        LastRun: int
+        /// <summary>The first dirty <c>Mark</c> seq since the last <c>RunStart</c>, or 0.</summary>
+        PendingMark: int
+        Status: TraceNodeStatus
+        /// <summary>
+        /// The latest value or exception recorded by a moving <c>Write</c>, a <c>Moved</c>, or an async source's
+        /// <c>Settle</c> or <c>Fail</c>, or <c>None</c>. A value folded into the checkpoint is <c>Lossy</c>.
+        /// </summary>
+        Value: TracePayload option
+    }
+
+/// <summary>A graph's state at <c>Seq</c>, folded from its checkpoint and retained events.</summary>
+type TraceGraphState =
+    {
+        /// <summary>The contract schema version.</summary>
+        Schema: int
+        /// <summary>The seq of the last event folded, or 0.</summary>
+        Seq: int
+        /// <summary>The graph root's owner id.</summary>
+        Root: int
+        /// <summary>The checkpoint's name, or <c>None</c> before the first checkpoint.</summary>
+        Checkpoint: string option
+        /// <summary>The seq of the first retained event.</summary>
+        SeqFrom: int
+        Nodes: Map<int, TraceNodeState>
+        Owners: Map<int, TraceSnapshotOwner>
+        /// <summary>Each computation's sources, in slot order. Empty lists are left out.</summary>
+        Sources: Map<int, int list>
+        /// <summary>Each source's observers. Empty sets are left out.</summary>
+        Observers: Map<int, Set<int>>
+    }
+
+/// <summary>One run of a node, in <c>Trace.runs</c>.</summary>
+type TraceRunState =
+    {
+        /// <summary>The run number, from 1.</summary>
+        Run: int
+        /// <summary>The seq of the run's <c>RunStart</c>.</summary>
+        Start: int
+        /// <summary>How the run ended, or <c>None</c> while it is open.</summary>
+        Status: RunStatus option
+        /// <summary>True when the run moved the node's value, during the run or at its flight's settle.</summary>
+        Moved: bool
+        /// <summary>The end of the run's cause chain.</summary>
+        Root: WhyRoot
+        /// <summary>The number of the flush the run started in, or 0 outside every flush.</summary>
+        Flush: int
+        /// <summary>The value recorded by the run's <c>Moved</c>, else by the latest earlier run's.</summary>
+        Value: TracePayload option
+    }
+
 /// <summary>Contract values over a trace snapshot.</summary>
 [<RequireQualifiedAccess>]
 module TraceContract =
@@ -251,3 +314,74 @@ module TraceContract =
             TraceLookup.Disposed (r, seq)
         | Some (r, n) when n.Created <= checkpoint.Seq -> TraceLookup.Checkpointed r
         | Some (r, _) -> TraceLookup.Live r
+
+    /// <summary>The schema version of the contract documents.</summary>
+    [<Literal>]
+    let Schema = 3
+
+    /// <summary>
+    /// The state folded from <c>checkpoint</c> and <c>events</c>, which follow it, with retained values encoded by
+    /// <c>codecs</c>.
+    /// </summary>
+    /// <exception cref="T:Ranvier.TraceCodecException">
+    /// <c>codecs</c> is strict and no codec claims a retained value.
+    /// </exception>
+    let state (codecs: TraceCodecs) (checkpoint: TraceCheckpoint) (events: TraceEvent[]) : TraceGraphState =
+        let snap = TraceModel.fold checkpoint.Snapshot events
+        let values = System.Collections.Generic.Dictionary<int, obj>()
+
+        // The value events of `TraceModel.fold`, the latest per node.
+        for e in events do
+            match e.Kind with
+            | TraceEventKind.Write when e.Flag = 1 -> values[e.Node] <- e.Payload
+            | TraceEventKind.Moved when not (Platform.isNull e.Payload) -> values[e.Node] <- e.Payload
+            | TraceEventKind.Settle
+            | TraceEventKind.Fail when e.Arg = 0 -> values[e.Node] <- e.Payload
+            | _ -> ()
+
+        let node (id: int) (n: TraceSnapshotNode) =
+            {
+                Ref = (nodeRef snap id).Value
+                Kind = n.Kind
+                Owner = n.Owner
+                Created = n.Created
+                Runs = n.Runs
+                LastRun = n.LastRun
+                PendingMark = n.PendingMark
+                Status = n.Status
+                Value =
+                    match values.TryGetValue id with
+                    | true, value -> Some (TraceCodecs.encode codecs value)
+                    | _ -> n.Value |> Option.map TracePayload.Lossy
+            }
+
+        {
+            Schema = Schema
+            Seq = snap.Seq
+            Root = snap.Root
+            Checkpoint = Option.ofObj checkpoint.Name
+            SeqFrom =
+                if events.Length = 0 then
+                    checkpoint.Snapshot.Seq + 1
+                else
+                    events[0].Seq
+            Nodes = snap.Nodes |> Map.map node
+            Owners = snap.Owners
+            Sources = snap.Sources
+            Observers = snap.Observers
+        }
+
+    /// <summary>The runs of <c>history</c>, with their values encoded by <c>codecs</c>.</summary>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a run's value.</exception>
+    let runs (codecs: TraceCodecs) (history: TraceHistory) : TraceRunState list =
+        history.Runs
+        |> List.map (fun r ->
+            {
+                Run = r.Run
+                Start = r.Start
+                Status = r.Status
+                Moved = r.Moved
+                Root = r.Root
+                Flush = r.Flush
+                Value = r.Value |> Option.map (TraceCodecs.encode codecs)
+            })

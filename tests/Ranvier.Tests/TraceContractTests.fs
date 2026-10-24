@@ -72,6 +72,56 @@ type private Untraced() =
     interface INode with
         member _.Id = 1
         member _.Status = Status.None
+
+/// <summary>A diamond with a dynamic dependency, run, rewritten and partly disposed.</summary>
+let private diamond (g: Graph) =
+    let a = Trace.named "a" (fun () -> createSignal 1)
+    let flag = createSignal true
+    let b = Trace.named "b" (fun () -> createMemo (fun _ -> a.Value + 1))
+    let c = createMemo (fun _ -> a.Value * 2)
+    let d = createMemo (fun _ -> if flag.Value then b.Value else c.Value)
+    let e = createEffect (fun () -> d.Value |> ignore)
+    a.Value <- 2
+    flag.Value <- false
+    c.Dispose ()
+    e
+
+#if !FABLE_COMPILER
+let private flags =
+    System.Reflection.BindingFlags.Public
+    ||| System.Reflection.BindingFlags.NonPublic
+
+/// <summary>The types reachable from <c>root</c> through record fields, union case fields and generic arguments.</summary>
+let private reachable (root: System.Type) =
+    let seen = System.Collections.Generic.HashSet<System.Type>()
+
+    let rec walk (t: System.Type) =
+        if seen.Add t then
+            if t.IsGenericType then
+                for arg in t.GetGenericArguments () do
+                    walk arg
+
+            if Reflection.FSharpType.IsRecord (t, flags) then
+                for p in Reflection.FSharpType.GetRecordFields (t, flags) do
+                    walk p.PropertyType
+            elif
+                Reflection.FSharpType.IsUnion (t, flags)
+                && not (
+                    t.IsGenericType
+                    && t.GetGenericTypeDefinition () = typedefof<option<_>>
+                )
+                && not (
+                    t.IsGenericType
+                    && t.GetGenericTypeDefinition () = typedefof<list<_>>
+                )
+            then
+                for case in Reflection.FSharpType.GetUnionCases (t, flags) do
+                    for p in case.GetFields () do
+                        walk p.PropertyType
+
+    walk root
+    seen
+#endif
 #endif
 
 [<Tests>]
@@ -299,5 +349,147 @@ let tests =
                 Expect.equal (Trace.lookupNode g (Untraced ())) TraceLookup.Foreign "a node no graph traces"
                 Expect.equal (Trace.lookupNode g mine) (TraceLookup.Live (refOf g mine)) "the graph's own node"
             }
+
+            test "state matches the snapshot node for node and edge for edge" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                diamond g |> ignore
+                let snap = Trace.snapshot g
+                let state = Trace.state g (TraceCodecs.ofList [])
+
+                Expect.equal (state.Seq, state.Root) (snap.Seq, snap.Root) "the read point and the root"
+                Expect.equal (Map.keys state.Nodes |> List.ofSeq) (Map.keys snap.Nodes |> List.ofSeq) "the same nodes"
+
+                for KeyValue (id, n) in snap.Nodes do
+                    let s = state.Nodes[id]
+                    Expect.equal s.Ref (TraceContract.nodeRef snap id).Value "the node's ref"
+
+                    Expect.equal
+                        (s.Kind, s.Owner, s.Created, s.Runs, s.LastRun, s.PendingMark, s.Status)
+                        (n.Kind, n.Owner, n.Created, n.Runs, n.LastRun, n.PendingMark, n.Status)
+                        "the node's fields"
+
+                    Expect.equal s.Value.IsSome n.Value.IsSome "a value exactly where the snapshot has one"
+
+                Expect.equal state.Owners snap.Owners "the same owners"
+                Expect.equal state.Sources snap.Sources "the same sources"
+                Expect.equal state.Observers snap.Observers "the same observers"
+            }
+
+            test "state carries the schema, the checkpoint and the first retained seq" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let count = createSignal 1
+                let before = Trace.state g (TraceCodecs.ofList [])
+                Expect.equal (before.Schema, before.Checkpoint, before.SeqFrom) (3, None, 1) "before a checkpoint"
+                let cut = lastSeq g
+                Trace.checkpoint g cut "cut"
+                count.Value <- 2
+                let after = Trace.state g (TraceCodecs.ofList [])
+                Expect.equal (after.Schema, after.Checkpoint, after.SeqFrom) (3, Some "cut", cut + 1) "after a checkpoint"
+            }
+
+            test "state encodes retained values through the codecs" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let point = createSignal { X = 0; Y = 0 }
+                let count = createSignal 0
+                let other = createSignal { Name = "a" }
+                point.Value <- { X = 1; Y = 2 }
+                count.Value <- 3
+                other.Value <- { Name = "b" }
+                let state = Trace.state g (TraceCodecs.ofList [ pointCodec ])
+
+                let valueOf (node: INode) =
+                    state.Nodes[node.Id].Value
+
+                Expect.equal (valueOf point) (Some (TracePayload.Encoded ("point", 2, "1,2"))) "a codec's value"
+                Expect.equal (valueOf count) (Some (TracePayload.Exact (TraceScalar.Int 3))) "a scalar"
+                Expect.equal (valueOf other) (Some (TracePayload.Lossy (TraceModel.valueText (box { Name = "b" })))) "a value with no codec"
+            }
+
+            test "state gives a value folded into the checkpoint as Lossy of its folded text" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let count = createSignal 0
+                let point = createSignal { X = 0; Y = 0 }
+                count.Value <- 5
+                point.Value <- { X = 1; Y = 2 }
+                Trace.checkpoint g (lastSeq g) "cut"
+                let codecs = TraceCodecs.ofList [ pointCodec ]
+                let folded = Trace.state g codecs
+
+                let valueOf (state: TraceGraphState) (node: INode) =
+                    state.Nodes[node.Id].Value
+
+                Expect.equal (valueOf folded count) (Some (TracePayload.Lossy "5")) "the checkpoint holds text alone"
+                Expect.equal (valueOf folded point) (Some (TracePayload.Lossy (TraceModel.valueText (box { X = 1; Y = 2 })))) "even with a codec"
+                count.Value <- 6
+                Expect.equal (valueOf (Trace.state g codecs) count) (Some (TracePayload.Exact (TraceScalar.Int 6))) "a retained write is exact again"
+            }
+
+            test "strict state raises for a retained value with no codec" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let other = createSignal { Name = "a" }
+                other.Value <- { Name = "b" }
+
+                throws<TraceCodecException>
+                    (fun () ->
+                        Trace.state g (TraceCodecs.strict (TraceCodecs.ofList []))
+                        |> ignore)
+                    "strict must raise"
+            }
+
+            test "runs project the history with encoded values" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let x = createSignal 1
+                let m = createMemo (fun _ -> { X = x.Value; Y = 0 })
+                m.Value |> ignore
+                x.Value <- 2
+                m.Value |> ignore
+                let history = Trace.history g m
+                let runs = Trace.runs g (TraceCodecs.ofList [ pointCodec ]) m
+
+                Expect.equal
+                    (runs
+                     |> List.map (fun r -> r.Run, r.Start, r.Status, r.Moved, r.Root, r.Flush))
+                    (history.Runs
+                     |> List.map (fun r -> r.Run, r.Start, r.Status, r.Moved, r.Root, r.Flush))
+                    "the runs' fields"
+
+                Expect.equal
+                    (runs |> List.map _.Value)
+                    [
+                        Some (TracePayload.Encoded ("point", 2, "1,0"))
+                        Some (TracePayload.Encoded ("point", 2, "2,0"))
+                    ]
+                    "each run's value through the codec"
+            }
+
+#if !FABLE_COMPILER
+            test "no contract type holds an obj, an INode or a mutable field" {
+                let roots =
+                    [
+                        typeof<TraceGraphState>
+                        typeof<TraceRunState>
+                        typeof<TraceLookup>
+                        typeof<TraceAddress>
+                        typeof<TracePayload>
+                    ]
+
+                Expect.isTrue ((reachable typeof<TraceGraphState>).Contains typeof<TracePayload>) "the walk reaches nested fields"
+                Expect.isTrue ((reachable typeof<WhyStep>).Contains typeof<obj>) "the walk finds an obj field"
+
+                for t in roots |> Seq.collect reachable |> Seq.distinct do
+                    Expect.notEqual t typeof<obj> ("an obj is reachable from the contract")
+                    Expect.isFalse (typeof<INode>.IsAssignableFrom t) ("an INode is reachable: " + t.Name)
+
+                    if Reflection.FSharpType.IsRecord (t, flags) then
+                        for p in Reflection.FSharpType.GetRecordFields (t, flags) do
+                            Expect.isFalse p.CanWrite ("a settable field: " + t.Name + "." + p.Name)
+            }
+#endif
 #endif
         ]

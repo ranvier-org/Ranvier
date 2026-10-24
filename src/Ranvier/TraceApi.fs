@@ -361,6 +361,24 @@ module Trace =
             TraceLookup.Foreign
 
     /// <summary>
+    /// The state folded from <c>graph</c>'s checkpoint and retained events, with retained values encoded by
+    /// <c>codecs</c>.
+    /// </summary>
+    /// <remarks>Holds no live object: a value folded into the checkpoint is <c>Lossy</c>.</remarks>
+    /// <exception cref="T:Ranvier.TraceCodecException">
+    /// <c>codecs</c> is strict and no codec claims a retained value.
+    /// </exception>
+    let state (graph: Graph) (codecs: TraceCodecs) : TraceGraphState =
+        let struct (checkpoint, events) = retained graph
+        TraceContract.state codecs checkpoint events
+
+    /// <summary>The retained runs of <c>node</c> in <c>graph</c>'s log, with their values encoded by <c>codecs</c>.</summary>
+    /// <remarks>The runs of <c>history graph node</c>.</remarks>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a run's value.</exception>
+    let runs (graph: Graph) (codecs: TraceCodecs) (node: INode) : TraceRunState list =
+        TraceContract.runs codecs (history graph node)
+
+    /// <summary>
     /// <c>value</c> as text, with node ids shown as <c>graph</c>'s identity paths: a <c>Why</c>, a
     /// <c>WhyNotReason option</c>, a <c>TraceSnapshot</c>, a <c>TraceEvent[]</c> with repeated marks folded, a
     /// <c>TraceOrigin</c>, a <c>TraceHistory</c> or a <c>TraceWaiting</c>.
