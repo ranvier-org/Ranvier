@@ -170,33 +170,35 @@ publish warns at each call.
 
 **Cost in the browser.** In Chromium a site runs within a few percent of the same view written with `matchWith`. The
 figures are paired median ratios over the `matchWith` twin, each sample paired with the twin's sample of the same
-process and round, 1,000 rows and six runs of 45 pairs on a shared machine at 35-100 % CPU load:
+process and round, at 1,000 rows. The gate pools the committed runs whose recorded source hashes match the measured
+sources: five runs of 45 pairs, on a shared machine at 25-83 % CPU load:
 
 | Operation | pooled median (95 % interval) | budget |
 |---|---|---|
-| Create | 1.004 (0.993-1.031) | 1.05 |
-| Switch every row to another arm | 1.012 (0.995-1.037) | 1.04 |
-| Update every row's payload | 1.030 (0.992-1.066) | 1.07 |
-| Clear | 1.012 (0.980-1.069) | 1.05 |
+| Create | 1.000 (0.993-1.016) | 1.05 |
+| Switch every row to another arm | 1.015 (1.004-1.030) | 1.04 |
+| Update every row's payload | 1.009 (0.974-1.053) | 1.07 |
+| Clear | 1.003 (0.963-1.074) | 1.05 |
 
 The budgets are fixed. The target was 1.05 on every operation; the switch budget of 1.04 and the payload budget of
 1.07 are a concession, as the lowered code is indistinguishable in these timings from the same shape written by hand.
-An operation passes when its pooled median is within budget. The pooled clear interval, 0.980-1.069, straddles its
+An operation passes when its pooled median is within budget. The pooled clear interval, 0.963-1.074, straddles its
 1.05 budget; the create, switch and payload intervals lie below theirs. Each run's median varies more than the pool:
 
 | Run | Create | Switch | Payload | Clear |
 |---|---|---|---|---|
-| 8ee10018 | 1.002 | 1.014 | 1.065 | 1.016 |
-| 299ab276 | 1.003 | 1.078 | 1.073 | 1.011 |
-| fccc740c | 1.041 | 0.993 | 1.042 | 1.014 |
-| dc8b3d5b | 1.013 | 1.009 | 1.000 | 0.942 |
-| 5369d6a0 | 0.992 | 1.022 | 1.040 | 1.119 |
-| 4d00179e | 1.004 | 0.969 | 0.971 | 0.996 |
+| da6d32e6, 1 | 1.022 | 1.048 | 1.050 | 1.088 |
+| da6d32e6, 2 | 0.977 | 1.027 | 1.025 | 1.000 |
+| da6d32e6, 3 | 1.019 | 0.995 | 1.006 | 0.985 |
+| da6d32e6, 4 | 1.006 | 0.983 | 0.904 | 1.026 |
+| da6d32e6, 5 | 0.983 | 1.015 | 0.995 | 0.996 |
 
-The clear medians of the two runs on the current branch, 5369d6a0 and 4d00179e, spread from 1.119 to 0.996. The
-runs 8ee10018, 299ab276 and fccc740c predate a lowering change for helpers over the concrete instance type; the
-benchmark has no such helper, and its compiled code is the same under both lowerings. The retained heap is 1.2 % above the
-twin's per row, after create and after a switch. The runs, their load readings and the gate are in the
+The earlier runs 8ee10018, 299ab276, fccc740c, dc8b3d5b, 5369d6a0 and 4d00179e stay in the repository and out of the
+pool. Each was measured on a `src/Ranvier/Core.fs` and `src/Ranvier/Projections.fs` that both modes compile and that
+have changed since, and on an earlier benchmark script; 8ee10018, 299ab276 and fccc740c also on an earlier lowering.
+A later change to a hashed source takes every run out of the pool, and the gate fails until runs are recorded on the
+new sources. The retained heap is 1.2 % above the twin's per row, after create and after a switch. The runs, their
+load readings and the gate are in the
 [research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-arms-match.md#chromium).
 
 ### AM005

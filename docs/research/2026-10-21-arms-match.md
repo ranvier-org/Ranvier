@@ -12,11 +12,9 @@ thunk, and no cells. The first site costs 189 B gzip over its twin (budget 400 B
 rows. The Chromium gate is a paired median against the sugared twin of at most 1.05 on create and clear, 1.04 on
 switch and 1.07 on payload, under the user's concession of 2026-10-24 ("Chromium"); the cells release ran under a 1.12
 allowance (plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload (1.096).
-Pooled over the six committed runs of #157 at 35-100 % load, the payload-direct shape's paired medians are create 1.004,
-switch 1.012, payload 1.030 and clear 1.012; the gate judges these pooled medians and passes, with the pooled clear
-interval (0.980-1.069) straddling 1.05. The latest run on the rebased branch measures 1.004, 0.969, 0.971 and 0.996,
-and the earlier run on the rebased branch measures 0.992, 1.022, 1.040 and 1.119, its clear interval
-straddling 1.05. In a paired
+Pooled over the five committed runs of #157 whose source hashes match the tree, at 25-83 % load, the payload-direct
+shape's paired medians are create 1.000, switch 1.015, payload 1.009 and clear 1.003; the gate judges these pooled
+medians and passes, with the pooled clear interval (0.963-1.074) straddling 1.05. In a paired
 run against the hand-written shape, the plugin's output is indistinguishable from it on every operation.
 
 ## Plugin discovery
@@ -172,7 +170,8 @@ How the first-site cost moved:
 ## Chromium
 
 The gate (spec, Testing 11) is a paired median of at most the operation's budget, the 95 % interval reported:
-`node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` checks the committed `arms-match/arms-match.json`. The
+`node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs` pools the committed runs whose recorded source hashes
+match the tree. The
 budgets are create 1.05, switch 1.04, payload 1.07 and clear 1.05; the cells release ran under a 1.12 allowance (plan
 Ruling 38), which the payload-direct lowering supersedes.
 
@@ -182,8 +181,30 @@ refitted when a run joins the pool, because the plugin's output is
 indistinguishable from the hand-written shape the spike measured ("Against the hand-written shape"). Pooling
 concatenates each run's per-pair ratios and applies the bootstrap of `keyed-rows.mjs`;
 `experiments/Ranvier.View.Arms/Checks/pooled-interval.mjs` prints the result, `chromium-gate.mjs` judges each
-operation by the pooled median over the six runs below, and `pooled-interval.test.mjs` checks the fixed budgets and
-the pooled medians against them.
+operation by the pooled median, and `pooled-interval.test.mjs` checks the fixed budgets and the pooled medians against
+them. The pool is every committed run whose recorded hashes match every source `run-sources.mjs` lists, up to line
+endings: the benchmark, the core and view sources both modes compile, and the Fable plugin project with each file it
+compiles. A change to any of them takes every run out of the pool, and the gate fails until runs are recorded on the
+new sources. The five runs at `da6d32e6`, on the branch rebased onto `integration/issues` at `aae54f2e`, are the
+pool; each is the Step 11 command under `gate-lock.ps1 bench`, CPU load before / after in parentheses:
+
+| Run (CPU load, %) | create | switch | payload | clear |
+|---|---|---|---|---|
+| `arms-match-da6d32e6-1` (62, 25, 59 / 47, 79, 56) | 1.022 (0.999-1.045) | 1.048 (1.018-1.101) | 1.050 (0.953-1.134) | 1.088 (0.921-1.164) |
+| `arms-match-da6d32e6-2` (59, 37, 55 / 58, 66, 79) | 0.977 (0.957-0.995) | 1.027 (1.008-1.058) | 1.025 (0.972-1.211) | 1.000 (0.874-1.240) |
+| `arms-match-da6d32e6-3` (60, 69, 65 / 65, 68, 59) | 1.019 (0.982-1.036) | 0.995 (0.951-1.027) | 1.006 (0.890-1.110) | 0.985 (0.878-1.107) |
+| `arms-match-da6d32e6-4` (68, 60, 71 / 83, 68, 60) | 1.006 (0.995-1.025) | 0.983 (0.955-1.011) | 0.904 (0.870-1.087) | 1.026 (0.956-1.114) |
+| `arms-match-da6d32e6-5` (51, 66, 68 / 69, 54, 76) | 0.983 (0.951-1.024) | 1.015 (0.965-1.061) | 0.995 (0.925-1.057) | 0.996 (0.875-1.162) |
+| pooled, 225 pairs | 1.000 (0.993-1.016) | 1.015 (1.004-1.030) | 1.009 (0.974-1.053) | 1.003 (0.963-1.074) |
+| budget | 1.05 | 1.04 | 1.07 | 1.05 |
+
+Every pooled median is within its budget. The create, switch and payload pooled intervals lie below their budgets;
+the pooled clear interval straddles 1.05, and the runs' clear medians spread from 0.985 to 1.088.
+
+**Earlier runs, out of the pool.** The runs below stay committed as history. Their recorded hashes differ from the
+tree in `src/Ranvier/Core.fs` and `src/Ranvier/Projections.fs`, which both modes compile, in
+`benchmarks/frameworks/keyed-rows.mjs`, and they record no hash for the plugin project, `Shape.fs` or `Plugin.fs`;
+`8ee10018`, `299ab276` and `fccc740c` also differ in `Site.fs` and `Lower.fs`.
 
 | Run (CPU load) | create | switch | payload | clear |
 |---|---|---|---|---|
@@ -191,20 +212,12 @@ the pooled medians against them.
 | `299ab276`, Step 11 (85-100 %) | 1.003 (0.969-1.063) | 1.078 (1.026-1.137) | 1.073 (0.930-1.222) | 1.011 (0.910-1.146) |
 | `fccc740c`, shape run (97-100 %) | 1.041 (0.969-1.068) | 0.993 (0.903-1.066) | 1.042 (0.906-1.193) | 1.014 (0.968-1.095) |
 | `dc8b3d5b`, refresh (35-68 %) | 1.013 (0.989-1.039) | 1.009 (0.990-1.027) | 1.000 (0.899-1.055) | 0.942 (0.843-1.111) |
-| `5369d6a0`, rebased branch (70-97 %) | 0.992 (0.958-1.045) | 1.022 (0.945-1.066) | 1.040 (0.948-1.108) | 1.119 (0.991-1.175) |
-| `4d00179e`, gate input (56-99 %) | 1.004 (0.962-1.055) | 0.969 (0.917-1.035) | 0.971 (0.943-1.053) | 0.996 (0.906-1.093) |
-| pooled, 270 pairs | 1.004 (0.993-1.031) | 1.012 (0.995-1.037) | 1.030 (0.992-1.066) | 1.012 (0.980-1.069) |
-| budget | 1.05 | 1.04 | 1.07 | 1.05 |
+| `5369d6a0`, rebased onto `0967cc02` (70-97 %) | 0.992 (0.958-1.045) | 1.022 (0.945-1.066) | 1.040 (0.948-1.108) | 1.119 (0.991-1.175) |
+| `4d00179e`, rebased onto `0967cc02` (56-99 %) | 1.004 (0.962-1.055) | 0.969 (0.917-1.035) | 0.971 (0.943-1.053) | 0.996 (0.906-1.093) |
 
-`8ee10018`, `299ab276`, `fccc740c` and `dc8b3d5b` (`arms-match-dc8b3d5b.json`) predate the rebase of `issue/157` onto
-`integration/issues` at `0967cc02`; their source hashes differ from the rebased branch in `src/Ranvier/Core.fs`, which
-#165 changed and both modes share. `8ee10018`, `299ab276` and `fccc740c` predate `eb9fad95`, which changed `experiments/Ranvier.View.Arms/Site.fs` (`5ce539ae…` to `644adbf6…`) and `experiments/Ranvier.View.Arms.FablePlugin/Lower.fs` (`51311ec0…` to `9c7c6613…`). That change lowers only sites with a helper over the concrete instance type, and `KeyedRowsArmsMatchPerf.fs` has none: compiled under the `Site.fs`, `Lower.fs` and `Plugin.fs` of `eb9fad95^` and of `4d00179e`, the benchmark's Fable output is byte-identical, and `Site.js` gains only `spliceHeld` and `heldValues`, which it does not call. The three runs therefore measure the benchmark code of the current lowering and stay in the pool, pending the user's confirmation. `5369d6a0` and `4d00179e` are paired runs on the rebased branch, every source hash
-matching it. The `5369d6a0` clear median 1.119 exceeds 1.05 on an interval that straddles it, and the pooled clear
-interval (0.980-1.069) straddles 1.05 as well.
-
-**Refresh.** The gate input `arms-match.json` is the refreshed run: the Step 11 command with `--build` through
+**The `4d00179e` run.** `arms-match.json` is the Step 11 command with `--build` through
 `gate-lock.ps1 bench` at `4d00179e`, CPU load 56, 79 and 88 % before the build and 62, 66 and 99 % after the run,
-source hashes matching the working tree (`Lower.fs` `9c7c6613…`, `Site.fs` `644adbf6…`, `Core.fs` `f2023ae6…`);
+source hashes matching the tree of `4d00179e` (`Lower.fs` `9c7c6613…`, `Site.fs` `644adbf6…`, `Core.fs` `f2023ae6…`);
 `keyed-rows.mjs` writes a run into `docs/research/arms-match/` only from committed sources unchanged during the run. Every median of the run is
 within its budget; its switch and payload intervals lie below theirs, and its create and clear intervals straddle 1.05.
 
