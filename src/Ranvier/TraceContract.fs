@@ -60,14 +60,25 @@ module TraceCodecs =
     /// The payload of <c>value</c>: <c>Null</c>, <c>Exact</c> for the four scalar types, <c>Encoded</c> by the first
     /// codec that claims it, else <c>Lossy</c> of its <c>valueText</c>.
     /// </summary>
+    /// <remarks>
+    /// Under Fable an <c>int</c> and a <c>float</c> share one runtime representation: a number with an integral
+    /// value in the 32-bit signed range encodes as <c>Int</c>, and every other number, NaN and the infinities
+    /// included, encodes as <c>Float</c>. A <c>float</c> such as <c>2.0</c> therefore encodes as <c>Int 2</c> on Fable
+    /// and as <c>Float 2.0</c> on .NET.
+    /// </remarks>
     /// <exception cref="T:Ranvier.TraceCodecException">The list is strict and no codec claims <c>value</c>.</exception>
     let encode (codecs: TraceCodecs) (value: obj) : TracePayload =
         match value with
         | null -> TracePayload.Null
         | :? string as s -> TracePayload.Exact (TraceScalar.String s)
-        | :? int as i -> TracePayload.Exact (TraceScalar.Int i)
         | :? bool as b -> TracePayload.Exact (TraceScalar.Bool b)
+#if FABLE_COMPILER
+        | value when Platform.isInt32 value -> TracePayload.Exact (TraceScalar.Int (unbox<int> value))
         | :? float as f -> TracePayload.Exact (TraceScalar.Float f)
+#else
+        | :? int as i -> TracePayload.Exact (TraceScalar.Int i)
+        | :? float as f -> TracePayload.Exact (TraceScalar.Float f)
+#endif
         | value ->
             match
                 codecs.Codecs
@@ -124,6 +135,7 @@ type TracePathStability =
     /// <summary>
     /// A segment is a creation site. Equal across reruns of the same build; an edit that moves the site changes it.
     /// </summary>
+    /// <remarks>Fable records no creation sites, so every ref under Fable is <c>Named</c>.</remarks>
     | Located
 
 /// <summary>A node's identity in each of its scopes.</summary>

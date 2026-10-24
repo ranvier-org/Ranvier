@@ -23,16 +23,6 @@ let private pointCodec: TraceCodec =
                 box { X = int parts[0]; Y = int parts[1] }
     }
 
-let private throws<'E when 'E :> exn> (f: unit -> unit) (message: string) =
-    let raised =
-        try
-            f ()
-            false
-        with :? 'E ->
-            true
-
-    Expect.isTrue raised message
-
 let private refOf (g: Graph) (node: INode) =
     match TraceContract.nodeRef (Trace.snapshot g) node.Id with
     | Some r -> r
@@ -144,6 +134,32 @@ let tests =
                 Expect.equal (TraceCodecs.encode codecs null) TracePayload.Null "null is Null"
             }
 
+            test "a fractional or non-finite float encodes as Float on every platform" {
+                let codecs = TraceCodecs.ofList []
+                Expect.equal (TraceCodecs.encode codecs (box -0.75)) (TracePayload.Exact (TraceScalar.Float -0.75)) "-0.75"
+                Expect.equal (TraceCodecs.encode codecs (box 1e10)) (TracePayload.Exact (TraceScalar.Float 1e10)) "beyond int range"
+
+                Expect.equal (TraceCodecs.encode codecs (box infinity)) (TracePayload.Exact (TraceScalar.Float infinity)) "infinity"
+
+                let isNaNFloat =
+                    match TraceCodecs.encode codecs (box nan) with
+                    | TracePayload.Exact (TraceScalar.Float f) -> System.Double.IsNaN f
+                    | _ -> false
+
+                Expect.isTrue isNaNFloat "NaN"
+                Expect.equal (TraceCodecs.encode codecs (box -5)) (TracePayload.Exact (TraceScalar.Int -5)) "a negative int"
+            }
+
+            test "an integral float encodes by the platform's number representation" {
+                let codecs = TraceCodecs.ofList []
+#if FABLE_COMPILER
+                let expected = TracePayload.Exact (TraceScalar.Int 2)
+#else
+                let expected = TracePayload.Exact (TraceScalar.Float 2.0)
+#endif
+                Expect.equal (TraceCodecs.encode codecs (box 2.0)) expected "Int on Fable, Float on .NET"
+            }
+
             test "a registered codec encodes as Encoded and decodes back" {
                 let codecs = TraceCodecs.ofList [ pointCodec ]
                 let payload = TraceCodecs.encode codecs (box { X = 1; Y = 2 })
@@ -176,7 +192,7 @@ let tests =
             test "strict codecs raise for a value with no codec" {
                 let codecs = TraceCodecs.strict (TraceCodecs.ofList [ pointCodec ])
 
-                throws<TraceCodecException>
+                Expect.throwsT<TraceCodecException>
                     (fun () ->
                         TraceCodecs.encode codecs (box { Name = "n" })
                         |> ignore)
@@ -188,19 +204,19 @@ let tests =
             test "decoding raises for an unknown codec, an unknown version and a lossy payload" {
                 let codecs = TraceCodecs.ofList [ pointCodec ]
 
-                throws<TraceCodecException>
+                Expect.throwsT<TraceCodecException>
                     (fun () ->
                         TraceCodecs.decode codecs (TracePayload.Encoded ("other", 2, "1,2"))
                         |> ignore)
                     "an unknown codec must raise"
 
-                throws<TraceCodecException>
+                Expect.throwsT<TraceCodecException>
                     (fun () ->
                         TraceCodecs.decode codecs (TracePayload.Encoded ("point", 1, "1,2"))
                         |> ignore)
                     "an unknown version must raise"
 
-                throws<TraceCodecException>
+                Expect.throwsT<TraceCodecException>
                     (fun () ->
                         TraceCodecs.decode codecs (TracePayload.Lossy "text")
                         |> ignore)
@@ -229,6 +245,14 @@ let tests =
                 Expect.equal (second.Path, second.Stability) ("/outer/inner@2", TracePathStability.Named) "the rerun's inner memo"
             }
 
+#if FABLE_COMPILER
+            test "an unlabelled node gives a Named ref under Fable, which records no creation sites" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let site = createSignal 1
+                Expect.equal (refOf g site).Stability TracePathStability.Named "a kind segment"
+            }
+#else
             test "an unlabelled node, or a labelled node under one, gives a Located ref" {
                 use g = new Graph ()
                 use _ = g.Activate ()
@@ -246,6 +270,7 @@ let tests =
                 Expect.equal (refOf g inner).Stability TracePathStability.Located "a label under a site segment"
                 Expect.equal (refOf g inner).Label (Some "inner") "the node's own label"
             }
+#endif
 
             test "a labelled node under createRoot gives a Named ref" {
                 use g = new Graph ()
@@ -434,7 +459,7 @@ let tests =
                 let other = createSignal { Name = "a" }
                 other.Value <- { Name = "b" }
 
-                throws<TraceCodecException>
+                Expect.throwsT<TraceCodecException>
                     (fun () ->
                         Trace.state g (TraceCodecs.strict (TraceCodecs.ofList []))
                         |> ignore)
