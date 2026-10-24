@@ -485,6 +485,23 @@ let tests =
                 Expect.equal (Trace.snapshot g).Nodes[(text :> INode).Id].Value (Some (TraceModel.valueText null)) "the snapshot holds the null"
             }
 
+            test "state gives an async source that settled to null as Null, and as Lossy of null's text after a checkpoint" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createAsyncSource<string>()
+                source.Settle "a"
+                source.Settle null
+                let id = (source :> INode).Id
+                Expect.equal (Trace.state g (TraceCodecs.ofList [])).Nodes[id].Value (Some TracePayload.Null) "the live null"
+                Expect.equal (Trace.snapshot g).Nodes[id].Value (Some (TraceModel.valueText null)) "the snapshot holds the null"
+                Trace.checkpoint g (Trace.lastSeq g) "cut"
+
+                Expect.equal
+                    (Trace.state g (TraceCodecs.ofList [])).Nodes[id].Value
+                    (Some (TracePayload.Lossy (TraceModel.valueText null)))
+                    "the folded null"
+            }
+
             test "state gives a projection that moved without a value as None" {
                 use g = new Graph ()
                 use _ = g.Activate ()

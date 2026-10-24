@@ -178,7 +178,8 @@ type TraceNodeState =
         /// <summary>
         /// The latest value or exception recorded by a moving <c>Write</c>, a <c>Moved</c>, or an async source's
         /// <c>Settle</c> or <c>Fail</c>, or <c>None</c>. A value folded into the checkpoint is <c>Lossy</c>.
-        /// A memo, async memo or boundary that moved to a null value gives <c>Null</c>; a projection's
+        /// A memo, async memo, boundary or timed node that moved to a null value, and an async source settled to
+        /// null, give <c>Null</c>; a projection's
         /// <c>Moved</c> carries no value and gives <c>None</c>; a lookup cell's null <c>Moved</c>, which records
         /// a null value or a suspension, gives <c>Lossy "null"</c>.
         /// </summary>
@@ -375,6 +376,7 @@ module TraceContract =
                         n.Kind = TraceNodeKind.Memo
                         || n.Kind = TraceNodeKind.AsyncMemo
                         || n.Kind = TraceNodeKind.Boundary
+                        || n.Kind = TraceNodeKind.Timed
                         ->
                         RetainedValue.Value null
                     | Some n when n.Kind = TraceNodeKind.LookupCell -> RetainedValue.Ambiguous

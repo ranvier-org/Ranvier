@@ -182,6 +182,31 @@ let tests =
                 Expect.equal (dump.Events |> Array.map _.Seq) (events |> Array.map _.Seq) "the events"
             }
 
+            test "dumpTextWith writes numbers in the invariant culture" {
+                let culture =
+                    System.Globalization.CultureInfo.InvariantCulture.Clone () :?> System.Globalization.CultureInfo
+
+                culture.NumberFormat.NegativeSign <- "−"
+                let previous = System.Globalization.CultureInfo.CurrentCulture
+                System.Globalization.CultureInfo.CurrentCulture <- culture
+
+                try
+                    use g = new Graph ()
+                    use _ = g.Activate ()
+                    let n = createSignal 1
+                    let p = createSignal { X = 1; Y = 2 }
+                    n.Value <- -5
+                    p.Value <- { X = 3; Y = 4 }
+                    let negative = TraceCodecs.ofList [ { pointCodec with Version = -2 } ]
+                    let text = Trace.dumpTextWith g negative
+                    Expect.stringContains text "\"type\":\"int\",\"value\":-5}" "the negative int"
+                    Expect.stringContains text "\"version\":-2," "the negative codec version"
+                    let dump = TraceContract.parseDumpWith negative text
+                    Expect.contains (dump.Events |> Array.map _.Payload) (box -5) "the int reads back"
+                finally
+                    System.Globalization.CultureInfo.CurrentCulture <- previous
+            }
+
             test "parseDumpWith decodes each payload through the codecs" {
                 let text, events = dumpOf (fun g -> Trace.dumpTextWith g codecs, Trace.events g)
                 let dump = TraceContract.parseDumpWith codecs text

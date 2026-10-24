@@ -289,8 +289,9 @@ type TraceSnapshotNode =
         Status: TraceNodeStatus
         /// <summary>
         /// The <c>valueText</c> of the latest value or exception recorded by a moving <c>Write</c>, a <c>Moved</c>, or
-        /// an async source's <c>Settle</c> or <c>Fail</c>. A null written by a <c>Write</c>, or a <c>Moved</c> to null by a
-        /// memo, async memo, boundary or lookup cell, gives <c>valueText null</c>.
+        /// an async source's <c>Settle</c> or <c>Fail</c>. A null written by a <c>Write</c> or settled by an async source,
+        /// or a <c>Moved</c> to null by a memo, async memo, boundary, lookup cell or timed node, gives
+        /// <c>valueText null</c>.
         /// </summary>
         Value: string option
     }
@@ -1200,10 +1201,15 @@ module TraceModel =
                     | TraceNodeKind.Memo
                     | TraceNodeKind.AsyncMemo
                     | TraceNodeKind.Boundary
-                    | TraceNodeKind.LookupCell -> { n with Value = Some (valueText null) }
+                    | TraceNodeKind.LookupCell
+                    | TraceNodeKind.Timed -> { n with Value = Some (valueText null) }
                     | _ -> n)
             | TraceEventKind.Settle
-            | TraceEventKind.Fail when e.Arg = 0 -> updateNode e.Node (fun n -> { n with Value = valueOf e.Payload })
+            | TraceEventKind.Fail when e.Arg = 0 ->
+                updateNode e.Node (fun n ->
+                    { n with
+                        Value = Some (valueText e.Payload)
+                    })
             | TraceEventKind.Mark when e.Arg = 2 ->
                 updateNode e.Node (fun n ->
                     if n.PendingMark = 0 then
@@ -2086,7 +2092,7 @@ module TraceModel =
 
             match scalar with
             | TraceScalar.Int i ->
-                sb.Append("\"int\",\"value\":").Append(i)
+                sb.Append("\"int\",\"value\":").Append(string i)
                 |> ignore
             | TraceScalar.Bool b ->
                 sb.Append("\"bool\",\"value\":").Append(if b then "true" else "false")
@@ -2105,7 +2111,7 @@ module TraceModel =
 
             jsonString sb codec
 
-            sb.Append(",\"version\":").Append(version).Append ",\"data\":"
+            sb.Append(",\"version\":").Append(string version).Append ",\"data\":"
             |> ignore
 
             jsonString sb data
