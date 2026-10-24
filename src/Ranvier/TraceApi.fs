@@ -46,6 +46,14 @@ module Trace =
     let events (graph: Graph) : TraceEvent[] =
         ((box graph) :?> ITraced).TraceLog.Events
 
+    /// <summary>A copy of the events in <c>graph</c>'s log with <c>Seq</c> greater than <c>seq</c>, oldest first.</summary>
+    /// <remarks>
+    /// A cursor is the seq of the last event read, 0 before the first. The read copies the returned events alone.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentOutOfRangeException"><c>seq</c> is negative or past the log's last seq.</exception>
+    let eventsSince (graph: Graph) (seq: int) : TraceEvent[] =
+        ((box graph) :?> ITraced).TraceLog.EventsSince seq
+
     /// <summary>The live timing gate of a timed node in this graph, or None for another node or graph.</summary>
     let timing (graph: Graph) (node: INode) : TraceTiming option =
         let exists =

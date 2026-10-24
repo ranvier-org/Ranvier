@@ -595,6 +595,39 @@ type internal TraceLog(locked: bool) =
     /// <summary>A copy of the recorded events, oldest first.</summary>
     member _.Events = sync (fun () -> events.ToArray ())
 
+    /// <summary>A copy of the retained events with <c>Seq</c> greater than <c>seq</c>, oldest first.</summary>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">
+    /// <c>seq</c> is negative, past the last seq, or before the seq preceding the first retained event.
+    /// </exception>
+    member _.EventsSince(seq: int) : TraceEvent[] =
+        sync (fun () ->
+            let floor = clock - events.Count
+
+            if seq < 0 then
+                raise (ArgumentOutOfRangeException (nameof seq, seq, "A trace cursor starts at 0."))
+
+            if seq > clock then
+                raise (ArgumentOutOfRangeException (nameof seq, seq, String.Concat ("The cursor is past the log's last seq, ", string clock, ".")))
+
+            if seq < floor then
+                raise (
+                    ArgumentOutOfRangeException (
+                        nameof seq,
+                        seq,
+                        String.Concat ("The cursor precedes the log's checkpoint at seq ", string floor, ". Resync from Trace.checkpointOf.")
+                    )
+                )
+
+            let index = seq - floor
+#if FABLE_COMPILER
+            events.GetRange(index, events.Count - index).ToArray()
+#else
+            let suffix = Array.zeroCreate (events.Count - index)
+            events.CopyTo (index, suffix, 0, suffix.Length)
+            suffix
+#endif
+        )
+
 /// <summary>Traced state carried by an engine object: its graph's log and its own trace id.</summary>
 type internal ITraced =
     abstract TraceLog: TraceLog with get, set

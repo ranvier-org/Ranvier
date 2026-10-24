@@ -2007,5 +2007,52 @@ let tests =
                         Expect.stringContains message.Value "cycle" "the message names a cycle"
                     }
                 ]
+
+            testList
+                "Cursors and checkpoints"
+                [
+                    test "eventsSince returns the events after each cursor, oldest first" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let m = createMemo (fun _ -> s.Value * 2)
+                        createEffect (fun () -> m.Value |> ignore)
+
+                        for i in 1..5 do
+                            s.Value <- i
+
+                        let events = Trace.events g
+                        let last = events[events.Length - 1].Seq
+
+                        for c in 0..last do
+                            let expected =
+                                events
+                                |> Array.filter (fun e -> e.Seq > c)
+                                |> Array.map _.Seq
+
+                            Expect.equal (Trace.eventsSince g c |> Array.map _.Seq) expected $"the suffix after cursor {c}"
+
+                        Expect.isEmpty (Trace.eventsSince g last) "the cursor at the last seq reads nothing"
+                    }
+
+                    test "eventsSince rejects a negative or future cursor" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        Signal (g, 0) |> ignore
+                        let events = Trace.events g
+                        let last = events[events.Length - 1].Seq
+
+                        Expect.throwsT<System.ArgumentOutOfRangeException> (fun () -> Trace.eventsSince g (-1) |> ignore) "a negative cursor throws"
+
+                        let message =
+                            try
+                                Trace.eventsSince g (last + 1) |> ignore
+                                ""
+                            with :? System.ArgumentOutOfRangeException as ex ->
+                                ex.Message
+
+                        Expect.stringContains message (string last) "a future cursor throws, naming the last seq"
+                    }
+                ]
 #endif
         ]
