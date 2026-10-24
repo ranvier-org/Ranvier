@@ -10,6 +10,7 @@
     <ItemGroup>
         <Compile Include="MapFence.fs" />
         <Compile Include="MapCode.fs" />
+        <Compile Include="MapPage.fs" />
     </ItemGroup>
 
 </Project>

@@ -380,7 +380,9 @@ let site =
     |> LightningCss.register
     |> Esbuild.register
     |> Maps.register
+    |> Maps.components
     |> Nuglify.minifyHtml
+    |> Maps.hydrate
     |> Versions.register versions
     |> Theme.register theme
     |> Site.collection (Theme.docs theme "content")

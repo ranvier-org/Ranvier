@@ -98,10 +98,10 @@ Renderer and plugin work can proceed independently after the shared contract is 
 **Interface:** A `Component<unit>` expression becomes one unique page definition, SSR fragment, and generated client entry.
 
 - [x] Add a minimal deterministic Sugar fixture and render it on .NET without invoking browser imports or scenario actions.
-- [ ] Generate separate Shared, Exporter, and Client project directories to avoid shared `obj` collisions. Use the repository-pinned Fickl and existing project references.
-- [ ] Compile the generated client and bundle one page through the docs-local plugin. Write outputs through `HookContext.Write`.
-- [ ] Verify two fixtures on the same page hydrate without mismatch reports or duplicate IDs, with assets served below `/Ranvier/`.
-- [ ] Verify the same fixture in a production build after Nuglify, then checkpoint the working integration before migrating the full renderer.
+- [x] Generate separate Shared, Exporter, and Client project directories to avoid shared `obj` collisions. Use the repository-pinned Fickl and existing project references.
+- [x] Compile the generated client and bundle one page through the docs-local plugin. Write outputs through `HookContext.Write`.
+- [x] Verify two fixtures on the same page hydrate without mismatch reports or duplicate IDs, with assets served below `/Ranvier/`.
+- [x] Verify the same fixture in a production build after Nuglify, then checkpoint the working integration before migrating the full renderer.
 
 ### Task 2: Extract a pure scene projection
 
