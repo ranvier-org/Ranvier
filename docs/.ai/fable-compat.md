@@ -65,7 +65,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
-| Journal.fs | 19 | 19 | 19 | 21 | 21 | 21 | 0 | 0 |
+| Journal.fs | 23 | 22 | 22 | 25 | 24 | 24 | 0 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -85,7 +85,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1570 | 1549 | 1546 | 1783 | 1757 | 1754 | 143 | 1 |
+| **Total** | 1574 | 1552 | 1549 | 1787 | 1760 | 1757 | 143 | 1 |
 
 ## Tests.fs
 
@@ -2007,7 +2007,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Journal.fs
 
-<details><summary>21 passed in every build and delivery that runs them</summary>
+| Build | Failed | Inline | Promise | Difference |
+| --- | --- | --- | --- | --- |
+| untraced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
+| traced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
+
+<details><summary>24 passed in every build and delivery that runs them</summary>
 
 - GraphOptions.Default has no journal
 - WithJournal sets the journal
@@ -2018,6 +2023,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a keyed write records its key and encoded value
 - Journal.key returns the signal it registers
 - a duplicate key on one graph raises, naming the key
+- a key registered in a disposed root is free again
+- a key registered in an owning memo's body is free again when the memo re-runs
+- Journal.key in a pure memo's body raises the scope error
 - the same key on two graphs is allowed
 - Journal.key on a graph without a journal is a no-op
 - an Encode that raises records a non-replayable entry and the write lands
