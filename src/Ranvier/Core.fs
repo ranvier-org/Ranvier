@@ -1560,6 +1560,99 @@ type internal PendingDispatch<'T>() =
                 this.SetException error
 #endif
 
+/// <summary>The application key and codec of a journaled input node, with the value type erased.</summary>
+[<AbstractClass>]
+type internal JournalBinding(key: string, codec: string, version: int) =
+    member _.Key = key
+    member _.Codec = codec
+    member _.Version = version
+
+    /// <summary>The codec's text for <c>value</c>. Raises when the codec raises.</summary>
+    abstract Encode: value: obj -> string
+
+/// <summary>
+/// A graph's journal state: the journal, the bindings of its keyed input nodes, and the position of the last entry.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal JournalRecorder(journal: IInputJournal) =
+    let bindings = Dictionary<int, JournalBinding>()
+    let keys = Dictionary<string, int>()
+    let mutable position = 0
+    let mutable unflushed = false
+    let mutable derivedDepth = 0
+
+    /// <summary>The nesting depth of derived sections: bodies that run outside the tracking context.</summary>
+    member _.DerivedDepth = derivedDepth
+
+    member _.EnterDerived() =
+        derivedDepth <- derivedDepth + 1
+
+    member _.LeaveDerived() =
+        derivedDepth <- derivedDepth - 1
+
+    /// <summary>Registers <c>binding</c> for the node <c>nodeId</c>.</summary>
+    /// <exception cref="T:System.ArgumentException">The graph already has a node with the binding's key.</exception>
+    member _.Bind(nodeId: int, binding: JournalBinding) =
+        if keys.ContainsKey binding.Key then
+            raise (
+                ArgumentException (
+                    "The journal key \""
+                    + binding.Key
+                    + "\" is already registered on this graph."
+                )
+            )
+
+        keys[binding.Key] <- nodeId
+        bindings[nodeId] <- binding
+
+    /// <summary>The binding of the node <c>nodeId</c>, or null when the node is unkeyed.</summary>
+    member _.BindingOf(nodeId: int) : JournalBinding =
+        match bindings.TryGetValue nodeId with
+        | true, binding -> binding
+        | _ -> Unchecked.defaultof<JournalBinding>
+
+    member private _.Emit(kind: JournalEntryKind, key: string option, payloadType: string, payload: JournalPayload) =
+        position <- position + 1
+
+        if kind <> JournalEntryKind.Flush then
+            unflushed <- true
+
+        journal.Record
+            {
+                Schema = 1
+                Stream = journal.Stream
+                Seq = position
+                Kind = kind
+                Key = key
+                PayloadType = payloadType
+                Payload = payload
+            }
+
+    /// <summary>
+    /// Records <c>value</c> arriving at the node <c>nodeId</c>: encoded by the node's codec when the node is keyed and the
+    /// codec succeeds, and non-replayable otherwise.
+    /// </summary>
+    member this.Input(kind: JournalEntryKind, nodeId: int, value: obj) =
+        let payloadType = Platform.typeName value
+        let binding = this.BindingOf nodeId
+
+        if Platform.isNull (box binding) then
+            this.Emit (kind, None, payloadType, JournalPayload.NonReplayable payloadType)
+        else
+            let payload =
+                try
+                    JournalPayload.Encoded (binding.Codec, binding.Version, binding.Encode value)
+                with _ ->
+                    JournalPayload.NonReplayable payloadType
+
+            this.Emit (kind, Some binding.Key, payloadType, payload)
+
+    /// <summary>Records a <c>Flush</c> entry when an entry was recorded since the previous one.</summary>
+    member this.Boundary() =
+        if unflushed then
+            unflushed <- false
+            this.Emit (JournalEntryKind.Flush, None, "", JournalPayload.Empty)
+
 /// <summary>
 /// Owns the tracking context and the construction-time policy. One graph is a
 /// single consistency domain; on .NET that also means a single thread of
@@ -1695,6 +1788,12 @@ type Graph(options: GraphOptions) =
 
     let mutable batchDepth = 0
     let mutable flushing = false
+
+    /// <summary>The recorder of <c>options.Journal</c>, or null when the graph has no journal.</summary>
+    let journal =
+        match options.Journal with
+        | Some inputJournal -> JournalRecorder inputJournal
+        | None -> null
 
     /// <summary>
     /// The scope everything created outside an explicit <c>Root</c> belongs to.
@@ -1880,6 +1979,17 @@ type Graph(options: GraphOptions) =
         || not (Platform.isNull (box current))
         || detachedDepth > 0
         || untrackedInBody
+
+    /// <summary>The graph's journal recorder, or null when the graph has no journal.</summary>
+    member internal _.Journal = journal
+
+    /// <summary>
+    /// Records <c>value</c> arriving at the node <c>nodeId</c> as a <c>kind</c> entry, unless a computation, flush,
+    /// stale read, teardown or other derived section is running. Requires a journal.
+    /// </summary>
+    member internal this.RecordInput(kind: JournalEntryKind, nodeId: int, value: obj) =
+        if not (this.Running || journal.DerivedDepth > 0) then
+            journal.Input (kind, nodeId, value)
 
     /// <summary>
     /// Makes this graph ambient and returns the graph it replaced in <c>Hosting</c>.
@@ -2925,6 +3035,10 @@ type Graph(options: GraphOptions) =
                 current <- Unchecked.defaultof<IComputation>
                 currentOwner <- root
                 raisedPending <- Unchecked.defaultof<INode>
+
+                if not (Platform.isNull journal) then
+                    journal.EnterDerived ()
+
                 true
 
     /// <summary>Restores what <c>EnterContinuation</c> detached for <c>frame</c>.</summary>
@@ -2942,6 +3056,9 @@ type Graph(options: GraphOptions) =
                 current <- computation
                 currentOwner <- owner
                 raisedPending <- raised
+
+                if not (Platform.isNull journal) then
+                    journal.LeaveDerived ()
 #endif
 
     /// <summary>
@@ -3056,6 +3173,10 @@ type Graph(options: GraphOptions) =
         current <- Unchecked.defaultof<IComputation>
         currentOwner <- Unchecked.defaultof<Owner>
         untrackedHost <- host
+        let journaled = not (Platform.isNull journal)
+
+        if journaled then
+            journal.EnterDerived ()
 
         try
             body ()
@@ -3064,6 +3185,9 @@ type Graph(options: GraphOptions) =
             currentOwner <- previousOwner
             untrackedHost <- previousHost
             untrackedInBody <- previousInBody
+
+            if journaled then
+                journal.LeaveDerived ()
 
     /// <summary>
     /// Applies <c>f</c> to <c>arg</c> with tracking suppressed and the scope rule of <c>host</c> applied to every node
@@ -3081,6 +3205,10 @@ type Graph(options: GraphOptions) =
         current <- Unchecked.defaultof<IComputation>
         currentOwner <- Unchecked.defaultof<Owner>
         untrackedHost <- host
+        let journaled = not (Platform.isNull journal)
+
+        if journaled then
+            journal.EnterDerived ()
 
         try
             f arg
@@ -3089,6 +3217,9 @@ type Graph(options: GraphOptions) =
             currentOwner <- previousOwner
             untrackedHost <- previousHost
             untrackedInBody <- previousInBody
+
+            if journaled then
+                journal.LeaveDerived ()
 
 /// <summary>
 /// A settable source.
@@ -3152,6 +3283,9 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             graph.Entered (
                 "A signal write",
                 fun () ->
+                    if not (Platform.isNull graph.Journal) then
+                        graph.RecordInput (JournalEntryKind.Write, id, box v)
+
                     if not (equal.Equals (value, v)) then
                         value <- v
                         Tracer.Write (observers, true, box v)
