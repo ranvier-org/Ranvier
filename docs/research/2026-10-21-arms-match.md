@@ -12,9 +12,10 @@ thunk, and no cells. The first site costs 189 B gzip over its twin (budget 400 B
 rows. The Chromium gate is a paired median against the sugared twin of at most 1.05 on create and clear, 1.04 on
 switch and 1.07 on payload, under the user's concession of 2026-10-24 ("Chromium"); the cells release ran under a 1.12
 allowance (plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload (1.096).
-Pooled over the five committed runs of #157 whose source hashes match the tree, at 25-83 % load, the payload-direct
-shape's paired medians are create 1.000, switch 1.015, payload 1.009 and clear 1.003; the gate judges these pooled
-medians and passes, with the pooled clear interval (0.963-1.074) straddling 1.05. In a paired
+Pooled over the six committed runs of #157 whose source hashes match the tree and which built their own bundle, at
+38-96 % load, the payload-direct shape's paired medians are create 1.006, switch 1.015, payload 1.042 and clear 0.991;
+the gate judges these pooled medians and passes, with the pooled switch interval (0.997-1.048) straddling 1.04 and the
+pooled payload interval (1.009-1.089) straddling 1.07. In a paired
 run against the hand-written shape, the plugin's output is indistinguishable from it on every operation.
 
 ## Plugin discovery
@@ -185,8 +186,31 @@ operation by the pooled median, and `pooled-interval.test.mjs` checks the fixed 
 them. The pool is every committed run whose recorded hashes match every source `run-sources.mjs` lists, up to line
 endings: the benchmark, the core and view sources both modes compile, and the Fable plugin project with each file it
 compiles. A change to any of them takes every run out of the pool, and the gate fails until runs are recorded on the
-new sources. The five runs at `da6d32e6`, on the branch rebased onto `integration/issues` at `aae54f2e`, are the
-pool; each is the Step 11 command under `gate-lock.ps1 bench`, CPU load before / after in parentheses:
+new sources. A pooled run builds its own bundle (`--build`) into `generated-keyed-pooled/<label>` under a lock per
+checkout, and records `built` and the served bundle's `bundleHash`; `keyed-rows.mjs` refuses the write when the bundle
+changed during the run. CI runs the gate only for a change to the lowering, its benchmark, its runs or the workflow
+(`changes.cjs`, `armsRuns`). The six runs at `22d86d44` are the pool; each is the Step 11 command with `--build` under
+`gate-lock.ps1 bench`, two at a time, and all six record the same `bundleHash`. CPU load before / after in parentheses:
+
+| Run (CPU load, %) | create | switch | payload | clear |
+|---|---|---|---|---|
+| `arms-match-22d86d44-1` (38, 83, 96 / 54, 43, 72) | 0.957 (0.902-1.010) | 0.975 (0.950-1.027) | 1.040 (0.979-1.121) | 1.000 (0.864-1.116) |
+| `arms-match-22d86d44-2` (43, 84, 96 / 96, 93, 79) | 1.087 (1.005-1.121) | 1.015 (0.948-1.141) | 1.074 (1.009-1.146) | 0.985 (0.853-1.010) |
+| `arms-match-22d86d44-3` (44, 57, 79 / 73, 85, 64) | 0.999 (0.923-1.050) | 1.050 (0.967-1.100) | 1.149 (1.028-1.263) | 0.964 (0.890-1.059) |
+| `arms-match-22d86d44-4` (52, 59, 68 / 57, 82, 76) | 1.024 (0.989-1.057) | 1.003 (0.951-1.048) | 0.994 (0.946-1.084) | 0.955 (0.869-1.030) |
+| `arms-match-22d86d44-5` (71, 88, 59 / 66, 71, 63) | 1.002 (0.952-1.053) | 1.018 (0.981-1.077) | 1.013 (0.939-1.128) | 1.035 (0.893-1.156) |
+| `arms-match-22d86d44-6` (65, 64, 59 / 81, 68, 68) | 0.977 (0.917-1.041) | 1.051 (0.997-1.101) | 1.017 (0.929-1.144) | 1.015 (0.922-1.107) |
+| pooled, 270 pairs | 1.006 (0.986-1.025) | 1.015 (0.997-1.048) | 1.042 (1.009-1.089) | 0.991 (0.946-1.030) |
+| budget | 1.05 | 1.04 | 1.07 | 1.05 |
+
+Every pooled median is within its budget. The create and clear pooled intervals lie below their budgets; the pooled
+switch interval straddles 1.04 and the pooled payload interval straddles 1.07. The runs' switch medians spread from
+0.975 to 1.051 and their payload medians from 0.994 to 1.149.
+
+**The `da6d32e6` runs, out of the pool.** The five runs at `da6d32e6`, on the branch rebased onto `integration/issues`
+at `aae54f2e`, stay committed as history. They predate the `--build` requirement: only the first built its bundle,
+the other four served the shared output, which a concurrent run could rebuild, so a source match cannot show which lowering
+they measured. Their hashes differ from the tree in `keyed-rows.mjs`.
 
 | Run (CPU load, %) | create | switch | payload | clear |
 |---|---|---|---|---|
@@ -196,10 +220,6 @@ pool; each is the Step 11 command under `gate-lock.ps1 bench`, CPU load before /
 | `arms-match-da6d32e6-4` (68, 60, 71 / 83, 68, 60) | 1.006 (0.995-1.025) | 0.983 (0.955-1.011) | 0.904 (0.870-1.087) | 1.026 (0.956-1.114) |
 | `arms-match-da6d32e6-5` (51, 66, 68 / 69, 54, 76) | 0.983 (0.951-1.024) | 1.015 (0.965-1.061) | 0.995 (0.925-1.057) | 0.996 (0.875-1.162) |
 | pooled, 225 pairs | 1.000 (0.993-1.016) | 1.015 (1.004-1.030) | 1.009 (0.974-1.053) | 1.003 (0.963-1.074) |
-| budget | 1.05 | 1.04 | 1.07 | 1.05 |
-
-Every pooled median is within its budget. The create, switch and payload pooled intervals lie below their budgets;
-the pooled clear interval straddles 1.05, and the runs' clear medians spread from 0.985 to 1.088.
 
 **Earlier runs, out of the pool.** The runs below stay committed as history. Their recorded hashes differ from the
 tree in `src/Ranvier/Core.fs` and `src/Ranvier/Projections.fs`, which both modes compile, in
