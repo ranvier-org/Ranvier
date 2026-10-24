@@ -22,7 +22,7 @@ This is the sample of the #168 spike. `Ranvier.Mcp` is not packed yet.
 Each value is a resource, `ranvier://state/<name>`, and `ranvier://state` holds them all at one version. The
 tools are `snapshot`, `dispatch`, `wait_version` and, in a traced build only, `trace_state`, `trace_lookup`,
 `why`, `why_not` and `waiting_on`. The adapter contract is in
-[docs/content/ranvier-mcp.md](../../docs/content/ranvier-mcp.md).
+[docs/content/guide/mcp.md](../../docs/content/guide/mcp.md).
 
 The expectation the cart must meet: after any sequence of messages, `total` equals the sum of
 `unitPrice * quantity` over `lines`, less `discount` percent, rounded towards zero.
