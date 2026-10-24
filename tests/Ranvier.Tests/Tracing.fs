@@ -2377,6 +2377,60 @@ let tests =
                         Expect.equal (Trace.snapshot g).Nodes.Count 1 "the signal is the one live node"
                     }
 
+                    test "a checkpoint releases the signals and async sources of disposed roots" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let log = ((box g) :?> ITraced).TraceLog
+                        let mutable last = 0
+
+                        let round () =
+                            for _ in 1..50 do
+                                let root =
+                                    createRoot (fun owner ->
+                                        let local = Trace.named "local" (fun () -> Signal (g, 0))
+                                        createAsyncSource<int>() |> ignore
+                                        let m = createMemo (fun _ -> s.Value + local.Value)
+                                        createEffect (fun () -> m.Value |> ignore)
+                                        last <- (local :> INode).Id
+                                        owner)
+
+                                s.Value <- s.Value + 1
+                                root.Dispose ()
+
+                            let events = Trace.events g
+                            Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                            (Trace.checkpointOf g).Snapshot.Nodes.Count
+
+                        let first = round ()
+                        Expect.equal first 1 "the top-level signal is the one live node"
+                        Expect.equal (round ()) first "the checkpoint keeps the live nodes alone"
+                        Expect.equal (log.Describe last) ("node " + string last) "the released signal drops its description"
+                    }
+
+                    test "a signal created in a run is disposed when its host runs again" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let mutable created = []
+
+                        let m =
+                            createMemo (fun _ ->
+                                let local = Signal (g, s.Value)
+                                created <- (local :> INode).Id :: created
+                                local.Value)
+
+                        createEffect (fun () -> m.Value |> ignore)
+                        s.Value <- 1
+                        let nodes = (Trace.snapshot g).Nodes
+
+                        match created with
+                        | [ latest; previous ] ->
+                            Expect.equal nodes[previous].Status TraceNodeStatus.Disposed "the previous run's signal is disposed"
+                            Expect.notEqual nodes[latest].Status TraceNodeStatus.Disposed "the latest run's signal is live"
+                        | _ -> failtestf "expected two runs, got %A" created
+                    }
+
                     test "a checkpoint keeps the incarnations of a live host's children" {
                         let incarnations (checkpointed: bool) =
                             use g = new Graph ()

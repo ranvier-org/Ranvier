@@ -44,6 +44,16 @@ type internal TraceLog(locked: bool) =
     // Run-scope owner id to its host node id.
     let scopeHosts = Dictionary<int, int>()
 
+    // The graph's root owner id, or 0 before `GraphNew`.
+    let mutable root = 0
+
+    // Owner id to the signals and async sources created under it, disposed with its `OwnerDispose` or `DischargeStart`.
+    let ownerHeld = Dictionary<int, ResizeArray<int>>()
+
+    // Computation id to the signals and async sources created by its open run, disposed with its next `RunStart` or
+    // its `Dispose`.
+    let runHeld = Dictionary<int, ResizeArray<int>>()
+
     // Node id to the `RunStart` seq of its open run.
     let openRuns = Dictionary<int, int>()
 
@@ -151,7 +161,7 @@ type internal TraceLog(locked: bool) =
     let sync (f: unit -> 'T) : 'T =
         if locked then lock gate f else f ()
 
-    let append kind node other arg flag cause (payload: obj) =
+    let record kind node other arg flag cause (payload: obj) =
         if clock = Int32.MaxValue then
             raise (InvalidOperationException "The graph's trace log is full: it records at most Int32.MaxValue events.")
 
@@ -170,6 +180,35 @@ type internal TraceLog(locked: bool) =
             }
 
         clock
+
+    // Records a `Dispose` for each node `table` holds for `key`, and forgets them.
+    let release (table: Dictionary<int, ResizeArray<int>>) key =
+        match table.TryGetValue key with
+        | true, held ->
+            table.Remove key |> ignore
+
+            for id in held do
+                record TraceEventKind.Dispose id 0 0 0 0 null
+                |> ignore
+        | _ -> ()
+
+    // Records the event and returns its seq. A run start or discharge is preceded, and a disposal followed, by the
+    // `Dispose` of each node the run or owner holds.
+    let append kind node other arg flag cause (payload: obj) =
+        match kind with
+        | TraceEventKind.RunStart -> release runHeld node
+        | TraceEventKind.DischargeStart -> release ownerHeld node
+        | TraceEventKind.GraphNew -> root <- other
+        | _ -> ()
+
+        let seq = record kind node other arg flag cause payload
+
+        match kind with
+        | TraceEventKind.OwnerDispose -> release ownerHeld node
+        | TraceEventKind.Dispose -> release runHeld node
+        | _ -> ()
+
+        seq
 
     let kindName (kind: TraceNodeKind) =
         match kind with
@@ -275,6 +314,22 @@ type internal TraceLog(locked: bool) =
     /// <summary>Records <c>owner</c> as the owner of <c>node</c>.</summary>
     member _.SetOwner(node: int, owner: int) =
         sync (fun () -> nodeOwners[node] <- owner)
+
+    /// <summary>
+    /// Holds <c>node</c>, a signal or async source, for disposal with <c>owner</c>, else with the innermost open run.
+    /// A node created under the root owner outside every run stays live.
+    /// </summary>
+    member _.Hold(node: int, owner: int) =
+        sync (fun () ->
+            let hold (table: Dictionary<int, ResizeArray<int>>) key =
+                match table.TryGetValue key with
+                | true, held -> held.Add node
+                | _ -> table[key] <- ResizeArray [ node ]
+
+            if owner <> 0 && owner <> root then
+                hold ownerHeld owner
+            elif owner = 0 && running.Count > 0 then
+                hold runHeld running[running.Count - 1])
 
     /// <summary>Records <c>host</c> as the host node of the run scope <c>owner</c>.</summary>
     member _.SetHost(owner: int, host: int) =
@@ -844,6 +899,15 @@ type internal Tracer =
                 log.Append (TraceEventKind.Label, id, 0, 0, 0, 0, label)
                 |> ignore)
 
+    static member private Hold(graph: obj, id: int, owner: obj) =
+        let ownerId =
+            if Platform.isNull owner then
+                0
+            else
+                (owner :?> ITraced).TraceId
+
+        (graph :?> ITraced).TraceLog.Hold(id, ownerId)
+
     /// <summary>Gives <c>owner</c> <c>log</c> and the next owner id, and records its <c>OwnerNew</c>.</summary>
     static member private Joined(log: TraceLog, owner: ITraced, parent: int, host: int, root: int) =
         owner.TraceLog <- log
@@ -997,20 +1061,29 @@ type internal Tracer =
         ()
 #endif
 
-    /// <summary>Records <c>NodeNew</c> for a signal.</summary>
+    /// <summary>
+    /// Records <c>NodeNew</c> for a signal created under <c>owner</c>, or null while a run's scope is unresolved. The
+    /// trace disposes the node with <c>owner</c>, or with the next run of the innermost running computation.
+    /// </summary>
     [<Conditional("RANVIER_TRACE")>]
-    static member SignalNew(graph: obj, id: int) =
+    static member SignalNew(graph: obj, id: int, owner: obj) =
 #if RANVIER_TRACE
         Tracer.Node (graph, id, TraceNodeKind.Signal, null)
+        Tracer.Hold (graph, id, owner)
 #else
         ()
 #endif
 
-    /// <summary>Records <c>NodeNew</c> for an async source.</summary>
+    /// <summary>
+    /// Records <c>NodeNew</c> for an async source created under <c>owner</c>, or null while a run's scope is
+    /// unresolved. The trace disposes the node with <c>owner</c>, or with the next run of the innermost running
+    /// computation.
+    /// </summary>
     [<Conditional("RANVIER_TRACE")>]
-    static member AsyncSourceNew(graph: obj, id: int) =
+    static member AsyncSourceNew(graph: obj, id: int, owner: obj) =
 #if RANVIER_TRACE
         Tracer.Node (graph, id, TraceNodeKind.AsyncSource, null)
+        Tracer.Hold (graph, id, owner)
 #else
         ()
 #endif

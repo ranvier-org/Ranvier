@@ -423,6 +423,11 @@ Ship against the untraced `Ranvier` package.
   untraced `Ranvier` package.
 - **The log retains events.** Events stay in memory until a [checkpoint](#incremental-reads-and-checkpoints)
   drops them, up to the implementation's sequence limit. Nothing drops events automatically.
+- **A signal or async source is disposed with its creator.** The trace records `Dispose` for it when
+  the owner current at its creation is disposed or discharged, or, created during a run before the run
+  resolves a scope, when its computation runs again or is disposed. A signal that outlives its creator
+  still records writes, under the `Disposed` status. One created under the graph root outside every run
+  stays live.
 - **A checkpoint retains the live graph and its recurring paths.** The checkpoint's snapshot holds the
   live nodes and owners. Beneath a live node it also holds a sibling and an incarnation count per
   distinct child path, for the node's lifetime: a host whose runs create children under ever-new labels
