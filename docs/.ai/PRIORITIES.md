@@ -18,7 +18,7 @@ proposed scope for each, and does not implement them.
 | 5 | [#168](https://github.com/shayanhabibi/Ranvier/issues/168) spike(mcp): agent-observable graph | P1 | #165, #166, #167 | implement | todo |
 | 6 | [#157](https://github.com/shayanhabibi/Ranvier/issues/157) perf(arms): restore the 5% Chromium target | — | quiet machine for timings | implement | todo |
 | 7 | [#69](https://github.com/shayanhabibi/Ranvier/issues/69) Myriad expansion for traced and untraced primitives | 1.0.0-rc | — | research | done |
-| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | in-progress |
+| 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | done |
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | done |
 | 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
@@ -85,3 +85,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #65 in-progress — gap lines, JSONL sink, Fable export tests, C# surface and docs landed and the gate passed; review found Wait-mode Dispose then Completion.Wait deadlocks on the graph thread (src/Ranvier/TraceExport.fs:594) — a4276db6 — next: fix the Wait-mode Dispose drain or document pumping and fix the examples, then commit the regenerated docs/.ai/fable-compat.md
 - 2026-10-25 #66 research note written — docs/.ai/research/2026-10-25-issue-66.md — fced1b98 — next: user decides scope
 - 2026-10-25 #65 in-progress — Wait-mode Dispose now queues the stream's end past the capacity on the graph thread (no pump needed), the last batch stops at Dispose's seq, and a checkpoint after an off-thread Dispose ends the gap there; full gate passes and fable-compat regenerated; verify-trace --no-counters: 9 checks fail, none from #65's diff (merge-base IL and surface diffs from the base branch, base lint lines, and Fickl samples broken by the script's own pack leaving src/Ranvier/obj/Release/{nuspec,fable}); counter comparison needs an elevated shell; PR #190 — 98afcf67 — next: merge PR #190
+- 2026-10-25 #65 done — trace export sink landed with the Wait-mode Dispose drain fixed, docs written and the full gate passing — b1fd5115 — next: merge PR #190
