@@ -50,7 +50,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/69 | #69 | https://github.com/shayanhabibi/Ranvier/pull/175 | integration/issues |
 | issue/70 | #70 | https://github.com/shayanhabibi/Ranvier/pull/174 | integration/issues |
 | issue/165 | #165 | https://github.com/shayanhabibi/Ranvier/pull/178 | integration/issues |
-| issue/65 | #65 | https://github.com/shayanhabibi/Ranvier/pull/183 | integration/issues |
+| issue/65 | #65 | https://github.com/shayanhabibi/Ranvier/pull/190 | integration/issues |
 | issue/166 | #166 | https://github.com/shayanhabibi/Ranvier/pull/182 | integration/issues |
 | issue/66 | #66 | https://github.com/shayanhabibi/Ranvier/pull/189 | integration/issues |
 
@@ -84,3 +84,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #166 done — four review findings fixed (invariant payload numbers, Timed and settled null values) and offline trace reads documented, gates pass — ec7d8c00 — next: open the stacked PR into integration/issues
 - 2026-10-24 #65 in-progress — gap lines, JSONL sink, Fable export tests, C# surface and docs landed and the gate passed; review found Wait-mode Dispose then Completion.Wait deadlocks on the graph thread (src/Ranvier/TraceExport.fs:594) — a4276db6 — next: fix the Wait-mode Dispose drain or document pumping and fix the examples, then commit the regenerated docs/.ai/fable-compat.md
 - 2026-10-25 #66 research note written — docs/.ai/research/2026-10-25-issue-66.md — fced1b98 — next: user decides scope
+- 2026-10-25 #65 in-progress — Wait-mode Dispose now queues the stream's end past the capacity on the graph thread (no pump needed), the last batch stops at Dispose's seq, and a checkpoint after an off-thread Dispose ends the gap there; full gate passes and fable-compat regenerated; verify-trace --no-counters: 9 checks fail, none from #65's diff (merge-base IL and surface diffs from the base branch, base lint lines, and Fickl samples broken by the script's own pack leaving src/Ranvier/obj/Release/{nuspec,fable}); counter comparison needs an elevated shell; PR #190 — 98afcf67 — next: merge PR #190
