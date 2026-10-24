@@ -1308,5 +1308,90 @@ let tests =
                         Expect.equal result.Result 9 "with the work's result"
                     }
 #endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "queued work that writes two signals in a batch runs the effect once, before the task completes" {
+                        let g = new Graph ()
+                        let a = Signal (g, 0)
+                        let b = Signal (g, 0)
+                        let seen = ResizeArray ()
+
+                        new Effect (g, (fun () -> seen.Add (a.Value + b.Value)))
+                        |> ignore
+
+                        let result =
+                            offThread (fun () ->
+                                g.DispatchAsync (fun () ->
+                                    g.Batch (fun () ->
+                                        a.Value <- 1
+                                        b.Value <- 2)
+
+                                    seen.ToArray ()))
+
+                        Expect.sequenceEqual seen [ 0 ] "the effect waits for the drain"
+                        g.Pump () |> ignore
+
+                        Expect.sequenceEqual seen [ 0; 3 ] "one run for both writes"
+                        Expect.isTrue (result.Wait (TimeSpan.FromSeconds 5.0)) "the task completed"
+                        Expect.sequenceEqual result.Result [| 0; 3 |] "the batch's flush ran inside the work"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "queued DispatchAsync and Dispatch run the same effects for the same work" {
+                        let runsFor (dispatch: Graph -> (unit -> unit) -> unit) =
+                            let g = new Graph ()
+                            let a = Signal (g, 0)
+                            let b = Signal (g, 0)
+                            let seen = ResizeArray ()
+
+                            new Effect (g, (fun () -> seen.Add (a.Value + b.Value)))
+                            |> ignore
+
+                            offThread (fun () ->
+                                dispatch g (fun () ->
+                                    a.Value <- 1
+                                    b.Value <- 2))
+
+                            g.Pump () |> ignore
+                            List.ofSeq seen
+
+                        let viaDispatch = runsFor (fun g work -> g.Dispatch work)
+
+                        let viaDispatchAsync =
+                            runsFor (fun g work -> g.DispatchAsync (fun () -> work ()) |> ignore)
+
+                        Expect.equal viaDispatchAsync viaDispatch "DispatchAsync keeps Dispatch's flush behaviour"
+                    }
+#endif
+
+                    testCaseAsync "inline inside an enclosing batch, the task completes before the batch's flush runs the effect"
+                    <| async {
+                        let g = new Graph ()
+                        let a = Signal (g, 0)
+                        let seen = ResizeArray ()
+
+                        new Effect (g, (fun () -> seen.Add a.Value))
+                        |> ignore
+
+                        let result, seenInBatch =
+                            g.Batch (fun () ->
+                                let result =
+                                    g.DispatchAsync (fun () ->
+                                        a.Value <- 1
+                                        a.Value)
+
+                                result, List.ofSeq seen)
+
+                        Expect.equal seenInBatch [ 0 ] "the batch deferred the effect past the inline call"
+                        Expect.sequenceEqual seen [ 0; 1 ] "the batch's flush ran it"
+#if !FABLE_COMPILER
+                        Expect.equal result.Status TaskStatus.RanToCompletion "the task completed inside the batch"
+#endif
+                        let! value = Async.AwaitTask result
+                        Expect.equal value 1 "with the work's result"
+                    }
                 ]
         ]

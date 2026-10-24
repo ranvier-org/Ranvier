@@ -2176,8 +2176,10 @@ type Graph(options: GraphOptions) =
     /// of the task run on the thread pool, outside the drain. Blocking on the task from the owning thread deadlocks when
     /// that thread is the only one that drains.
     ///
-    /// Completion marks the end of the work, not of what it triggers: effects it schedules run in the flush after the
-    /// drain, or in the enclosing batch's flush when the call is inline, and async memos it starts settle later.
+    /// Completion marks the end of the work, not of what it triggers. Effects woken by its writes run as they do for
+    /// <c>Dispatch</c> work: at the write, or at the end of a batch the work opens, before the task completes. An
+    /// inline call inside an enclosing batch completes its task first, and that batch's flush runs the effects. Async
+    /// memos the work starts settle later.
     ///
     /// When the work throws, the task faults with that exception, and the caller is its only recipient:
     /// <c>Root.Errors</c> stays unchanged and later inbox items still run.
