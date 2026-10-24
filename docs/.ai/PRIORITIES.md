@@ -52,6 +52,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/165 | #165 | https://github.com/shayanhabibi/Ranvier/pull/178 | integration/issues |
 | issue/65 | #65 | https://github.com/shayanhabibi/Ranvier/pull/183 | integration/issues |
 | issue/166 | #166 | https://github.com/shayanhabibi/Ranvier/pull/182 | integration/issues |
+| issue/168 | #168 | https://github.com/shayanhabibi/Ranvier/pull/187 | integration/issues |
 
 ## Log
 
@@ -83,3 +84,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope (untraced journal hook, order against #166)
 - 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope
 - 2026-10-24 #65 rescoped by the user — trace export sink (implement, 1.0.0-rc); input journal and replay split to #184 (milestone 3), store adapters to #185 (blocked until a user names a store, after #184) — next: #65 after #166 merges
+- 2026-10-25 #168 in-progress — docs gate fixed (the ranvier:// URIs in docs/content/guide/mcp.md written without code spans); full gate passed: `format --dry-format`, `build.fsx -- build`, `build.fsx -- test` unfiltered (CSharp 95, Mcp 31, Ranvier.Tests 1,477, Twin 1,067, Wire 290, Maps 101; 0 failed), traced Mcp tests (37), `build.fsx -- docs`; pushed `issue/168`, PR #187 on `integration/issues` (Refs #168) — fce32952 — next: plan step 10, the comparative agent experiment, stays unmet acceptance work
