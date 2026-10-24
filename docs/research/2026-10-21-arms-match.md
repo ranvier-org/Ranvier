@@ -13,7 +13,8 @@ rows. The Chromium gate is the original paired median of at most 1.05 against th
 under a 1.12 allowance (plan Ruling 38, superseded), and its committed timings miss 1.05 on switch (1.075) and payload
 (1.096). On the shared machine at 85-100 % load, the payload-direct shape's paired medians are create 1.003, switch
 1.078, payload 1.073 and clear 1.011, and every 95 % interval straddles 1.05; the spike of the shape measured
-1.007-1.031.
+1.007-1.031. The Chromium gate fails on the switch and payload medians. In a paired run against the hand-written
+shape, the plugin's output is indistinguishable from it on every operation.
 
 ## Plugin discovery
 
@@ -193,6 +194,27 @@ interval as straddling. An earlier probe of the same sources at `8ee10018`, unde
 switch 1.014 (0.967-1.038), payload 1.065 (0.985-1.168) and clear 1.016 (0.897-1.108): its switch interval lies below
 1.05 and its payload interval straddles it. Across the two runs only payload's median stays above 1.05; at this load the
 paired interval is too wide to separate a 5 % budget from no difference.
+
+**Against the hand-written shape.** A second run of the same sources (source hashes equal to `arms-match.json`'s) at
+`fccc740c` adds the spike's hand-written payload-direct fixture, `ranvier-sugar-array`, to the same processes and
+rounds: `keyed-rows.mjs --build --modes=ranvier-sugar,ranvier-arms-match,ranvier-sugar-array
+--ops=armsCreate1k,armsSwitch1k,armsPayload1k,armsClear1k --processes=3 --rounds=15
+--pairs=ranvier-arms-match:ranvier-sugar,ranvier-sugar-array:ranvier-sugar,ranvier-arms-match:ranvier-sugar-array`
+under `gate-lock.ps1 bench`, CPU load 100 % before and 97 % after (one reading each). Results in
+`arms-match/arms-match-shape.json`; `arms-match.json` remains the gate input.
+
+| Operation | arms-match : sugar (95 %) | sugar-array : sugar (95 %) | arms-match : sugar-array (95 %) |
+|---|---|---|---|
+| armsCreate1k | 1.041 (0.969-1.068) | 0.964 (0.917-1.021) | 1.028 (0.975-1.041) |
+| armsSwitch1k | 0.993 (0.903-1.066) | 0.989 (0.896-1.115) | 0.955 (0.862-1.060) |
+| armsPayload1k | 1.042 (0.906-1.193) | 1.075 (0.905-1.198) | 1.026 (0.924-1.152) |
+| armsClear1k | 1.014 (0.968-1.095) | 1.009 (0.919-1.207) | 0.989 (0.852-1.074) |
+
+Every arms-match : sugar-array interval contains 1: on this machine the plugin's output is indistinguishable from the
+hand-written shape the spike measured, which itself reads 1.075 on payload in this run. Pooling the arms-match : sugar
+pairs of both runs (90 per operation, the same bootstrap) gives create 1.016 (0.981-1.059), switch 1.052
+(0.993-1.091), payload 1.061 (0.945-1.170) and clear 1.012 (0.950-1.088). The pooled switch and payload medians stay
+above 1.05, and the gate stays failed.
 
 **Cells release (history).** At `2667e8e5`, before #151 updated the locked bundler (Fickl 0.3.0, Fable 5.22.0; source
 hashes in the JSON). The run started after three load readings below 20 % (25, 8, 3, 3 %); the load read 53 % right after the smoke build and 97 % at the
