@@ -944,5 +944,95 @@ let tests =
                         let! value = Async.AwaitTask result
                         Expect.equal value 42 "the task carries the work's result"
                     }
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "off-thread calls wait in the inbox, then run in arrival order with Dispatch on the graph thread" {
+                        let g = new Graph ()
+                        let log = ResizeArray ()
+                        let onGraphThread = ResizeArray ()
+
+                        let record entry =
+                            log.Add entry
+                            onGraphThread.Add g.IsOnGraphThread
+
+                        let results =
+                            offThread (fun () ->
+                                [
+                                    for i in 1..5 do
+                                        g.Dispatch (fun () -> record $"dispatch {i}")
+
+                                        yield
+                                            g.DispatchAsync (fun () ->
+                                                record $"async {i}"
+                                                i * 10)
+                                ])
+
+                        Expect.equal g.PendingWork 10 "every item waits in the inbox"
+
+                        Expect.isTrue
+                            (results
+                             |> List.forall (fun t -> not t.IsCompleted))
+                            "no task completes before the drain"
+
+                        g.Pump () |> ignore
+
+                        Expect.sequenceEqual
+                            log
+                            [
+                                for i in 1..5 do
+                                    $"dispatch {i}"
+                                    $"async {i}"
+                            ]
+                            "FIFO across Dispatch and DispatchAsync"
+
+                        Expect.isTrue (Seq.forall id onGraphThread) "every item ran on the graph thread"
+
+                        Expect.sequenceEqual
+                            (results
+                             |> List.map (fun t ->
+                                 t.Wait (TimeSpan.FromSeconds 5.0) |> ignore
+                                 t.Result))
+                            [ 10; 20; 30; 40; 50 ]
+                            "each task carries its own work's result"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "a synchronisation-context dispatcher completes the task without a manual pump" {
+                        let context = RecordingContext ()
+
+                        let g =
+                            new Graph (GraphOptions.Default.WithDispatcher (SynchronizationContextDispatcher context))
+
+                        let result = offThread (fun () -> g.DispatchAsync (fun () -> g.IsOnGraphThread))
+
+                        Expect.equal context.Posted.Count 1 "the call posted a drain to the context"
+                        Expect.isFalse result.IsCompleted "the work waits for the context to run the drain"
+
+                        context.Drain ()
+
+                        Expect.isTrue (result.Wait (TimeSpan.FromSeconds 5.0)) "the context's drain completed the task"
+                        Expect.isTrue result.Result "the work ran on the graph thread"
+                        Expect.equal g.PendingWork 0 "inbox drained"
+                    }
+#endif
+
+#if !FABLE_COMPILER
+                    // .NET only: JavaScript has one thread.
+                    test "a continuation of the task runs outside the drain" {
+                        let g = new Graph ()
+                        let result = offThread (fun () -> g.DispatchAsync (fun () -> 7))
+
+                        let continuation =
+                            result.ContinueWith ((fun (_: Task<int>) -> g.IsOnGraphThread), TaskContinuationOptions.ExecuteSynchronously)
+
+                        g.Pump () |> ignore
+
+                        Expect.isTrue (continuation.Wait (TimeSpan.FromSeconds 5.0)) "the continuation ran"
+                        Expect.isFalse continuation.Result "a synchronous continuation still resumes off the graph thread"
+                    }
+#endif
                 ]
         ]
