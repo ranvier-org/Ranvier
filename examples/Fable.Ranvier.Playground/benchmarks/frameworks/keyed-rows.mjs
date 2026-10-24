@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { resolve } from "node:path";
-import { staleSources, uncommittedOf } from "./run-sources.mjs";
+import { hashedSources, staleSources, uncommittedOf } from "./run-sources.mjs";
 
 const cwd = fileURLToPath(new URL("../../", import.meta.url));
 const argument = (name, fallback) => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -23,11 +23,7 @@ const outDir = argument("dist") ?? (profile ? "generated-keyed-profile" : "gener
 const env = { ...process.env, RanvierCounters: "false", RANVIER_PERF_OUTPUT: outDir, ...(profile ? { RANVIER_PERF_PROFILE: "true" } : {}) };
 const port = Number(argument("port", 5187));
 
-// The sources a result records by hash.
-const files = ["benchmarks/frameworks/keyed-rows.mjs", "benchmarks/frameworks/keyed-page.mjs", "benchmarks/frameworks/keyed-solid.jsx", "benchmarks/frameworks/vite.config.mjs", "tests/KeyedRowsPerf.fs", "package-lock.json",
-  ...["Lifetime.fs", "Representation.fs", "Template.fs"].map(path => `../../src/Ranvier.View/${path}`), ...["TemplateDom.fs", "Mounting.fs"].map(path => `../../src/Ranvier.View.Dom/${path}`), "../../src/Ranvier/Core.fs", "../../src/Ranvier/Projections.fs", "../../src/Ranvier/Api.fs", "../../src/Ranvier/Combinators.fs",
-  "tests/KeyedRowsSugarPerf.fs", "tests/KeyedRowsArmsMatchPerf.fs", ...["Arms.fs", "Cells.fs", "Site.fs", "Errors.fs", "Diagnostics.fs"].map(path => `../../experiments/Ranvier.View.Arms/${path}`),
-  "../../experiments/Ranvier.View.Arms.FablePlugin/Lower.fs"];
+const files = hashedSources;
 const sha = async path => createHash("sha256").update(await readFile(new URL(path, new URL("../../", import.meta.url)))).digest("hex");
 const hashes = async () => Object.fromEntries(await Promise.all(files.map(async path => [path, await sha(path)])));
 // A run into docs/research/arms-match/, the pool of the Arms.Match budget gate, is measured and written only from

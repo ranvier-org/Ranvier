@@ -1,13 +1,16 @@
 // The pooled paired interval of ranvier-arms-match over ranvier-sugar across the committed Chromium runs of #157 (plan
-// 2026-10-24-issue-157.md, Decision P9). chromium-gate.mjs judges each operation by the pooled median against its fixed
-// budget; this script prints the pooled interval and every run's median and interval.
+// 2026-10-24-issue-157.md, Decision P9) whose recorded source hashes match the tree. chromium-gate.mjs judges each
+// operation by the pooled median against its fixed budget; this script prints the pooled interval, every pooled run's
+// median and interval, and the hashed sources that keep each other committed run out of the pool.
 // Usage: node experiments/Ranvier.View.Arms/Checks/pooled-interval.mjs
 import { readFileSync } from "node:fs";
+import { mismatchedSources } from "../../../examples/Fable.Ranvier.Playground/benchmarks/frameworks/run-sources.mjs";
 
 const at = path => ({ path, read: () => JSON.parse(readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8")) });
 
-/** The committed runs of the pool, oldest first. */
-export const runs = [
+/** Every committed run with ranvier-arms-match and ranvier-sugar samples, oldest first. */
+export const committed = [
+  at("docs/research/arms-match/arms-spike.json"),
   at("docs/.ai/benchmarks/arms-157-noisy-probe.json"),
   at("docs/research/arms-match/arms-match-299ab276.json"),
   at("docs/research/arms-match/arms-match-shape.json"),
@@ -15,6 +18,12 @@ export const runs = [
   at("docs/research/arms-match/arms-match-5369d6a0.json"),
   at("docs/research/arms-match/arms-match.json")
 ];
+
+/** The hashed sources whose recorded hash in the run differs from the tree's. */
+export const outOfDate = run => mismatchedSources(run.read().sourceHashes);
+
+/** The pool: the committed runs whose recorded hashes match every hashed source of the tree. */
+export const runs = committed.filter(run => outOfDate(run).length === 0);
 
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 
@@ -40,8 +49,9 @@ export const pooled = operation => interval(runs.flatMap(run => pairsOf(run.read
 if (import.meta.main) {
   const loaded = runs.map(run => ({ ...run, data: run.read() }));
   for (const operation of ["armsCreate1k", "armsSwitch1k", "armsPayload1k", "armsClear1k"]) {
-    const each = loaded.map(run => { const r = interval(pairsOf(run.data, operation)); return `${run.data.commit.slice(0, 8)} ${r.median.toFixed(3)} (${r.ci95.map(x => x.toFixed(3)).join("-")})`; });
+    const each = loaded.map(run => { const r = interval(pairsOf(run.data, operation)); return `${run.path.split("/").pop()} ${r.median.toFixed(3)} (${r.ci95.map(x => x.toFixed(3)).join("-")})`; });
     const all = pooled(operation);
-    console.log(`${operation}: pooled ${all.median.toFixed(3)} (95 % ${all.ci95.map(x => x.toFixed(3)).join("-")}, ${all.pairs} pairs); ${each.join("; ")}`);
+    console.log(`${operation}: pooled ${all.median?.toFixed(3)} (95 % ${all.ci95.map(x => x?.toFixed(3)).join("-")}, ${all.pairs} pairs); ${each.join("; ")}`);
   }
+  for (const run of committed.filter(run => !runs.includes(run))) console.log(`out of the pool: ${run.path} (${run.read().commit.slice(0, 8)}), differs in ${outOfDate(run).join(", ")}`);
 }

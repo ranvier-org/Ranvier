@@ -1,14 +1,15 @@
-// The per-operation Chromium budgets of chromium-gate.mjs against the committed runs (plan 2026-10-24-issue-157.md,
-// Decision P9). Usage: node --test experiments/Ranvier.View.Arms/Checks/pooled-interval.test.mjs
+// The per-operation Chromium budgets of chromium-gate.mjs against the committed runs whose sources match the tree (plan
+// 2026-10-24-issue-157.md, Decision P9). Usage: node --test experiments/Ranvier.View.Arms/Checks/pooled-interval.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pairsOf, interval, pooled, runs } from "./pooled-interval.mjs";
+import { readdirSync, readFileSync } from "node:fs";
+import { committed, outOfDate, pairsOf, interval, pooled, runs } from "./pooled-interval.mjs";
 import { budgets, judge } from "./chromium-gate.mjs";
 
 const operations = ["armsCreate1k", "armsSwitch1k", "armsPayload1k", "armsClear1k"];
 
 test("a single run's interval equals the one keyed-rows.mjs recorded", () => {
-  for (const run of runs.map(r => r.read()))
+  for (const run of committed.map(r => r.read()))
     for (const recorded of run.pairRatios.filter(r => r.numerator === "ranvier-arms-match" && r.denominator === "ranvier-sugar")) {
       const { median, ci95, pairs } = interval(pairsOf(run, recorded.operation));
       assert.equal(pairs, recorded.pairs);
@@ -33,19 +34,33 @@ test("the gate judges the pooled median and interval", () => {
     assert.deepEqual(verdict.ci95, all.ci95, operation);
     assert.equal(verdict.ok, all.median <= budgets[operation], operation);
   }
-  assert.equal(judge("armsClear1k").interval, "straddles");
-  assert.equal(judge("armsSwitch1k").interval, "below");
 });
 
-test("the pool holds every committed run", () => {
-  assert.equal(runs.length, 6);
-  for (const operation of operations) assert.equal(pooled(operation).pairs, 270);
+test("every committed result with ranvier-arms-match and ranvier-sugar samples is listed", () => {
+  const directory = new URL("../../../docs/research/arms-match/", import.meta.url);
+  const paired = readdirSync(directory).filter(name => name.endsWith(".json")).filter(name => {
+    const samples = JSON.parse(readFileSync(new URL(name, directory), "utf8")).samples ?? [];
+    return ["ranvier-arms-match", "ranvier-sugar"].every(mode => samples.some(s => s.mode === mode && s.operation === "armsCreate1k"));
+  });
+  const listed = committed.map(r => r.path);
+  for (const name of paired) assert.ok(listed.includes(`docs/research/arms-match/${name}`), name);
 });
 
-test("the pool holds the gate input and every earlier run", () => {
-  const paths = runs.map(r => r.path);
-  assert.ok(paths.includes("docs/research/arms-match/arms-match.json"));
-  assert.ok(paths.includes("docs/research/arms-match/arms-match-dc8b3d5b.json"));
-  assert.ok(paths.includes("docs/research/arms-match/arms-match-5369d6a0.json"));
-  assert.equal(new Set(runs.map(r => r.read().commit)).size, runs.length);
+test("the pool is the committed runs whose recorded sources match the tree", () => {
+  for (const run of committed) assert.equal(runs.includes(run), outOfDate(run).length === 0, run.path);
+});
+
+test("the runs recorded before the rebase onto aae54f2e are out of the pool", () => {
+  for (const path of ["docs/.ai/benchmarks/arms-157-noisy-probe.json", "docs/research/arms-match/arms-match-299ab276.json", "docs/research/arms-match/arms-match-shape.json",
+    "docs/research/arms-match/arms-match-dc8b3d5b.json", "docs/research/arms-match/arms-match-5369d6a0.json", "docs/research/arms-match/arms-match.json"]) {
+    const run = committed.find(r => r.path === path);
+    assert.ok(run, path);
+    assert.ok(outOfDate(run).includes("../../src/Ranvier/Core.fs"), path);
+    assert.ok(!runs.includes(run), path);
+  }
+});
+
+test("the pool holds at least four runs of 45 pairs per operation", () => {
+  assert.ok(runs.length >= 4, `${runs.length} runs`);
+  for (const operation of operations) assert.equal(pooled(operation).pairs, 45 * runs.length, operation);
 });

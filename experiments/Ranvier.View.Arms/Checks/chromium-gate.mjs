@@ -1,12 +1,13 @@
 // The Chromium and heap gates of Arms.Match (spec, Testing 11-12) over the committed results in docs/research/arms-match:
 // - for each arm operation, the pooled median paired ratio of ranvier-arms-match over ranvier-sugar (same process and
-//   round) over every run of pooled-interval.mjs is at most the operation's entry in `budgets`; its pooled 95 %
-//   bootstrap interval is printed as below, above or straddling the budget;
+//   round) over the runs of pooled-interval.mjs, the committed runs whose recorded source hashes match the tree, is at
+//   most the operation's entry in `budgets`; its pooled 95 % bootstrap interval is printed as below, above or
+//   straddling the budget, and an empty pool fails;
 // - the retained JavaScript heap per row after create is within 10 % of ranvier-sugar at 1,000 and 10,000 rows;
 // - the retained JavaScript heap per row after one switch of every row is printed against ranvier-sugar at both counts.
 // Exits 1 on a breach. Usage: node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs
 import { readFileSync } from "node:fs";
-import { pooled, runs } from "./pooled-interval.mjs";
+import { committed, outOfDate, pooled, runs } from "./pooled-interval.mjs";
 
 /**
  * The fixed pooled paired median budget per operation (plan 2026-10-24-issue-157.md, Decision P9). A pooled interval
@@ -56,6 +57,7 @@ if (import.meta.main) {
       } else console.log(`INFO heap after switch, ${rows} rows: ${delta}`);
     }
 
+  for (const run of committed.filter(run => !runs.includes(run))) console.log(`out of the pool: ${run.path}, differs in ${outOfDate(run).join(", ")}`);
   for (const run of runs.map(r => r.read()))
     for (const note of (run.notes ?? []).filter(note => note.startsWith("CPU load"))) console.log(`load ${run.commit.slice(0, 8)}: ${note}`);
   if (failed) process.exitCode = 1;
