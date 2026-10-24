@@ -248,12 +248,14 @@ module Journal =
     /// </summary>
     /// <remarks>
     /// <para>
+    /// Each call that makes an input is one call of <c>work</c>, numbered in the work's <c>Produced</c> origin.
     /// <c>Reenact</c> skips the <c>Produced</c> entries, and the re-run work produces them again. Under
-    /// <c>Diagnostic</c>, an input of <c>work</c> is dropped while the replayed entries hold an unmatched
-    /// <c>Produced</c> entry of the same work, and <c>input</c> still runs.
+    /// <c>Diagnostic</c>, an input of the call is dropped while the replayed entries hold an unmatched
+    /// <c>Produced</c> entry of the same work and call, and <c>input</c> still runs.
     /// </para>
     /// <para>
-    /// Inside a computation, a flush or another derived section, <c>input</c>'s inputs are unrecorded and applied.
+    /// Inside a computation, a flush or another derived section, <c>input</c>'s inputs are unrecorded, and applied
+    /// unless a replayed entry of the same call stands for them.
     /// On .NET, the continuations of an effect's body need no <c>produce</c>: their inputs are attributed to the
     /// effect's run. Under Fable, which has no async context, pass them through <c>produce</c>.
     /// </para>
@@ -378,7 +380,8 @@ module Journal =
     /// <c>Diagnostic</c> applies every entry, and settles and fails async sources with the recorded outcomes; a failure
     /// arrives as a <c>JournalReplayedFailure</c> with the recorded message. The application's async work runs again,
     /// and each of its inputs is dropped while the replayed entries hold an unmatched <c>Produced</c> entry of the same
-    /// work, during the replay or after it returns. A work started during the replay is identified by the replayed entry
+    /// work and call, during the replay or after it returns; its other inputs, such as a synchronous dispatch the
+    /// recorded run left unrecorded, are live. A work started during the replay is identified by the replayed entry
     /// applied before it and its position after that entry, whatever the target ran before the replay. Setup work,
     /// started before the target's first entry, is matched by its position from construction when the replay is the
     /// target's first input; other work started outside the replay is live. <c>Reenact</c> applies the <c>External</c> entries and skips the
@@ -416,7 +419,7 @@ module Journal =
 
         let produced (entry: JournalEntry) =
             match entry.Origin with
-            | JournalOrigin.Produced (started, index) when entry.Kind <> JournalEntryKind.Flush -> ValueSome (started, index)
+            | JournalOrigin.Produced (started, index, call) when entry.Kind <> JournalEntryKind.Flush -> ValueSome (started, index, call)
             | _ -> ValueNone
 
         let previous = recorder.Replaying

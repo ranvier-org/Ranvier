@@ -403,19 +403,24 @@ type JournalOrigin =
     /// The work is identified by <c>started</c>, the <c>Seq</c> of the last non-<c>Flush</c> entry recorded before the
     /// work started (0 before the first entry), and <c>index</c>, the work's 0-based position among the works started
     /// after that entry. A work re-run after the same entry carries the same pair, whatever the graph ran before.
+    /// <c>call</c> is the 0-based position of the input's call among the work's calls: each <c>Journal.produce</c>
+    /// call or <c>Mvu</c> command dispatch that made an input, recorded or not, and, on .NET, each input made in a
+    /// continuation of an effect's body outside its synchronous part.
     /// </remarks>
-    | Produced of started: int * index: int
+    | Produced of started: int * index: int * call: int
 
     // AoT compat
-    /// <summary>The case name, followed by the work's <c>started</c> and <c>index</c> for <c>Produced</c>.</summary>
+    /// <summary>The case name, followed by the work's <c>started</c>, <c>index</c> and <c>call</c> for <c>Produced</c>.</summary>
     override this.ToString() =
         match this with
         | JournalOrigin.External -> "External"
-        | JournalOrigin.Produced (started, index) ->
+        | JournalOrigin.Produced (started, index, call) ->
             "Produced ("
             + string started
             + ", "
             + string index
+            + ", "
+            + string call
             + ")"
 
 /// <summary>One input to a graph, in the order the graph thread observed it.</summary>
@@ -461,7 +466,7 @@ type ReplayMode =
     /// <summary>
     /// Reproduces the recorded run: every entry is applied, and async sources settle and fail with the recorded
     /// values. A re-run work's input is dropped while the replayed entries hold an unmatched <c>Produced</c> entry of
-    /// the same work; its later inputs are live.
+    /// the same work and call; its other inputs are live.
     /// </summary>
     | Diagnostic
     /// <summary>

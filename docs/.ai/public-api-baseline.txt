@@ -271,8 +271,9 @@ member Ranvier.JournalOrigin ToString() : String
 member Ranvier.JournalOrigin get_IsExternal() : Boolean
 member Ranvier.JournalOrigin get_IsProduced() : Boolean
 member Ranvier.JournalOrigin get_Tag() : Int32
-member Ranvier.JournalOrigin static NewProduced(Int32,Int32) : Ranvier.JournalOrigin
+member Ranvier.JournalOrigin static NewProduced(Int32,Int32,Int32) : Ranvier.JournalOrigin
 member Ranvier.JournalOrigin static get_External() : Ranvier.JournalOrigin
+member Ranvier.JournalOrigin+Produced get_call() : Int32
 member Ranvier.JournalOrigin+Produced get_index() : Int32
 member Ranvier.JournalOrigin+Produced get_started() : Int32
 member Ranvier.JournalPayload CompareTo(Object) : Int32

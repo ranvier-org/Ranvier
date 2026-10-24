@@ -1598,6 +1598,31 @@ type internal JournalAttribution(origin: JournalOrigin, replayed: int, matched: 
     /// </summary>
     member _.Match = matched
 
+    /// <summary>The number of calls of the work that made inputs.</summary>
+    member val Calls = 0 with get, set
+
+    /// <summary>True while a call of the work runs, such as the body passed to <c>Journal.produce</c>.</summary>
+    member val InCall = false with get, set
+
+    /// <summary>The position of the running call among <c>Calls</c>, or -1 before the call's first input.</summary>
+    member val Call = -1 with get, set
+
+    /// <summary>
+    /// The position of the call an input of the work arriving now belongs to: the running call, or a new call of its
+    /// own outside one.
+    /// </summary>
+    member this.Claim() =
+        if this.Call >= 0 then
+            this.Call
+        else
+            let call = this.Calls
+            this.Calls <- call + 1
+
+            if this.InCall then
+                this.Call <- call
+
+            call
+
     static member val External = JournalAttribution (JournalOrigin.External, 0, null)
 
 /// <summary>
@@ -1674,6 +1699,8 @@ type internal JournalRecorder(journal: IInputJournal) =
     let mutable sessions = 0
     let expected = Dictionary<string, int>()
     let mutable nextSite = 0
+    // The call of the input last admitted, for the origin it records.
+    let mutable inputCall = 0
 
     /// <summary>True when an entry was recorded after the last <c>Flush</c> entry.</summary>
     member _.Unflushed = unflushed
@@ -1706,7 +1733,7 @@ type internal JournalRecorder(journal: IInputJournal) =
     /// started after it. During a diagnostic replay it also carries its identity in the replayed entries.
     /// </summary>
     member _.NextWork() =
-        let origin = JournalOrigin.Produced (anchor, started)
+        let origin = JournalOrigin.Produced (anchor, started, 0)
 
         let matched =
             if
@@ -1733,11 +1760,21 @@ type internal JournalRecorder(journal: IInputJournal) =
     static member private SetupKey(index: int) =
         "setup:" + string index
 
-    /// <summary>The key of a work of the replayed entries, or null for setup work the replay leaves unmatched.</summary>
-    member private _.ExpectedKey(started: int, index: int) =
-        if started > 0 then session.Key (started, index)
-        elif session.SetupOpen then JournalRecorder.SetupKey index
-        else null
+    /// <summary>The key of a call of a work, under which a diagnostic replay counts the call's replayed entries.</summary>
+    static member private CallKey(work: string, call: int) =
+        work + "/" + string call
+
+    /// <summary>
+    /// The key of the call <c>call</c> of a work of the replayed entries, or null for setup work the replay leaves
+    /// unmatched.
+    /// </summary>
+    member private _.ExpectedKey(started: int, index: int, call: int) =
+        if started > 0 then
+            JournalRecorder.CallKey (session.Key (started, index), call)
+        elif session.SetupOpen then
+            JournalRecorder.CallKey (JournalRecorder.SetupKey index, call)
+        else
+            null
 
     /// <summary>Starts a replay on the graph, and returns the replay it nests in, or null.</summary>
     member _.BeginReplay(mode: ReplayMode) : JournalReplaySession =
@@ -1776,15 +1813,27 @@ type internal JournalRecorder(journal: IInputJournal) =
             JournalAmbient.set previous
 #endif
 
-    /// <summary>Runs <c>run</c> with its inputs attributed to <c>work</c>.</summary>
+    /// <summary>
+    /// Runs <c>run</c> with its inputs attributed to <c>work</c>, as one call of a live work: a call nested in a running
+    /// call of the same work joins it.
+    /// </summary>
     member _.RunAttributed(work: JournalAttribution, run: unit -> unit) =
         let previous = attribution
         attribution <- work
+        let opens = work.ReplayedSeq = 0 && not work.InCall
+
+        if opens then
+            work.InCall <- true
+            work.Call <- -1
 
         try
             run ()
         finally
             attribution <- previous
+
+            if opens then
+                work.InCall <- false
+                work.Call <- -1
 
     /// <summary>The work an input arriving now is attributed to, or null for an external input.</summary>
     member _.Current: JournalAttribution =
@@ -1794,11 +1843,11 @@ type internal JournalRecorder(journal: IInputJournal) =
             attribution
 
     /// <summary>
-    /// Counts one replayed <c>Produced</c> entry of the work <c>(started, index)</c> of the running replay, for
-    /// <c>Admit</c>.
+    /// Counts one replayed <c>Produced</c> entry of the call <c>call</c> of the work <c>(started, index)</c> of the
+    /// running replay, for <c>Admit</c>.
     /// </summary>
-    member this.Expect(started: int, index: int) =
-        let key = this.ExpectedKey (started, index)
+    member this.Expect(started: int, index: int, call: int) =
+        let key = this.ExpectedKey (started, index, call)
 
         if not (isNull key) then
             match expected.TryGetValue key with
@@ -1806,8 +1855,8 @@ type internal JournalRecorder(journal: IInputJournal) =
             | _ -> expected[key] <- 1
 
     /// <summary>Withdraws one count of <c>Expect</c>, for a replayed entry left unapplied.</summary>
-    member this.Unexpect(started: int, index: int) =
-        let key = this.ExpectedKey (started, index)
+    member this.Unexpect(started: int, index: int, call: int) =
+        let key = this.ExpectedKey (started, index, call)
 
         if not (isNull key) then
             match expected.TryGetValue key with
@@ -1816,31 +1865,38 @@ type internal JournalRecorder(journal: IInputJournal) =
             | _ -> ()
 
     /// <summary>
-    /// False when the input arriving now is dropped: it comes from a work re-run by a diagnostic replay, with an
-    /// unmatched replayed <c>Produced</c> entry, which it then matches.
+    /// False when the input arriving now is dropped: it comes from a call of a work re-run by a diagnostic replay, with
+    /// an unmatched replayed <c>Produced</c> entry of the same call, which it then matches.
     /// </summary>
     member this.Admit() : bool =
         this.AdmitWork this.Current
 
     /// <summary>
-    /// <c>Admit</c> for an input made inside a computation, a flush or another derived section: only an input passed
-    /// through <c>Journal.produce</c> can match a replayed entry, as when a re-run work's await completes synchronously.
+    /// <c>Admit</c> for an input made inside a computation, a flush or another derived section: only an input of a
+    /// <c>Journal.produce</c> call can match a replayed entry, as when a re-run work's await completes synchronously.
     /// </summary>
     member this.AdmitDerived() : bool =
         this.AdmitWork attribution
 
     member private _.AdmitWork(work: JournalAttribution) : bool =
-        if Platform.isNull work || Platform.isNull work.Match then
+        if Platform.isNull work || work.ReplayedSeq > 0 then
             true
         else
-            match expected.TryGetValue work.Match with
-            | true, count when count > 1 ->
-                expected[work.Match] <- count - 1
-                false
-            | true, _ ->
-                expected.Remove work.Match |> ignore
-                false
-            | _ -> true
+            inputCall <- work.Claim ()
+
+            if Platform.isNull work.Match then
+                true
+            else
+                let key = JournalRecorder.CallKey (work.Match, inputCall)
+
+                match expected.TryGetValue key with
+                | true, count when count > 1 ->
+                    expected[key] <- count - 1
+                    false
+                | true, _ ->
+                    expected.Remove key |> ignore
+                    false
+                | _ -> true
 
     /// <summary>Registers <c>binding</c> for the node <c>nodeId</c>.</summary>
     /// <exception cref="T:System.ArgumentException">
@@ -1897,11 +1953,13 @@ type internal JournalRecorder(journal: IInputJournal) =
                     session.Recorded (work.ReplayedSeq, position)
 
                 match work.Origin with
-                | JournalOrigin.Produced (started, index) when not (Platform.isNull session) ->
-                    JournalOrigin.Produced (session.TargetOf started, index)
+                | JournalOrigin.Produced (started, index, call) when not (Platform.isNull session) ->
+                    JournalOrigin.Produced (session.TargetOf started, index, call)
                 | origin -> origin
             else
-                work.Origin
+                match work.Origin with
+                | JournalOrigin.Produced (started, index, _) -> JournalOrigin.Produced (started, index, inputCall)
+                | origin -> origin
 
         if kind <> JournalEntryKind.Flush then
             unflushed <- true

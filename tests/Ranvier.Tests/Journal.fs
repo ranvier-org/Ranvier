@@ -1325,6 +1325,100 @@ let tests =
                         Expect.equal app2.Model [ 10; 1; 10; 1 ] "the model of the run dispatched twice"
                     }
 
+                    testCaseAsync "each replay mode applies a command's synchronous dispatch and its dispatch after an await once"
+                    <| async {
+                        // Message 1 starts a command that dispatches 0, then 2 after an await on the gate.
+                        let build (journal: MemoryJournal, g: Graph) =
+                            let gate = System.Threading.Tasks.TaskCompletionSource<unit>()
+                            let seen = ResizeArray<int>()
+
+                            let app =
+                                g.Run (fun () ->
+                                    Ranvier.Elmish.Mvu.withCmd ([], []) (fun (msg: int) model ->
+                                        seen.Add msg
+
+                                        if msg = 1 then
+                                            msg :: model,
+                                            [
+                                                fun dispatch ->
+                                                    dispatch 0
+
+                                                    task {
+                                                        do! gate.Task
+                                                        dispatch 2
+                                                    }
+                                                    |> ignore
+                                            ]
+                                        else
+                                            msg :: model, [])
+                                    |> Ranvier.Elmish.Mvu.journal "loading" intCodec)
+
+                            journal, g, app, seen, gate
+
+                        let journal, _, app, seen, gate = build (journaled ())
+                        app.Dispatch 1
+                        gate.SetResult ()
+                        do! drained ()
+                        Expect.equal (List.ofSeq seen) [ 1; 0; 2 ] "the live run's updates"
+
+                        for mode in [ ReplayMode.Reenact; ReplayMode.Diagnostic ] do
+                            let _, g2, app2, seen2, gate2 = build (journaled ())
+                            Journal.replay mode g2 journal.Entries
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal (List.ofSeq seen2) [ 1; 0; 2 ] $"each message of the {mode} replay reaches update once"
+                            Expect.equal app2.Model app.Model $"the {mode} replay's model"
+                            ignore g2
+                    }
+
+                    testCaseAsync
+                        "a diagnostic replay after the gate opens applies a command's synchronous dispatch and its dispatch after an await once"
+                    <| async {
+                        // Message 1 starts a command that dispatches 0, then 2 after an await on the gate.
+                        let gate = System.Threading.Tasks.TaskCompletionSource<unit>()
+
+                        let build (journal: MemoryJournal, g: Graph) =
+                            let seen = ResizeArray<int>()
+
+                            let app =
+                                g.Run (fun () ->
+                                    Ranvier.Elmish.Mvu.withCmd ([], []) (fun (msg: int) model ->
+                                        seen.Add msg
+
+                                        if msg = 1 then
+                                            msg :: model,
+                                            [
+                                                fun dispatch ->
+                                                    dispatch 0
+
+                                                    task {
+                                                        do! gate.Task
+                                                        dispatch 2
+                                                    }
+                                                    |> ignore
+                                            ]
+                                        else
+                                            msg :: model, [])
+                                    |> Ranvier.Elmish.Mvu.journal "loading" intCodec)
+
+                            journal, g, app, seen
+
+                        let journal, _, app, seen = build (journaled ())
+                        app.Dispatch 1
+                        gate.SetResult ()
+                        do! drained ()
+                        Expect.equal (List.ofSeq seen) [ 1; 0; 2 ] "the live run's updates"
+
+                        let _, g2, app2, seen2 = build (journaled ())
+                        Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+                        do! drained ()
+
+                        Expect.equal (List.ofSeq seen2) [ 1; 0; 2 ] "each message reaches update once"
+                        Expect.equal app2.Model app.Model "the live run's model"
+                        ignore g2
+                    }
+
                     testCaseAsync "a replay records the entries of the run it replays"
                     <| async {
                         let! journal, _, _ = recorded ()
@@ -1467,6 +1561,45 @@ let tests =
                             ignore g2
                     }
 
+                    testCaseAsync "each replay mode applies a work's synchronous produce and its produce after an await once"
+                    <| async {
+                        // An effect over a positive q adds 100 to total through a work, and 1 after an await on the gate.
+                        let build () =
+                            let journal, g = journaled ()
+                            let gate = System.Threading.Tasks.TaskCompletionSource<unit>()
+                            let q = Signal (g, 0) |> Journal.key "q" intCodec
+                            let total = Signal (g, 0) |> Journal.key "total" intCodec
+
+                            g.Run (fun () ->
+                                createEffect (fun () ->
+                                    if q.Value > 0 then
+                                        let work = Journal.work g
+                                        Journal.produce work (fun () -> total.Value <- total.Peek + 100)
+
+                                        task {
+                                            do! gate.Task
+                                            Journal.produce work (fun () -> total.Value <- total.Peek + 1)
+                                        }
+                                        |> ignore))
+
+                            journal, g, q, total, gate
+
+                        let journal, _, q, total, gate = build ()
+                        q.Value <- 1
+                        gate.SetResult ()
+                        do! drained ()
+                        Expect.equal total.Peek 101 "the live run's total"
+
+                        for mode in [ ReplayMode.Reenact; ReplayMode.Diagnostic ] do
+                            let _, g2, _, total2, gate2 = build ()
+                            Journal.replay mode g2 journal.Entries
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal total2.Peek 101 $"the {mode} replay's total"
+                            ignore g2
+                    }
+
                     test "work captured with no journal runs its input" {
                         let g = new Graph (GraphOptions.Default)
                         let s = Signal (g, 0)
@@ -1476,7 +1609,7 @@ let tests =
                 ]
 
             test "the entry unions print their case names" {
-                Expect.equal ((JournalOrigin.Produced (3, 1)).ToString()) "Produced (3, 1)" "an origin"
+                Expect.equal ((JournalOrigin.Produced (3, 1, 2)).ToString()) "Produced (3, 1, 2)" "an origin"
                 Expect.equal (JournalEntryKind.Settle.ToString ()) "Settle" "a kind"
                 Expect.equal (JournalPayload.Empty.ToString ()) "Empty" "Empty"
                 Expect.equal ((JournalPayload.Encoded ("int", 1, "3")).ToString()) "Encoded (int, 1, 3)" "Encoded"

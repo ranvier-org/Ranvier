@@ -35,7 +35,7 @@ Each entry is a `JournalEntry`:
 | `Key` | The application key of the input; `None` for an unkeyed input and for `Flush`. |
 | `PayloadType` | The runtime type name of the value. |
 | `Payload` | `Encoded (codec, version, data)`, `NonReplayable payloadType`, or `Empty` for `Flush`. |
-| `Origin` | `External`, or `Produced (started, index)` for an input of the application's attributed async work, identified by the entry recorded before the work started. |
+| `Origin` | `External`, or `Produced (started, index, call)` for an input of the application's attributed async work, identified by the entry recorded before the work started and the input's call within the work. |
 
 A `Flush` entry ends each flush pass that followed a recorded entry. Replay flushes at the same
 points, so effects run as often as they did in the recorded run.
@@ -54,11 +54,15 @@ An equal write is recorded, as the traced log records it.
 ### Async work
 
 An input that the application's own async work makes after an `await` is recorded with
-`Origin = Produced (started, index)`: a re-run of that work makes the input again. `started` is the
-`Seq` of the last non-`Flush` entry recorded before the work started, 0 before the first entry, and
+`Origin = Produced (started, index, call)`: a re-run of that work makes the input again. `started` is
+the `Seq` of the last non-`Flush` entry recorded before the work started, 0 before the first entry, and
 `index` the work's 0-based position among the works started after that entry. The pair depends only on
 the entries before the work, so a work re-run after the same entry carries it whatever else the graph
-ran. The journal attributes three kinds of work:
+ran. `call` is the input's 0-based position among the work's calls: each `Journal.produce` call or
+command dispatch that made an input, recorded or not, and each input made in an effect's
+continuation outside the effect's synchronous part. A
+command that dispatches `Loading` synchronously and `Loaded` after an `await` records only `Loaded`,
+as call 1. The journal attributes three kinds of work:
 
 - an `Mvu` command: a message it dispatches after its synchronous part;
 - on .NET, an effect run: a write, settle, failure or message made in a continuation of the effect's
@@ -180,10 +184,11 @@ attributed async work still runs. A work started during the replay is identified
 entry applied before it and its position after that entry, so a re-run work carries its recorded
 `(started, index)` whatever the target ran before the replay, including an earlier replay into the
 same graph. An input of a re-run work is dropped while the replayed entries hold an unmatched
-`Produced` entry of the same work, during the replay or after it returns, including an input the
-work makes synchronously, as when the awaited task has already completed. Its inputs beyond the
-recorded ones are live: the dispatch of a command still in flight when the journal was cut reaches
-`update`. Setup work, started before a graph's first entry, such as an initial command of
+`Produced` entry of the same work and call, during the replay or after it returns, including an
+input of a `Journal.produce` call or a command's dispatch that runs synchronously because the
+awaited task has already completed. The work's other inputs are live: a synchronous dispatch that
+the recorded run made before its `await`, and the dispatch of a command still in flight when the
+journal was cut, reach `update`. Setup work, started before a graph's first entry, such as an initial command of
 `Mvu.withCmd`, carries `started = 0` and is matched by its position from the graph's construction
 when the replay is the target's first input, so build the target with the same code. The inputs of
 other work started on the target outside the replay, before it or after it, are live.

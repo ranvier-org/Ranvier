@@ -166,7 +166,7 @@ module Mvu =
     /// A message dispatched from outside every computation records a <c>Message</c> entry. The model write and the
     /// synchronous commands are derived from the message and record nothing. A message a command dispatches later, after
     /// an <c>await</c>, records a <c>Produced</c> entry: <c>Reenact</c> skips it and the re-run command dispatches it
-    /// again, and under <c>Diagnostic</c> the entry is applied and the re-run command's dispatch is dropped. A message
+    /// again, and under <c>Diagnostic</c> the entry is applied and the re-run command's matching dispatch is dropped. A message
     /// dispatched by an effect or other computation records nothing.
     /// </para>
     /// <para>
