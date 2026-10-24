@@ -225,8 +225,9 @@ module Journal =
                 recorder.LeaveDerived ()
 
     /// <summary>
-    /// A new async work on <c>graph</c>, for <c>produce</c>, numbered after the graph's earlier work. Captured in the
-    /// synchronous part of the work, such as an effect's body before its first <c>await</c>.
+    /// A new async work on <c>graph</c>, for <c>produce</c>, identified by the last entry recorded before it and its
+    /// position among the works started after that entry. Captured in the synchronous part of the work, such as an
+    /// effect's body before its first <c>await</c>.
     /// </summary>
     /// <exception cref="T:System.InvalidOperationException">
     /// The graph has a journal, and the call runs off the graph's thread.
@@ -242,7 +243,7 @@ module Journal =
 
     /// <summary>
     /// Runs <c>input</c> on the graph's thread as an input of <c>work</c>: its writes, settles, failures and messages
-    /// record <c>Produced</c> entries carrying the work's number. Called off the graph's thread, it is queued, as
+    /// record <c>Produced</c> entries carrying the work's identity. Called off the graph's thread, it is queued, as
     /// <c>Graph.Dispatch</c> queues work.
     /// </summary>
     /// <remarks>
@@ -302,8 +303,6 @@ module Journal =
         else
             recorder.Replaying
 
-    let private replayedExternal = JournalAttribution (0, true)
-
     let private prepare (mode: ReplayMode) (recorder: JournalRecorder) (entry: JournalEntry) : (unit -> unit) option =
         let failWith reason =
             raise (JournalReplayException (entry.Seq, entry.Key, entry.PayloadType, reason))
@@ -358,12 +357,8 @@ module Journal =
 
                 match binding.Prepare (kind, data) with
                 | Ok run ->
-                    let attribution =
-                        match entry.Origin with
-                        | JournalOrigin.Produced work -> JournalAttribution (work, true)
-                        | JournalOrigin.External -> replayedExternal
-
-                    Some (fun () -> recorder.RunAttributed (attribution, run))
+                    let attribution = JournalAttribution (entry.Origin, entry.Seq, null)
+                    Some (fun () -> recorder.RunReplayed (attribution, run))
                 | Error error -> failWith ("decode error: " + error)
 
     /// <summary>
@@ -383,7 +378,10 @@ module Journal =
     /// <c>Diagnostic</c> applies every entry, and settles and fails async sources with the recorded outcomes; a failure
     /// arrives as a <c>JournalReplayedFailure</c> with the recorded message. The application's async work runs again,
     /// and each of its inputs is dropped while the replayed entries hold an unmatched <c>Produced</c> entry of the same
-    /// work, during the replay or after it returns. <c>Reenact</c> applies the <c>External</c> entries and skips the
+    /// work, during the replay or after it returns. A work started during the replay is identified by the replayed entry
+    /// applied before it and its position after that entry, whatever the target ran before the replay. Setup work,
+    /// started before the target's first entry, is matched by its position from construction when the replay is the
+    /// target's first input; other work started outside the replay is live. <c>Reenact</c> applies the <c>External</c> entries and skips the
     /// <c>Produced</c> entries, and the re-run work produces its inputs. In both modes each recorded input reaches the
     /// graph once when every input of the re-run work is attributed: on .NET, the inputs of an <c>Mvu</c> command, of a
     /// continuation of an effect's body, and those passed to <c>produce</c>; under Fable, the inputs of an <c>Mvu</c>
@@ -418,18 +416,18 @@ module Journal =
 
         let produced (entry: JournalEntry) =
             match entry.Origin with
-            | JournalOrigin.Produced work when entry.Kind <> JournalEntryKind.Flush -> work
-            | _ -> 0
+            | JournalOrigin.Produced (started, index) when entry.Kind <> JournalEntryKind.Flush -> ValueSome (started, index)
+            | _ -> ValueNone
+
+        let previous = recorder.Replaying
+        let previousSession = recorder.BeginReplay mode
+        recorder.Replaying <- Some mode
 
         if mode = ReplayMode.Diagnostic then
             for entry in sorted do
-                let work = produced entry
-
-                if work > 0 then
-                    recorder.Expect work
-
-        let previous = recorder.Replaying
-        recorder.Replaying <- Some mode
+                match produced entry with
+                | ValueSome work -> recorder.Expect work
+                | ValueNone -> ()
         // The entries before this index are applied.
         let applied = ref 0
 
@@ -472,11 +470,11 @@ module Journal =
             with _ ->
                 if mode = ReplayMode.Diagnostic then
                     for index in applied.Value .. sorted.Length - 1 do
-                        let work = produced sorted[index]
-
-                        if work > 0 then
-                            recorder.Unexpect work
+                        match produced sorted[index] with
+                        | ValueSome work -> recorder.Unexpect work
+                        | ValueNone -> ()
 
                 reraise ()
         finally
             recorder.Replaying <- previous
+            recorder.EndReplay previousSession

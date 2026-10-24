@@ -1580,13 +1580,64 @@ type internal JournalBinding(key: string, codec: string, version: int) =
     abstract Prepare: kind: JournalEntryKind * data: string -> Result<unit -> unit, string>
 
 /// <summary>
-/// The work a journaled input is attributed to. <c>Id</c> 0 is external; a positive <c>Id</c> numbers async work on its
-/// graph in the order it started. A <c>Replayed</c> attribution applies a replayed entry and is always admitted.
+/// The work a journaled input is attributed to: external input, an async work of the graph, or a replayed entry.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
-type internal JournalAttribution(id: int, replayed: bool) =
-    member _.Id = id
-    member _.Replayed = replayed
+type internal JournalAttribution(origin: JournalOrigin, replayed: int, matched: string) =
+    /// <summary>The origin an input of the work records.</summary>
+    member _.Origin = origin
+
+    /// <summary>
+    /// The <c>Seq</c> of the replayed entry the attribution applies, or 0. A replayed attribution is always admitted.
+    /// </summary>
+    member _.ReplayedSeq = replayed
+
+    /// <summary>
+    /// The key under which a diagnostic replay counts the recorded <c>Produced</c> entries of the work, or null for
+    /// work started outside a diagnostic replay.
+    /// </summary>
+    member _.Match = matched
+
+    static member val External = JournalAttribution (JournalOrigin.External, 0, null)
+
+/// <summary>
+/// A replay running on a graph: the position of the replayed entries, and the target <c>Seq</c> each applied entry
+/// recorded.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal JournalReplaySession(id: int, diagnostic: bool, setupOpen: bool) =
+    let recorded = Dictionary<int, int>()
+
+    member _.Diagnostic = diagnostic
+
+    /// <summary>
+    /// True when the target recorded no input before the replay, so its setup work re-runs the recorded run's setup work.
+    /// </summary>
+    member _.SetupOpen = setupOpen
+
+    /// <summary>The <c>Seq</c> of the last replayed non-<c>Flush</c> entry applied, or -1 before the first.</summary>
+    member val Anchor = -1 with get, set
+
+    /// <summary>The number of works started since <c>Anchor</c> was applied.</summary>
+    member val Started = 0 with get, set
+
+    /// <summary>The key of the work <c>(started, index)</c> of the replayed entries.</summary>
+    member _.Key(started: int, index: int) =
+        string id
+        + ":"
+        + string started
+        + ":"
+        + string index
+
+    /// <summary>Records that the replayed entry <c>source</c> recorded the target entry <c>target</c>.</summary>
+    member _.Recorded(source: int, target: int) =
+        recorded[source] <- target
+
+    /// <summary>The target <c>Seq</c> the replayed entry <c>source</c> recorded, or <c>source</c>.</summary>
+    member _.TargetOf(source: int) =
+        match recorded.TryGetValue source with
+        | true, target -> target
+        | _ -> source
 
 /// <summary>
 /// The async work of the effect body running in the calling context. On .NET it flows with the execution context into
@@ -1616,8 +1667,12 @@ type internal JournalRecorder(journal: IInputJournal) =
     let mutable unflushed = false
     let mutable derivedDepth = 0
     let mutable attribution: JournalAttribution = null
-    let mutable nextWork = 0
-    let expected = Dictionary<int, int>()
+    // The Seq of the last non-Flush entry, and the number of works started after it.
+    let mutable anchor = 0
+    let mutable started = 0
+    let mutable session: JournalReplaySession = null
+    let mutable sessions = 0
+    let expected = Dictionary<string, int>()
     let mutable nextSite = 0
 
     /// <summary>True when an entry was recorded after the last <c>Flush</c> entry.</summary>
@@ -1646,10 +1701,62 @@ type internal JournalRecorder(journal: IInputJournal) =
     member _.LeaveDerived() =
         derivedDepth <- derivedDepth - 1
 
-    /// <summary>The next async work on the graph, numbered in the order it starts.</summary>
+    /// <summary>
+    /// The next async work on the graph, identified by the last non-<c>Flush</c> entry and its position among the works
+    /// started after it. During a diagnostic replay it also carries its identity in the replayed entries.
+    /// </summary>
     member _.NextWork() =
-        nextWork <- nextWork + 1
-        JournalAttribution (nextWork, false)
+        let origin = JournalOrigin.Produced (anchor, started)
+
+        let matched =
+            if
+                not (Platform.isNull session)
+                && session.Anchor >= 0
+            then
+                let key =
+                    if session.Diagnostic then
+                        session.Key (session.Anchor, session.Started)
+                    else
+                        null
+
+                session.Started <- session.Started + 1
+                key
+            elif anchor = 0 then
+                // Setup work, started before the graph's first entry, is matched by its position from construction.
+                JournalRecorder.SetupKey started
+            else
+                null
+
+        started <- started + 1
+        JournalAttribution (origin, 0, matched)
+
+    static member private SetupKey(index: int) =
+        "setup:" + string index
+
+    /// <summary>The key of a work of the replayed entries, or null for setup work the replay leaves unmatched.</summary>
+    member private _.ExpectedKey(started: int, index: int) =
+        if started > 0 then session.Key (started, index)
+        elif session.SetupOpen then JournalRecorder.SetupKey index
+        else null
+
+    /// <summary>Starts a replay on the graph, and returns the replay it nests in, or null.</summary>
+    member _.BeginReplay(mode: ReplayMode) : JournalReplaySession =
+        let previous = session
+        sessions <- sessions + 1
+        session <- JournalReplaySession (sessions, (mode = ReplayMode.Diagnostic), (anchor = 0))
+        previous
+
+    /// <summary>Ends the running replay, restoring <c>previous</c>.</summary>
+    member _.EndReplay(previous: JournalReplaySession) =
+        session <- previous
+
+    /// <summary>Runs <c>run</c>, the application of the replayed entry <c>work</c> applies.</summary>
+    member this.RunReplayed(work: JournalAttribution, run: unit -> unit) =
+        if not (Platform.isNull session) then
+            session.Anchor <- work.ReplayedSeq
+            session.Started <- 0
+
+        this.RunAttributed (work, run)
 
     /// <summary>
     /// Runs <c>run</c>, the body of an effect, as a new async work: on .NET its continuations carry the work.
@@ -1686,35 +1793,52 @@ type internal JournalRecorder(journal: IInputJournal) =
         else
             attribution
 
-    /// <summary>Counts one replayed <c>Produced</c> entry of the work <c>work</c>, for <c>Admit</c>.</summary>
-    member _.Expect(work: int) =
-        match expected.TryGetValue work with
-        | true, count -> expected[work] <- count + 1
-        | _ -> expected[work] <- 1
+    /// <summary>
+    /// Counts one replayed <c>Produced</c> entry of the work <c>(started, index)</c> of the running replay, for
+    /// <c>Admit</c>.
+    /// </summary>
+    member this.Expect(started: int, index: int) =
+        let key = this.ExpectedKey (started, index)
+
+        if not (isNull key) then
+            match expected.TryGetValue key with
+            | true, count -> expected[key] <- count + 1
+            | _ -> expected[key] <- 1
 
     /// <summary>Withdraws one count of <c>Expect</c>, for a replayed entry left unapplied.</summary>
-    member _.Unexpect(work: int) =
-        match expected.TryGetValue work with
-        | true, count when count > 0 -> expected[work] <- count - 1
-        | _ -> ()
+    member this.Unexpect(started: int, index: int) =
+        let key = this.ExpectedKey (started, index)
+
+        if not (isNull key) then
+            match expected.TryGetValue key with
+            | true, count when count > 1 -> expected[key] <- count - 1
+            | true, _ -> expected.Remove key |> ignore
+            | _ -> ()
 
     /// <summary>
-    /// False when the input arriving now is dropped: it comes from a work with an unmatched replayed <c>Produced</c>
-    /// entry, which it then matches.
+    /// False when the input arriving now is dropped: it comes from a work re-run by a diagnostic replay, with an
+    /// unmatched replayed <c>Produced</c> entry, which it then matches.
     /// </summary>
     member this.Admit() : bool =
-        let work = this.Current
+        this.AdmitWork this.Current
 
-        if
-            Platform.isNull work
-            || work.Replayed
-            || work.Id = 0
-        then
+    /// <summary>
+    /// <c>Admit</c> for an input made inside a computation, a flush or another derived section: only an input passed
+    /// through <c>Journal.produce</c> can match a replayed entry, as when a re-run work's await completes synchronously.
+    /// </summary>
+    member this.AdmitDerived() : bool =
+        this.AdmitWork attribution
+
+    member private _.AdmitWork(work: JournalAttribution) : bool =
+        if Platform.isNull work || Platform.isNull work.Match then
             true
         else
-            match expected.TryGetValue work.Id with
-            | true, count when count > 0 ->
-                expected[work.Id] <- count - 1
+            match expected.TryGetValue work.Match with
+            | true, count when count > 1 ->
+                expected[work.Match] <- count - 1
+                false
+            | true, _ ->
+                expected.Remove work.Match |> ignore
                 false
             | _ -> true
 
@@ -1766,13 +1890,23 @@ type internal JournalRecorder(journal: IInputJournal) =
         let work = if kind = JournalEntryKind.Flush then null else this.Current
 
         let origin =
-            if Platform.isNull work || work.Id = 0 then
+            if Platform.isNull work then
                 JournalOrigin.External
+            elif work.ReplayedSeq > 0 then
+                if not (Platform.isNull session) then
+                    session.Recorded (work.ReplayedSeq, position)
+
+                match work.Origin with
+                | JournalOrigin.Produced (started, index) when not (Platform.isNull session) ->
+                    JournalOrigin.Produced (session.TargetOf started, index)
+                | origin -> origin
             else
-                JournalOrigin.Produced work.Id
+                work.Origin
 
         if kind <> JournalEntryKind.Flush then
             unflushed <- true
+            anchor <- position
+            started <- 0
 
         journal.Record
             {
@@ -2152,7 +2286,7 @@ type Graph(options: GraphOptions) =
     /// <returns>False when a diagnostic replay drops the input, which the caller then leaves unapplied.</returns>
     member internal this.RecordInput(kind: JournalEntryKind, nodeId: int, value: obj) : bool =
         if this.Running || journal.DerivedDepth > 0 then
-            true
+            journal.AdmitDerived ()
         elif journal.Admit () then
             journal.Input (kind, nodeId, value)
             true
@@ -2598,22 +2732,37 @@ type Graph(options: GraphOptions) =
         let mutable ran = 0
         let mutable draining = true
 
-        while draining do
-            match inbox.TryTake () with
-            | ValueNone -> draining <- false
-            | ValueSome work ->
-                ran <- ran + 1
+        // An inbox item carries its own attribution from Post, so the drain
+        // runs outside the work of the context that posted the drain.
+        let carried =
+            if Platform.isNull journal then
+                null
+            else
+                JournalAmbient.current ()
 
-                // One bad continuation must not strand the rest of the inbox,
-                // for the same reason one bad effect must not strand the flush
-                // queue.
-                try
-                    work ()
-                with ex ->
-                    root.RecordError ex
+        if not (Platform.isNull carried) then
+            JournalAmbient.set null
 
-        if ran > 0 then
-            this.RequestFlush ()
+        try
+            while draining do
+                match inbox.TryTake () with
+                | ValueNone -> draining <- false
+                | ValueSome work ->
+                    ran <- ran + 1
+
+                    // One bad continuation must not strand the rest of the inbox,
+                    // for the same reason one bad effect must not strand the flush
+                    // queue.
+                    try
+                        work ()
+                    with ex ->
+                        root.RecordError ex
+
+            if ran > 0 then
+                this.RequestFlush ()
+        finally
+            if not (Platform.isNull carried) then
+                JournalAmbient.set carried
 
         ran
 #endif

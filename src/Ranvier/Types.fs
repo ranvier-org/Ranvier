@@ -400,17 +400,23 @@ type JournalOrigin =
     /// of that work produces the input again.
     /// </summary>
     /// <remarks>
-    /// <c>work</c> numbers the work on its graph in the order it started. Code that builds and drives a graph alike
-    /// numbers its work alike, so the re-run of a work carries the recorded number.
+    /// The work is identified by <c>started</c>, the <c>Seq</c> of the last non-<c>Flush</c> entry recorded before the
+    /// work started (0 before the first entry), and <c>index</c>, the work's 0-based position among the works started
+    /// after that entry. A work re-run after the same entry carries the same pair, whatever the graph ran before.
     /// </remarks>
-    | Produced of work: int
+    | Produced of started: int * index: int
 
     // AoT compat
-    /// <summary>The case name, followed by the work's number for <c>Produced</c>.</summary>
+    /// <summary>The case name, followed by the work's <c>started</c> and <c>index</c> for <c>Produced</c>.</summary>
     override this.ToString() =
         match this with
         | JournalOrigin.External -> "External"
-        | JournalOrigin.Produced work -> "Produced " + string work
+        | JournalOrigin.Produced (started, index) ->
+            "Produced ("
+            + string started
+            + ", "
+            + string index
+            + ")"
 
 /// <summary>One input to a graph, in the order the graph thread observed it.</summary>
 type JournalEntry =

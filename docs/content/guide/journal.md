@@ -35,7 +35,7 @@ Each entry is a `JournalEntry`:
 | `Key` | The application key of the input; `None` for an unkeyed input and for `Flush`. |
 | `PayloadType` | The runtime type name of the value. |
 | `Payload` | `Encoded (codec, version, data)`, `NonReplayable payloadType`, or `Empty` for `Flush`. |
-| `Origin` | `External`, or `Produced work` for an input of the application's attributed async work, numbered in the order the work started on the graph. |
+| `Origin` | `External`, or `Produced (started, index)` for an input of the application's attributed async work, identified by the entry recorded before the work started. |
 
 A `Flush` entry ends each flush pass that followed a recorded entry. Replay flushes at the same
 points, so effects run as often as they did in the recorded run.
@@ -54,9 +54,11 @@ An equal write is recorded, as the traced log records it.
 ### Async work
 
 An input that the application's own async work makes after an `await` is recorded with
-`Origin = Produced work`: a re-run of that work makes the input again. `work` numbers the work on its
-graph in the order it started, so a graph built and driven by the same code numbers its work alike.
-The journal attributes three kinds of work:
+`Origin = Produced (started, index)`: a re-run of that work makes the input again. `started` is the
+`Seq` of the last non-`Flush` entry recorded before the work started, 0 before the first entry, and
+`index` the work's 0-based position among the works started after that entry. The pair depends only on
+the entries before the work, so a work re-run after the same entry carries it whatever else the graph
+ran. The journal attributes three kinds of work:
 
 - an `Mvu` command: a message it dispatches after its synchronous part;
 - on .NET, an effect run: a write, settle, failure or message made in a continuation of the effect's
@@ -174,11 +176,17 @@ replay's own inputs are recorded on the target's journal.
 `ReplayMode.Diagnostic` reproduces the recorded run. Every entry is applied: async sources settle
 with the recorded values, a recorded failure arrives as a `JournalReplayedFailure` carrying the
 recorded message, and the `Produced` messages and writes are applied in their recorded order. The
-attributed async work still runs. An input of a re-run work is dropped while the replayed entries
-hold an unmatched `Produced` entry of the same work, during the replay or after it returns. Its
-inputs beyond the recorded ones are live: the dispatch of a command still in flight when the journal
-was cut reaches `update`, as do the inputs of work started on the target graph before the replay and
-of work started after it.
+attributed async work still runs. A work started during the replay is identified by the replayed
+entry applied before it and its position after that entry, so a re-run work carries its recorded
+`(started, index)` whatever the target ran before the replay, including an earlier replay into the
+same graph. An input of a re-run work is dropped while the replayed entries hold an unmatched
+`Produced` entry of the same work, during the replay or after it returns, including an input the
+work makes synchronously, as when the awaited task has already completed. Its inputs beyond the
+recorded ones are live: the dispatch of a command still in flight when the journal was cut reaches
+`update`. Setup work, started before a graph's first entry, such as an initial command of
+`Mvu.withCmd`, carries `started = 0` and is matched by its position from the graph's construction
+when the replay is the target's first input, so build the target with the same code. The inputs of
+other work started on the target outside the replay, before it or after it, are live.
 A gateway that also wants to skip its external call reads `Journal.replaying` in its synchronous part:
 
 ```fsharp
