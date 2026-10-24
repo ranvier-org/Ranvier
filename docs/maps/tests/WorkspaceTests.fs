@@ -49,7 +49,22 @@ let tests =
                         }
                         [ good; uncompiled; throwing ]
 
-                Expect.equal built.Failed (set [ "p0000000002"; "p0000000003" ]) "the two broken pages"
+                let messages =
+                    built.Messages
+                    |> List.map (fun m ->
+                        $"""%s{m.Page
+                               |> Option.map _.Key
+                               |> Option.defaultValue "-"}: %s{m.Text}""")
+                    |> String.concat
+                        "
+"
+
+                Expect.equal
+                    built.Failed
+                    (set [ "p0000000002"; "p0000000003" ])
+                    $"the two broken pages; the build reported:
+%s{messages}"
+
                 let files = built.Files |> List.map fst
                 Expect.contains files "p0000000001.js" "the good page's bundle"
 

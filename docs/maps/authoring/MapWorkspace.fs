@@ -581,7 +581,15 @@ module MapWorkspace =
                 match export units [] with
                 | Error found -> Error found
                 | Ok (live, found) ->
-                    match compile live found with
+                    // Fickl is a local tool of the repository; a build outside build.fsx may not have restored it.
+                    let restored, output = run options.Repository [] "dotnet" [ "tool"; "restore" ]
+
+                    match
+                        (if restored = 0 then
+                             compile live found
+                         else
+                             Error (found @ [ failure "dotnet tool restore" output ]))
+                    with
                     | Error found -> Error found
                     | Ok (live, found) ->
                         match
