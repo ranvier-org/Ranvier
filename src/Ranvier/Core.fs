@@ -3339,7 +3339,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                 "A signal write",
                 fun () ->
                     if not (Platform.isNull graph.Journal) then
-                        graph.RecordInput (JournalEntryKind.Write, id, box v)
+                        this.RecordWrite v
 
                     if not (equal.Equals (value, v)) then
                         value <- v
@@ -3370,6 +3370,11 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                 else
                     Tracer.Write (observers, false, box v)
         )
+
+    // Out of line, so the setter's body stays at one field load and a null check when the graph has no journal.
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.RecordWrite(v: 'T) =
+        graph.RecordInput (JournalEntryKind.Write, id, box v)
 
     /// <summary>Marks every reader for a check, leaving the value unchanged.</summary>
     member internal _.NotifyCheck() =
