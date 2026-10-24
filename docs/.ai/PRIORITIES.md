@@ -20,8 +20,8 @@ proposed scope for each, and does not implement them.
 | 7 | [#69](https://github.com/shayanhabibi/Ranvier/issues/69) Myriad expansion for traced and untraced primitives | 1.0.0-rc | — | research | done |
 | 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) event sourcing adapters for traced builds | 1.0.0-rc | #165, #166 | research | todo |
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | todo |
-| 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | todo |
-| 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | todo |
+| 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
+| 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
 
 Statuses: `todo`, `in-progress` (an iteration left work; see the log), `done` (merged into
 `integration/issues`), `blocked` (the log names what it needs from the user).
@@ -44,8 +44,12 @@ PR on the branch below it. Merge bottom-up.
 | --- | --- | --- | --- |
 | integration/issues | — | https://github.com/shayanhabibi/Ranvier/pull/170 | master |
 | issue/69 | #69 | https://github.com/shayanhabibi/Ranvier/pull/175 | integration/issues |
+| issue/70 | #70 | https://github.com/shayanhabibi/Ranvier/pull/174 | integration/issues |
 
 ## Log
 
 Each iteration appends one line: date, issue, outcome, commit, next step.
 2026-10-24 #69 research note written — docs/.ai/research/2026-10-24-issue-69.md — b6125ef5 — next: user decides scope
+
+2026-10-24 #70 research note written — docs/.ai/research/2026-10-24-issue-70.md — 92585c4e — next: user decides scope
+2026-10-24 #68 research note written — docs/.ai/research/2026-10-24-issue-68.md — c0e402fe — next: user decides scope
