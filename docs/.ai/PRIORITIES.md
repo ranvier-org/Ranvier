@@ -47,3 +47,5 @@ PR on the branch below it. Merge bottom-up.
 ## Log
 
 Each iteration appends one line: date, issue, outcome, commit, next step.
+
+- 2026-10-24, #164: plan steps 1 to 13 done on `issue/164`; baseline at `f48a3a7` in `docs/.ai/benchmarks/tracing/f48a3a7/`, budget in `docs/content/benchmarks/tracing.md`. Gates passed: `build.fsx -- test` (unfiltered), the traced test stage (five test projects and `docs/maps/tests` with `-p:RanvierTrace=true`), `bench/Ranvier.Counters.Tests` (81), and `counters.ps1 -NoPmc` parity against `integration/issues` (`fdfaa4c`): identical bytes/op and library counters in 71 .NET and 51 Node.js Ranvier rows. Commit: the gate record on `issue/164`. Next: push `issue/164` and open its PR on `integration/issues`.
