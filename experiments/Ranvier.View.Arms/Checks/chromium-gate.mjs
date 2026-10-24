@@ -1,7 +1,7 @@
 // The Chromium and heap gates of Arms.Match (spec, Testing 11-12) over the committed results in docs/research/arms-match:
 // - for each arm operation, the median paired ratio of ranvier-arms-match over ranvier-sugar (same process and round)
 //   is at most 1.05 (the original target; the payload-direct lowering of #157 supersedes the 1.12 allowance of plan
-//   Ruling 38); its 95 % bootstrap interval is printed;
+//   Ruling 38); its 95 % bootstrap interval is printed as below, above or straddling the budget;
 // - the retained JavaScript heap per row after create is within 10 % of ranvier-sugar at 1,000 and 10,000 rows;
 // - the retained JavaScript heap per row after one switch of every row is printed against ranvier-sugar at both counts.
 // Exits 1 on a breach. Usage: node experiments/Ranvier.View.Arms/Checks/chromium-gate.mjs
@@ -18,8 +18,10 @@ for (const operation of operations) {
   const pair = timings.pairRatios.find(r => r.operation === operation && r.numerator === "ranvier-arms-match" && r.denominator === "ranvier-sugar");
   if (!pair) { console.log(`MISSING ${operation}: no ranvier-arms-match:ranvier-sugar pair`); failed = true; continue; }
   const ok = pair.medianRatio <= budget;
+  const [low, high] = pair.ci95;
+  const interval = high <= budget ? "below" : low > budget ? "above" : "straddles";
   failed ||= !ok;
-  console.log(`${ok ? "PASS" : "FAIL"} ${operation} paired median ${pair.medianRatio.toFixed(3)} (95 % ${pair.ci95.map(x => x.toFixed(3)).join("-")}), budget ${budget}`);
+  console.log(`${ok ? "PASS" : "FAIL"} ${operation} paired median ${pair.medianRatio.toFixed(3)} (95 % ${pair.ci95.map(x => x.toFixed(3)).join("-")}, ${interval} the budget), budget ${budget}`);
 }
 
 const heapRows = [1000, 10000];
@@ -42,5 +44,5 @@ for (const [after, heap] of Object.entries(heaps))
     } else console.log(`INFO heap after switch, ${rows} rows: ${delta}`);
   }
 
-console.log(`load: ${timings.notes.slice(-1)[0]}`);
+for (const note of timings.notes.filter(note => note.startsWith("CPU load"))) console.log(`load: ${note}`);
 if (failed) process.exitCode = 1;
