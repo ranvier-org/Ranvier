@@ -620,6 +620,10 @@ type internal TraceLog(locked: bool) =
     member _.Checkpoint: struct (string * obj) =
         sync (fun () -> struct (checkpointName, checkpointSnapshot))
 
+    /// <summary>The checkpoint's name and snapshot, as <c>Checkpoint</c>, and a copy of the retained events.</summary>
+    member _.Retained: struct (string * obj * TraceEvent[]) =
+        sync (fun () -> struct (checkpointName, checkpointSnapshot, events.ToArray ()))
+
     /// <summary>
     /// Drops the events up to and including <c>seq</c>, and records <c>name</c> and <c>snapshot</c> as the checkpoint.
     /// </summary>

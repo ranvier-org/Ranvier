@@ -2188,6 +2188,97 @@ let tests =
                         let resync = Trace.eventsSince g (Trace.checkpointOf g).Snapshot.Seq
                         Expect.equal (resync |> Array.map _.Seq) [| 4..last |] "the resync reads the retained tail"
                     }
+
+                    test "snapshot and snapshotAt fold the retained events onto the checkpoint" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Trace.named "count" (fun () -> Signal (g, 0))
+                        let m = createMemo (fun _ -> s.Value * 2)
+                        createEffect (fun () -> m.Value |> ignore)
+
+                        for i in 1..5 do
+                            s.Value <- i
+
+                        let events = Trace.events g
+                        let last = events[events.Length - 1].Seq
+                        let k = last / 2
+                        let full = Trace.snapshot g
+                        let later = [| k..last |] |> Array.map (Trace.snapshotAt g)
+                        Trace.checkpoint g k "cut"
+                        Expect.equal (Trace.snapshot g) full "the snapshot is unchanged by the checkpoint"
+                        Expect.equal ([| k..last |] |> Array.map (Trace.snapshotAt g)) later "snapshotAt from the checkpoint seq is unchanged"
+
+                        Expect.throwsT<System.ArgumentOutOfRangeException>
+                            (fun () -> Trace.snapshotAt g (k - 1) |> ignore)
+                            "snapshotAt before the checkpoint throws"
+                    }
+
+                    test "why of a run caused before the checkpoint ends at BeforeCheckpoint" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let m = createMemo (fun _ -> s.Value * 2)
+                        m.Value |> ignore
+                        s.Value <- 1
+                        let events = Trace.events g
+                        Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                        Expect.equal m.Value 2 "the memo reruns"
+                        Expect.equal (Trace.why g m).Root (Some (BeforeCheckpoint "cut")) "the dirty mark is before the checkpoint"
+                        Expect.equal (Trace.whyAt g m 2).Root (Some (BeforeCheckpoint "cut")) "whyAt names the checkpoint"
+                        Expect.equal (Trace.whyDepth g 0 m).Root (Some (BeforeCheckpoint "cut")) "whyDepth names the checkpoint"
+                        let history = Trace.history g m
+                        Expect.equal (history.Runs |> List.map _.Root) [ BeforeCheckpoint "cut" ] "history keeps the retained run"
+                    }
+
+                    test "origin of a node created before the checkpoint comes from the snapshot" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let m = Trace.named "doubled" (fun () -> createMemo (fun _ -> s.Value * 2))
+                        m.Value |> ignore
+                        let before = Trace.origin g m
+                        let events = Trace.events g
+                        Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                        Expect.equal (Trace.origin g m) { before with Run = 0 } "the origin survives the checkpoint, its run before it"
+                        Trace.label (g, m, "renamed")
+                        Expect.equal (Trace.origin g m).Label (Some "renamed") "a retained relabel wins"
+                    }
+
+                    test "reconcile is empty after a checkpoint" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 0)
+                        let m = createMemo (fun _ -> s.Value * 2)
+                        createEffect (fun () -> m.Value |> ignore)
+                        s.Value <- 1
+                        let events = Trace.events g
+                        Trace.checkpoint g events[events.Length - 1].Seq "cut"
+                        Expect.isEmpty (Trace.reconcile g) "the checkpoint's edges match the live lists"
+                        s.Value <- 2
+                        Expect.isEmpty (Trace.reconcile g) "the checkpoint's and the tail's edges match the live lists"
+                    }
+
+#if !FABLE_COMPILER
+                    // .NET only: TraceModel.parseDump is .NET only.
+                    test "a checkpointed dump parses back to the live snapshot" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Trace.named "count" (fun () -> Signal (g, 0))
+                        let m = createMemo (fun _ -> s.Value * 2)
+                        createEffect (fun () -> m.Value |> ignore)
+
+                        for i in 1..3 do
+                            s.Value <- i
+
+                        let events = Trace.events g
+                        let k = events[events.Length - 1].Seq / 2
+                        Trace.checkpoint g k "cut"
+                        let dump = TraceModel.parseDump (Trace.dumpText g)
+                        Expect.equal dump.Checkpoint "cut" "the dump names the checkpoint"
+                        Expect.equal dump.SeqFrom (k + 1) "the dump starts after the checkpoint"
+                        Expect.equal (TraceModel.fold dump.Snapshot dump.Events) (Trace.snapshot g) "the dump folds to the live snapshot"
+                    }
+#endif
                 ]
 #endif
         ]
