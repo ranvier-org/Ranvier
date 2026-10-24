@@ -19,7 +19,7 @@ proposed scope for each, and does not implement them.
 | 6 | [#157](https://github.com/shayanhabibi/Ranvier/issues/157) perf(arms): restore the 5% Chromium target | — | quiet machine for timings | implement | todo |
 | 7 | [#69](https://github.com/shayanhabibi/Ranvier/issues/69) Myriad expansion for traced and untraced primitives | 1.0.0-rc | — | research | done |
 | 8 | [#65](https://github.com/shayanhabibi/Ranvier/issues/65) trace export sink for traced builds (research note done, PR #183) | 1.0.0-rc | #165, #166 | implement | todo |
-| 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | todo |
+| 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | done |
 | 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
 | 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | todo |
@@ -53,6 +53,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/65 | #65 | https://github.com/shayanhabibi/Ranvier/pull/183 | integration/issues |
 | issue/166 | #166 | https://github.com/shayanhabibi/Ranvier/pull/182 | integration/issues |
 | issue/168 | #168 | https://github.com/shayanhabibi/Ranvier/pull/187 | integration/issues |
+| issue/66 | #66 | https://github.com/shayanhabibi/Ranvier/pull/189 | integration/issues |
 
 ## Log
 
@@ -88,3 +89,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-25 #168 in-progress — review fix: `wait_version` matches `ValueKind` before `TryGetInt64`, so a string `version` or `timeoutMs` returns its documented reason instead of the SDK's generic error (test asserts the reason texts); full gate passed: `format --dry-format`, `build.fsx -- build`, `build.fsx -- test` unfiltered (CSharp 95, Mcp 31, Ranvier.Tests 1,477, Twin 1,067, Wire 290, Maps 101; 0 failed), traced Mcp tests (37), `build.fsx -- docs`; pushed to PR #187 — 39047e7e — next: plan step 10, the comparative agent experiment, stays unmet acceptance work
 - 2026-10-25 #168 in-progress — adapter and sample implemented, docs page documents the MCP host, exposure and adapter members, full gate passed (3,061 tests, traced Mcp 37, docs 223 pages); row stays in-progress by user ruling — f3de1589 — next: plan step 10, the comparative agent experiment, stays unmet acceptance work
 - 2026-10-25 #168 done — comparative evaluation recorded (20 runs in two rounds, all successful in one iteration; MCP costs more with no measurable benefit at this scale), accepted by the user — next: merge PR #187 once CI clears
+- 2026-10-25 #66 research note written — docs/.ai/research/2026-10-25-issue-66.md — fced1b98 — next: user decides scope
