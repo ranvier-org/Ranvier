@@ -72,3 +72,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-24 #165 done — review-only iteration found no findings; gate passes (format, build, test, test-fable) — a302b435 — next: none, awaiting PR #178 review
 - 2026-10-24 #165 in-progress — the three major review findings fixed (collected signals released by weak tracking, escaped signals kept live, owner labels no longer leak dropped entries) and gates pass, not pushed — a302b435 — next: resolve the unresolved review findings, then push `issue/165` to update PR #178
 - 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope (untraced journal hook, order against #166)
+- 2026-10-24 #65 research note written — docs/.ai/research/2026-10-24-issue-65.md — cc71c778 — next: user decides scope
