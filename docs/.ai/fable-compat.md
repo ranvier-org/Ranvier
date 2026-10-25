@@ -66,7 +66,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
-| Journal.fs | 55 | 54 | 54 | 58 | 57 | 57 | 2 | 0 |
+| Journal.fs | 65 | 64 | 64 | 68 | 67 | 67 | 2 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1606 | 1584 | 1581 | 1827 | 1800 | 1797 | 146 | 1 |
+| **Total** | 1616 | 1594 | 1591 | 1837 | 1810 | 1807 | 146 | 1 |
 
 ## Tests.fs
 
@@ -2033,7 +2033,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | an effect continuation's direct settle reaches each replay once | Fable has no async context to carry the work into a continuation. |
 | an external dispatch drained under an effect run's execution context records an External entry | Fable has no async context to carry the work into a continuation. |
 
-<details><summary>57 passed in every build and delivery that runs them</summary>
+<details><summary>67 passed in every build and delivery that runs them</summary>
 
 - GraphOptions.Default has no journal
 - WithJournal sets the journal
@@ -2080,6 +2080,16 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Mvu.journal / a diagnostic replay into a target that ran an extra effect first applies each message once
 - Mvu.journal / a diagnostic replay after a commanded message on the target applies each message once
 - Mvu.journal / a diagnostic replay into a fresh graph applies the dispatch of an initial command once
+- Mvu.journal / a journal records its setup work ahead of its first entry
+- Mvu.journal / a Diagnostic replay into a target that ran an extra effect before its setup raises
+- Mvu.journal / a Diagnostic replay into a matching target applies each message once
+- Mvu.journal / a Diagnostic replay into a target that started extra work after its setup applies each message once
+- Mvu.journal / a Reenact replay into a target that ran an extra effect before its setup raises
+- Mvu.journal / a Reenact replay into a matching target applies each message once
+- Mvu.journal / a Reenact replay into a target that started extra work after its setup applies each message once
+- Mvu.journal / the replay error names the recorded and the found setup work
+- Mvu.journal / a Diagnostic replay applies the synchronous dispatch of an initial command once
+- Mvu.journal / a Reenact replay applies the synchronous dispatch of an initial command once
 - Mvu.journal / a second diagnostic replay into the same graph applies each message once
 - Mvu.journal / each replay mode applies a command's synchronous dispatch and its dispatch after an await once
 - Mvu.journal / a diagnostic replay after the gate opens applies a command's synchronous dispatch and its dispatch after an await once
