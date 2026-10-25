@@ -26,10 +26,24 @@ let graph = new Graph (GraphOptions.Default.WithJournal journal)
 With `Journal = None`, the default, a graph records nothing. Every input site then costs one field
 load and a null check.
 
+`MemoryJournal.Entries` returns the entries recorded so far, oldest first, and `Clear` removes them.
+Another sink implements `IInputJournal`: `Stream` names the journal in every entry, and `Record`
+runs on the graph's thread as each entry is recorded. An exception raised by `Record` propagates to
+the input that made the entry.
+
+```fsharp
+type ConsoleJournal(stream: string) =
+    interface IInputJournal with
+        member _.Stream = stream
+        member _.Record entry = printfn "%d %O %A %O" entry.Seq entry.Kind entry.Key entry.Payload
+```
+
 Each entry is a `JournalEntry`:
 
 | Field | Meaning |
 | --- | --- |
+| `Schema` | The entry format version, 3. |
+| `Stream` | The `Stream` of the journal that recorded the entry. |
 | `Seq` | The 1-based position of the entry in its graph's journal; 0 for `Setup`. |
 | `Kind` | `Write`, `Settle`, `Fail`, `Message`, `Flush` or `Setup`. |
 | `Key` | The application key of the input; `None` for an unkeyed input, for `Flush` and for `Setup`. |
@@ -109,6 +123,7 @@ createEffect (fun () ->
 `Journal.produce` runs the input on the graph's thread, and queues it when called from another
 thread. An input made outside every attributed work, such as a socket push or an event handler's
 write after an `await`, is recorded as `External`: replay applies it, and nothing re-runs it.
+
 ## Keys and codecs
 
 A replay finds each input by its application key, a string stable across runs. `Journal.key`
@@ -146,8 +161,8 @@ The entry stays in the journal, and a replay that reaches it fails.
 A key is unique on its graph, and a node holds one key. The registration belongs to the innermost
 enclosing scope, as an `onCleanup` does: when the scope is disposed, or its computation re-runs, the
 key is free for another node. On a graph with a journal, `Journal.key` raises
-`InvalidOperationException` in the body of a pure computation, such as a `createMemo` memo. In a traced build `Journal.key` also labels an unlabelled
-node with the key.
+`InvalidOperationException` in the body of a pure computation, such as a `createMemo` memo. In a
+traced build `Journal.key` also labels an unlabelled node with the key.
 
 The settles of an async memo are not recorded: an async memo's flight is a computation over its
 inputs. Route an external result through a keyed `AsyncSource` to journal it.
@@ -167,7 +182,17 @@ dispatches later, after an `await`, records a `Produced` entry; the command need
 The synchronous dispatches of the initial commands of `Mvu.withCmd` are derived from the
 construction and record nothing; the target's construction makes them again.
 Another adapter registers its message site with `Journal.messages`, wraps each external message in
-`Journal.recordMessage`, and passes the messages of its async work through `Journal.produce`.
+`Journal.recordMessage`, and passes the messages of its async work through `Journal.produce`. A
+replay applies a `Message` entry by calling the site's dispatch function:
+
+```fsharp
+let site = Journal.messages "chat" chatMsgCodec post graph
+let send msg = Journal.recordMessage site msg (fun () -> post msg)
+```
+
+`recordMessage` records the message when it arrives from outside every computation, then runs the
+apply function; the writes and messages made while it runs are derived and record nothing. With no
+journal on the graph, the site records nothing and `recordMessage` only applies the message.
 
 ## Replay
 
@@ -198,9 +223,10 @@ same graph. An input of a re-run work is dropped while the replayed entries hold
 input of a `Journal.produce` call or a command's dispatch that runs synchronously because the
 awaited task has already completed. The work's other inputs are live: a synchronous dispatch that
 the recorded run made before its `await`, and the dispatch of a command still in flight when the
-journal was cut, reach `update`. Setup work, started before a graph's first entry, such as an initial command of
-`Mvu.withCmd`, carries `started = 0` and is matched by its position among the target's setup work.
-A replay whose journal holds an input of setup work requires a target with no recorded entry (see
+journal was cut, reach `update`. Setup work, started before a graph's first entry, such as an
+initial command of `Mvu.withCmd`, carries `started = 0` and is matched by its position among the
+target's setup work. A replay whose entries hold an input of setup work requires the journal's
+`Setup` entry among them and a target with no recorded entry (see
 [Matching target](#matching-target)). The inputs of other work started on the target outside the
 replay, before it or after it, are live.
 A gateway that also wants to skip its external call reads `Journal.replaying` in its synchronous part:
@@ -259,9 +285,9 @@ Journal entry 0 (unkeyed, setup) cannot be replayed: the journal's setup work [w
 made a recorded input, and the target recorded an entry before the replay
 ```
 
-Entries that hold an input of setup work must hold the journal's `Setup` entry too. A replay of such
-entries without it, such as the entries after a position, raises on the first `Produced` entry of setup work, whatever the
-target:
+Entries that hold an input of setup work must hold the journal's `Setup` entry too. A replay of
+such entries without it, such as the entries after a position, raises on the first `Produced` entry
+of setup work, whatever the target:
 
 ```text
 Journal entry 2 (key "initial", System.Int32) cannot be replayed: the entries hold an input of
@@ -284,10 +310,10 @@ it differ.
 ### Exactly once
 
 In both modes, in a matching target, each recorded input reaches the graph once, provided every
-input of the re-run async work is attributed. Entries that hold an input of setup work count as
-matching only with their `Setup` entry; without it the replay raises before applying any entry. An unattributed input of re-run work, such as an
-effect continuation's settle under Fable without `Journal.produce`, is recorded as `External`: the
-replay applies it, and the re-run work makes it again.
+input of the re-run async work is attributed. Entries that hold an input of setup work match only
+with their `Setup` entry; without it the replay raises before it applies any entry. An unattributed
+input of re-run work, such as an effect continuation's settle under Fable without `Journal.produce`,
+is recorded as `External`: the replay applies it, and the re-run work makes it again.
 
 ### Errors
 
@@ -299,6 +325,7 @@ A replay raises `JournalReplayException` on an entry it cannot apply, naming its
 - the entries hold an input of setup work and no `Setup` entry;
 - the entries hold an input of setup work, and the target recorded an entry before the replay;
 - the entry is `NonReplayable`;
+- the entry has no key, or carries an `Empty` payload;
 - its key is not registered on the target graph;
 - the key's input takes no entry of that kind, such as a `Settle` for a signal;
 - the codec name or version differs from the key's codec;

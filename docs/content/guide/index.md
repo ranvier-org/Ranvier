@@ -127,7 +127,7 @@ Dispatchers move work from other threads onto the graph thread.
 | Collection combinators (`Projection.filter`, `choose`, `map`, `mapWith`, `sortBy`, `groupBy`) | Implemented and tested, including pending and error behaviour; see [Collections](collection-views.fsx). |
 | Editable values (`createEditable`, `createDraft`) and the MVU bridge (`Mvu`, in the `Ranvier.Elmish` package) | Implemented and tested; see [Editable values and forms](forms.md) and [Migrating from Elmish](elmish.md). |
 | Shared remote queries and mutations | Implemented in `Ranvier.Query`, with acquired leases, retained refresh data and atomic reconciliation; see [Queries and mutations](queries.md). |
-| Input journal and replay (`GraphOptions.Journal`, `Journal.replay`, `Mvu.journal`) | Implemented and tested in both builds, with diagnostic replay and re-enactment; restore from a stored snapshot waits on #68. See [Input journal and replay](journal.md). |
+| Input journal and replay (`GraphOptions.Journal`, `Journal.replay`, `Mvu.journal`) | Implemented and tested in both builds, with diagnostic replay and re-enactment; restore from a stored snapshot waits on #68, and a snapshot followed by a tail replay on #197. See [Input journal and replay](journal.md). |
 | Reusable lens and prism values for deep writes | Not implemented; they wait on a need for reusable focus paths over collections. |
 
 :::

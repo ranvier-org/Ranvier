@@ -561,9 +561,9 @@ module Journal =
     /// produces its inputs. In both modes, on a matching target, each recorded input reaches the graph once when every
     /// input of the re-run work is attributed: on .NET, the inputs of an <c>Mvu</c> command, of a continuation of an
     /// effect's body, and those passed to <c>produce</c>; under Fable, the inputs of an <c>Mvu</c> command and those
-    /// passed to <c>produce</c>. An unattributed input of re-run work is recorded as
-    /// <c>External</c> and is applied twice. An applied entry records an entry of the same origin. <c>replaying</c>
-    /// returns the mode while the replay runs.
+    /// passed to <c>produce</c>. An unattributed input of re-run work is recorded as <c>External</c> and is applied
+    /// twice. An applied entry records an entry of the same origin. <c>replaying</c> returns the mode while the replay
+    /// runs.
     /// </para>
     /// <para>
     /// The entries of a batch are checked and decoded before the batch runs, so a failing entry leaves the preceding
@@ -577,8 +577,9 @@ module Journal =
     /// <c>graph</c>'s setup work does not begin with the setup work of the <c>Setup</c> entry or matches a producing
     /// setup work at more than one position, the entries hold an input of setup work and no <c>Setup</c> entry, the
     /// entries hold an input of setup work and <c>graph</c> recorded an entry before the replay, an entry is
-    /// non-replayable, its key is not registered on <c>graph</c>, its codec name or version differs from the key's
-    /// codec, or its payload fails to decode.
+    /// non-replayable, has no key or an empty payload, its key is not registered on <c>graph</c>, the input registered
+    /// under its key takes no entry of its kind, its codec name or version differs from the key's codec, or its payload
+    /// fails to decode.
     /// </exception>
     let replay (mode: ReplayMode) (graph: Graph) (entries: JournalEntry seq) : unit =
         let recorder = graph.Journal

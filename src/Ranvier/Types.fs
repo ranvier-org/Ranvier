@@ -444,8 +444,8 @@ type JournalEntry =
         Stream: string
 
         /// <summary>
-        /// The 1-based position of the entry in its graph's journal, or 0 for the <c>Setup</c> entry. A snapshot taken at
-        /// a position replays from the entries after it.
+        /// The 1-based position of the entry in its graph's journal, or 0 for the <c>Setup</c> entry. A replay of the
+        /// entries after a position needs the <c>Setup</c> entry too when they hold an input of setup work.
         /// </summary>
         Seq: int
 
