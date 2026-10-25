@@ -24,7 +24,7 @@ proposed scope for each, and does not implement them.
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
 | 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | todo |
 | 13 | [#185](https://github.com/shayanhabibi/Ranvier/issues/185) store adapters for the input journal and persisted state | — | #184, #68 | implement | blocked |
-| 14 | [#193](https://github.com/shayanhabibi/Ranvier/issues/193) trace identity paths name the application's line | 1.0.0-rc | #166 | implement | in-progress |
+| 14 | [#193](https://github.com/shayanhabibi/Ranvier/issues/193) trace identity paths name the application's line | 1.0.0-rc | #166 | implement | done |
 
 Statuses: `todo`, `in-progress` (an iteration left work; see the log), `done` (merged into
 `integration/issues`), `blocked` (the log names what it needs from the user).
@@ -110,3 +110,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-25 #157 done — Arms.Match helpers documented in docs/content/view/arms.md on top of the RAN021 suppression and the analyzer gate; rebased onto origin/integration/issues (c374cfca) — 04b79e74 — next: user confirms plan P8 and the CI scope on PR #181
 - 2026-10-25 #193 in-progress — plan written (docs/superpowers/plans/2026-10-25-issue-193.md): AssemblyMetadata(RanvierLibrary) marker on every src library but the core, read by TraceSite.capture — next: plan steps 1 to 4
 - 2026-10-25 #193 in-progress — TraceSite.capture skips frames from every marked Ranvier library; gate passed (3061 tests, test-fable green) — 6e883b96 — next: verify-trace IL and public-surface check against the base
+- 2026-10-25 #193 done — review-only iteration: full gate green (3061 tests, test-fable green, docs and analyzers pass), no findings — 7cdc5a17 — next: review and merge PR #196
