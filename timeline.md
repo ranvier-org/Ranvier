@@ -82,6 +82,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 83,123 | 127,529 | 1,738,294 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 83,059 | 127,456 | 1,738,327 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 83,311 | 127,493 | 1,731,319 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 83,373 | 127,543 | 1,731,275 |
 
 ## app-table
 
@@ -165,6 +166,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 4,420,722 | 9,355,611 | 107,908,270 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 4,420,555 | 9,353,287 | 107,629,882 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 4,417,779 | 9,538,966 | 107,885,493 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 4,417,707 | 9,248,877 | 107,807,178 |
 
 ## async-recover
 
@@ -248,6 +250,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 139,026 | 39,713 | 442,088 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 139,026 | 39,720 | 442,093 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 139,071 | 39,094 | 442,894 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 139,071 | 39,099 | 442,892 |
 
 ## async-resolve
 
@@ -331,6 +334,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,788,561 | 1,091,968 | 12,354,405 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,788,561 | 1,091,532 | 12,357,844 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 2,788,051 | 1,044,522 | 12,371,925 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,788,051 | 1,044,653 | 12,371,673 |
 
 ## chain
 
@@ -414,6 +418,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 13,035 | 318 | 2,453 | 4,491 | 3,209 | 72,783 | 66,755 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 13,035 | 318 | 2,453 | 4,491 | 3,209 | 72,782 | 66,755 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -497,6 +502,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,552 | 3,070 | 2,499 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,552 | 3,070 | 2,499 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 2,553 | 3,071 | 2,500 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -580,6 +586,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 74,709 | 829,388 | 2,593,875 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 74,709 | 829,388 | 2,593,780 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 74,709 | 829,457 | 2,593,768 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 74,709 | 829,406 | 2,593,680 |
 
 ## create
 
@@ -663,6 +670,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 13,544,374 | 2,865,677 | 2,545,392 | 2,132,160 | 4,059,639 | 33,946,381 | 49,753,988 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 13,824,943 | 2,881,676 | 2,548,413 | 2,131,773 | 4,060,083 | 34,018,814 | 49,813,940 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 13,448,436 | 2,865,677 | 2,570,383 | 2,131,081 | 4,067,177 | 34,019,300 | 50,276,852 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 13,573,806 | 2,865,678 | 2,570,400 | 2,131,808 | 4,067,073 | 34,019,049 | 50,276,819 |
 
 ## create-on
 
@@ -746,6 +754,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,924,485 | 4,412,422 | 54,639,972 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,927,489 | 4,412,468 | 54,638,750 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 2,965,484 | 4,175,729 | 55,101,489 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,949,516 | 4,175,528 | 55,101,712 |
 
 ## cutoff
 
@@ -829,6 +838,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -912,6 +922,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 780 | 744 | 16,448 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 780 | 744 | 16,448 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 781 | 751 | 16,520 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -995,6 +1006,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 750 | 795 | 16,471 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 750 | 795 | 16,471 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 751 | 802 | 16,543 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1078,6 +1090,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,706,247 | 806,288 | 367,497 | 465,944 | 487,296 | 13,193,640 | 9,106,356 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,707,643 | 806,288 | 367,497 | 465,948 | 487,144 | 13,194,030 | 9,106,393 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 2,706,242 | 806,288 | 367,497 | 466,182 | 495,308 | 13,194,070 | 9,106,072 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,707,640 | 806,290 | 367,497 | 465,634 | 495,102 | 13,196,100 | 9,106,984 |
 
 ## dispose-on
 
@@ -1161,6 +1174,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 346,497 | 479,677 | 8,902,589 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 346,497 | 479,415 | 8,902,532 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 346,497 | 487,992 | 8,902,840 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 346,497 | 487,761 | 8,902,562 |
 
 ## editable-edit
 
@@ -1244,6 +1258,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 181,606 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 181,606 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 181,706 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 181,706 |
 
 ## editable-upstream
 
@@ -1327,6 +1342,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 232,755 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 232,755 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 232,855 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 232,855 |
 
 ## fail-recompute
 
@@ -1410,6 +1426,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 64,845 | 1,369 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 65,125 | 1,369 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 65,086 | 1,370 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 65,086 | 1,370 |
 
 ## flight
 
@@ -1493,6 +1510,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 10,943 | 6,195 | 6,196 | 11,269 | 10,715 | 22,343 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 10,945 | 6,194 | 6,195 | 11,267 | 10,713 | 22,345 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 
 ## keyed-insert
 
@@ -1576,6 +1594,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,920,718 | 53,968 | 54,940 | 3,259,515 | 240,592 | 176,209 | 45,000,051 | 2,635,989 | 2,655,155 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,920,725 | 53,910 | 54,948 | 3,258,506 | 237,796 | 176,294 | 45,005,831 | 2,635,843 | 2,655,150 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 1,921,737 | 53,949 | 54,957 | 3,273,577 | 237,381 | 176,310 | 45,077,674 | 2,634,604 | 2,655,548 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,921,737 | 53,917 | 54,952 | 3,273,613 | 237,683 | 176,385 | 45,078,856 | 2,634,611 | 2,655,553 |
 
 ## keyed-remove
 
@@ -1659,6 +1678,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,919,656 | 43,627 | 45,255 | 3,284,510 | 592,061 | 605,813 | 44,954,116 | 1,925,895 | 1,959,735 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,919,669 | 43,616 | 45,276 | 3,283,430 | 592,210 | 606,167 | 44,961,172 | 1,925,815 | 1,959,775 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 1,920,672 | 43,639 | 45,301 | 3,289,507 | 592,304 | 606,090 | 45,030,312 | 1,924,545 | 1,960,192 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,920,673 | 43,607 | 45,299 | 3,289,537 | 592,338 | 606,065 | 45,030,934 | 1,924,505 | 1,960,236 |
 
 ## keyed-swap
 
@@ -1742,6 +1762,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,972,329 | 46,180 | 46,915 | 3,614,835 | 149,547 | 511,917 | 46,119,229 | 917,147 | 933,566 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,972,349 | 46,196 | 46,930 | 3,613,711 | 149,092 | 511,905 | 46,115,068 | 917,190 | 933,557 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 1,973,362 | 46,237 | 46,927 | 3,618,345 | 149,011 | 512,004 | 46,187,343 | 915,635 | 933,773 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,973,362 | 46,205 | 46,927 | 3,620,210 | 148,987 | 512,023 | 46,187,322 | 915,724 | 933,769 |
 
 ## mvu-dispatch
 
@@ -1825,6 +1846,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 58,291 | 787 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 58,291 | 787 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 58,292 | 788 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 58,292 | 788 |
 
 ## persist-write
 
@@ -1908,6 +1930,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 7,029 | 883 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 7,044 | 883 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 7,014 | 884 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 7,062 | 900 |
 
 ## project-chain
 
@@ -1991,6 +2014,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,071,750 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,071,772 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 1,071,763 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,071,716 |
 
 ## project-churn
 
@@ -2074,6 +2098,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 36,487 | 34,340 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 36,486 | 34,321 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 36,385 | 34,250 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2157,6 +2182,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 50,426 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 50,441 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 50,460 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 50,460 |
 
 ## project-reorder
 
@@ -2240,6 +2266,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 780,073 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 780,074 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 780,068 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 780,068 |
 
 ## server-render
 
@@ -2323,6 +2350,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 682,248 | 1,148,325 | 9,894,110 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 680,651 | 1,148,192 | 9,893,767 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 680,651 | 1,148,275 | 9,894,039 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 680,651 | 1,148,744 | 9,893,748 |
 
 ## shape-diamond
 
@@ -2406,6 +2434,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 59,914 | 80,437 | 1,763,703 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 59,914 | 80,437 | 1,763,703 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 59,915 | 80,445 | 1,763,775 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 59,915 | 80,445 | 1,763,775 |
 
 ## shape-dynamic
 
@@ -2489,6 +2518,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 83,778 | 108,194 | 2,030,350 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 83,778 | 108,194 | 2,030,350 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 84,378 | 108,947 | 2,037,685 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 84,378 | 108,947 | 2,037,686 |
 
 ## stream-burst-1
 
@@ -2572,6 +2602,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,950 | 1,548 | 2,519 | 4,695 | 3,672 | 13,467 | 47,587 | 45,790 | 55,386 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,468 | 47,581 | 45,790 | 55,386 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,469 | 47,577 | 45,790 | 55,386 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,468 | 47,581 | 45,790 | 55,385 |
 
 ## stream-burst-16
 
@@ -2655,6 +2686,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 5,022 | 24,618 | 5,729 | 9,738 | 50,033 | 8,071 | 123,814 | 720,148 | 113,737 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 5,022 | 24,618 | 5,712 | 9,738 | 50,033 | 8,069 | 123,812 | 720,147 | 113,737 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 5,022 | 24,618 | 5,712 | 9,740 | 50,033 | 8,071 | 123,812 | 720,148 | 113,737 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 5,022 | 24,618 | 5,712 | 9,740 | 50,033 | 8,071 | 123,807 | 720,147 | 113,734 |
 
 ## stream-burst-256
 
@@ -2738,6 +2770,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 54,162 | 393,702 | 57,068 | 131,735 | 792,786 | 74,717 | 1,343,840 | 11,508,772 | 1,046,764 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 54,162 | 393,702 | 57,051 | 131,968 | 792,888 | 74,743 | 1,343,775 | 11,508,772 | 1,046,764 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 54,162 | 393,702 | 57,051 | 131,866 | 792,798 | 74,713 | 1,343,780 | 11,508,770 | 1,046,765 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 54,162 | 393,702 | 57,051 | 131,874 | 792,887 | 74,743 | 1,343,732 | 11,508,770 | 1,046,765 |
 
 ## stream-restart
 
@@ -2821,6 +2854,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 4,201 | 5,007 | 6,537 | 16,846 | 42,836 | 71,954 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 4,202 | 4,997 | 6,535 | 16,845 | 42,834 | 71,954 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 4,203 | 4,998 | 6,575 | 16,887 | 42,908 | 72,026 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 4,203 | 4,998 | 6,574 | 16,885 | 42,908 | 72,026 |
 
 ## timed-admit-both
 
@@ -2904,6 +2938,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 117,708 | 135,988 | 2,693,518 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 117,708 | 135,991 | 2,693,518 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 117,709 | 130,052 | 2,693,588 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 117,709 | 130,118 | 2,693,586 |
 
 ## timed-admit-debounce
 
@@ -2987,6 +3022,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 116,613 | 134,524 | 2,653,871 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 116,613 | 134,528 | 2,653,871 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 116,614 | 128,621 | 2,653,942 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 116,614 | 128,620 | 2,653,942 |
 
 ## timed-admit-first
 
@@ -3070,6 +3106,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 69,620 | 79,523 | 1,620,606 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 69,620 | 79,523 | 1,620,606 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 69,621 | 79,565 | 1,620,678 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 69,621 | 79,564 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -3153,6 +3190,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 116,875 | 134,843 | 2,663,727 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 116,875 | 134,848 | 2,663,726 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 116,876 | 128,947 | 2,663,798 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 116,876 | 128,943 | 2,663,798 |
 
 ## timed-capture-both
 
@@ -3236,6 +3274,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 35,739 | 44,893 | 846,755 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 35,739 | 44,925 | 847,205 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 35,740 | 44,944 | 847,278 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 35,740 | 44,942 | 847,277 |
 
 ## timed-capture-debounce
 
@@ -3319,6 +3358,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 35,611 | 44,190 | 847,585 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 35,611 | 44,190 | 847,585 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 35,612 | 44,169 | 847,659 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 35,612 | 44,168 | 847,657 |
 
 ## timed-capture-first
 
@@ -3402,6 +3442,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 32,091 | 36,699 | 745,579 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 32,091 | 36,699 | 745,579 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 32,092 | 36,741 | 745,651 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 32,092 | 36,740 | 745,651 |
 
 ## timed-capture-last
 
@@ -3485,6 +3526,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 35,547 | 44,126 | 839,713 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 35,547 | 44,124 | 839,712 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 35,548 | 44,104 | 839,787 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 35,548 | 44,104 | 839,786 |
 
 ## update
 
@@ -3568,6 +3610,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,087,783 | 38,805 | 84,005 | 262,547 | 154,752 | 3,350,244 | 2,537,434 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,087,783 | 38,805 | 84,005 | 262,982 | 154,811 | 3,350,262 | 2,537,435 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 1,087,790 | 38,805 | 84,105 | 263,049 | 145,048 | 3,350,263 | 2,544,622 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,089,390 | 38,805 | 84,105 | 262,771 | 145,114 | 3,350,099 | 2,544,568 |
 
 ## update-on
 
@@ -3651,6 +3694,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 94,505 | 168,078 | 2,865,019 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 94,505 | 168,117 | 2,864,997 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 94,605 | 168,803 | 2,872,175 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 94,605 | 168,822 | 2,872,196 |
 
 ## work-form
 
@@ -3734,6 +3778,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 172,552 | 165,024 | 307,355 | 294,805 | 5,409,039 | 5,322,182 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 172,552 | 165,024 | 307,327 | 294,791 | 5,409,041 | 5,322,182 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 172,679 | 165,150 | 308,457 | 296,713 | 5,418,080 | 5,331,169 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 172,679 | 165,150 | 308,486 | 296,695 | 5,418,158 | 5,331,170 |
 
 ## work-status
 
@@ -3817,6 +3862,7 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 101,945 | 80,135 | 267,829 | 155,440 | 2,645,604 | 2,383,239 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 101,945 | 80,135 | 267,824 | 155,449 | 2,645,657 | 2,383,239 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 102,045 | 80,235 | 268,512 | 156,080 | 2,652,728 | 2,390,414 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 102,045 | 80,235 | 268,554 | 156,070 | 2,652,710 | 2,390,298 |
 
 ## work-value
 
@@ -3900,4 +3946,5 @@
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 109,069 | 120,971 | 268,101 | 282,258 | 2,630,243 | 2,954,824 |
 | `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 109,069 | 120,969 | 268,087 | 282,265 | 2,630,267 | 2,954,827 |
 | `1504b3b` | 2026-10-25 | perf(core): allocate a signal's observer set on its first observer (#216) | 109,169 | 121,071 | 268,758 | 282,916 | 2,637,460 | 2,962,018 |
+| `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 109,169 | 121,070 | 268,780 | 282,897 | 2,637,465 | 2,961,981 |
 
