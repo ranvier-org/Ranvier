@@ -3680,17 +3680,9 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 #if RANVIER_TRACE
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-
-    let observed () = observers
 #else
     /// <summary>The signal's readers; null until the first reader arrives.</summary>
     let mutable observers: ObserverSet = Unchecked.defaultof<_>
-
-    let observed () =
-        if Platform.isNull (box observers) then
-            observers <- ObserverSet ()
-
-        observers
 #endif
     let mutable value = initial
 
@@ -3718,14 +3710,24 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
         member _.Status = Status.None
 
     interface ISource with
+        // The null checks sit in the members rather than a shared helper, which the JIT leaves as a call.
         member _.AddObserver(c, slot) =
-            (observed ()).Add(c, slot)
+#if !RANVIER_TRACE
+            if Platform.isNull (box observers) then
+                observers <- ObserverSet ()
+#endif
+            observers.Add (c, slot)
 
         member _.TryAddObserver(c, slot) =
-            (observed ()).TryAdd(c, slot)
+#if !RANVIER_TRACE
+            if Platform.isNull (box observers) then
+                observers <- ObserverSet ()
+#endif
+            observers.TryAdd (c, slot)
 
+        // A handle comes from an add, so the set exists.
         member _.RemoveObserverAt(c, handle) =
-            (observed ()).RemoveAt(c, handle)
+            observers.RemoveAt (c, handle)
 
         /// <summary>
         /// Nothing to bring current: the value is whatever was last written.
