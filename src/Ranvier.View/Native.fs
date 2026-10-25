@@ -539,13 +539,7 @@ let allocate (length: int) : obj array =
 
 // Expandos: the per-object properties Fable writes as JavaScript properties.
 
-#if FABLE_COMPILER
-[<Emit("$0[$1]")>]
-let expando<'T> (target: obj) (name: string) : 'T = jsNative
-
-[<Emit("$0[$1] = $2")>]
-let setExpando (target: obj) (name: string) (value: 'T) : unit = jsNative
-#else
+#if !FABLE_COMPILER
 let private weakExpando<'T> (target: obj) (name: string) : 'T =
     let mutable slots = null
 
@@ -561,7 +555,15 @@ let private setWeakExpando (target: obj) (name: string) (value: 'T) : unit =
         expandos.GetValue (target, fun _ -> System.Collections.Generic.Dictionary<string, obj>())
 
     slots[name] <- box value
+#endif
 
+#if FABLE_COMPILER
+[<Emit("$0[$1]")>]
+let expando<'T> (target: obj) (name: string) : 'T = jsNative
+
+[<Emit("$0[$1] = $2")>]
+let setExpando (target: obj) (name: string) (value: 'T) : unit = jsNative
+#else
 let expando<'T> (target: obj) (name: string) : 'T =
     match HostSlot.Current with
     | :? IExpandoHost as owner ->
