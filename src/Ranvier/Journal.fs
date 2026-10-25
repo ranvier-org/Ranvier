@@ -24,6 +24,10 @@ type JournalReplayedFailure(message: string) =
     inherit Exception(message)
 
 /// <summary>A journal entry that a replay cannot apply to its target graph.</summary>
+/// <remarks>
+/// On a <c>Setup</c> entry, <c>Reason</c> names the recorded setup work and the setup work found on the target, which
+/// does not begin with it. The replay then applies no entry.
+/// </remarks>
 type JournalReplayException(seq: int, key: string option, payloadType: string, reason: string) =
     inherit
         Exception(
@@ -239,7 +243,38 @@ module Journal =
             JournalWork (graph, null)
         else
             graph.AssertOnGraphThread "Journal.work"
-            JournalWork (graph, recorder.NextWork ())
+            JournalWork (graph, recorder.NextWork "work")
+
+    /// <summary>
+    /// Names <c>work</c> after <c>key</c>, the application key of the input that started it. The <c>Setup</c> entry
+    /// describes a setup work by its name, so a replay tells the setup works of different inputs apart. A name given
+    /// after the graph's first entry leaves the <c>Setup</c> entry unchanged.
+    /// </summary>
+    /// <remarks><c>Mvu.journal</c> names the work of an <c>Mvu</c>'s initial commands after the <c>Mvu</c>'s key.</remarks>
+    let name (key: string) (work: JournalWork) : unit =
+        if not (Platform.isNull work.Attribution) then
+            work.Attribution.Name <- key
+
+    /// <summary>
+    /// Runs <c>body</c> as a section derived from the code that calls it: its writes, settles, failures and messages
+    /// record no entries, as in a computation's body. A replay re-runs the calling code, which makes the inputs again.
+    /// </summary>
+    /// <remarks>
+    /// An input of a <c>produce</c> call inside <c>body</c> is applied unless a replayed entry of the same call stands
+    /// for it. <c>Mvu</c> runs the synchronous part of its commands in a derived section.
+    /// </remarks>
+    let derived (graph: Graph) (body: unit -> unit) : unit =
+        let recorder = graph.Journal
+
+        if Platform.isNull recorder then
+            body ()
+        else
+            recorder.EnterDerived ()
+
+            try
+                body ()
+            finally
+                recorder.LeaveDerived ()
 
     /// <summary>
     /// Runs <c>input</c> on the graph's thread as an input of <c>work</c>: its writes, settles, failures and messages
@@ -305,12 +340,78 @@ module Journal =
         else
             recorder.Replaying
 
+    let private plural (count: int) (noun: string) =
+        string count
+        + " "
+        + noun
+        + (if count = 1 then "" else "s")
+
+    let private countSetup (record: string) =
+        if record.Length = 0 then
+            0
+        else
+            // One description per separator outside a quoted name.
+            let mutable count = 1
+            let mutable quoted = false
+            let mutable escaped = false
+
+            for index in 0 .. record.Length - 1 do
+                let c = record[index]
+
+                if escaped then
+                    escaped <- false
+                elif quoted && c = '\\' then
+                    escaped <- true
+                elif c = '"' then
+                    quoted <- not quoted
+                elif not quoted && c = ',' then
+                    count <- count + 1
+
+            count
+
+    /// <summary>Raises unless the target's setup record begins with the setup record of <c>entry</c>.</summary>
+    let private checkSetup (recorder: JournalRecorder) (entry: JournalEntry) =
+        let failWith reason =
+            raise (JournalReplayException (entry.Seq, entry.Key, entry.PayloadType, reason))
+
+        let recorded =
+            match entry.Payload with
+            | JournalPayload.Encoded ("setup", 1, data) -> data
+            | payload ->
+                failWith (
+                    "the Setup entry carries "
+                    + string payload
+                    + ", and a setup record is encoded by codec setup version 1"
+                )
+
+        let found = recorder.SetupRecord
+
+        let matches =
+            recorded.Length = 0
+            || found = recorded
+            || (found.Length > recorded.Length + 2
+                && found.Substring (0, recorded.Length + 2) = recorded + ", ")
+
+        if not matches then
+            failWith (
+                "the journal recorded "
+                + plural (countSetup recorded) "setup work"
+                + " ["
+                + recorded
+                + "], and the target started "
+                + plural (countSetup found) "setup work"
+                + " ["
+                + found
+                + "], which does not begin with the recorded setup work"
+            )
+
     let private prepare (mode: ReplayMode) (recorder: JournalRecorder) (entry: JournalEntry) : (unit -> unit) option =
         let failWith reason =
             raise (JournalReplayException (entry.Seq, entry.Key, entry.PayloadType, reason))
 
         match entry.Kind, entry.Origin with
-        | JournalEntryKind.Flush, _ -> None
+        | JournalEntryKind.Flush, _
+        | JournalEntryKind.Setup, _ -> None
         | _, JournalOrigin.Produced _ when mode = ReplayMode.Reenact -> None
         | kind, _ ->
             match entry.Payload with
@@ -377,16 +478,23 @@ module Journal =
     /// under the recorded keys. The replay's own inputs are recorded on that journal.
     /// </para>
     /// <para>
+    /// The target must match the recorded graph: its setup work, the works it started before its first entry, must
+    /// begin with the setup work of the <c>Setup</c> entry. A target built by the code that built the recorded graph,
+    /// with no other work started before that code, matches. Before applying any entry, a replay in either mode raises
+    /// <c>JournalReplayException</c> on a target that does not match. Entries with no <c>Setup</c> entry match every
+    /// target.
+    /// </para>
+    /// <para>
     /// <c>Diagnostic</c> applies every entry, and settles and fails async sources with the recorded outcomes; a failure
     /// arrives as a <c>JournalReplayedFailure</c> with the recorded message. The application's async work runs again,
     /// and each of its inputs is dropped while the replayed entries hold an unmatched <c>Produced</c> entry of the same
     /// work and call, during the replay or after it returns; its other inputs, such as a synchronous dispatch the
     /// recorded run left unrecorded, are live. A work started during the replay is identified by the replayed entry
-    /// applied before it and its position after that entry, whatever the target ran before the replay. Setup work,
-    /// started before the target's first entry, is matched by its position from construction when the replay is the
-    /// target's first input; other work started outside the replay is live. <c>Reenact</c> applies the <c>External</c> entries and skips the
-    /// <c>Produced</c> entries, and the re-run work produces its inputs. In both modes each recorded input reaches the
-    /// graph once when every input of the re-run work is attributed: on .NET, the inputs of an <c>Mvu</c> command, of a
+    /// applied before it and its position after that entry, whatever the target ran before the replay. Setup work is
+    /// matched by its position among the target's setup work when the replay is the target's first input; other work
+    /// started outside the replay is live. <c>Reenact</c> applies the <c>External</c> entries and skips the
+    /// <c>Produced</c> entries, and the re-run work produces its inputs. In both modes, on a matching target, each
+    /// recorded input reaches the graph once when every input of the re-run work is attributed: on .NET, the inputs of an <c>Mvu</c> command, of a
     /// continuation of an effect's body, and those passed to <c>produce</c>; under Fable, the inputs of an <c>Mvu</c>
     /// command and those passed to <c>produce</c>. An unattributed input of re-run work is recorded as
     /// <c>External</c> and is applied twice. An applied entry records an entry of the same origin. <c>replaying</c>
@@ -401,8 +509,9 @@ module Journal =
     /// <c>graph</c> has no journal, or the call runs off the graph's thread.
     /// </exception>
     /// <exception cref="T:Ranvier.JournalReplayException">
-    /// An entry is non-replayable, its key is not registered on <c>graph</c>, its codec name or version differs from
-    /// the key's codec, or its payload fails to decode.
+    /// <c>graph</c>'s setup work does not begin with the setup work of the <c>Setup</c> entry, an entry is
+    /// non-replayable, its key is not registered on <c>graph</c>, its codec name or version differs from the key's
+    /// codec, or its payload fails to decode.
     /// </exception>
     let replay (mode: ReplayMode) (graph: Graph) (entries: JournalEntry seq) : unit =
         let recorder = graph.Journal
@@ -421,6 +530,10 @@ module Journal =
             match entry.Origin with
             | JournalOrigin.Produced (started, index, call) when entry.Kind <> JournalEntryKind.Flush -> ValueSome (started, index, call)
             | _ -> ValueNone
+
+        for entry in sorted do
+            if entry.Kind = JournalEntryKind.Setup then
+                checkSetup recorder entry
 
         let previous = recorder.Replaying
         let previousSession = recorder.BeginReplay mode

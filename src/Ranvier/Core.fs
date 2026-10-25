@@ -1587,6 +1587,22 @@ type internal JournalAttribution(origin: JournalOrigin, replayed: int, matched: 
     /// <summary>The origin an input of the work records.</summary>
     member _.Origin = origin
 
+    /// <summary>The kind of the work in a setup record: <c>effect</c> for an effect's run, <c>work</c> otherwise.</summary>
+    member val Kind = "work" with get, set
+
+    /// <summary>The application key of the input that started the work, or null.</summary>
+    member val Name: string = null with get, set
+
+    /// <summary>The work's description in a setup record: its kind, followed by its quoted name when it has one.</summary>
+    member this.Describe() =
+        if isNull this.Name then
+            this.Kind
+        else
+            this.Kind
+            + " \""
+            + this.Name.Replace("\\", "\\\\").Replace("\"", "\\\"")
+            + "\""
+
     /// <summary>
     /// The <c>Seq</c> of the replayed entry the attribution applies, or 0. A replayed attribution is always admitted.
     /// </summary>
@@ -1701,6 +1717,22 @@ type internal JournalRecorder(journal: IInputJournal) =
     let mutable nextSite = 0
     // The call of the input last admitted, for the origin it records.
     let mutable inputCall = 0
+    // The works started before the first entry, and their setup record, fixed at the first entry.
+    let setupWorks = List<JournalAttribution>()
+    let mutable setupRecord: string = null
+
+    let describeSetup () =
+        String.Join (
+            ", ",
+            setupWorks
+            |> Seq.map (fun work -> work.Describe ())
+        )
+
+    /// <summary>
+    /// The setup record of the graph: the descriptions of the works it started before its first entry, in start order,
+    /// separated by <c>", "</c>. Before the first entry it describes the works started so far.
+    /// </summary>
+    member _.SetupRecord = if isNull setupRecord then describeSetup () else setupRecord
 
     /// <summary>True when an entry was recorded after the last <c>Flush</c> entry.</summary>
     member _.Unflushed = unflushed
@@ -1732,7 +1764,7 @@ type internal JournalRecorder(journal: IInputJournal) =
     /// The next async work on the graph, identified by the last non-<c>Flush</c> entry and its position among the works
     /// started after it. During a diagnostic replay it also carries its identity in the replayed entries.
     /// </summary>
-    member _.NextWork() =
+    member _.NextWork(kind: string) =
         let origin = JournalOrigin.Produced (anchor, started, 0)
 
         let matched =
@@ -1749,13 +1781,19 @@ type internal JournalRecorder(journal: IInputJournal) =
                 session.Started <- session.Started + 1
                 key
             elif anchor = 0 then
-                // Setup work, started before the graph's first entry, is matched by its position from construction.
+                // Setup work, started before the graph's first entry, is matched by its position among the setup work.
                 JournalRecorder.SetupKey started
             else
                 null
 
         started <- started + 1
-        JournalAttribution (origin, 0, matched)
+        let work = JournalAttribution (origin, 0, matched)
+        work.Kind <- kind
+
+        if position = 0 then
+            setupWorks.Add work
+
+        work
 
     static member private SetupKey(index: int) =
         "setup:" + string index
@@ -1799,7 +1837,7 @@ type internal JournalRecorder(journal: IInputJournal) =
     /// Runs <c>run</c>, the body of an effect, as a new async work: on .NET its continuations carry the work.
     /// </summary>
     member this.RunWork(run: unit -> unit) =
-        let work = this.NextWork ()
+        let work = this.NextWork "effect"
 #if FABLE_COMPILER
         ignore work
         run ()
@@ -1941,6 +1979,24 @@ type internal JournalRecorder(journal: IInputJournal) =
         | _ -> Unchecked.defaultof<JournalBinding>
 
     member private this.Emit(kind: JournalEntryKind, key: string option, payloadType: string, payload: JournalPayload) =
+        if position = 0 then
+            setupRecord <- describeSetup ()
+
+            if setupWorks.Count > 0 then
+                journal.Record
+                    {
+                        Schema = 3
+                        Stream = journal.Stream
+                        Seq = 0
+                        Kind = JournalEntryKind.Setup
+                        Key = None
+                        PayloadType = "setup"
+                        Payload = JournalPayload.Encoded ("setup", 1, setupRecord)
+                        Origin = JournalOrigin.External
+                    }
+
+            setupWorks.Clear ()
+
         position <- position + 1
 
         let work = if kind = JournalEntryKind.Flush then null else this.Current
@@ -1968,7 +2024,7 @@ type internal JournalRecorder(journal: IInputJournal) =
 
         journal.Record
             {
-                Schema = 2
+                Schema = 3
                 Stream = journal.Stream
                 Seq = position
                 Kind = kind

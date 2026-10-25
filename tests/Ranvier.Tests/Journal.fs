@@ -221,7 +221,7 @@ let tests =
 
                 match journal.Entries with
                 | [ entry ] ->
-                    Expect.equal entry.Schema 2 "schema 2"
+                    Expect.equal entry.Schema 3 "schema 3"
                     Expect.equal entry.Stream "test" "the journal's stream"
                     Expect.equal entry.Seq 1 "the first entry"
                     Expect.equal entry.Kind JournalEntryKind.Write "a write"
@@ -556,8 +556,8 @@ let tests =
 
                 Expect.equal
                     (journal.Entries |> List.map (fun e -> e.Kind))
-                    [ JournalEntryKind.Write; JournalEntryKind.Flush ]
-                    "only the external write and its flush"
+                    [ JournalEntryKind.Setup; JournalEntryKind.Write; JournalEntryKind.Flush ]
+                    "the effect's setup run, the external write and its flush"
             }
 
             test "one Flush follows each flush pass that followed recorded entries" {
@@ -573,6 +573,7 @@ let tests =
                 Expect.equal
                     (journal.Entries |> List.map (fun e -> e.Kind))
                     [
+                        JournalEntryKind.Setup
                         JournalEntryKind.Write
                         JournalEntryKind.Flush
                         JournalEntryKind.Write
@@ -580,7 +581,7 @@ let tests =
                     ]
                     "a boundary after each pass"
 
-                Expect.equal (journal.Entries |> List.map (fun e -> e.Seq)) [ 1; 2; 3; 4 ] "consecutive positions"
+                Expect.equal (journal.Entries |> List.map (fun e -> e.Seq)) [ 0; 1; 2; 3; 4 ] "consecutive positions"
 
                 Expect.all
                     (journal.Entries
@@ -604,7 +605,12 @@ let tests =
 
                 Expect.equal
                     (journal.Entries |> List.map (fun e -> e.Kind))
-                    [ JournalEntryKind.Write; JournalEntryKind.Write; JournalEntryKind.Flush ]
+                    [
+                        JournalEntryKind.Setup
+                        JournalEntryKind.Write
+                        JournalEntryKind.Write
+                        JournalEntryKind.Flush
+                    ]
                     "one boundary for the batch"
             }
 
@@ -947,6 +953,7 @@ let tests =
 
                     let _, g2 = journaled ()
                     let b2 = Signal (g2, 0) |> Journal.key "b" intCodec
+                    g2.Run (fun () -> createEffect ignore)
 
                     Signal (g2, 0)
                     |> Journal.key "a" intCodec
@@ -1037,6 +1044,7 @@ let tests =
                             (journal.Entries
                              |> List.map (fun e -> e.Kind, e.Key, e.Payload))
                             [
+                                JournalEntryKind.Setup, None, JournalPayload.Encoded ("setup", 1, "effect")
                                 JournalEntryKind.Message, Some "counter", JournalPayload.Encoded ("int", 1, "2")
                                 JournalEntryKind.Flush, None, JournalPayload.Empty
                             ]
@@ -1059,8 +1067,8 @@ let tests =
 
                         Expect.equal
                             (journal.Entries |> List.map (fun e -> e.Kind))
-                            [ JournalEntryKind.Write; JournalEntryKind.Flush ]
-                            "only the external write"
+                            [ JournalEntryKind.Setup; JournalEntryKind.Write; JournalEntryKind.Flush ]
+                            "the effect's setup run and the external write"
                     }
 
                     test "replay dispatches the recorded messages" {
@@ -1157,6 +1165,7 @@ let tests =
                             (journal.Entries
                              |> List.map (fun e -> e.Kind, e.Payload, originName e.Origin))
                             [
+                                JournalEntryKind.Setup, JournalPayload.Encoded ("setup", 1, "effect"), "External"
                                 JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "1"), "External"
                                 JournalEntryKind.Flush, JournalPayload.Empty, "External"
                                 JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "2"), "Produced"
@@ -1310,6 +1319,156 @@ let tests =
                         Expect.equal (List.ofSeq seen2) [ 2; 5 ] "each message reaches update once"
                         Expect.equal app2.Model app.Model "the live run's model"
                     }
+
+                    // An Mvu whose initial command dispatches 5 after an await on the gate. prelude runs on the graph
+                    // before the Mvu is built, and extra after it.
+                    let initialCommand (prelude: Graph -> unit) (extra: Graph -> unit) (journal: MemoryJournal, g: Graph) =
+                        prelude g
+                        let gate = System.Threading.Tasks.TaskCompletionSource<unit>()
+                        let seen = ResizeArray<int>()
+
+                        let app =
+                            g.Run (fun () ->
+                                Ranvier.Elmish.Mvu.withCmd
+                                    ([],
+                                     [
+                                         fun dispatch ->
+                                             task {
+                                                 do! gate.Task
+                                                 dispatch 5
+                                             }
+                                             |> ignore
+                                     ])
+                                    (fun (msg: int) model ->
+                                        seen.Add msg
+                                        msg :: model, [])
+                                |> Ranvier.Elmish.Mvu.journal "initial" intCodec)
+
+                        extra g
+                        journal, g, app, seen, gate
+
+                    let anEffect (g: Graph) =
+                        g.Run (fun () -> createEffect (fun () -> ()))
+
+                    testCaseAsync "a journal records its setup work ahead of its first entry"
+                    <| async {
+                        let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())
+                        app.Dispatch 2
+                        gate.SetResult ()
+                        do! drained ()
+
+                        Expect.equal
+                            (journal.Entries
+                             |> List.map (fun e -> e.Seq, e.Kind, e.Payload, originName e.Origin))
+                            [
+                                0, JournalEntryKind.Setup, JournalPayload.Encoded ("setup", 1, "work \"initial\""), "External"
+                                1, JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "2"), "External"
+                                2, JournalEntryKind.Message, JournalPayload.Encoded ("int", 1, "5"), "Produced"
+                            ]
+                            "the Setup entry names the initial command's work"
+                    }
+
+                    for mode in [ ReplayMode.Diagnostic; ReplayMode.Reenact ] do
+                        testCaseAsync $"a %O{mode} replay into a target that ran an extra effect before its setup raises"
+                        <| async {
+                            let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())
+                            app.Dispatch 2
+                            gate.SetResult ()
+                            do! drained ()
+
+                            let _, g2, _, seen2, gate2 = initialCommand anEffect noPrelude (journaled ())
+
+                            Expect.throwsT<JournalReplayException>
+                                (fun () -> Journal.replay mode g2 journal.Entries)
+                                "the target's setup work differs"
+
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal (List.ofSeq seen2) [ 5 ] "no recorded entry is applied"
+                        }
+
+                        testCaseAsync $"a %O{mode} replay into a matching target applies each message once"
+                        <| async {
+                            let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())
+                            app.Dispatch 2
+                            gate.SetResult ()
+                            do! drained ()
+
+                            let _, g2, app2, seen2, gate2 = initialCommand noPrelude noPrelude (journaled ())
+                            Journal.replay mode g2 journal.Entries
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal (List.ofSeq seen2) [ 2; 5 ] "each message reaches update once"
+                            Expect.equal app2.Model app.Model "the live run's model"
+                        }
+
+                        testCaseAsync $"a %O{mode} replay into a target that started extra work after its setup applies each message once"
+                        <| async {
+                            let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())
+                            app.Dispatch 2
+                            gate.SetResult ()
+                            do! drained ()
+
+                            let _, g2, app2, seen2, gate2 = initialCommand noPrelude anEffect (journaled ())
+                            Journal.replay mode g2 journal.Entries
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal (List.ofSeq seen2) [ 2; 5 ] "each message reaches update once"
+                            Expect.equal app2.Model app.Model "the live run's model"
+                        }
+
+                    test "the replay error names the recorded and the found setup work" {
+                        let journal, _, app, _, _ = initialCommand noPrelude noPrelude (journaled ())
+                        app.Dispatch 2
+                        let _, g2, _, _, _ = initialCommand anEffect noPrelude (journaled ())
+
+                        let message =
+                            try
+                                Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+                                ""
+                            with :? JournalReplayException as error ->
+                                Expect.equal error.Seq 0 "the Setup entry"
+                                error.Message
+
+                        Expect.equal
+                            message
+                            "Journal entry 0 (unkeyed, setup) cannot be replayed: the journal recorded 1 setup work [work \"initial\"], and the target started 2 setup works [effect, work \"initial\"], which does not begin with the recorded setup work"
+                            "the reason"
+                    }
+
+                    for mode in [ ReplayMode.Diagnostic; ReplayMode.Reenact ] do
+                        test $"a %O{mode} replay applies the synchronous dispatch of an initial command once" {
+                            let build (journal: MemoryJournal, g: Graph) =
+                                let seen = ResizeArray<int>()
+
+                                let app =
+                                    g.Run (fun () ->
+                                        Ranvier.Elmish.Mvu.withCmd ([], [ fun dispatch -> dispatch 1 ]) (fun (msg: int) model ->
+                                            seen.Add msg
+                                            msg :: model, [])
+                                        |> Ranvier.Elmish.Mvu.journal "sync" intCodec)
+
+                                journal, app, seen, g
+
+                            let journal, app, seen, _ = build (journaled ())
+                            app.Dispatch 2
+                            Expect.equal (List.ofSeq seen) [ 1; 2 ] "the live run's updates"
+
+                            Expect.equal
+                                (journal.Entries
+                                 |> List.map (fun e -> e.Kind, originName e.Origin))
+                                [ JournalEntryKind.Setup, "External"; JournalEntryKind.Message, "External" ]
+                                "the initial command's model write is derived"
+
+                            let _, app2, seen2, g2 = build (journaled ())
+                            Journal.replay mode g2 journal.Entries
+
+                            Expect.equal (List.ofSeq seen2) [ 1; 2 ] "each message reaches update once"
+                            Expect.equal app2.Model app.Model "the live run's model"
+                        }
 
                     testCaseAsync "a second diagnostic replay into the same graph applies each message once"
                     <| async {

@@ -8,6 +8,7 @@ field Ranvier.JournalEntryKind+Tags Fail : Int32
 field Ranvier.JournalEntryKind+Tags Flush : Int32
 field Ranvier.JournalEntryKind+Tags Message : Int32
 field Ranvier.JournalEntryKind+Tags Settle : Int32
+field Ranvier.JournalEntryKind+Tags Setup : Int32
 field Ranvier.JournalEntryKind+Tags Write : Int32
 field Ranvier.JournalOrigin+Tags External : Int32
 field Ranvier.JournalOrigin+Tags Produced : Int32
@@ -206,9 +207,11 @@ member Ranvier.IInputJournal get_Stream() : String
 member Ranvier.INode get_Id() : Int32
 member Ranvier.INode get_Status() : Ranvier.Status
 member Ranvier.ImmediateDispatcher .ctor() : Void
+member Ranvier.Journal static derived(Ranvier.Graph,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Microsoft.FSharp.Core.Unit>) : Void
 member Ranvier.Journal static key<1>(String,Ranvier.JournalCodec`1<!!0>,Ranvier.Signal`1<!!0>) : Ranvier.Signal`1<!!0>
 member Ranvier.Journal static keySource<1>(String,Ranvier.JournalCodec`1<!!0>,Ranvier.AsyncSource`1<!!0>) : Ranvier.AsyncSource`1<!!0>
 member Ranvier.Journal static messages<1>(String,Ranvier.JournalCodec`1<!!0>,Microsoft.FSharp.Core.FSharpFunc`2<!!0,Microsoft.FSharp.Core.Unit>,Ranvier.Graph) : Ranvier.JournalSite`1<!!0>
+member Ranvier.Journal static name(String,Ranvier.JournalWork) : Void
 member Ranvier.Journal static produce(Ranvier.JournalWork,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Microsoft.FSharp.Core.Unit>) : Void
 member Ranvier.Journal static recordMessage<1>(Ranvier.JournalSite`1<!!0>,!!0,Microsoft.FSharp.Core.FSharpFunc`2<Microsoft.FSharp.Core.Unit,Microsoft.FSharp.Core.Unit>) : Void
 member Ranvier.Journal static replay(Ranvier.ReplayMode,Ranvier.Graph,System.Collections.Generic.IEnumerable`1<Ranvier.JournalEntry>) : Void
@@ -251,12 +254,14 @@ member Ranvier.JournalEntryKind get_IsFail() : Boolean
 member Ranvier.JournalEntryKind get_IsFlush() : Boolean
 member Ranvier.JournalEntryKind get_IsMessage() : Boolean
 member Ranvier.JournalEntryKind get_IsSettle() : Boolean
+member Ranvier.JournalEntryKind get_IsSetup() : Boolean
 member Ranvier.JournalEntryKind get_IsWrite() : Boolean
 member Ranvier.JournalEntryKind get_Tag() : Int32
 member Ranvier.JournalEntryKind static get_Fail() : Ranvier.JournalEntryKind
 member Ranvier.JournalEntryKind static get_Flush() : Ranvier.JournalEntryKind
 member Ranvier.JournalEntryKind static get_Message() : Ranvier.JournalEntryKind
 member Ranvier.JournalEntryKind static get_Settle() : Ranvier.JournalEntryKind
+member Ranvier.JournalEntryKind static get_Setup() : Ranvier.JournalEntryKind
 member Ranvier.JournalEntryKind static get_Write() : Ranvier.JournalEntryKind
 member Ranvier.JournalOrigin CompareTo(Object) : Int32
 member Ranvier.JournalOrigin CompareTo(Object,System.Collections.IComparer) : Int32

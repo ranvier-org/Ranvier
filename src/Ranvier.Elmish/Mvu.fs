@@ -42,24 +42,32 @@ type Mvu<'Model, 'Msg>
             else
                 let model, commands = step msg root.Peek
                 root.Value <- model
-                this.Run commands
+                this.Run commands |> ignore
 
     /// <summary>
     /// Runs <c>commands</c> in order with a dispatch of their shared <c>JournalWork</c>, stopping once the owning scope
-    /// is torn down.
+    /// is torn down, and returns the work. The synchronous part of the commands runs in a derived section.
     /// </summary>
-    member internal this.Run(commands: (('Msg -> unit) -> unit) list) =
-        if not commands.IsEmpty then
+    member internal this.Run(commands: (('Msg -> unit) -> unit) list) : JournalWork option =
+        if commands.IsEmpty then
+            None
+        else
             let work = Journal.work graph
 
             let dispatch (msg: 'Msg) =
                 Journal.produce work (fun () -> this.Arrive msg)
 
-            let mutable rest = commands
+            Journal.derived graph (fun () ->
+                let mutable rest = commands
 
-            while not disposed && not rest.IsEmpty do
-                rest.Head dispatch
-                rest <- rest.Tail
+                while not disposed && not rest.IsEmpty do
+                    rest.Head dispatch
+                    rest <- rest.Tail)
+
+            Some work
+
+    /// <summary>The work of the initial commands, if any.</summary>
+    member val internal Initial: JournalWork option = None with get, set
 
     /// <summary>A tracked read of the model.</summary>
     member _.Model = root.Value
@@ -95,6 +103,7 @@ type Mvu<'Model, 'Msg>
     /// <summary>Registers the messages on the graph's journal under <c>key</c>.</summary>
     member internal this.Journal(key: string, codec: JournalCodec<'Msg>) =
         site <- Journal.messages key codec this.Dispatch graph
+        this.Initial |> Option.iter (Journal.name key)
 
     /// <summary>A memo holding <c>select model</c>, owned by the current scope.</summary>
     /// <remarks>
@@ -154,7 +163,7 @@ module Mvu =
         let mvu =
             Mvu<'Model, 'Msg>(Graph.Current, model, Unchecked.defaultof<_>, update, true)
 
-        mvu.Run commands
+        mvu.Initial <- mvu.Run commands
         mvu
 
     /// <summary>
@@ -168,6 +177,10 @@ module Mvu =
     /// an <c>await</c>, records a <c>Produced</c> entry: <c>Reenact</c> skips it and the re-run command dispatches it
     /// again, and under <c>Diagnostic</c> the entry is applied and the re-run command's matching dispatch is dropped. A message
     /// dispatched by an effect or other computation records nothing.
+    /// </para>
+    /// <para>
+    /// The synchronous part of the initial commands is derived from the construction and records nothing. Their work is
+    /// named after <c>key</c> in the graph's <c>Setup</c> entry, so a replay tells it apart from other setup work.
     /// </para>
     /// <para>
     /// <c>Journal.replay</c> applies a <c>Message</c> entry by dispatching the decoded message. The registration belongs

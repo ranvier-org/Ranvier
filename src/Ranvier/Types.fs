@@ -351,6 +351,16 @@ type JournalEntryKind =
     | Message
     /// <summary>The end of a flush pass that followed at least one recorded entry.</summary>
     | Flush
+    /// <summary>
+    /// The setup work of the graph: the async works it started before its first input. Recorded with <c>Seq</c> 0, ahead
+    /// of the first entry, when the graph started such work.
+    /// </summary>
+    /// <remarks>
+    /// The payload is encoded by the <c>setup</c> codec, version 1. Its data lists the works in start order, separated
+    /// by <c>", "</c>: <c>effect</c> for an effect's run and <c>work</c> for other work, each followed by the quoted
+    /// application key it was named after by <c>Journal.name</c>, such as an <c>Mvu</c>'s key for its initial commands.
+    /// </remarks>
+    | Setup
 
     // AoT compat
     /// <summary>The case name.</summary>
@@ -361,6 +371,7 @@ type JournalEntryKind =
         | JournalEntryKind.Fail -> "Fail"
         | JournalEntryKind.Message -> "Message"
         | JournalEntryKind.Flush -> "Flush"
+        | JournalEntryKind.Setup -> "Setup"
 
 /// <summary>The value a journal entry carries.</summary>
 [<RequireQualifiedAccess>]
@@ -426,29 +437,31 @@ type JournalOrigin =
 /// <summary>One input to a graph, in the order the graph thread observed it.</summary>
 type JournalEntry =
     {
-        /// <summary>The entry format version, 2.</summary>
+        /// <summary>The entry format version, 3.</summary>
         Schema: int
 
         /// <summary>The <c>Stream</c> of the journal that recorded the entry.</summary>
         Stream: string
 
         /// <summary>
-        /// The 1-based position of the entry in its graph's journal. A snapshot taken at a position replays from the
-        /// entries after it.
+        /// The 1-based position of the entry in its graph's journal, or 0 for the <c>Setup</c> entry. A snapshot taken at
+        /// a position replays from the entries after it.
         /// </summary>
         Seq: int
 
         Kind: JournalEntryKind
 
-        /// <summary>The application key of the input node; <c>None</c> for an unkeyed node and for <c>Flush</c>.</summary>
+        /// <summary>
+        /// The application key of the input node; <c>None</c> for an unkeyed node, for <c>Flush</c> and for <c>Setup</c>.
+        /// </summary>
         Key: string option
 
-        /// <summary>The runtime type name of the value; empty for <c>Flush</c>.</summary>
+        /// <summary>The runtime type name of the value; empty for <c>Flush</c>, and <c>setup</c> for <c>Setup</c>.</summary>
         PayloadType: string
 
         Payload: JournalPayload
 
-        /// <summary><c>External</c> for <c>Flush</c>.</summary>
+        /// <summary><c>External</c> for <c>Flush</c> and <c>Setup</c>.</summary>
         Origin: JournalOrigin
     }
 

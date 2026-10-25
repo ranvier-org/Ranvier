@@ -30,15 +30,21 @@ Each entry is a `JournalEntry`:
 
 | Field | Meaning |
 | --- | --- |
-| `Seq` | The 1-based position of the entry in its graph's journal. |
-| `Kind` | `Write`, `Settle`, `Fail`, `Message` or `Flush`. |
-| `Key` | The application key of the input; `None` for an unkeyed input and for `Flush`. |
+| `Seq` | The 1-based position of the entry in its graph's journal; 0 for `Setup`. |
+| `Kind` | `Write`, `Settle`, `Fail`, `Message`, `Flush` or `Setup`. |
+| `Key` | The application key of the input; `None` for an unkeyed input, for `Flush` and for `Setup`. |
 | `PayloadType` | The runtime type name of the value. |
 | `Payload` | `Encoded (codec, version, data)`, `NonReplayable payloadType`, or `Empty` for `Flush`. |
 | `Origin` | `External`, or `Produced (started, index, call)` for an input of the application's attributed async work, identified by the entry recorded before the work started and the input's call within the work. |
 
 A `Flush` entry ends each flush pass that followed a recorded entry. Replay flushes at the same
 points, so effects run as often as they did in the recorded run.
+
+A `Setup` entry, with `Seq` 0, precedes the first entry of a graph that started async work before its
+first input: its setup work. Its data lists the works in start order, `effect` for an effect's run and
+`work` for other work, each followed by the quoted key of the input that started it when it has one,
+such as `effect, work "cart"` for an effect and the initial commands of the `Mvu` journaled as `cart`.
+`Journal.name key work` gives a work captured with `Journal.work` a key.
 
 ### What is recorded
 
@@ -47,7 +53,9 @@ settle from a completed task, a dispatched message. An input made by a running c
 from the inputs before it, and is not recorded:
 
 - a write or settle made in the body of a memo, effect or async memo, including under `untrack`;
-- the model write and the synchronous commands of a journaled MVU message.
+- the model write and the synchronous commands of a journaled MVU message;
+- the synchronous part of an `Mvu` command, including an initial command of `Mvu.withCmd`;
+- an input made in the body passed to `Journal.derived`.
 
 An equal write is recorded, as the traced log records it.
 
@@ -156,6 +164,8 @@ let app =
 
 A message dispatched from outside every computation records one `Message` entry. A message a command
 dispatches later, after an `await`, records a `Produced` entry; the command needs no journal code.
+The synchronous dispatches of the initial commands of `Mvu.withCmd` are derived from the
+construction and record nothing; the target's construction makes them again.
 Another adapter registers its message site with `Journal.messages`, wraps each external message in
 `Journal.recordMessage`, and passes the messages of its async work through `Journal.produce`.
 
@@ -189,9 +199,9 @@ input of a `Journal.produce` call or a command's dispatch that runs synchronousl
 awaited task has already completed. The work's other inputs are live: a synchronous dispatch that
 the recorded run made before its `await`, and the dispatch of a command still in flight when the
 journal was cut, reach `update`. Setup work, started before a graph's first entry, such as an initial command of
-`Mvu.withCmd`, carries `started = 0` and is matched by its position from the graph's construction
-when the replay is the target's first input, so build the target with the same code. The inputs of
-other work started on the target outside the replay, before it or after it, are live.
+`Mvu.withCmd`, carries `started = 0` and is matched by its position among the target's setup work
+when the replay is the target's first input. The inputs of other work started on the target outside
+the replay, before it or after it, are live.
 A gateway that also wants to skip its external call reads `Journal.replaying` in its synchronous part:
 
 ```fsharp
@@ -213,17 +223,39 @@ and skips the `Produced` entries. The application's async work runs again and ma
 and a changed result flows through the graph. The re-run inputs arrive when the work completes, after
 the replay returns. Use it to check a recorded session against a new service or a changed `update`.
 
+### Matching target
+
+A replay requires a matching target: a graph whose setup work begins with the setup work of the
+`Setup` entry, the same works in the same order. Before it applies any entry, a replay in either
+mode compares the two, and raises `JournalReplayException` when they differ, naming the recorded and
+the found setup work:
+
+```text
+Journal entry 0 (unkeyed, setup) cannot be replayed: the journal recorded 1 setup work
+[work "initial"], and the target started 2 setup works [effect, work "initial"], which does not
+begin with the recorded setup work
+```
+
+Build the target with the code that built the recorded graph, in the same order, and replay before
+any other input to it. Work started after that code, such as an extra effect created once the
+application is built, follows the recorded setup work and leaves the target matching. An extra
+effect created before the application changes the position of every setup work after it, and the
+replay raises. Entries with no `Setup` entry, such as the entries after a position, match every
+target.
+
 ### Exactly once
 
-In both modes each recorded input reaches the graph once, provided every input of the re-run async
-work is attributed. An unattributed input of re-run work, such as an effect continuation's settle
-under Fable without `Journal.produce`, is recorded as `External`: the replay applies it, and the
-re-run work makes it again.
+In both modes, in a matching target, each recorded input reaches the graph once, provided every
+input of the re-run async work is attributed. An unattributed input of re-run work, such as an
+effect continuation's settle under Fable without `Journal.produce`, is recorded as `External`: the
+replay applies it, and the re-run work makes it again.
+
 ### Errors
 
 A replay raises `JournalReplayException` on an entry it cannot apply, naming its `Seq`, `Key` and
 `PayloadType`, with the `Reason`:
 
+- the target's setup work does not begin with the recorded setup work of the `Setup` entry;
 - the entry is `NonReplayable`;
 - its key is not registered on the target graph;
 - the key's input takes no entry of that kind, such as a `Settle` for a signal;
