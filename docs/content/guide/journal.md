@@ -226,9 +226,11 @@ the replay returns. Use it to check a recorded session against a new service or 
 ### Matching target
 
 A replay requires a matching target: a graph whose setup work begins with the setup work of the
-`Setup` entry, the same works in the same order. Before it applies any entry, a replay in either
-mode compares the two, and raises `JournalReplayException` when they differ, naming the recorded and
-the found setup work:
+`Setup` entry, the same works in the same order. The recorded inputs of a setup work are attributed
+to the target's setup work at the same position, so each setup work that made a recorded input must
+also match the target's setup work at that position alone. Before it applies any entry, a replay in
+either mode compares the two, and raises `JournalReplayException` when they differ, naming the
+recorded and the found setup work:
 
 ```text
 Journal entry 0 (unkeyed, setup) cannot be replayed: the journal recorded 1 setup work
@@ -236,12 +238,24 @@ Journal entry 0 (unkeyed, setup) cannot be replayed: the journal recorded 1 setu
 begin with the recorded setup work
 ```
 
+A setup work is told apart from another by its kind and its name. Unnamed works of one kind, such as
+two effects or two `Journal.work` calls without `Journal.name`, have equal descriptions, and a
+target whose setup work holds the description of a producing setup work at a later position also
+raises:
+
+```text
+Journal entry 0 (unkeyed, setup) cannot be replayed: the journal recorded 1 setup work [work],
+and the target started 2 setup works [work, work], which match the recorded setup work at more
+than one position; Journal.name tells the setup works apart
+```
+
 Build the target with the code that built the recorded graph, in the same order, and replay before
-any other input to it. Work started after that code, such as an extra effect created once the
-application is built, follows the recorded setup work and leaves the target matching. An extra
-effect created before the application changes the position of every setup work after it, and the
-replay raises. Entries with no `Setup` entry, such as the entries after a position, match every
-target.
+any other input to it. An extra work created before the application changes the position of every
+setup work after it, and the replay raises whenever the shift reaches a setup work that made a
+recorded input. Work started after that code, such as an extra effect
+created once the application is built, leaves the target matching when its description differs
+from the description of every producing setup work; name the setup works with `Journal.name` to make
+it differ. Entries with no `Setup` entry, such as the entries after a position, match every target.
 
 ### Exactly once
 
@@ -255,7 +269,8 @@ replay applies it, and the re-run work makes it again.
 A replay raises `JournalReplayException` on an entry it cannot apply, naming its `Seq`, `Key` and
 `PayloadType`, with the `Reason`:
 
-- the target's setup work does not begin with the recorded setup work of the `Setup` entry;
+- the target's setup work does not begin with the recorded setup work of the `Setup` entry, or
+  matches a producing setup work at more than one position;
 - the entry is `NonReplayable`;
 - its key is not registered on the target graph;
 - the key's input takes no entry of that kind, such as a `Settle` for a signal;

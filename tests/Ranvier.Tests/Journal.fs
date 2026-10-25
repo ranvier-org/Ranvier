@@ -1439,6 +1439,123 @@ let tests =
                             "the reason"
                     }
 
+                    // A keyed signal s and a setup work, optionally named, that adds 10 to s after the first input.
+                    // prelude runs on the graph before the setup work starts, and extra after it.
+                    let setupWork (name: string option) (prelude: Graph -> unit) (extra: Graph -> unit) (journal: MemoryJournal, g: Graph) =
+                        let s = Signal (g, 0) |> Journal.key "s" intCodec
+                        prelude g
+                        let work = g.Run (fun () -> Journal.work g)
+
+                        name
+                        |> Option.iter (fun key -> Journal.name key work)
+
+                        extra g
+
+                        let complete () =
+                            Journal.produce work (fun () -> s.Value <- s.Peek + 10)
+
+                        journal, g, s, complete
+
+                    let aWork (g: Graph) =
+                        g.Run (fun () -> Journal.work g |> ignore)
+
+                    let recordedWork name =
+                        let journal, _, s, complete = setupWork name noPrelude noPrelude (journaled ())
+                        s.Value <- 1
+                        complete ()
+                        Expect.equal s.Value 11 "the live run's value"
+                        journal
+
+                    for mode in [ ReplayMode.Diagnostic; ReplayMode.Reenact ] do
+                        test $"a %O{mode} replay into a target that started an unnamed work before its unnamed setup work raises" {
+                            let journal = recordedWork None
+                            let _, g2, s2, _ = setupWork None aWork noPrelude (journaled ())
+
+                            Expect.throwsT<JournalReplayException>
+                                (fun () -> Journal.replay mode g2 journal.Entries)
+                                "the target's setup work matches at two positions"
+
+                            Expect.equal s2.Value 0 "no recorded entry is applied"
+                        }
+
+                        test $"a %O{mode} replay into a target that created an effect before its effect-only setup raises" {
+                            // An effect that adds 10 to s after an await on the gate.
+                            let build (prelude: Graph -> unit) (journal: MemoryJournal, g: Graph) =
+                                let s = Signal (g, 0) |> Journal.key "s" intCodec
+                                let gate = System.Threading.Tasks.TaskCompletionSource<unit>()
+                                prelude g
+
+                                g.Run (fun () ->
+                                    createEffect (fun () ->
+                                        task {
+                                            do! gate.Task
+                                            s.Value <- s.Peek + 10
+                                        }
+                                        |> ignore))
+
+                                journal, g, s, gate
+
+                            let journal, _, s, gate = build noPrelude (journaled ())
+                            s.Value <- 1
+                            gate.SetResult ()
+                            Expect.equal s.Value 11 "the live run's value"
+
+                            Expect.exists
+                                journal.Entries
+                                (fun e -> e.Origin = JournalOrigin.Produced (0, 0, 0))
+                                "the effect's write is a Produced entry of its setup work"
+
+                            let _, g2, s2, _ = build anEffect (journaled ())
+
+                            Expect.throwsT<JournalReplayException>
+                                (fun () -> Journal.replay mode g2 journal.Entries)
+                                "the target's setup work matches at two positions"
+
+                            Expect.equal s2.Value 0 "no recorded entry is applied"
+                        }
+
+                    test "a Diagnostic replay into a target matching an unnamed setup work applies the produced input once" {
+                        let journal = recordedWork None
+                        let _, g2, s2, complete2 = setupWork None noPrelude noPrelude (journaled ())
+                        Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+                        complete2 ()
+                        Expect.equal s2.Value 11 "the live run's value"
+                    }
+
+                    test "a replay into a target that started an unnamed work after an unnamed setup work raises" {
+                        let journal = recordedWork None
+                        let _, g2, _, _ = setupWork None noPrelude aWork (journaled ())
+
+                        let message =
+                            try
+                                Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+                                ""
+                            with :? JournalReplayException as error ->
+                                error.Message
+
+                        Expect.equal
+                            message
+                            "Journal entry 0 (unkeyed, setup) cannot be replayed: the journal recorded 1 setup work [work], and the target started 2 setup works [work, work], which match the recorded setup work at more than one position; Journal.name tells the setup works apart"
+                            "the reason"
+                    }
+
+                    test "a Diagnostic replay into a target that started an unnamed work after a named setup work applies the produced input once" {
+                        let journal = recordedWork (Some "w")
+                        let _, g2, s2, complete2 = setupWork (Some "w") noPrelude aWork (journaled ())
+                        Journal.replay ReplayMode.Diagnostic g2 journal.Entries
+                        complete2 ()
+                        Expect.equal s2.Value 11 "the live run's value"
+                    }
+
+                    test "a replay into a target that started an unnamed work before a named setup work raises" {
+                        let journal = recordedWork (Some "w")
+                        let _, g2, _, _ = setupWork (Some "w") aWork noPrelude (journaled ())
+
+                        Expect.throwsT<JournalReplayException>
+                            (fun () -> Journal.replay ReplayMode.Diagnostic g2 journal.Entries)
+                            "the target's setup work differs"
+                    }
+
                     for mode in [ ReplayMode.Diagnostic; ReplayMode.Reenact ] do
                         test $"a %O{mode} replay applies the synchronous dispatch of an initial command once" {
                             let build (journal: MemoryJournal, g: Graph) =

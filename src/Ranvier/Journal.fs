@@ -26,7 +26,8 @@ type JournalReplayedFailure(message: string) =
 /// <summary>A journal entry that a replay cannot apply to its target graph.</summary>
 /// <remarks>
 /// On a <c>Setup</c> entry, <c>Reason</c> names the recorded setup work and the setup work found on the target, which
-/// does not begin with it. The replay then applies no entry.
+/// either does not begin with it or matches a setup work that made a recorded input at more than one position. The
+/// replay then applies no entry.
 /// </remarks>
 type JournalReplayException(seq: int, key: string option, payloadType: string, reason: string) =
     inherit
@@ -346,12 +347,14 @@ module Journal =
         + noun
         + (if count = 1 then "" else "s")
 
-    let private countSetup (record: string) =
+    /// <summary>The work descriptions of a setup record, in start order.</summary>
+    let private setupWorks (record: string) : string array =
         if record.Length = 0 then
-            0
+            [||]
         else
-            // One description per separator outside a quoted name.
-            let mutable count = 1
+            // A description ends at a ", " separator outside a quoted name.
+            let works = ResizeArray<string>()
+            let mutable start = 0
             let mutable quoted = false
             let mutable escaped = false
 
@@ -365,12 +368,30 @@ module Journal =
                 elif c = '"' then
                     quoted <- not quoted
                 elif not quoted && c = ',' then
-                    count <- count + 1
+                    works.Add (record.Substring (start, index - start))
+                    start <- index + 2
 
-            count
+            works.Add (record.Substring start)
+            works.ToArray ()
 
-    /// <summary>Raises unless the target's setup record begins with the setup record of <c>entry</c>.</summary>
-    let private checkSetup (recorder: JournalRecorder) (entry: JournalEntry) =
+    /// <summary>True when <c>recorded</c> from <c>start</c> is a subsequence of <c>found</c> from <c>from</c>.</summary>
+    let private embeds (recorded: string array) (start: int) (found: string array) (from: int) =
+        let mutable next = start
+        let mutable index = from
+
+        while next < recorded.Length && index < found.Length do
+            if found[index] = recorded[next] then
+                next <- next + 1
+
+            index <- index + 1
+
+        next = recorded.Length
+
+    /// <summary>
+    /// Raises unless the target's setup works begin with the setup works of <c>entry</c>, and each recorded setup work
+    /// whose position is in <c>producing</c> matches the target's setup work at its own position alone.
+    /// </summary>
+    let private checkSetup (recorder: JournalRecorder) (producing: Set<int>) (entry: JournalEntry) =
         let failWith reason =
             raise (JournalReplayException (entry.Seq, entry.Key, entry.PayloadType, reason))
 
@@ -385,25 +406,40 @@ module Journal =
                 )
 
         let found = recorder.SetupRecord
+        let recordedWorks = setupWorks recorded
+        let foundWorks = setupWorks found
 
-        let matches =
-            recorded.Length = 0
-            || found = recorded
-            || (found.Length > recorded.Length + 2
-                && found.Substring (0, recorded.Length + 2) = recorded + ", ")
-
-        if not matches then
+        let mismatch reason =
             failWith (
                 "the journal recorded "
-                + plural (countSetup recorded) "setup work"
+                + plural recordedWorks.Length "setup work"
                 + " ["
                 + recorded
                 + "], and the target started "
-                + plural (countSetup found) "setup work"
+                + plural foundWorks.Length "setup work"
                 + " ["
                 + found
-                + "], which does not begin with the recorded setup work"
+                + "], "
+                + reason
             )
+
+        let begins =
+            foundWorks.Length >= recordedWorks.Length
+            && Array.forall2 (=) recordedWorks foundWorks[.. recordedWorks.Length - 1]
+
+        if not begins then
+            mismatch "which does not begin with the recorded setup work"
+
+        // True when the recorded setup work also embeds in the target's setup work with a producing work at a later
+        // position.
+        let ambiguous =
+            producing
+            |> Set.exists (fun index ->
+                index < recordedWorks.Length
+                && embeds recordedWorks index foundWorks (index + 1))
+
+        if ambiguous then
+            mismatch "which match the recorded setup work at more than one position; Journal.name tells the setup works apart"
 
     let private prepare (mode: ReplayMode) (recorder: JournalRecorder) (entry: JournalEntry) : (unit -> unit) option =
         let failWith reason =
@@ -479,8 +515,11 @@ module Journal =
     /// </para>
     /// <para>
     /// The target must match the recorded graph: its setup work, the works it started before its first entry, must
-    /// begin with the setup work of the <c>Setup</c> entry. A target built by the code that built the recorded graph,
-    /// with no other work started before that code, matches. Before applying any entry, a replay in either mode raises
+    /// begin with the setup work of the <c>Setup</c> entry, and each setup work that made a recorded input must match
+    /// the target's setup work at its own position alone. A setup work is described by its kind and its
+    /// <c>name</c>, so unnamed setup works of one kind have equal descriptions. A target built by the code that built
+    /// the recorded graph, with no other work started before that code and every later work described apart from the
+    /// producing setup work, matches. Before applying any entry, a replay in either mode raises
     /// <c>JournalReplayException</c> on a target that does not match. Entries with no <c>Setup</c> entry match every
     /// target.
     /// </para>
@@ -509,7 +548,8 @@ module Journal =
     /// <c>graph</c> has no journal, or the call runs off the graph's thread.
     /// </exception>
     /// <exception cref="T:Ranvier.JournalReplayException">
-    /// <c>graph</c>'s setup work does not begin with the setup work of the <c>Setup</c> entry, an entry is
+    /// <c>graph</c>'s setup work does not begin with the setup work of the <c>Setup</c> entry or matches a producing
+    /// setup work at more than one position, an entry is
     /// non-replayable, its key is not registered on <c>graph</c>, its codec name or version differs from the key's
     /// codec, or its payload fails to decode.
     /// </exception>
@@ -531,9 +571,18 @@ module Journal =
             | JournalOrigin.Produced (started, index, call) when entry.Kind <> JournalEntryKind.Flush -> ValueSome (started, index, call)
             | _ -> ValueNone
 
+        // The positions of the setup works that made recorded inputs.
+        let producing =
+            sorted
+            |> Seq.choose (fun entry ->
+                match produced entry with
+                | ValueSome (0, index, _) -> Some index
+                | _ -> None)
+            |> Set.ofSeq
+
         for entry in sorted do
             if entry.Kind = JournalEntryKind.Setup then
-                checkSetup recorder entry
+                checkSetup recorder producing entry
 
         let previous = recorder.Replaying
         let previousSession = recorder.BeginReplay mode
