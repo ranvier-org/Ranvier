@@ -2086,6 +2086,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Mvu.journal / a Diagnostic replay into a matching target applies each message once
 - Mvu.journal / a Diagnostic replay of producing setup work into a target that recorded an entry raises
 - Mvu.journal / a Diagnostic replay of producing setup entries with no Setup entry into a target that recorded an entry raises
+- Mvu.journal / a Diagnostic replay of producing setup entries with no Setup entry into a fresh target raises
+- Mvu.journal / a Diagnostic replay of a slice holding the Setup entry applies each message once
+- Mvu.journal / a Diagnostic replay of a slice with no setup input and no Setup entry applies each message once
 - Mvu.journal / a Diagnostic second replay of producing setup entries into one target raises
 - Mvu.journal / a Diagnostic replay with no producing setup work into a target that recorded an entry applies each message once
 - Mvu.journal / a Diagnostic replay into a target that started extra work after its setup applies each message once
@@ -2093,6 +2096,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Mvu.journal / a Reenact replay into a matching target applies each message once
 - Mvu.journal / a Reenact replay of producing setup work into a target that recorded an entry raises
 - Mvu.journal / a Reenact replay of producing setup entries with no Setup entry into a target that recorded an entry raises
+- Mvu.journal / a Reenact replay of producing setup entries with no Setup entry into a fresh target raises
+- Mvu.journal / a Reenact replay of a slice holding the Setup entry applies each message once
+- Mvu.journal / a Reenact replay of a slice with no setup input and no Setup entry applies each message once
 - Mvu.journal / a Reenact second replay of producing setup entries into one target raises
 - Mvu.journal / a Reenact replay with no producing setup work into a target that recorded an entry applies each message once
 - Mvu.journal / a Reenact replay into a target that started extra work after its setup applies each message once

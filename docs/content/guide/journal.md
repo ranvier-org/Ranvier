@@ -259,17 +259,19 @@ Journal entry 0 (unkeyed, setup) cannot be replayed: the journal's setup work [w
 made a recorded input, and the target recorded an entry before the replay
 ```
 
-The check holds for entries with no `Setup` entry too: when they hold a `Produced` entry of setup
-work, the replay raises on the first such entry, and the reason names no setup work:
+Entries that hold an input of setup work must hold the journal's `Setup` entry too. A replay of such
+entries without it, such as the entries after a position, raises on the first `Produced` entry of setup work, whatever the
+target:
 
 ```text
-Journal entry 2 (key "initial", System.Int32) cannot be replayed: the journal's setup work made a
-recorded input, and the target recorded an entry before the replay
+Journal entry 2 (key "initial", System.Int32) cannot be replayed: the entries hold an input of
+setup work and no Setup entry; a tail replay needs the journal's Setup entry
 ```
 
 A second replay into one graph raises when its entries hold an input of setup work. A journal whose
 setup work made no recorded input, such as one whose only setup work is an effect, replays into a
-target that has already taken inputs, including an earlier replay into the same graph.
+target that has already taken inputs, including an earlier replay into the same graph. Entries with
+no `Setup` entry and no input of setup work replay into every target.
 
 Build the target with the code that built the recorded graph, in the same order, and replay before
 any other input to it. An extra work created before the application changes the position of every
@@ -277,13 +279,13 @@ setup work after it, and the replay raises whenever the shift reaches a setup wo
 recorded input. Work started after that code, such as an extra effect
 created once the application is built, leaves the target matching when its description differs
 from the description of every producing setup work; name the setup works with `Journal.name` to make
-it differ. Entries with no `Setup` entry, such as the entries after a position, match every target
-that has recorded no entry, and every target when they hold no input of setup work.
+it differ.
 
 ### Exactly once
 
 In both modes, in a matching target, each recorded input reaches the graph once, provided every
-input of the re-run async work is attributed. An unattributed input of re-run work, such as an
+input of the re-run async work is attributed. Entries that hold an input of setup work count as
+matching only with their `Setup` entry; without it the replay raises before applying any entry. An unattributed input of re-run work, such as an
 effect continuation's settle under Fable without `Journal.produce`, is recorded as `External`: the
 replay applies it, and the re-run work makes it again.
 
@@ -294,6 +296,7 @@ A replay raises `JournalReplayException` on an entry it cannot apply, naming its
 
 - the target's setup work does not begin with the recorded setup work of the `Setup` entry, or
   matches a producing setup work at more than one position;
+- the entries hold an input of setup work and no `Setup` entry;
 - the entries hold an input of setup work, and the target recorded an entry before the replay;
 - the entry is `NonReplayable`;
 - its key is not registered on the target graph;
@@ -310,8 +313,11 @@ applied and its own batch unapplied. A replay into a graph with no journal raise
 The journal position is an entry's `Seq`. A stored-state snapshot taken at a position, restored
 into a fresh graph, is followed by a replay of the entries with a greater `Seq`. Restoring a
 snapshot lands with the stored-state format of
-[#68](https://github.com/shayanhabibi/Ranvier/issues/68); until then a replay starts from a fresh
-graph.
+[#68](https://github.com/shayanhabibi/Ranvier/issues/68), and the snapshot plus tail replay with
+[#197](https://github.com/shayanhabibi/Ranvier/issues/197), which carries the `Setup` record with the
+snapshot. Until then a replay starts from a fresh graph, and a tail replay whose entries hold an
+input of setup work needs the journal's `Setup` entry: without it the replay raises
+`JournalReplayException`.
 
 ## Fable
 
