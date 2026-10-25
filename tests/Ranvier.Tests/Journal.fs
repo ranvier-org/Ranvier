@@ -1478,6 +1478,8 @@ let tests =
                             Expect.equal s2.Value 0 "no recorded entry is applied"
                         }
 
+#if !FABLE_COMPILER
+                        // .NET only: Fable has no async context to carry the effect's work into its continuation.
                         test $"a %O{mode} replay into a target that created an effect before its effect-only setup raises" {
                             // An effect that adds 10 to s after an await on the gate.
                             let build (prelude: Graph -> unit) (journal: MemoryJournal, g: Graph) =
@@ -1513,6 +1515,7 @@ let tests =
 
                             Expect.equal s2.Value 0 "no recorded entry is applied"
                         }
+#endif
 
                     test "a Diagnostic replay into a target matching an unnamed setup work applies the produced input once" {
                         let journal = recordedWork None
