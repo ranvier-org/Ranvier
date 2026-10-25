@@ -66,7 +66,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
-| Journal.fs | 79 | 78 | 78 | 82 | 81 | 81 | 3 | 0 |
+| Journal.fs | 85 | 84 | 84 | 88 | 87 | 87 | 3 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1630 | 1608 | 1605 | 1851 | 1824 | 1821 | 147 | 1 |
+| **Total** | 1636 | 1614 | 1611 | 1857 | 1830 | 1827 | 147 | 1 |
 
 ## Tests.fs
 
@@ -2034,7 +2034,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | an external dispatch drained under an effect run's execution context records an External entry | Fable has no async context to carry the work into a continuation. |
 | a %O{mode} replay into a target that created an effect before its effect-only setup raises | Fable has no async context to carry the effect's work into its continuation. |
 
-<details><summary>81 passed in every build and delivery that runs them</summary>
+<details><summary>87 passed in every build and delivery that runs them</summary>
 
 - GraphOptions.Default has no journal
 - WithJournal sets the journal
