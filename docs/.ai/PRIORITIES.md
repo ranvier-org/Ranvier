@@ -109,3 +109,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-25 #65 done — trace export sink landed with the Wait-mode Dispose drain fixed, docs written and the full gate passing — b1fd5115 — next: merge PR #190
 - 2026-10-25 #157 done — Arms.Match helpers documented in docs/content/view/arms.md on top of the RAN021 suppression and the analyzer gate; rebased onto origin/integration/issues (c374cfca) — 04b79e74 — next: user confirms plan P8 and the CI scope on PR #181
 - 2026-10-25 #193 in-progress — plan written (docs/superpowers/plans/2026-10-25-issue-193.md): AssemblyMetadata(RanvierLibrary) marker on every src library but the core, read by TraceSite.capture — next: plan steps 1 to 4
+- 2026-10-25 #193 in-progress — TraceSite.capture skips frames from every marked Ranvier library; gate passed (3061 tests, test-fable green) — 6e883b96 — next: verify-trace IL and public-surface check against the base
