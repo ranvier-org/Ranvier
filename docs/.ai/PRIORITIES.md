@@ -22,7 +22,7 @@ proposed scope for each, and does not implement them.
 | 9 | [#66](https://github.com/shayanhabibi/Ranvier/issues/66) core MCP tooling | 1.0.0-rc | #168 | research | done |
 | 10 | [#68](https://github.com/shayanhabibi/Ranvier/issues/68) persistent memory cache adapters | 1.0.0-rc | — | research | done |
 | 11 | [#70](https://github.com/shayanhabibi/Ranvier/issues/70) exploratory use cases in LLM stacks | — | — | research | done |
-| 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | in-progress |
+| 12 | [#184](https://github.com/shayanhabibi/Ranvier/issues/184) input journal and replay for untraced and traced builds | milestone 3 | #166; snapshot criterion on #68's format | implement | done |
 | 13 | [#185](https://github.com/shayanhabibi/Ranvier/issues/185) store adapters for the input journal and persisted state | — | #184, #68 | implement | blocked |
 | 14 | [#193](https://github.com/shayanhabibi/Ranvier/issues/193) trace identity paths name the application's line | 1.0.0-rc | #166 | implement | done |
 
@@ -56,7 +56,7 @@ PR on the branch below it. Merge bottom-up.
 | issue/168 | #168 | https://github.com/shayanhabibi/Ranvier/pull/187 | integration/issues |
 | issue/66 | #66 | https://github.com/shayanhabibi/Ranvier/pull/189 | integration/issues |
 | issue/157 | #157 | https://github.com/shayanhabibi/Ranvier/pull/181 | integration/issues |
-| issue/184 | #184 | #188 | integration/issues |
+| issue/184 | #184 | https://github.com/shayanhabibi/Ranvier/pull/188 | integration/issues |
 | issue/193 | #193 | https://github.com/shayanhabibi/Ranvier/pull/196 | integration/issues |
 
 ## Log
@@ -130,3 +130,4 @@ Each iteration appends one line: date, issue, outcome, commit, next step.
 - 2026-10-25 #184 in-progress — the no-Setup-entry pre-replay check is fixed and the full gate passes, but review found a slice without a Setup entry replayed into a fresh target with different setup work still applies a setup input twice under Diagnostic (Journal.fs:616), which needs a ruling under option A because the simple refusal also refuses the #68 restore case — b8cc27b0 — next: user ruling on setup-work Produced entries without a Setup entry
 - 2026-10-25 #184 in-review — ninth review fix, user ruling "Raise on it": Journal.replay raises JournalReplayException in both modes whenever the entries hold a Produced entry of setup work and no Setup entry ("the entries hold an input of setup work and no Setup entry; a tail replay needs the journal's Setup entry"), so a Seq > 0 slice into a fresh target with reordered setup work no longer applies the setup input twice ([2; 5; 5]); checkUnrecorded runs only on a Setup entry; merged origin/integration/issues (64aecdcd, #199). Tests first (the fresh-target repro failed in both modes before the fix; a slice holding the Setup entry and a slice with no setup input still replay once). Guide (Matching target, Exactly once, Errors, Restore: a tail replay needs the Setup entry until #197), Journal.replay/JournalReplayException docs and plan updated; API baseline unchanged. Gate passes under gate-lock shared: format, build, unfiltered tests (Ranvier.Tests 1567), traced Ranvier.Tests (1832 + 13 skipped), test-fable (Journal.fs 85), docs, Generate.fsx --check, analyzers library/view/examples; CPU 82% before, 59% after; criterion 6 moved to #197 by user ruling — 4bd4f7a0 — next: re-review PR #188
 - 2026-10-25 #198 done — verify-trace compares against --base or the open PR's base (else master), packs into its temp directory (no nuspec left in src/Ranvier/obj), ignores the checkout path in IL string operands, and reads wrapped hooks as one statement; two runs on the unchanged branch against origin/integration/issues (63552c24) give the same 4 failures, each a base difference recorded in the PR (Appendix A lacks the #166 blocks; TraceLog.Track and TraceEvents.fs formatting against the Trace.fs lint; public-api-baseline.txt lacks #100/#159/#167 API; server-render creates no harness graph); full gate passes (3,061 tests, test-fable, docs, analyzers) — 1732af54 — next: merge PR #199
+- 2026-10-25 #184 done — replay refuses setup-work inputs without their Setup entry, docs updated and the full gate passes; criterion 6 moved to #197 — 2ec86cc5 — next: merge PR #188 into integration/issues
