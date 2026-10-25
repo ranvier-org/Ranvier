@@ -77,6 +77,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 83,068 | 127,180 | 1,734,473 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 83,000 | 127,114 | 1,734,521 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 83,060 | 127,488 | 1,738,341 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 83,194 | 127,487 | 1,738,349 |
 
 ## app-table
 
@@ -155,6 +156,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 4,416,188 | 9,369,750 | 107,432,071 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 4,416,115 | 9,481,154 | 107,580,228 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 4,420,605 | 9,398,056 | 107,623,698 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 4,420,580 | 9,236,876 | 107,623,895 |
 
 ## async-recover
 
@@ -233,6 +235,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 138,908 | 39,653 | 440,663 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 138,907 | 39,721 | 440,669 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 139,042 | 39,710 | 442,087 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 138,926 | 39,721 | 442,090 |
 
 ## async-resolve
 
@@ -311,6 +314,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 2,788,710 | 1,085,309 | 12,315,360 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 2,788,717 | 1,084,693 | 12,318,636 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 2,790,161 | 1,091,609 | 12,354,635 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,785,761 | 1,091,640 | 12,357,746 |
 
 ## chain
 
@@ -389,6 +393,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 13,035 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,624 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 13,099 | 318 | 2,450 | 4,491 | 3,180 | 72,782 | 66,624 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 13,035 | 318 | 2,453 | 4,491 | 3,209 | 72,783 | 66,755 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 13,035 | 318 | 2,453 | 4,491 | 3,208 | 72,783 | 66,755 |
 
 ## chain-affinity
 
@@ -467,6 +472,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 2,549 | 3,067 | 2,496 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 2,549 | 3,067 | 2,496 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 2,552 | 3,070 | 2,499 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,552 | 3,070 | 2,499 |
 
 ## control
 
@@ -545,6 +551,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 74,709 | 837,048 | 2,589,648 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 74,709 | 837,139 | 2,589,628 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 74,709 | 829,632 | 2,592,919 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 74,710 | 829,596 | 2,592,943 |
 
 ## create
 
@@ -623,6 +630,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 13,480,428 | 2,897,678 | 2,552,366 | 2,132,159 | 4,004,654 | 34,301,500 | 49,793,679 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 13,448,465 | 2,865,678 | 2,536,366 | 2,131,835 | 4,004,481 | 34,301,543 | 49,793,653 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 13,448,327 | 2,865,677 | 2,545,361 | 2,131,637 | 4,060,268 | 33,949,607 | 49,780,114 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 13,464,272 | 2,865,677 | 2,545,362 | 2,131,836 | 4,059,170 | 33,949,740 | 49,780,150 |
 
 ## create-on
 
@@ -701,6 +709,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 2,931,487 | 4,400,707 | 54,430,820 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 2,915,488 | 4,400,463 | 54,430,662 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 2,924,485 | 4,412,446 | 54,639,966 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,924,487 | 4,412,424 | 54,639,765 |
 
 ## cutoff
 
@@ -779,6 +788,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 1,182 | 50 | 111 | 65 | 35 | 1,095 | 875 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -857,6 +867,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 765 | 768 | 16,108 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 765 | 768 | 16,108 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 780 | 744 | 16,448 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 780 | 744 | 16,448 |
 
 ## derive-on
 
@@ -935,6 +946,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 737 | 775 | 16,267 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 737 | 775 | 16,267 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 750 | 795 | 16,471 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 750 | 795 | 16,471 |
 
 ## dispose
 
@@ -1013,6 +1025,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 2,707,636 | 806,290 | 367,497 | 466,195 | 486,527 | 13,195,501 | 9,106,443 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 2,707,639 | 806,291 | 367,497 | 466,044 | 486,252 | 13,193,977 | 9,106,577 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 2,707,643 | 806,290 | 367,497 | 466,169 | 487,299 | 13,194,208 | 9,106,194 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,706,245 | 806,288 | 367,497 | 466,062 | 487,183 | 13,194,184 | 9,106,625 |
 
 ## dispose-on
 
@@ -1091,6 +1104,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 346,497 | 479,719 | 8,902,591 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 346,497 | 479,680 | 8,902,704 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 346,497 | 479,549 | 8,902,236 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 346,497 | 479,746 | 8,902,751 |
 
 ## editable-edit
 
@@ -1169,6 +1183,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 180,106 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 180,106 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 181,606 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 181,606 |
 
 ## editable-upstream
 
@@ -1247,6 +1262,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 231,255 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 231,255 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 232,755 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 232,755 |
 
 ## fail-recompute
 
@@ -1325,6 +1341,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 64,930 | 1,366 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 64,930 | 1,366 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 64,917 | 1,369 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 64,885 | 1,369 |
 
 ## flight
 
@@ -1403,6 +1420,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 10,991 | 6,216 | 6,217 | 11,317 | 10,763 | 22,337 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 10,991 | 6,216 | 6,217 | 11,317 | 10,763 | 22,337 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 10,943 | 6,195 | 6,196 | 11,269 | 10,715 | 22,343 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 10,943 | 6,195 | 6,196 | 11,269 | 10,715 | 22,343 |
 
 ## keyed-insert
 
@@ -1481,6 +1499,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 1,921,807 | 53,955 | 54,936 | 3,219,291 | 661,726 | 176,176 | 44,863,396 | 2,635,332 | 2,652,855 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 1,921,791 | 53,955 | 54,920 | 3,219,252 | 661,729 | 176,192 | 44,862,141 | 2,635,373 | 2,652,858 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 1,920,822 | 54,064 | 54,956 | 3,239,702 | 240,484 | 176,291 | 44,993,954 | 2,635,845 | 2,655,148 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,920,810 | 54,064 | 54,935 | 3,239,799 | 240,557 | 176,339 | 44,992,741 | 2,635,840 | 2,655,142 |
 
 ## keyed-remove
 
@@ -1559,6 +1578,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 1,920,733 | 43,630 | 45,283 | 3,245,050 | 593,174 | 605,000 | 44,838,696 | 1,925,258 | 1,959,006 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 1,920,724 | 43,631 | 45,267 | 3,245,011 | 593,186 | 604,928 | 44,838,676 | 1,925,293 | 1,959,003 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 1,919,747 | 43,739 | 45,301 | 3,264,634 | 592,362 | 605,898 | 44,955,080 | 1,925,853 | 1,959,714 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,919,751 | 43,733 | 45,275 | 3,264,677 | 592,285 | 605,925 | 44,955,086 | 1,925,953 | 1,959,766 |
 
 ## keyed-swap
 
@@ -1637,6 +1657,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 1,973,406 | 46,166 | 46,914 | 3,562,685 | 149,206 | 511,449 | 45,977,288 | 916,603 | 932,815 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 1,973,390 | 46,165 | 46,898 | 3,562,172 | 149,119 | 511,471 | 45,977,338 | 916,614 | 932,871 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 1,972,429 | 46,275 | 46,930 | 3,577,912 | 149,193 | 511,883 | 46,112,920 | 917,180 | 933,523 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,972,429 | 46,275 | 46,914 | 3,587,178 | 149,199 | 511,925 | 46,111,069 | 917,166 | 933,510 |
 
 ## mvu-dispatch
 
@@ -1715,6 +1736,86 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 58,261 | 772 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 58,261 | 772 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 58,291 | 787 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 58,291 | 787 |
+
+## persist-write
+
+| Commit | Date | Subject | dotnet Ranvier (persisted signal) | dotnet Ranvier (signal) |
+|---|---|---|---:|---:|
+| `878e5bd` | 2026-10-16 | feat(ci): CI performance/benchmark automation (#64) | — | — |
+| `67d3919` | 2026-10-16 | docs(perf): added foundation for automatic benchmark visualisations (#74) | — | — |
+| `3c1c144` | 2026-10-16 | docs: make benchmark charts interactive and publish after perf history (#75) | — | — |
+| `1faeb63` | 2026-10-17 | perf(core): skip the row observer scan for memo-free projections (#78) | — | — |
+| `66007fe` | 2026-10-17 | bench(counters): add memo-free row variant of the keyed scenarios (#77) | — | — |
+| `28141fa` | 2026-10-17 | chore!: drop the net8.0 target; .NET 8 and 9 apps use netstandard2.1 (#80) | — | — |
+| `2cb2977` | 2026-10-17 | perf(counters): mode-aware verdict with a Ranvier-free control (#81) | — | — |
+| `e9107dd` | 2026-10-18 | fix(counters): read history records that predate the compiled flag (#86) | — | — |
+| `1cc8633` | 2026-10-18 | ci: add contribution checks, docs-only runs, aggregate required checks and tree-based perf reuse (#87) | — | — |
+| `a17bd85` | 2026-10-18 | feat(core): add the Drop and DropWhilePending flight policies (#88) | — | — |
+| `1517a08` | 2026-10-18 | feat(core): add Projection.KeysVersion and ChangedSince, the window of keys a pass changed (#89) | — | — |
+| `ab8fd7a` | 2026-10-18 | fix(trace): record a pending node's dropped failure through a one-statement hook (#90) | — | — |
+| `2650152` | 2026-10-18 | docs(api): add the projection options, Owner error and ensureUniqueKeys members to the public API baseline (#91) | — | — |
+| `f60ca58` | 2026-10-18 | fix(tracing): support NativeAOT in traced builds (#92) | — | — |
+| `32c3a60` | 2026-10-18 | perf(core): store an owner's first cleanup in fields instead of two arrays (#93) | — | — |
+| `1cd30d7` | 2026-10-18 | bench(counters): fix V8's semi-space at 32 MB in every Node run (#95) | — | — |
+| `7853137` | 2026-10-18 | perf(core): share one empty array across observer sets and source lists, and give a first observer one slot (#94) | — | — |
+| `305d009` | 2026-10-18 | docs(benchmarks): list the Node flags the CI counter runs use (#97) | — | — |
+| `168f44e` | 2026-10-19 | perf(core): remove reactive edges by handle (#98) | — | — |
+| `2191dd4` | 2026-10-19 | docs(benchmarks): add per-scenario instruction trends to the primitive pages (#99) | — | — |
+| `d3c60be` | 2026-10-19 | ci(perf): skip measuring docs-only master pushes and still deploy their docs (#102) | — | — |
+| `9f2398d` | 2026-10-19 | feat(core): add stream memos (#100) | — | — |
+| `059dd7a` | 2026-10-19 | docs(benchmarks): chart the stream scenarios on their own page (#107) | — | — |
+| `d35ba5a` | 2026-10-19 | test(streams): keep the stream trace test on the graph's thread (#108) | — | — |
+| `31e061c` | 2026-10-19 | fix(core): skip empty stream wakes and gate Fable promise-only failures (#110) | — | — |
+| `72df34d` | 2026-10-19 | feat(core): per-node flight policy for async memos (#112) | — | — |
+| `8eb33e0` | 2026-10-19 | feat(wire): one wire text on .NET and Fable through a vendored, patched Thoth.Json (#109) (#117) | — | — |
+| `365736e` | 2026-10-19 | ci: build the core before the packages so parallel builds stop racing on its outputs (#118) | — | — |
+| `00560e1` | 2026-10-20 | feat(projection): add the next batch of incremental Projection functions (#119) | — | — |
+| `e34da8c` | 2026-10-20 | fix(elmish): drop messages dispatched to an Mvu after its scope is disposed (#121) (#122) | — | — |
+| `1de2432` | 2026-10-20 | build: exclude Ranvier.Tests.Fable from the root dotnet build (#125) | — | — |
+| `61674f4` | 2026-10-20 | feat(fable): Fable.Ranvier PoC DOM (#42) | — | — |
+| `b8cd416` | 2026-10-20 | fix(core): run queued projection passes before their readers so a flush reads no stale keys (#123) (#127) | — | — |
+| `56ecfb1` | 2026-10-20 | ci: run the Fable playground's DOM, sugar and Chromium suites (#128) | — | — |
+| `65844e1` | 2026-10-20 | feat(view): builder sugar for the template path (#120) | — | — |
+| `4021de0` | 2026-10-20 | perf(core): compare sort keys with a cached unboxed comparer (#130) | — | — |
+| `20f3323` | 2026-10-20 | bench: gate Node on --jitless instruction counts and report tiered Node without a gate (#131) | — | — |
+| `18f9446` | 2026-10-20 | fix: release disposed mounts and spent scheduler-queue slots under Fable (#129) | — | — |
+| `642d889` | 2026-10-20 | feat(view): view sugar v2 — free tags, inferred instances and declaration helpers (#133) | — | — |
+| `9e57438` | 2026-10-20 | docs: view layer and server documentation (#132) | — | — |
+| `2833eca` | 2026-10-20 | ci: run the DOM generator type, generator and docs-sample checks (#134) | — | — |
+| `970998f` | 2026-10-20 | feat(anime): typed anime.js 4.5.0 bindings (#135) | — | — |
+| `b3f398e` | 2026-10-20 | feat(view): motion, exit and reflow hooks with held departures (#136) | — | — |
+| `0a7fe32` | 2026-10-21 | fix(view): arm and list sources reading a pending value wait with their boundary (#137) | — | — |
+| `2cf84be` | 2026-10-21 | fix(core): match on flight policy cases so Fable precompile emits the assembly (#138) | — | — |
+| `bcdb561` | 2026-10-21 | feat(server): render a whole document around a component (#139) | — | — |
+| `5afc604` | 2026-10-21 | feat(view): Motion parts over Anime.js, and client element refusals (#140) | — | — |
+| `0ba119a` | 2026-10-21 | feat(examples): Ranvier.Motion example pages over Motion parts (#141) | — | — |
+| `d99fc64` | 2026-10-21 | docs(view): motion parts, motion testing and anime migration (#142) | — | — |
+| `cbfc45f` | 2026-10-21 | build: bump the core packages to the next preview (#143) | — | — |
+| `9476dac` | 2026-10-21 | feat(view): motion slots, flip start hints and follow's shared unit (#144) | — | — |
+| `141ac28` | 2026-10-21 | docs: publish the Motion example pages on the docs site under examples/motion/ (#146) | — | — |
+| `a0aa9c4` | 2026-10-21 | build(deps): bump the npm\_and\_yarn group across 3 directories with 3 updates (#145) | — | — |
+| `40ea738` | 2026-10-21 | build: ship embedded PDBs instead of empty symbol packages (#148) | — | — |
+| `14baa51` | 2026-10-21 | ci: group Dependabot updates and auto-merge them on green (#149) | — | — |
+| `9a8946d` | 2026-10-21 | build(view): drop Foundation's Portable internals and the FSharp.Core pin (#147) | — | — |
+| `1062c1f` | 2026-10-21 | build: compile with Fickl instead of Fable (#152) | — | — |
+| `fb1a85b` | 2026-10-21 | feat(view): Native.fs, the .NET DOM twin and shared conformance (#153) | — | — |
+| `b4eebc5` | 2026-10-21 | feat(analyzers): Ranvier.Analyzers, build-time diagnostics for Ranvier traps (#154) | — | — |
+| `433da79` | 2026-10-21 | refactor(view)!: graduate the view to src as Ranvier.View, Ranvier.View.Dom and Ranvier.View.Anime (#155) | — | — |
+| `183cd59` | 2026-10-21 | build(publish): accept dependencies served by sources nuget.config maps (#156) | — | — |
+| `b2a5781` | 2026-10-22 | build(deps): bump the npm-version-updates group across 5 directories with 11 updates (#151) | — | — |
+| `9651ffa` | 2026-10-22 | feat(view): add opt-in Arms.Match lowering (#158) | — | — |
+| `386dc43` | 2026-10-23 | feat(view): add DOM twin and inspection testing (#159) | — | — |
+| `a72c14e` | 2026-10-23 | feat(view): generate Motion pages from shared F# declarations (#160) | — | — |
+| `d9e9ccb` | 2026-10-23 | feat(playground): generate shared F# pages and modernize examples (#161) | — | — |
+| `d230fe0` | 2026-10-23 | feat(examples): add F# server hydration and hosted demos (#162) | — | — |
+| `26a1c71` | 2026-10-23 | chore: pin Fickl 0.5.3 and organize docs navigation (#163) | — | — |
+| `f13bdbb` | 2026-10-24 | feat(docs): render signal maps with Ranvier.View (#169) | — | — |
+| `01c8295` | 2026-10-24 | Merge pull request #170 from shayanhabibi/integration/issues | — | — |
+| `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | — | — |
+| `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | — | — |
+| `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | — | — |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 7,013 | 883 |
 
 ## project-chain
 
@@ -1793,6 +1894,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 1,070,282 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 1,070,232 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 1,071,789 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,071,688 |
 
 ## project-churn
 
@@ -1871,6 +1973,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 36,472 | 34,308 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 36,472 | 34,308 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 36,521 | 34,356 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 36,503 | 34,338 |
 
 ## project-edit
 
@@ -1949,6 +2052,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 50,429 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 50,413 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 50,441 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 50,425 |
 
 ## project-reorder
 
@@ -2027,6 +2131,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 779,166 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 779,150 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 780,175 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 780,156 |
 
 ## server-render
 
@@ -2105,6 +2210,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 677,891 | 1,132,784 | 9,834,020 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 676,291 | 1,133,147 | 9,833,920 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 680,585 | 1,148,609 | 9,894,252 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 680,553 | 1,148,774 | 9,893,486 |
 
 ## shape-diamond
 
@@ -2183,6 +2289,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 59,899 | 79,968 | 1,763,363 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 59,899 | 79,968 | 1,763,363 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 59,914 | 80,437 | 1,763,703 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 59,914 | 80,437 | 1,763,703 |
 
 ## shape-dynamic
 
@@ -2261,6 +2368,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 82,921 | 107,037 | 2,006,442 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 82,921 | 107,037 | 2,006,441 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 83,778 | 108,194 | 2,030,348 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 83,778 | 108,194 | 2,030,350 |
 
 ## stream-burst-1
 
@@ -2339,6 +2447,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 1,974 | 1,572 | 2,507 | 4,673 | 3,646 | 13,377 | 47,213 | 45,423 | 55,175 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 1,974 | 1,572 | 2,491 | 4,673 | 3,646 | 13,377 | 47,213 | 45,423 | 55,174 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 1,950 | 1,548 | 2,519 | 4,693 | 3,672 | 13,466 | 47,549 | 45,790 | 55,386 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,950 | 1,548 | 2,519 | 4,695 | 3,672 | 13,466 | 47,553 | 45,790 | 55,386 |
 
 ## stream-burst-16
 
@@ -2417,6 +2526,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 5,631 | 25,017 | 5,717 | 9,503 | 49,598 | 8,052 | 121,075 | 714,276 | 113,525 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 5,631 | 25,017 | 5,701 | 9,503 | 49,601 | 8,050 | 121,072 | 714,276 | 113,528 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 5,022 | 24,618 | 5,729 | 9,738 | 50,033 | 8,068 | 123,779 | 720,147 | 113,737 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 5,022 | 24,618 | 5,729 | 9,739 | 50,033 | 8,070 | 123,794 | 720,148 | 113,737 |
 
 ## stream-burst-256
 
@@ -2495,6 +2605,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 64,131 | 400,101 | 57,056 | 127,253 | 787,183 | 74,571 | 1,303,121 | 11,414,822 | 1,046,554 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 64,131 | 400,101 | 57,040 | 127,088 | 787,175 | 74,575 | 1,303,121 | 11,414,822 | 1,046,555 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 54,162 | 393,702 | 57,068 | 131,853 | 792,887 | 74,745 | 1,343,139 | 11,508,828 | 1,046,701 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 54,162 | 393,702 | 57,068 | 131,968 | 792,887 | 74,718 | 1,342,998 | 11,508,772 | 1,046,751 |
 
 ## stream-restart
 
@@ -2573,6 +2684,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 4,186 | 4,980 | 6,365 | 16,590 | 42,496 | 71,407 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 4,186 | 4,964 | 6,365 | 16,588 | 42,494 | 71,407 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 4,201 | 5,007 | 6,534 | 16,848 | 42,836 | 71,954 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 4,201 | 5,023 | 6,536 | 16,845 | 42,838 | 71,946 |
 
 ## timed-admit-both
 
@@ -2651,6 +2763,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 119,615 | 134,961 | 2,679,937 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 118,591 | 134,963 | 2,679,937 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 117,708 | 135,986 | 2,693,518 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 117,708 | 135,985 | 2,693,544 |
 
 ## timed-admit-debounce
 
@@ -2729,6 +2842,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 118,520 | 133,544 | 2,640,291 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 117,496 | 133,545 | 2,640,291 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 116,613 | 134,491 | 2,653,870 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 116,613 | 134,501 | 2,653,870 |
 
 ## timed-admit-first
 
@@ -2807,6 +2921,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 70,503 | 79,053 | 1,611,698 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 69,479 | 79,053 | 1,611,698 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 69,620 | 79,523 | 1,620,606 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 69,620 | 79,523 | 1,620,606 |
 
 ## timed-admit-last
 
@@ -2885,6 +3000,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 118,782 | 133,874 | 2,650,147 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 117,758 | 133,876 | 2,650,147 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 116,875 | 134,830 | 2,663,726 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 116,875 | 134,835 | 2,663,726 |
 
 ## timed-capture-both
 
@@ -2963,6 +3079,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 35,726 | 44,808 | 847,002 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 35,726 | 44,808 | 847,002 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 35,739 | 44,927 | 847,205 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 35,739 | 45,267 | 847,205 |
 
 ## timed-capture-debounce
 
@@ -3041,6 +3158,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 35,598 | 44,104 | 847,382 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 35,598 | 44,104 | 847,382 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 35,611 | 44,190 | 847,585 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 35,611 | 44,190 | 847,585 |
 
 ## timed-capture-first
 
@@ -3119,6 +3237,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 32,078 | 36,612 | 745,378 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 32,078 | 36,612 | 745,376 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 32,091 | 36,699 | 745,578 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 32,091 | 36,698 | 745,579 |
 
 ## timed-capture-last
 
@@ -3197,6 +3316,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 35,534 | 44,040 | 839,511 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 35,534 | 44,040 | 839,510 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 35,547 | 44,126 | 839,713 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 35,547 | 44,126 | 839,713 |
 
 ## update
 
@@ -3275,6 +3395,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 1,087,783 | 38,805 | 84,105 | 262,527 | 151,689 | 3,350,208 | 2,503,399 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 1,087,783 | 38,805 | 82,505 | 262,733 | 151,663 | 3,350,260 | 2,503,403 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 1,087,782 | 38,805 | 84,005 | 262,555 | 154,803 | 3,350,234 | 2,537,401 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,087,790 | 38,805 | 84,005 | 262,891 | 154,801 | 3,350,261 | 2,537,448 |
 
 ## update-on
 
@@ -3353,6 +3474,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 93,005 | 165,214 | 2,830,982 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 93,005 | 165,160 | 2,831,030 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 94,505 | 168,124 | 2,864,949 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 94,505 | 168,110 | 2,865,002 |
 
 ## work-form
 
@@ -3431,6 +3553,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 170,300 | 163,392 | 295,929 | 291,420 | 5,350,004 | 5,296,175 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 170,300 | 163,392 | 295,948 | 291,420 | 5,350,027 | 5,296,200 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 172,552 | 165,024 | 307,355 | 294,796 | 5,409,038 | 5,322,075 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 172,552 | 165,024 | 307,332 | 294,826 | 5,409,039 | 5,322,112 |
 
 ## work-status
 
@@ -3509,6 +3632,7 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 100,445 | 78,815 | 264,826 | 153,149 | 2,611,525 | 2,361,446 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 100,445 | 78,815 | 264,826 | 153,190 | 2,611,645 | 2,361,512 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 101,945 | 80,135 | 267,829 | 155,459 | 2,645,618 | 2,383,235 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 101,945 | 80,135 | 267,845 | 155,466 | 2,645,665 | 2,383,054 |
 
 ## work-value
 
@@ -3587,4 +3711,5 @@
 | `b148911` | 2026-10-24 | Merge pull request #186 from shayanhabibi/integration/issues | 107,569 | 119,471 | 265,075 | 279,902 | 2,596,306 | 2,920,791 |
 | `8403149` | 2026-10-24 | Merge pull request #191 from shayanhabibi/integration/issues | 107,569 | 119,469 | 265,075 | 279,894 | 2,596,287 | 2,920,839 |
 | `0fa891c` | 2026-10-25 | Merge pull request #204 from shayanhabibi/integration/issues | 109,069 | 120,971 | 268,088 | 282,313 | 2,630,292 | 2,954,695 |
+| `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 109,070 | 120,969 | 268,110 | 282,277 | 2,630,307 | 2,954,793 |
 
