@@ -1404,6 +1404,48 @@ let tests =
                             Expect.equal app2.Model app.Model "the live run's model"
                         }
 
+                        testCaseAsync $"a %O{mode} replay of producing setup work into a target that recorded an entry raises"
+                        <| async {
+                            let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())
+                            app.Dispatch 2
+                            gate.SetResult ()
+                            do! drained ()
+
+                            let _, g2, app2, seen2, gate2 = initialCommand noPrelude noPrelude (journaled ())
+                            app2.Dispatch 9
+
+                            let message =
+                                try
+                                    Journal.replay mode g2 journal.Entries
+                                    ""
+                                with :? JournalReplayException as error ->
+                                    Expect.equal error.Seq 0 "the Setup entry"
+                                    error.Message
+
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal
+                                message
+                                "Journal entry 0 (unkeyed, setup) cannot be replayed: the journal's setup work [work \"initial\"] made a recorded input, and the target recorded an entry before the replay"
+                                "the reason"
+
+                            Expect.equal (List.ofSeq seen2) [ 9; 5 ] "no recorded entry is applied"
+                        }
+
+                        testCaseAsync $"a %O{mode} replay with no producing setup work into a target that recorded an entry applies each message once"
+                        <| async {
+                            let! journal, _ = recordedCommand ()
+                            let _, g2, app2, seen2, gate2 = commanding noPrelude (journaled ())
+                            app2.Dispatch 3
+                            gate2.SetResult ()
+                            do! drained ()
+                            Journal.replay mode g2 journal.Entries
+                            do! drained ()
+
+                            Expect.equal (List.ofSeq seen2) [ 3; 30; 1; 10 ] "each message reaches update once"
+                        }
+
                         testCaseAsync $"a %O{mode} replay into a target that started extra work after its setup applies each message once"
                         <| async {
                             let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())

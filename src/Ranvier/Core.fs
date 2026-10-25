@@ -1734,6 +1734,9 @@ type internal JournalRecorder(journal: IInputJournal) =
     /// </summary>
     member _.SetupRecord = if isNull setupRecord then describeSetup () else setupRecord
 
+    /// <summary>The number of entries recorded on the graph, its <c>Setup</c> entry excluded.</summary>
+    member _.Position = position
+
     /// <summary>True when an entry was recorded after the last <c>Flush</c> entry.</summary>
     member _.Unflushed = unflushed
 

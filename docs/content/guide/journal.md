@@ -199,9 +199,10 @@ input of a `Journal.produce` call or a command's dispatch that runs synchronousl
 awaited task has already completed. The work's other inputs are live: a synchronous dispatch that
 the recorded run made before its `await`, and the dispatch of a command still in flight when the
 journal was cut, reach `update`. Setup work, started before a graph's first entry, such as an initial command of
-`Mvu.withCmd`, carries `started = 0` and is matched by its position among the target's setup work
-when the replay is the target's first input. The inputs of other work started on the target outside
-the replay, before it or after it, are live.
+`Mvu.withCmd`, carries `started = 0` and is matched by its position among the target's setup work.
+A replay whose journal holds an input of setup work requires a target with no recorded entry (see
+[Matching target](#matching-target)). The inputs of other work started on the target outside the
+replay, before it or after it, are live.
 A gateway that also wants to skip its external call reads `Journal.replaying` in its synchronous part:
 
 ```fsharp
@@ -249,6 +250,18 @@ and the target started 2 setup works [work, work], which match the recorded setu
 than one position; Journal.name tells the setup works apart
 ```
 
+When the journal holds an input of a setup work, a matching target has also recorded no entry before
+the replay: the live setup work of a target that already took an input is not tied to the recorded
+one. A replay into such a target raises:
+
+```text
+Journal entry 0 (unkeyed, setup) cannot be replayed: the journal's setup work [work "initial"]
+made a recorded input, and the target recorded an entry before the replay
+```
+
+A journal whose setup work made no recorded input, such as one whose only setup work is an effect,
+replays into a target that has already taken inputs, including an earlier replay into the same graph.
+
 Build the target with the code that built the recorded graph, in the same order, and replay before
 any other input to it. An extra work created before the application changes the position of every
 setup work after it, and the replay raises whenever the shift reaches a setup work that made a
@@ -271,6 +284,8 @@ A replay raises `JournalReplayException` on an entry it cannot apply, naming its
 
 - the target's setup work does not begin with the recorded setup work of the `Setup` entry, or
   matches a producing setup work at more than one position;
+- the journal's setup work made a recorded input, and the target recorded an entry before the
+  replay;
 - the entry is `NonReplayable`;
 - its key is not registered on the target graph;
 - the key's input takes no entry of that kind, such as a `Settle` for a signal;

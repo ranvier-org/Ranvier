@@ -26,8 +26,9 @@ type JournalReplayedFailure(message: string) =
 /// <summary>A journal entry that a replay cannot apply to its target graph.</summary>
 /// <remarks>
 /// On a <c>Setup</c> entry, <c>Reason</c> names the recorded setup work and the setup work found on the target, which
-/// either does not begin with it or matches a setup work that made a recorded input at more than one position. The
-/// replay then applies no entry.
+/// either does not begin with it or matches a setup work that made a recorded input at more than one position, or
+/// names the recorded setup work when it made a recorded input and the target recorded an entry before the replay.
+/// The replay then applies no entry.
 /// </remarks>
 type JournalReplayException(seq: int, key: string option, payloadType: string, reason: string) =
     inherit
@@ -388,8 +389,9 @@ module Journal =
         next = recorded.Length
 
     /// <summary>
-    /// Raises unless the target's setup works begin with the setup works of <c>entry</c>, and each recorded setup work
-    /// whose position is in <c>producing</c> matches the target's setup work at its own position alone.
+    /// Raises unless the target's setup works begin with the setup works of <c>entry</c>, each recorded setup work
+    /// whose position is in <c>producing</c> matches the target's setup work at its own position alone, and, when
+    /// <c>producing</c> is non-empty, the target has recorded no entry.
     /// </summary>
     let private checkSetup (recorder: JournalRecorder) (producing: Set<int>) (entry: JournalEntry) =
         let failWith reason =
@@ -440,6 +442,13 @@ module Journal =
 
         if ambiguous then
             mismatch "which match the recorded setup work at more than one position; Journal.name tells the setup works apart"
+
+        if not producing.IsEmpty && recorder.Position > 0 then
+            failWith (
+                "the journal's setup work ["
+                + recorded
+                + "] made a recorded input, and the target recorded an entry before the replay"
+            )
 
     let private prepare (mode: ReplayMode) (recorder: JournalRecorder) (entry: JournalEntry) : (unit -> unit) option =
         let failWith reason =
@@ -516,7 +525,8 @@ module Journal =
     /// <para>
     /// The target must match the recorded graph: its setup work, the works it started before its first entry, must
     /// begin with the setup work of the <c>Setup</c> entry, and each setup work that made a recorded input must match
-    /// the target's setup work at its own position alone. A setup work is described by its kind and its
+    /// the target's setup work at its own position alone. When a setup work made a recorded input, the target must
+    /// also have recorded no entry before the replay. A setup work is described by its kind and its
     /// <c>name</c>, so unnamed setup works of one kind have equal descriptions. A target built by the code that built
     /// the recorded graph, with no other work started before that code and every later work described apart from the
     /// producing setup work, matches. Before applying any entry, a replay in either mode raises
@@ -530,8 +540,7 @@ module Journal =
     /// work and call, during the replay or after it returns; its other inputs, such as a synchronous dispatch the
     /// recorded run left unrecorded, are live. A work started during the replay is identified by the replayed entry
     /// applied before it and its position after that entry, whatever the target ran before the replay. Setup work is
-    /// matched by its position among the target's setup work when the replay is the target's first input; other work
-    /// started outside the replay is live. <c>Reenact</c> applies the <c>External</c> entries and skips the
+    /// matched by its position among the target's setup work; other work started outside the replay is live. <c>Reenact</c> applies the <c>External</c> entries and skips the
     /// <c>Produced</c> entries, and the re-run work produces its inputs. In both modes, on a matching target, each
     /// recorded input reaches the graph once when every input of the re-run work is attributed: on .NET, the inputs of an <c>Mvu</c> command, of a
     /// continuation of an effect's body, and those passed to <c>produce</c>; under Fable, the inputs of an <c>Mvu</c>
@@ -549,7 +558,8 @@ module Journal =
     /// </exception>
     /// <exception cref="T:Ranvier.JournalReplayException">
     /// <c>graph</c>'s setup work does not begin with the setup work of the <c>Setup</c> entry or matches a producing
-    /// setup work at more than one position, an entry is
+    /// setup work at more than one position, a setup work made a recorded input and <c>graph</c> recorded an entry
+    /// before the replay, an entry is
     /// non-replayable, its key is not registered on <c>graph</c>, its codec name or version differs from the key's
     /// codec, or its payload fails to decode.
     /// </exception>
