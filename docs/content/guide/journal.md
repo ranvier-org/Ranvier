@@ -259,8 +259,17 @@ Journal entry 0 (unkeyed, setup) cannot be replayed: the journal's setup work [w
 made a recorded input, and the target recorded an entry before the replay
 ```
 
-A journal whose setup work made no recorded input, such as one whose only setup work is an effect,
-replays into a target that has already taken inputs, including an earlier replay into the same graph.
+The check holds for entries with no `Setup` entry too: when they hold a `Produced` entry of setup
+work, the replay raises on the first such entry, and the reason names no setup work:
+
+```text
+Journal entry 2 (key "initial", System.Int32) cannot be replayed: the journal's setup work made a
+recorded input, and the target recorded an entry before the replay
+```
+
+A second replay into one graph raises when its entries hold an input of setup work. A journal whose
+setup work made no recorded input, such as one whose only setup work is an effect, replays into a
+target that has already taken inputs, including an earlier replay into the same graph.
 
 Build the target with the code that built the recorded graph, in the same order, and replay before
 any other input to it. An extra work created before the application changes the position of every
@@ -268,7 +277,8 @@ setup work after it, and the replay raises whenever the shift reaches a setup wo
 recorded input. Work started after that code, such as an extra effect
 created once the application is built, leaves the target matching when its description differs
 from the description of every producing setup work; name the setup works with `Journal.name` to make
-it differ. Entries with no `Setup` entry, such as the entries after a position, match every target.
+it differ. Entries with no `Setup` entry, such as the entries after a position, match every target
+that has recorded no entry, and every target when they hold no input of setup work.
 
 ### Exactly once
 
@@ -284,8 +294,7 @@ A replay raises `JournalReplayException` on an entry it cannot apply, naming its
 
 - the target's setup work does not begin with the recorded setup work of the `Setup` entry, or
   matches a producing setup work at more than one position;
-- the journal's setup work made a recorded input, and the target recorded an entry before the
-  replay;
+- the entries hold an input of setup work, and the target recorded an entry before the replay;
 - the entry is `NonReplayable`;
 - its key is not registered on the target graph;
 - the key's input takes no entry of that kind, such as a `Settle` for a signal;

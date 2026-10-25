@@ -28,6 +28,8 @@ type JournalReplayedFailure(message: string) =
 /// On a <c>Setup</c> entry, <c>Reason</c> names the recorded setup work and the setup work found on the target, which
 /// either does not begin with it or matches a setup work that made a recorded input at more than one position, or
 /// names the recorded setup work when it made a recorded input and the target recorded an entry before the replay.
+/// On the first <c>Produced</c> entry of setup work, when the entries hold no <c>Setup</c> entry, <c>Reason</c> states
+/// that setup work made a recorded input and the target recorded an entry before the replay.
 /// The replay then applies no entry.
 /// </remarks>
 type JournalReplayException(seq: int, key: string option, payloadType: string, reason: string) =
@@ -390,8 +392,8 @@ module Journal =
 
     /// <summary>
     /// Raises unless the target's setup works begin with the setup works of <c>entry</c>, each recorded setup work
-    /// whose position is in <c>producing</c> matches the target's setup work at its own position alone, and, when
-    /// <c>producing</c> is non-empty, the target has recorded no entry.
+    /// whose position is in <c>producing</c> matches the target's setup work at its own position alone; returns the
+    /// setup record of <c>entry</c>.
     /// </summary>
     let private checkSetup (recorder: JournalRecorder) (producing: Set<int>) (entry: JournalEntry) =
         let failWith reason =
@@ -443,11 +445,28 @@ module Journal =
         if ambiguous then
             mismatch "which match the recorded setup work at more than one position; Journal.name tells the setup works apart"
 
+        recorded
+
+    /// <summary>
+    /// Raises on <c>entry</c> when <c>producing</c> is non-empty and the target has recorded an entry;
+    /// <c>recorded</c> is the setup record of the <c>Setup</c> entry, when <c>entries</c> hold one.
+    /// </summary>
+    let private checkUnrecorded (recorder: JournalRecorder) (producing: Set<int>) (entry: JournalEntry) (recorded: string option) =
         if not producing.IsEmpty && recorder.Position > 0 then
-            failWith (
-                "the journal's setup work ["
-                + recorded
-                + "] made a recorded input, and the target recorded an entry before the replay"
+            let work =
+                match recorded with
+                | Some recorded -> " [" + recorded + "]"
+                | None -> ""
+
+            raise (
+                JournalReplayException (
+                    entry.Seq,
+                    entry.Key,
+                    entry.PayloadType,
+                    "the journal's setup work"
+                    + work
+                    + " made a recorded input, and the target recorded an entry before the replay"
+                )
             )
 
     let private prepare (mode: ReplayMode) (recorder: JournalRecorder) (entry: JournalEntry) : (unit -> unit) option =
@@ -525,13 +544,13 @@ module Journal =
     /// <para>
     /// The target must match the recorded graph: its setup work, the works it started before its first entry, must
     /// begin with the setup work of the <c>Setup</c> entry, and each setup work that made a recorded input must match
-    /// the target's setup work at its own position alone. When a setup work made a recorded input, the target must
-    /// also have recorded no entry before the replay. A setup work is described by its kind and its
+    /// the target's setup work at its own position alone. When the entries hold an input of setup work, with or
+    /// without the <c>Setup</c> entry, the target must also have recorded no entry before the replay. A setup work is described by its kind and its
     /// <c>name</c>, so unnamed setup works of one kind have equal descriptions. A target built by the code that built
     /// the recorded graph, with no other work started before that code and every later work described apart from the
     /// producing setup work, matches. Before applying any entry, a replay in either mode raises
     /// <c>JournalReplayException</c> on a target that does not match. Entries with no <c>Setup</c> entry match every
-    /// target.
+    /// target that has recorded no entry, and every target when they hold no input of setup work.
     /// </para>
     /// <para>
     /// <c>Diagnostic</c> applies every entry, and settles and fails async sources with the recorded outcomes; a failure
@@ -558,8 +577,8 @@ module Journal =
     /// </exception>
     /// <exception cref="T:Ranvier.JournalReplayException">
     /// <c>graph</c>'s setup work does not begin with the setup work of the <c>Setup</c> entry or matches a producing
-    /// setup work at more than one position, a setup work made a recorded input and <c>graph</c> recorded an entry
-    /// before the replay, an entry is
+    /// setup work at more than one position, the entries hold an input of setup work and <c>graph</c> recorded an
+    /// entry before the replay, an entry is
     /// non-replayable, its key is not registered on <c>graph</c>, its codec name or version differs from the key's
     /// codec, or its payload fails to decode.
     /// </exception>
@@ -590,9 +609,25 @@ module Journal =
                 | _ -> None)
             |> Set.ofSeq
 
-        for entry in sorted do
-            if entry.Kind = JournalEntryKind.Setup then
-                checkSetup recorder producing entry
+        let setup =
+            sorted
+            |> Array.tryFind (fun entry -> entry.Kind = JournalEntryKind.Setup)
+
+        let recorded =
+            setup
+            |> Option.map (checkSetup recorder producing)
+
+        if not producing.IsEmpty then
+            let first =
+                setup
+                |> Option.defaultWith (fun () ->
+                    sorted
+                    |> Array.find (fun entry ->
+                        match produced entry with
+                        | ValueSome (0, _, _) -> true
+                        | _ -> false))
+
+            checkUnrecorded recorder producing first recorded
 
         let previous = recorder.Replaying
         let previousSession = recorder.BeginReplay mode

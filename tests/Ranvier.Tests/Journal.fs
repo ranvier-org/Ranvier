@@ -1433,6 +1433,73 @@ let tests =
                             Expect.equal (List.ofSeq seen2) [ 9; 5 ] "no recorded entry is applied"
                         }
 
+                        testCaseAsync $"a %O{mode} replay of producing setup entries with no Setup entry into a target that recorded an entry raises"
+                        <| async {
+                            let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())
+                            app.Dispatch 2
+                            gate.SetResult ()
+                            do! drained ()
+
+                            let _, g2, app2, seen2, gate2 = initialCommand noPrelude noPrelude (journaled ())
+                            app2.Dispatch 9
+
+                            let error =
+                                try
+                                    Journal.replay
+                                        mode
+                                        g2
+                                        (journal.Entries
+                                         |> List.filter (fun e -> e.Seq > 0))
+
+                                    None
+                                with :? JournalReplayException as error ->
+                                    Some (error.Seq, error.Key, error.Reason)
+
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal
+                                error
+                                (Some (
+                                    2,
+                                    Some "initial",
+                                    "the journal's setup work made a recorded input, and the target recorded an entry before the replay"
+                                ))
+                                "the first producing entry and the reason"
+
+                            Expect.equal (List.ofSeq seen2) [ 9; 5 ] "no recorded entry is applied"
+                        }
+
+                        testCaseAsync $"a %O{mode} second replay of producing setup entries into one target raises"
+                        <| async {
+                            let journal, _, app, _, gate = initialCommand noPrelude noPrelude (journaled ())
+                            app.Dispatch 2
+                            gate.SetResult ()
+                            do! drained ()
+
+                            let _, g2, _, seen2, gate2 = initialCommand noPrelude noPrelude (journaled ())
+
+                            Journal.replay
+                                mode
+                                g2
+                                (journal.Entries
+                                 |> List.filter (fun e -> e.Seq <= 1))
+
+                            Expect.throwsT<JournalReplayException>
+                                (fun () ->
+                                    Journal.replay
+                                        mode
+                                        g2
+                                        (journal.Entries
+                                         |> List.filter (fun e -> e.Seq > 1)))
+                                "the first replay recorded an entry"
+
+                            gate2.SetResult ()
+                            do! drained ()
+
+                            Expect.equal (List.ofSeq seen2) [ 2; 5 ] "each message reaches update once"
+                        }
+
                         testCaseAsync $"a %O{mode} replay with no producing setup work into a target that recorded an entry applies each message once"
                         <| async {
                             let! journal, _ = recordedCommand ()
