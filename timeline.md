@@ -80,6 +80,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 83,194 | 127,487 | 1,738,349 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 83,124 | 127,505 | 1,738,309 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 83,123 | 127,529 | 1,738,294 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 83,059 | 127,456 | 1,738,327 |
 
 ## app-table
 
@@ -161,6 +162,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 4,420,580 | 9,236,876 | 107,623,895 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 4,420,695 | 9,360,467 | 107,628,723 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 4,420,722 | 9,355,611 | 107,908,270 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 4,420,555 | 9,353,287 | 107,629,882 |
 
 ## async-recover
 
@@ -242,6 +244,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 138,926 | 39,721 | 442,090 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 139,026 | 39,716 | 442,089 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 139,026 | 39,713 | 442,088 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 139,026 | 39,720 | 442,093 |
 
 ## async-resolve
 
@@ -323,6 +326,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,785,761 | 1,091,640 | 12,357,746 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 2,788,562 | 1,091,501 | 12,357,856 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,788,561 | 1,091,968 | 12,354,405 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,788,561 | 1,091,532 | 12,357,844 |
 
 ## chain
 
@@ -404,6 +408,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 13,035 | 318 | 2,453 | 4,491 | 3,208 | 72,783 | 66,755 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 13,035 | 318 | 2,453 | 4,491 | 3,209 | 72,782 | 66,755 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 13,035 | 318 | 2,453 | 4,491 | 3,209 | 72,783 | 66,755 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 13,035 | 318 | 2,453 | 4,491 | 3,209 | 72,782 | 66,755 |
 
 ## chain-affinity
 
@@ -485,6 +490,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,552 | 3,070 | 2,499 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 2,552 | 3,070 | 2,499 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,552 | 3,070 | 2,499 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,552 | 3,070 | 2,499 |
 
 ## control
 
@@ -566,6 +572,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 74,710 | 829,596 | 2,592,943 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 74,709 | 829,429 | 2,593,735 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 74,709 | 829,388 | 2,593,875 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 74,709 | 829,388 | 2,593,780 |
 
 ## create
 
@@ -647,6 +654,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 13,464,272 | 2,865,677 | 2,545,362 | 2,131,836 | 4,059,170 | 33,949,740 | 49,780,150 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 13,448,396 | 2,865,677 | 2,545,376 | 2,131,082 | 4,059,806 | 33,946,840 | 49,754,165 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 13,544,374 | 2,865,677 | 2,545,392 | 2,132,160 | 4,059,639 | 33,946,381 | 49,753,988 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 13,824,943 | 2,881,676 | 2,548,413 | 2,131,773 | 4,060,083 | 34,018,814 | 49,813,940 |
 
 ## create-on
 
@@ -728,6 +736,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,924,487 | 4,412,424 | 54,639,765 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 2,924,485 | 4,412,335 | 54,639,993 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,924,485 | 4,412,422 | 54,639,972 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,927,489 | 4,412,468 | 54,638,750 |
 
 ## cutoff
 
@@ -809,6 +818,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -890,6 +900,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 780 | 744 | 16,448 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 780 | 744 | 16,448 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 780 | 744 | 16,448 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 780 | 744 | 16,448 |
 
 ## derive-on
 
@@ -971,6 +982,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 750 | 795 | 16,471 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 750 | 795 | 16,471 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 750 | 795 | 16,471 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 750 | 795 | 16,471 |
 
 ## dispose
 
@@ -1052,6 +1064,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 2,706,245 | 806,288 | 367,497 | 466,062 | 487,183 | 13,194,184 | 9,106,625 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 2,707,643 | 806,288 | 367,497 | 466,222 | 487,441 | 13,194,247 | 9,107,294 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 2,706,247 | 806,288 | 367,497 | 465,944 | 487,296 | 13,193,640 | 9,106,356 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 2,707,643 | 806,288 | 367,497 | 465,948 | 487,144 | 13,194,030 | 9,106,393 |
 
 ## dispose-on
 
@@ -1133,6 +1146,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 346,497 | 479,746 | 8,902,751 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 346,497 | 479,389 | 8,902,700 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 346,497 | 479,677 | 8,902,589 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 346,497 | 479,415 | 8,902,532 |
 
 ## editable-edit
 
@@ -1214,6 +1228,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 181,606 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 181,606 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 181,606 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 181,606 |
 
 ## editable-upstream
 
@@ -1295,6 +1310,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 232,755 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 232,755 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 232,755 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 232,755 |
 
 ## fail-recompute
 
@@ -1376,6 +1392,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 64,885 | 1,369 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 64,845 | 1,369 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 64,845 | 1,369 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 65,125 | 1,369 |
 
 ## flight
 
@@ -1457,6 +1474,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 10,943 | 6,195 | 6,196 | 11,269 | 10,715 | 22,343 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 10,943 | 6,195 | 6,196 | 11,269 | 10,715 | 22,343 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 10,943 | 6,195 | 6,196 | 11,269 | 10,715 | 22,343 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 10,945 | 6,194 | 6,195 | 11,267 | 10,713 | 22,345 |
 
 ## keyed-insert
 
@@ -1538,6 +1556,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,920,810 | 54,064 | 54,935 | 3,239,799 | 240,557 | 176,339 | 44,992,741 | 2,635,840 | 2,655,142 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 1,920,718 | 53,968 | 54,939 | 3,259,493 | 240,279 | 176,322 | 44,998,803 | 2,635,995 | 2,655,144 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,920,718 | 53,968 | 54,940 | 3,259,515 | 240,592 | 176,209 | 45,000,051 | 2,635,989 | 2,655,155 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,920,725 | 53,910 | 54,948 | 3,258,506 | 237,796 | 176,294 | 45,005,831 | 2,635,843 | 2,655,150 |
 
 ## keyed-remove
 
@@ -1619,6 +1638,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,919,751 | 43,733 | 45,275 | 3,264,677 | 592,285 | 605,925 | 44,955,086 | 1,925,953 | 1,959,766 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 1,919,660 | 43,628 | 45,255 | 3,284,394 | 592,276 | 605,921 | 44,954,058 | 1,925,932 | 1,959,719 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,919,656 | 43,627 | 45,255 | 3,284,510 | 592,061 | 605,813 | 44,954,116 | 1,925,895 | 1,959,735 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,919,669 | 43,616 | 45,276 | 3,283,430 | 592,210 | 606,167 | 44,961,172 | 1,925,815 | 1,959,775 |
 
 ## keyed-swap
 
@@ -1700,6 +1720,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,972,429 | 46,275 | 46,914 | 3,587,178 | 149,199 | 511,925 | 46,111,069 | 917,166 | 933,510 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 1,972,329 | 46,180 | 46,915 | 3,620,303 | 149,155 | 511,928 | 46,119,450 | 917,232 | 933,551 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,972,329 | 46,180 | 46,915 | 3,614,835 | 149,547 | 511,917 | 46,119,229 | 917,147 | 933,566 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,972,349 | 46,196 | 46,930 | 3,613,711 | 149,092 | 511,905 | 46,115,068 | 917,190 | 933,557 |
 
 ## mvu-dispatch
 
@@ -1781,6 +1802,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 58,291 | 787 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 58,291 | 787 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 58,291 | 787 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 58,291 | 787 |
 
 ## persist-write
 
@@ -1862,6 +1884,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 7,013 | 883 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 7,013 | 883 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 7,029 | 883 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 7,044 | 883 |
 
 ## project-chain
 
@@ -1943,6 +1966,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,071,688 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 1,071,811 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,071,750 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,071,772 |
 
 ## project-churn
 
@@ -2024,6 +2048,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 36,503 | 34,338 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 36,487 | 34,340 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 36,487 | 34,340 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 36,486 | 34,321 |
 
 ## project-edit
 
@@ -2105,6 +2130,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 50,425 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 50,426 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 50,426 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 50,441 |
 
 ## project-reorder
 
@@ -2186,6 +2212,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 780,156 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 780,074 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 780,073 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 780,074 |
 
 ## server-render
 
@@ -2267,6 +2294,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 680,553 | 1,148,774 | 9,893,486 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 680,712 | 1,148,418 | 9,894,453 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 682,248 | 1,148,325 | 9,894,110 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 680,651 | 1,148,192 | 9,893,767 |
 
 ## shape-diamond
 
@@ -2348,6 +2376,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 59,914 | 80,437 | 1,763,703 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 59,914 | 80,437 | 1,763,703 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 59,914 | 80,437 | 1,763,703 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 59,914 | 80,437 | 1,763,703 |
 
 ## shape-dynamic
 
@@ -2429,6 +2458,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 83,778 | 108,194 | 2,030,350 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 83,778 | 108,194 | 2,030,349 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 83,778 | 108,194 | 2,030,350 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 83,778 | 108,194 | 2,030,350 |
 
 ## stream-burst-1
 
@@ -2510,6 +2540,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,950 | 1,548 | 2,519 | 4,695 | 3,672 | 13,466 | 47,553 | 45,790 | 55,386 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,471 | 47,584 | 45,790 | 55,385 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,950 | 1,548 | 2,519 | 4,695 | 3,672 | 13,467 | 47,587 | 45,790 | 55,386 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,468 | 47,581 | 45,790 | 55,386 |
 
 ## stream-burst-16
 
@@ -2591,6 +2622,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 5,022 | 24,618 | 5,729 | 9,739 | 50,033 | 8,070 | 123,794 | 720,148 | 113,737 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,071 | 123,812 | 720,148 | 113,736 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 5,022 | 24,618 | 5,729 | 9,738 | 50,033 | 8,071 | 123,814 | 720,148 | 113,737 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 5,022 | 24,618 | 5,712 | 9,738 | 50,033 | 8,069 | 123,812 | 720,147 | 113,737 |
 
 ## stream-burst-256
 
@@ -2672,6 +2704,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 54,162 | 393,702 | 57,068 | 131,968 | 792,887 | 74,718 | 1,342,998 | 11,508,772 | 1,046,751 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 54,162 | 393,702 | 57,052 | 131,529 | 792,884 | 74,708 | 1,343,878 | 11,508,772 | 1,046,765 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 54,162 | 393,702 | 57,068 | 131,735 | 792,786 | 74,717 | 1,343,840 | 11,508,772 | 1,046,764 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 54,162 | 393,702 | 57,051 | 131,968 | 792,888 | 74,743 | 1,343,775 | 11,508,772 | 1,046,764 |
 
 ## stream-restart
 
@@ -2753,6 +2786,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 4,201 | 5,023 | 6,536 | 16,845 | 42,838 | 71,946 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 4,201 | 4,991 | 6,533 | 16,842 | 42,836 | 71,952 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 4,201 | 5,007 | 6,537 | 16,846 | 42,836 | 71,954 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 4,202 | 4,997 | 6,535 | 16,845 | 42,834 | 71,954 |
 
 ## timed-admit-both
 
@@ -2834,6 +2868,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 117,708 | 135,985 | 2,693,544 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 119,756 | 135,978 | 2,693,518 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 117,708 | 135,988 | 2,693,518 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 117,708 | 135,991 | 2,693,518 |
 
 ## timed-admit-debounce
 
@@ -2915,6 +2950,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 116,613 | 134,501 | 2,653,870 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 118,661 | 134,526 | 2,653,870 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 116,613 | 134,524 | 2,653,871 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 116,613 | 134,528 | 2,653,871 |
 
 ## timed-admit-first
 
@@ -2996,6 +3032,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 69,620 | 79,523 | 1,620,606 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 70,644 | 79,523 | 1,620,606 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 69,620 | 79,523 | 1,620,606 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 69,620 | 79,523 | 1,620,606 |
 
 ## timed-admit-last
 
@@ -3077,6 +3114,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 116,875 | 134,835 | 2,663,726 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 118,923 | 134,843 | 2,663,727 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 116,875 | 134,843 | 2,663,727 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 116,875 | 134,848 | 2,663,726 |
 
 ## timed-capture-both
 
@@ -3158,6 +3196,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 35,739 | 45,267 | 847,205 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 36,763 | 44,926 | 846,756 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 35,739 | 44,893 | 846,755 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 35,739 | 44,925 | 847,205 |
 
 ## timed-capture-debounce
 
@@ -3239,6 +3278,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 35,611 | 44,190 | 847,585 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 36,635 | 44,190 | 847,584 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 35,611 | 44,190 | 847,585 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 35,611 | 44,190 | 847,585 |
 
 ## timed-capture-first
 
@@ -3320,6 +3360,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 32,091 | 36,698 | 745,579 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 33,115 | 36,699 | 745,579 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 32,091 | 36,699 | 745,579 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 32,091 | 36,699 | 745,579 |
 
 ## timed-capture-last
 
@@ -3401,6 +3442,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 35,547 | 44,126 | 839,713 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 36,571 | 44,126 | 839,713 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 35,547 | 44,126 | 839,713 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 35,547 | 44,124 | 839,712 |
 
 ## update
 
@@ -3482,6 +3524,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 1,087,790 | 38,805 | 84,005 | 262,891 | 154,801 | 3,350,261 | 2,537,448 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 1,087,790 | 38,805 | 84,005 | 263,174 | 154,754 | 3,350,232 | 2,537,374 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 1,087,783 | 38,805 | 84,005 | 262,547 | 154,752 | 3,350,244 | 2,537,434 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 1,087,783 | 38,805 | 84,005 | 262,982 | 154,811 | 3,350,262 | 2,537,435 |
 
 ## update-on
 
@@ -3563,6 +3606,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 94,505 | 168,110 | 2,865,002 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 94,505 | 168,159 | 2,865,037 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 94,505 | 168,078 | 2,865,019 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 94,505 | 168,117 | 2,864,997 |
 
 ## work-form
 
@@ -3644,6 +3688,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 172,552 | 165,024 | 307,332 | 294,826 | 5,409,039 | 5,322,112 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 172,552 | 165,024 | 307,318 | 294,766 | 5,409,014 | 5,322,184 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 172,552 | 165,024 | 307,355 | 294,805 | 5,409,039 | 5,322,182 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 172,552 | 165,024 | 307,327 | 294,791 | 5,409,041 | 5,322,182 |
 
 ## work-status
 
@@ -3725,6 +3770,7 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 101,945 | 80,135 | 267,845 | 155,466 | 2,645,665 | 2,383,054 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 101,945 | 80,135 | 267,865 | 155,462 | 2,645,538 | 2,383,203 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 101,945 | 80,135 | 267,829 | 155,440 | 2,645,604 | 2,383,239 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 101,945 | 80,135 | 267,824 | 155,449 | 2,645,657 | 2,383,239 |
 
 ## work-value
 
@@ -3806,4 +3852,5 @@
 | `801f919` | 2026-10-25 | Merge pull request #217 from shayanhabibi/integration/issues | 109,070 | 120,969 | 268,110 | 282,277 | 2,630,307 | 2,954,793 |
 | `980ebcc` | 2026-10-25 | perf(core): size a keyed projection's tables before an untrimmed pass (#212) | 109,068 | 120,969 | 268,094 | 282,290 | 2,630,217 | 2,954,713 |
 | `9e5e9b0` | 2026-10-25 | perf(view): keep expandos on a host's own objects on .NET (#213) | 109,069 | 120,971 | 268,101 | 282,258 | 2,630,243 | 2,954,824 |
+| `4a95a10` | 2026-10-25 | perf(core): create a memo-free projection row without a closure (#215) | 109,069 | 120,969 | 268,087 | 282,265 | 2,630,267 | 2,954,827 |
 
