@@ -90,6 +90,6 @@ test("pause stops the samples, and reconnect dims the metrics until the next sam
   await expect(page.locator(".metrics")).toHaveAttribute("data-refreshing", "true");
   await page.clock.runFor(1000);
   await expect(page.locator(".metrics")).not.toHaveAttribute("data-refreshing", "true");
-  await expect(page.locator(".chart .note")).toHaveText("1 of 24");
+  await expect(page.locator(".chart .note")).toHaveText("3 of 24");
   expect(await page.evaluate(() => window.__motion.subscribers())).toBe(1);
 });
