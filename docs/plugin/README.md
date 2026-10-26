@@ -61,10 +61,29 @@ the [live counter](../content/view/getting-started.md#try-a-component-in-the-liv
 The live editor excludes packages requiring compiler plugins, including `Ranvier.View.Arms`.
 Standard Ranvier.View components and DOM bindings work without those packages.
 
+When a preset references Xantham's DOM bindings, provide their checker metadata after registering
+`LiveExample`. Use the site's restored assets file so custom NuGet package folders work too:
+
+```fsharp
+let assets = Path.Combine (__SOURCE_DIRECTORY__, "obj", "project.assets.json")
+
+site
+|> LiveExample.registerWith configureLiveExamples
+|> LiveExampleMetadata.register
+    [ LiveExampleMetadata.nuget assets "Xantham.Fable.Core.TS" "0.2.1" "net8.0" "Xantham.Fable.Core.TS"
+      LiveExampleMetadata.nuget assets "Xantham.Fable.Core" "0.2.0" "net8.0" "Xantham.Fable.Core" ]
+```
+
+The hook copies these exact restored DLLs into LiveExample's current reference directory as
+`.dll.txt` files and adds their names to the browser checker. It fails if metadata is missing or
+the upstream worker's reference-list format changes. Ordinary component and map fences need no hook.
+
 ## Checks
 
 ```shell
 dotnet run --project docs/maps/tests/Ranvier.Docs.Maps.Tests.fsproj
+dotnet build docs/plugin/Nacara.Plugin.Ranvier.fsproj
+dotnet fsi docs/plugin/tests/MetadataTests.fsx
 dotnet fsi build.fsx -- docs
 ```
 

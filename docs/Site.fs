@@ -265,9 +265,6 @@ let theme =
         )
     )
 
-/// Live Partas.Solid components on the pages (the landing page's animated state mark), compiled
-/// against the Partas.Solid 3 build committed under feed/. The generated project inherits
-/// docs/nuget.config, whose partas-local source serves it.
 /// The og card of each section, keyed by the path segment that names it, with the card's alt text.
 let private ogCards =
     [
@@ -373,6 +370,21 @@ let site =
             |> LiveExamplePreset.asDefault
         )
     )
+    |> LiveExampleMetadata.register
+        [
+            LiveExampleMetadata.nuget
+                (Path.Combine (__SOURCE_DIRECTORY__, "obj", "project.assets.json"))
+                "Xantham.Fable.Core.TS"
+                "0.2.1"
+                "net8.0"
+                "Xantham.Fable.Core.TS"
+            LiveExampleMetadata.nuget
+                (Path.Combine (__SOURCE_DIRECTORY__, "obj", "project.assets.json"))
+                "Xantham.Fable.Core"
+                "0.2.0"
+                "net8.0"
+                "Xantham.Fable.Core"
+        ]
     |> OgImage.registerWith ogImages
     |> AgentFriendly.registerWith (
         AgentFriendly.summary "Fine-grained reactive computation for .NET, with a Fable target"
