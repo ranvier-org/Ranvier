@@ -58,9 +58,10 @@ open Ranvier.Samples.EquinoxFsCodec
 
 use client = new EventStoreClient(EventStoreClientSettings.Create connectionString)
 let store = EquinoxStateStore(client, "customer-42") :> IStateStore
-let runRoundTrip () = Program.roundTrip store
-// Completes with (21, 42).
 ```
+
+With a project reference, `Ranvier.Samples.EquinoxFsCodec.Program.roundTrip store` returns a task
+completing with `(21, 42)`. Copying only `StateStore.fs` provides the store implementation.
 
 Keep the caller-owned client for the application's lifetime. The sample uses an uncached Equinox Decider
 and the current Serilog logger. Use a stable scope to reload the same inputs.
