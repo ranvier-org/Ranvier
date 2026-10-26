@@ -11,7 +11,7 @@
 - [x] Replace repetitive explanations with concrete examples, observable output and links to the owning reference page.
 - [x] Add diagrams and interactive maps where they explain dependencies, ownership, rendering or async state.
 - [x] Make a second prose pass and validate internal links, anchors and external destinations.
-- [ ] Build the site and compiled samples; run relevant full test suites and browser checks.
+- [x] Build the site and compiled samples; run relevant full test suites and browser checks.
 - [ ] Review, push, merge, dispatch the docs workflow and verify the deployed revision and public pages.
 
 Additional requested work: pin Fickl 0.6.9; support standard components in the live editor while excluding

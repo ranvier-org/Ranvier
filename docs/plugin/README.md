@@ -64,6 +64,14 @@ Standard Ranvier.View components and DOM bindings work without those packages.
 When a preset references Xantham's DOM bindings, provide their checker metadata after registering
 `LiveExample`. Use the site's restored assets file so custom NuGet package folders work too:
 
+Declare both packages in the site project before restoring it; menu checks initialise the site
+before the preset project is built. A package present only in a developer's cache is insufficient.
+
+```xml
+<PackageReference Include="Xantham.Fable.Core.TS" Version="0.2.1" />
+<PackageReference Include="Xantham.Fable.Core" Version="0.2.0" />
+```
+
 ```fsharp
 let assets = Path.Combine (__SOURCE_DIRECTORY__, "obj", "project.assets.json")
 

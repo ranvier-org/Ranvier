@@ -27,6 +27,9 @@
         <PackageReference Include="Nacara.Plugin.Assets.Esbuild" Version="1.0.0-*" />
         <PackageReference Include="Nacara.Plugin.Assets.Nuglify" Version="1.0.0-*" />
         <PackageReference Include="Nacara.Plugin.LiveExample" Version="1.0.0-local.8983a1d" />
+        <!-- Restored before Site initialisation, including check-menus; the browser checker consumes these DLLs. -->
+        <PackageReference Include="Xantham.Fable.Core.TS" Version="0.2.1" />
+        <PackageReference Include="Xantham.Fable.Core" Version="0.2.0" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="plugin/Nacara.Plugin.Ranvier.fsproj" />

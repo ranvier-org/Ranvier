@@ -7,12 +7,34 @@ open System.Text.Json
 open System.Text.RegularExpressions
 open Nacara.Core
 
-/// <summary>Finds an exact package DLL in the package folders recorded by a restored project's assets file.</summary>
+/// <summary>Finds a restored package DLL using the assets file's package path and filename casing.</summary>
 let nuget (assetsFile: string) (package: string) (version: string) (framework: string) (assembly: string) : string =
     use document = JsonDocument.Parse (File.ReadAllText assetsFile)
+    let key = package + "/" + version
+
+    let library =
+        document.RootElement.GetProperty("libraries").EnumerateObject()
+        |> Seq.tryFind (fun item -> String.Equals (item.Name, key, StringComparison.OrdinalIgnoreCase))
+        |> Option.defaultWith (fun () ->
+            raise (
+                FileNotFoundException (
+                    $"LiveExample metadata: {key} is absent from {assetsFile}; add a PackageReference to the site project and restore it"
+                )
+            ))
+
+    let requested = $"lib/{framework}/{assembly}.dll"
+
+    let file =
+        library.Value.GetProperty("files").EnumerateArray()
+        |> Seq.map _.GetString()
+        |> Seq.tryFind (fun file -> String.Equals (file, requested, StringComparison.OrdinalIgnoreCase))
+        |> Option.defaultWith (fun () -> raise (FileNotFoundException ($"LiveExample metadata: {key} records no {requested} in {assetsFile}")))
 
     let relative =
-        Path.Combine (package.ToLowerInvariant (), version.ToLowerInvariant (), "lib", framework, assembly + ".dll")
+        Path.Combine (
+            library.Value.GetProperty("path").GetString().Replace('/', Path.DirectorySeparatorChar),
+            file.Replace ('/', Path.DirectorySeparatorChar)
+        )
 
     document.RootElement.GetProperty("packageFolders").EnumerateObject()
     |> Seq.map (fun folder -> Path.Combine (folder.Name, relative))
@@ -75,7 +97,7 @@ let register (assemblies: string list) (site: Site) : Site =
                             if not (File.Exists path) then
                                 raise (FileNotFoundException ("LiveExample metadata assembly was not found", path))
 
-                            Path.GetFileNameWithoutExtension path, path)
+                            System.Reflection.AssemblyName.GetAssemblyName(path).Name, path)
                         |> List.distinctBy fst
 
                     let directories =

@@ -32,6 +32,30 @@ let references =
         LiveExampleMetadata.nuget assetsFile "Xantham.Fable.Core" "0.2.0" "net8.0" "Xantham.Fable.Core"
     ]
 
+let recordedCase =
+    LiveExampleMetadata.nuget assetsFile "xantham.fable.core.ts" "0.2.1" "net8.0" "xantham.fable.core.ts"
+
+check "resolved filename uses manifest casing on case-sensitive filesystems" (String.Equals (recordedCase, references.Head, StringComparison.Ordinal))
+
+let undeclared =
+    Path.Combine (
+        Path.GetTempPath (),
+        "ranvier-metadata-"
+        + Guid.NewGuid().ToString("N")
+        + ".json"
+    )
+
+try
+    let root = System.Text.Json.Nodes.JsonNode.Parse (File.ReadAllText assetsFile)
+    root["libraries"] <- System.Text.Json.Nodes.JsonObject ()
+    File.WriteAllText (undeclared, root.ToJsonString ())
+
+    raises "warm cache cannot satisfy a package absent from the restored project" (fun () ->
+        LiveExampleMetadata.nuget undeclared "Xantham.Fable.Core.TS" "0.2.1" "net8.0" "Xantham.Fable.Core.TS"
+        |> ignore)
+finally
+    File.Delete undeclared
+
 let liveWithWorker includeWorker =
     Site.plugin
         { new IPlugin with
@@ -61,6 +85,30 @@ let registry =
     |> live
     |> LiveExampleMetadata.register references
     |> fun site -> Registry.ofPlugins site.Plugins
+
+let renamed =
+    Path.Combine (
+        Path.GetTempPath (),
+        "renamed-metadata-"
+        + Guid.NewGuid().ToString("N")
+        + ".dll"
+    )
+
+try
+    File.Copy (references.Head, renamed)
+
+    let renamedRegistry =
+        Site.create "renamed metadata"
+        |> live
+        |> LiveExampleMetadata.register [ renamed ]
+        |> fun site -> Registry.ofPlugins site.Plugins
+
+    check
+        "checker asset uses the DLL assembly identity rather than its filename"
+        (renamedRegistry.Assets
+         |> List.exists (fun asset -> RelativePath.value asset.Destination = "assets/live-example/refs/test-tag/Xantham.Fable.Core.TS.dll.txt"))
+finally
+    File.Delete renamed
 
 for source in references do
     let expected =
