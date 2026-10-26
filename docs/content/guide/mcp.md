@@ -7,11 +7,12 @@ order: 13
 Spike — `Ranvier.Mcp` is an experiment for #168 and is not packed. Its names, tools and documents may change.
 :::
 
-`Ranvier.Mcp` serves a running application's graph to an MCP client, such as a coding agent. The application
-chooses what the client reads and writes: named values and authorised Elmish messages. The client evaluates no code.
-A traced build also serves provenance tools, and those read the whole graph's trace log: `trace_state` and a
-`trace_lookup` by `path` cover every node, and the `why` chains name the nodes they pass through. The nodes
-registered with `Expose.node` are the names a client can pass as `node`, not a limit on what it can read.
+`Ranvier.Mcp` exposes named values and authorised Elmish messages from a running application to
+an MCP client. The client evaluates no code.
+
+In a traced build, provenance tools can inspect the **whole graph**: `trace_state` lists every
+node, `trace_lookup` accepts any identity path, and `why` chains name intermediate nodes.
+`Expose.node` registers convenient query names; it does not restrict trace visibility.
 
 The runnable sample, a cart over stdio, is
 [examples/Ranvier.Mcp.Sample](https://github.com/shayanhabibi/Ranvier/tree/master/examples/Ranvier.Mcp.Sample). Its
@@ -91,7 +92,7 @@ reads every value. The effect publishes a `Snapshot { Version; Values }`:
 
 ### Reading and dispatching in process
 
-The adapter's tools are thin over `Exposure` members, which application code and tests call directly:
+Application code and tests can call the same operations through `Exposure`:
 
 | Member | Result |
 |---|---|
