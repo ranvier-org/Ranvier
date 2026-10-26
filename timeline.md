@@ -87,6 +87,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 83,373 | 127,517 | 1,742,171 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 83,328 | 127,586 | 1,742,189 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 83,313 | 127,616 | 1,742,209 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 83,342 | 127,559 | 1,742,177 |
 
 ## app-table
 
@@ -175,6 +176,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 4,417,687 | 9,384,003 | 107,924,063 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 4,417,867 | 9,273,867 | 107,727,285 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 4,417,667 | 9,454,780 | 107,748,759 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 4,417,821 | 9,383,849 | 107,930,537 |
 
 ## async-recover
 
@@ -263,6 +265,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 139,071 | 41,269 | 434,850 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 139,071 | 41,267 | 434,860 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 139,071 | 41,258 | 434,853 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 139,071 | 41,267 | 434,846 |
 
 ## async-resolve
 
@@ -351,6 +354,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,788,051 | 1,022,537 | 11,970,184 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,788,052 | 1,023,018 | 11,967,224 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,788,050 | 1,023,023 | 11,970,202 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,788,052 | 1,022,542 | 11,966,937 |
 
 ## chain
 
@@ -439,6 +443,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -527,6 +532,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,553 | 3,071 | 2,500 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,553 | 3,071 | 2,500 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,553 | 3,071 | 2,500 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -615,6 +621,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 74,709 | 836,642 | 2,603,099 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 74,709 | 836,691 | 2,603,104 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 74,709 | 836,687 | 2,603,140 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 74,709 | 836,706 | 2,603,155 |
 
 ## create
 
@@ -703,6 +710,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 13,448,312 | 2,865,678 | 2,570,370 | 2,127,777 | 4,045,090 | 34,002,910 | 50,334,350 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 13,448,400 | 2,865,678 | 2,570,369 | 2,127,882 | 4,045,126 | 34,003,261 | 50,334,433 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 13,573,949 | 2,865,677 | 2,570,400 | 2,127,528 | 4,045,580 | 34,003,138 | 50,334,149 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 13,528,309 | 2,865,677 | 2,570,368 | 2,127,994 | 4,045,120 | 34,002,936 | 50,334,146 |
 
 ## create-on
 
@@ -791,6 +799,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,949,485 | 4,179,698 | 55,229,092 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,949,484 | 4,179,589 | 55,229,096 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,949,484 | 4,179,565 | 55,228,972 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,949,484 | 4,179,397 | 55,229,084 |
 
 ## cutoff
 
@@ -879,6 +888,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -967,6 +977,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 781 | 751 | 16,520 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 781 | 751 | 16,520 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 781 | 751 | 16,520 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1055,6 +1066,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 751 | 802 | 16,543 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 751 | 802 | 16,543 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 751 | 802 | 16,543 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1143,6 +1155,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,707,642 | 806,288 | 367,497 | 475,692 | 495,182 | 13,206,949 | 9,105,449 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,707,643 | 806,288 | 367,497 | 475,929 | 495,188 | 13,205,856 | 9,106,171 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,707,643 | 806,288 | 367,497 | 475,594 | 495,048 | 13,207,036 | 9,106,195 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,706,752 | 806,288 | 367,497 | 475,761 | 495,157 | 13,207,490 | 9,106,430 |
 
 ## dispose-on
 
@@ -1231,6 +1244,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 346,497 | 487,761 | 8,902,854 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 346,497 | 487,922 | 8,902,634 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 346,497 | 487,418 | 8,902,460 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 346,497 | 487,834 | 8,902,439 |
 
 ## editable-edit
 
@@ -1319,6 +1333,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 181,706 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 181,706 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 181,706 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 181,706 |
 
 ## editable-upstream
 
@@ -1407,6 +1422,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 232,855 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 232,855 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 232,855 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 232,855 |
 
 ## fail-recompute
 
@@ -1495,6 +1511,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 65,086 | 1,370 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 65,086 | 1,370 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 65,086 | 1,370 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 65,086 | 1,370 |
 
 ## flight
 
@@ -1583,6 +1600,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 
 ## keyed-insert
 
@@ -1671,6 +1689,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,921,737 | 53,917 | 54,956 | 3,277,840 | 237,592 | 176,024 | 45,075,885 | 2,634,501 | 2,655,518 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,921,753 | 53,949 | 54,968 | 3,277,660 | 237,586 | 176,049 | 45,075,887 | 2,634,528 | 2,655,499 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,921,737 | 53,917 | 54,954 | 3,277,752 | 237,612 | 176,023 | 45,075,849 | 2,634,560 | 2,655,519 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,921,737 | 53,917 | 54,958 | 3,277,778 | 237,598 | 176,063 | 45,086,078 | 2,634,508 | 2,655,460 |
 
 ## keyed-remove
 
@@ -1759,6 +1778,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,920,672 | 43,607 | 45,299 | 3,292,960 | 591,913 | 606,244 | 45,041,223 | 1,924,602 | 1,960,110 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,920,687 | 43,639 | 45,315 | 3,292,872 | 592,001 | 605,806 | 45,041,051 | 1,924,661 | 1,960,130 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,920,676 | 43,607 | 45,299 | 3,293,041 | 591,961 | 605,868 | 45,041,010 | 1,924,551 | 1,960,196 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,920,677 | 43,607 | 45,301 | 3,292,699 | 591,892 | 606,178 | 45,041,048 | 1,924,661 | 1,960,208 |
 
 ## keyed-swap
 
@@ -1847,6 +1867,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,973,362 | 46,205 | 46,927 | 3,620,162 | 149,189 | 512,967 | 46,198,630 | 915,560 | 936,125 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,973,378 | 46,237 | 46,943 | 3,628,862 | 148,943 | 513,216 | 46,198,622 | 915,705 | 936,146 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,973,362 | 46,205 | 46,927 | 3,628,294 | 148,893 | 512,970 | 46,198,972 | 915,640 | 936,135 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,973,362 | 46,206 | 46,928 | 3,634,384 | 148,850 | 513,004 | 46,198,998 | 915,596 | 936,180 |
 
 ## mvu-dispatch
 
@@ -1935,6 +1956,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 58,292 | 788 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 58,292 | 788 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 58,292 | 788 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2023,6 +2045,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 7,062 | 900 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 7,046 | 884 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 7,046 | 884 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 7,046 | 884 |
 
 ## project-chain
 
@@ -2111,6 +2134,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,071,781 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,071,750 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,071,685 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,071,734 |
 
 ## project-churn
 
@@ -2199,6 +2223,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 36,385 | 34,250 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 36,385 | 34,266 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 36,385 | 34,250 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2287,6 +2312,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 50,476 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 50,508 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 50,460 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 50,460 |
 
 ## project-reorder
 
@@ -2375,6 +2401,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 780,084 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 780,116 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 780,069 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 780,069 |
 
 ## server-render
 
@@ -2463,6 +2490,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 680,651 | 1,147,343 | 9,887,486 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 680,651 | 1,147,580 | 9,887,459 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 680,715 | 1,147,878 | 9,888,668 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 680,683 | 1,147,747 | 9,888,423 |
 
 ## shape-diamond
 
@@ -2551,6 +2579,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 59,915 | 80,445 | 1,764,075 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 59,915 | 80,445 | 1,764,075 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 59,915 | 80,445 | 1,764,075 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2639,6 +2668,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 84,378 | 108,947 | 2,038,136 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 84,378 | 108,947 | 2,038,136 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 84,378 | 108,943 | 2,038,136 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 84,378 | 108,944 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2727,6 +2757,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,950 | 1,548 | 2,502 | 4,693 | 3,672 | 13,469 | 47,577 | 45,790 | 55,383 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,470 | 47,580 | 45,790 | 55,383 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,579 | 45,790 | 55,383 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,467 | 47,580 | 45,790 | 55,383 |
 
 ## stream-burst-16
 
@@ -2815,6 +2846,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 5,022 | 24,618 | 5,712 | 9,728 | 50,029 | 8,070 | 123,809 | 720,149 | 113,726 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 5,022 | 24,618 | 5,728 | 9,739 | 50,029 | 8,071 | 123,803 | 720,148 | 113,729 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 5,022 | 24,618 | 5,712 | 9,729 | 50,033 | 8,071 | 123,810 | 720,148 | 113,729 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 5,022 | 24,618 | 5,712 | 9,739 | 50,033 | 8,071 | 123,810 | 720,148 | 113,734 |
 
 ## stream-burst-256
 
@@ -2903,6 +2935,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 54,162 | 393,702 | 57,051 | 131,869 | 792,825 | 74,692 | 1,343,775 | 11,508,770 | 1,046,727 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 54,162 | 393,702 | 57,067 | 131,952 | 792,829 | 74,743 | 1,343,779 | 11,508,770 | 1,046,725 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 54,162 | 393,702 | 57,051 | 131,907 | 792,833 | 74,743 | 1,343,677 | 11,508,670 | 1,046,725 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 54,162 | 393,702 | 57,051 | 131,801 | 792,840 | 74,743 | 1,343,779 | 11,508,770 | 1,046,725 |
 
 ## stream-restart
 
@@ -2991,6 +3024,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 4,203 | 4,998 | 6,575 | 16,886 | 42,899 | 72,023 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 4,203 | 5,014 | 6,575 | 16,890 | 42,893 | 72,017 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 4,203 | 4,998 | 6,575 | 16,886 | 42,894 | 72,022 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 4,203 | 4,998 | 6,575 | 16,891 | 42,908 | 72,026 |
 
 ## timed-admit-both
 
@@ -3079,6 +3113,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 117,709 | 130,035 | 2,693,565 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 117,709 | 130,036 | 2,693,565 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 117,709 | 130,035 | 2,693,565 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 117,709 | 130,035 | 2,693,578 |
 
 ## timed-admit-debounce
 
@@ -3167,6 +3202,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 116,614 | 128,617 | 2,654,130 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 116,614 | 128,606 | 2,654,128 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 116,614 | 128,608 | 2,654,130 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 116,618 | 128,595 | 2,654,130 |
 
 ## timed-admit-first
 
@@ -3255,6 +3291,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 69,621 | 79,567 | 1,620,677 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 69,621 | 79,565 | 1,620,677 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 69,621 | 79,565 | 1,620,677 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 69,621 | 79,564 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3343,6 +3380,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 116,876 | 128,936 | 2,663,985 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 116,876 | 128,937 | 2,663,973 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 116,876 | 128,926 | 2,663,984 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 116,876 | 128,937 | 2,663,984 |
 
 ## timed-capture-both
 
@@ -3431,6 +3469,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 35,740 | 44,935 | 846,919 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,740 | 44,936 | 846,916 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 35,740 | 44,935 | 846,917 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,740 | 44,936 | 846,917 |
 
 ## timed-capture-debounce
 
@@ -3519,6 +3558,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 35,612 | 44,233 | 847,657 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,612 | 44,232 | 847,657 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 35,612 | 44,232 | 847,657 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,612 | 44,233 | 847,657 |
 
 ## timed-capture-first
 
@@ -3607,6 +3647,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 32,092 | 36,742 | 745,653 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 32,092 | 36,741 | 745,652 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 32,092 | 36,740 | 745,651 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -3695,6 +3736,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 35,548 | 44,167 | 839,785 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,548 | 44,168 | 839,785 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 35,548 | 44,168 | 839,785 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -3783,6 +3825,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,087,790 | 38,805 | 84,105 | 262,935 | 145,780 | 3,351,330 | 2,545,076 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,087,790 | 38,805 | 84,105 | 263,233 | 145,794 | 3,351,281 | 2,545,019 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,100,143 | 38,805 | 84,105 | 263,233 | 145,794 | 3,351,282 | 2,545,002 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,087,783 | 38,805 | 84,105 | 263,143 | 145,755 | 3,351,295 | 2,545,050 |
 
 ## update-on
 
@@ -3871,6 +3914,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 94,605 | 168,996 | 2,872,398 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 94,605 | 169,007 | 2,872,497 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 94,605 | 169,007 | 2,872,408 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 94,605 | 169,008 | 2,872,412 |
 
 ## work-form
 
@@ -3959,6 +4003,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 172,679 | 165,150 | 308,826 | 296,924 | 5,421,725 | 5,334,888 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 172,679 | 165,150 | 308,863 | 296,954 | 5,421,825 | 5,334,914 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 172,679 | 165,150 | 308,819 | 296,963 | 5,421,846 | 5,334,878 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 172,679 | 165,150 | 308,857 | 297,017 | 5,421,862 | 5,334,888 |
 
 ## work-status
 
@@ -4047,6 +4092,7 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 102,045 | 80,235 | 269,360 | 156,096 | 2,659,229 | 2,391,285 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 102,045 | 80,235 | 269,323 | 156,079 | 2,659,266 | 2,391,182 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 102,045 | 80,235 | 269,327 | 156,116 | 2,659,214 | 2,391,279 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 102,045 | 80,235 | 269,336 | 156,131 | 2,659,237 | 2,391,279 |
 
 ## work-value
 
@@ -4135,4 +4181,5 @@
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 109,171 | 121,069 | 269,597 | 283,410 | 2,643,856 | 2,968,512 |
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 109,169 | 121,071 | 269,562 | 283,383 | 2,643,858 | 2,968,314 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 109,170 | 121,069 | 269,596 | 283,393 | 2,643,809 | 2,968,433 |
+| `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 109,169 | 121,071 | 269,596 | 283,385 | 2,643,818 | 2,968,469 |
 
