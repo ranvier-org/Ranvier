@@ -43,6 +43,13 @@ let private infos =
                 "Throw the puck and a spring settles it; five followers trail it, each a step slower. The slider seeks a timeline through Reactive.scrub, and the switch writes the graph's motion policy."
         }
         {
+            Name = "graphs"
+            Title = "Graphs"
+            Tag = "follow · viewBox · pointer · timeline · stagger"
+            Description =
+                "Inspect a signal with a following crosshair and tooltip, zoom and pan through the day, then play a ranked bar chart whose rows and values animate together."
+        }
+        {
             Name = "routes"
             Title = "Routes"
             Tag = "Elmish · hash routing · matchWith · presence · flip"
@@ -159,13 +166,13 @@ let declaration name initial definition codec : Ranvier.View.Page.Definition<_> 
         State = codec
     }
 
-/// <summary>The static landing page linking the five examples.</summary>
+/// <summary>The static landing page linking the Motion examples.</summary>
 let index: Ranvier.View.Page.Definition<unit> =
     {
         Component =
             Component.define (fun _ () -> ()) (fun t ->
                 div (Attrs.className "frame") {
-                    metadata t "Ranvier Motion" "Five pages animated with anime.js through Ranvier's Motion parts."
+                    metadata t "Ranvier Motion" "Interactive pages animated with anime.js through Ranvier's Motion parts."
                     navigation "./" ""
 
                     section (Attrs.className "hero") {
