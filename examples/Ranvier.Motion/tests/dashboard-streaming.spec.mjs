@@ -9,26 +9,34 @@ const points = async page => {
 
 test.afterEach(async ({ page }) => expectNoErrors(page));
 
-test("a sample grows the tip before sliding the history left without changing its heights", async ({ page }) => {
+test("samples scroll continuously while the fixed right edge eases to the new value", async ({ page }) => {
   await openPage(page, "/dashboard/");
-  await page.clock.runFor(25_550);
+  await page.clock.runFor(25_450);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await page.clock.runFor(200);
   const before = await points(page);
   await page.evaluate(() => window.__motion.push());
   await page.clock.runFor(100);
   const growing = await points(page);
-  expect(growing[10][0]).toBeCloseTo(before[10][0], 1);
+  expect(growing[10][0]).toBeLessThan(before[10][0]);
   expect(growing[10][1]).toBeCloseTo(before[10][1], 1);
-  expect(growing.at(-1)[0]).toBeGreaterThan(before.at(-1)[0]);
+  expect(growing.at(-1)[0]).toBe(600);
+  expect(growing.at(-1)[1]).not.toBe(before.at(-1)[1]);
   await page.clock.runFor(350);
   const sliding = await points(page);
   expect(sliding[10][0]).toBeLessThan(before[10][0]);
   expect(sliding[10][1]).toBeCloseTo(before[10][1], 1);
-  await page.clock.runFor(500);
+  await page.clock.runFor(400);
+  const late = await points(page);
+  const displacement = before[10][0] - late[10][0];
+  expect(displacement).toBeGreaterThan(600 / 23 * 0.8);
+  expect(displacement).toBeLessThan(600 / 23 * 0.9);
+  expect(late[10][1]).toBeCloseTo(before[10][1], 1);
+  await page.clock.runFor(200);
   const settled = await points(page);
-  expect(settled[9][0]).toBeCloseTo(before[10][0] - 25, 1);
+  expect(settled[9][0]).toBeCloseTo(before[10][0] - 600 / 23, 0);
   expect(settled[9][1]).toBeCloseTo(before[10][1], 1);
-  expect(settled.at(-1)[0]).toBeCloseTo(575, 1);
+  expect(settled.at(-1)[0]).toBe(600);
 });
 
 test("reconnect retains chart history and resumes with one subscription", async ({ page }) => {

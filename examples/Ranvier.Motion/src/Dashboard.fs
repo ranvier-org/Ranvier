@@ -140,14 +140,14 @@ let linePath (values: float array) =
 
     padded
     |> Array.mapi (fun index value ->
-        let x = float index * 600. / float capacity
+        let x = float index * 600. / float (capacity - 1)
         let y = 186. - value * 168.
         sprintf "%s%.1f %.1f" (if index = 0 then "M" else "L") x y)
     |> String.concat " "
 
 /// <summary>The line's path closed along the bottom of the box.</summary>
 let areaPath (values: float array) =
-    linePath values + " L575 200 L0 200 Z"
+    linePath values + " L600 200 L0 200 Z"
 
 let private streamingPaths (previous: float array) (current: float array) (progress: float) =
     if progress >= 1. then
@@ -156,19 +156,21 @@ let private streamingPaths (previous: float array) (current: float array) (progr
         let padded =
             Array.append (Array.create (capacity - previous.Length) previous[0]) previous
 
-        let grow = min 1. (max 0. (progress / 0.3))
-        let slide = min 1. (max 0. ((progress - 0.3) / 0.7))
+        let blend = min 1. (max 0. (progress / 0.4))
+        let grow = (1. - cos (Math.PI * blend)) / 2.
+        let step = 600. / float (capacity - 1)
+        let offset = step * progress
 
         let y value =
             186. - value * 168.
 
         let old =
             padded
-            |> Array.mapi (fun index value -> float index * 25. - 25. * slide, y value)
+            |> Array.mapi (fun index value -> float index * step - offset, y value)
 
         let last = Array.last padded
         let next = Array.last current
-        let tip = 575. + 25. * grow - 25. * slide, y (last + (next - last) * grow)
+        let tip = 600., y (last + (next - last) * grow)
 
         let line =
             Array.append old [| tip |]
@@ -193,7 +195,7 @@ let private trackChart (cpu: Memo<float array>) =
             let clock = Page.point 0. 0.
 
             let animation =
-                Reactive.own (Anime.animate (Targets.object clock, Anim (x = 1, duration = 900, ease = Ease.linear)))
+                Reactive.own (Anime.animate (Targets.object clock, Anim (x = 1, duration = 1000, ease = Ease.linear)))
 
             frame.Value <- previous, current, (Reactive.track animation).Progress
 

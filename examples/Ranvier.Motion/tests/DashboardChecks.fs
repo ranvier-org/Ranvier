@@ -33,7 +33,7 @@ let private pathsHoldCapacity (_: Clock) =
 
     let area = areaPath [| 0.5 |]
 
-    equal (capacity, "M0.0", "L575.0 18.0", true) (points.Length, points[0], line.Substring (line.Length - 11), area.EndsWith "L575 200 L0 200 Z")
+    equal (capacity, "M0.0", "L600.0 18.0", true) (points.Length, points[0], line.Substring (line.Length - 11), area.EndsWith "L600 200 L0 200 Z")
 
 let private mounted queued =
     let graph = new Graph ()

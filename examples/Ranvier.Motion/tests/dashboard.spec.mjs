@@ -31,9 +31,10 @@ test("the chart's path and the ring's stroke change with every sample", async ({
   const ring = ".ring-value";
   const first = [await attribute(page, line, "d"), await attribute(page, ring, "stroke-dasharray")];
   await page.clock.runFor(1000);
+  await page.click("button.pause");
   await page.clock.runFor(150);
   const moving = [await attribute(page, line, "d"), await attribute(page, ring, "stroke-dasharray")];
-  await page.clock.runFor(650);
+  await page.clock.runFor(850);
   const settled = [await attribute(page, line, "d"), await attribute(page, ring, "stroke-dasharray")];
   await page.clock.runFor(50);
   const still = await attribute(page, line, "d");

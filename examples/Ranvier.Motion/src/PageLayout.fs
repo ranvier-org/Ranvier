@@ -27,7 +27,7 @@ let private infos =
             Title = "Dashboard"
             Tag = "stream · follow · draw · morph · track · boundary"
             Description =
-                "Metrics arrive from a core stream. A skeleton pulses until the first sample, gauges follow each reading, the ring draws the CPU load, the chart morphs to every new window, and the request rate counts up through a tracked tween."
+                "Metrics arrive from a core stream. Gauges follow each reading, the ring draws the CPU load, and the chart scrolls steadily while its tip eases to the next value. Reconnect keeps the sample history."
         }
         {
             Name = "story"
