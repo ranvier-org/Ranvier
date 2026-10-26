@@ -91,6 +91,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 83,310 | 127,520 | 1,742,203 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 83,311 | 127,501 | 1,742,250 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 83,376 | 127,519 | 1,742,264 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 83,373 | 127,514 | 1,742,206 |
 
 ## app-table
 
@@ -183,6 +184,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 4,417,703 | 9,275,856 | 107,746,715 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 4,417,647 | 9,454,620 | 107,853,559 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,417,590 | 9,273,397 | 107,853,155 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 4,417,715 | 9,274,074 | 107,924,113 |
 
 ## async-recover
 
@@ -275,6 +277,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 139,071 | 41,264 | 434,852 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 139,071 | 41,224 | 434,856 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 139,071 | 41,259 | 434,858 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 139,071 | 41,263 | 434,859 |
 
 ## async-resolve
 
@@ -367,6 +370,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,788,051 | 1,023,010 | 11,966,893 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,788,051 | 1,023,108 | 11,970,214 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,788,051 | 1,023,029 | 11,970,210 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,788,052 | 1,022,848 | 11,966,856 |
 
 ## chain
 
@@ -459,6 +463,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -551,6 +556,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,553 | 3,071 | 2,500 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,553 | 3,071 | 2,500 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,553 | 3,071 | 2,500 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -643,6 +649,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 74,709 | 836,677 | 2,603,116 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 74,709 | 836,664 | 2,603,212 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 74,709 | 836,613 | 2,603,135 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 74,709 | 836,702 | 2,603,175 |
 
 ## create
 
@@ -735,6 +742,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 13,448,358 | 2,865,678 | 2,570,368 | 2,127,930 | 4,045,763 | 34,003,110 | 50,334,353 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 13,464,365 | 2,865,677 | 2,570,368 | 2,128,126 | 4,043,114 | 34,003,168 | 50,334,260 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,464,300 | 2,865,678 | 2,570,400 | 2,127,915 | 4,045,530 | 34,003,214 | 50,333,928 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 13,448,437 | 2,865,677 | 2,570,368 | 2,127,524 | 4,045,260 | 34,003,185 | 50,334,303 |
 
 ## create-on
 
@@ -827,6 +835,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,949,484 | 4,179,982 | 55,229,164 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,949,484 | 4,179,475 | 55,229,058 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,949,484 | 4,179,846 | 55,229,109 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,949,484 | 4,179,590 | 55,229,382 |
 
 ## cutoff
 
@@ -919,6 +928,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1011,6 +1021,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 781 | 751 | 16,520 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 781 | 751 | 16,520 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 781 | 751 | 16,520 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1103,6 +1114,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 751 | 802 | 16,543 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 751 | 802 | 16,543 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 751 | 802 | 16,543 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1195,6 +1207,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,706,748 | 806,288 | 367,497 | 475,854 | 495,208 | 13,205,947 | 9,105,996 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,707,643 | 806,288 | 367,497 | 476,004 | 495,564 | 13,205,969 | 9,106,160 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,707,645 | 806,288 | 367,497 | 475,504 | 495,038 | 13,207,606 | 9,106,841 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,707,643 | 806,288 | 367,497 | 475,715 | 495,220 | 13,207,653 | 9,105,684 |
 
 ## dispose-on
 
@@ -1287,6 +1300,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 346,497 | 488,106 | 8,903,111 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 346,497 | 487,566 | 8,902,693 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 346,497 | 487,653 | 8,902,955 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 346,497 | 487,750 | 8,902,697 |
 
 ## editable-edit
 
@@ -1379,6 +1393,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 181,706 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 181,706 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 181,706 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 181,706 |
 
 ## editable-upstream
 
@@ -1471,6 +1486,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 232,855 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 232,855 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 232,855 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 232,855 |
 
 ## fail-recompute
 
@@ -1563,6 +1579,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 65,086 | 1,370 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 65,086 | 1,370 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 65,086 | 1,370 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 65,086 | 1,370 |
 
 ## flight
 
@@ -1655,6 +1672,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 
 ## keyed-insert
 
@@ -1747,6 +1765,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,921,745 | 53,917 | 54,965 | 3,277,722 | 237,880 | 176,033 | 45,075,892 | 2,634,569 | 2,655,548 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,921,737 | 53,917 | 54,956 | 3,277,867 | 237,634 | 176,029 | 45,075,893 | 2,634,566 | 2,655,518 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,921,737 | 53,917 | 54,956 | 3,277,661 | 237,650 | 176,043 | 45,075,847 | 2,634,583 | 2,655,507 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,921,737 | 53,917 | 54,958 | 3,277,845 | 237,644 | 176,040 | 45,075,873 | 2,634,486 | 2,655,495 |
 
 ## keyed-remove
 
@@ -1839,6 +1858,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,920,685 | 43,607 | 45,309 | 3,292,745 | 591,927 | 606,033 | 45,053,059 | 1,924,711 | 1,960,210 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,920,676 | 43,608 | 45,300 | 3,292,847 | 591,905 | 605,747 | 45,052,996 | 1,924,554 | 1,960,149 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,920,671 | 43,607 | 45,301 | 3,292,925 | 591,834 | 606,164 | 45,041,027 | 1,924,648 | 1,960,192 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,920,685 | 43,607 | 45,301 | 3,292,933 | 592,045 | 606,202 | 45,041,065 | 1,924,575 | 1,960,147 |
 
 ## keyed-swap
 
@@ -1931,6 +1951,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,973,362 | 46,205 | 46,927 | 3,627,248 | 148,938 | 513,156 | 46,198,875 | 915,632 | 936,204 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,973,362 | 46,206 | 46,928 | 3,626,909 | 148,879 | 513,118 | 46,198,947 | 915,632 | 936,211 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,973,362 | 46,205 | 46,927 | 3,633,157 | 148,902 | 511,997 | 46,198,638 | 915,668 | 936,096 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,973,362 | 46,205 | 46,927 | 3,628,661 | 148,900 | 513,034 | 46,198,650 | 915,697 | 936,178 |
 
 ## mvu-dispatch
 
@@ -2023,6 +2044,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 58,292 | 788 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 58,292 | 788 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 58,292 | 788 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2115,6 +2137,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 7,014 | 884 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 7,014 | 884 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 7,046 | 884 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 7,030 | 884 |
 
 ## project-chain
 
@@ -2207,6 +2230,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,071,687 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,071,720 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,071,750 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,071,835 |
 
 ## project-churn
 
@@ -2299,6 +2323,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 36,385 | 34,250 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 36,385 | 34,250 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 36,385 | 34,250 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2391,6 +2416,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 50,460 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 50,460 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 50,460 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 50,476 |
 
 ## project-reorder
 
@@ -2483,6 +2509,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 780,067 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 780,068 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 780,068 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 780,067 |
 
 ## server-render
 
@@ -2575,6 +2602,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 680,651 | 1,147,490 | 9,888,617 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 680,651 | 1,147,818 | 9,888,400 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 680,651 | 1,147,848 | 9,888,447 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 682,251 | 1,147,606 | 9,888,328 |
 
 ## shape-diamond
 
@@ -2667,6 +2695,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 59,915 | 80,445 | 1,764,075 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 59,915 | 80,445 | 1,764,075 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 59,915 | 80,445 | 1,764,075 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2759,6 +2788,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 84,378 | 108,947 | 2,038,136 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 84,378 | 108,947 | 2,038,136 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 84,378 | 108,945 | 2,038,136 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2851,6 +2881,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,580 | 45,790 | 55,379 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,472 | 47,580 | 45,790 | 55,383 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,470 | 47,578 | 45,790 | 55,380 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,470 | 47,580 | 45,790 | 55,379 |
 
 ## stream-burst-16
 
@@ -2943,6 +2974,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 5,022 | 24,618 | 5,712 | 9,736 | 50,031 | 8,071 | 123,809 | 720,149 | 113,731 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 5,022 | 24,618 | 5,712 | 9,737 | 50,033 | 8,071 | 123,812 | 720,148 | 113,734 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 5,022 | 24,618 | 5,712 | 9,722 | 50,033 | 8,071 | 123,808 | 720,148 | 113,731 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 5,022 | 24,618 | 5,712 | 9,738 | 50,033 | 8,066 | 123,812 | 720,151 | 113,733 |
 
 ## stream-burst-256
 
@@ -3035,6 +3067,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 54,162 | 393,702 | 57,051 | 131,885 | 792,808 | 74,743 | 1,343,750 | 11,508,770 | 1,046,728 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 54,162 | 393,702 | 57,051 | 131,978 | 792,882 | 74,705 | 1,343,739 | 11,508,770 | 1,046,722 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 54,162 | 393,702 | 57,051 | 131,945 | 792,883 | 74,743 | 1,343,779 | 11,508,770 | 1,046,658 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 54,162 | 393,702 | 57,051 | 131,996 | 792,832 | 74,743 | 1,343,668 | 11,508,770 | 1,046,720 |
 
 ## stream-restart
 
@@ -3127,6 +3160,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 4,203 | 4,998 | 6,579 | 16,886 | 42,890 | 72,019 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 4,203 | 4,998 | 6,576 | 16,888 | 42,879 | 72,023 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,203 | 4,998 | 6,579 | 16,890 | 42,886 | 72,023 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 4,203 | 4,998 | 6,576 | 16,887 | 42,902 | 72,017 |
 
 ## timed-admit-both
 
@@ -3219,6 +3253,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 117,709 | 130,035 | 2,693,576 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 117,708 | 130,037 | 2,693,565 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 117,709 | 130,036 | 2,693,578 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 121,805 | 130,036 | 2,693,577 |
 
 ## timed-admit-debounce
 
@@ -3311,6 +3346,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 116,614 | 128,614 | 2,654,117 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 116,614 | 128,619 | 2,654,117 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,614 | 128,618 | 2,654,129 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 120,710 | 128,620 | 2,654,117 |
 
 ## timed-admit-first
 
@@ -3403,6 +3439,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 69,621 | 79,566 | 1,620,677 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 69,621 | 79,566 | 1,620,677 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 69,621 | 79,563 | 1,620,677 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 71,669 | 79,565 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3495,6 +3532,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 116,876 | 128,927 | 2,663,985 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 116,876 | 128,926 | 2,663,985 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,876 | 128,938 | 2,663,986 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 120,972 | 128,936 | 2,663,973 |
 
 ## timed-capture-both
 
@@ -3587,6 +3625,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,740 | 44,934 | 846,919 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,740 | 44,936 | 846,917 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,740 | 44,936 | 846,917 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,788 | 44,937 | 846,919 |
 
 ## timed-capture-debounce
 
@@ -3679,6 +3718,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,612 | 44,233 | 847,657 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,612 | 44,233 | 847,657 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,612 | 44,233 | 847,657 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,660 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -3771,6 +3811,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 32,092 | 36,741 | 745,654 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 32,092 | 36,741 | 745,651 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 32,092 | 36,742 | 745,651 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 34,140 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -3863,6 +3904,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,548 | 44,168 | 839,787 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,548 | 44,169 | 839,785 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,548 | 44,167 | 839,785 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,596 | 44,168 | 839,785 |
 
 ## update
 
@@ -3955,6 +3997,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,087,790 | 38,805 | 84,105 | 262,996 | 145,792 | 3,351,258 | 2,544,975 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,087,783 | 38,805 | 84,105 | 262,678 | 145,832 | 3,351,295 | 2,545,099 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,087,790 | 38,805 | 84,105 | 262,961 | 145,790 | 3,351,232 | 2,544,986 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,087,790 | 38,805 | 84,105 | 262,937 | 145,803 | 3,351,235 | 2,544,974 |
 
 ## update-on
 
@@ -4047,6 +4090,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 94,605 | 169,007 | 2,872,459 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 94,605 | 169,011 | 2,872,476 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 94,605 | 169,047 | 2,872,389 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 94,605 | 169,014 | 2,872,465 |
 
 ## work-form
 
@@ -4139,6 +4183,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 172,679 | 165,150 | 308,823 | 296,961 | 5,421,805 | 5,334,914 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 172,679 | 165,150 | 308,828 | 296,936 | 5,421,861 | 5,334,917 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 172,679 | 165,150 | 308,840 | 296,990 | 5,421,850 | 5,334,940 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 172,679 | 165,150 | 308,803 | 296,954 | 5,421,774 | 5,334,955 |
 
 ## work-status
 
@@ -4231,6 +4276,7 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 102,045 | 80,235 | 269,312 | 156,109 | 2,659,267 | 2,391,279 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 102,045 | 80,235 | 269,341 | 156,138 | 2,659,262 | 2,391,299 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 102,045 | 80,235 | 269,341 | 156,108 | 2,659,268 | 2,391,319 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 102,045 | 80,235 | 269,318 | 156,102 | 2,659,169 | 2,391,261 |
 
 ## work-value
 
@@ -4323,4 +4369,5 @@
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 109,169 | 121,071 | 269,600 | 283,434 | 2,643,832 | 2,968,437 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 109,169 | 121,069 | 269,574 | 283,416 | 2,643,946 | 2,968,476 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 109,169 | 121,069 | 269,568 | 283,428 | 2,643,854 | 2,968,475 |
+| `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 109,169 | 121,071 | 269,559 | 283,410 | 2,643,818 | 2,968,474 |
 
