@@ -90,6 +90,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 83,342 | 127,559 | 1,742,177 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 83,310 | 127,520 | 1,742,203 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 83,311 | 127,501 | 1,742,250 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 83,376 | 127,519 | 1,742,264 |
 
 ## app-table
 
@@ -181,6 +182,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 4,417,821 | 9,383,849 | 107,930,537 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 4,417,703 | 9,275,856 | 107,746,715 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 4,417,647 | 9,454,620 | 107,853,559 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,417,590 | 9,273,397 | 107,853,155 |
 
 ## async-recover
 
@@ -272,6 +274,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 139,071 | 41,267 | 434,846 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 139,071 | 41,264 | 434,852 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 139,071 | 41,224 | 434,856 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 139,071 | 41,259 | 434,858 |
 
 ## async-resolve
 
@@ -363,6 +366,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,788,052 | 1,022,542 | 11,966,937 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,788,051 | 1,023,010 | 11,966,893 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,788,051 | 1,023,108 | 11,970,214 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,788,051 | 1,023,029 | 11,970,210 |
 
 ## chain
 
@@ -454,6 +458,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -545,6 +550,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,553 | 3,071 | 2,500 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,553 | 3,071 | 2,500 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,553 | 3,071 | 2,500 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -636,6 +642,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 74,709 | 836,706 | 2,603,155 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 74,709 | 836,677 | 2,603,116 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 74,709 | 836,664 | 2,603,212 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 74,709 | 836,613 | 2,603,135 |
 
 ## create
 
@@ -727,6 +734,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 13,528,309 | 2,865,677 | 2,570,368 | 2,127,994 | 4,045,120 | 34,002,936 | 50,334,146 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 13,448,358 | 2,865,678 | 2,570,368 | 2,127,930 | 4,045,763 | 34,003,110 | 50,334,353 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 13,464,365 | 2,865,677 | 2,570,368 | 2,128,126 | 4,043,114 | 34,003,168 | 50,334,260 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,464,300 | 2,865,678 | 2,570,400 | 2,127,915 | 4,045,530 | 34,003,214 | 50,333,928 |
 
 ## create-on
 
@@ -818,6 +826,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,949,484 | 4,179,397 | 55,229,084 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,949,484 | 4,179,982 | 55,229,164 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,949,484 | 4,179,475 | 55,229,058 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,949,484 | 4,179,846 | 55,229,109 |
 
 ## cutoff
 
@@ -909,6 +918,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1000,6 +1010,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 781 | 751 | 16,520 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 781 | 751 | 16,520 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 781 | 751 | 16,520 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1091,6 +1102,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 751 | 802 | 16,543 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 751 | 802 | 16,543 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 751 | 802 | 16,543 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1182,6 +1194,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,706,752 | 806,288 | 367,497 | 475,761 | 495,157 | 13,207,490 | 9,106,430 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,706,748 | 806,288 | 367,497 | 475,854 | 495,208 | 13,205,947 | 9,105,996 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,707,643 | 806,288 | 367,497 | 476,004 | 495,564 | 13,205,969 | 9,106,160 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,707,645 | 806,288 | 367,497 | 475,504 | 495,038 | 13,207,606 | 9,106,841 |
 
 ## dispose-on
 
@@ -1273,6 +1286,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 346,497 | 487,834 | 8,902,439 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 346,497 | 488,106 | 8,903,111 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 346,497 | 487,566 | 8,902,693 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 346,497 | 487,653 | 8,902,955 |
 
 ## editable-edit
 
@@ -1364,6 +1378,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 181,706 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 181,706 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 181,706 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 181,706 |
 
 ## editable-upstream
 
@@ -1455,6 +1470,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 232,855 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 232,855 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 232,855 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 232,855 |
 
 ## fail-recompute
 
@@ -1546,6 +1562,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 65,086 | 1,370 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 65,086 | 1,370 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 65,086 | 1,370 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 65,086 | 1,370 |
 
 ## flight
 
@@ -1637,6 +1654,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 
 ## keyed-insert
 
@@ -1728,6 +1746,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,921,737 | 53,917 | 54,958 | 3,277,778 | 237,598 | 176,063 | 45,086,078 | 2,634,508 | 2,655,460 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,921,745 | 53,917 | 54,965 | 3,277,722 | 237,880 | 176,033 | 45,075,892 | 2,634,569 | 2,655,548 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,921,737 | 53,917 | 54,956 | 3,277,867 | 237,634 | 176,029 | 45,075,893 | 2,634,566 | 2,655,518 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,921,737 | 53,917 | 54,956 | 3,277,661 | 237,650 | 176,043 | 45,075,847 | 2,634,583 | 2,655,507 |
 
 ## keyed-remove
 
@@ -1819,6 +1838,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,920,677 | 43,607 | 45,301 | 3,292,699 | 591,892 | 606,178 | 45,041,048 | 1,924,661 | 1,960,208 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,920,685 | 43,607 | 45,309 | 3,292,745 | 591,927 | 606,033 | 45,053,059 | 1,924,711 | 1,960,210 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,920,676 | 43,608 | 45,300 | 3,292,847 | 591,905 | 605,747 | 45,052,996 | 1,924,554 | 1,960,149 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,920,671 | 43,607 | 45,301 | 3,292,925 | 591,834 | 606,164 | 45,041,027 | 1,924,648 | 1,960,192 |
 
 ## keyed-swap
 
@@ -1910,6 +1930,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,973,362 | 46,206 | 46,928 | 3,634,384 | 148,850 | 513,004 | 46,198,998 | 915,596 | 936,180 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,973,362 | 46,205 | 46,927 | 3,627,248 | 148,938 | 513,156 | 46,198,875 | 915,632 | 936,204 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,973,362 | 46,206 | 46,928 | 3,626,909 | 148,879 | 513,118 | 46,198,947 | 915,632 | 936,211 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,973,362 | 46,205 | 46,927 | 3,633,157 | 148,902 | 511,997 | 46,198,638 | 915,668 | 936,096 |
 
 ## mvu-dispatch
 
@@ -2001,6 +2022,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 58,292 | 788 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 58,292 | 788 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 58,292 | 788 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2092,6 +2114,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 7,046 | 884 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 7,014 | 884 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 7,014 | 884 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 7,046 | 884 |
 
 ## project-chain
 
@@ -2183,6 +2206,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,071,734 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,071,687 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,071,720 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,071,750 |
 
 ## project-churn
 
@@ -2274,6 +2298,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 36,385 | 34,250 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 36,385 | 34,250 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 36,385 | 34,250 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2365,6 +2390,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 50,460 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 50,460 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 50,460 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 50,460 |
 
 ## project-reorder
 
@@ -2456,6 +2482,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 780,069 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 780,067 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 780,068 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 780,068 |
 
 ## server-render
 
@@ -2547,6 +2574,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 680,683 | 1,147,747 | 9,888,423 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 680,651 | 1,147,490 | 9,888,617 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 680,651 | 1,147,818 | 9,888,400 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 680,651 | 1,147,848 | 9,888,447 |
 
 ## shape-diamond
 
@@ -2638,6 +2666,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 59,915 | 80,445 | 1,764,075 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 59,915 | 80,445 | 1,764,075 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 59,915 | 80,445 | 1,764,075 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2729,6 +2758,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 84,378 | 108,944 | 2,038,136 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 84,378 | 108,947 | 2,038,136 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 84,378 | 108,947 | 2,038,136 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 84,378 | 108,945 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2820,6 +2850,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,467 | 47,580 | 45,790 | 55,383 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,580 | 45,790 | 55,379 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,472 | 47,580 | 45,790 | 55,383 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,470 | 47,578 | 45,790 | 55,380 |
 
 ## stream-burst-16
 
@@ -2911,6 +2942,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 5,022 | 24,618 | 5,712 | 9,739 | 50,033 | 8,071 | 123,810 | 720,148 | 113,734 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 5,022 | 24,618 | 5,712 | 9,736 | 50,031 | 8,071 | 123,809 | 720,149 | 113,731 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 5,022 | 24,618 | 5,712 | 9,737 | 50,033 | 8,071 | 123,812 | 720,148 | 113,734 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 5,022 | 24,618 | 5,712 | 9,722 | 50,033 | 8,071 | 123,808 | 720,148 | 113,731 |
 
 ## stream-burst-256
 
@@ -3002,6 +3034,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 54,162 | 393,702 | 57,051 | 131,801 | 792,840 | 74,743 | 1,343,779 | 11,508,770 | 1,046,725 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 54,162 | 393,702 | 57,051 | 131,885 | 792,808 | 74,743 | 1,343,750 | 11,508,770 | 1,046,728 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 54,162 | 393,702 | 57,051 | 131,978 | 792,882 | 74,705 | 1,343,739 | 11,508,770 | 1,046,722 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 54,162 | 393,702 | 57,051 | 131,945 | 792,883 | 74,743 | 1,343,779 | 11,508,770 | 1,046,658 |
 
 ## stream-restart
 
@@ -3093,6 +3126,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 4,203 | 4,998 | 6,575 | 16,891 | 42,908 | 72,026 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 4,203 | 4,998 | 6,579 | 16,886 | 42,890 | 72,019 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 4,203 | 4,998 | 6,576 | 16,888 | 42,879 | 72,023 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,203 | 4,998 | 6,579 | 16,890 | 42,886 | 72,023 |
 
 ## timed-admit-both
 
@@ -3184,6 +3218,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 117,709 | 130,035 | 2,693,578 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 117,709 | 130,035 | 2,693,576 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 117,708 | 130,037 | 2,693,565 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 117,709 | 130,036 | 2,693,578 |
 
 ## timed-admit-debounce
 
@@ -3275,6 +3310,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 116,618 | 128,595 | 2,654,130 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 116,614 | 128,614 | 2,654,117 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 116,614 | 128,619 | 2,654,117 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,614 | 128,618 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -3366,6 +3402,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 69,621 | 79,564 | 1,620,677 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 69,621 | 79,566 | 1,620,677 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 69,621 | 79,566 | 1,620,677 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 69,621 | 79,563 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3457,6 +3494,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 116,876 | 128,937 | 2,663,984 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 116,876 | 128,927 | 2,663,985 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 116,876 | 128,926 | 2,663,985 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,876 | 128,938 | 2,663,986 |
 
 ## timed-capture-both
 
@@ -3548,6 +3586,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,740 | 44,936 | 846,917 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,740 | 44,934 | 846,919 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,740 | 44,936 | 846,917 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,740 | 44,936 | 846,917 |
 
 ## timed-capture-debounce
 
@@ -3639,6 +3678,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,612 | 44,233 | 847,657 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,612 | 44,233 | 847,657 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,612 | 44,233 | 847,657 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,612 | 44,233 | 847,657 |
 
 ## timed-capture-first
 
@@ -3730,6 +3770,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 32,092 | 36,742 | 745,651 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 32,092 | 36,741 | 745,654 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 32,092 | 36,741 | 745,651 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -3821,6 +3862,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,548 | 44,168 | 839,785 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,548 | 44,168 | 839,787 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,548 | 44,169 | 839,785 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,548 | 44,167 | 839,785 |
 
 ## update
 
@@ -3912,6 +3954,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,087,783 | 38,805 | 84,105 | 263,143 | 145,755 | 3,351,295 | 2,545,050 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,087,790 | 38,805 | 84,105 | 262,996 | 145,792 | 3,351,258 | 2,544,975 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,087,783 | 38,805 | 84,105 | 262,678 | 145,832 | 3,351,295 | 2,545,099 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,087,790 | 38,805 | 84,105 | 262,961 | 145,790 | 3,351,232 | 2,544,986 |
 
 ## update-on
 
@@ -4003,6 +4046,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 94,605 | 169,008 | 2,872,412 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 94,605 | 169,007 | 2,872,459 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 94,605 | 169,011 | 2,872,476 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 94,605 | 169,047 | 2,872,389 |
 
 ## work-form
 
@@ -4094,6 +4138,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 172,679 | 165,150 | 308,857 | 297,017 | 5,421,862 | 5,334,888 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 172,679 | 165,150 | 308,823 | 296,961 | 5,421,805 | 5,334,914 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 172,679 | 165,150 | 308,828 | 296,936 | 5,421,861 | 5,334,917 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 172,679 | 165,150 | 308,840 | 296,990 | 5,421,850 | 5,334,940 |
 
 ## work-status
 
@@ -4185,6 +4230,7 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 102,045 | 80,235 | 269,336 | 156,131 | 2,659,237 | 2,391,279 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 102,045 | 80,235 | 269,312 | 156,109 | 2,659,267 | 2,391,279 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 102,045 | 80,235 | 269,341 | 156,138 | 2,659,262 | 2,391,299 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 102,045 | 80,235 | 269,341 | 156,108 | 2,659,268 | 2,391,319 |
 
 ## work-value
 
@@ -4276,4 +4322,5 @@
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 109,169 | 121,071 | 269,596 | 283,385 | 2,643,818 | 2,968,469 |
 | `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 109,169 | 121,071 | 269,600 | 283,434 | 2,643,832 | 2,968,437 |
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 109,169 | 121,069 | 269,574 | 283,416 | 2,643,946 | 2,968,476 |
+| `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 109,169 | 121,069 | 269,568 | 283,428 | 2,643,854 | 2,968,475 |
 
