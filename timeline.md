@@ -92,6 +92,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 83,311 | 127,501 | 1,742,250 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 83,376 | 127,519 | 1,742,264 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 83,373 | 127,514 | 1,742,206 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 83,377 | 127,537 | 1,742,214 |
 
 ## app-table
 
@@ -185,6 +186,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 4,417,647 | 9,454,620 | 107,853,559 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,417,590 | 9,273,397 | 107,853,155 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 4,417,715 | 9,274,074 | 107,924,113 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 4,417,675 | 9,274,239 | 107,852,885 |
 
 ## async-recover
 
@@ -278,6 +280,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 139,071 | 41,224 | 434,856 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 139,071 | 41,259 | 434,858 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 139,071 | 41,263 | 434,859 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 139,071 | 41,269 | 434,849 |
 
 ## async-resolve
 
@@ -371,6 +374,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,788,051 | 1,023,108 | 11,970,214 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,788,051 | 1,023,029 | 11,970,210 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,788,052 | 1,022,848 | 11,966,856 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,788,052 | 1,022,986 | 11,970,392 |
 
 ## chain
 
@@ -464,6 +468,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -557,6 +562,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,553 | 3,071 | 2,500 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,553 | 3,071 | 2,500 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,553 | 3,071 | 2,500 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -650,6 +656,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 74,709 | 836,664 | 2,603,212 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 74,709 | 836,613 | 2,603,135 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 74,709 | 836,702 | 2,603,175 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 74,709 | 836,722 | 2,603,147 |
 
 ## create
 
@@ -743,6 +750,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 13,464,365 | 2,865,677 | 2,570,368 | 2,128,126 | 4,043,114 | 34,003,168 | 50,334,260 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,464,300 | 2,865,678 | 2,570,400 | 2,127,915 | 4,045,530 | 34,003,214 | 50,333,928 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 13,448,437 | 2,865,677 | 2,570,368 | 2,127,524 | 4,045,260 | 34,003,185 | 50,334,303 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 13,573,788 | 2,865,676 | 2,570,370 | 2,127,106 | 4,045,348 | 34,003,379 | 50,334,392 |
 
 ## create-on
 
@@ -836,6 +844,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,949,484 | 4,179,475 | 55,229,058 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,949,484 | 4,179,846 | 55,229,109 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,949,484 | 4,179,590 | 55,229,382 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,949,517 | 4,179,708 | 55,229,348 |
 
 ## cutoff
 
@@ -929,6 +938,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1022,6 +1032,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 781 | 751 | 16,520 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 781 | 751 | 16,520 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 781 | 751 | 16,520 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1115,6 +1126,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 751 | 802 | 16,543 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 751 | 802 | 16,543 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 751 | 802 | 16,543 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1208,6 +1220,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 2,707,643 | 806,288 | 367,497 | 476,004 | 495,564 | 13,205,969 | 9,106,160 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,707,645 | 806,288 | 367,497 | 475,504 | 495,038 | 13,207,606 | 9,106,841 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,707,643 | 806,288 | 367,497 | 475,715 | 495,220 | 13,207,653 | 9,105,684 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,706,245 | 806,288 | 367,497 | 475,688 | 495,008 | 13,206,144 | 9,105,874 |
 
 ## dispose-on
 
@@ -1301,6 +1314,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 346,497 | 487,566 | 8,902,693 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 346,497 | 487,653 | 8,902,955 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 346,497 | 487,750 | 8,902,697 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 346,497 | 487,814 | 8,902,964 |
 
 ## editable-edit
 
@@ -1394,6 +1408,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 181,706 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 181,706 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 181,706 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 181,706 |
 
 ## editable-upstream
 
@@ -1487,6 +1502,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 232,855 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 232,855 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 232,855 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 232,855 |
 
 ## fail-recompute
 
@@ -1580,6 +1596,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 65,086 | 1,370 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 65,086 | 1,370 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 65,086 | 1,370 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 65,086 | 1,370 |
 
 ## flight
 
@@ -1673,6 +1690,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 
 ## keyed-insert
 
@@ -1766,6 +1784,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,921,737 | 53,917 | 54,956 | 3,277,867 | 237,634 | 176,029 | 45,075,893 | 2,634,566 | 2,655,518 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,921,737 | 53,917 | 54,956 | 3,277,661 | 237,650 | 176,043 | 45,075,847 | 2,634,583 | 2,655,507 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,921,737 | 53,917 | 54,958 | 3,277,845 | 237,644 | 176,040 | 45,075,873 | 2,634,486 | 2,655,495 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,921,737 | 53,917 | 54,953 | 3,277,634 | 237,680 | 176,006 | 45,075,909 | 2,634,539 | 2,655,541 |
 
 ## keyed-remove
 
@@ -1859,6 +1878,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,920,676 | 43,608 | 45,300 | 3,292,847 | 591,905 | 605,747 | 45,052,996 | 1,924,554 | 1,960,149 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,920,671 | 43,607 | 45,301 | 3,292,925 | 591,834 | 606,164 | 45,041,027 | 1,924,648 | 1,960,192 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,920,685 | 43,607 | 45,301 | 3,292,933 | 592,045 | 606,202 | 45,041,065 | 1,924,575 | 1,960,147 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,920,673 | 43,607 | 45,299 | 3,292,650 | 592,034 | 606,201 | 45,041,042 | 1,924,672 | 1,960,219 |
 
 ## keyed-swap
 
@@ -1952,6 +1972,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,973,362 | 46,206 | 46,928 | 3,626,909 | 148,879 | 513,118 | 46,198,947 | 915,632 | 936,211 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,973,362 | 46,205 | 46,927 | 3,633,157 | 148,902 | 511,997 | 46,198,638 | 915,668 | 936,096 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,973,362 | 46,205 | 46,927 | 3,628,661 | 148,900 | 513,034 | 46,198,650 | 915,697 | 936,178 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,973,362 | 46,205 | 46,927 | 3,630,057 | 148,957 | 513,084 | 46,198,990 | 915,760 | 936,079 |
 
 ## mvu-dispatch
 
@@ -2045,6 +2066,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 58,292 | 788 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 58,292 | 788 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 58,292 | 788 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2138,6 +2160,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 7,014 | 884 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 7,046 | 884 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 7,030 | 884 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 7,014 | 884 |
 
 ## project-chain
 
@@ -2231,6 +2254,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,071,720 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,071,750 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,071,835 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,071,703 |
 
 ## project-churn
 
@@ -2324,6 +2348,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 36,385 | 34,250 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 36,385 | 34,250 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 36,385 | 34,250 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 36,385 | 34,268 |
 
 ## project-edit
 
@@ -2417,6 +2442,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 50,460 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 50,460 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 50,476 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 50,460 |
 
 ## project-reorder
 
@@ -2510,6 +2536,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 780,068 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 780,068 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 780,067 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 780,068 |
 
 ## server-render
 
@@ -2603,6 +2630,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 680,651 | 1,147,818 | 9,888,400 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 680,651 | 1,147,848 | 9,888,447 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 682,251 | 1,147,606 | 9,888,328 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 680,652 | 1,147,481 | 9,888,270 |
 
 ## shape-diamond
 
@@ -2696,6 +2724,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 59,915 | 80,445 | 1,764,075 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 59,915 | 80,445 | 1,764,075 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 59,915 | 80,445 | 1,764,075 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2789,6 +2818,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 84,378 | 108,947 | 2,038,136 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 84,378 | 108,945 | 2,038,136 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 84,378 | 108,947 | 2,038,136 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2882,6 +2912,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,472 | 47,580 | 45,790 | 55,383 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,470 | 47,578 | 45,790 | 55,380 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,470 | 47,580 | 45,790 | 55,379 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,577 | 45,790 | 55,380 |
 
 ## stream-burst-16
 
@@ -2975,6 +3006,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 5,022 | 24,618 | 5,712 | 9,737 | 50,033 | 8,071 | 123,812 | 720,148 | 113,734 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 5,022 | 24,618 | 5,712 | 9,722 | 50,033 | 8,071 | 123,808 | 720,148 | 113,731 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 5,022 | 24,618 | 5,712 | 9,738 | 50,033 | 8,066 | 123,812 | 720,151 | 113,733 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 5,022 | 24,618 | 5,712 | 9,735 | 50,033 | 8,071 | 123,810 | 720,148 | 113,732 |
 
 ## stream-burst-256
 
@@ -3068,6 +3100,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 54,162 | 393,702 | 57,051 | 131,978 | 792,882 | 74,705 | 1,343,739 | 11,508,770 | 1,046,722 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 54,162 | 393,702 | 57,051 | 131,945 | 792,883 | 74,743 | 1,343,779 | 11,508,770 | 1,046,658 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 54,162 | 393,702 | 57,051 | 131,996 | 792,832 | 74,743 | 1,343,668 | 11,508,770 | 1,046,720 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 54,162 | 393,702 | 57,051 | 131,977 | 792,866 | 74,743 | 1,343,730 | 11,508,841 | 1,046,688 |
 
 ## stream-restart
 
@@ -3161,6 +3194,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 4,203 | 4,998 | 6,576 | 16,888 | 42,879 | 72,023 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,203 | 4,998 | 6,579 | 16,890 | 42,886 | 72,023 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 4,203 | 4,998 | 6,576 | 16,887 | 42,902 | 72,017 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 4,203 | 4,998 | 6,576 | 16,889 | 42,878 | 72,020 |
 
 ## timed-admit-both
 
@@ -3254,6 +3288,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 117,708 | 130,037 | 2,693,565 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 117,709 | 130,036 | 2,693,578 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 121,805 | 130,036 | 2,693,577 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 117,709 | 130,035 | 2,693,577 |
 
 ## timed-admit-debounce
 
@@ -3347,6 +3382,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 116,614 | 128,619 | 2,654,117 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,614 | 128,618 | 2,654,129 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 120,710 | 128,620 | 2,654,117 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 116,614 | 128,617 | 2,654,128 |
 
 ## timed-admit-first
 
@@ -3440,6 +3476,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 69,621 | 79,566 | 1,620,677 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 69,621 | 79,563 | 1,620,677 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 71,669 | 79,565 | 1,620,677 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3533,6 +3570,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 116,876 | 128,926 | 2,663,985 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,876 | 128,938 | 2,663,986 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 120,972 | 128,936 | 2,663,973 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 116,876 | 128,929 | 2,663,973 |
 
 ## timed-capture-both
 
@@ -3626,6 +3664,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,740 | 44,936 | 846,917 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,740 | 44,936 | 846,917 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,788 | 44,937 | 846,919 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,740 | 44,936 | 846,916 |
 
 ## timed-capture-debounce
 
@@ -3719,6 +3758,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,612 | 44,233 | 847,657 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,612 | 44,233 | 847,657 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,660 | 44,232 | 847,657 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -3812,6 +3852,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 32,092 | 36,741 | 745,651 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 32,092 | 36,742 | 745,651 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 34,140 | 36,742 | 745,651 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 32,092 | 36,742 | 745,653 |
 
 ## timed-capture-last
 
@@ -3905,6 +3946,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 35,548 | 44,169 | 839,785 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,548 | 44,167 | 839,785 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,596 | 44,168 | 839,785 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -3998,6 +4040,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 1,087,783 | 38,805 | 84,105 | 262,678 | 145,832 | 3,351,295 | 2,545,099 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,087,790 | 38,805 | 84,105 | 262,961 | 145,790 | 3,351,232 | 2,544,986 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,087,790 | 38,805 | 84,105 | 262,937 | 145,803 | 3,351,235 | 2,544,974 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,087,790 | 38,805 | 84,105 | 262,933 | 145,755 | 3,351,259 | 2,545,002 |
 
 ## update-on
 
@@ -4091,6 +4134,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 94,605 | 169,011 | 2,872,476 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 94,605 | 169,047 | 2,872,389 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 94,605 | 169,014 | 2,872,465 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 94,605 | 169,000 | 2,872,329 |
 
 ## work-form
 
@@ -4184,6 +4228,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 172,679 | 165,150 | 308,828 | 296,936 | 5,421,861 | 5,334,917 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 172,679 | 165,150 | 308,840 | 296,990 | 5,421,850 | 5,334,940 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 172,679 | 165,150 | 308,803 | 296,954 | 5,421,774 | 5,334,955 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 172,679 | 165,150 | 308,831 | 296,967 | 5,421,863 | 5,334,925 |
 
 ## work-status
 
@@ -4277,6 +4322,7 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 102,045 | 80,235 | 269,341 | 156,138 | 2,659,262 | 2,391,299 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 102,045 | 80,235 | 269,341 | 156,108 | 2,659,268 | 2,391,319 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 102,045 | 80,235 | 269,318 | 156,102 | 2,659,169 | 2,391,261 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 102,045 | 80,235 | 269,330 | 156,122 | 2,659,181 | 2,391,286 |
 
 ## work-value
 
@@ -4370,4 +4416,5 @@
 | `6066b93` | 2026-10-26 | feat(persistence): add Equinox and FsCodec state sample (#227) | 109,169 | 121,069 | 269,574 | 283,416 | 2,643,946 | 2,968,476 |
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 109,169 | 121,069 | 269,568 | 283,428 | 2,643,854 | 2,968,475 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 109,169 | 121,071 | 269,559 | 283,410 | 2,643,818 | 2,968,474 |
+| `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 109,171 | 121,070 | 269,558 | 283,386 | 2,643,900 | 2,968,428 |
 
