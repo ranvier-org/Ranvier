@@ -88,6 +88,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 83,328 | 127,586 | 1,742,189 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 83,313 | 127,616 | 1,742,209 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 83,342 | 127,559 | 1,742,177 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 83,310 | 127,520 | 1,742,203 |
 
 ## app-table
 
@@ -177,6 +178,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 4,417,867 | 9,273,867 | 107,727,285 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 4,417,667 | 9,454,780 | 107,748,759 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 4,417,821 | 9,383,849 | 107,930,537 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 4,417,703 | 9,275,856 | 107,746,715 |
 
 ## async-recover
 
@@ -266,6 +268,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 139,071 | 41,267 | 434,860 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 139,071 | 41,258 | 434,853 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 139,071 | 41,267 | 434,846 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 139,071 | 41,264 | 434,852 |
 
 ## async-resolve
 
@@ -355,6 +358,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,788,052 | 1,023,018 | 11,967,224 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,788,050 | 1,023,023 | 11,970,202 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,788,052 | 1,022,542 | 11,966,937 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,788,051 | 1,023,010 | 11,966,893 |
 
 ## chain
 
@@ -444,6 +448,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -533,6 +538,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,553 | 3,071 | 2,500 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,553 | 3,071 | 2,500 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,553 | 3,071 | 2,500 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -622,6 +628,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 74,709 | 836,691 | 2,603,104 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 74,709 | 836,687 | 2,603,140 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 74,709 | 836,706 | 2,603,155 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 74,709 | 836,677 | 2,603,116 |
 
 ## create
 
@@ -711,6 +718,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 13,448,400 | 2,865,678 | 2,570,369 | 2,127,882 | 4,045,126 | 34,003,261 | 50,334,433 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 13,573,949 | 2,865,677 | 2,570,400 | 2,127,528 | 4,045,580 | 34,003,138 | 50,334,149 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 13,528,309 | 2,865,677 | 2,570,368 | 2,127,994 | 4,045,120 | 34,002,936 | 50,334,146 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 13,448,358 | 2,865,678 | 2,570,368 | 2,127,930 | 4,045,763 | 34,003,110 | 50,334,353 |
 
 ## create-on
 
@@ -800,6 +808,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,949,484 | 4,179,589 | 55,229,096 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,949,484 | 4,179,565 | 55,228,972 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,949,484 | 4,179,397 | 55,229,084 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,949,484 | 4,179,982 | 55,229,164 |
 
 ## cutoff
 
@@ -889,6 +898,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -978,6 +988,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 781 | 751 | 16,520 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 781 | 751 | 16,520 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 781 | 751 | 16,520 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1067,6 +1078,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 751 | 802 | 16,543 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 751 | 802 | 16,543 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 751 | 802 | 16,543 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1156,6 +1168,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,707,643 | 806,288 | 367,497 | 475,929 | 495,188 | 13,205,856 | 9,106,171 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 2,707,643 | 806,288 | 367,497 | 475,594 | 495,048 | 13,207,036 | 9,106,195 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 2,706,752 | 806,288 | 367,497 | 475,761 | 495,157 | 13,207,490 | 9,106,430 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 2,706,748 | 806,288 | 367,497 | 475,854 | 495,208 | 13,205,947 | 9,105,996 |
 
 ## dispose-on
 
@@ -1245,6 +1258,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 346,497 | 487,922 | 8,902,634 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 346,497 | 487,418 | 8,902,460 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 346,497 | 487,834 | 8,902,439 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 346,497 | 488,106 | 8,903,111 |
 
 ## editable-edit
 
@@ -1334,6 +1348,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 181,706 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 181,706 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 181,706 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 181,706 |
 
 ## editable-upstream
 
@@ -1423,6 +1438,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 232,855 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 232,855 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 232,855 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 232,855 |
 
 ## fail-recompute
 
@@ -1512,6 +1528,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 65,086 | 1,370 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 65,086 | 1,370 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 65,086 | 1,370 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 65,086 | 1,370 |
 
 ## flight
 
@@ -1601,6 +1618,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 
 ## keyed-insert
 
@@ -1690,6 +1708,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,921,753 | 53,949 | 54,968 | 3,277,660 | 237,586 | 176,049 | 45,075,887 | 2,634,528 | 2,655,499 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,921,737 | 53,917 | 54,954 | 3,277,752 | 237,612 | 176,023 | 45,075,849 | 2,634,560 | 2,655,519 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,921,737 | 53,917 | 54,958 | 3,277,778 | 237,598 | 176,063 | 45,086,078 | 2,634,508 | 2,655,460 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,921,745 | 53,917 | 54,965 | 3,277,722 | 237,880 | 176,033 | 45,075,892 | 2,634,569 | 2,655,548 |
 
 ## keyed-remove
 
@@ -1779,6 +1798,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,920,687 | 43,639 | 45,315 | 3,292,872 | 592,001 | 605,806 | 45,041,051 | 1,924,661 | 1,960,130 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,920,676 | 43,607 | 45,299 | 3,293,041 | 591,961 | 605,868 | 45,041,010 | 1,924,551 | 1,960,196 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,920,677 | 43,607 | 45,301 | 3,292,699 | 591,892 | 606,178 | 45,041,048 | 1,924,661 | 1,960,208 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,920,685 | 43,607 | 45,309 | 3,292,745 | 591,927 | 606,033 | 45,053,059 | 1,924,711 | 1,960,210 |
 
 ## keyed-swap
 
@@ -1868,6 +1888,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,973,378 | 46,237 | 46,943 | 3,628,862 | 148,943 | 513,216 | 46,198,622 | 915,705 | 936,146 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,973,362 | 46,205 | 46,927 | 3,628,294 | 148,893 | 512,970 | 46,198,972 | 915,640 | 936,135 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,973,362 | 46,206 | 46,928 | 3,634,384 | 148,850 | 513,004 | 46,198,998 | 915,596 | 936,180 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,973,362 | 46,205 | 46,927 | 3,627,248 | 148,938 | 513,156 | 46,198,875 | 915,632 | 936,204 |
 
 ## mvu-dispatch
 
@@ -1957,6 +1978,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 58,292 | 788 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 58,292 | 788 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 58,292 | 788 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2046,6 +2068,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 7,046 | 884 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 7,046 | 884 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 7,046 | 884 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 7,014 | 884 |
 
 ## project-chain
 
@@ -2135,6 +2158,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,071,750 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,071,685 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,071,734 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,071,687 |
 
 ## project-churn
 
@@ -2224,6 +2248,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 36,385 | 34,266 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 36,385 | 34,250 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 36,385 | 34,250 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2313,6 +2338,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 50,508 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 50,460 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 50,460 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 50,460 |
 
 ## project-reorder
 
@@ -2402,6 +2428,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 780,116 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 780,069 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 780,069 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 780,067 |
 
 ## server-render
 
@@ -2491,6 +2518,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 680,651 | 1,147,580 | 9,887,459 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 680,715 | 1,147,878 | 9,888,668 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 680,683 | 1,147,747 | 9,888,423 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 680,651 | 1,147,490 | 9,888,617 |
 
 ## shape-diamond
 
@@ -2580,6 +2608,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 59,915 | 80,445 | 1,764,075 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 59,915 | 80,445 | 1,764,075 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 59,915 | 80,445 | 1,764,075 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2669,6 +2698,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 84,378 | 108,947 | 2,038,136 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 84,378 | 108,943 | 2,038,136 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 84,378 | 108,944 | 2,038,136 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2758,6 +2788,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,470 | 47,580 | 45,790 | 55,383 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,579 | 45,790 | 55,383 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,467 | 47,580 | 45,790 | 55,383 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,580 | 45,790 | 55,379 |
 
 ## stream-burst-16
 
@@ -2847,6 +2878,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 5,022 | 24,618 | 5,728 | 9,739 | 50,029 | 8,071 | 123,803 | 720,148 | 113,729 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 5,022 | 24,618 | 5,712 | 9,729 | 50,033 | 8,071 | 123,810 | 720,148 | 113,729 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 5,022 | 24,618 | 5,712 | 9,739 | 50,033 | 8,071 | 123,810 | 720,148 | 113,734 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 5,022 | 24,618 | 5,712 | 9,736 | 50,031 | 8,071 | 123,809 | 720,149 | 113,731 |
 
 ## stream-burst-256
 
@@ -2936,6 +2968,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 54,162 | 393,702 | 57,067 | 131,952 | 792,829 | 74,743 | 1,343,779 | 11,508,770 | 1,046,725 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 54,162 | 393,702 | 57,051 | 131,907 | 792,833 | 74,743 | 1,343,677 | 11,508,670 | 1,046,725 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 54,162 | 393,702 | 57,051 | 131,801 | 792,840 | 74,743 | 1,343,779 | 11,508,770 | 1,046,725 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 54,162 | 393,702 | 57,051 | 131,885 | 792,808 | 74,743 | 1,343,750 | 11,508,770 | 1,046,728 |
 
 ## stream-restart
 
@@ -3025,6 +3058,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 4,203 | 5,014 | 6,575 | 16,890 | 42,893 | 72,017 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 4,203 | 4,998 | 6,575 | 16,886 | 42,894 | 72,022 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 4,203 | 4,998 | 6,575 | 16,891 | 42,908 | 72,026 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 4,203 | 4,998 | 6,579 | 16,886 | 42,890 | 72,019 |
 
 ## timed-admit-both
 
@@ -3114,6 +3148,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 117,709 | 130,036 | 2,693,565 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 117,709 | 130,035 | 2,693,565 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 117,709 | 130,035 | 2,693,578 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 117,709 | 130,035 | 2,693,576 |
 
 ## timed-admit-debounce
 
@@ -3203,6 +3238,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 116,614 | 128,606 | 2,654,128 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 116,614 | 128,608 | 2,654,130 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 116,618 | 128,595 | 2,654,130 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 116,614 | 128,614 | 2,654,117 |
 
 ## timed-admit-first
 
@@ -3292,6 +3328,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 69,621 | 79,565 | 1,620,677 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 69,621 | 79,565 | 1,620,677 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 69,621 | 79,564 | 1,620,677 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3381,6 +3418,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 116,876 | 128,937 | 2,663,973 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 116,876 | 128,926 | 2,663,984 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 116,876 | 128,937 | 2,663,984 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 116,876 | 128,927 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -3470,6 +3508,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,740 | 44,936 | 846,916 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 35,740 | 44,935 | 846,917 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,740 | 44,936 | 846,917 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,740 | 44,934 | 846,919 |
 
 ## timed-capture-debounce
 
@@ -3559,6 +3598,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,612 | 44,232 | 847,657 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 35,612 | 44,232 | 847,657 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,612 | 44,233 | 847,657 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,612 | 44,233 | 847,657 |
 
 ## timed-capture-first
 
@@ -3648,6 +3688,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 32,092 | 36,741 | 745,652 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 32,092 | 36,740 | 745,651 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 32,092 | 36,742 | 745,651 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 32,092 | 36,741 | 745,654 |
 
 ## timed-capture-last
 
@@ -3737,6 +3778,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,548 | 44,168 | 839,785 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 35,548 | 44,168 | 839,785 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 35,548 | 44,168 | 839,785 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 35,548 | 44,168 | 839,787 |
 
 ## update
 
@@ -3826,6 +3868,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,087,790 | 38,805 | 84,105 | 263,233 | 145,794 | 3,351,281 | 2,545,019 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 1,100,143 | 38,805 | 84,105 | 263,233 | 145,794 | 3,351,282 | 2,545,002 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 1,087,783 | 38,805 | 84,105 | 263,143 | 145,755 | 3,351,295 | 2,545,050 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 1,087,790 | 38,805 | 84,105 | 262,996 | 145,792 | 3,351,258 | 2,544,975 |
 
 ## update-on
 
@@ -3915,6 +3958,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 94,605 | 169,007 | 2,872,497 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 94,605 | 169,007 | 2,872,408 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 94,605 | 169,008 | 2,872,412 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 94,605 | 169,007 | 2,872,459 |
 
 ## work-form
 
@@ -4004,6 +4048,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 172,679 | 165,150 | 308,863 | 296,954 | 5,421,825 | 5,334,914 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 172,679 | 165,150 | 308,819 | 296,963 | 5,421,846 | 5,334,878 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 172,679 | 165,150 | 308,857 | 297,017 | 5,421,862 | 5,334,888 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 172,679 | 165,150 | 308,823 | 296,961 | 5,421,805 | 5,334,914 |
 
 ## work-status
 
@@ -4093,6 +4138,7 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 102,045 | 80,235 | 269,323 | 156,079 | 2,659,266 | 2,391,182 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 102,045 | 80,235 | 269,327 | 156,116 | 2,659,214 | 2,391,279 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 102,045 | 80,235 | 269,336 | 156,131 | 2,659,237 | 2,391,279 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 102,045 | 80,235 | 269,312 | 156,109 | 2,659,267 | 2,391,279 |
 
 ## work-value
 
@@ -4182,4 +4228,5 @@
 | `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 109,169 | 121,071 | 269,562 | 283,383 | 2,643,858 | 2,968,314 |
 | `4154db8` | 2026-10-26 | docs: showcase sugar in the live coffee cart example (#224) | 109,170 | 121,069 | 269,596 | 283,393 | 2,643,809 | 2,968,433 |
 | `367df5f` | 2026-10-26 | feat(persistence): add scoped Marten state adapter (#225) | 109,169 | 121,071 | 269,596 | 283,385 | 2,643,818 | 2,968,469 |
+| `f9c9245` | 2026-10-26 | feat(persistence): add scoped KurrentDB snapshot adapter (#226) | 109,169 | 121,071 | 269,600 | 283,434 | 2,643,832 | 2,968,437 |
 
