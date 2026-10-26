@@ -85,6 +85,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 83,373 | 127,543 | 1,731,275 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 83,312 | 127,528 | 1,731,330 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 83,373 | 127,517 | 1,742,171 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 83,328 | 127,586 | 1,742,189 |
 
 ## app-table
 
@@ -171,6 +172,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 4,417,707 | 9,248,877 | 107,807,178 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 4,417,690 | 9,539,457 | 107,632,003 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 4,417,687 | 9,384,003 | 107,924,063 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 4,417,867 | 9,273,867 | 107,727,285 |
 
 ## async-recover
 
@@ -257,6 +259,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 139,071 | 39,099 | 442,892 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 139,071 | 39,087 | 442,897 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 139,071 | 41,269 | 434,850 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 139,071 | 41,267 | 434,860 |
 
 ## async-resolve
 
@@ -343,6 +346,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,788,051 | 1,044,653 | 12,371,673 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 2,788,051 | 1,044,380 | 12,368,231 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,788,051 | 1,022,537 | 11,970,184 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,788,052 | 1,023,018 | 11,967,224 |
 
 ## chain
 
@@ -429,6 +433,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -515,6 +520,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,553 | 3,071 | 2,500 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 2,553 | 3,071 | 2,500 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,553 | 3,071 | 2,500 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -601,6 +607,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 74,709 | 829,406 | 2,593,680 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 74,709 | 829,372 | 2,593,767 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 74,709 | 836,642 | 2,603,099 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 74,709 | 836,691 | 2,603,104 |
 
 ## create
 
@@ -687,6 +694,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 13,573,806 | 2,865,678 | 2,570,400 | 2,131,808 | 4,067,073 | 34,019,049 | 50,276,819 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 13,464,369 | 2,865,677 | 2,570,384 | 2,131,571 | 4,067,334 | 34,019,178 | 50,276,933 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 13,448,312 | 2,865,678 | 2,570,370 | 2,127,777 | 4,045,090 | 34,002,910 | 50,334,350 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 13,448,400 | 2,865,678 | 2,570,369 | 2,127,882 | 4,045,126 | 34,003,261 | 50,334,433 |
 
 ## create-on
 
@@ -773,6 +781,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,949,516 | 4,175,528 | 55,101,712 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 2,949,484 | 4,175,653 | 55,101,544 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,949,485 | 4,179,698 | 55,229,092 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,949,484 | 4,179,589 | 55,229,096 |
 
 ## cutoff
 
@@ -859,6 +868,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -945,6 +955,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 781 | 751 | 16,520 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 781 | 751 | 16,520 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 781 | 751 | 16,520 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1031,6 +1042,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 751 | 802 | 16,543 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 751 | 802 | 16,543 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 751 | 802 | 16,543 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1117,6 +1129,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 2,707,640 | 806,290 | 367,497 | 465,634 | 495,102 | 13,196,100 | 9,106,984 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 2,707,645 | 806,288 | 367,497 | 466,183 | 495,039 | 13,195,558 | 9,106,668 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 2,707,642 | 806,288 | 367,497 | 475,692 | 495,182 | 13,206,949 | 9,105,449 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 2,707,643 | 806,288 | 367,497 | 475,929 | 495,188 | 13,205,856 | 9,106,171 |
 
 ## dispose-on
 
@@ -1203,6 +1216,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 346,497 | 487,761 | 8,902,562 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 346,497 | 487,750 | 8,903,040 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 346,497 | 487,761 | 8,902,854 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 346,497 | 487,922 | 8,902,634 |
 
 ## editable-edit
 
@@ -1289,6 +1303,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 181,706 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 181,706 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 181,706 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 181,706 |
 
 ## editable-upstream
 
@@ -1375,6 +1390,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 232,855 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 232,855 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 232,855 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 232,855 |
 
 ## fail-recompute
 
@@ -1461,6 +1477,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 65,086 | 1,370 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 65,086 | 1,370 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 65,086 | 1,370 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 65,086 | 1,370 |
 
 ## flight
 
@@ -1547,6 +1564,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 
 ## keyed-insert
 
@@ -1633,6 +1651,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,921,737 | 53,917 | 54,952 | 3,273,613 | 237,683 | 176,385 | 45,078,856 | 2,634,611 | 2,655,553 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 1,921,737 | 53,917 | 54,954 | 3,273,764 | 237,648 | 176,418 | 45,077,696 | 2,634,670 | 2,655,561 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,921,737 | 53,917 | 54,956 | 3,277,840 | 237,592 | 176,024 | 45,075,885 | 2,634,501 | 2,655,518 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,921,753 | 53,949 | 54,968 | 3,277,660 | 237,586 | 176,049 | 45,075,887 | 2,634,528 | 2,655,499 |
 
 ## keyed-remove
 
@@ -1719,6 +1738,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,920,673 | 43,607 | 45,299 | 3,289,537 | 592,338 | 606,065 | 45,030,934 | 1,924,505 | 1,960,236 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 1,920,675 | 43,607 | 45,301 | 3,289,502 | 592,329 | 606,029 | 45,030,376 | 1,924,527 | 1,960,248 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,920,672 | 43,607 | 45,299 | 3,292,960 | 591,913 | 606,244 | 45,041,223 | 1,924,602 | 1,960,110 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,920,687 | 43,639 | 45,315 | 3,292,872 | 592,001 | 605,806 | 45,041,051 | 1,924,661 | 1,960,130 |
 
 ## keyed-swap
 
@@ -1805,6 +1825,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,973,362 | 46,205 | 46,927 | 3,620,210 | 148,987 | 512,023 | 46,187,322 | 915,724 | 933,769 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 1,973,362 | 46,205 | 46,927 | 3,618,931 | 148,953 | 512,015 | 46,187,695 | 915,696 | 933,799 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,973,362 | 46,205 | 46,927 | 3,620,162 | 149,189 | 512,967 | 46,198,630 | 915,560 | 936,125 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,973,378 | 46,237 | 46,943 | 3,628,862 | 148,943 | 513,216 | 46,198,622 | 915,705 | 936,146 |
 
 ## mvu-dispatch
 
@@ -1891,6 +1912,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 58,292 | 788 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 58,292 | 788 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 58,292 | 788 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 58,292 | 788 |
 
 ## persist-write
 
@@ -1977,6 +1999,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 7,062 | 900 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 7,014 | 884 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 7,062 | 900 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 7,046 | 884 |
 
 ## project-chain
 
@@ -2063,6 +2086,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,071,716 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 1,071,765 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,071,781 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,071,750 |
 
 ## project-churn
 
@@ -2149,6 +2173,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 36,385 | 34,250 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 36,385 | 34,250 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 36,385 | 34,250 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 36,385 | 34,266 |
 
 ## project-edit
 
@@ -2235,6 +2260,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 50,460 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 50,460 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 50,476 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 50,508 |
 
 ## project-reorder
 
@@ -2321,6 +2347,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 780,068 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 780,068 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 780,084 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 780,116 |
 
 ## server-render
 
@@ -2407,6 +2434,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 680,651 | 1,148,744 | 9,893,748 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 682,251 | 1,148,281 | 9,894,189 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 680,651 | 1,147,343 | 9,887,486 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 680,651 | 1,147,580 | 9,887,459 |
 
 ## shape-diamond
 
@@ -2493,6 +2521,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 59,915 | 80,445 | 1,763,775 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 59,915 | 80,445 | 1,763,775 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 59,915 | 80,445 | 1,764,075 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2579,6 +2608,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 84,378 | 108,947 | 2,037,686 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 84,378 | 108,947 | 2,037,685 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 84,378 | 108,947 | 2,038,136 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2665,6 +2695,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,468 | 47,581 | 45,790 | 55,385 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 1,950 | 1,548 | 2,534 | 4,696 | 3,672 | 13,465 | 47,581 | 45,790 | 55,386 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,950 | 1,548 | 2,502 | 4,693 | 3,672 | 13,469 | 47,577 | 45,790 | 55,383 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,470 | 47,580 | 45,790 | 55,383 |
 
 ## stream-burst-16
 
@@ -2751,6 +2782,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 5,022 | 24,618 | 5,712 | 9,740 | 50,033 | 8,071 | 123,807 | 720,147 | 113,734 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 5,022 | 24,618 | 5,744 | 9,741 | 50,030 | 8,071 | 123,812 | 720,147 | 113,737 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 5,022 | 24,618 | 5,712 | 9,728 | 50,029 | 8,070 | 123,809 | 720,149 | 113,726 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 5,022 | 24,618 | 5,728 | 9,739 | 50,029 | 8,071 | 123,803 | 720,148 | 113,729 |
 
 ## stream-burst-256
 
@@ -2837,6 +2869,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 54,162 | 393,702 | 57,051 | 131,874 | 792,887 | 74,743 | 1,343,732 | 11,508,770 | 1,046,765 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 54,162 | 393,702 | 57,083 | 131,966 | 792,861 | 74,743 | 1,343,719 | 11,508,770 | 1,046,762 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 54,162 | 393,702 | 57,051 | 131,869 | 792,825 | 74,692 | 1,343,775 | 11,508,770 | 1,046,727 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 54,162 | 393,702 | 57,067 | 131,952 | 792,829 | 74,743 | 1,343,779 | 11,508,770 | 1,046,725 |
 
 ## stream-restart
 
@@ -2923,6 +2956,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 4,203 | 4,998 | 6,574 | 16,885 | 42,908 | 72,026 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 4,203 | 5,030 | 6,569 | 16,887 | 42,908 | 72,027 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 4,203 | 4,998 | 6,575 | 16,886 | 42,899 | 72,023 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 4,203 | 5,014 | 6,575 | 16,890 | 42,893 | 72,017 |
 
 ## timed-admit-both
 
@@ -3009,6 +3043,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 117,709 | 130,118 | 2,693,586 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 117,709 | 130,074 | 2,693,588 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 117,709 | 130,035 | 2,693,565 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 117,709 | 130,036 | 2,693,565 |
 
 ## timed-admit-debounce
 
@@ -3095,6 +3130,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 116,614 | 128,620 | 2,653,942 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 116,614 | 128,631 | 2,653,942 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 116,614 | 128,617 | 2,654,130 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 116,614 | 128,606 | 2,654,128 |
 
 ## timed-admit-first
 
@@ -3181,6 +3217,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 69,621 | 79,564 | 1,620,678 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 69,621 | 79,565 | 1,620,678 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 69,621 | 79,567 | 1,620,677 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 69,621 | 79,565 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3267,6 +3304,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 116,876 | 128,943 | 2,663,798 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 116,876 | 128,939 | 2,663,798 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 116,876 | 128,936 | 2,663,985 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 116,876 | 128,937 | 2,663,973 |
 
 ## timed-capture-both
 
@@ -3353,6 +3391,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 35,740 | 44,942 | 847,277 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 35,740 | 44,945 | 847,278 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 35,740 | 44,935 | 846,919 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,740 | 44,936 | 846,916 |
 
 ## timed-capture-debounce
 
@@ -3439,6 +3478,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 35,612 | 44,168 | 847,657 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 35,612 | 44,168 | 847,657 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 35,612 | 44,233 | 847,657 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -3525,6 +3565,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 32,092 | 36,740 | 745,651 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 32,092 | 36,741 | 745,651 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 32,092 | 36,742 | 745,653 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 32,092 | 36,741 | 745,652 |
 
 ## timed-capture-last
 
@@ -3611,6 +3652,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 35,548 | 44,104 | 839,786 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 35,548 | 44,105 | 839,785 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 35,548 | 44,167 | 839,785 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -3697,6 +3739,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 1,089,390 | 38,805 | 84,105 | 262,771 | 145,114 | 3,350,099 | 2,544,568 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 1,097,383 | 38,805 | 84,105 | 262,817 | 145,074 | 3,350,263 | 2,544,663 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 1,087,790 | 38,805 | 84,105 | 262,935 | 145,780 | 3,351,330 | 2,545,076 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 1,087,790 | 38,805 | 84,105 | 263,233 | 145,794 | 3,351,281 | 2,545,019 |
 
 ## update-on
 
@@ -3783,6 +3826,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 94,605 | 168,822 | 2,872,196 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 94,605 | 168,816 | 2,872,180 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 94,605 | 168,996 | 2,872,398 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 94,605 | 169,007 | 2,872,497 |
 
 ## work-form
 
@@ -3869,6 +3913,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 172,679 | 165,150 | 308,486 | 296,695 | 5,418,158 | 5,331,170 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 172,679 | 165,150 | 308,486 | 296,692 | 5,418,068 | 5,331,166 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 172,679 | 165,150 | 308,826 | 296,924 | 5,421,725 | 5,334,888 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 172,679 | 165,150 | 308,863 | 296,954 | 5,421,825 | 5,334,914 |
 
 ## work-status
 
@@ -3955,6 +4000,7 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 102,045 | 80,235 | 268,554 | 156,070 | 2,652,710 | 2,390,298 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 102,045 | 80,235 | 268,517 | 156,058 | 2,652,726 | 2,390,441 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 102,045 | 80,235 | 269,360 | 156,096 | 2,659,229 | 2,391,285 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 102,045 | 80,235 | 269,323 | 156,079 | 2,659,266 | 2,391,182 |
 
 ## work-value
 
@@ -4041,4 +4087,5 @@
 | `6784ff0` | 2026-10-25 | Merge pull request #219 from shayanhabibi/integration/issues | 109,169 | 121,070 | 268,780 | 282,897 | 2,637,465 | 2,961,981 |
 | `d769b24` | 2026-10-26 | Merge pull request #221 from shayanhabibi/feat/220-mcp-detection-loop | 109,169 | 121,069 | 268,796 | 282,900 | 2,637,459 | 2,962,022 |
 | `cc30cd7` | 2026-10-26 | docs: refresh guides and move Nacara examples to Ranvier.View (#222) | 109,171 | 121,069 | 269,597 | 283,410 | 2,643,856 | 2,968,512 |
+| `55ac77b` | 2026-10-26 | fix(docs): restore the state dial and speed up live compilation (#223) | 109,169 | 121,071 | 269,562 | 283,383 | 2,643,858 | 2,968,314 |
 
