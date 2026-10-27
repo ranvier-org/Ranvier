@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Model.fs" />
+    <Compile Include="NumericSemantics.fs" />
     <Compile Include="Grammar.fs" />
     <Compile Include="Webref.fs" />
     <Compile Include="SpecSources.fs" />
