@@ -227,12 +227,18 @@ and [<Sealed; AllowNullLiteral>] Session internal (host: nativeint) =
                 && existing.Handle = handle
                 ->
                 Session.Release (kind, handle)
-                this.Claim existing |> ignore
+
+                if kind = Kind.Node then
+                    this.Claim existing |> ignore
+
                 existing
             | _ ->
                 let created = factory.Invoke (this, handle)
                 table[handle] <- WeakReference<NativeObject>(created)
-                this.Claim created |> ignore
+
+                if kind = Kind.Node then
+                    this.Claim created |> ignore
+
                 created
 
     /// <summary>The object of a node handle the caller owns a reference to, or null for zero.</summary>
