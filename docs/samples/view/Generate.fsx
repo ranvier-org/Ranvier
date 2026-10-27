@@ -146,6 +146,8 @@ let generated: (string * string list) list =
 
       "CounterHtml.fs", header "view/testing.md" "CounterHtml" @ testing[0]
       "CounterChecks.fs", header "view/testing.md" "CounterChecks" @ testing[1]
+      "TwinChecks.fs", header "view/testing.md" "TwinChecks" @ testing[2]
+      "ViewDumps.fs", header "view/testing.md" "ViewDumps" @ testing[3] @ [ "" ] @ testing[4]
       "Shared.fs", header "server/state-transfer.md" "Shared" @ [ "open Counter"; "" ] @ stateTransfer[0]
 
       "StateTransfer.fs",
@@ -176,6 +178,7 @@ let generated: (string * string list) list =
       @ (blocks "server/hydration.md")[0]
 
       "Rendering.fs", pageOfBlocks "server/rendering.md" "Rendering" (opens @ [ "open Counter"; "" ])
+      "PageDeclarations.fs", pageOfBlocks "server/pages.md" "PageDeclarations" []
 
       "MotionBindings.fs", pageOfBlocks "view/motion.md" "MotionBindings" []
       "MotionReactive.fs", pageOfBlocks "view/motion-reactive.md" "MotionReactive" []

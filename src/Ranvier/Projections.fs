@@ -37,6 +37,11 @@ type internal RowWatch(graph: Graph, refresh: unit -> unit, touched: unit -> uni
             queued <- true
             graph.Schedule (this :> IScheduled)
 
+#if RANVIER_TRACE
+    interface ITracedNode with
+        member _.TraceGraph = box graph
+#endif
+
     interface INode with
         member _.Id = id
         member _.Status = Status.None
@@ -87,6 +92,11 @@ type internal ProjectionBeacon(graph: Graph, host: IBeaconHost) =
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     do Tracer.BeaconNew (graph, id)
+
+#if RANVIER_TRACE
+    interface ITracedNode with
+        member _.TraceGraph = box graph
+#endif
 
     interface INode with
         member _.Id = id
@@ -514,6 +524,12 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     member internal _.PassKeys = passKeys
     member internal _.Seen = seen
+
+    /// <summary>Sizes the pass's key list, its seen set and the row table for a pass over <c>count</c> items.</summary>
+    member internal _.ReservePass(count: int) =
+        Platform.reserve passKeys count
+        seen.Reserve count
+        entries.Reserve count
 
     member internal _.TrackedReads = trackedReads
     member internal _.ScopeRequests = scopeRequests
@@ -1191,9 +1207,14 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             this.RefreshSummary ()
 
+#if RANVIER_TRACE
+    interface ITracedNode with
+        member _.TraceGraph = box graph
+#endif
+
     interface INode with
         member _.Id = id
-        member _.Status = status
+        member _.Status = status ||| Staleness.ofFreshness freshness
 
     interface IComputation with
         member this.AddSource s =
@@ -1937,6 +1958,10 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     /// <summary>The memo-free factory, or null.</summary>
     let mutable once: (unit -> 'T) -> 'V = Unchecked.defaultof<_>
 
+    /// <summary>Runs <c>once</c> for a memo-free row; null until <c>UseOnce</c>.</summary>
+    let mutable construct: struct (OnceRow<'T, 'K, 'V> * int) -> unit =
+        Unchecked.defaultof<_>
+
     /// <summary>
     /// Stages one item of the pass: a write to a survivor's item source, or a
     /// row to create.
@@ -1961,6 +1986,13 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 
     member internal this.HasRow(key: 'K) =
         not (Platform.isNull (this.Entries.Find key))
+
+    /// <summary>
+    /// Sizes the pass's tables for <c>count</c> items, and the staged additions for the items beyond the current rows.
+    /// </summary>
+    member internal this.Reserve(count: int) =
+        this.ReservePass count
+        Platform.reserve adds (count - this.Entries.Count)
 
     abstract Applied: unit -> unit
     default _.Applied() = ()
@@ -2050,6 +2082,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     /// <summary>Makes every row a memo-free row: the factory's result, stored once per key.</summary>
     member internal this.UseOnce(factory: (unit -> 'T) -> 'V) =
         once <- factory
+        construct <- fun (struct (entry, before)) -> this.ConstructOnce (entry, before)
 
         this.OnceValue <-
             Func<RowEntry<'K, 'V>, 'V>(fun entry ->
@@ -2066,7 +2099,6 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         let entry = OnceRow<'T, 'K, 'V>(key, Signal<'T>(graph, item))
         Tracer.Part (graph, (entry.Item :> INode).Id, (this :> INode).Id, box key)
         this.AddEntry (key, entry)
-        let source = entry.Item
         let keyScope = new Owner (graph.Root)
         keyScope.SetParent (this.Scope.AttachLinked keyScope)
         entry.Scope <- keyScope
@@ -2074,19 +2106,18 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #if RANVIER_COUNTERS
         Counters.OnceRowCreated ()
 #endif
-        let before = this.Runs
+        graph.RunOwnedWith (keyScope, construct, struct (entry, this.Runs))
 
-        graph.RunOwned (
-            keyScope,
-            fun () ->
-                entry.Reader <- OnceRow<'T, 'K, 'V>.Constructing
+    /// <summary>Stores the result of <c>once</c> on <c>entry</c>, or a reader that raises its failure.</summary>
+    member private this.ConstructOnce(entry: OnceRow<'T, 'K, 'V>, before: int) =
+        let source = entry.Item
+        entry.Reader <- OnceRow<'T, 'K, 'V>.Constructing
 
-                try
-                    entry.Value <- once (fun () -> source.Value)
-                    entry.Reader <- Unchecked.defaultof<_>
-                with ex ->
-                    entry.Reader <- this.FactoryFailure (key, ex, "", before)
-        )
+        try
+            entry.Value <- once (fun () -> source.Value)
+            entry.Reader <- Unchecked.defaultof<_>
+        with ex ->
+            entry.Reader <- this.FactoryFailure (entry.Key, ex, "", before)
 
     abstract Enumerate: unit -> unit
 
@@ -2481,6 +2512,7 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
         if not (trim && this.Trim (items, count, owned)) then
             install items count owned
+            this.Reserve count
             let mine = this.Runs
             let items = lastItems
             let mutable i = 0
@@ -2605,6 +2637,11 @@ type internal LookupCell<'V>(graph: Graph, equal: IEqualityComparer<'V>, orphane
     let mutable value = Unchecked.defaultof<'V>
     let mutable failure: Failure = null
     let mutable pending = false
+
+#if RANVIER_TRACE
+    interface ITracedNode with
+        member _.TraceGraph = box graph
+#endif
 
     interface INode with
         member _.Id = id

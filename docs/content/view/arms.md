@@ -2,12 +2,10 @@
 title: Conditional arms
 ---
 
-An **arm** is a component selected by a value of the instance. The region shows one arm at a time:
-when the selection changes to another arm, the previous arm's cleanups run, its nodes leave, and the
-new arm is set up in its place. When the selection keeps the same arm with a new payload, the arm
-stays mounted and its bindings read the new payload.
+An **arm** is a selected component. A different arm disposes the old instance and mounts the new
+one. The same arm keeps its nodes and state while its payload changes.
 
-The samples use the opens from [Templates and bindings](templates.md).
+Use the opens from [Templates and bindings](templates.md).
 
 ## `show` and `showElse`
 
@@ -90,6 +88,10 @@ whose form state must not carry over to the next page.
 
 ## `Arms.Match`: a plain match (opt-in)
 
+This experimental layer requires a Fable compiler plugin. The [browser editor](getting-started.md)
+supports standard components, `armOf` and `matchWith`; it cannot compile `Arms.Match` or other
+plugin-dependent view extensions. Use a local project for this section.
+
 `Arms.Match` takes an ordinary F# `match` over a union, with pattern variables, nested patterns, guards and
 or-patterns, and builds the same arms as `armOf` and `matchWith`: the same server HTML, hashes and hydration, on .NET
 and under Fable. It lives in its own project; an app opts in with two lines:
@@ -155,6 +157,32 @@ let private folderView =
     )
 ```
 
+**Helpers.** A case body can call a function that returns a view over the instance, and can use a view value over
+the instance type, such as a shared `badge`. Pass a pattern variable to the helper inside a reader:
+
+```fsharp
+let private labelled (label: 'inst -> string) : TemplateView<'inst> =
+    b (Attrs.className "label") { label }
+
+let private loaderLabel =
+    Component.template (fun _ (state: Signal<Load>) -> state) (
+        div () {
+            Arms.Match (
+                (fun (state: Signal<Load>) -> state.Value),
+                function
+                | Loaded text -> labelled (fun _ -> text)
+                | _ -> span () { "Other" }
+            )
+        }
+    )
+```
+
+The helper renders as if it were written in the case body, with the same server HTML and structural hash. A helper
+may also be typed over the concrete instance type, as `Signal<Load> -> string` and `TemplateView<Signal<Load>>`, and
+may take a view built in the case body. A lambda over the instance passed to such a helper receives the instance and
+reads the pattern variables of the arm mounted for it. An exit animation or an event handler inside the helper reads
+its own case's values after the instance has moved to another target.
+
 **What remounts.** Each row of the match (each *target*) is one arm. The same target keeps its arm and replaces its
 payload; another target remounts, including a guard, a literal pattern or an `if` at the top of a case body that
 selects another branch. `Loaded "x"` to `Loaded ""` above remounts from the `<pre>` to the "Empty" `<span>`.
@@ -167,6 +195,12 @@ calls and compiled after that. The first site of a process pays the JIT of the q
 publish servers with `-p:PublishReadyToRun=true` to bring it to about 7 ms. Trimmed and NativeAOT apps use
 `matchWith` with `armOf`; `Arms.Match` carries `RequiresUnreferencedCode` and `RequiresDynamicCode`, so a trimmed
 publish warns at each call.
+
+**Browser measurements.** The committed Chromium runs compare `Arms.Match` with an equivalent
+`matchWith` view at 1,000 rows. Their pooled medians meet the fixed creation, switch, payload-update
+and clear budgets. These are fixture measurements, not application guarantees. The
+[research note](https://github.com/shayanhabibi/Ranvier/blob/master/docs/research/2026-10-21-arms-match.md#chromium)
+keeps the ratios, intervals, source hashes, excluded runs and gate rules.
 
 ### AM005
 

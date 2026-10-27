@@ -29,6 +29,19 @@ dotnet fsi build.fsx -- format          # Fantomas over every source file
 
 CI rejects unformatted F#. `dotnet fsi build.fsx -- format --dry-format` checks without writing.
 
+## Examples and playgrounds
+
+Ordinary examples, playgrounds and experimental demos use the current public authoring syntax.
+For Ranvier.View, prefer typed Sugar tags, `Attrs`, `Props`, `Events`, component declaration helpers
+and shared [page declarations](docs/content/server/pages.md) that generate HTML and browser startup.
+Keep application markup and initialization in F# rather than handwritten HTML and JavaScript adapters.
+
+Explicit builders, manual mounting and low-level operations remain appropriate when demonstrating
+those semantics, testing their contracts, or measuring them against another form. State that purpose
+in the example or fixture documentation. Preserve compiler diagnostic fixtures and benchmark baselines;
+changing their syntax can change the behavior they are intended to test. Runtime implementations under
+`experiments/` are not demo code and do not need cosmetic API rewrites.
+
 ## Commit messages
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`,
@@ -56,11 +69,11 @@ source that [`nuget.config`](nuget.config) maps to its id, or among the packages
 naming them. `--dry-publish` lists what a push would accept and refuse, and the feed that satisfies each external
 dependency.
 
-The view packages (`Ranvier.View`, `Ranvier.View.Dom`, `Ranvier.View.Anime` and `Fable.Ranvier.Anime`, with their
-`.Traced` twins) publish to nuget.org. Their `Xantham.Fable.Core.TS` 0.2.1 dependency is served by the Xantham
-Cloudsmith feed, which `nuget.config` maps for `Xantham.*`, so the publish check accepts it there. Consumers add that
-feed; see the [installation guide](docs/content/guide/installation.md#views). The arrangement is temporary and ends
-when `Xantham.Fable.Core.TS` is on nuget.org.
+The view projects (`Ranvier.View`, `Ranvier.View.Dom`, `Ranvier.View.Anime` and `Fable.Ranvier.Anime`, with their
+`.Traced` twins) are packable, but their untraced package IDs were absent from nuget.org when checked on 2026-10-26.
+Use source project references until published packages are available. Their `Xantham.Fable.Core.TS` 0.2.1 dependency
+comes from the Xantham Cloudsmith feed, which `nuget.config` maps for `Xantham.*`; the publish check accepts it there.
+Consumers need that feed too; see the [installation guide](docs/content/guide/installation.md#views).
 
 ## Checks on a pull request
 

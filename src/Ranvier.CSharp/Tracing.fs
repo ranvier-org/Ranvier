@@ -47,9 +47,43 @@ type Tracing =
         Trace.label (graph, node, text)
 
 #if RANVIER_TRACE
-    /// <summary>A copy of the events <c>graph</c> has recorded, oldest first.</summary>
+    /// <summary>A copy of the events retained in <c>graph</c>'s log, oldest first.</summary>
+    /// <remarks>The events up to the checkpoint's seq are folded into <c>CheckpointOf(graph)</c>.</remarks>
     static member Events(graph: Graph) : TraceEvent[] =
         Trace.events graph
+
+    /// <summary>A copy of the events in <c>graph</c>'s log with <c>Seq</c> greater than <c>seq</c>, oldest first.</summary>
+    /// <remarks>
+    /// A cursor is the seq of the last event read, 0 before the first. A consumer with an expired cursor resyncs from
+    /// <c>CheckpointOf(graph)</c> and the events since its seq.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">
+    /// <c>seq</c> is negative, past the log's last seq, or before the checkpoint's seq.
+    /// </exception>
+    static member EventsSince(graph: Graph, seq: int) : TraceEvent[] =
+        Trace.eventsSince graph seq
+
+    /// <summary>
+    /// Folds the events in <c>graph</c>'s log up to and including seq <c>seq</c> into the checkpoint named
+    /// <c>name</c>, and drops them from the log.
+    /// </summary>
+    /// <remarks>
+    /// The dropped events release their payloads. A <c>seq</c> equal to the checkpoint's seq renames the checkpoint.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>name</c> is null.</exception>
+    /// <exception cref="T:System.ArgumentOutOfRangeException">
+    /// <c>seq</c> is before the checkpoint's seq or past the log's last seq, or is the seq of a <c>NodeNew</c> or an
+    /// <c>OwnerNew</c> whose <c>Label</c> follows it.
+    /// </exception>
+    /// <exception cref="T:System.InvalidOperationException">
+    /// Called off the graph's thread, or while a flush, a discharge or a run is in progress. A batch is allowed.
+    /// </exception>
+    static member Checkpoint(graph: Graph, seq: int, name: string) : unit =
+        Trace.checkpoint graph seq name
+
+    /// <summary>The checkpoint of <c>graph</c>'s log: its name, null before the first, and its folded snapshot.</summary>
+    static member CheckpointOf(graph: Graph) : TraceCheckpoint =
+        Trace.checkpointOf graph
 
     /// <summary>The creation record of <c>node</c>: its identity path, kind, <c>file:line</c> site and seq.</summary>
     /// <exception cref="T:System.ArgumentException"><c>graph</c>'s log holds no <c>NodeNew</c> for <c>node</c>.</exception>
@@ -164,4 +198,125 @@ type Tracing =
     /// <exception cref="T:System.InvalidOperationException">As for <c>DumpText</c>.</exception>
     static member Dump(graph: Graph, path: string) : string =
         Trace.dump graph path
+
+    /// <summary>The JSONL dump of <c>graph</c>'s log in schema 3, with each payload encoded by <c>codecs</c>.</summary>
+    /// <exception cref="T:System.InvalidOperationException">As for <c>DumpText</c>.</exception>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a payload.</exception>
+    static member DumpText(graph: Graph, codecs: TraceCodecs) : string =
+        Trace.dumpTextWith graph codecs
+
+    /// <summary>
+    /// An application codec named <c>name</c> at <c>version</c>. <c>encode</c> returns a value's data, or null for a
+    /// value of another shape; <c>decode</c> returns the value of data written by the same version.
+    /// </summary>
+    static member Codec(name: string, version: int, encode: Func<obj, string>, decode: Func<string, obj>) : TraceCodec =
+        {
+            Name = name
+            Version = version
+            Encode = fun value -> Option.ofObj (encode.Invoke value)
+            Decode = decode.Invoke
+        }
+
+    /// <summary>The codec list of <c>codecs</c>, tried in order. A value claimed by none of them encodes as <c>Lossy</c>.</summary>
+    static member Codecs([<ParamArray>] codecs: TraceCodec[]) : TraceCodecs =
+        TraceCodecs.ofList (List.ofArray codecs)
+
+    /// <summary>
+    /// The codec list of <c>codecs</c>, tried in order. A value claimed by none of them raises
+    /// <c>TraceCodecException</c>.
+    /// </summary>
+    static member StrictCodecs([<ParamArray>] codecs: TraceCodec[]) : TraceCodecs =
+        TraceCodecs.strict (Tracing.Codecs codecs)
+
+    /// <summary>The seq of the last event recorded in <c>graph</c>'s log, which is the read point of each document.</summary>
+    static member LastSeq(graph: Graph) : int =
+        Trace.lastSeq graph
+
+    /// <summary>
+    /// The schema 3 <c>state</c> document of <c>graph</c>: every node with its ref, status and value, the owners and
+    /// the edges, folded from the checkpoint and the retained events.
+    /// </summary>
+    /// <remarks>A retained value is encoded by <c>codecs</c>; a value folded into the checkpoint is <c>Lossy</c>.</remarks>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a retained value.</exception>
+    static member StateDocument(graph: Graph, codecs: TraceCodecs) : string =
+        TraceJson.state (Trace.state graph codecs)
+
+    /// <summary>The schema 3 <c>runs</c> document of <c>node</c>'s retained runs, oldest first.</summary>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a run's value.</exception>
+    static member RunsDocument(graph: Graph, codecs: TraceCodecs, node: INode) : string =
+        TraceJson.runs (Trace.lastSeq graph) (Trace.runs graph codecs node)
+
+    /// <summary>The schema 3 <c>why</c> document of the cause chain of <c>node</c>'s last run.</summary>
+    /// <exception cref="T:System.ArgumentException"><c>graph</c>'s log holds no <c>RunStart</c> for <c>node</c>.</exception>
+    /// <exception cref="T:Ranvier.TraceCodecException"><c>codecs</c> is strict and no codec claims a step's value.</exception>
+    static member WhyDocument(graph: Graph, codecs: TraceCodecs, node: INode) : string =
+        TraceJson.why (Trace.lastSeq graph) (Trace.whyWith graph codecs node)
+
+    /// <summary>The schema 3 <c>whyNot</c> document of <c>node</c>: its reason, or a null body when the log shows none.</summary>
+    static member WhyNotDocument(graph: Graph, node: INode) : string =
+        TraceJson.whyNot (Trace.lastSeq graph) (Trace.whyNot graph node)
+
+    /// <summary>The schema 3 <c>waiting</c> document of <c>node</c>: the pending sources and flights of its last run.</summary>
+    static member WaitingDocument(graph: Graph, node: INode) : string =
+        TraceJson.waiting (Trace.lastSeq graph) (Trace.waitingOn graph node)
+
+    /// <summary>The schema 3 <c>lookup</c> document of <c>node</c>, <c>Foreign</c> for a node of another graph.</summary>
+    static member LookupDocument(graph: Graph, node: INode) : string =
+        TraceJson.lookup (Trace.lastSeq graph) (Trace.lookupNode graph node)
+
+    /// <summary>The schema 3 <c>lookup</c> document of the node at identity path <c>path</c>.</summary>
+    static member LookupDocument(graph: Graph, path: string) : string =
+        TraceJson.lookup (Trace.lastSeq graph) (Trace.lookup graph (TraceAddress.ByPath path))
+
+    /// <summary><c>RunsDocument</c> of the node at identity path <c>path</c>.</summary>
+    /// <exception cref="T:System.ArgumentException"><c>path</c> is unknown to <c>graph</c>'s log.</exception>
+    static member RunsDocument(graph: Graph, codecs: TraceCodecs, path: string) : string =
+        Tracing.RunsDocument (graph, codecs, Tracing.At (graph, path))
+
+    /// <summary><c>WhyDocument</c> of the node at identity path <c>path</c>.</summary>
+    /// <exception cref="T:System.ArgumentException"><c>path</c> is unknown, or the log holds no <c>RunStart</c> for its node.</exception>
+    static member WhyDocument(graph: Graph, codecs: TraceCodecs, path: string) : string =
+        Tracing.WhyDocument (graph, codecs, Tracing.At (graph, path))
+
+    /// <summary><c>WhyNotDocument</c> of the node at identity path <c>path</c>.</summary>
+    /// <exception cref="T:System.ArgumentException"><c>path</c> is unknown to <c>graph</c>'s log.</exception>
+    static member WhyNotDocument(graph: Graph, path: string) : string =
+        Tracing.WhyNotDocument (graph, Tracing.At (graph, path))
+
+    /// <summary><c>WaitingDocument</c> of the node at identity path <c>path</c>.</summary>
+    /// <exception cref="T:System.ArgumentException"><c>path</c> is unknown to <c>graph</c>'s log.</exception>
+    static member WaitingDocument(graph: Graph, path: string) : string =
+        Tracing.WaitingDocument (graph, Tracing.At (graph, path))
+
+    /// <summary>
+    /// Starts exporting <c>graph</c>'s log to <c>sink</c>: the header of its checkpoint and its retained events now,
+    /// then the events of each flush when it ends, as schema 3 dump lines.
+    /// </summary>
+    /// <remarks>
+    /// <c>capacity</c> bounds the events queued for the sink. A full queue waits under <c>TraceExportFull.Wait</c>, and
+    /// under <c>TraceExportFull.Drop</c> drops the batch and records its seqs in a gap line. <c>checkpoint</c> sets
+    /// when the export checkpoints the log at the exported events. Dispose the export to end the stream.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentOutOfRangeException"><c>capacity</c> is less than 1.</exception>
+    /// <exception cref="T:System.InvalidOperationException">As for <c>DumpText</c>.</exception>
+    static member Export
+        (graph: Graph, sink: ITraceSink, capacity: int, full: TraceExportFull, checkpoint: TraceExportCheckpoint, codecs: TraceCodecs)
+        : TraceExport =
+        Trace.export
+            graph
+            sink
+            {
+                Capacity = capacity
+                Full = full
+                Checkpoint = checkpoint
+                Codecs = codecs
+            }
+
+    /// <summary>An empty <c>MemoryTraceSink</c> named <c>memory</c>.</summary>
+    static member MemorySink() : MemoryTraceSink =
+        TraceSinks.memory ()
+
+    /// <summary>A <c>JsonlTraceSink</c> writing the file at <c>path</c>, created or truncated.</summary>
+    static member JsonlSink(path: string) : JsonlTraceSink =
+        TraceSinks.jsonl path
 #endif

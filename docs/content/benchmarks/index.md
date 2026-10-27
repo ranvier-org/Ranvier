@@ -5,7 +5,12 @@ order: 1
 
 > **Preview** — Ranvier is pre-release; its APIs may change.
 
-Ranvier ships a BenchmarkDotNet suite covering signals, memos, effects, lifetimes, projections and suspension. Streams are tracked by CI instruction counts. Its purpose is **tracking**: a number here is meaningful against another number from the same machine and the same configuration, typically the previous commit. It is not a statement of how fast Ranvier will be on your hardware. The primitive pages track Ranvier itself; the instruction-count and keyed-list reports include comparisons with other libraries, subject to their workload and measurement caveats.
+These benchmarks track Ranvier across revisions. Compare runs from the same machine and
+configuration; their absolute times do not predict your application's performance.
+
+BenchmarkDotNet covers signals, memos, effects, lifetimes, projections and suspension. CI adds
+instruction-count history, including streams and comparisons with other libraries. Each dated
+table identifies its source commit; interactive charts identify the selected measurement.
 
 | Area | What it covers |
 | --- | --- |
@@ -17,6 +22,7 @@ Ranvier ships a BenchmarkDotNet suite covering signals, memos, effects, lifetime
 | [Suspension](suspension.md) | The cost of the pending and error channels: throwing through a chain, boundaries, settling a source, flights under each `FlightPolicy`, and failing recomputations. |
 | [Streams](streams.md) | Delivering bursts of items into a stream fold, against async-source settles, and restarting a stream against restarting an async memo. CI instruction counts only. |
 | [Instruction counts](counters.md) | Whole scenarios by instructions per operation, against FSharp.Data.Adaptive, R3 and Fable.Ripple, on .NET and Node.js. |
+| [Tracing cost](tracing.md) | What the traced build (`RanvierTrace=true`) costs against the untraced build on .NET, Node.js and Chromium: events and retained bytes per update, time and allocation ratios, export and incremental-read costs, and the budget for instrumentation changes. |
 
 ## Results
 
@@ -26,7 +32,7 @@ separate scenario from the primitive results below.
 
 The benchmark suite lives in this repository as `bench/Ranvier.Benchmarks`. Most primitive timing tables come from the full run at commit `d87920f`, recorded on **2026-09-28**. Binding tables were recorded on **2026-10-13** at `70291a5`; query reconciliation has its own **2026-10-05** run. Each table states its source. Later cases use the [instruction-counter](counters.md) run at `e13f159` where a counter scenario covers them; other cases remain available for local runs without a published figure.
 
-### Status at `2ce4b7d` (2026-10-16)
+### Historical follow-ups at `2ce4b7d` (2026-10-16)
 
 The dated tables below are historical measurements, not a rerun of current `master`. Since those runs:
 

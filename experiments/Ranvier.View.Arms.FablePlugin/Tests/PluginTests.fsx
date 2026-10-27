@@ -95,6 +95,9 @@ if code = 0 then
              && normalise (File.ReadAllText emitted) = normalise (File.ReadAllText expected))
             ("diff " + emitted + " " + expected)
 
+    let parsed, parseLog = exec "node" [ "--check"; emitted ]
+    check "the emitted sites parse as JavaScript" (parsed = 0) parseLog
+
     // Each prologue maps back to the line of the reader it opens (spec, IDE experience).
     let mapped, mapLog = exec "node" [ Path.Combine (here, "sourcemap.mjs"); emitted ]
 
@@ -208,7 +211,7 @@ check
          missingLog
          "Site.fs"
          12
-         (Some 13)
+         (Some 18)
          "This construct is deprecated. Arms.Match needs the Ranvier.View.Arms Fable plugin; import Ranvier.View.Arms.targets in the project compiled by Fable.")
     missingLog
 

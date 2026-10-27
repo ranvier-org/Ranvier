@@ -18,6 +18,9 @@
 
     <ItemGroup>
         <Compile Include="TestingGuide.fs" />
+        <Compile Include="TraceFixtures.fs" />
+        <Compile Include="TraceCheckpoints.fs" />
+        <Compile Include="TraceExportTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
 

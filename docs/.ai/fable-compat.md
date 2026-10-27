@@ -30,13 +30,17 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | ValueReaders.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Async.fs | 56 | 45 | 45 | 56 | 45 | 45 | 4 | 0 |
 | Boundaries.fs | 27 | 27 | 27 | 27 | 27 | 27 | 1 | 0 |
-| Threading.fs | 3 | 3 | 3 | 3 | 3 | 3 | 26 | 0 |
+| Threading.fs | 9 | 9 | 9 | 9 | 9 | 9 | 41 | 0 |
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 18 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 84 | 79 | 79 | 1 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 106 | 101 | 101 | 3 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
+| TraceContractTests.fs | 0 | 0 | 0 | 34 | 34 | 34 | 0 | 0 |
+| TraceJsonTests.fs | 0 | 0 | 0 | 8 | 8 | 8 | 9 | 0 |
+| TraceDumpTests.fs | 0 | 0 | 0 | 4 | 4 | 4 | 10 | 0 |
+| TraceExportStreams.fs | 0 | 0 | 0 | 6 | 6 | 6 | 0 | 0 |
 | Observers.fs | 102 | 102 | 102 | 102 | 102 | 102 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
 | FanOut.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
@@ -58,10 +62,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
 | Combinators.fs | 242 | 242 | 242 | 242 | 242 | 242 | 3 | 0 |
-| Timed.fs | 31 | 31 | 31 | 38 | 38 | 38 | 0 | 0 |
+| Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
+| Journal.fs | 86 | 85 | 85 | 89 | 88 | 88 | 3 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
@@ -80,8 +85,16 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | NumberText.fs | 36 | 36 | 36 | 36 | 36 | 36 | 2 | 0 |
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
+| Persistence/Scaffold.fs | 1 | 1 | 1 | 1 | 1 | 1 | 0 | 0 |
+| Persistence/MemoryStore.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
+| Persistence/Loading.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
+| Persistence/Coalescing.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
+| Persistence/Durability.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
+| Persistence/Collections.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
+| Persistence/Position.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
+| Persistence/LocalStorage.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1545 | 1524 | 1521 | 1687 | 1661 | 1658 | 108 | 1 |
+| **Total** | 1725 | 1703 | 1700 | 1946 | 1919 | 1916 | 147 | 1 |
 
 ## Tests.fs
 
@@ -443,12 +456,33 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Serialised: a settle from outside the graph is queued, even on the graph's context | JavaScript has one thread. |
 | Serialised: work posted from inside the graph runs inline | JavaScript has one thread. |
 | Serialised: a drain that finds the graph held leaves the work, and the holder posts it again | JavaScript has one thread. |
+| off-thread calls wait in the inbox, then run in arrival order with Dispatch on the graph thread | JavaScript has one thread. |
+| a synchronisation-context dispatcher completes the task without a manual pump | JavaScript has one thread. |
+| a continuation of a queued item's task runs outside the drain | JavaScript has one thread. |
+| a synchronous continuation of an inline call's task runs on the graph thread | JavaScript has one thread. |
+| queued work that throws faults its task, and later items still run | JavaScript has one thread. |
+| an off-thread call on a disposed graph faults the task and queues nothing | JavaScript has one thread. |
+| an item queued before disposal and drained after it faults and does not run | JavaScript has one thread. |
+| disposal faults an item still in the inbox, with no drain after it | JavaScript has one thread. |
+| an off-thread call with an already-cancelled token queues nothing | JavaScript has one thread. |
+| a token cancelled while the item waits cancels the task, and the drain skips the work | JavaScript has one thread. |
+| a queued item whose work cancels the token completes with the result | JavaScript has one thread. |
+| queued work that writes two signals in a batch runs the effect once, before the task completes | JavaScript has one thread. |
+| queued DispatchAsync and Dispatch run the same effects for the same work | JavaScript has one thread. |
+| Serialised: an item queued while another thread holds the graph completes after the holder's release | JavaScript has one thread. |
+| Serialised: a call from inside the graph runs inline | JavaScript has one thread. |
 
-<details><summary>3 passed in every build and delivery that runs them</summary>
+<details><summary>9 passed in every build and delivery that runs them</summary>
 
 - an on-thread settle runs inline and queues nothing
 - a graph with no ambient context defers
 - Serialised: writes, reads and effects run as on any graph
+- DispatchAsync / on the graph thread the work runs at the call and the task carries its result
+- DispatchAsync / inline work that throws faults the task with the same exception
+- DispatchAsync / a call on a disposed graph faults the task and does not run the work
+- DispatchAsync / an already-cancelled token cancels the task and does not run the work
+- DispatchAsync / a token cancelled by the work itself leaves the task completed with the result
+- DispatchAsync / inline inside an enclosing batch, the task completes before the batch's flush runs the effect
 
 </details>
 
@@ -531,8 +565,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Excluded | Reason |
 | --- | --- |
 | an Unchecked graph creating nodes from two threads records every NodeNew | JavaScript has one thread. |
+| a checkpoint releases the collected signals and async sources of disposed roots | Fable holds every signal for the log's lifetime. |
+| a checkpointed dump parses back to the live snapshot | TraceModel.parseDump is .NET only. |
 
-<details><summary>79 passed in every build and delivery that runs them</summary>
+<details><summary>101 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -613,6 +649,28 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Rerun guard / a chain of writers that each wake one reader in turn runs to completion (traced only)
 - Rerun guard / a chain of writers behind an unchanged memo runs to completion (traced only)
 - Rerun guard / two effects writing each other's dependencies raise, naming a cycle (traced only)
+- Cursors and checkpoints / eventsSince returns the events after each cursor, oldest first (traced only)
+- Cursors and checkpoints / eventsSince rejects a negative or future cursor (traced only)
+- Cursors and checkpoints / a truncated log keeps a lazy memo's dirty source and description (traced only)
+- Cursors and checkpoints / Truncate rejects a seq outside the retained log (traced only)
+- Cursors and checkpoints / checkpointOf before any checkpoint is unnamed and empty (traced only)
+- Cursors and checkpoints / checkpoint folds the dropped events into its snapshot (traced only)
+- Cursors and checkpoints / checkpoint rejects a seq outside the retained log (traced only)
+- Cursors and checkpoints / checkpoint rejects a seq between a NodeNew and its label (traced only)
+- Cursors and checkpoints / checkpoint rejects a seq between an OwnerNew and its label (traced only)
+- Cursors and checkpoints / checkpoint inside an effect's run raises (traced only)
+- Cursors and checkpoints / eventsSince rejects an expired cursor, and the checkpoint's seq resyncs (traced only)
+- Cursors and checkpoints / snapshot and snapshotAt fold the retained events onto the checkpoint (traced only)
+- Cursors and checkpoints / why of a run caused before the checkpoint ends at BeforeCheckpoint (traced only)
+- Cursors and checkpoints / why of a lazy memo's first run after the checkpoint ends at its creation (traced only)
+- Cursors and checkpoints / origin of a node created before the checkpoint comes from the snapshot (traced only)
+- Cursors and checkpoints / reconcile is empty after a checkpoint (traced only)
+- Cursors and checkpoints / whyNot after a checkpoint reads the edges recorded before it (traced only)
+- Cursors and checkpoints / a checkpoint releases disposed roots and their nodes (traced only)
+- Cursors and checkpoints / a checkpoint keeps no description for a labelled root (traced only)
+- Cursors and checkpoints / a signal that outlives its creating root stays live across a checkpoint (traced only)
+- Cursors and checkpoints / a signal created in a run stays live when the run's computation runs again (traced only)
+- Cursors and checkpoints / a checkpoint keeps the incarnations of a live host's children (traced only)
 
 </details>
 
@@ -637,6 +695,111 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - dumpText twice gives the same text (traced only)
 - dumpText inside an effect's run raises (traced only)
 - dumpText inside batch succeeds (traced only)
+
+</details>
+
+## TraceContractTests.fs
+
+<details><summary>34 passed in every build and delivery that runs them</summary>
+
+- a scalar payload encodes as Exact (traced only)
+- a fractional or non-finite float encodes as Float on every platform (traced only)
+- an integral float encodes by the platform's number representation (traced only)
+- a registered codec encodes as Encoded and decodes back (traced only)
+- the first codec that claims a value encodes it (traced only)
+- a value with no codec encodes as Lossy of its valueText (traced only)
+- strict codecs raise for a value with no codec (traced only)
+- decoding raises for an unknown codec, an unknown version and a lossy payload (traced only)
+- decoding Exact and Null gives the scalar and null (traced only)
+- a chain of Trace.named labels gives a Named ref (traced only)
+- two graphs built by the same program give equal refs (traced only)
+- an @k incarnation of a named path stays Named (traced only)
+- an unlabelled node gives a Named ref under Fable, which records no creation sites (traced only)
+- a labelled node under createRoot gives a Named ref (traced only)
+- two runs of the same program give equal refs (traced only)
+- a node absent from the snapshot has no ref (traced only)
+- lookup finds a live node by id and by path (traced only)
+- lookup reports a node disposed in the retained events with its Dispose seq (traced only)
+- lookup reports a node disposed before the checkpoint as Missing once the checkpoint releases it (traced only)
+- lookup reports a disposed node held by an unpruned checkpoint with seq 0 (traced only)
+- lookup reports a live node created before the checkpoint as Checkpointed (traced only)
+- lookup reports an unknown id or path as Missing (traced only)
+- lookupNode reports a node of another graph or an untraced node as Foreign (traced only)
+- state matches the snapshot node for node and edge for edge (traced only)
+- state carries the schema, the checkpoint and the first retained seq (traced only)
+- state encodes retained values through the codecs (traced only)
+- lastSeq is the last event's seq, and the checkpoint's once the checkpoint drops every event (traced only)
+- state gives a memo that moved to a null value as Null (traced only)
+- state gives a memo that moved to null before a checkpoint as Lossy of null's text (traced only)
+- state gives an async source that settled to null as Null, and as Lossy of null's text after a checkpoint (traced only)
+- state gives a projection that moved without a value as None (traced only)
+- state gives a value folded into the checkpoint as Lossy of its folded text (traced only)
+- strict state raises for a retained value with no codec (traced only)
+- runs project the history with encoded values (traced only)
+
+</details>
+
+## TraceJsonTests.fs
+
+| Excluded | Reason |
+| --- | --- |
+| a state document reads back to the state | the TraceJson readers are .NET only. |
+| a runs document reads back to its runs, and NaN to NaN | the TraceJson readers are .NET only. |
+| a why document reads back to the chain for every root case | the TraceJson readers are .NET only. |
+| a whyNot document reads back to the reason for every case | the TraceJson readers are .NET only. |
+| a waiting document reads back to the flights | the TraceJson readers are .NET only. |
+| a lookup document reads back to the lookup for every case | the TraceJson readers are .NET only. |
+| a live program's documents read back and write the same text | the TraceJson readers are .NET only. |
+| a reader raises FormatException for schema 0 and 4 | the TraceJson readers are .NET only. |
+| a reader raises FormatException for another kind, an unknown case and text that is not JSON | the TraceJson readers are .NET only. |
+
+<details><summary>8 passed in every build and delivery that runs them</summary>
+
+- a state document writes every field, node status and stability in id order (traced only)
+- a runs document writes every payload, root and run status case (traced only)
+- a why document writes its steps and every root case (traced only)
+- the why projection encodes step values through the codecs (traced only)
+- a whyNot document writes every reason case and an absent reason (traced only)
+- a waiting document writes every flight state case (traced only)
+- a lookup document writes every lookup case (traced only)
+- two runs of the same program write the same documents (traced only)
+
+</details>
+
+## TraceDumpTests.fs
+
+| Excluded | Reason |
+| --- | --- |
+| dumpText writes the committed schema 1 fixture byte for byte | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| dumpTextWith writes the committed schema 3 fixture byte for byte | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| the committed schema 1 and 3 fixtures parse to the program's events and payload forms | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| a schema 3 dump parses to the forms written | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| a gap line parses into Gaps, and why across the gap ends in BeforeCheckpoint | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| dumpTextWith writes numbers in the invariant culture | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| parseDumpWith decodes each payload through the codecs | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| schema 1 and 2 payloads read as Lossy text, and a null payload as Null | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| parseDumpWith keeps schema 1 payloads as their text, and a strict list raises for them | TraceModel.parseDump is .NET only, and the fixtures are files. |
+| parseDump raises FormatException for schema 0 and 4 | TraceModel.parseDump is .NET only, and the fixtures are files. |
+
+<details><summary>4 passed in every build and delivery that runs them</summary>
+
+- dumpTextWith writes schema 3 with every payload form (traced only)
+- dumpTextWith writes the snapshot and event fields of dumpText (traced only)
+- strict dumpTextWith raises for a payload with no codec (traced only)
+- dumpHeader and eventLines concatenate to dumpTextWith, with and without a checkpoint (traced only)
+
+</details>
+
+## TraceExportStreams.fs
+
+<details><summary>6 passed in every build and delivery that runs them</summary>
+
+- export writes the header first, then the retained events (traced only)
+- the events of a flush are exported when it ends (traced only)
+- Drain exports the events of a write that wakes no effect (traced only)
+- Wait loses no event behind a stalled sink, and the stream is the dumpTextWith text (traced only)
+- under Wait, the stream ends at Dispose when the queue is full and events follow it (traced only)
+- Drop with Enqueued bounds the log under a stalled sink, and one gap names the dropped seqs (traced only)
 
 </details>
 
@@ -1693,7 +1856,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Timed.fs
 
-<details><summary>38 passed in every build and delivery that runs them</summary>
+<details><summary>40 passed in every build and delivery that runs them</summary>
 
 - system timer rejects a negative wait
 - system timer can disarm and dispose an unarmed long wait
@@ -1729,7 +1892,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - independent clock origins do not alter deterministic dumps (traced only)
 - admission comparer failure retains the winning source cause (traced only)
 - leading suppression retains the published winning capture (traced only)
+- timing reports a timed node created before a checkpoint (traced only)
 - admission names the winning capture and reports the held window (traced only)
+- a timed node that publishes null holds null in the state, the snapshot and a checkpoint (traced only)
 - recorded timing distinguishes pending capture and failure from published state (traced only)
 - timing rejects another graph with colliding node identifiers (traced only)
 - manual-clock traces and schema roundtrip are deterministic (traced only)
@@ -1861,6 +2026,112 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - trace text: snapshot maps (traced only)
 - trace text: dump (traced only)
 - trace text: timing (traced only)
+
+</details>
+
+## Journal.fs
+
+| Build | Failed | Inline | Promise | Difference |
+| --- | --- | --- | --- | --- |
+| untraced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
+| traced | a write after an await in an async memo's body is not journaled | failed | failed | Every `await` suspends |
+
+| Excluded | Reason |
+| --- | --- |
+| an effect continuation's direct settle reaches each replay once | Fable has no async context to carry the work into a continuation. |
+| an external dispatch drained under an effect run's execution context records an External entry | Fable has no async context to carry the work into a continuation. |
+| a %O{mode} replay into a target that created an effect before its effect-only setup raises | Fable has no async context to carry the effect's work into its continuation. |
+
+<details><summary>88 passed in every build and delivery that runs them</summary>
+
+- GraphOptions.Default has no journal
+- WithJournal sets the journal
+- an external write to an unkeyed signal records a non-replayable Write
+- an equal write is recorded
+- a graph without a journal records nothing and writes as before
+- writes made by a running computation are not journaled
+- a keyed write records its key and encoded value
+- Journal.key returns the signal it registers
+- a duplicate key on one graph raises, naming the key
+- a key registered in a disposed root is free again
+- a key registered in an owning memo's body is free again when the memo re-runs
+- Journal.key in a pure memo's body raises the scope error
+- a keyed node registered under a second key raises and keeps its first key
+- the same key on two graphs is allowed
+- Journal.key on a graph without a journal is a no-op
+- an Encode that raises records a non-replayable entry and the write lands
+- settles and failures of a keyed source record in graph-thread order
+- settles of an unkeyed source record non-replayable entries
+- a settle made by a running computation is not journaled
+- one Flush follows each flush pass that followed recorded entries
+- a batch of two writes gives two Write entries and one Flush
+- a write that queues nothing records no Flush
+- replay of writes, settles and failures into a fresh graph gives equal values
+- re-enactment applies an external settle once
+- Journal.replaying returns the mode while the replay runs
+- Journal.setupWorksOf lists the works started before the first entry
+- replay requires a graph with a journal
+- re-enactment re-runs the async work, and a changed async result flows through the replay
+- the entry unions print their case names
+- replay raises JournalReplayException / on a non-replayable entry
+- replay raises JournalReplayException / on a key the target graph lacks
+- replay raises JournalReplayException / on a codec name mismatch
+- replay raises JournalReplayException / on a codec version mismatch
+- replay raises JournalReplayException / on a decode error
+- replay raises JournalReplayException / on an entry kind the key's input does not take
+- Mvu.journal / an external dispatch records one Message entry and its flush
+- Mvu.journal / a dispatch from an effect records nothing
+- Mvu.journal / replay dispatches the recorded messages
+- Mvu.journal / a re-enactment applies a message a command dispatches after an await once
+- Mvu.journal / a diagnostic replay applies a message a command dispatches after an await once
+- Mvu.journal / a message a command dispatches after an await records a Produced entry
+- Mvu.journal / a diagnostic replay of a journal cut before a command dispatches applies the dispatch once
+- Mvu.journal / a diagnostic replay keeps the inputs of work started on the target before it
+- Mvu.journal / a diagnostic replay into a target that ran an extra effect first applies each message once
+- Mvu.journal / a diagnostic replay after a commanded message on the target applies each message once
+- Mvu.journal / a diagnostic replay into a fresh graph applies the dispatch of an initial command once
+- Mvu.journal / a journal records its setup work ahead of its first entry
+- Mvu.journal / a Diagnostic replay into a target that ran an extra effect before its setup raises
+- Mvu.journal / a Diagnostic replay into a matching target applies each message once
+- Mvu.journal / a Diagnostic replay of producing setup work into a target that recorded an entry raises
+- Mvu.journal / a Diagnostic replay of producing setup entries with no Setup entry into a target that recorded an entry raises
+- Mvu.journal / a Diagnostic replay of producing setup entries with no Setup entry into a fresh target raises
+- Mvu.journal / a Diagnostic replay of a slice holding the Setup entry applies each message once
+- Mvu.journal / a Diagnostic replay of a slice with no setup input and no Setup entry applies each message once
+- Mvu.journal / a Diagnostic second replay of producing setup entries into one target raises
+- Mvu.journal / a Diagnostic replay with no producing setup work into a target that recorded an entry applies each message once
+- Mvu.journal / a Diagnostic replay into a target that started extra work after its setup applies each message once
+- Mvu.journal / a Reenact replay into a target that ran an extra effect before its setup raises
+- Mvu.journal / a Reenact replay into a matching target applies each message once
+- Mvu.journal / a Reenact replay of producing setup work into a target that recorded an entry raises
+- Mvu.journal / a Reenact replay of producing setup entries with no Setup entry into a target that recorded an entry raises
+- Mvu.journal / a Reenact replay of producing setup entries with no Setup entry into a fresh target raises
+- Mvu.journal / a Reenact replay of a slice holding the Setup entry applies each message once
+- Mvu.journal / a Reenact replay of a slice with no setup input and no Setup entry applies each message once
+- Mvu.journal / a Reenact second replay of producing setup entries into one target raises
+- Mvu.journal / a Reenact replay with no producing setup work into a target that recorded an entry applies each message once
+- Mvu.journal / a Reenact replay into a target that started extra work after its setup applies each message once
+- Mvu.journal / the replay error names the recorded and the found setup work
+- Mvu.journal / a Diagnostic replay into a target that started an unnamed work before its unnamed setup work raises
+- Mvu.journal / a Reenact replay into a target that started an unnamed work before its unnamed setup work raises
+- Mvu.journal / a Diagnostic replay into a target matching an unnamed setup work applies the produced input once
+- Mvu.journal / a replay into a target that started an unnamed work after an unnamed setup work raises
+- Mvu.journal / a Diagnostic replay into a target that started an unnamed work after a named setup work applies the produced input once
+- Mvu.journal / a replay into a target that started an unnamed work before a named setup work raises
+- Mvu.journal / a Diagnostic replay applies the synchronous dispatch of an initial command once
+- Mvu.journal / a Reenact replay applies the synchronous dispatch of an initial command once
+- Mvu.journal / a second diagnostic replay into the same graph applies each message once
+- Mvu.journal / each replay mode applies a command's synchronous dispatch and its dispatch after an await once
+- Mvu.journal / a diagnostic replay after the gate opens applies a command's synchronous dispatch and its dispatch after an await once
+- Mvu.journal / a replay records the entries of the run it replays
+- Journal.produce / a write in a continuation records a Produced entry
+- Journal.produce / each replay mode applies a write in a continuation once
+- Journal.produce / an async memo's continuation write through Journal.produce reaches each replay once
+- Journal.produce / each replay mode applies a work's synchronous produce and its produce after an await once
+- Journal.produce / work captured with no journal runs its input
+- a traced Journal.key labels an unlabelled node with the key (traced only)
+- a traced Journal.key keeps an existing label (traced only)
+- a diagnostic replay of the traced cart gives the live run's snapshot and the why of every banner run (traced only)
 
 </details>
 
@@ -2410,6 +2681,150 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - ofAsyncIterable: a rejected next fails the stream
 - ofAsyncIterable: disposing while next is pending calls return once and ignores the later value
 - ofAsyncIterable: cancellation ends Run with OperationCanceledException
+
+</details>
+
+## Persistence/Scaffold.fs
+
+<details><summary>1 passed in every build and delivery that runs them</summary>
+
+- a load exception names the key
+
+</details>
+
+## Persistence/MemoryStore.fs
+
+<details><summary>10 passed in every build and delivery that runs them</summary>
+
+- an empty store loads no records
+- saved records load back
+- a load returns the requested keys only
+- a later save of a key replaces its record
+- deleted keys load nothing and absent keys are skipped
+- a cleared store loads no records and takes later saves
+- keys and payloads with separators, reserved prefixes and non-ASCII text round trip
+- a record of an older version loads through its migrations
+- a record of a newer version fails the load naming the key
+- a matching buster keeps the records and a different one discards them
+
+</details>
+
+## Persistence/Loading.fs
+
+<details><summary>16 passed in every build and delivery that runs them</summary>
+
+- a key under the reserved prefix is rejected
+- an empty key is rejected
+- two declarations of one key are rejected
+- a stored value restores and an absent key uses the fallback
+- an older version runs its migrations in version order
+- a current version runs no migration
+- a newer version fails the load naming the key
+- a missing migration fails the load naming the key
+- a failed migration fails the load naming the key
+- a decode failure fails the load naming the key
+- with the discard option an undecodable record uses the fallback
+- with the discard option a newer version still fails the load
+- with the discard option a missing migration still fails the load
+- with the discard option a failed migration still fails the load
+- a buster mismatch discards every record
+- a buster set on a store saved without one discards every record
+
+</details>
+
+## Persistence/Coalescing.fs
+
+<details><summary>16 passed in every build and delivery that runs them</summary>
+
+- the first read returns the stored value and creating the signal saves nothing
+- a signal created and written in one batch saves the write
+- a second live signal of one key is rejected
+- a key is free again once its signal's owner is disposed
+- a signal re-created for a key starts from its last written value
+- a write in the batch that disposes its signal's owner is saved and restored
+- a session serves one graph
+- ManualDispatcher / a batch writing three persisted signals saves once with three records
+- ManualDispatcher / a key written twice in one batch is saved once with its last value
+- ManualDispatcher / unbatched writes save once each
+- ImmediateDispatcher / a batch writing three persisted signals saves once with three records
+- ImmediateDispatcher / a key written twice in one batch is saved once with its last value
+- ImmediateDispatcher / unbatched writes save once each
+- default dispatcher / a batch writing three persisted signals saves once with three records
+- default dispatcher / a key written twice in one batch is saved once with its last value
+- default dispatcher / unbatched writes save once each
+
+</details>
+
+## Persistence/Durability.fs
+
+<details><summary>10 passed in every build and delivery that runs them</summary>
+
+- a buster mismatch keeps the unwritten records discarded on the next load
+- a buster mismatch discards the records of keys the busting load did not declare
+- two sessions loaded against a stale buster keep each other's saves
+- a buster set on a store saved without one keeps the old records discarded on the next load
+- a buster removed from the options keeps the old records discarded on the next load
+- a buster mismatch removes the stored journal position
+- FlushAsync faults with the first faulted save's exception, and later saves still run
+- FlushAsync reports a fault once, and the next FlushAsync covers the later saves
+- a faulted first save after a bust keeps the later saves on the next load
+- a faulted delete after a bust keeps the old records discarded on the next load
+
+</details>
+
+## Persistence/Collections.fs
+
+<details><summary>13 passed in every build and delivery that runs them</summary>
+
+- row layout / editing one row saves that row's record only
+- row layout / adding a row saves its record and the order
+- row layout / removing a row saves the order and deletes the row's record
+- row layout / a restored collection keeps insertion order
+- row layout / a row re-added at the end restores at the end
+- row layout / an edit in the batch that disposes the collection's owner is saved
+- row layout / a collection re-created for the key starts from its last rows
+- row layout / an undecodable row fails the load naming the row's key
+- row layout / with the discard option an undecodable row is left out
+- document layout / editing one row saves the one document record
+- document layout / a restored collection keeps insertion order
+- document layout / an older document runs its migrations on every row
+- declaring / a collection key under the reserved prefix is rejected
+
+</details>
+
+## Persistence/Position.fs
+
+<details><summary>8 passed in every build and delivery that runs them</summary>
+
+- a save records the position of the last journal entry in the same SaveMany
+- a load exposes the saved position
+- inputs journaled after the last save are not included in the position
+- the wrapper forwards every entry to the inner journal
+- a session without a journal saves no position
+- a save that faults part way leaves no position ahead of the records
+- a save without a journal deletes an earlier session's position
+- a persisted signal written by an effect saves in the flush's one SaveMany
+
+</details>
+
+## Persistence/LocalStorage.fs
+
+<details><summary>14 passed in every build and delivery that runs them</summary>
+
+- a record and a union round trip through Wire codecs
+- items live under the prefix as the version and the payload
+- a clear removes the items under the prefix only
+- an item that is not a record fails the load naming the key
+- conformance / an empty store loads no records
+- conformance / saved records load back
+- conformance / a load returns the requested keys only
+- conformance / a later save of a key replaces its record
+- conformance / deleted keys load nothing and absent keys are skipped
+- conformance / a cleared store loads no records and takes later saves
+- conformance / keys and payloads with separators, reserved prefixes and non-ASCII text round trip
+- conformance / a record of an older version loads through its migrations
+- conformance / a record of a newer version fails the load naming the key
+- conformance / a matching buster keeps the records and a different one discards them
 
 </details>
 

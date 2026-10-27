@@ -29,14 +29,30 @@ let theme =
         Theme.navbar
             [
                 NavbarSection ("Guide", "guide", "/guide/")
-                NavbarSection ("Views", "view", "/view/")
-                NavbarSection ("Server", "server", "/server/")
-                NavbarSection ("Concepts", "concepts", "/concepts/")
-                NavbarSection ("Blog", "blog", "/blog/")
-                NavbarSection ("Benchmarks", "benchmarks", "/benchmarks/")
-                NavbarSection ("Fable", "fable", "/fable/")
-                NavbarDivider
-                NavbarSection ("Reference", "reference", "/reference/")
+                NavbarDropdown (
+                    "Build",
+                    [
+                        NavbarSection ("Views", "view", "/view/")
+                        NavbarSection ("Server", "server", "/server/")
+                        NavbarSection ("Fable", "fable", "/fable/")
+                    ]
+                )
+                NavbarSection ("Examples", "examples", "/examples/")
+                NavbarDropdown (
+                    "Reference",
+                    [
+                        NavbarSection ("API reference", "reference", "/reference/")
+                        NavbarSection ("Analyzers", "analyzers", "/analyzers/")
+                    ]
+                )
+                NavbarDropdown (
+                    "Learn",
+                    [
+                        NavbarSection ("Concepts", "concepts", "/concepts/")
+                        NavbarSection ("Blog", "blog", "/blog/")
+                        NavbarSection ("Benchmarks", "benchmarks", "/benchmarks/")
+                    ]
+                )
             ]
         >> Theme.menu
             "guide"
@@ -94,26 +110,43 @@ let theme =
                                 Menu.page "guide/collection-views.fsx"
                                 Menu.page "guide/aggregates.fsx"
                             ]
-                        Menu.section "Recipes" [ Menu.page "guide/forms.md" ]
+                        Menu.section "Recipes" [ Menu.page "guide/forms.md"; Menu.page "guide/shop-replay.md" ]
                     ]
                 Menu.section
                     "Extensions"
                     [
                         Menu.section "Ranvier.Query" [ Menu.page "guide/queries.md"; Menu.page "guide/query-navigation.md" ]
                         Menu.section "Ranvier.Elmish" [ Menu.page "guide/elmish.md" ]
+                        Menu.section
+                            "Ranvier.Persistence"
+                            [
+                                Menu.page "guide/persistence.md"
+                                Menu.page "guide/persistence-marten.md"
+                                Menu.page "guide/persistence-kurrentdb.md"
+                                Menu.page "guide/persistence-equinox.md"
+                            ]
+                        Menu.section "Ranvier.Mcp" [ Menu.page "guide/mcp.md"; Menu.page "guide/mcp-research.md" ]
                     ]
                 Menu.section
                     "Reference"
                     [
                         Menu.page "guide/tracing.md"
+                        Menu.page "guide/journal.md"
                         Menu.page "guide/signal-maps.md"
+                        Menu.page "guide/nacara.md"
                         Menu.page "guide/troubleshooting.md"
                     ]
             ]
         >> Theme.menu
             "view"
             [
-                Menu.section "Introduction" [ Menu.page "view/index.md"; Menu.page "view/getting-started.md" ]
+                Menu.section
+                    "Introduction"
+                    [
+                        Menu.page "view/index.md"
+                        Menu.page "view/getting-started.md"
+                        Menu.page "examples/index.md"
+                    ]
                 Menu.section
                     "Authoring"
                     [
@@ -141,6 +174,7 @@ let theme =
                         Menu.page "view/lifetimes.md"
                         Menu.page "view/elmish.md"
                         Menu.page "view/testing.md"
+                        Menu.page "view/native.md"
                     ]
                 Menu.section "Reference" [ Menu.page "view/troubleshooting.md"; Menu.page "view/reference.md" ]
             ]
@@ -153,6 +187,9 @@ let theme =
                         Menu.page "server/index.md"
                         Menu.page "server/rendering.md"
                         Menu.page "server/hydration.md"
+                        Menu.page "server/pages.md"
+                        Menu.page "server/backends.md"
+                        Menu.page "examples/index.md"
                         Menu.page "server/state-transfer.md"
                         Menu.page "server/deployment.md"
                         Menu.page "server/performance.md"
@@ -187,9 +224,11 @@ let theme =
                         Menu.page "benchmarks/suspension.md"
                         Menu.page "benchmarks/streams.md"
                         Menu.page "benchmarks/counters.md"
+                        Menu.page "benchmarks/tracing.md"
                     ]
                 Menu.section "Ranvier.Query" [ Menu.page "benchmarks/queries.md" ]
             ]
+        >> Theme.menu "examples" [ Menu.section "Browser examples" [ Menu.page "examples/index.md" ] ]
         >> Theme.menu "fable" [ Menu.section "Fable" [ Menu.page "fable/index.md" ] ]
         >> Theme.menu
             "analyzers"
@@ -233,25 +272,19 @@ let theme =
         )
     )
 
-/// Live Partas.Solid components on the pages (the landing page's animated state mark and the signal maps), compiled
-/// against the Partas.Solid 3 build committed under feed/. The generated project inherits
-/// docs/nuget.config, whose partas-local source serves it.
-let private solidExamples (options: SolidExamplesOptions) =
-    options
-    |> SolidExamples.partasVersion "3.0.0-local.e08ad85"
-    |> SolidExamples.npm "animejs" "4.5.0"
-    |> SolidExamples.project "maps/Ranvier.Docs.Maps.fsproj"
-    |> SolidExamples.property "RanvierTrace" "true"
-    |> SolidExamples.targetFramework "net10.0"
-    |> SolidExamples.transform "map" Maps.transform
-
 /// The og card of each section, keyed by the path segment that names it, with the card's alt text.
 let private ogCards =
     [
+        "native", "native", "Native Ranvier deployment through WebCore, in development"
+        "nacara", "nacara", "Runnable Ranvier documentation: components, signal maps and editable examples"
         "async-and-pending", "async", "Async and pending: boundary states along a nerve fibre"
         "tracing", "tracing", "Tracing: a cause chain traced back along a nerve fibre"
         "signal-maps", "signal-maps", "Signal maps: a traced graph drawn live, a write travelling its edges"
         "timing", "timing", "Debounce and throttle: capture changes now, admit them after quiet or at a fixed deadline"
+        "view", "view", "Ranvier.View: templates, events and bindings over a reactive graph"
+        "server", "server", "Ranvier server rendering: render HTML, transfer state and hydrate"
+        "examples", "examples", "Runnable Ranvier views, motion and hydration examples"
+        "analyzers", "analyzers", "Ranvier analyzers: diagnostics for reactive state, lifetimes and views"
         "guide", "guide", "Ranvier guide: build with signals"
         "concepts", "concepts", "Ranvier concepts: how the graph works"
         "fable", "fable", "Ranvier on Fable: the JavaScript target"
@@ -291,20 +324,27 @@ let private csharpGrammar (options: TreeSitterOptions) =
         :: options.Grammars
     )
 
-/// The Motion example pages, served under examples/motion/ from the Vite build that <c>build.fsx docs</c> runs. A build
-/// without that output publishes no example pages.
-let private motionExamples =
-    let dist =
-        Path.Combine (__SOURCE_DIRECTORY__, "../examples/Ranvier.Motion/dist")
-        |> Path.GetFullPath
-
+/// <summary>Copies the built browser examples into the documentation output.</summary>
+let private browserExamples =
     Site.plugin
         { new IPlugin with
-            member _.Name = "motion-examples"
+            member _.Name = "browser-examples"
 
             member _.Configure registry =
-                registry
-                |> Registry.asset (Asset.CopyDirectory (AbsolutePath.create dist, RelativePath.create "examples/motion"))
+                [
+                    "Ranvier.Motion", "motion"
+                    "Fable.Ranvier.Playground", "playground"
+                    "Ranvier.Hydration", "hydration"
+                ]
+                |> List.fold
+                    (fun assets (project, route) ->
+                        let dist =
+                            Path.Combine (__SOURCE_DIRECTORY__, $"../examples/{project}/dist")
+                            |> Path.GetFullPath
+
+                        assets
+                        |> Registry.asset (Asset.CopyDirectory (AbsolutePath.create dist, RelativePath.create $"examples/{route}")))
+                    registry
         }
 
 let reference =
@@ -325,8 +365,7 @@ let site =
     |> Sitemap.register
     |> FSharpApi.register apiOptions
     |> LinkValidator.register
-    |> motionExamples
-    |> SolidExamples.registerWith solidExamples
+    |> browserExamples
     |> LiveExample.registerWith (
         LiveExample.preset (
             LiveExamplePreset.create "maps"
@@ -338,6 +377,21 @@ let site =
             |> LiveExamplePreset.asDefault
         )
     )
+    |> LiveExampleMetadata.register
+        [
+            LiveExampleMetadata.nuget
+                (Path.Combine (__SOURCE_DIRECTORY__, "obj", "project.assets.json"))
+                "Xantham.Fable.Core.TS"
+                "0.2.1"
+                "net8.0"
+                "Xantham.Fable.Core.TS"
+            LiveExampleMetadata.nuget
+                (Path.Combine (__SOURCE_DIRECTORY__, "obj", "project.assets.json"))
+                "Xantham.Fable.Core"
+                "0.2.0"
+                "net8.0"
+                "Xantham.Fable.Core"
+        ]
     |> OgImage.registerWith ogImages
     |> AgentFriendly.registerWith (
         AgentFriendly.summary "Fine-grained reactive computation for .NET, with a Fable target"
@@ -346,13 +400,37 @@ let site =
     )
     |> LightningCss.register
     |> Esbuild.register
-    |> Maps.register
     |> Nuglify.minifyHtml
+    |> RanvierExamples.registerWith
+        { RanvierExamples.defaults with
+            Packages = [ "animejs", "4.5.0" ]
+        }
     |> Versions.register versions
     |> Theme.register theme
     |> Site.collection (Theme.docs theme "content")
     |> Site.collection reference
 
+/// The pages under docs/content that no menu lists: the landing page, which the navbar's brand links to.
+let private unlistedPages = set [ "index.md" ]
+
+/// <summary>
+/// Runs the site. A <c>build</c> exits with 1, generating nothing, while <c>MenuCoverage.check</c> reports a page
+/// outside every menu or a menu entry without a page; <c>watch</c> prints the same report and serves the site.
+/// <c>check-menus</c> runs only the check, and exits with 1 on a report.
+/// </summary>
 [<EntryPoint>]
 let main argv =
-    Nacara.run site argv
+    let problems =
+        MenuCoverage.check (Path.Combine (__SOURCE_DIRECTORY__, "content")) unlistedPages theme.Menus
+
+    for problem in problems do
+        eprintfn "menu coverage: %s" problem
+
+    let failed = not problems.IsEmpty
+
+    match argv with
+    | [| "check-menus" |] -> if failed then 1 else 0
+    | _ when failed && Array.contains "build" argv ->
+        eprintfn "menu coverage: %d problem(s); the build stops before generating the site." problems.Length
+        1
+    | _ -> Nacara.run site argv

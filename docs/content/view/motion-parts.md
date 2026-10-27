@@ -3,11 +3,10 @@ title: Motion parts
 description: Template parts that animate elements on placement, on entering and leaving lists and arms, on reorder, and from signals.
 ---
 
-`Ranvier.View.Anime` animates the elements of a sugar template. Each `Motion.*` function returns a
-part, given to a tag beside its attributes and events. A part creates its anime objects once the
-element is placed, and the instance's disposal reverts them. The
-[Motion parts reference](https://github.com/shayanhabibi/Ranvier/blob/master/src/Ranvier.View.Anime/README.md)
-documents every part with a sample; this page covers the rules they share.
+`Ranvier.View.Anime` adds `Motion.*` parts beside a tag's attributes and events. They start anime
+objects after placement and clean them up with the instance. The
+[reference](https://github.com/shayanhabibi/Ranvier/blob/master/src/Ranvier.View.Anime/README.md)
+has every part; this page explains their shared lifecycle.
 
 ```fsharp
 open global.Ranvier
@@ -48,6 +47,10 @@ let taskList =
             div (Attrs.className "progress", Motion.follow "scaleX" (AnimatableParams (duration = 400)) (fun l -> l.Done.Value)) { () }
         })
 ```
+
+In this example, initial tasks appear without an enter animation. Adding a task fades and raises
+its row into place; removing it fades the retired row out. Reordering runs FLIP, and changing `Done`
+animates the progress element's `scaleX`.
 
 `Motion` requires qualified access: `Motion.exit` shadows FSharp.Core's `exit` when `Motion` is opened.
 
@@ -256,6 +259,9 @@ a motion hook. The server omits all three kinds.
 
 ## Examples
 
+The [browser examples menu](../examples/index.md) also links the main playground and the
+server hydration example.
+
 `examples/Ranvier.Motion` is a Vite app with five pages, each a sugar component tree run as a
 CI test under jsdom and Playwright. The site serves the built pages, with an
 [index](/Ranvier/examples/motion/index.html) of all five:
@@ -263,7 +269,8 @@ CI test under jsdom and Playwright. The site serves the built pages, with an
 | Page | Shows | Live |
 | --- | --- | --- |
 | [kanban](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Kanban.fs) | `presence` cards, `flip` across columns, `drag` with drop to a column and a spring back to the card's slot, undo | [kanban](/Ranvier/examples/motion/kanban/index.html) |
-| [dashboard](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Dashboard.fs) | `follow` gauges, a `draw` and `morph` line chart, a number tween through `Reactive.track`, a boundary skeleton | [dashboard](/Ranvier/examples/motion/dashboard/index.html) |
+| [dashboard](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Dashboard.fs) | `follow` gauges, a `draw` ring, a scrolling chart and counter driven by `Reactive.track`, a boundary skeleton | [dashboard](/Ranvier/examples/motion/dashboard/index.html) |
+| [graphs](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Graphs.fs) | Pointer-following inspection, animated SVG zoom and pan, staggered ranking timelines | [graphs](/Ranvier/examples/motion/graphs/index.html) |
 | [story](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Story.fs) | `scroll` timelines, a `split` headline, a staggered grid, `appear` tiles; rendered on .NET as a whole document by `Server.renderDocument` under `Omit`, and hydrated | [story](/Ranvier/examples/motion/story/index.html) |
 | [physics](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Physics.fs) | a thrown `drag` puck and a spring home, chained `follow`, a timeline scrubbed by `Reactive.scrub`, a policy toggle | [physics](/Ranvier/examples/motion/physics/index.html) |
 | [routes](https://github.com/shayanhabibi/Ranvier/blob/master/examples/Ranvier.Motion/src/Routes.fs) | hash routing with `presence` page arms and `flip` on the shell | [routes](/Ranvier/examples/motion/routes/index.html) |

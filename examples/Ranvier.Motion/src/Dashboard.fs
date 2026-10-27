@@ -113,12 +113,17 @@ type Store =
 let createStore () : Store =
     let feed = Feed ()
     let session = Api.createSignal 0
+    let mutable history = [||]
+
+    let append _ sample =
+        history <- keep history sample
+        history
 
     {
         Feed = feed
         Session = session
         Samples =
-            Api.createStreamFold [||] keep (fun _ ->
+            Api.createStreamFold [||] append (fun _ ->
                 session.Value |> ignore
                 StreamSource.ofObservable feed)
         Running = Api.createSignal true
@@ -144,6 +149,62 @@ let linePath (values: float array) =
 let areaPath (values: float array) =
     linePath values + " L600 200 L0 200 Z"
 
+let private streamingPaths (previous: float array) (current: float array) (progress: float) =
+    if progress >= 1. then
+        linePath current, areaPath current
+    else
+        let padded =
+            Array.append (Array.create (capacity - previous.Length) previous[0]) previous
+
+        let blend = min 1. (max 0. (progress / 0.4))
+        let grow = (1. - cos (Math.PI * blend)) / 2.
+        let step = 600. / float (capacity - 1)
+        let offset = step * progress
+
+        let y value =
+            186. - value * 168.
+
+        let old =
+            padded
+            |> Array.mapi (fun index value -> float index * step - offset, y value)
+
+        let last = Array.last padded
+        let next = Array.last current
+        let tip = 600., y (last + (next - last) * grow)
+
+        let line =
+            Array.append old [| tip |]
+            |> Array.mapi (fun index (x, y) -> sprintf "%s%.1f %.1f" (if index = 0 then "M" else "L") x y)
+            |> String.concat " "
+
+        line,
+        line
+        + sprintf " L%.1f 200 L%.1f 200 Z" (fst tip) (fst old[0])
+
+let private trackChart (cpu: Memo<float array>) =
+    let mutable previous = [||]
+    let finished = Api.createMemo (fun _ -> 1.)
+    let frame = Api.createSignal (previous, previous, finished)
+    let mutable first = true
+
+    Api.createEffectOn (fun () -> cpu.Value) (fun current ->
+        if first then
+            first <- false
+            frame.Value <- current, current, finished
+        else
+            let clock = Page.point 0. 0.
+
+            let animation =
+                Reactive.own (Anime.animate (Targets.object clock, Anim (x = 1, duration = 1000, ease = Ease.linear)))
+
+            frame.Value <- previous, current, (Reactive.track animation).Progress
+
+        previous <- current)
+
+    Api.createMemo (fun _ ->
+        let previous, current, progress = frame.Value
+        streamingPaths previous current progress.Value)
+
 /// <summary>A count-up from <c>From</c> to <c>To</c>, at the progress of the animation that drives it.</summary>
 [<NoComparison>]
 type Tween =
@@ -165,6 +226,7 @@ type Panel =
         Store: Store
         Latest: Memo<Sample>
         Cpu: Memo<float[]>
+        Chart: Memo<string * string>
         Tween: Signal<Tween>
     }
 
@@ -240,15 +302,18 @@ let private content (store: Store) =
                         Progress = Api.createMemo (fun _ -> 1.)
                     }
 
+            let cpu =
+                Api.createMemo (fun _ ->
+                    store.Samples.Value
+                    |> Array.map (fun sample -> sample.Cpu))
+
             let panel =
                 {
                     Status = status
                     Store = store
                     Latest = latest
-                    Cpu =
-                        Api.createMemo (fun _ ->
-                            store.Samples.Value
-                            |> Array.map (fun sample -> sample.Cpu))
+                    Cpu = cpu
+                    Chart = trackChart cpu
                     Tween = tween
                 }
 
@@ -323,19 +388,9 @@ let private content (store: Store) =
                         }
                     }
 
-                    path (
-                        Attrs.className "chart-area",
-                        Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> areaPath panel.Cpu.Value)
-                    ) {
-                        ()
-                    }
+                    path (Attrs.className "chart-area", Attrs.attribute ("d", fun (panel: Panel) -> Some (snd panel.Chart.Value))) { () }
 
-                    path (
-                        Attrs.className "chart-line",
-                        Motion.morph (Anim (duration = 700, ease = Ease.outQuart)) (fun (panel: Panel) -> linePath panel.Cpu.Value)
-                    ) {
-                        ()
-                    }
+                    path (Attrs.className "chart-line", Attrs.attribute ("d", fun (panel: Panel) -> Some (fst panel.Chart.Value))) { () }
                 }
             }
 
@@ -420,14 +475,8 @@ let private stopAfter (handle: int) : unit = jsNative
 [<Emit("clearInterval($0)")>]
 let private stopEvery (handle: int) : unit = jsNative
 
-/// <summary>
-/// The browser entry: mounts the dashboard into <c>#app</c> under queued commits, pushes the first sample after
-/// 600 ms and one each second while running, and publishes <c>window.__motion</c>.
-/// </summary>
-let start () : unit -> unit =
-    let graph = new Graph ()
-    let mounted = mount Page.browserMode graph Page.report (Page.host ())
-    let store = mounted.Store
+/// <summary>Starts the sample feed and publishes its browser controls; disposal stops both timers.</summary>
+let activate (graph: Graph) (store: Store) : unit -> unit =
     let mutable tick = 0
 
     let push (sample: int -> Sample) =
@@ -460,5 +509,3 @@ let start () : unit -> unit =
     fun () ->
         stopAfter first
         stopEvery timer
-        mounted.Mount.Dispose ()
-        graph.Dispose ()

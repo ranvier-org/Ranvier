@@ -2,10 +2,8 @@
 title: Templates and bindings
 ---
 
-A template is a tree of elements, text and **parts** (attributes, properties, events and hooks)
-for one instance type `'inst`. It is a value of type `TemplateView<'inst>`, built once when its
-component is defined. Every dynamic part is a function of the instance: when a component mounts,
-each instance is a copy of the template's static HTML plus one binding per dynamic part.
+A `TemplateView<'inst>` describes static HTML and dynamic **parts**: text, attributes, properties,
+events and hooks. Build it once; mounting creates an instance and binds its readers to that instance.
 
 The examples use the [sugar](sugar.md) vocabulary. The [explicit form](#the-explicit-form) at the
 end of the page builds the same trees. Every sample on this page compiles with these opens:
@@ -104,7 +102,8 @@ let greeting =
 <p class="greeting">Hello, <!--!-->&lt;Ada&gt;<!--!-->! <!--!-->&lt;ADA&gt;</p>
 ```
 
-Text is always escaped. Raw markup goes through [`Unsafe.html`](#explicit-only-members).
+With `Name = "<Ada>"`, the greeting displays `Hello, <Ada>! <ADA>` as text, without creating tags.
+Raw markup goes through [`Unsafe.html`](#explicit-only-members).
 
 ## Static structure
 
@@ -223,7 +222,9 @@ booleans and options of them. Without a `PropertySerialization` argument the pro
 **browser-only**: the server's `Reject` policy raises for it, and `Omit` leaves it out (see
 [Server rendering](../server/rendering.md#browser-only-parts)). `PropertyHtml.text`,
 `PropertyHtml.number`, `PropertyHtml.presence`, `PropertyHtml.optional` and `PropertyHtml.childText`
-give a custom property a server form.
+give a custom property a server form. `PropertyHtml.optional` omits the attribute for `None`; on .NET it
+also omits it for `Some null`, which Fable erases to `None`. The `OptionalAttribute` and
+`ReactiveAttribute` modifiers treat `Some null` the same way.
 
 ## How bindings re-run
 
@@ -239,7 +240,9 @@ any of the instance's bindings re-runs the effect, and the effect writes changed
 - A binding with its own effect re-runs alone. Mark it with `t.isolated` (below) when one value
   changes much more often than the rest of the instance.
 
-Static text and fixed attribute values are written once, with the copy of the template.
+Static text and fixed attributes are written once.
+
+![A signal change re-runs an instance render effect, which compares bindings and writes only changed DOM values.](/Ranvier/diagrams/view-bindings.svg)
 
 ## Explicit-only members
 

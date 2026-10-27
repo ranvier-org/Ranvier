@@ -38,6 +38,10 @@ let all =
             testList "Retention.fs" [ Ranvier.Tests.Retention.tests ]
             testList "Tracing.fs" [ Ranvier.Tests.Tracing.tests ]
             testList "TraceModelTests.fs" [ Ranvier.Tests.TraceModelTests.tests ]
+            testList "TraceContractTests.fs" [ Ranvier.Tests.TraceContractTests.tests ]
+            testList "TraceJsonTests.fs" [ Ranvier.Tests.TraceJsonTests.tests ]
+            testList "TraceDumpTests.fs" [ Ranvier.Tests.TraceDumpTests.tests ]
+            testList "TraceExportStreams.fs" [ Ranvier.Tests.TraceExportStreams.tests ]
             testList
                 "Observers.fs"
                 [
@@ -110,6 +114,7 @@ let all =
             testList "Streams.fs (sources)" [ Ranvier.Tests.Streams.converterTests ]
             testList "Streams.fs (traces)" [ Ranvier.Tests.Streams.traceTests ]
             testList "Texts.fs" [ Ranvier.Tests.Texts.tests ]
+            testList "Journal.fs" [ Ranvier.Tests.InputJournal.tests ]
             testList "FailureOrigins.fs" [ Ranvier.Tests.FailureOrigins.tests ]
             testList "NullChecks.fs" [ Ranvier.Tests.NullChecks.tests ]
             testList "Editables.fs" [ Ranvier.Tests.Editables.tests ]
@@ -127,6 +132,14 @@ let all =
             testList "DateTimeOffsetCodec.fs" [ Ranvier.Wire.Tests.DateTimeOffsetCodec.tests ]
             testList "NumberText.fs" [ Ranvier.Wire.Tests.NumberText.tests ]
             testList "Conformance.fs" [ Ranvier.Wire.Tests.Conformance.tests ]
+            testList "Persistence/Scaffold.fs" [ Ranvier.Persistence.Tests.Scaffold.tests ]
+            testList "Persistence/MemoryStore.fs" [ Ranvier.Persistence.Tests.MemoryStore.tests ]
+            testList "Persistence/Loading.fs" [ Ranvier.Persistence.Tests.Loading.tests ]
+            testList "Persistence/Coalescing.fs" [ Ranvier.Persistence.Tests.Coalescing.tests ]
+            testList "Persistence/Durability.fs" [ Ranvier.Persistence.Tests.Durability.tests ]
+            testList "Persistence/Collections.fs" [ Ranvier.Persistence.Tests.Collections.tests ]
+            testList "Persistence/Position.fs" [ Ranvier.Persistence.Tests.Position.tests ]
+            testList "Persistence/LocalStorage.fs" [ Ranvier.Persistence.Tests.LocalStorage.tests ]
         ]
 
 Mocha.runTests all |> ignore

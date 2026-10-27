@@ -32,6 +32,21 @@ module internal Platform =
         Operators.isNull value
 #endif
 
+    /// <summary>
+    /// The runtime type name of <c>value</c>: <c>"null"</c> for null, the CLR full name on .NET, and under Fable the
+    /// constructor name of an object or the <c>typeof</c> of a primitive.
+    /// </summary>
+#if FABLE_COMPILER
+    [<Emit("($0 == null ? 'null' : (typeof $0 === 'object' ? (($0.constructor && $0.constructor.name) || 'object') : typeof $0))")>]
+    let typeName (value: obj) : string =
+        nativeOnly
+#else
+    let typeName (value: obj) : string =
+        match value with
+        | null -> "null"
+        | value -> value.GetType().FullName
+#endif
+
 #if FABLE_COMPILER
     /// <summary>
     /// Constant under Fable. With one thread the comparison is always true,
@@ -95,6 +110,13 @@ module internal Platform =
     /// </summary>
     [<Emit("($0 != null && typeof $0 === 'object' && $1 in $0)")>]
     let hasMember (value: obj) (name: string) : bool = jsNative
+
+    /// <summary>
+    /// True when <c>value</c> is a number with an integral value in the 32-bit signed range. Stands in for an
+    /// <c>int</c> type test, which Fable compiles to the same <c>typeof</c> check as a <c>float</c> type test.
+    /// </summary>
+    [<Emit("(typeof $0 === 'number' && ($0 | 0) === $0)")>]
+    let isInt32 (value: obj) : bool = jsNative
 
     /// <summary>
     /// Sets the <c>InnerException</c> of <c>error</c> to <c>inner</c>. Fable's exception types take no inner
@@ -587,6 +609,15 @@ module internal Platform =
         slots[index] <- value
 #endif
 
+    /// <summary>Makes <c>slots</c> hold at least <c>count</c> entries without growing; does nothing under Fable.</summary>
+#if FABLE_COMPILER
+    let inline reserve (_slots: ResizeArray<'T>) (_count: int) = ()
+#else
+    let inline reserve (slots: ResizeArray<'T>) (count: int) =
+        if slots.Capacity < count then
+            slots.Capacity <- count
+#endif
+
 #if FABLE_COMPILER
     [<Emit("$0.has($1)")>]
     let private tableHas (table: Dictionary<'K, 'V>) (key: 'K) : bool = jsNative
@@ -718,6 +749,9 @@ module internal Platform =
             prims.clear ()
             objs.Clear ()
 
+        /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
+        member _.Reserve(_count: int) = ()
+
         /// <summary>
         /// Visits every entry: primitive keys first, then object keys.
         /// </summary>
@@ -777,6 +811,10 @@ module internal Platform =
             hasNull <- false
             nullValue <- Unchecked.defaultof<'V>
             table.Clear ()
+
+        /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
+        member _.Reserve(count: int) =
+            table.EnsureCapacity count |> ignore
 
         /// <summary>
         /// Visits every entry: the null key first, then the rest.
@@ -844,6 +882,9 @@ module internal Platform =
             prims.clear ()
             objs.Clear ()
 
+        /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
+        member _.Reserve(_count: int) = ()
+
         /// <summary>
         /// Visits every key: primitive keys first, then object keys.
         /// </summary>
@@ -883,6 +924,10 @@ module internal Platform =
         member _.Clear() =
             hasNull <- false
             table.Clear ()
+
+        /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
+        member _.Reserve(count: int) =
+            table.EnsureCapacity count |> ignore
 
         /// <summary>
         /// Visits every key: the null key first, then the rest.

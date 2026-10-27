@@ -82,7 +82,8 @@ If your environment doesn't have it, ask your USER for permission to set it up.
 - **Release-only compiler errors.** The REPL compiles like Debug. An `inline` CE member that
   applies a function-typed alias compiles in Debug and fails in Release with `FS1118`.
 - **The whole suite, and the final gate.** Run them through the build CLI. A filtered run is never
-  an acceptance check.
+  an acceptance check. The gate includes the analyzers as CI runs them:
+  `dotnet fsi build.fsx -- analyze --group <library|view|examples> --build`, one run per group.
 
 On a small solution an incremental `dotnet build` takes seconds, not minutes; the REPL saves the
 most on experiments that would otherwise need a rebuild per attempt.
@@ -102,6 +103,26 @@ most on experiments that would otherwise need a rebuild per attempt.
 - `stop_session` every session you created.
 
 ### Running tests in a session
+
+For view interaction and dump work, load `tests/Ranvier.View.Twin.Tests/Ranvier.View.Twin.Tests.fsproj`.
+Use the worktree's session and keep each mounted session on the evaluation thread:
+
+```fsharp
+open Ranvier.View.Twin
+open Ranvier.View.Testing
+open Ranvier.View.Twin.Tests
+let checkCounter () =
+    use session = Twin.mount Fixtures.counter 1
+    Interact.click session.Host "button"
+    Expect.text session.Host "button" "2"
+    session.Dump ()
+checkCounter ();;
+```
+
+After editing a fixture, rebuild and reload with `hard_reset_fsi_session rebuild=true`, wait for
+Ready, and evaluate the check again. Dispose each mount when its check finishes; reloads discard
+session definitions. See [Testing views](docs/content/view/testing.md#twin-checks-on-net) for the
+clock, queued commits and browser-only cases.
 
 `runTestsInAssemblyWithCLIArgs` finds no tests in a session. Pass the test values directly:
 

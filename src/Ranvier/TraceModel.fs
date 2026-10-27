@@ -4,15 +4,37 @@ open System
 open System.Collections.Generic
 open System.Text
 
+/// <summary>A payload value of one of the four types every trace schema writes losslessly.</summary>
+[<RequireQualifiedAccess>]
+type TraceScalar =
+    | Int of int
+    | String of string
+    | Bool of bool
+    | Float of float
+
+/// <summary>A recorded value in a trace contract document or a schema 3 dump, marked as lossless or lossy.</summary>
+[<RequireQualifiedAccess>]
+type TracePayload =
+    | Null
+    /// <summary>An <c>int</c>, <c>string</c>, <c>bool</c> or <c>float</c>, held exactly.</summary>
+    | Exact of TraceScalar
+    /// <summary>The <c>data</c> written by version <c>version</c> of the codec named <c>codec</c>; lossless.</summary>
+    | Encoded of codec: string * version: int * data: string
+    /// <summary>The value's <c>TraceModel.valueText</c>: diagnostic text that will not decode to a value.</summary>
+    | Lossy of text: string
+
 /// <summary>Where a <c>Trace.why</c> chain ends.</summary>
 type WhyRoot =
     /// <summary>A write from outside every run: the <c>Write</c> seq.</summary>
     | UserWrite of write: int
-    /// <summary>The node's first run, with no dirty mark: the <c>NodeNew</c> seq, or 0 when it is not in the log.</summary>
+    /// <summary>The node's first run, with no dirty mark: the <c>NodeNew</c> seq, or 0 when neither the log nor its checkpoint holds it.</summary>
     | Created of nodeNew: int
     /// <summary>A run with no dirty mark, started by a reader's pull: the reader's node id.</summary>
     | Pulled of reader: int
-    /// <summary>A cause older than the events in the log: the checkpoint file that holds it, or null.</summary>
+    /// <summary>
+    /// A cause older than the events in the log, or inside a gap of an exported stream: the checkpoint file that holds
+    /// it, or null.
+    /// </summary>
     | BeforeCheckpoint of file: string
     /// <summary>A run or mark whose cause the log does not record: the seq of the last step.</summary>
     | Unrecorded of last: int
@@ -270,7 +292,9 @@ type TraceSnapshotNode =
         Status: TraceNodeStatus
         /// <summary>
         /// The <c>valueText</c> of the latest value or exception recorded by a moving <c>Write</c>, a <c>Moved</c>, or
-        /// an async source's <c>Settle</c> or <c>Fail</c>.
+        /// an async source's <c>Settle</c> or <c>Fail</c>. A null written by a <c>Write</c> or settled by an async source,
+        /// or a <c>Moved</c> to null by a memo, async memo, boundary, lookup cell or timed node, gives
+        /// <c>valueText null</c>.
         /// </summary>
         Value: string option
     }
@@ -360,9 +384,14 @@ type TraceSnapshot =
             ]
 
 /// <summary>A parsed JSONL dump: its header, the snapshot at <c>SeqFrom</c> and the events after it.</summary>
-/// <remarks>Parsed event payloads are strings, or null.</remarks>
+/// <remarks>
+/// Parsed event payloads are strings, or null: in schema 3 the scalar's text for <c>Exact</c>, the data for
+/// <c>Encoded</c> and the text for <c>Lossy</c>.
+/// </remarks>
 type TraceDump =
     {
+        /// <summary>The dump schema: 1, 2 with timed nodes, or 3 with payload forms.</summary>
+        Schema: int
         Target: string
         /// <summary>The graph's root owner id.</summary>
         Graph: int
@@ -372,6 +401,17 @@ type TraceDump =
         SeqFrom: int
         Snapshot: TraceSnapshot
         Events: TraceEvent[]
+        /// <summary>
+        /// The form of each event's payload, at the event's index. Schema 3 gives the form written. Schemas 1 and 2
+        /// carry no type: null gives <c>Null</c>, and text gives <c>Lossy</c>. A <c>TimedState</c> event's payload is
+        /// its timing, and its form is <c>Null</c>.
+        /// </summary>
+        Payloads: TracePayload[]
+        /// <summary>
+        /// The inclusive seq ranges of the stream's gap lines, in stream order. The events of a gap's range are absent
+        /// from <c>Events</c>.
+        /// </summary>
+        Gaps: (int * int) list
     }
 
     /// <summary>The dump header, snapshot and events in F# record syntax.</summary>
@@ -385,6 +425,22 @@ type TraceDump =
                 "Snapshot", string this.Snapshot
                 "Events", TraceText.array string this.Events
             ]
+
+/// <summary>A graph's trace checkpoint: its name and the state folded from the events dropped from the log.</summary>
+type TraceCheckpoint =
+    {
+        /// <summary>The name given to <c>Trace.checkpoint</c>, or null before the first checkpoint.</summary>
+        Name: string
+        /// <summary>
+        /// The state folded from the dropped events, pruned with <c>TraceModel.prune</c>. <c>Snapshot.Seq</c> is the
+        /// last dropped seq, or 0.
+        /// </summary>
+        Snapshot: TraceSnapshot
+    }
+
+    /// <summary>The checkpoint's name and snapshot in F# record syntax.</summary>
+    override this.ToString() =
+        TraceText.record [ "Name", TraceText.value this.Name; "Snapshot", string this.Snapshot ]
 
 /// <summary>Pure queries over an array of trace events, oldest first.</summary>
 /// <remarks>
@@ -485,12 +541,12 @@ module TraceModel =
         else
             line
 
-    /// <summary>
-    /// The source lists folded from <c>EdgeAdd</c>/<c>EdgeRemove</c>, by computation id, in slot order. Lists that
-    /// fold to empty are left out.
-    /// </summary>
-    let sources (events: TraceEvent[]) : Map<int, int list> =
+    // The source lists of `initial` advanced by the edge events.
+    let internal sourcesFrom (initial: Map<int, int list>) (events: TraceEvent[]) : Map<int, int list> =
         let lists = Dictionary<int, ResizeArray<int>>()
+
+        for KeyValue (node, list) in initial do
+            lists[node] <- ResizeArray list
 
         let listOf node =
             match lists.TryGetValue node with
@@ -522,11 +578,18 @@ module TraceModel =
         |> Map.ofSeq
 
     /// <summary>
-    /// The observer sets folded from <c>ObserverAdd</c>/<c>ObserverRemove</c>, by source id. Sets that fold to empty
-    /// are left out.
+    /// The source lists folded from <c>EdgeAdd</c>/<c>EdgeRemove</c>, by computation id, in slot order. Lists that
+    /// fold to empty are left out.
     /// </summary>
-    let observers (events: TraceEvent[]) : Map<int, Set<int>> =
+    let sources (events: TraceEvent[]) : Map<int, int list> =
+        sourcesFrom Map.empty events
+
+    // The observer sets of `initial` advanced by the observer events.
+    let internal observersFrom (initial: Map<int, Set<int>>) (events: TraceEvent[]) : Map<int, Set<int>> =
         let sets = Dictionary<int, HashSet<int>>()
+
+        for KeyValue (node, set) in initial do
+            sets[node] <- HashSet set
 
         for e in events do
             match e.Kind with
@@ -546,12 +609,17 @@ module TraceModel =
         |> Map.ofSeq
 
     /// <summary>
-    /// The cause chain of run number <c>run</c> of <c>node</c>, or of its last run when <c>run</c> is 0, stopped after
-    /// <c>depth</c> steps when <c>depth</c> is positive. <c>checkpoint</c> names the file holding earlier events, or is
-    /// null.
+    /// The observer sets folded from <c>ObserverAdd</c>/<c>ObserverRemove</c>, by source id. Sets that fold to empty
+    /// are left out.
     /// </summary>
-    /// <exception cref="T:System.ArgumentException">The events hold no matching <c>RunStart</c> for <c>node</c>.</exception>
-    let whyDepth (events: TraceEvent[]) (checkpoint: string) (depth: int) (node: int) (run: int) : Why =
+    let observers (events: TraceEvent[]) : Map<int, Set<int>> =
+        observersFrom Map.empty events
+
+    /// <summary>
+    /// <c>whyDepth</c>, with <c>created</c> giving the <c>NodeNew</c> seq of a node whose <c>NodeNew</c> precedes the
+    /// events, or 0.
+    /// </summary>
+    let internal whyDepthWith (created: int -> int) (events: TraceEvent[]) (checkpoint: string) (depth: int) (node: int) (run: int) : Why =
         let start =
             events
             |> Array.tryFindBack (fun e ->
@@ -602,7 +670,7 @@ module TraceModel =
                         else
                             match find events cause with
                             | ValueSome c -> walk c
-                            | ValueNone when events.Length > 0 && cause < events[0].Seq -> Some (BeforeCheckpoint checkpoint)
+                            | ValueNone when cause < e.Seq -> Some (BeforeCheckpoint checkpoint)
                             | ValueNone -> Some (Unrecorded e.Seq)
 
                     match e.Kind with
@@ -612,7 +680,7 @@ module TraceModel =
                                 events
                                 |> Array.tryFind (fun n -> n.Kind = TraceEventKind.NodeNew && n.Node = e.Node)
                                 |> Option.map (fun n -> n.Seq)
-                                |> Option.defaultValue 0
+                                |> Option.defaultWith (fun () -> created e.Node)
                                 |> Created
                             elif e.Other <> 0 then
                                 Pulled e.Other
@@ -635,6 +703,15 @@ module TraceModel =
                 Steps = List.ofSeq steps
                 Root = root
             }
+
+    /// <summary>
+    /// The cause chain of run number <c>run</c> of <c>node</c>, or of its last run when <c>run</c> is 0, stopped after
+    /// <c>depth</c> steps when <c>depth</c> is positive. <c>checkpoint</c> names the file holding earlier events, or is
+    /// null.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentException">The events hold no matching <c>RunStart</c> for <c>node</c>.</exception>
+    let whyDepth (events: TraceEvent[]) (checkpoint: string) (depth: int) (node: int) (run: int) : Why =
+        whyDepthWith (fun _ -> 0) events checkpoint depth node run
 
     /// <summary>The full cause chain of run number <c>run</c> of <c>node</c>, or of its last run when <c>run</c> is 0.</summary>
     let why (events: TraceEvent[]) (checkpoint: string) (node: int) (run: int) : Why =
@@ -662,10 +739,10 @@ module TraceModel =
         defaultValueArg fromFlight moved.Arg
 
     /// <summary>
-    /// Every recorded run of <c>node</c>, oldest first. <c>checkpoint</c> names the file holding earlier events, or is
-    /// null.
+    /// <c>history</c>, with <c>created</c> giving the <c>NodeNew</c> seq of a node whose <c>NodeNew</c> precedes the
+    /// events, or 0.
     /// </summary>
-    let history (events: TraceEvent[]) (checkpoint: string) (node: int) : TraceHistory =
+    let internal historyWith (created: int -> int) (events: TraceEvent[]) (checkpoint: string) (node: int) : TraceHistory =
         let ends = Dictionary<int, RunStatus>()
         let moved = Dictionary<int, obj>()
         let flushes = ResizeArray<int>()
@@ -700,7 +777,7 @@ module TraceModel =
                             | _ -> None
                         Moved = moved.ContainsKey start.Arg
                         Root =
-                            (why events checkpoint node start.Arg).Root
+                            (whyDepthWith created events checkpoint 0 node start.Arg).Root
                             |> Option.defaultValue (Unrecorded start.Seq)
                         Flush = flush
                         Value = value
@@ -708,6 +785,13 @@ module TraceModel =
             ]
 
         { Node = node; Runs = runs }
+
+    /// <summary>
+    /// Every recorded run of <c>node</c>, oldest first. <c>checkpoint</c> names the file holding earlier events, or is
+    /// null.
+    /// </summary>
+    let history (events: TraceEvent[]) (checkpoint: string) (node: int) : TraceHistory =
+        historyWith (fun _ -> 0) events checkpoint node
 
     /// <summary>The pending sources read by <c>node</c>'s last run, and the node's flights.</summary>
     let waitingOn (events: TraceEvent[]) (node: int) : TraceWaiting =
@@ -764,16 +848,13 @@ module TraceModel =
             Flights = flights
         }
 
-    /// <summary>
-    /// The first <c>WhyNotReason</c> matching the events after <c>node</c>'s last <c>RunEnd</c>, or after its
-    /// <c>NodeNew</c> when it has not run; <c>None</c> when none matches.
-    /// </summary>
-    /// <remarks>
-    /// Reasons are tried in the order <c>Disposed</c>, <c>Queued</c>, <c>Unobserved</c>, <c>CheckedClean</c>,
-    /// <c>SkippedAsRunningReader</c>, <c>NotReached</c>. <c>SkippedAsRunningReader</c> also matches a skip inside
-    /// the last run.
-    /// </remarks>
-    let whyNot (events: TraceEvent[]) (node: int) : WhyNotReason option =
+    // `whyNot` over events that follow a checkpoint whose snapshot holds `initialSources` and `initialObservers`.
+    let internal whyNotFrom
+        (initialSources: Map<int, int list>)
+        (initialObservers: Map<int, Set<int>>)
+        (events: TraceEvent[])
+        (node: int)
+        : WhyNotReason option =
         let from =
             let last =
                 events
@@ -819,7 +900,10 @@ module TraceModel =
         let unobserved () =
             match first TraceEventKind.Mark with
             | Some mark when
-                not (observers events |> Map.containsKey node)
+                not (
+                    observersFrom initialObservers events
+                    |> Map.containsKey node
+                )
                 && not (window |> Array.exists pulled)
                 ->
                 Some (Unobserved mark.Seq)
@@ -830,7 +914,7 @@ module TraceModel =
             |> Array.tryFindBack (fun e -> on TraceEventKind.CheckResolved e && e.Flag = 0)
             |> Option.map (fun e ->
                 let upstream =
-                    sources events[.. e.Seq - events[0].Seq]
+                    sourcesFrom initialSources events[.. e.Seq - events[0].Seq]
                     |> Map.tryFind node
                     |> Option.defaultValue []
 
@@ -847,7 +931,7 @@ module TraceModel =
             |> Option.map (fun e -> SkippedAsRunningReader e.Seq)
 
         let notReached () =
-            let lists = sources events
+            let lists = sourcesFrom initialSources events
             let seen = HashSet<int>()
             let upstream = ResizeArray<int>()
 
@@ -894,6 +978,18 @@ module TraceModel =
             notReached
         ]
         |> List.tryPick (fun reason -> reason ())
+
+    /// <summary>
+    /// The first <c>WhyNotReason</c> matching the events after <c>node</c>'s last <c>RunEnd</c>, or after its
+    /// <c>NodeNew</c> when it has not run; <c>None</c> when none matches.
+    /// </summary>
+    /// <remarks>
+    /// Reasons are tried in the order <c>Disposed</c>, <c>Queued</c>, <c>Unobserved</c>, <c>CheckedClean</c>,
+    /// <c>SkippedAsRunningReader</c>, <c>NotReached</c>. <c>SkippedAsRunningReader</c> also matches a skip inside
+    /// the last run.
+    /// </remarks>
+    let whyNot (events: TraceEvent[]) (node: int) : WhyNotReason option =
+        whyNotFrom Map.empty Map.empty events node
 
     // -----------------------------------------------------------------------------------------------------------
     // Identity paths and snapshots
@@ -1101,10 +1197,27 @@ module TraceModel =
                             Owners = s.Owners.Add (e.Node, { o with Disposed = true })
                         }
                 | None -> ()
-            | TraceEventKind.Write when e.Flag = 1 -> updateNode e.Node (fun n -> { n with Value = valueOf e.Payload })
+            | TraceEventKind.Write when e.Flag = 1 ->
+                updateNode e.Node (fun n ->
+                    { n with
+                        Value = Some (valueText e.Payload)
+                    })
             | TraceEventKind.Moved when not (Platform.isNull e.Payload) -> updateNode e.Node (fun n -> { n with Value = valueOf e.Payload })
+            | TraceEventKind.Moved ->
+                updateNode e.Node (fun n ->
+                    match n.Kind with
+                    | TraceNodeKind.Memo
+                    | TraceNodeKind.AsyncMemo
+                    | TraceNodeKind.Boundary
+                    | TraceNodeKind.LookupCell
+                    | TraceNodeKind.Timed -> { n with Value = Some (valueText null) }
+                    | _ -> n)
             | TraceEventKind.Settle
-            | TraceEventKind.Fail when e.Arg = 0 -> updateNode e.Node (fun n -> { n with Value = valueOf e.Payload })
+            | TraceEventKind.Fail when e.Arg = 0 ->
+                updateNode e.Node (fun n ->
+                    { n with
+                        Value = Some (valueText e.Payload)
+                    })
             | TraceEventKind.Mark when e.Arg = 2 ->
                 updateNode e.Node (fun n ->
                     if n.PendingMark = 0 then
@@ -1255,6 +1368,107 @@ module TraceModel =
             s <- { s with Seq = e.Seq }
 
         s
+
+    // The path before the last separator of `path`: a `/` preceded by an even number of backslashes.
+    let private parentOf (path: string) =
+        let mutable cut = -1
+        let mutable i = path.Length - 1
+
+        while cut < 0 && i >= 0 do
+            if path[i] = '/' then
+                let mutable slashes = 0
+
+                while i - 1 - slashes >= 0
+                      && path[i - 1 - slashes] = '\\' do
+                    slashes <- slashes + 1
+
+                if slashes % 2 = 0 then
+                    cut <- i
+
+            i <- i - 1
+
+        if cut < 0 then "" else path.Substring (0, cut)
+
+    /// <summary>
+    /// <c>snapshot</c> pruned as by <c>prune</c>, with the nodes in <c>released</c> treated as disposed.
+    /// </summary>
+    let internal pruneReleasing (released: HashSet<int>) (snapshot: TraceSnapshot) : TraceSnapshot =
+        let nodes = HashSet<int>()
+        let owners = HashSet<int>()
+
+        let rec keepOwner id =
+            if owners.Add id then
+                match snapshot.Owners.TryFind id with
+                | Some o ->
+                    if o.Parent <> 0 then
+                        keepOwner o.Parent
+
+                    if o.Host <> 0 then
+                        keepNode o.Host
+                | None -> ()
+
+        and keepNode id =
+            if nodes.Add id then
+                match snapshot.Nodes.TryFind id with
+                | Some n when n.Owner <> 0 -> keepOwner n.Owner
+                | _ -> ()
+
+        if snapshot.Root <> 0 then
+            keepOwner snapshot.Root
+
+        for KeyValue (id, o) in snapshot.Owners do
+            if not o.Disposed then
+                keepOwner id
+
+        for KeyValue (id, n) in snapshot.Nodes do
+            if
+                n.Status <> TraceNodeStatus.Disposed
+                && not (released.Contains id)
+            then
+                keepNode id
+
+        let kept = Map.filter (fun id _ -> nodes.Contains id) snapshot.Nodes
+
+        let keptOwners = Map.filter (fun id _ -> owners.Contains id) snapshot.Owners
+
+        let paths = HashSet<string>()
+        let hosts = HashSet<string>()
+
+        for KeyValue (_, n) in kept do
+            paths.Add n.Path |> ignore
+            hosts.Add n.Path |> ignore
+
+        for KeyValue (_, o) in keptOwners do
+            paths.Add o.Path |> ignore
+
+        // A run of a kept node resets the sibling counts beneath its path, so a path beneath it can recur.
+        let rec beneathHost (path: string) =
+            path <> ""
+            && (let parent = parentOf path
+                hosts.Contains parent || beneathHost parent)
+
+        let reachable (path: string) _ =
+            paths.Contains path || beneathHost path
+
+        { snapshot with
+            Nodes = kept
+            Owners = keptOwners
+            Sources = Map.filter (fun id _ -> nodes.Contains id) snapshot.Sources
+            Observers = Map.filter (fun id _ -> nodes.Contains id) snapshot.Observers
+            Siblings = Map.filter reachable snapshot.Siblings
+            Incarnations = Map.filter reachable snapshot.Incarnations
+        }
+
+    /// <summary>
+    /// <c>snapshot</c> restricted to its live nodes and owners, the disposed ones a kept entry references as owner,
+    /// parent or host, their edges, and the sibling and incarnation counts of the paths that can recur.
+    /// </summary>
+    /// <remarks>
+    /// Pruning, folding later events and pruning again will give the pruned snapshot of the unpruned fold. A path
+    /// beneath a kept node can recur, so its counts stay for the node's lifetime.
+    /// </remarks>
+    let prune (snapshot: TraceSnapshot) : TraceSnapshot =
+        pruneReleasing (HashSet<int>()) snapshot
 
     /// <summary>The state folded from the events up to and including seq <c>seq</c>.</summary>
     let snapshotAt (events: TraceEvent[]) (seq: int) : TraceSnapshot =
@@ -1870,7 +2084,54 @@ module TraceModel =
         value.ToString ("R", Globalization.CultureInfo.InvariantCulture)
 #endif
 
-    let private eventJson (sb: StringBuilder) (e: TraceEvent) =
+    // A schema 3 payload form: null, or an object with its `form`.
+    let private payloadForm (sb: StringBuilder) (payload: TracePayload) =
+        let number (f: float) =
+            if Double.IsNaN f then "\"NaN\""
+            elif f = infinity then "\"Infinity\""
+            elif f = -infinity then "\"-Infinity\""
+            else jsonFloat f
+
+        match payload with
+        | TracePayload.Null -> sb.Append "null" |> ignore
+        | TracePayload.Exact scalar ->
+            sb.Append "{\"form\":\"exact\",\"type\":"
+            |> ignore
+
+            match scalar with
+            | TraceScalar.Int i ->
+                sb.Append("\"int\",\"value\":").Append(string i)
+                |> ignore
+            | TraceScalar.Bool b ->
+                sb.Append("\"bool\",\"value\":").Append(if b then "true" else "false")
+                |> ignore
+            | TraceScalar.Float f ->
+                sb.Append("\"float\",\"value\":").Append(number f)
+                |> ignore
+            | TraceScalar.String s ->
+                sb.Append "\"string\",\"value\":" |> ignore
+                jsonString sb s
+
+            sb.Append '}' |> ignore
+        | TracePayload.Encoded (codec, version, data) ->
+            sb.Append "{\"form\":\"encoded\",\"codec\":"
+            |> ignore
+
+            jsonString sb codec
+
+            sb.Append(",\"version\":").Append(string version).Append ",\"data\":"
+            |> ignore
+
+            jsonString sb data
+            sb.Append '}' |> ignore
+        | TracePayload.Lossy text ->
+            sb.Append "{\"form\":\"lossy\",\"text\":"
+            |> ignore
+
+            jsonString sb text
+            sb.Append '}' |> ignore
+
+    let private eventJson (sb: StringBuilder) (encode: (obj -> TracePayload) option) (e: TraceEvent) =
         sb
             .Append("{\"seq\":")
             .Append(e.Seq)
@@ -1913,18 +2174,27 @@ module TraceModel =
             sb.Append(jsonFloat timing.RemainingMilliseconds).Append(",\"capture\":").Append(timing.WinningCapture).Append('}')
             |> ignore
         else
-            jsonString sb (payloadText e.Payload)
+            match encode with
+            | Some encode -> payloadForm sb (encode e.Payload)
+            | None -> jsonString sb (payloadText e.Payload)
 
         sb.Append '}' |> ignore
 
     /// <summary>
-    /// The JSONL dump: a header, the snapshot holding <c>before</c>, then one line per event. Timed nodes select schema 2.
+    /// The header line and snapshot line of the dump of <c>before</c> and <c>events</c>, each ending in <c>\n</c>.
     /// </summary>
     /// <remarks>
-    /// <c>before</c> is the state ahead of the first event; <c>checkpoint</c> names the file holding earlier events, or
-    /// is null. Lines end in <c>\n</c>. The same events and state give the same text.
+    /// The header and the lines of <c>eventLines</c> concatenate to <c>dumpTextEncoded</c>. <c>events</c> sets the
+    /// header's <c>seqFrom</c> and <c>graph</c>, and its schema without <c>encode</c>: a prefix holding the first
+    /// event, and the <c>GraphNew</c> event when <c>before</c> has no root, gives the same header.
     /// </remarks>
-    let dumpText (target: string) (checkpoint: string) (before: TraceSnapshot) (events: TraceEvent[]) : string =
+    let internal dumpHeader
+        (encode: (obj -> TracePayload) option)
+        (target: string)
+        (checkpoint: string)
+        (before: TraceSnapshot)
+        (events: TraceEvent[])
+        : string =
         let sb = StringBuilder ()
         let seqFrom = if events.Length = 0 then before.Seq + 1 else events[0].Seq
 
@@ -1935,7 +2205,9 @@ module TraceModel =
                 && e.Arg = int TraceNodeKind.Timed)
 
         let schema =
-            if
+            if encode.IsSome then
+                3
+            elif
                 timed
                 || (before.Nodes.Values
                     |> Seq.exists (fun n -> n.Kind = TraceNodeKind.Timed))
@@ -1971,15 +2243,117 @@ module TraceModel =
 
         snapshotJson sb before
         sb.Append '\n' |> ignore
+        sb.ToString ()
+
+    /// <summary>One dump line per event, each ending in <c>\n</c>, with payloads written as for <c>dumpHeader</c>.</summary>
+    let internal eventLines (encode: (obj -> TracePayload) option) (events: TraceEvent[]) : string =
+        let sb = StringBuilder ()
 
         for e in events do
-            eventJson sb e
+            eventJson sb encode e
             sb.Append '\n' |> ignore
 
         sb.ToString ()
 
+    /// <summary>
+    /// The JSONL dump of <c>dumpText</c>; with <c>encode</c>, in schema 3 with each payload written in the form
+    /// <c>encode</c> gives.
+    /// </summary>
+    let internal dumpTextEncoded
+        (encode: (obj -> TracePayload) option)
+        (target: string)
+        (checkpoint: string)
+        (before: TraceSnapshot)
+        (events: TraceEvent[])
+        : string =
+        dumpHeader encode target checkpoint before events
+        + eventLines encode events
+
+    /// <summary>
+    /// The JSONL dump: a header, the snapshot holding <c>before</c>, then one line per event. Timed nodes select schema 2.
+    /// </summary>
+    /// <remarks>
+    /// <c>before</c> is the state ahead of the first event; <c>checkpoint</c> names the file holding earlier events, or
+    /// is null. Lines end in <c>\n</c>. The same events and state give the same text.
+    /// </remarks>
+    let dumpText (target: string) (checkpoint: string) (before: TraceSnapshot) (events: TraceEvent[]) : string =
+        dumpTextEncoded None target checkpoint before events
+
 #if !FABLE_COMPILER
-    /// <summary>The header, snapshot and events of a JSONL dump in schema 1 or 2.</summary>
+    // The form of a schema 1 or 2 payload's text, which carries no type.
+    let private textForm (text: string) =
+        match text with
+        | null -> TracePayload.Null
+        | _ -> TracePayload.Lossy text
+
+    // A schema 3 payload form, and the text an event of schema 1 or 2 would hold for it.
+    let private readForm (e: Text.Json.JsonElement) =
+        let str (name: string) =
+            let p = e.GetProperty name
+
+            if p.ValueKind = Text.Json.JsonValueKind.Null then
+                null
+            else
+                p.GetString ()
+
+        if e.ValueKind = Text.Json.JsonValueKind.Null then
+            TracePayload.Null
+        else
+            match e.GetProperty("form").GetString() with
+            | "exact" ->
+                let value = e.GetProperty "value"
+
+                match e.GetProperty("type").GetString() with
+                | "int" -> TracePayload.Exact (TraceScalar.Int (value.GetInt32 ()))
+                | "bool" -> TracePayload.Exact (TraceScalar.Bool (value.GetBoolean ()))
+                | "string" -> TracePayload.Exact (TraceScalar.String (str "value"))
+                | "float" when value.ValueKind = Text.Json.JsonValueKind.String ->
+                    match value.GetString () with
+                    | "NaN" -> TracePayload.Exact (TraceScalar.Float nan)
+                    | "Infinity" -> TracePayload.Exact (TraceScalar.Float infinity)
+                    | "-Infinity" -> TracePayload.Exact (TraceScalar.Float -infinity)
+                    | other ->
+                        raise (
+                            FormatException (
+                                "A trace dump holds an unknown float: "
+                                + other
+                                + "."
+                            )
+                        )
+                | "float" -> TracePayload.Exact (TraceScalar.Float (value.GetDouble ()))
+                | other ->
+                    raise (
+                        FormatException (
+                            "A trace dump holds an unknown exact type: "
+                            + other
+                            + "."
+                        )
+                    )
+            | "encoded" -> TracePayload.Encoded (str "codec", e.GetProperty("version").GetInt32(), str "data")
+            | "lossy" -> TracePayload.Lossy (str "text")
+            | other ->
+                raise (
+                    FormatException (
+                        "A trace dump holds an unknown payload form: "
+                        + other
+                        + "."
+                    )
+                )
+
+    let private formText (payload: TracePayload) =
+        match payload with
+        | TracePayload.Null -> null
+        | TracePayload.Exact (TraceScalar.Int i) -> payloadText (box i)
+        | TracePayload.Exact (TraceScalar.Bool b) -> payloadText (box b)
+        | TracePayload.Exact (TraceScalar.Float f) -> payloadText (box f)
+        | TracePayload.Exact (TraceScalar.String s) -> s
+        | TracePayload.Encoded (_, _, data) -> data
+        | TracePayload.Lossy text -> text
+
+    /// <summary>
+    /// The header, snapshot, events and gaps of a JSONL dump in schema 1, 2 or 3. A gap line is
+    /// <c>{"gap":{"from":F,"to":T}}</c>.
+    /// </summary>
     /// <exception cref="T:System.FormatException">The text is not a supported trace dump.</exception>
     let parseDump (text: string) : TraceDump =
         let lines = text.Split ([| '\n' |], StringSplitOptions.RemoveEmptyEntries)
@@ -1992,8 +2366,14 @@ module TraceModel =
 
         let schema = h.GetProperty("schema").GetInt32()
 
-        if schema <> 1 && schema <> 2 then
-            raise (FormatException "The trace dump schema is unsupported.")
+        if schema < 1 || schema > 3 then
+            raise (
+                FormatException (
+                    "The trace dump schema "
+                    + string schema
+                    + " is unsupported."
+                )
+            )
 
         let str (e: Text.Json.JsonElement) (name: string) =
             let p = e.GetProperty name
@@ -2085,12 +2465,29 @@ module TraceModel =
                     |> Map.ofList
             }
 
-        let events =
+        let isGap (line: string) =
+            line.StartsWith "{\"gap\":"
+
+        let gaps =
+            [
+                for line in lines[2..] do
+                    if isGap line then
+                        use doc = Text.Json.JsonDocument.Parse line
+                        let g = doc.RootElement.GetProperty "gap"
+                        int' g "from", int' g "to"
+            ]
+
+        let parsed =
             [|
-                for line in lines[2..] ->
+                for line in lines[2..] |> Array.filter (isGap >> not) ->
                     use doc = Text.Json.JsonDocument.Parse line
                     let e = doc.RootElement
                     let kind = Enum.Parse<TraceEventKind>(str e "kind")
+
+                    let form =
+                        if kind = TraceEventKind.TimedState then TracePayload.Null
+                        elif schema = 3 then readForm (e.GetProperty "payload")
+                        else textForm (str e "payload")
 
                     let payload =
                         if kind = TraceEventKind.TimedState then
@@ -2110,6 +2507,8 @@ module TraceModel =
                                             WinningCapture = int' t "capture"
                                         }
                                 }
+                        elif schema = 3 then
+                            box (formText form)
                         else
                             box (str e "payload")
 
@@ -2122,15 +2521,19 @@ module TraceModel =
                         Flag = int' e "flag"
                         Cause = int' e "cause"
                         Payload = payload
-                    }
+                    },
+                    form
             |]
 
         {
+            Schema = schema
+            Payloads = Array.map snd parsed
             Target = str h "target"
             Graph = int' h "graph"
             Checkpoint = str h "checkpoint"
             SeqFrom = int' h "seqFrom"
             Snapshot = snapshot
-            Events = events
+            Events = Array.map fst parsed
+            Gaps = gaps
         }
 #endif

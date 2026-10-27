@@ -2,7 +2,10 @@
 title: Pending and failures
 ---
 
-Examples using tasks import the .NET types and construct a graph with a manual dispatcher:
+A pending read waits for data; a failed read reports an exception. Both states propagate through
+dependent computations until a [boundary](boundaries.md) supplies a display value.
+
+The examples use a manual dispatcher:
 
 ```fsharp
 open System
@@ -21,12 +24,26 @@ Every node reports a `Status`, which is a `[<Flags>]` enum:
 
 | Flag | Meaning |
 |------|---------|
-| `Status.None` | The node holds a settled value. |
+| `Status.None` | No flag is set: the node holds a settled value and has no pending re-run. |
 | `Status.Pending` | The node is waiting on a value that has not arrived. |
 | `Status.Error` | The node's last run failed. Reads report the exception. |
 | `Status.Uninitialized` | The node has not produced a value yet. |
+| `Status.Stale` | The graph has marked the computation out of date since its last run. It re-runs, or confirms its value, on its next read or flush. |
 
-The flags combine: an `AsyncSource` that has not settled reports `Pending ||| Uninitialized`.
+The flags combine: an `AsyncSource` that has not settled reports `Pending ||| Uninitialized`, and an
+effect woken inside a [batch](batch.md) reports `Stale` until the batch ends. Memos, effects, async memos,
+boundaries, projections, stream memos, timed values and bindings can report `Stale`; signals and async
+sources never do. Reading `Status` runs nothing and records no dependency, so `Stale` reflects marks
+already made: a memo is checked against its sources when it is read, and can report `None` after a source
+changes.
+
+Test one flag with `HasFlag` rather than comparing the whole status with `Status.None`. A settled effect
+that a write has woken is `Stale` without being pending or failed:
+
+```fsharp
+let isPending (node: INode) = node.Status.HasFlag Status.Pending
+let hasFailed (node: INode) = node.Status.HasFlag Status.Error
+```
 
 Pending is independent of dirtiness. A dirty node is out of date and recomputes on its next read. A
 pending node has run and is waiting on a source. Pending propagates: a memo, effect or boundary that
@@ -136,9 +153,8 @@ beforeSettle, List.ofSeq log
 :::
 ::::
 
-A reader that suspended re-runs from the start of its body when the source settles, not from the
-read that suspended. See
-[Re-running versus resuming](../concepts/suspension.md#re-running-versus-resuming) for the reasoning.
+[Why bodies re-run from the start](../concepts/suspension.md#re-running-versus-resuming)
+explains how this keeps reads consistent.
 
 ## Failures
 

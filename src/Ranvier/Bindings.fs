@@ -115,9 +115,14 @@ type internal Binding<'Target, 'T>
             link <- null
             this.Dispose ()
 
+#if RANVIER_TRACE
+    interface ITracedNode with
+        member _.TraceGraph = box graph
+#endif
+
     interface INode with
         member _.Id = id
-        member _.Status = status
+        member _.Status = status ||| Staleness.ofFreshness freshness
 
     interface IComputation with
         member _.AddSource _ = ()

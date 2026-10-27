@@ -4,7 +4,7 @@ order: 1
 ---
 
 :::info
-Preview: `Ranvier.Analyzers` is packed with the next release. Reference it and set `RanvierAnalyze`:
+`Ranvier.Analyzers` is published on NuGet at `0.1.0-preview.1`. Reference it and set `RanvierAnalyze`:
 
 ```xml
 <PackageReference Include="Ranvier.Analyzers" Version="0.1.0-preview.1" PrivateAssets="all" />
@@ -16,8 +16,8 @@ Preview: `Ranvier.Analyzers` is packed with the next release. Reference it and s
 with the CLI in the tool manifest: `dotnet tool install fsharp-analyzers --version 0.41.0`.
 :::
 
-`Ranvier.Analyzers` reports Ranvier traps at build time, at the source range of the cause. Each code below links to its
-cause, its fix and an example.
+`Ranvier.Analyzers` reports mistakes at their source ranges during a build. Each rule below has a
+triggering example and a corrected version.
 
 | Code | Title | Severity | Scope |
 |---|---|---|---|
@@ -59,9 +59,8 @@ In this repository, after `dotnet build Ranvier.slnx -c Release`:
 dotnet fsi build.fsx -- analyze
 ```
 
-The command builds the analyzers, runs them over the repository's projects with every code promoted to an error, and
-writes a SARIF report per project group to `artifacts/analyzers`. A project that sets `<RanvierAnalyze>true</RanvierAnalyze>` reports them in
-its own `dotnet build` output after each compile.
+The command builds the analyzers, treats findings as errors and writes reports to `artifacts/analyzers`.
+Set `<RanvierAnalyze>true</RanvierAnalyze>` to include findings in a project's `dotnet build` output.
 
 ## Suppression
 
