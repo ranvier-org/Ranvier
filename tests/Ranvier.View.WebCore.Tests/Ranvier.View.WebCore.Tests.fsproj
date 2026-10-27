@@ -13,6 +13,17 @@
         <Compile Include="MountTests.fs" />
         <Compile Include="InputTests.fs" />
         <Compile Include="PaintTests.fs" />
+        <Compile Include="../../experiments/Ranvier.View.Checks/ServerFixtures.fs" Link="Checks/ServerFixtures.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/RangeChecks.fs" Link="Checks/RangeChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/DelegationChecks.fs" Link="Checks/DelegationChecks.fs" />
+        <Compile Include="../../experiments/Ranvier.View.Checks/Browser.fs" Link="Checks/Browser.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/TemplateChecks.fs" Link="Checks/TemplateChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/TestingApiChecks.fs" Link="Checks/TestingApiChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/BoundaryChecks.fs" Link="Checks/BoundaryChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/CheckSupport.fs" Link="Checks/CheckSupport.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/PlacementChecks.fs" Link="Checks/PlacementChecks.fs" />
+        <Compile Include="../../examples/Fable.Ranvier.Playground/tests/ConformanceCases.fs" Link="Checks/ConformanceCases.fs" />
+        <Compile Include="ConformanceTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>

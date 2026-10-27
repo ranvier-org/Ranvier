@@ -39,6 +39,12 @@ let private hand (dom: Type) (header: string) : Map<string, string> =
             "ParentNode.prepend", "Nodes.Prepend(this, nodes)"
             "ParentNode.replaceChildren", "Nodes.ReplaceChildren(this, nodes)"
             "Node.nodeType.get", "float (Native.rv_node_type this.Handle)"
+            "KeyboardEvent.key.get",
+            "Events.Init(this, \"key\", fun () -> Interop.text \"KeyboardEvent.key\" (fun b c l -> NativeDom.rv_dom_keyboard_event_get_key (this.Handle, b, c, l)))"
+            "InputEvent.data.get",
+            "Events.Init(this, \"data\", fun () -> Option.ofObj (Interop.text \"InputEvent.data\" (fun b c l -> NativeDom.rv_dom_input_event_get_data (this.Handle, b, c, l))))"
+            "InputEvent.inputType.get",
+            "Events.Init(this, \"inputType\", fun () -> Interop.text \"InputEvent.inputType\" (fun b c l -> NativeDom.rv_dom_input_event_get_input_type (this.Handle, b, c, l)))"
         ]
 
     // The CSS properties of CSSStyleProperties read and write getPropertyValue and setProperty by their CSS name.

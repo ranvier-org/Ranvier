@@ -79,6 +79,11 @@ type WebCoreHost private (handle: nativeint, session: Session) =
     let timerKeys = Dictionary<int, struct (float * int)>()
     let frames = Dictionary<int, float -> unit>()
     let clock = Stopwatch.StartNew ()
+    let mutable advanced = 0.0
+
+    let interceptions =
+        List<struct (obj * string * Func<Func<obj array, obj>, obj array, obj>)>()
+
     let context = HostContext (posted, thread)
     let previousContext = SynchronizationContext.Current
     let mutable nextId = 1
@@ -100,6 +105,46 @@ type WebCoreHost private (handle: nativeint, session: Session) =
                 task ()
             with error ->
                 record error
+
+    let now () =
+        clock.Elapsed.TotalMilliseconds + advanced
+
+    let runDueTimers () =
+        let mutable going = true
+
+        while going && timers.Count > 0 do
+            let first = Seq.head timers
+            let struct (due, id) = first.Key
+
+            if due <= now () then
+                timers.Remove first.Key |> ignore
+                timerKeys.Remove id |> ignore
+
+                try
+                    first.Value ()
+                with error ->
+                    record error
+
+                runMicrotasks ()
+            else
+                going <- false
+
+    // Runs a host operation through the interceptions of its member name on the target, the latest outermost.
+    let through (target: obj) (name: string) (args: obj array) (original: obj array -> obj) : obj =
+        if interceptions.Count = 0 then
+            original args
+        else
+            let mutable call = original
+
+            for struct (on, memberName, wrap) in interceptions do
+                if
+                    memberName = name
+                    && (isNull on || obj.ReferenceEquals (on, target))
+                then
+                    let inner = call
+                    call <- fun values -> wrap.Invoke (Func<_, _> inner, values)
+
+            call args
 
     let relative (node: obj) (relation: int) : Node voption =
         match session.Node (Native.rv_node_relative (Interop.handle node, relation)) with
@@ -174,10 +219,7 @@ type WebCoreHost private (handle: nativeint, session: Session) =
         let id = nextId
         nextId <- nextId + 1
 
-        let key =
-            struct (clock.Elapsed.TotalMilliseconds
-                    + max 0.0 milliseconds,
-                    id)
+        let key = struct (now () + max 0.0 milliseconds, id)
 
         timers[key] <- action
         timerKeys[id] <- key
@@ -230,32 +272,23 @@ type WebCoreHost private (handle: nativeint, session: Session) =
 
             runMicrotasks ()
 
-        let now = clock.Elapsed.TotalMilliseconds
-        let mutable going = true
-
-        while going && timers.Count > 0 do
-            let mutable first = Unchecked.defaultof<KeyValuePair<_, _>>
-
-            for pair in timers do
-                if going then
-                    first <- pair
-                    going <- false
-
-            let struct (due, id) = first.Key
-
-            if due <= now then
-                timers.Remove first.Key |> ignore
-                timerKeys.Remove id |> ignore
-
-                try
-                    first.Value ()
-                with error ->
-                    record error
-
-                runMicrotasks ()
-                going <- true
-
+        runDueTimers ()
         runMicrotasks ()
+
+    /// <summary>Moves the timer clock forward by <c>milliseconds</c> and runs the timers then due, as a test clock does.</summary>
+    member internal _.AdvanceBy(milliseconds: float) =
+        advanced <- advanced + milliseconds
+        runDueTimers ()
+        runMicrotasks ()
+
+    /// <summary>
+    /// Makes the host's operation named <c>name</c> (a DOM member name, such as <c>insertBefore</c>) on <c>target</c>, or
+    /// on any node for null, run through <c>wrap</c> until the returned function is called.
+    /// </summary>
+    member internal _.Intercept(target: obj, name: string, wrap: Func<Func<obj array, obj>, obj array, obj>) : unit -> unit =
+        let entry = struct (target, name, wrap)
+        interceptions.Add entry
+        fun () -> interceptions.Remove entry |> ignore
 
     /// <summary>
     /// Runs a frame: the animation frame callbacks queued before it, then WebCore's rendering update. The app paints
@@ -263,7 +296,7 @@ type WebCoreHost private (handle: nativeint, session: Session) =
     /// </summary>
     member _.Frame() =
         Volatile.Write (&frameRequested, 0)
-        let now = clock.Elapsed.TotalMilliseconds
+        let now = now ()
         let callbacks = Seq.toArray frames.Values
         frames.Clear ()
 
@@ -416,53 +449,90 @@ type WebCoreHost private (handle: nativeint, session: Session) =
             relative node 3
 
         member _.AppendChild(parent, node) =
-            Native.rv_node_insert_before (Interop.handle parent, Interop.handle node, 0n)
-            |> Interop.check "Node.appendChild"
+            through parent "appendChild" [| node |] (fun args ->
+                Native.rv_node_insert_before (Interop.handle parent, Interop.handle args[0], 0n)
+                |> Interop.check "Node.appendChild"
+
+                args[0])
+            |> ignore
 
         member _.InsertBefore(parent, node, before) =
-            Native.rv_node_insert_before (Interop.handle parent, Interop.handle node, Interop.handle before)
-            |> Interop.check "Node.insertBefore"
+            through parent "insertBefore" [| node; before |] (fun args ->
+                Native.rv_node_insert_before (Interop.handle parent, Interop.handle args[0], Interop.handle args[1])
+                |> Interop.check "Node.insertBefore"
+
+                args[0])
+            |> ignore
 
         member _.CloneNode(node, deep) =
-            let source = Interop.handle node
+            through node "cloneNode" [| deep |] (fun args ->
+                let deep = unbox<bool> args[0]
 
-            match Native.rv_node_clone (source, (if deep then 1 else 0)) with
-            | 0n -> raise (InvalidOperationException "rv_node_clone returned NULL")
-            | cloned ->
-                let clone = session.Node cloned
+                match Native.rv_node_clone (Interop.handle node, (if deep then 1 else 0)) with
+                | 0n -> raise (InvalidOperationException "rv_node_clone returned NULL")
+                | cloned ->
+                    let clone = session.Node cloned
 
-                if deep then
-                    Templates.CopyContent (node :?> NativeObject, clone)
+                    if deep then
+                        Templates.CopyContent (node :?> NativeObject, clone)
 
-                unbox<Node> clone
+                    box clone)
+            |> unbox<Node>
 
         member _.DataOf node =
-            let node = Interop.handle node
-            Interop.text "CharacterData.data" (fun b c l -> Native.rv_node_get_string (node, 5, b, c, l))
+            through node "get_data" [||] (fun _ ->
+                let node = Interop.handle node
+                Interop.text "CharacterData.data" (fun b c l -> Native.rv_node_get_string (node, 5, b, c, l)))
+            |> unbox<string>
 
         member _.SetData(node, data) =
-            Native.rv_node_set_string (Interop.handle node, 5, data)
-            |> Interop.check "CharacterData.data"
+            through node "set_data" [| data |] (fun args ->
+                Native.rv_node_set_string (Interop.handle node, 5, unbox<string> args[0])
+                |> Interop.check "CharacterData.data"
+
+                null)
+            |> ignore
 
         member _.Remove node =
-            Native.rv_node_remove (Interop.handle node)
-            |> Interop.check "ChildNode.remove"
+            through node "remove" [||] (fun _ ->
+                Native.rv_node_remove (Interop.handle node)
+                |> Interop.check "ChildNode.remove"
+
+                null)
+            |> ignore
 
         member _.RemoveChild(parent, node) =
-            Native.rv_node_remove_child (Interop.handle parent, Interop.handle node)
-            |> Interop.check "Node.removeChild"
+            through parent "removeChild" [| node |] (fun args ->
+                Native.rv_node_remove_child (Interop.handle parent, Interop.handle args[0])
+                |> Interop.check "Node.removeChild"
+
+                args[0])
+            |> ignore
 
         member _.GetAttribute(element, name) =
-            let element = Interop.handle element
-            Interop.text "Element.getAttribute" (fun b c l -> Native.rv_element_get_attribute (element, name, b, c, l))
+            through element "getAttribute" [| name |] (fun args ->
+                let element = Interop.handle element
+
+                Interop.text "Element.getAttribute" (fun b c l -> Native.rv_element_get_attribute (element, unbox<string> args[0], b, c, l)))
+            |> unbox<string>
 
         member _.SetAttribute(element, name, value) =
-            Native.rv_element_set_attribute (Interop.handle element, name, (if isNull value then "" else value))
-            |> Interop.check "Element.setAttribute"
+            through element "setAttribute" [| name; value |] (fun args ->
+                let value = unbox<string> args[1]
+
+                Native.rv_element_set_attribute (Interop.handle element, unbox<string> args[0], (if isNull value then "" else value))
+                |> Interop.check "Element.setAttribute"
+
+                null)
+            |> ignore
 
         member _.RemoveAttribute(element, name) =
-            Native.rv_element_remove_attribute (Interop.handle element, name)
-            |> Interop.check "Element.removeAttribute"
+            through element "removeAttribute" [| name |] (fun args ->
+                Native.rv_element_remove_attribute (Interop.handle element, unbox<string> args[0])
+                |> Interop.check "Element.removeAttribute"
+
+                null)
+            |> ignore
 
         member _.Walk(root, walk, nodes, start) =
             // A stored node's object holds the reference the walk continues from; any other step owns its handle.
@@ -517,9 +587,15 @@ type WebCoreHost private (handle: nativeint, session: Session) =
 
         member _.Listen(target, eventName, listener) =
             let registration =
-                Events.Listen (target :?> NativeObject, eventName, false, null, listener)
+                through target "addEventListener" [| eventName; listener |] (fun args ->
+                    box (Events.Listen (target :?> NativeObject, unbox<string> args[0], false, null, listener)))
+                |> unbox<Registration>
 
-            fun () -> Events.Unlisten (session, registration)
+            fun () ->
+                through target "removeEventListener" [| eventName; listener |] (fun _ ->
+                    Events.Unlisten (session, registration)
+                    null)
+                |> ignore
 
         member _.OverrideCurrentTarget(event, read) =
             (event :?> NativeObject).CurrentTargetOverride <- read

@@ -84,6 +84,9 @@ type NativeObject(session: Session, handle: nativeint, kind: int) =
 
     member val internal CurrentTargetOverride: unit -> obj = Unchecked.defaultof<_> with get, set
 
+    /// <summary>The init fields of an event created by the host, which take precedence over the native values.</summary>
+    member val internal Init: Dictionary<string, obj> = null with get, set
+
     /// <summary>Releases the reference now, on the host thread.</summary>
     member internal this.Detach() =
         if handle <> 0n then
@@ -241,6 +244,10 @@ and [<Sealed; AllowNullLiteral>] Session internal (host: nativeint) =
         this.Wrap (handle, this.EventFactory, Kind.Event)
 
     /// <summary>The object of an event handle valid for the current listener call.</summary>
+    /// <summary>Enters an object created for an owned node or event handle in the table.</summary>
+    member internal _.Register(created: NativeObject) =
+        table[created.Handle] <- WeakReference<NativeObject>(created)
+
     member internal this.BorrowedEvent(handle: nativeint) : NativeObject =
         let mutable existing = null
 

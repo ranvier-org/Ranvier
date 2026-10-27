@@ -1,4 +1,4 @@
-93 classes; 4926 members: 1554 mapped to 926 of 1002 rv_dom_* functions, 1275 hand-written, 2097 unmapped
+93 classes; 4926 members: 1551 mapped to 923 of 1002 rv_dom_* functions, 1278 hand-written, 2097 unmapped
 
 Unmapped members by reason:
    1705  no ABI function
@@ -377,8 +377,8 @@ Members by class (mapped / hand-written / unmapped):
   HTMLTrackElementObject: 0 / 0 / 19
   HTMLUListElementObject: 4 / 0 / 3
   HTMLVideoElementObject: 244 / 31 / 360
-  InputEventObject: 3 / 0 / 2
-  KeyboardEventObject: 12 / 4 / 1
+  InputEventObject: 1 / 2 / 2
+  KeyboardEventObject: 11 / 5 / 1
   MouseEventObject: 22 / 0 / 1
   NodeListObject: 3 / 0 / 5
   NodeListOfObject<'TNode when 'TNode :> Fable.Core.TS.Dom.Node>: 2 / 0 / 4

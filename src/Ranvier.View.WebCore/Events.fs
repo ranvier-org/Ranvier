@@ -170,6 +170,15 @@ type internal Events private () =
             prevented = 0
         | _ -> raise (ArgumentException "dispatchEvent takes an event of the native backend")
 
+    /// <summary>An init field of a host-created event, else the native value.</summary>
+    static member Init<'T>(event: NativeObject, name: string, read: unit -> 'T) : 'T =
+        match event.Init with
+        | null -> read ()
+        | init ->
+            match init.TryGetValue name with
+            | true, value -> unbox<'T> value
+            | _ -> read ()
+
     /// <summary><c>Event.currentTarget</c>, or the override the view's delegation set for the dispatch.</summary>
     static member CurrentTarget(event: NativeObject) : EventTarget option =
         if isNull (box event.CurrentTargetOverride) then
