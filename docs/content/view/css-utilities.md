@@ -103,7 +103,7 @@ let liveCard = utility {
 }
 
 let cardComponent =
-    Ranvier.View.Component.define
+    Component.define
         (fun _ initialWidth -> {
             Busy = Api.createSignal false
             Width = Api.createSignal initialWidth
