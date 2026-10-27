@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFrameworks>net10.0;net8.0</TargetFrameworks><IsPackable>false</IsPackable></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Ranvier.Css/Ranvier.Css.fsproj"/><Compile Include="Generated/Css.fs"/><None Include="Generated/Css.manifest.json"/></ItemGroup>
+</Project>

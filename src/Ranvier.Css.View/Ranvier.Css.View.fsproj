@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFrameworks>net10.0;net8.0</TargetFrameworks><IsPackable>false</IsPackable><WarnOn>$(WarnOn);3390</WarnOn></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Ranvier.Css/Ranvier.Css.fsproj" /><ProjectReference Include="../Ranvier.View/Ranvier.View.fsproj" /><Compile Include="Bindings.fs" /><Compile Include="UtilityBindings.fs" /></ItemGroup>
+</Project>
