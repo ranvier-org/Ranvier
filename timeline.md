@@ -97,6 +97,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 83,375 | 127,523 | 1,742,155 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 83,311 | 127,585 | 1,742,209 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 83,317 | 127,524 | 1,742,196 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 83,310 | 127,562 | 1,742,193 |
 
 ## app-table
 
@@ -195,6 +196,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 4,417,787 | 9,274,379 | 107,882,167 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 4,417,694 | 9,272,684 | 107,879,432 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 4,417,787 | 9,275,619 | 107,668,903 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 4,417,772 | 9,275,276 | 107,755,626 |
 
 ## async-recover
 
@@ -293,6 +295,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 139,183 | 41,273 | 434,855 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 139,183 | 41,273 | 434,847 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 139,183 | 41,273 | 434,848 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 139,183 | 41,267 | 434,841 |
 
 ## async-resolve
 
@@ -391,6 +394,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,791,250 | 1,022,849 | 11,966,852 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,791,251 | 1,022,471 | 11,970,488 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,791,251 | 1,023,152 | 11,966,843 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,791,251 | 1,022,996 | 11,970,218 |
 
 ## chain
 
@@ -489,6 +493,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 13,035 | 318 | 2,454 | 4,491 | 3,217 | 72,782 | 66,827 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -587,6 +592,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,553 | 3,071 | 2,500 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,553 | 3,071 | 2,500 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,553 | 3,071 | 2,500 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -685,6 +691,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 74,709 | 836,642 | 2,603,152 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 74,709 | 836,766 | 2,603,124 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 74,709 | 836,767 | 2,603,208 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 74,710 | 836,749 | 2,603,114 |
 
 ## create
 
@@ -783,6 +790,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 13,699,314 | 2,865,677 | 2,570,368 | 2,127,905 | 4,042,588 | 34,003,480 | 50,334,364 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 13,464,410 | 2,865,677 | 2,570,369 | 2,127,803 | 4,045,313 | 34,003,051 | 50,334,236 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 13,573,921 | 2,865,678 | 2,570,400 | 2,127,999 | 4,045,090 | 34,003,035 | 50,333,879 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 13,621,910 | 2,865,678 | 2,570,368 | 2,126,793 | 4,045,510 | 34,003,180 | 50,334,160 |
 
 ## create-on
 
@@ -881,6 +889,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,949,485 | 4,179,982 | 55,229,174 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,949,484 | 4,179,680 | 55,229,117 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,949,484 | 4,179,771 | 55,229,172 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,949,484 | 4,179,669 | 55,228,942 |
 
 ## cutoff
 
@@ -979,6 +988,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1077,6 +1087,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 781 | 751 | 16,520 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 781 | 751 | 16,520 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 781 | 751 | 16,520 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1175,6 +1186,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 751 | 802 | 16,543 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 751 | 802 | 16,543 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 751 | 802 | 16,543 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1273,6 +1285,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,706,249 | 806,288 | 367,497 | 475,658 | 495,063 | 13,207,602 | 9,106,018 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,707,646 | 806,288 | 367,497 | 475,497 | 495,286 | 13,205,967 | 9,106,377 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,706,247 | 806,288 | 367,497 | 476,299 | 495,394 | 13,207,518 | 9,105,764 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,706,244 | 806,288 | 367,497 | 475,510 | 495,048 | 13,207,556 | 9,106,495 |
 
 ## dispose-on
 
@@ -1371,6 +1384,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 346,497 | 487,598 | 8,902,254 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 346,497 | 488,201 | 8,902,738 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 346,497 | 487,780 | 8,902,210 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 346,497 | 487,909 | 8,902,609 |
 
 ## editable-edit
 
@@ -1469,6 +1483,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 181,706 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 181,706 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 181,706 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 181,706 |
 
 ## editable-upstream
 
@@ -1567,6 +1582,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 232,855 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 232,855 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 232,855 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 232,855 |
 
 ## fail-recompute
 
@@ -1665,6 +1681,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 65,094 | 1,370 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 65,094 | 1,370 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 65,094 | 1,370 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 65,094 | 1,370 |
 
 ## flight
 
@@ -1763,6 +1780,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 
 ## keyed-insert
 
@@ -1861,6 +1879,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,921,737 | 54,013 | 54,952 | 3,277,873 | 237,670 | 176,032 | 45,075,910 | 2,634,535 | 2,655,497 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,921,737 | 53,917 | 54,952 | 3,277,860 | 237,684 | 176,004 | 45,075,850 | 2,634,489 | 2,655,516 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,921,737 | 53,981 | 54,957 | 3,277,797 | 237,669 | 176,020 | 45,075,853 | 2,634,545 | 2,655,534 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,921,737 | 53,917 | 54,953 | 3,277,766 | 237,645 | 176,025 | 45,075,855 | 2,634,573 | 2,655,551 |
 
 ## keyed-remove
 
@@ -1959,6 +1978,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,920,671 | 43,703 | 45,301 | 3,292,840 | 591,678 | 605,972 | 45,053,053 | 1,924,678 | 1,960,146 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,920,675 | 43,607 | 45,301 | 3,292,963 | 592,007 | 606,142 | 45,053,008 | 1,924,852 | 1,960,200 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,920,673 | 43,671 | 45,301 | 3,292,893 | 592,094 | 606,142 | 45,041,057 | 1,924,609 | 1,960,146 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,920,671 | 43,608 | 45,300 | 3,292,923 | 591,910 | 606,070 | 45,052,984 | 1,924,627 | 1,960,153 |
 
 ## keyed-swap
 
@@ -2057,6 +2077,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,973,362 | 46,301 | 46,927 | 3,628,542 | 149,212 | 512,965 | 46,198,638 | 915,706 | 936,160 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,973,362 | 46,205 | 46,927 | 3,625,522 | 148,928 | 513,087 | 46,198,629 | 915,651 | 936,174 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,973,362 | 46,253 | 46,927 | 3,626,875 | 148,984 | 512,987 | 46,199,001 | 915,693 | 936,160 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,973,362 | 46,206 | 46,928 | 3,631,793 | 148,900 | 512,953 | 46,203,170 | 915,653 | 936,247 |
 
 ## mvu-dispatch
 
@@ -2155,6 +2176,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 58,292 | 788 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 58,292 | 788 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 58,292 | 788 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2253,6 +2275,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 7,013 | 884 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 7,013 | 884 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 7,029 | 884 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 7,013 | 884 |
 
 ## project-chain
 
@@ -2351,6 +2374,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,071,976 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,071,888 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,071,959 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,071,864 |
 
 ## project-churn
 
@@ -2449,6 +2473,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 36,385 | 34,250 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 36,470 | 34,346 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 36,385 | 34,250 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2547,6 +2572,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 50,556 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 50,556 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 50,460 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 50,460 |
 
 ## project-reorder
 
@@ -2645,6 +2671,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 780,164 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 780,164 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 780,068 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 780,068 |
 
 ## server-render
 
@@ -2743,6 +2770,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 680,652 | 1,147,526 | 9,828,297 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 680,652 | 1,147,247 | 9,829,156 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 682,252 | 1,147,118 | 9,828,900 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 680,652 | 1,146,953 | 9,828,860 |
 
 ## shape-diamond
 
@@ -2841,6 +2869,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 59,915 | 80,445 | 1,764,075 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 59,915 | 80,445 | 1,764,075 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 59,915 | 80,445 | 1,764,075 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2939,6 +2968,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 84,378 | 108,947 | 2,038,136 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 84,378 | 108,947 | 2,038,136 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 84,378 | 108,943 | 2,038,136 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3037,6 +3067,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,471 | 47,580 | 45,790 | 55,383 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,472 | 47,580 | 45,790 | 55,383 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,466 | 47,577 | 45,790 | 55,380 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,467 | 47,577 | 45,790 | 55,383 |
 
 ## stream-burst-16
 
@@ -3135,6 +3166,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 5,022 | 24,618 | 5,712 | 9,732 | 50,032 | 8,071 | 123,808 | 720,148 | 113,731 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 5,022 | 24,618 | 5,712 | 9,742 | 50,033 | 8,069 | 123,810 | 720,148 | 113,733 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 5,022 | 24,618 | 5,712 | 9,738 | 50,033 | 8,069 | 123,812 | 720,148 | 113,734 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 5,022 | 24,618 | 5,712 | 9,738 | 50,032 | 8,067 | 123,810 | 720,150 | 113,733 |
 
 ## stream-burst-256
 
@@ -3233,6 +3265,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 54,162 | 393,702 | 57,051 | 131,999 | 792,829 | 74,743 | 1,343,698 | 11,508,770 | 1,046,723 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 54,162 | 393,702 | 57,051 | 131,957 | 792,880 | 74,743 | 1,343,714 | 11,508,770 | 1,046,721 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 54,162 | 393,702 | 57,051 | 131,938 | 792,830 | 74,743 | 1,343,691 | 11,508,713 | 1,046,728 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 54,162 | 393,702 | 57,051 | 131,987 | 792,876 | 74,693 | 1,343,778 | 11,508,770 | 1,046,727 |
 
 ## stream-restart
 
@@ -3331,6 +3364,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 4,204 | 4,995 | 6,573 | 16,887 | 42,880 | 72,022 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 4,204 | 4,995 | 6,579 | 16,889 | 42,881 | 72,022 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 4,204 | 4,995 | 6,579 | 16,889 | 42,880 | 72,024 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 4,204 | 4,995 | 6,576 | 16,890 | 42,893 | 72,024 |
 
 ## timed-admit-both
 
@@ -3429,6 +3463,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 117,709 | 130,034 | 2,693,578 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 117,709 | 130,036 | 2,693,565 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 117,709 | 130,039 | 2,693,577 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 117,709 | 130,037 | 2,693,578 |
 
 ## timed-admit-debounce
 
@@ -3527,6 +3562,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 116,614 | 128,607 | 2,654,129 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 116,614 | 128,619 | 2,654,130 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 116,614 | 128,613 | 2,654,129 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 116,614 | 128,614 | 2,654,117 |
 
 ## timed-admit-first
 
@@ -3625,6 +3661,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 69,621 | 79,568 | 1,620,677 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 69,621 | 79,564 | 1,620,677 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 69,621 | 79,566 | 1,620,677 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3723,6 +3760,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 116,876 | 128,934 | 2,663,986 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 116,876 | 128,937 | 2,663,985 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 116,876 | 128,938 | 2,663,985 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 116,876 | 128,939 | 2,663,973 |
 
 ## timed-capture-both
 
@@ -3821,6 +3859,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 35,740 | 44,935 | 846,917 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 35,740 | 44,936 | 846,917 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 35,740 | 44,936 | 846,917 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 35,740 | 44,935 | 846,916 |
 
 ## timed-capture-debounce
 
@@ -3919,6 +3958,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 35,612 | 44,232 | 847,659 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 35,612 | 44,232 | 847,657 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 35,612 | 44,232 | 847,657 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 35,612 | 44,233 | 847,657 |
 
 ## timed-capture-first
 
@@ -4017,6 +4057,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 32,092 | 36,742 | 745,653 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 32,092 | 36,742 | 745,651 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 32,092 | 36,742 | 745,653 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4115,6 +4156,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 35,548 | 44,168 | 839,785 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 35,548 | 44,168 | 839,784 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 35,548 | 44,168 | 839,785 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -4213,6 +4255,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,095,790 | 38,805 | 84,105 | 263,233 | 145,789 | 3,351,283 | 2,545,097 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,087,783 | 38,805 | 84,105 | 263,233 | 145,781 | 3,351,254 | 2,545,044 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,089,390 | 38,805 | 84,105 | 263,027 | 145,782 | 3,351,346 | 2,545,037 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,087,783 | 38,805 | 84,105 | 263,037 | 145,791 | 3,351,344 | 2,545,096 |
 
 ## update-on
 
@@ -4311,6 +4354,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 94,605 | 169,013 | 2,872,455 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 94,605 | 169,034 | 2,872,417 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 94,605 | 169,017 | 2,872,412 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 94,605 | 168,991 | 2,872,339 |
 
 ## work-form
 
@@ -4409,6 +4453,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 172,679 | 165,150 | 308,809 | 296,973 | 5,421,902 | 5,334,925 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 172,679 | 165,150 | 308,807 | 296,917 | 5,421,861 | 5,334,934 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 172,679 | 165,150 | 308,831 | 296,998 | 5,421,904 | 5,334,884 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 172,679 | 165,150 | 308,847 | 296,985 | 5,421,905 | 5,334,896 |
 
 ## work-status
 
@@ -4507,6 +4552,7 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 102,045 | 80,235 | 269,355 | 156,087 | 2,659,278 | 2,391,271 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 102,045 | 80,235 | 269,334 | 156,147 | 2,659,262 | 2,391,339 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 102,045 | 80,235 | 269,318 | 156,117 | 2,659,246 | 2,391,312 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 102,045 | 80,235 | 269,331 | 156,133 | 2,659,213 | 2,391,299 |
 
 ## work-value
 
@@ -4605,4 +4651,5 @@
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 109,169 | 121,071 | 269,582 | 283,376 | 2,643,835 | 2,968,493 |
 | `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 109,169 | 121,071 | 269,637 | 283,411 | 2,643,940 | 2,968,454 |
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 109,169 | 121,071 | 269,560 | 283,413 | 2,643,893 | 2,968,441 |
+| `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 109,169 | 121,069 | 269,577 | 283,434 | 2,643,903 | 2,968,480 |
 
