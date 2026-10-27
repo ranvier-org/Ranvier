@@ -10,4 +10,10 @@
     <ProjectReference Include="../../tools/Ranvier.Css.Compile/Ranvier.Css.Compile.fsproj" />
     <Compile Include="Tests.fs" />
   </ItemGroup>
+  <Target Name="BuildExtractionFixtures" BeforeTargets="Build">
+    <MSBuild Projects="../../src/Ranvier.Css.Bindings/Ranvier.Css.Bindings.fsproj"
+             Targets="Build" Properties="Configuration=Release;TargetFramework=net10.0" />
+    <MSBuild Projects="Fixtures/App/App.fsproj" Targets="Restore;Build"
+             Properties="Configuration=Release" />
+  </Target>
 </Project>
