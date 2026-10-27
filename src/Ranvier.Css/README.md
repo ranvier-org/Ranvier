@@ -4,7 +4,7 @@
 
 Install `Ranvier.Css.Bindings` and `Ranvier.Css.View` from NuGet with `--prerelease`, or reference their projects from a checkout. The CSS packages start at `0.1.0-alpha.1`; the view adapter requires `Ranvier.View` `0.1.0-alpha.2` or later for class contribution merging. The runtime, bindings and view adapter include Fable sources. `Ranvier.Css.Build` is .NET-only. Applications compile their normal F# references; the specification generator is a library-maintenance tool, not an application build prerequisite.
 
-Read the [typed CSS guide](https://shayanhabibi.github.io/Ranvier/view/css.html), [composite utility examples](https://shayanhabibi.github.io/Ranvier/view/css-utilities.html) and [asset extraction guide](https://shayanhabibi.github.io/Ranvier/view/css-build.html).
+Read the [typed CSS guide](https://shayanhabibi.github.io/Ranvier/view/css/), [composite utility examples](https://shayanhabibi.github.io/Ranvier/view/css-utilities/) and [asset extraction guide](https://shayanhabibi.github.io/Ranvier/view/css-build/).
 
 ## Component styles
 
