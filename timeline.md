@@ -93,6 +93,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 83,376 | 127,519 | 1,742,264 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 83,373 | 127,514 | 1,742,206 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 83,377 | 127,537 | 1,742,214 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 83,694 | 127,534 | 1,742,237 |
 
 ## app-table
 
@@ -187,6 +188,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,417,590 | 9,273,397 | 107,853,155 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 4,417,715 | 9,274,074 | 107,924,113 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 4,417,675 | 9,274,239 | 107,852,885 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 4,417,723 | 9,383,641 | 107,748,203 |
 
 ## async-recover
 
@@ -281,6 +283,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 139,071 | 41,259 | 434,858 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 139,071 | 41,263 | 434,859 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 139,071 | 41,269 | 434,849 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 139,183 | 41,263 | 434,848 |
 
 ## async-resolve
 
@@ -375,6 +378,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,788,051 | 1,023,029 | 11,970,210 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,788,052 | 1,022,848 | 11,966,856 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,788,052 | 1,022,986 | 11,970,392 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,791,251 | 1,023,056 | 11,966,803 |
 
 ## chain
 
@@ -469,6 +473,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -563,6 +568,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,553 | 3,071 | 2,500 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,553 | 3,071 | 2,500 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,553 | 3,071 | 2,500 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -657,6 +663,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 74,709 | 836,613 | 2,603,135 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 74,709 | 836,702 | 2,603,175 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 74,709 | 836,722 | 2,603,147 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 74,709 | 836,704 | 2,603,209 |
 
 ## create
 
@@ -751,6 +758,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 13,464,300 | 2,865,678 | 2,570,400 | 2,127,915 | 4,045,530 | 34,003,214 | 50,333,928 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 13,448,437 | 2,865,677 | 2,570,368 | 2,127,524 | 4,045,260 | 34,003,185 | 50,334,303 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 13,573,788 | 2,865,676 | 2,570,370 | 2,127,106 | 4,045,348 | 34,003,379 | 50,334,392 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 13,464,447 | 2,865,678 | 2,570,416 | 2,128,104 | 4,042,729 | 34,003,242 | 50,333,902 |
 
 ## create-on
 
@@ -845,6 +853,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,949,484 | 4,179,846 | 55,229,109 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,949,484 | 4,179,590 | 55,229,382 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,949,517 | 4,179,708 | 55,229,348 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,965,484 | 4,179,748 | 55,229,128 |
 
 ## cutoff
 
@@ -939,6 +948,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1033,6 +1043,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 781 | 751 | 16,520 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 781 | 751 | 16,520 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 781 | 751 | 16,520 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1127,6 +1138,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 751 | 802 | 16,543 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 751 | 802 | 16,543 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 751 | 802 | 16,543 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1221,6 +1233,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 2,707,645 | 806,288 | 367,497 | 475,504 | 495,038 | 13,207,606 | 9,106,841 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 2,707,643 | 806,288 | 367,497 | 475,715 | 495,220 | 13,207,653 | 9,105,684 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,706,245 | 806,288 | 367,497 | 475,688 | 495,008 | 13,206,144 | 9,105,874 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,707,644 | 806,288 | 367,497 | 475,855 | 495,255 | 13,205,721 | 9,105,615 |
 
 ## dispose-on
 
@@ -1315,6 +1328,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 346,497 | 487,653 | 8,902,955 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 346,497 | 487,750 | 8,902,697 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 346,497 | 487,814 | 8,902,964 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 346,497 | 487,792 | 8,902,627 |
 
 ## editable-edit
 
@@ -1409,6 +1423,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 181,706 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 181,706 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 181,706 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 181,706 |
 
 ## editable-upstream
 
@@ -1503,6 +1518,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 232,855 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 232,855 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 232,855 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 232,855 |
 
 ## fail-recompute
 
@@ -1597,6 +1613,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 65,086 | 1,370 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 65,086 | 1,370 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 65,086 | 1,370 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 65,094 | 1,370 |
 
 ## flight
 
@@ -1691,6 +1708,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 
 ## keyed-insert
 
@@ -1785,6 +1803,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,921,737 | 53,917 | 54,956 | 3,277,661 | 237,650 | 176,043 | 45,075,847 | 2,634,583 | 2,655,507 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,921,737 | 53,917 | 54,958 | 3,277,845 | 237,644 | 176,040 | 45,075,873 | 2,634,486 | 2,655,495 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,921,737 | 53,917 | 54,953 | 3,277,634 | 237,680 | 176,006 | 45,075,909 | 2,634,539 | 2,655,541 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,921,753 | 54,013 | 54,966 | 3,277,579 | 237,664 | 175,990 | 45,075,896 | 2,634,553 | 2,655,465 |
 
 ## keyed-remove
 
@@ -1879,6 +1898,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,920,671 | 43,607 | 45,301 | 3,292,925 | 591,834 | 606,164 | 45,041,027 | 1,924,648 | 1,960,192 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,920,685 | 43,607 | 45,301 | 3,292,933 | 592,045 | 606,202 | 45,041,065 | 1,924,575 | 1,960,147 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,920,673 | 43,607 | 45,299 | 3,292,650 | 592,034 | 606,201 | 45,041,042 | 1,924,672 | 1,960,219 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,920,691 | 43,703 | 45,317 | 3,292,807 | 591,954 | 606,158 | 45,041,032 | 1,924,627 | 1,960,161 |
 
 ## keyed-swap
 
@@ -1973,6 +1993,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,973,362 | 46,205 | 46,927 | 3,633,157 | 148,902 | 511,997 | 46,198,638 | 915,668 | 936,096 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,973,362 | 46,205 | 46,927 | 3,628,661 | 148,900 | 513,034 | 46,198,650 | 915,697 | 936,178 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,973,362 | 46,205 | 46,927 | 3,630,057 | 148,957 | 513,084 | 46,198,990 | 915,760 | 936,079 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,973,362 | 46,301 | 46,928 | 3,628,649 | 148,860 | 512,977 | 46,198,624 | 915,656 | 936,147 |
 
 ## mvu-dispatch
 
@@ -2067,6 +2088,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 58,292 | 788 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 58,292 | 788 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 58,292 | 788 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2161,6 +2183,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 7,046 | 884 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 7,030 | 884 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 7,014 | 884 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 7,093 | 884 |
 
 ## project-chain
 
@@ -2255,6 +2278,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,071,750 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,071,835 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,071,703 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,071,801 |
 
 ## project-churn
 
@@ -2349,6 +2373,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 36,385 | 34,250 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 36,385 | 34,250 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 36,385 | 34,268 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 36,417 | 34,278 |
 
 ## project-edit
 
@@ -2443,6 +2468,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 50,460 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 50,476 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 50,460 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 50,556 |
 
 ## project-reorder
 
@@ -2537,6 +2563,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 780,068 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 780,067 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 780,068 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 780,164 |
 
 ## server-render
 
@@ -2631,6 +2658,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 680,651 | 1,147,848 | 9,888,447 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 682,251 | 1,147,606 | 9,888,328 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 680,652 | 1,147,481 | 9,888,270 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 680,652 | 1,147,319 | 9,828,978 |
 
 ## shape-diamond
 
@@ -2725,6 +2753,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 59,915 | 80,445 | 1,764,075 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 59,915 | 80,445 | 1,764,075 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 59,915 | 80,445 | 1,764,075 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2819,6 +2848,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 84,378 | 108,945 | 2,038,136 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 84,378 | 108,947 | 2,038,136 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 84,378 | 108,947 | 2,038,136 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2913,6 +2943,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,470 | 47,578 | 45,790 | 55,380 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,470 | 47,580 | 45,790 | 55,379 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,577 | 45,790 | 55,380 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,950 | 1,548 | 2,518 | 4,696 | 3,672 | 13,469 | 47,580 | 45,790 | 55,380 |
 
 ## stream-burst-16
 
@@ -3007,6 +3038,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 5,022 | 24,618 | 5,712 | 9,722 | 50,033 | 8,071 | 123,808 | 720,148 | 113,731 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 5,022 | 24,618 | 5,712 | 9,738 | 50,033 | 8,066 | 123,812 | 720,151 | 113,733 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 5,022 | 24,618 | 5,712 | 9,735 | 50,033 | 8,071 | 123,810 | 720,148 | 113,732 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 5,022 | 24,618 | 5,728 | 9,727 | 50,033 | 8,071 | 123,809 | 720,150 | 113,731 |
 
 ## stream-burst-256
 
@@ -3101,6 +3133,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 54,162 | 393,702 | 57,051 | 131,945 | 792,883 | 74,743 | 1,343,779 | 11,508,770 | 1,046,658 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 54,162 | 393,702 | 57,051 | 131,996 | 792,832 | 74,743 | 1,343,668 | 11,508,770 | 1,046,720 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 54,162 | 393,702 | 57,051 | 131,977 | 792,866 | 74,743 | 1,343,730 | 11,508,841 | 1,046,688 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 54,162 | 393,702 | 57,067 | 132,057 | 792,882 | 74,743 | 1,343,778 | 11,508,677 | 1,046,726 |
 
 ## stream-restart
 
@@ -3195,6 +3228,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 4,203 | 4,998 | 6,579 | 16,890 | 42,886 | 72,023 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 4,203 | 4,998 | 6,576 | 16,887 | 42,902 | 72,017 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 4,203 | 4,998 | 6,576 | 16,889 | 42,878 | 72,020 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 4,204 | 5,011 | 6,573 | 16,884 | 42,897 | 72,023 |
 
 ## timed-admit-both
 
@@ -3289,6 +3323,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 117,709 | 130,036 | 2,693,578 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 121,805 | 130,036 | 2,693,577 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 117,709 | 130,035 | 2,693,577 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 117,709 | 130,036 | 2,693,565 |
 
 ## timed-admit-debounce
 
@@ -3383,6 +3418,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,614 | 128,618 | 2,654,129 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 120,710 | 128,620 | 2,654,117 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 116,614 | 128,617 | 2,654,128 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 116,614 | 128,619 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -3477,6 +3513,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 69,621 | 79,563 | 1,620,677 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 71,669 | 79,565 | 1,620,677 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 69,621 | 79,566 | 1,620,677 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3571,6 +3608,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 116,876 | 128,938 | 2,663,986 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 120,972 | 128,936 | 2,663,973 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 116,876 | 128,929 | 2,663,973 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 116,876 | 128,937 | 2,663,973 |
 
 ## timed-capture-both
 
@@ -3665,6 +3703,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,740 | 44,936 | 846,917 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,788 | 44,937 | 846,919 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,740 | 44,936 | 846,916 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 35,740 | 44,935 | 846,917 |
 
 ## timed-capture-debounce
 
@@ -3759,6 +3798,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,612 | 44,233 | 847,657 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,660 | 44,232 | 847,657 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,612 | 44,232 | 847,657 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -3853,6 +3893,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 32,092 | 36,742 | 745,651 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 34,140 | 36,742 | 745,651 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 32,092 | 36,742 | 745,653 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -3947,6 +3988,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 35,548 | 44,167 | 839,785 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 37,596 | 44,168 | 839,785 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,548 | 44,168 | 839,785 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -4041,6 +4083,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 1,087,790 | 38,805 | 84,105 | 262,961 | 145,790 | 3,351,232 | 2,544,986 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 1,087,790 | 38,805 | 84,105 | 262,937 | 145,803 | 3,351,235 | 2,544,974 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,087,790 | 38,805 | 84,105 | 262,933 | 145,755 | 3,351,259 | 2,545,002 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,087,790 | 38,805 | 84,105 | 263,281 | 145,824 | 3,351,329 | 2,545,028 |
 
 ## update-on
 
@@ -4135,6 +4178,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 94,605 | 169,047 | 2,872,389 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 94,605 | 169,014 | 2,872,465 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 94,605 | 169,000 | 2,872,329 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 94,605 | 169,008 | 2,872,347 |
 
 ## work-form
 
@@ -4229,6 +4273,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 172,679 | 165,150 | 308,840 | 296,990 | 5,421,850 | 5,334,940 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 172,679 | 165,150 | 308,803 | 296,954 | 5,421,774 | 5,334,955 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 172,679 | 165,150 | 308,831 | 296,967 | 5,421,863 | 5,334,925 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 172,679 | 165,150 | 308,823 | 296,990 | 5,421,830 | 5,334,915 |
 
 ## work-status
 
@@ -4323,6 +4368,7 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 102,045 | 80,235 | 269,341 | 156,108 | 2,659,268 | 2,391,319 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 102,045 | 80,235 | 269,318 | 156,102 | 2,659,169 | 2,391,261 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 102,045 | 80,235 | 269,330 | 156,122 | 2,659,181 | 2,391,286 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 102,045 | 80,235 | 269,331 | 156,100 | 2,659,120 | 2,391,237 |
 
 ## work-value
 
@@ -4417,4 +4463,5 @@
 | `5ef8f40` | 2026-10-26 | ci: publish all Ranvier packages from verified builds (#229) | 109,169 | 121,069 | 269,568 | 283,428 | 2,643,854 | 2,968,475 |
 | `19a8845` | 2026-10-26 | ci: finish NuGet publishing when uploads succeed (#230) | 109,169 | 121,071 | 269,559 | 283,410 | 2,643,818 | 2,968,474 |
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 109,171 | 121,070 | 269,558 | 283,386 | 2,643,900 | 2,968,428 |
+| `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 109,169 | 121,071 | 269,595 | 283,434 | 2,643,828 | 2,968,476 |
 
