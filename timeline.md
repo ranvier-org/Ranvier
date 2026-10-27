@@ -95,6 +95,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 83,377 | 127,537 | 1,742,214 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 83,694 | 127,534 | 1,742,237 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 83,375 | 127,523 | 1,742,155 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 83,311 | 127,585 | 1,742,209 |
 
 ## app-table
 
@@ -191,6 +192,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 4,417,675 | 9,274,239 | 107,852,885 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 4,417,723 | 9,383,641 | 107,748,203 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 4,417,787 | 9,274,379 | 107,882,167 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 4,417,694 | 9,272,684 | 107,879,432 |
 
 ## async-recover
 
@@ -287,6 +289,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 139,071 | 41,269 | 434,849 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 139,183 | 41,263 | 434,848 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 139,183 | 41,273 | 434,855 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 139,183 | 41,273 | 434,847 |
 
 ## async-resolve
 
@@ -383,6 +386,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,788,052 | 1,022,986 | 11,970,392 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,791,251 | 1,023,056 | 11,966,803 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,791,250 | 1,022,849 | 11,966,852 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,791,251 | 1,022,471 | 11,970,488 |
 
 ## chain
 
@@ -479,6 +483,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 13,035 | 318 | 2,454 | 4,491 | 3,217 | 72,782 | 66,827 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -575,6 +580,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,553 | 3,071 | 2,500 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,553 | 3,071 | 2,500 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,553 | 3,071 | 2,500 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -671,6 +677,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 74,709 | 836,722 | 2,603,147 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 74,709 | 836,704 | 2,603,209 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 74,709 | 836,642 | 2,603,152 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 74,709 | 836,766 | 2,603,124 |
 
 ## create
 
@@ -767,6 +774,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 13,573,788 | 2,865,676 | 2,570,370 | 2,127,106 | 4,045,348 | 34,003,379 | 50,334,392 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 13,464,447 | 2,865,678 | 2,570,416 | 2,128,104 | 4,042,729 | 34,003,242 | 50,333,902 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 13,699,314 | 2,865,677 | 2,570,368 | 2,127,905 | 4,042,588 | 34,003,480 | 50,334,364 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 13,464,410 | 2,865,677 | 2,570,369 | 2,127,803 | 4,045,313 | 34,003,051 | 50,334,236 |
 
 ## create-on
 
@@ -863,6 +871,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,949,517 | 4,179,708 | 55,229,348 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,965,484 | 4,179,748 | 55,229,128 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,949,485 | 4,179,982 | 55,229,174 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,949,484 | 4,179,680 | 55,229,117 |
 
 ## cutoff
 
@@ -959,6 +968,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1055,6 +1065,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 781 | 751 | 16,520 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 781 | 751 | 16,520 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 781 | 751 | 16,520 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1151,6 +1162,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 751 | 802 | 16,543 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 751 | 802 | 16,543 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 751 | 802 | 16,543 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1247,6 +1259,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 2,706,245 | 806,288 | 367,497 | 475,688 | 495,008 | 13,206,144 | 9,105,874 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 2,707,644 | 806,288 | 367,497 | 475,855 | 495,255 | 13,205,721 | 9,105,615 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 2,706,249 | 806,288 | 367,497 | 475,658 | 495,063 | 13,207,602 | 9,106,018 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 2,707,646 | 806,288 | 367,497 | 475,497 | 495,286 | 13,205,967 | 9,106,377 |
 
 ## dispose-on
 
@@ -1343,6 +1356,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 346,497 | 487,814 | 8,902,964 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 346,497 | 487,792 | 8,902,627 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 346,497 | 487,598 | 8,902,254 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 346,497 | 488,201 | 8,902,738 |
 
 ## editable-edit
 
@@ -1439,6 +1453,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 181,706 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 181,706 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 181,706 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 181,706 |
 
 ## editable-upstream
 
@@ -1535,6 +1550,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 232,855 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 232,855 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 232,855 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 232,855 |
 
 ## fail-recompute
 
@@ -1631,6 +1647,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 65,086 | 1,370 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 65,094 | 1,370 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 65,094 | 1,370 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 65,094 | 1,370 |
 
 ## flight
 
@@ -1727,6 +1744,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 10,947 | 6,196 | 6,197 | 11,269 | 10,715 | 22,347 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 
 ## keyed-insert
 
@@ -1823,6 +1841,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,921,737 | 53,917 | 54,953 | 3,277,634 | 237,680 | 176,006 | 45,075,909 | 2,634,539 | 2,655,541 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,921,753 | 54,013 | 54,966 | 3,277,579 | 237,664 | 175,990 | 45,075,896 | 2,634,553 | 2,655,465 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,921,737 | 54,013 | 54,952 | 3,277,873 | 237,670 | 176,032 | 45,075,910 | 2,634,535 | 2,655,497 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,921,737 | 53,917 | 54,952 | 3,277,860 | 237,684 | 176,004 | 45,075,850 | 2,634,489 | 2,655,516 |
 
 ## keyed-remove
 
@@ -1919,6 +1938,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,920,673 | 43,607 | 45,299 | 3,292,650 | 592,034 | 606,201 | 45,041,042 | 1,924,672 | 1,960,219 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,920,691 | 43,703 | 45,317 | 3,292,807 | 591,954 | 606,158 | 45,041,032 | 1,924,627 | 1,960,161 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,920,671 | 43,703 | 45,301 | 3,292,840 | 591,678 | 605,972 | 45,053,053 | 1,924,678 | 1,960,146 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,920,675 | 43,607 | 45,301 | 3,292,963 | 592,007 | 606,142 | 45,053,008 | 1,924,852 | 1,960,200 |
 
 ## keyed-swap
 
@@ -2015,6 +2035,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,973,362 | 46,205 | 46,927 | 3,630,057 | 148,957 | 513,084 | 46,198,990 | 915,760 | 936,079 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,973,362 | 46,301 | 46,928 | 3,628,649 | 148,860 | 512,977 | 46,198,624 | 915,656 | 936,147 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,973,362 | 46,301 | 46,927 | 3,628,542 | 149,212 | 512,965 | 46,198,638 | 915,706 | 936,160 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,973,362 | 46,205 | 46,927 | 3,625,522 | 148,928 | 513,087 | 46,198,629 | 915,651 | 936,174 |
 
 ## mvu-dispatch
 
@@ -2111,6 +2132,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 58,292 | 788 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 58,292 | 788 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 58,292 | 788 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 58,292 | 788 |
 
 ## persist-write
 
@@ -2207,6 +2229,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 7,014 | 884 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 7,093 | 884 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 7,013 | 884 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 7,013 | 884 |
 
 ## project-chain
 
@@ -2303,6 +2326,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,071,703 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,071,801 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,071,976 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,071,888 |
 
 ## project-churn
 
@@ -2399,6 +2423,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 36,385 | 34,268 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 36,417 | 34,278 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 36,385 | 34,250 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 36,470 | 34,346 |
 
 ## project-edit
 
@@ -2495,6 +2520,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 50,460 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 50,556 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 50,556 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 50,556 |
 
 ## project-reorder
 
@@ -2591,6 +2617,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 780,068 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 780,164 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 780,164 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 780,164 |
 
 ## server-render
 
@@ -2687,6 +2714,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 680,652 | 1,147,481 | 9,888,270 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 680,652 | 1,147,319 | 9,828,978 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 680,652 | 1,147,526 | 9,828,297 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 680,652 | 1,147,247 | 9,829,156 |
 
 ## shape-diamond
 
@@ -2783,6 +2811,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 59,915 | 80,445 | 1,764,075 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 59,915 | 80,445 | 1,764,075 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 59,915 | 80,445 | 1,764,075 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2879,6 +2908,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 84,378 | 108,947 | 2,038,136 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 84,378 | 108,947 | 2,038,136 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 84,378 | 108,947 | 2,038,136 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -2975,6 +3005,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,470 | 47,577 | 45,790 | 55,380 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,950 | 1,548 | 2,518 | 4,696 | 3,672 | 13,469 | 47,580 | 45,790 | 55,380 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,471 | 47,580 | 45,790 | 55,383 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,472 | 47,580 | 45,790 | 55,383 |
 
 ## stream-burst-16
 
@@ -3071,6 +3102,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 5,022 | 24,618 | 5,712 | 9,735 | 50,033 | 8,071 | 123,810 | 720,148 | 113,732 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 5,022 | 24,618 | 5,728 | 9,727 | 50,033 | 8,071 | 123,809 | 720,150 | 113,731 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 5,022 | 24,618 | 5,712 | 9,732 | 50,032 | 8,071 | 123,808 | 720,148 | 113,731 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 5,022 | 24,618 | 5,712 | 9,742 | 50,033 | 8,069 | 123,810 | 720,148 | 113,733 |
 
 ## stream-burst-256
 
@@ -3167,6 +3199,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 54,162 | 393,702 | 57,051 | 131,977 | 792,866 | 74,743 | 1,343,730 | 11,508,841 | 1,046,688 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 54,162 | 393,702 | 57,067 | 132,057 | 792,882 | 74,743 | 1,343,778 | 11,508,677 | 1,046,726 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 54,162 | 393,702 | 57,051 | 131,999 | 792,829 | 74,743 | 1,343,698 | 11,508,770 | 1,046,723 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 54,162 | 393,702 | 57,051 | 131,957 | 792,880 | 74,743 | 1,343,714 | 11,508,770 | 1,046,721 |
 
 ## stream-restart
 
@@ -3263,6 +3296,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 4,203 | 4,998 | 6,576 | 16,889 | 42,878 | 72,020 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 4,204 | 5,011 | 6,573 | 16,884 | 42,897 | 72,023 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 4,204 | 4,995 | 6,573 | 16,887 | 42,880 | 72,022 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 4,204 | 4,995 | 6,579 | 16,889 | 42,881 | 72,022 |
 
 ## timed-admit-both
 
@@ -3359,6 +3393,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 117,709 | 130,035 | 2,693,577 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 117,709 | 130,036 | 2,693,565 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 117,709 | 130,034 | 2,693,578 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 117,709 | 130,036 | 2,693,565 |
 
 ## timed-admit-debounce
 
@@ -3455,6 +3490,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 116,614 | 128,617 | 2,654,128 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 116,614 | 128,619 | 2,654,129 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 116,614 | 128,607 | 2,654,129 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 116,614 | 128,619 | 2,654,130 |
 
 ## timed-admit-first
 
@@ -3551,6 +3587,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 69,621 | 79,566 | 1,620,677 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 69,621 | 79,566 | 1,620,677 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 69,621 | 79,568 | 1,620,677 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 69,621 | 79,564 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3647,6 +3684,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 116,876 | 128,929 | 2,663,973 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 116,876 | 128,937 | 2,663,973 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 116,876 | 128,934 | 2,663,986 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 116,876 | 128,937 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -3743,6 +3781,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,740 | 44,936 | 846,916 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 35,740 | 44,935 | 846,917 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 35,740 | 44,935 | 846,917 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 35,740 | 44,936 | 846,917 |
 
 ## timed-capture-debounce
 
@@ -3839,6 +3878,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,612 | 44,232 | 847,657 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 35,612 | 44,232 | 847,657 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 35,612 | 44,232 | 847,659 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -3935,6 +3975,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 32,092 | 36,742 | 745,653 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 32,092 | 36,742 | 745,651 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 32,092 | 36,742 | 745,653 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4031,6 +4072,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 35,548 | 44,168 | 839,785 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 35,548 | 44,168 | 839,785 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 35,548 | 44,168 | 839,785 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 35,548 | 44,168 | 839,784 |
 
 ## update
 
@@ -4127,6 +4169,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 1,087,790 | 38,805 | 84,105 | 262,933 | 145,755 | 3,351,259 | 2,545,002 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 1,087,790 | 38,805 | 84,105 | 263,281 | 145,824 | 3,351,329 | 2,545,028 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 1,095,790 | 38,805 | 84,105 | 263,233 | 145,789 | 3,351,283 | 2,545,097 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 1,087,783 | 38,805 | 84,105 | 263,233 | 145,781 | 3,351,254 | 2,545,044 |
 
 ## update-on
 
@@ -4223,6 +4266,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 94,605 | 169,000 | 2,872,329 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 94,605 | 169,008 | 2,872,347 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 94,605 | 169,013 | 2,872,455 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 94,605 | 169,034 | 2,872,417 |
 
 ## work-form
 
@@ -4319,6 +4363,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 172,679 | 165,150 | 308,831 | 296,967 | 5,421,863 | 5,334,925 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 172,679 | 165,150 | 308,823 | 296,990 | 5,421,830 | 5,334,915 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 172,679 | 165,150 | 308,809 | 296,973 | 5,421,902 | 5,334,925 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 172,679 | 165,150 | 308,807 | 296,917 | 5,421,861 | 5,334,934 |
 
 ## work-status
 
@@ -4415,6 +4460,7 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 102,045 | 80,235 | 269,330 | 156,122 | 2,659,181 | 2,391,286 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 102,045 | 80,235 | 269,331 | 156,100 | 2,659,120 | 2,391,237 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 102,045 | 80,235 | 269,355 | 156,087 | 2,659,278 | 2,391,271 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 102,045 | 80,235 | 269,334 | 156,147 | 2,659,262 | 2,391,339 |
 
 ## work-value
 
@@ -4511,4 +4557,5 @@
 | `f56950c` | 2026-10-26 | feat(motion): add interactive graphs and fix dashboard streaming (#231) | 109,171 | 121,070 | 269,558 | 283,386 | 2,643,900 | 2,968,428 |
 | `9598e16` | 2026-10-27 | feat(css): add typed styling, composite utilities and static extraction (#232) | 109,169 | 121,071 | 269,595 | 283,434 | 2,643,828 | 2,968,476 |
 | `aaf508c` | 2026-10-27 | feat(css): derive numeric expression semantics for generation | 109,169 | 121,071 | 269,582 | 283,376 | 2,643,835 | 2,968,493 |
+| `869d472` | 2026-10-27 | feat(css): generate unified typed numeric expressions | 109,169 | 121,071 | 269,637 | 283,411 | 2,643,940 | 2,968,454 |
 
