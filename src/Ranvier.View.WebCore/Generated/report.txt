@@ -1,7 +1,7 @@
-93 classes; 4926 members: 1554 mapped to 926 of 1002 rv_dom_* functions, 1127 hand-written, 2245 unmapped
+93 classes; 4926 members: 1554 mapped to 926 of 1002 rv_dom_* functions, 1275 hand-written, 2097 unmapped
 
 Unmapped members by reason:
-   1853  no ABI function
+   1705  no ABI function
      51  unconstrained generic overload
      11  indexed setter
       9  unrecognised results
@@ -301,20 +301,20 @@ Members by class (mapped / hand-written / unmapped):
   AbstractRangeObject: 5 / 0 / 0
   AttrObject: 11 / 0 / 0
   CSSStyleDeclarationObject: 9 / 1066 / 2
-  CharacterDataObject: 44 / 6 / 19
+  CharacterDataObject: 44 / 25 / 0
   CompositionEventObject: 1 / 0 / 1
   DOMRectReadOnlyObject: 8 / 0 / 1
   DOMStringMapObject: 0 / 0 / 2
   DOMTokenListObject: 9 / 0 / 8
-  DocumentFragmentObject: 42 / 6 / 21
-  DocumentObject: 82 / 8 / 398
-  ElementObject: 190 / 12 / 68
-  EventObject: 17 / 1 / 6
+  DocumentFragmentObject: 42 / 25 / 2
+  DocumentObject: 82 / 27 / 379
+  ElementObject: 190 / 31 / 49
+  EventObject: 17 / 5 / 2
   EventTargetObject: 0 / 3 / 0
   FocusEventObject: 1 / 0 / 0
   HTMLAnchorElementObject: 46 / 0 / 7
   HTMLAreaElementObject: 0 / 0 / 45
-  HTMLAudioElementObject: 244 / 12 / 357
+  HTMLAudioElementObject: 244 / 31 / 338
   HTMLBRElementObject: 0 / 0 / 5
   HTMLBaseElementObject: 0 / 0 / 7
   HTMLBodyElementObject: 12 / 0 / 49
@@ -376,21 +376,21 @@ Members by class (mapped / hand-written / unmapped):
   HTMLTitleElementObject: 0 / 0 / 5
   HTMLTrackElementObject: 0 / 0 / 19
   HTMLUListElementObject: 4 / 0 / 3
-  HTMLVideoElementObject: 244 / 12 / 379
+  HTMLVideoElementObject: 244 / 31 / 360
   InputEventObject: 3 / 0 / 2
-  KeyboardEventObject: 12 / 0 / 5
+  KeyboardEventObject: 12 / 4 / 1
   MouseEventObject: 22 / 0 / 1
   NodeListObject: 3 / 0 / 5
   NodeListOfObject<'TNode when 'TNode :> Fable.Core.TS.Dom.Node>: 2 / 0 / 4
-  NodeObject: 30 / 0 / 19
+  NodeObject: 30 / 19 / 0
   PointerEventObject: 12 / 0 / 3
-  RangeObject: 22 / 0 / 7
+  RangeObject: 22 / 4 / 3
   SelectionObject: 24 / 0 / 1
   ShadowRootObject: 11 / 0 / 16
   TextObject: 3 / 0 / 0
   UIEventObject: 2 / 0 / 2
   ValidityStateObject: 11 / 0 / 0
-  WheelEventObject: 4 / 0 / 3
+  WheelEventObject: 4 / 3 / 0
 
 Unmapped members:
   DOMRectReadOnlyObject DOMRectReadOnly.toJSON: no ABI function
@@ -405,10 +405,6 @@ Unmapped members:
   DOMTokenListObject DOMTokenList.keys: no ABI function
   DOMTokenListObject DOMTokenList.values: no ABI function
   EventObject Event.timeStamp (getter): no ABI function
-  EventObject Event.NONE (getter): no ABI function
-  EventObject Event.CAPTURING_PHASE (getter): no ABI function
-  EventObject Event.AT_TARGET (getter): no ABI function
-  EventObject Event.BUBBLING_PHASE (getter): no ABI function
   EventObject Event.composedPath: no ABI function
   NodeListObject NodeList.Item (setter): indexed setter
   NodeListObject NodeList.forEach: no ABI function
@@ -425,33 +421,10 @@ Unmapped members:
   HTMLCollectionOfObject<'T when 'T :> Fable.Core.TS.Dom.Element> HTMLCollectionOf`1.Item (setter): indexed setter
   HTMLCollectionOfObject<'T when 'T :> Fable.Core.TS.Dom.Element> HTMLCollectionOf`1.item: no ABI function
   HTMLCollectionOfObject<'T when 'T :> Fable.Core.TS.Dom.Element> HTMLCollectionOf`1.namedItem: no ABI function
-  NodeObject Node.nodeType (getter): no ABI function
-  NodeObject Node.ELEMENT_NODE (getter): no ABI function
-  NodeObject Node.ATTRIBUTE_NODE (getter): no ABI function
-  NodeObject Node.TEXT_NODE (getter): no ABI function
-  NodeObject Node.CDATA_SECTION_NODE (getter): no ABI function
-  NodeObject Node.ENTITY_REFERENCE_NODE (getter): no ABI function
-  NodeObject Node.ENTITY_NODE (getter): no ABI function
-  NodeObject Node.PROCESSING_INSTRUCTION_NODE (getter): no ABI function
-  NodeObject Node.COMMENT_NODE (getter): no ABI function
-  NodeObject Node.DOCUMENT_NODE (getter): no ABI function
-  NodeObject Node.DOCUMENT_TYPE_NODE (getter): no ABI function
-  NodeObject Node.DOCUMENT_FRAGMENT_NODE (getter): no ABI function
-  NodeObject Node.NOTATION_NODE (getter): no ABI function
-  NodeObject Node.DOCUMENT_POSITION_DISCONNECTED (getter): no ABI function
-  NodeObject Node.DOCUMENT_POSITION_PRECEDING (getter): no ABI function
-  NodeObject Node.DOCUMENT_POSITION_FOLLOWING (getter): no ABI function
-  NodeObject Node.DOCUMENT_POSITION_CONTAINS (getter): no ABI function
-  NodeObject Node.DOCUMENT_POSITION_CONTAINED_BY (getter): no ABI function
-  NodeObject Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC (getter): no ABI function
   NodeListOfObject<'TNode when 'TNode :> Fable.Core.TS.Dom.Node> NodeListOf`1.Item (setter): indexed setter
   NodeListOfObject<'TNode when 'TNode :> Fable.Core.TS.Dom.Node> NodeListOf`1.forEach: no ABI function
   NodeListOfObject<'TNode when 'TNode :> Fable.Core.TS.Dom.Node> NodeListOf`1.entries: no ABI function
   NodeListOfObject<'TNode when 'TNode :> Fable.Core.TS.Dom.Node> NodeListOf`1.values: no ABI function
-  RangeObject Range.START_TO_START (getter): no ABI function
-  RangeObject Range.START_TO_END (getter): no ABI function
-  RangeObject Range.END_TO_END (getter): no ABI function
-  RangeObject Range.END_TO_START (getter): no ABI function
   RangeObject Range.getBoundingClientRect: returns Fable.Core.TS.Dom.DOMRect, which has no class
   RangeObject Range.getClientRects: no ABI function
   RangeObject Range.toString: no ABI function
@@ -462,56 +435,11 @@ Unmapped members:
   CompositionEventObject CompositionEvent.initCompositionEvent: no ABI function
   InputEventObject InputEvent.dataTransfer (getter): no ABI function
   InputEventObject InputEvent.getTargetRanges: no ABI function
-  KeyboardEventObject KeyboardEvent.DOM_KEY_LOCATION_STANDARD (getter): no ABI function
-  KeyboardEventObject KeyboardEvent.DOM_KEY_LOCATION_LEFT (getter): no ABI function
-  KeyboardEventObject KeyboardEvent.DOM_KEY_LOCATION_RIGHT (getter): no ABI function
-  KeyboardEventObject KeyboardEvent.DOM_KEY_LOCATION_NUMPAD (getter): no ABI function
   KeyboardEventObject KeyboardEvent.initKeyboardEvent: no ABI function
   MouseEventObject MouseEvent.initMouseEvent: no ABI function
   PointerEventObject PointerEvent.persistentDeviceId (getter): no ABI function
   PointerEventObject PointerEvent.getCoalescedEvents: no ABI function
   PointerEventObject PointerEvent.getPredictedEvents: no ABI function
-  WheelEventObject WheelEvent.DOM_DELTA_PIXEL (getter): no ABI function
-  WheelEventObject WheelEvent.DOM_DELTA_LINE (getter): no ABI function
-  WheelEventObject WheelEvent.DOM_DELTA_PAGE (getter): no ABI function
-  CharacterDataObject Node.nodeType (getter): no ABI function
-  CharacterDataObject Node.ELEMENT_NODE (getter): no ABI function
-  CharacterDataObject Node.ATTRIBUTE_NODE (getter): no ABI function
-  CharacterDataObject Node.TEXT_NODE (getter): no ABI function
-  CharacterDataObject Node.CDATA_SECTION_NODE (getter): no ABI function
-  CharacterDataObject Node.ENTITY_REFERENCE_NODE (getter): no ABI function
-  CharacterDataObject Node.ENTITY_NODE (getter): no ABI function
-  CharacterDataObject Node.PROCESSING_INSTRUCTION_NODE (getter): no ABI function
-  CharacterDataObject Node.COMMENT_NODE (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_NODE (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_TYPE_NODE (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_FRAGMENT_NODE (getter): no ABI function
-  CharacterDataObject Node.NOTATION_NODE (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_POSITION_DISCONNECTED (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_POSITION_PRECEDING (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_POSITION_FOLLOWING (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_POSITION_CONTAINS (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_POSITION_CONTAINED_BY (getter): no ABI function
-  CharacterDataObject Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC (getter): no ABI function
-  DocumentFragmentObject Node.nodeType (getter): no ABI function
-  DocumentFragmentObject Node.ELEMENT_NODE (getter): no ABI function
-  DocumentFragmentObject Node.ATTRIBUTE_NODE (getter): no ABI function
-  DocumentFragmentObject Node.TEXT_NODE (getter): no ABI function
-  DocumentFragmentObject Node.CDATA_SECTION_NODE (getter): no ABI function
-  DocumentFragmentObject Node.ENTITY_REFERENCE_NODE (getter): no ABI function
-  DocumentFragmentObject Node.ENTITY_NODE (getter): no ABI function
-  DocumentFragmentObject Node.PROCESSING_INSTRUCTION_NODE (getter): no ABI function
-  DocumentFragmentObject Node.COMMENT_NODE (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_NODE (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_TYPE_NODE (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_FRAGMENT_NODE (getter): no ABI function
-  DocumentFragmentObject Node.NOTATION_NODE (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_POSITION_DISCONNECTED (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_POSITION_PRECEDING (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_POSITION_FOLLOWING (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_POSITION_CONTAINS (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_POSITION_CONTAINED_BY (getter): no ABI function
-  DocumentFragmentObject Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC (getter): no ABI function
   DocumentFragmentObject ParentNode.querySelector<>: unconstrained generic overload
   DocumentFragmentObject ParentNode.querySelectorAll<>: unconstrained generic overload
   ShadowRootObject DocumentOrShadowRoot.adoptedStyleSheets (getter): no ABI function
@@ -749,25 +677,6 @@ Unmapped members:
   DocumentObject XPathEvaluatorBase.createExpression: no ABI function
   DocumentObject XPathEvaluatorBase.createNSResolver: no ABI function
   DocumentObject XPathEvaluatorBase.evaluate: no ABI function
-  DocumentObject Node.nodeType (getter): no ABI function
-  DocumentObject Node.ELEMENT_NODE (getter): no ABI function
-  DocumentObject Node.ATTRIBUTE_NODE (getter): no ABI function
-  DocumentObject Node.TEXT_NODE (getter): no ABI function
-  DocumentObject Node.CDATA_SECTION_NODE (getter): no ABI function
-  DocumentObject Node.ENTITY_REFERENCE_NODE (getter): no ABI function
-  DocumentObject Node.ENTITY_NODE (getter): no ABI function
-  DocumentObject Node.PROCESSING_INSTRUCTION_NODE (getter): no ABI function
-  DocumentObject Node.COMMENT_NODE (getter): no ABI function
-  DocumentObject Node.DOCUMENT_NODE (getter): no ABI function
-  DocumentObject Node.DOCUMENT_TYPE_NODE (getter): no ABI function
-  DocumentObject Node.DOCUMENT_FRAGMENT_NODE (getter): no ABI function
-  DocumentObject Node.NOTATION_NODE (getter): no ABI function
-  DocumentObject Node.DOCUMENT_POSITION_DISCONNECTED (getter): no ABI function
-  DocumentObject Node.DOCUMENT_POSITION_PRECEDING (getter): no ABI function
-  DocumentObject Node.DOCUMENT_POSITION_FOLLOWING (getter): no ABI function
-  DocumentObject Node.DOCUMENT_POSITION_CONTAINS (getter): no ABI function
-  DocumentObject Node.DOCUMENT_POSITION_CONTAINED_BY (getter): no ABI function
-  DocumentObject Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC (getter): no ABI function
   DocumentObject ParentNode.querySelector<>: unconstrained generic overload
   DocumentObject ParentNode.querySelectorAll<>: unconstrained generic overload
   DocumentObject Document.URL (getter): no ABI function
@@ -944,25 +853,6 @@ Unmapped members:
   ElementObject ARIAMixin.ariaOwnsElements (setter): no ABI function
   ElementObject Animatable.animate: no ABI function
   ElementObject Animatable.getAnimations: no ABI function
-  ElementObject Node.nodeType (getter): no ABI function
-  ElementObject Node.ELEMENT_NODE (getter): no ABI function
-  ElementObject Node.ATTRIBUTE_NODE (getter): no ABI function
-  ElementObject Node.TEXT_NODE (getter): no ABI function
-  ElementObject Node.CDATA_SECTION_NODE (getter): no ABI function
-  ElementObject Node.ENTITY_REFERENCE_NODE (getter): no ABI function
-  ElementObject Node.ENTITY_NODE (getter): no ABI function
-  ElementObject Node.PROCESSING_INSTRUCTION_NODE (getter): no ABI function
-  ElementObject Node.COMMENT_NODE (getter): no ABI function
-  ElementObject Node.DOCUMENT_NODE (getter): no ABI function
-  ElementObject Node.DOCUMENT_TYPE_NODE (getter): no ABI function
-  ElementObject Node.DOCUMENT_FRAGMENT_NODE (getter): no ABI function
-  ElementObject Node.NOTATION_NODE (getter): no ABI function
-  ElementObject Node.DOCUMENT_POSITION_DISCONNECTED (getter): no ABI function
-  ElementObject Node.DOCUMENT_POSITION_PRECEDING (getter): no ABI function
-  ElementObject Node.DOCUMENT_POSITION_FOLLOWING (getter): no ABI function
-  ElementObject Node.DOCUMENT_POSITION_CONTAINS (getter): no ABI function
-  ElementObject Node.DOCUMENT_POSITION_CONTAINED_BY (getter): no ABI function
-  ElementObject Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC (getter): no ABI function
   ElementObject ParentNode.querySelector<>: unconstrained generic overload
   ElementObject ParentNode.querySelectorAll<>: unconstrained generic overload
   ElementObject Element.classList (setter): no ABI function
@@ -2003,25 +1893,6 @@ Unmapped members:
   HTMLAudioElementObject GlobalEventHandlers.addEventListener: no ABI function
   HTMLAudioElementObject GlobalEventHandlers.removeEventListener<>: unconstrained generic overload
   HTMLAudioElementObject GlobalEventHandlers.removeEventListener: no ABI function
-  HTMLAudioElementObject Node.nodeType (getter): no ABI function
-  HTMLAudioElementObject Node.ELEMENT_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.ATTRIBUTE_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.TEXT_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.CDATA_SECTION_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.ENTITY_REFERENCE_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.ENTITY_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.PROCESSING_INSTRUCTION_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.COMMENT_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_TYPE_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_FRAGMENT_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.NOTATION_NODE (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_POSITION_DISCONNECTED (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_POSITION_PRECEDING (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_POSITION_FOLLOWING (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_POSITION_CONTAINS (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_POSITION_CONTAINED_BY (getter): no ABI function
-  HTMLAudioElementObject Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC (getter): no ABI function
   HTMLAudioElementObject ParentNode.querySelector<>: unconstrained generic overload
   HTMLAudioElementObject ParentNode.querySelectorAll<>: unconstrained generic overload
   HTMLAudioElementObject Element.classList (setter): no ABI function
@@ -2483,25 +2354,6 @@ Unmapped members:
   HTMLVideoElementObject GlobalEventHandlers.addEventListener: no ABI function
   HTMLVideoElementObject GlobalEventHandlers.removeEventListener<>: unconstrained generic overload
   HTMLVideoElementObject GlobalEventHandlers.removeEventListener: no ABI function
-  HTMLVideoElementObject Node.nodeType (getter): no ABI function
-  HTMLVideoElementObject Node.ELEMENT_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.ATTRIBUTE_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.TEXT_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.CDATA_SECTION_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.ENTITY_REFERENCE_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.ENTITY_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.PROCESSING_INSTRUCTION_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.COMMENT_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_TYPE_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_FRAGMENT_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.NOTATION_NODE (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_POSITION_DISCONNECTED (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_POSITION_PRECEDING (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_POSITION_FOLLOWING (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_POSITION_CONTAINS (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_POSITION_CONTAINED_BY (getter): no ABI function
-  HTMLVideoElementObject Node.DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC (getter): no ABI function
   HTMLVideoElementObject ParentNode.querySelector<>: unconstrained generic overload
   HTMLVideoElementObject ParentNode.querySelectorAll<>: unconstrained generic overload
   HTMLVideoElementObject Element.classList (setter): no ABI function

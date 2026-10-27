@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <OutputType>Library</OutputType>
+        <RootNamespace>Ranvier.View.WebCore</RootNamespace>
+        <AssemblyName>Ranvier.View.WebCore</AssemblyName>
+        <PackageId>Ranvier.View.WebCore</PackageId>
+        <Title>Ranvier.View.WebCore</Title>
+        <Description>Runs Ranvier's view and Fable.Ranvier's DOM API on .NET against a native WebCore page: the app forwards window input and paints the page into its window.</Description>
+        <PackageTags>reactive;signals;view;dom;webcore;native;fsharp</PackageTags>
+        <PackageReleaseNotes>Experimental. The API may change.</PackageReleaseNotes>
+        <Version>0.1.0-alpha.1</Version>
+        <IsAotCompatible>true</IsAotCompatible>
+        <!-- The generated wrappers and the copied interop carry no docs of their own. -->
+        <NoWarn>$(NoWarn);FS3390</NoWarn>
+    </PropertyGroup>
+
+    <!--
+    The native library: ABI 20 is not on nuget.org yet, so by default the native files come from a local build of
+    Ranvier.WebCore (RanvierWebCoreNativeDir, the directory holding runtimes/win-x64/native). Setting
+    RanvierWebCoreNativeVersion references the Ranvier.WebCore.Native.win-x64 package instead.
+    -->
+    <PropertyGroup>
+        <RanvierWebCoreNativeDir Condition="'$(RanvierWebCoreNativeDir)' == ''">C:\wk\native-v20</RanvierWebCoreNativeDir>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(RanvierWebCoreNativeVersion)' != ''">
+        <PackageReference Include="Ranvier.WebCore.Native.win-x64" Version="$(RanvierWebCoreNativeVersion)" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(RanvierWebCoreNativeVersion)' == ''">
+        <None Include="$(RanvierWebCoreNativeDir)/runtimes/win-x64/native/**/*"
+              Link="%(RecursiveDir)%(Filename)%(Extension)"
+              CopyToOutputDirectory="PreserveNewest"
+              CopyToPublishDirectory="PreserveNewest"
+              Pack="false"
+              Visible="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="Interop/Native.fs" />
+        <Compile Include="Interop/NativeDom.fs" />
+        <Compile Include="Objects.fs" />
+        <Compile Include="Events.fs" />
+        <Compile Include="Members.fs" />
+        <Compile Include="Generated/Objects.fs" />
+        <Compile Include="Host.fs" />
+        <None Include="Interop/*.h" />
+        <None Include="Generated/report.txt" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Ranvier.View.Dom/Ranvier.View.Dom.fsproj" />
+        <ProjectReference Include="../Fable.Ranvier/Fable.Ranvier.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Fable.Ranvier requires FSharp.Core 10.1.401. -->
+        <PackageReference Update="FSharp.Core" Version="10.1.401" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Ranvier.View.WebCore.Tests" />
+    </ItemGroup>
+
+</Project>

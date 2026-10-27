@@ -19,7 +19,7 @@ let private kebab (name: string) =
 
     if text.StartsWith "webkit-" then "-" + text else text
 
-let private hand (dom: Type) : Map<string, string> =
+let private hand (dom: Type) (header: string) : Map<string, string> =
     let fixedBodies =
         [
             "EventTarget.addEventListener", "Events.Add(this, ``type``, callback, options)"
@@ -38,6 +38,7 @@ let private hand (dom: Type) : Map<string, string> =
             "ParentNode.append", "Nodes.Append(this, nodes)"
             "ParentNode.prepend", "Nodes.Prepend(this, nodes)"
             "ParentNode.replaceChildren", "Nodes.ReplaceChildren(this, nodes)"
+            "Node.nodeType.get", "float (Native.rv_node_type this.Handle)"
         ]
 
     // The CSS properties of CSSStyleProperties read and write getPropertyValue and setProperty by their CSS name.
@@ -61,7 +62,14 @@ let private hand (dom: Type) : Map<string, string> =
                         $"CSSStyleProperties.{p.Name}.set", $"Styles.Set(this, \"{kebab p.Name}\", value)"
         ]
 
-    Map.ofList (fixedBodies @ styles)
+    // The IDL constants, as the header's RV_DOM_<INTERFACE>_<NAME> literals.
+    let constants =
+        [
+            for m in Text.RegularExpressions.Regex.Matches (header, @"(RV_DOM_\w+) = [^,]+, /\* (\w+)\.(\w+) \*/") ->
+                $"{m.Groups[2].Value}.{m.Groups[3].Value}.get", $"float NativeDom.{m.Groups[1].Value}"
+        ]
+
+    Map.ofList (fixedBodies @ styles @ constants)
 
 let private kinds =
     Map.ofList
@@ -103,7 +111,7 @@ let main argv =
         {
             Dom = dom
             Functions = functions
-            Hand = hand dom
+            Hand = hand dom (File.ReadAllText (Path.Combine (interop, "RanvierWebCoreDom.h")))
             Extra =
                 [
                     "EventTarget"
