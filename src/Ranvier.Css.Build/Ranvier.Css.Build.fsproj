@@ -12,6 +12,9 @@
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../Ranvier.Css/Ranvier.Css.fsproj" /><Compile Include="Compiler.fs" /></ItemGroup>
   <ItemGroup>
+    <PackageReference Remove="Fable.Package.SDK" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
