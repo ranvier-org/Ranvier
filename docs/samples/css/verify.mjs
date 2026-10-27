@@ -26,7 +26,7 @@ fs.writeFileSync(project, `<Project Sdk="Microsoft.NET.Sdk">
 </Project>
 `);
 function run(args) {
-  const result = spawnSync('rtk', ['proxy', 'dotnet', ...args], { cwd: root, stdio: 'inherit' });
+  const result = spawnSync('dotnet', args, { cwd: root, stdio: 'inherit' });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `Documentation check failed: dotnet ${args.join(' ')}`);
 }
