@@ -186,7 +186,7 @@ type WebCoreHost private (handle: nativeint, session: Session) =
                 Interlocked.Exchange (&frameRequested, 1)
                 |> ignore)
 
-        Native.rv_host_set_frame_callback (handle, Marshal.GetFunctionPointerForDelegate frameCallback, 0n)
+        Native.rv_host_set_frame_callback (handle, Marshal.GetFunctionPointerForDelegate<Native.FrameCallback> frameCallback, 0n)
         |> Interop.check "rv_host_set_frame_callback"
 
         SynchronizationContext.SetSynchronizationContext context

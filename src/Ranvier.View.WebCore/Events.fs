@@ -32,7 +32,7 @@ type internal Events private () =
 
     static member val private Callback = Native.EventCallback (fun context event -> Events.Run (context, event))
 
-    static member val private Pointer = Marshal.GetFunctionPointerForDelegate Events.Callback
+    static member val private Pointer = Marshal.GetFunctionPointerForDelegate<Native.EventCallback> Events.Callback
 
     /// <summary>Registers <c>invoke</c> natively on the node; <c>callback</c> identifies the registration for removal.</summary>
     static member internal Listen(target: NativeObject, eventType: string, capture: bool, callback: obj, invoke: obj -> unit) : Registration =

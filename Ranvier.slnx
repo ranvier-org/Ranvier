@@ -87,6 +87,7 @@
     <Project Path="tests/Ranvier.Tests/Ranvier.Tests.fsproj" />
     <Project Path="tests/Ranvier.View.Twin.Tests/Ranvier.View.Twin.Tests.fsproj" />
     <Project Path="tests/Ranvier.View.WebCore.Tests/Ranvier.View.WebCore.Tests.fsproj" />
+    <Project Path="tests/Ranvier.View.WebCore.AotSmoke/Ranvier.View.WebCore.AotSmoke.fsproj" />
     <Project Path="tests/Ranvier.Wire.Tests/Ranvier.Wire.Tests.fsproj" />
     <Project Path="tests/Ranvier.Persistence.Tests/Ranvier.Persistence.Tests.fsproj" />
     <Project Path="tests/Ranvier.CSharp.Tests/Ranvier.CSharp.Tests.csproj" />
