@@ -65,7 +65,7 @@ jobs:
         with:
           global-json-file: global.json
           dotnet-version: 8.0.x
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ github.job }}-${{ hashFiles('global.json', '**/*.fsproj', '**/nuget.config', '.config/dotnet-tools.json') }}
@@ -102,7 +102,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ github.job }}-${{ hashFiles('global.json', '**/*.fsproj', '**/nuget.config', '.config/dotnet-tools.json') }}
@@ -131,7 +131,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ github.job }}-${{ hashFiles('global.json', '**/*.fsproj', '**/nuget.config', '.config/dotnet-tools.json') }}
@@ -178,7 +178,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ github.job }}-${{ hashFiles('global.json', '**/*.fsproj', '**/nuget.config', '.config/dotnet-tools.json') }}
@@ -765,7 +765,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-analyzer-tests-${{ hashFiles('Directory.Packages.props', 'tools/**/*.fsproj', 'src/**/*.fsproj', 'experiments/**/*.fsproj') }}
@@ -790,7 +790,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-analyzers-${{ matrix.group }}-${{ hashFiles('Directory.Packages.props', '**/*.fsproj') }}
