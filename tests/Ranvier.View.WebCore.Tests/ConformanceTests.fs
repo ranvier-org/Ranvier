@@ -51,8 +51,157 @@ let private eventSource (host: WebCoreHost) =
             unbox<Event> event
     }
 
+let private childList =
+    set
+        [
+            "appendChild"
+            "insertBefore"
+            "removeChild"
+            "replaceChild"
+            "append"
+            "prepend"
+            "replaceChildren"
+            "set_innerHTML"
+        ]
+
+let private ofParent = set [ "remove"; "before"; "after"; "replaceWith" ]
+
+let private attributes =
+    set
+        [
+            "setAttribute"
+            "removeAttribute"
+            "toggleAttribute"
+            "setAttributeNS"
+            "removeAttributeNS"
+            "set_id"
+            "set_className"
+            "set_title"
+            "set_lang"
+            "set_dir"
+            "set_hidden"
+            "set_disabled"
+            "set_href"
+            "set_src"
+            "set_alt"
+            "set_name"
+            "set_type"
+            "set_placeholder"
+            "set_htmlFor"
+            "set_slot"
+            "set_defaultValue"
+            "set_defaultChecked"
+        ]
+
+let private characterData =
+    set
+        [
+            "set_data"
+            "set_nodeValue"
+            "appendData"
+            "insertData"
+            "deleteData"
+            "replaceData"
+        ]
+
+/// <summary>
+/// The page has no MutationObserver without script, so the harness derives the records from the DOM members the
+/// view calls, as a MutationObserver over <c>root</c>'s subtree reports them: one record per change, on its target.
+/// </summary>
+let private observeMutations (host: WebCoreHost) (root: Node) : unit -> (string * Node) array =
+    let changes = List<string * Node>()
+
+    let under (node: obj) =
+        match node with
+        | :? Node as node -> root.contains node
+        | _ -> false
+
+    let add kind (target: obj) =
+        if under target then
+            changes.Add (kind, unbox<Node> target)
+
+    let parentOf (node: obj) : obj =
+        match node with
+        | :? Node as node -> node.parentNode |> Option.map box |> Option.toObj
+        | _ -> null
+
+    // A node inserted from another parent leaves a record on that parent too.
+    let moved (node: obj) =
+        match node with
+        | :? DocumentFragment -> ()
+        | _ ->
+            match parentOf node with
+            | null -> ()
+            | parent -> add "childList" parent
+
+    let restores =
+        [
+            for name in Seq.concat [ childList; ofParent; attributes; characterData ] ->
+                host.Intercept (
+                    null,
+                    name,
+                    Func<Func<obj array, obj>, obj, obj array, obj>(fun original target args ->
+                        let isText = target :? CharacterData
+
+                        let empty =
+                            match (if args.Length > 0 then args[0] else null) with
+                            | :? DocumentFragment as fragment -> fragment.firstChild.IsNone
+                            | _ -> false
+
+                        let parent = parentOf target
+
+                        if
+                            (name = "appendChild"
+                             || name = "insertBefore"
+                             || name = "replaceChild")
+                            && not empty
+                        then
+                            moved args[0]
+
+                        let result = original.Invoke args
+
+                        if childList.Contains name then
+                            if not empty then
+                                add "childList" target
+                        elif ofParent.Contains name then
+                            add "childList" parent
+                        elif attributes.Contains name then
+                            add "attributes" target
+                        elif isText || characterData.Contains name then
+                            add "characterData" target
+
+                        result)
+                )
+            yield
+                host.Intercept (
+                    null,
+                    "set_textContent",
+                    Func<Func<obj array, obj>, obj, obj array, obj>(fun original target args ->
+                        let result = original.Invoke args
+
+                        add
+                            (if target :? CharacterData then
+                                 "characterData"
+                             else
+                                 "childList")
+                            target
+
+                        result)
+                )
+        ]
+
+    host.DeletedFrom <- Action<obj>(fun parent -> add "childList" parent)
+
+    fun () ->
+        for restore in restores do
+            restore ()
+
+        host.DeletedFrom <- null
+        changes.ToArray ()
+
 let private webcore (records: List<string * string>) (run: Conformance.Harness -> unit) =
     use host = WebCoreHost.Create (800, 600)
+    host.UseManualClock ()
     use _ = EventSpec.install (eventSource host)
 
     let harness =
@@ -75,7 +224,13 @@ let private webcore (records: List<string * string>) (run: Conformance.Harness -
                 messages
 
             member _.Intercept(target, memberName, wrap) =
-                host.Intercept (target, memberName, wrap)
+                match target with
+                | null
+                | :? NativeObject -> host.Intercept (target, memberName, wrap)
+                | other -> raise (NotSupportedException $"The page intercepts the members of nodes only, not of a {other.GetType().Name}")
+
+            member _.ObserveMutations root =
+                observeMutations host root
 
             member _.Record(name, text) =
                 records.Add (name, text)
@@ -114,7 +269,23 @@ let private twin (records: List<string * string>) (run: Conformance.Harness -> u
                     messages
 
                 member _.Intercept(target, memberName, wrap) =
-                    Bridge.intercept host.Document (Bridge.nodeOf target) memberName wrap
+                    match target, Bridge.nodeOf target with
+                    | null, _ -> Bridge.intercept host.Document null memberName wrap
+                    | _, null -> raise (NotSupportedException $"The twin intercepts the members of nodes only, not of a {target.GetType().Name}")
+                    | _, node -> Bridge.intercept host.Document node memberName wrap
+
+                member _.ObserveMutations root =
+                    let under = Bridge.nodeOf root
+                    let changes = List<string * Node>()
+
+                    let observer =
+                        host.Document.ObserveMutations (fun (kind, target) ->
+                            if under.Contains target then
+                                changes.Add ((kind, unbox target.Native)))
+
+                    fun () ->
+                        observer.Dispose ()
+                        changes.ToArray ()
 
                 member _.Record(name, text) =
                     records.Add (name, text)
@@ -132,6 +303,19 @@ let private runCase (run: Conformance.Harness -> unit) () =
         webcore actual run
         Expect.sequenceEqual actual expected "the artefacts the twin recorded")
 
+/// <summary>
+/// The cases that need a DOM member the native ABI lacks: a second document (DOMImplementation.createHTMLDocument) and
+/// createElementNS. They are pending until Ranvier.WebCore maps those members.
+/// </summary>
+let private needsAbi =
+    set
+        [
+            "each document keeps its own title and adopts only its own marked elements"
+            "a failed hydration in a document without a window leaves its head as the server wrote it"
+            "a kept head restored after children were added holds the children it held"
+            "an element with a prefix is a mismatch for a template element of its local name, named at its path"
+        ]
+
 [<Tests>]
 let tests =
     testList
@@ -142,7 +326,10 @@ let tests =
                     moduleName
                     [
                         for name, run in cases do
-                            if Conformance.skippedOn "webcore" name then
+                            if
+                                Conformance.skippedOn "webcore" name
+                                || needsAbi.Contains name
+                            then
                                 ptestCase name ignore
                             else
                                 testCase name (runCase run)

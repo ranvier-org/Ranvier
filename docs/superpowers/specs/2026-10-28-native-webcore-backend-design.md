@@ -1,9 +1,10 @@
 # Native backend design: Ranvier's DOM and view on Ranvier.WebCore
 
-> **Status 2026-10-28:** draft, for review. Written on `codex/native-webcore-feasibility` against Ranvier.WebCore
-> ABI 20 (branch `abi-v20` of `shayanhabibi/Ranvier.WebCore`: the hand-written ABI plus 1,002 generated
-> `rv_dom_*` functions). The prototype it replaces is `evidence/webcore-host/ranvier` (gates 4–19 of
-> `evidence/ABI-EXPERIMENT.md`). Measured facts carry their source; estimates are marked (E).
+> **Status 2026-10-28:** draft, for review. Written against Ranvier.WebCore ABI 20 (branch `abi-v20` of
+> `shayanhabibi/Ranvier.WebCore`: the hand-written ABI plus 1,002 generated `rv_dom_*` functions). The prototype it
+> replaces lives on the local evidence branch `codex/native-webcore-feasibility` (at commit `31687183`), not on
+> master: `evidence/webcore-host/ranvier` and gates 4–19 of `evidence/ABI-EXPERIMENT.md` there. "Gate N" below refers
+> to that file. Measured facts carry their source; estimates are marked (E).
 
 ## Core and view state
 
@@ -56,8 +57,11 @@ into its window.
    `rv_dom_<interface>_<member>` by IDL name; an unmapped member throws. Sizes from the interfaces:
    `HTMLInputElement` has 300 properties and 121 methods over 16 interfaces, so hand-written classes are not an
    option.
-2. **Hot paths stay hand-written.** `Native.IHost`'s members (walk, insert, data, attributes, listen) call the
-   hand-written ABI directly, as the prototype's host did, so the view's per-node operations make one P/Invoke each.
+2. **Hot paths make one P/Invoke each.** On master the view reads and moves nodes through the `Fable.Core.TS.Dom`
+   members (`Native.IHost` keeps only the document, the clock, `DeleteBetween`, `Listen` and the `currentTarget`
+   override), so the generated members serve the view's per-node operations, each one ABI call. `DeleteBetween` and
+   `Listen` call the hand-written ABI directly. (The evidence branch's `Native.IHost` also carried walk, insert, data
+   and attribute members, which its prototype host served from the hand-written ABI.)
 3. **Identity is the handle.** Two ABI handles to one node compare equal (`RanvierWebCoreAbi.h`). The wrapper table
    maps a handle to a weak reference to its wrapper; a wrapper holds one retained reference. A wrapper collected by the
    GC queues its release to the host thread, drained each loop cycle (the ABI is thread-bound).

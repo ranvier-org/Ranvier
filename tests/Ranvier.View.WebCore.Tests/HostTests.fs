@@ -14,12 +14,10 @@ let private name (node: obj) =
     | :? Node as node -> node.nodeName
     | other -> other.GetType().Name
 
-let private relative (node: Node voption) =
-    match node with
-    | ValueSome node -> name node
-    | ValueNone -> "none"
-
-/// <summary>Drives every IHost member and records what each returns or leaves in the tree.</summary>
+/// <summary>
+/// Drives the DOM members the view calls on nodes, and every IHost member, and records what each returns or leaves in
+/// the tree.
+/// </summary>
 let private script (host: Native.IHost) : string list =
     let log = ResizeArray<string>()
     let document = host.Document
@@ -30,47 +28,65 @@ let private script (host: Native.IHost) : string list =
     let comment = document.createComment "m" :> Node
 
     let children (parent: Node) =
-        let rec go (node: Node voption) acc =
+        let rec go (node: Node option) acc =
             match node with
-            | ValueSome node -> go (host.NextOf node) (name node :: acc)
-            | ValueNone -> List.rev acc
+            | Some node ->
+                go
+                    (node.nextSibling
+                     |> Option.map (fun n -> n :> Node))
+                    (name node :: acc)
+            | None -> List.rev acc
 
-        go (host.FirstChildOf parent) []
+        go
+            (parent.firstChild
+             |> Option.map (fun n -> n :> Node))
+            []
         |> String.concat ","
 
-    host.AppendChild (root, span)
-    host.AppendChild (root, text)
-    host.InsertBefore (root, comment, span)
-    host.InsertBefore (root, bold, Unchecked.defaultof<_>)
+    root.appendChild span |> ignore
+    root.appendChild text |> ignore
+    root.insertBefore (comment, span) |> ignore
+    root.insertBefore bold |> ignore
     log.Add $"children {children root}"
-    log.Add $"last {relative (host.LastChildOf root)}"
-    log.Add $"parent {relative (host.ParentOf span)} / {relative (host.ParentOf root)}"
-    log.Add $"data {host.DataOf text}"
-    host.SetData (text, "y")
-    log.Add $"data {host.DataOf text} {host.DataOf comment}"
+
+    log.Add
+        $"last {root.lastChild
+                |> Option.map box
+                |> Option.toObj
+                |> name}"
+
+    log.Add
+        $"parent {span.parentNode
+                  |> Option.map box
+                  |> Option.toObj
+                  |> name} / {root.parentNode.IsSome}"
+
+    log.Add $"data {(text :?> CharacterData).data}"
+    (text :?> CharacterData).data <- "y"
+    log.Add $"data {(text :?> CharacterData).data} {(comment :?> CharacterData).data}"
 
     let element = span :?> Element
-    host.SetAttribute (element, "id", "v")
-    log.Add $"""attribute {host.GetAttribute (element, "id")} {isNull (host.GetAttribute (element, "missing"))}"""
-    host.RemoveAttribute (element, "id")
-    log.Add $"""removed {isNull (host.GetAttribute (element, "id"))}"""
+    element.setAttribute ("id", "v")
+    log.Add $"""attribute {element.getAttribute "id"} {element.getAttribute "missing"}"""
+    element.removeAttribute "id"
+    log.Add $"""removed {element.getAttribute "id"}"""
 
-    let deep = host.CloneNode (root, true)
-    let shallow = host.CloneNode (root, false)
+    let deep = root.cloneNode true
+    let shallow = root.cloneNode false
     log.Add $"clones {children deep} / {children shallow} / {obj.ReferenceEquals (deep, root)}"
-
-    let nodes = Array.zeroCreate<obj> 4
-    host.Walk (root, [| 0; 3; 1; 3; 1; 1; 3 |], nodes, 1)
-    log.Add $"""walk {nodes |> Array.map name |> String.concat ","} {obj.ReferenceEquals (nodes[2], span)}"""
 
     host.DeleteBetween (comment, bold)
     log.Add $"deleted {children root}"
-    host.Remove comment
-    host.RemoveChild (root, bold)
+    (comment :?> ChildNode).remove()
+    root.removeChild bold |> ignore
     log.Add $"emptied [{children root}]"
 
+    let mutable queued = 0
+    host.QueueMicrotask (fun () -> queued <- queued + 1)
+    log.Add $"queued {queued}"
+
     let button = document.createElement "button"
-    host.AppendChild (document.body, button)
+    document.body.appendChild button |> ignore
     let mutable count = 0
     let mutable seen = ""
 
@@ -93,7 +109,7 @@ let private script (host: Native.IHost) : string list =
     remove ()
     button.click ()
     log.Add $"listener {count} {seen}"
-    host.Remove button
+    (button :> ChildNode).remove()
     List.ofSeq log
 
 [<Tests>]
