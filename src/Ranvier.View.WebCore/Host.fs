@@ -91,6 +91,8 @@ type WebCoreHost private (handle: nativeint, session: Session) =
     let mutable frameRequested = 0
     let mutable installed: IDisposable list = []
     let mutable frameCallback: Native.FrameCallback = null
+    let mutable clipboardWrite: Native.ClipboardWrite = null
+    let mutable clipboardRead: Native.ClipboardRead = null
     let mutable document: Document = Unchecked.defaultof<_>
     let mutable disposed = false
 
@@ -456,6 +458,85 @@ type WebCoreHost private (handle: nativeint, session: Session) =
 
     /// <summary>The <c>RV_CURSOR_*</c> value for the mouse's position.</summary>
     member _.Cursor = Native.rv_host_cursor handle
+
+    /// <summary>The milliseconds until the next timer is due, zero when one is overdue, or None when none is set.</summary>
+    member _.NextTimerDelay: float voption =
+        if timers.Count = 0 then
+            ValueNone
+        else
+            let struct (due, _) = (Seq.head timers).Key
+            ValueSome (max 0.0 (due - now ()))
+
+    // Input method
+
+    /// <summary>Whether the native library has <c>feature</c>, a name <c>rv_abi_has</c> takes, such as "ime".</summary>
+    static member Has(feature: string) =
+        Native.rv_abi_has feature = 1
+
+    /// <summary>
+    /// Sets the input method's composition in the focused editable element: the text being composed, with the selection
+    /// within it in UTF-16 offsets. Empty text removes it.
+    /// </summary>
+    member this.SetComposition(text: string, selectionStart: int, selectionEnd: int) =
+        this.Input ("rv_host_ime_set_composition", fun () -> Native.rv_host_ime_set_composition (handle, text, selectionStart, selectionEnd))
+        |> ignore
+
+    /// <summary>Replaces the composition, or the selection when there is none, with <c>text</c>, as typed text.</summary>
+    member this.CommitComposition(text: string) =
+        this.Input ("rv_host_ime_commit", fun () -> Native.rv_host_ime_commit (handle, text))
+        |> ignore
+
+    /// <summary>Removes the composition without committing it.</summary>
+    member this.CancelComposition() =
+        this.Input ("rv_host_ime_cancel", fun () -> Native.rv_host_ime_cancel handle)
+        |> ignore
+
+    /// <summary>
+    /// The bounds of the composition's first line, or of the caret, in CSS pixels, where an input method places its
+    /// candidate window, or None when there is neither.
+    /// </summary>
+    member _.CompositionRect: struct (int * int * int * int) voption =
+        let mutable x = 0
+        let mutable y = 0
+        let mutable width = 0
+        let mutable height = 0
+
+        match Native.rv_host_ime_rect (handle, &x, &y, &width, &height) with
+        | 1 -> ValueSome (struct (x, y, width, height))
+        | 0 -> ValueNone
+        | status -> raise (Interop.failure "rv_host_ime_rect" status)
+
+    // Clipboard
+
+    /// <summary>
+    /// Moves the page's clipboard data through the app: <c>write</c> takes each copied type and its data, with
+    /// <c>true</c> for the first type of a copy, and <c>read</c> returns the types and data a paste takes.
+    /// </summary>
+    member _.SetClipboard(write: string -> string -> bool -> unit, read: unit -> struct (string * string) seq) =
+        clipboardWrite <-
+            Native.ClipboardWrite (fun _ kind data first ->
+                try
+                    write (Marshal.PtrToStringUTF8 kind) (Marshal.PtrToStringUTF8 data) (first <> 0)
+                with error ->
+                    record error)
+
+        clipboardRead <-
+            Native.ClipboardRead (fun _ request ->
+                try
+                    for struct (kind, data) in read () do
+                        Native.rv_clipboard_offer (request, kind, data)
+                        |> Interop.check "rv_clipboard_offer"
+                with error ->
+                    record error)
+
+        Native.rv_host_set_clipboard (
+            handle,
+            0,
+            Marshal.GetFunctionPointerForDelegate<Native.ClipboardWrite> clipboardWrite,
+            Marshal.GetFunctionPointerForDelegate<Native.ClipboardRead> clipboardRead,
+            0n
+        )
+        |> Interop.check "rv_host_set_clipboard"
 
     interface Native.IHost with
         member _.Document = document

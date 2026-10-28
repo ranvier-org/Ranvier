@@ -12,7 +12,7 @@ it and an app a person runs: a window showing Ranvier components, taking input, 
 | `Ranvier.View.WebCore` | Mounts components into a WebCore page through the generated DOM members; paints to an RGBA buffer; forwards mouse input (`InputTests`) |
 | Conformance | ConformanceCases' fifteen modules match the DOM twin, except four pending cases |
 | AOT | `tests/Ranvier.View.WebCore.AotSmoke` mounts and paints; publishing it has not run end to end |
-| Window | None. Every check so far reads the RGBA buffer back; nothing has been on screen |
+| Window | `Ranvier.View.WebCore.Sdl` on Windows: paint, mouse, wheel, keys, IME, focus, cursor, clipboard; `samples/Ranvier.NativeCounter` runs by hand. AOT publish of the sample and macOS remain |
 | Accessibility | ABI complete; no platform bridge ([help wanted](https://github.com/ranvier-org/Ranvier.WebCore/pull/2)) |
 
 Critical path for a first Windows app: gaps 1, 2 and 3. The rest can follow in any order.

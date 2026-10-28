@@ -237,6 +237,8 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-${{ github.job }}-
       - name: Test Ranvier.View.WebCore.Tests
         run: dotnet test tests/Ranvier.View.WebCore.Tests -c Release
+      - name: Build the native counter sample
+        run: dotnet build samples/Ranvier.NativeCounter -c Release
 
   # The publish command's release pipeline with the push replaced by a listing: builds, packs every source project
   # untraced and traced and the analyzers, then checks each package's id, version, lib frameworks and trace build, and
