@@ -80,6 +80,9 @@ jobs:
             docs/maps/tests/browser/package-lock.json
       - name: Collect performance history
         run: node .github/scripts/perf-site-data.cjs perf-data/runs docs/static/perf-data/index.json
+      # The signal maps compile the view projects of a Ranvier.Views checkout against this core.
+      - name: Check out Ranvier.Views beside the repository
+        run: .github/scripts/views-sibling.sh
       - name: Build the site
         run: dotnet fsi build.fsx -- docs
       - name: Check the signal maps in a browser
