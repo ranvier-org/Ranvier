@@ -17,7 +17,7 @@ Replay them into a matching graph in one of two modes:
 Journaling works in an untraced build. Traced diagnostic replay can also reproduce the trace;
 see [Diagnostic replay](#diagnostic-replay) for its conditions.
 
-For a complete example, [replay a production shop bug](shop-replay.md): capture overlapping async shipping
+For a complete example, [replay a production shop bug](https://ranvier-org.github.io/Ranvier.Persistence/guide/shop-replay/): capture overlapping async shipping
 requests in an untraced Release build, then reproduce the incident in a traced Debug build with zero live calls.
 
 ## Recording
@@ -349,7 +349,7 @@ applied and its own batch unapplied. A replay into a graph with no journal raise
 
 A restore rebuilds a graph from a stored-state snapshot and replays the journal entries recorded
 after it. The snapshot is the store of a persist session from
-[Ranvier.Persistence](persistence.md): with the graph's journal set to the session's wrapper,
+[Ranvier.Persistence](https://ranvier-org.github.io/Ranvier.Persistence/guide/persistence/): with the graph's journal set to the session's wrapper,
 each save stores the records and the `Seq` of the last journal entry they include, the snapshot's
 position.
 
@@ -402,7 +402,7 @@ The v1 limits:
   raises `JournalReplayException` on that input before applying any entry. On .NET, an input from
   a continuation of an effect's body that the restored graph re-runs is applied twice.
 - Two sessions busted to a new buster over one store can clear each other's saves: see
-  [Busting the store](persistence.md#busting-the-store). A snapshot holds what the store held at
+  [Busting the store](https://ranvier-org.github.io/Ranvier.Persistence/guide/persistence/#busting-the-store). A snapshot holds what the store held at
   the copy.
 
 ## Fable

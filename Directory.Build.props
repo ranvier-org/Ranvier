@@ -16,6 +16,8 @@
         <IncludeSymbols>false</IncludeSymbols>
         <!-- Ranvier.Css packages, published from ranvier-org/Ranvier.Css. -->
         <RanvierCssVersion>0.1.1-alpha.1</RanvierCssVersion>
+        <!-- Ranvier.View packages, published from ranvier-org/Ranvier.Views, which the docs maps render with. -->
+        <RanvierViewVersion>0.1.1-alpha.1</RanvierViewVersion>
     </PropertyGroup>
 
     <!-- Packed projects only: a CI build maps source paths to /_/, which breaks the docs site's __SOURCE_DIRECTORY__. -->

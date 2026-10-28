@@ -16,6 +16,8 @@
 
     <PropertyGroup Condition="'$(RanvierTrace)' == 'true'">
         <DefineConstants>$(DefineConstants);RANVIER_TRACE</DefineConstants>
+        <!-- The id suffix of the traced packages from other ranvier-org repositories. -->
+        <RanvierPackageSuffix>.Traced</RanvierPackageSuffix>
     </PropertyGroup>
 
     <!--
@@ -51,14 +53,16 @@
     </Target>
 
     <!--
-    `RanvierAnalyze=true` runs the analyzers built at tools/Ranvier.Analyzers/bin/Release/net10.0 after CoreCompile, and
+    `RanvierAnalyze=true` runs the analyzers at `RanvierAnalyzersPath` (by default, those built in a sibling
+    ranvier-org/Ranvier.Views checkout) after CoreCompile, and
     a finding promoted to an error fails the build. `RanvierAnalyzersFlags` passes further CLI flags, such as a code
     promoted to an error; the analyzers run only when CoreCompile does.
     -->
     <PropertyGroup Condition="'$(RanvierAnalyze)' == 'true'">
+        <RanvierAnalyzersPath Condition="'$(RanvierAnalyzersPath)' == ''">$(MSBuildThisFileDirectory)../Ranvier.Views/tools/Ranvier.Analyzers/bin/Release/net10.0</RanvierAnalyzersPath>
         <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
         <FSharpAnalyzersContinueOnError>false</FSharpAnalyzersContinueOnError>
-        <FSharpAnalyzersOtherFlags>$(FSharpAnalyzersOtherFlags) $(RanvierAnalyzersFlags) --analyzers-path &quot;$(MSBuildThisFileDirectory)tools/Ranvier.Analyzers/bin/Release/net10.0&quot; --code-root &quot;$(MSBuildThisFileDirectory).&quot;</FSharpAnalyzersOtherFlags>
+        <FSharpAnalyzersOtherFlags>$(FSharpAnalyzersOtherFlags) $(RanvierAnalyzersFlags) --analyzers-path &quot;$(RanvierAnalyzersPath)&quot; --code-root &quot;$(MSBuildThisFileDirectory).&quot;</FSharpAnalyzersOtherFlags>
     </PropertyGroup>
 
 </Project>

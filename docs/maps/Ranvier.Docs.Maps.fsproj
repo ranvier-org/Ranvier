@@ -5,6 +5,8 @@
         <LangVersion>latest</LangVersion>
         <IsPackable>false</IsPackable>
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <!-- docs/literate.fsx loads the view assemblies from this output directory. -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,8 +20,8 @@
 
     <ItemGroup>
         <ProjectReference Include="model\Ranvier.Docs.MapModel.fsproj" />
-        <ProjectReference Include="..\..\src\Ranvier.View.Dom\Ranvier.View.Dom.fsproj" />
-        <ProjectReference Include="..\..\src\Fable.Ranvier.Anime\Fable.Ranvier.Anime.fsproj" />
+        <PackageReference Include="Ranvier.View.Dom$(RanvierPackageSuffix)" Version="$(RanvierViewVersion)" />
+        <PackageReference Include="Fable.Ranvier.Anime$(RanvierPackageSuffix)" Version="$(RanvierViewVersion)" />
     </ItemGroup>
 
 </Project>
