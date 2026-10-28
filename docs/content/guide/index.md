@@ -49,7 +49,7 @@ doubled = 10
   errors and dispatch. [Boundaries](boundaries.md) supply values while a request is unavailable.
 - **Collections:** [Projections](projections.fsx) preserve rows by key;
   [direct edits](collection-updates.fsx#direct-edits) update them without replacing the source list.
-- **UI:** [Views](https://ranvier-org.github.io/Ranvier.Views/view/) and [Server rendering](https://ranvier-org.github.io/Ranvier.Views/server/) share templates
+- **UI:** [Views](https://ranvier-org.github.io/Ranvier.View/view/) and [Server rendering](https://ranvier-org.github.io/Ranvier.View/server/) share templates
   across browser DOM, server HTML and hydration. [C# bindings](csharp.md#binding-to-xaml) connect
   native XAML view models to the graph.
 - **Lifetime:** [Roots](roots.md) and [Cleanup](cleanup.md) stop computations and subscriptions
@@ -88,7 +88,7 @@ doubled = 10
 - [Migrating from Elmish](elmish.md): an MVU model read through selector memos, one view at a time.
 - [Queries and mutations](queries.md): shared remote queries, page leases and atomic reconciliation of partial data.
 - [C#](csharp.md): C# factories, XAML bindings and reactive commands.
-- [Views](https://ranvier-org.github.io/Ranvier.Views/view/) and [Server rendering](https://ranvier-org.github.io/Ranvier.Views/server/): template components for the browser DOM, server HTML and hydration, in the alpha `Ranvier.View` packages.
+- [Views](https://ranvier-org.github.io/Ranvier.View/view/) and [Server rendering](https://ranvier-org.github.io/Ranvier.View/server/): template components for the browser DOM, server HTML and hydration, in the alpha `Ranvier.View` packages.
 
 ## Packages in other repositories
 
@@ -96,7 +96,7 @@ The core packages are built here. The packages below build on them in their own 
 
 | Repository | Packages | Documentation |
 | --- | --- | --- |
-| [Ranvier.Views](https://github.com/ranvier-org/Ranvier.Views) | `Ranvier.View`, `Ranvier.View.Dom`, `Ranvier.View.Anime`, `Fable.Ranvier.Anime`, `Ranvier.Analyzers` | [Views, server rendering, motion and analyzers](https://ranvier-org.github.io/Ranvier.Views/) |
+| [Ranvier.View](https://github.com/ranvier-org/Ranvier.View) | `Ranvier.View`, `Ranvier.View.Dom`, `Ranvier.View.Anime`, `Fable.Ranvier.Anime`, `Ranvier.Analyzers` | [Views, server rendering, motion and analyzers](https://ranvier-org.github.io/Ranvier.View/) |
 | [Ranvier.Css](https://github.com/ranvier-org/Ranvier.Css) | `Ranvier.Css`, `Ranvier.Css.Bindings`, `Ranvier.Css.View`, `Ranvier.Css.Build` | [Typed CSS](https://ranvier-org.github.io/Ranvier.Css/) |
 | [Ranvier.Persistence](https://github.com/ranvier-org/Ranvier.Persistence) | `Ranvier.Persistence`, `Ranvier.Persistence.Marten`, `Ranvier.Persistence.KurrentDB` | [Persisted inputs and stores](https://ranvier-org.github.io/Ranvier.Persistence/) |
 

@@ -96,22 +96,22 @@ module Spec =
             ]
         ]
 
-    /// The ranvier-org/Ranvier.Views checkout: `RanvierViewsRoot` when set, else a sibling of this repository.
+    /// The ranvier-org/Ranvier.View checkout: `RanvierViewRoot` when set, else a sibling of this repository.
     let viewsRoot =
-        match System.Environment.GetEnvironmentVariable "RanvierViewsRoot" with
+        match System.Environment.GetEnvironmentVariable "RanvierViewRoot" with
         | null
-        | "" -> System.IO.Path.Combine (__REPOSITORY_DIRECTORY__, "../Ranvier.Views")
+        | "" -> System.IO.Path.Combine (__REPOSITORY_DIRECTORY__, "../Ranvier.View")
         | root -> root
         |> System.IO.Path.GetFullPath
 
-    /// The analyzers built in the Ranvier.Views checkout, which `analyze` runs.
+    /// The analyzers built in the Ranvier.View checkout, which `analyze` runs.
     let analyzersProject =
         System.IO.Path.Combine (viewsRoot, "tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj")
 
     let analyzersDirectory =
         System.IO.Path.Combine (System.IO.Path.GetDirectoryName analyzersProject, "bin/Release/net10.0")
 
-    /// The Playground of the Ranvier.Views checkout, which runs the trace report's Chromium rows.
+    /// The Playground of the Ranvier.View checkout, which runs the trace report's Chromium rows.
     let playground =
         System.IO.Path.Combine (viewsRoot, "examples/Fable.Ranvier.Playground")
 

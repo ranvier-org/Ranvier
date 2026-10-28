@@ -7,7 +7,7 @@ description: Complete F# and C# applications built on Ranvier, in the Ranvier.Ex
 Preview — Ranvier is pre-release; its APIs may change.
 :::
 
-To try interactive views directly in your browser, open the [browser examples](https://ranvier-org.github.io/Ranvier.Views/examples/):
+To try interactive views directly in your browser, open the [browser examples](https://ranvier-org.github.io/Ranvier.View/examples/):
 the playground, Motion demos and a server-rendered hydration snapshot.
 
 [Ranvier.Examples](https://github.com/shayanhabibi/Ranvier.Examples) holds complete applications

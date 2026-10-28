@@ -3,7 +3,7 @@
 `Publish NuGet` (`.github/workflows/publish.yml`) publishes the exact package artifacts from successful
 `master` CI. It includes every packable library under `src/` and their `.Traced` variants. Samples,
 experiments and projects with `IsPackable=false` are excluded. The view, CSS and persistence packages publish from
-[Ranvier.Views](https://github.com/ranvier-org/Ranvier.Views), [Ranvier.Css](https://github.com/ranvier-org/Ranvier.Css)
+[Ranvier.View](https://github.com/ranvier-org/Ranvier.View), [Ranvier.Css](https://github.com/ranvier-org/Ranvier.Css)
 and [Ranvier.Persistence](https://github.com/ranvier-org/Ranvier.Persistence).
 
 ## Normal release

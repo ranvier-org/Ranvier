@@ -26,7 +26,7 @@ let apiOptions =
 
 /// The documentation sites of the packages built in the other ranvier-org repositories.
 module Packages =
-    let views = "https://ranvier-org.github.io/Ranvier.Views/"
+    let views = "https://ranvier-org.github.io/Ranvier.View/"
     let css = "https://ranvier-org.github.io/Ranvier.Css/"
     let persistence = "https://ranvier-org.github.io/Ranvier.Persistence/"
 
@@ -39,7 +39,7 @@ let theme =
                 NavbarDropdown (
                     "Packages",
                     [
-                        NavbarDescribed ("Ranvier.Views", "Templates, DOM and server rendering, motion and the analyzers", Packages.views)
+                        NavbarDescribed ("Ranvier.View", "Templates, DOM and server rendering, motion and the analyzers", Packages.views)
                         NavbarDescribed ("Ranvier.Css", "Typed CSS, utilities and static extraction", Packages.css)
                         NavbarDescribed ("Ranvier.Persistence", "Persisted signals and the Marten and KurrentDB stores", Packages.persistence)
                     ]
@@ -284,7 +284,7 @@ let site =
     |> AgentFriendly.registerWith (
         AgentFriendly.summary "Fine-grained reactive computation for .NET, with a Fable target"
         >> AgentFriendly.details
-            "Start with the guide. Concepts explains the engine's model; Benchmarks holds measured results. Views, typed CSS and persistence are documented in the Ranvier.Views, Ranvier.Css and Ranvier.Persistence sites."
+            "Start with the guide. Concepts explains the engine's model; Benchmarks holds measured results. Views, typed CSS and persistence are documented in the Ranvier.View, Ranvier.Css and Ranvier.Persistence sites."
     )
     |> LightningCss.register
     |> Esbuild.register

@@ -68,7 +68,7 @@ Read the [full documentation](https://ranvier-org.github.io/Ranvier/).
 - [Debounce and throttle](docs/content/guide/timing.md) control when captured values reach downstream readers and async requests.
 - [Collections](docs/content/guide/collections.fsx) provide editable keyed sources, per-row projections, change readers, views and aggregates.
 - [Queries and mutations](docs/content/guide/queries.md) share acquired remote data, retain accepted data during refresh, and reconcile loaded queries in one batch.
-- [Views](https://ranvier-org.github.io/Ranvier.Views/) use typed F# components for browser rendering, server HTML and hydration. They are built in [ranvier-org/Ranvier.Views](https://github.com/ranvier-org/Ranvier.Views), with [typed CSS](https://github.com/ranvier-org/Ranvier.Css) and [persistence](https://github.com/ranvier-org/Ranvier.Persistence) in their own repositories.
+- [Views](https://ranvier-org.github.io/Ranvier.View/) use typed F# components for browser rendering, server HTML and hydration. They are built in [ranvier-org/Ranvier.View](https://github.com/ranvier-org/Ranvier.View), with [typed CSS](https://github.com/ranvier-org/Ranvier.Css) and [persistence](https://github.com/ranvier-org/Ranvier.Persistence) in their own repositories.
 - [Fable](docs/content/fable/index.md) compiles the same model to JavaScript. Package builds include standalone Fable source projects, and CI checks package consumers. The guide documents target differences.
 
 ## Examples

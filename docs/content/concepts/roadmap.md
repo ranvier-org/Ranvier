@@ -35,8 +35,8 @@ versions and local builds. Exploratory items below have no delivery schedule.
 - **C# integration:** delegate factories, XAML property/error bindings, commands and observable
   collections. See [C#](../guide/csharp.md).
 - **Views:** shared templates support DOM mounting, server HTML and hydration, with motion and
-  testing helpers. See [Views](https://ranvier-org.github.io/Ranvier.Views/view/), [Server rendering](https://ranvier-org.github.io/Ranvier.Views/server/) and
-  [Testing views](https://ranvier-org.github.io/Ranvier.Views/view/testing/).
+  testing helpers. See [Views](https://ranvier-org.github.io/Ranvier.View/view/), [Server rendering](https://ranvier-org.github.io/Ranvier.View/server/) and
+  [Testing views](https://ranvier-org.github.io/Ranvier.View/view/testing/).
 - **Fable and deployment:** local package builds include standalone Fable source projects; CI
   checks packed consumers. The core, C#, Elmish and Query packages have traced/untraced .NET 10
   `linux-x64` trim/AOT smoke checks. See [Installation](../guide/installation.md) for scope and

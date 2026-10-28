@@ -32,7 +32,7 @@ CI rejects unformatted F#. `dotnet fsi build.fsx -- format --dry-format` checks 
 ## Examples and playgrounds
 
 Ordinary examples, playgrounds and experimental demos use the current public authoring syntax.
-View examples live in [ranvier-org/Ranvier.Views](https://github.com/ranvier-org/Ranvier.Views), which
+View examples live in [ranvier-org/Ranvier.View](https://github.com/ranvier-org/Ranvier.View), which
 documents its authoring conventions.
 
 Explicit builders, manual mounting and low-level operations remain appropriate when demonstrating
@@ -69,7 +69,7 @@ naming them. `--dry-publish` lists what a push would accept and refuse, and the 
 dependency.
 
 The view, CSS and persistence packages are built and published from their own repositories:
-[Ranvier.Views](https://github.com/ranvier-org/Ranvier.Views), [Ranvier.Css](https://github.com/ranvier-org/Ranvier.Css)
+[Ranvier.View](https://github.com/ranvier-org/Ranvier.View), [Ranvier.Css](https://github.com/ranvier-org/Ranvier.Css)
 and [Ranvier.Persistence](https://github.com/ranvier-org/Ranvier.Persistence). Each references the core packages from
 NuGet, or this checkout as a sibling directory for changes that span both repositories.
 
