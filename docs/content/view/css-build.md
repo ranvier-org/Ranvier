@@ -81,7 +81,7 @@ readers for changing values.
 
 Validation finishes before CSS output is written. Extraction errors preserve existing outputs.
 Old assets and unrelated files are retained; your asset deployment process controls cleanup.
-See the [compiler contract](https://github.com/shayanhabibi/Ranvier/blob/master/tools/Ranvier.Css.Compile/README.md)
+See the [compiler contract](https://github.com/ranvier-org/Ranvier/blob/master/tools/Ranvier.Css.Compile/README.md)
 for the complete supported subset and command options.
 
 ### Static composition and runtime values
@@ -128,7 +128,7 @@ checks happen during authoring, extraction and browser computation.
 The separate CSS importer parses existing `.css` with an established CSS parser and generates
 Ranvier CSS sugar where the metadata supports a typed conversion. It retains explicit unchecked
 escapes for unsupported values instead of claiming those values have been type checked.
-See the [importer commands and round-trip example](https://github.com/shayanhabibi/Ranvier/blob/master/tools/Ranvier.Css.Import/README.md).
+See the [importer commands and round-trip example](https://github.com/ranvier-org/Ranvier/blob/master/tools/Ranvier.Css.Import/README.md).
 
 The utility syntax is F# composition; there is no Tailwind class-string parser in this release.
 Shared breakpoint conditions and conditional composite utilities provide the corresponding

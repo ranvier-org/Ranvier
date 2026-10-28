@@ -262,14 +262,14 @@ let theme =
             ]
         >> Theme.navbarEnd
             [
-                NavbarIcon ("GitHub", "https://github.com/shayanhabibi/Ranvier", Icons.github)
+                NavbarIcon ("GitHub", "https://github.com/ranvier-org/Ranvier", Icons.github)
             ]
-        >> Theme.editUrl "https://github.com/shayanhabibi/Ranvier/edit/master/docs"
+        >> Theme.editUrl "https://github.com/ranvier-org/Ranvier/edit/master/docs"
         >> Theme.footer (
             Html.p
                 [
                     Html.text "Ranvier · Preview · "
-                    Html.a [ prop.href "https://github.com/shayanhabibi/Ranvier"; prop.text "GitHub" ]
+                    Html.a [ prop.href "https://github.com/ranvier-org/Ranvier"; prop.text "GitHub" ]
                     Html.text " · Built with Nacara"
                 ]
         )

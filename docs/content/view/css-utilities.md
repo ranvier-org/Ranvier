@@ -138,6 +138,6 @@ deterministic F# helpers can construct utilities; the compiler supports a bounde
 reports unsupported used expressions. Runtime state belongs in predicates and readers, not
 in decisions that change a static utility's structure.
 
-The [complete runnable example](https://github.com/shayanhabibi/Ranvier/tree/master/examples/Ranvier.Css.Utilities.Example)
+The [complete runnable example](https://github.com/ranvier-org/Ranvier/tree/master/examples/Ranvier.Css.Utilities.Example)
 uses these breakpoints, responsive text and width, composition, a busy gate, a typed width
 reader and a manual class. Continue with [extracting and serving CSS](css-build.md).
