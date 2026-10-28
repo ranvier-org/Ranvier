@@ -101,6 +101,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 83,439 | 127,576 | 1,742,257 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 83,373 | 127,624 | 1,742,169 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 83,313 | 127,527 | 1,742,134 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 83,303 | 127,538 | 1,742,345 |
 
 ## app-table
 
@@ -203,6 +204,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 4,417,699 | 9,451,888 | 107,756,158 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 4,417,867 | 9,163,007 | 107,727,039 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 4,417,716 | 9,456,160 | 107,629,145 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 4,417,722 | 9,562,436 | 107,851,349 |
 
 ## async-recover
 
@@ -305,6 +307,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 139,183 | 41,264 | 434,846 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 139,183 | 41,241 | 434,851 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 139,183 | 41,266 | 434,847 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 139,139 | 41,263 | 434,855 |
 
 ## async-resolve
 
@@ -407,6 +410,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,791,251 | 1,023,048 | 11,970,356 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,791,251 | 1,022,839 | 11,970,195 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,791,251 | 1,023,231 | 11,967,005 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,790,467 | 1,022,959 | 11,967,345 |
 
 ## chain
 
@@ -509,6 +513,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -611,6 +616,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,553 | 3,071 | 2,500 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,553 | 3,071 | 2,500 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,553 | 3,071 | 2,500 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -713,6 +719,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 74,710 | 836,660 | 2,603,146 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 74,709 | 836,742 | 2,603,084 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 74,709 | 836,699 | 2,603,057 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 74,710 | 836,545 | 2,603,179 |
 
 ## create
 
@@ -815,6 +822,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 13,448,404 | 2,865,677 | 2,570,368 | 2,127,836 | 4,045,348 | 34,003,308 | 50,334,322 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 13,573,931 | 2,865,677 | 2,570,368 | 2,127,109 | 4,045,390 | 34,003,156 | 50,334,350 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 13,904,875 | 2,865,678 | 2,570,400 | 2,127,589 | 4,045,417 | 34,003,263 | 50,334,402 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 13,480,234 | 2,865,677 | 2,570,368 | 2,128,178 | 4,044,648 | 33,999,974 | 50,423,970 |
 
 ## create-on
 
@@ -917,6 +925,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,949,484 | 4,179,866 | 55,229,172 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,949,484 | 4,179,730 | 55,229,194 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,949,485 | 4,179,663 | 55,229,279 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,949,487 | 4,179,748 | 55,229,091 |
 
 ## cutoff
 
@@ -1019,6 +1028,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1121,6 +1131,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 781 | 751 | 16,520 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 781 | 751 | 16,520 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 781 | 751 | 16,520 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1223,6 +1234,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 751 | 802 | 16,543 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 751 | 802 | 16,543 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 751 | 802 | 16,543 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1325,6 +1337,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,707,639 | 806,288 | 367,497 | 475,508 | 495,005 | 13,207,554 | 9,105,777 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,707,643 | 806,288 | 367,497 | 476,065 | 495,175 | 13,207,467 | 9,106,408 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,707,644 | 806,290 | 367,497 | 475,552 | 494,926 | 13,207,094 | 9,105,844 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,706,754 | 806,291 | 367,497 | 475,762 | 495,186 | 13,205,724 | 9,106,519 |
 
 ## dispose-on
 
@@ -1427,6 +1440,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 346,497 | 487,911 | 8,902,051 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 346,497 | 487,884 | 8,902,906 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 346,497 | 487,787 | 8,902,744 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 346,497 | 487,652 | 8,902,180 |
 
 ## editable-edit
 
@@ -1529,6 +1543,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 181,706 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 181,706 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 181,706 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 181,706 |
 
 ## editable-upstream
 
@@ -1631,6 +1646,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 232,855 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 232,855 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 232,855 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 232,855 |
 
 ## fail-recompute
 
@@ -1733,6 +1749,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 65,094 | 1,370 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 65,094 | 1,370 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 65,094 | 1,370 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 64,938 | 1,370 |
 
 ## flight
 
@@ -1835,6 +1852,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -1937,6 +1955,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,921,737 | 54,013 | 54,958 | 3,277,545 | 237,685 | 176,037 | 45,075,865 | 2,634,483 | 2,655,541 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,921,737 | 53,917 | 54,950 | 3,277,719 | 237,631 | 175,986 | 45,075,876 | 2,634,480 | 2,655,518 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,921,737 | 53,917 | 54,954 | 3,277,611 | 237,646 | 176,000 | 45,075,865 | 2,634,552 | 2,655,530 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,921,743 | 53,917 | 54,969 | 3,277,598 | 237,685 | 176,021 | 45,075,895 | 2,634,579 | 2,655,550 |
 
 ## keyed-remove
 
@@ -2039,6 +2058,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,920,676 | 43,702 | 45,301 | 3,292,821 | 592,034 | 605,821 | 45,041,049 | 1,924,630 | 1,960,147 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,920,676 | 43,607 | 45,301 | 3,292,702 | 591,998 | 606,219 | 45,041,016 | 1,924,667 | 1,960,108 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,920,670 | 43,607 | 45,300 | 3,292,632 | 592,035 | 606,152 | 45,041,072 | 1,924,639 | 1,960,145 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,920,677 | 43,600 | 45,315 | 3,292,991 | 592,225 | 606,037 | 45,041,250 | 1,924,889 | 1,960,192 |
 
 ## keyed-swap
 
@@ -2141,6 +2161,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,973,362 | 46,301 | 46,927 | 3,620,407 | 148,894 | 513,046 | 46,198,638 | 915,663 | 936,145 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,973,362 | 46,205 | 46,928 | 3,628,789 | 148,914 | 512,985 | 46,198,959 | 915,619 | 936,144 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,973,362 | 46,205 | 46,927 | 3,615,679 | 148,887 | 513,178 | 46,198,619 | 915,628 | 936,050 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,973,371 | 46,206 | 46,943 | 3,628,338 | 149,234 | 512,580 | 46,203,971 | 915,709 | 936,162 |
 
 ## mvu-dispatch
 
@@ -2243,6 +2264,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 58,292 | 788 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 58,292 | 788 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 58,292 | 788 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2345,6 +2367,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 7,013 | 884 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 7,029 | 884 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 7,013 | 884 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | — | — |
 
 ## project-chain
 
@@ -2447,6 +2470,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,071,836 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,071,928 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,071,762 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,071,710 |
 
 ## project-churn
 
@@ -2549,6 +2573,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 36,385 | 34,250 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 36,385 | 34,250 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 36,385 | 34,250 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2651,6 +2676,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 50,460 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 50,460 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 50,460 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 50,460 |
 
 ## project-reorder
 
@@ -2753,6 +2779,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 780,067 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 780,067 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 780,068 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 780,084 |
 
 ## server-render
 
@@ -2855,6 +2882,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 680,716 | 1,147,507 | 9,829,123 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 680,652 | 1,147,149 | 9,828,685 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 680,652 | 1,147,693 | 9,829,307 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | — | — | — |
 
 ## shape-diamond
 
@@ -2957,6 +2985,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 59,915 | 80,445 | 1,764,075 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 59,915 | 80,445 | 1,764,075 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 59,915 | 80,445 | 1,764,075 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3059,6 +3088,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 84,378 | 108,945 | 2,038,136 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 84,378 | 108,947 | 2,038,136 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 84,378 | 108,947 | 2,038,136 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3161,6 +3191,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,476 | 47,580 | 45,790 | 55,380 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,468 | 47,580 | 45,790 | 55,383 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,472 | 47,577 | 45,790 | 55,383 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,471 | 47,553 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -3263,6 +3294,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 5,022 | 24,618 | 5,728 | 9,728 | 50,033 | 8,067 | 123,810 | 720,148 | 113,734 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 5,022 | 24,618 | 5,728 | 9,727 | 50,033 | 8,067 | 123,808 | 720,148 | 113,734 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 5,022 | 24,618 | 5,712 | 9,732 | 50,032 | 8,071 | 123,810 | 720,150 | 113,733 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,071 | 123,785 | 720,148 | 113,735 |
 
 ## stream-burst-256
 
@@ -3365,6 +3397,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 54,162 | 393,702 | 57,067 | 132,065 | 792,882 | 74,743 | 1,343,779 | 11,508,869 | 1,046,727 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 54,162 | 393,702 | 57,067 | 131,888 | 792,880 | 74,743 | 1,343,779 | 11,508,864 | 1,046,723 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 54,162 | 393,702 | 57,051 | 131,978 | 792,882 | 74,743 | 1,343,732 | 11,508,770 | 1,046,722 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 54,162 | 393,702 | 57,052 | 131,923 | 792,883 | 74,743 | 1,343,136 | 11,508,770 | 1,046,762 |
 
 ## stream-restart
 
@@ -3467,6 +3500,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 4,204 | 5,011 | 6,579 | 16,889 | 42,896 | 72,025 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 4,204 | 5,011 | 6,571 | 16,883 | 42,883 | 72,024 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 4,204 | 4,995 | 6,579 | 16,886 | 42,902 | 72,026 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 4,203 | 5,004 | 6,576 | 16,889 | 42,909 | 72,023 |
 
 ## timed-admit-both
 
@@ -3569,6 +3603,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 117,709 | 130,038 | 2,693,577 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 118,733 | 130,036 | 2,693,565 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 117,709 | 130,039 | 2,693,577 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 117,709 | 130,036 | 2,693,564 |
 
 ## timed-admit-debounce
 
@@ -3671,6 +3706,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 116,618 | 128,619 | 2,654,117 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 117,638 | 128,618 | 2,654,116 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 116,614 | 128,616 | 2,654,128 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 116,614 | 128,630 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -3773,6 +3809,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 69,621 | 79,565 | 1,620,677 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 70,645 | 79,566 | 1,620,677 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 69,621 | 79,565 | 1,620,677 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 69,621 | 79,566 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -3875,6 +3912,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 116,876 | 128,935 | 2,663,985 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 117,900 | 128,937 | 2,663,985 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 116,876 | 128,933 | 2,663,985 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 116,876 | 128,936 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -3977,6 +4015,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 35,740 | 44,936 | 846,920 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,740 | 44,935 | 846,917 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 35,740 | 44,936 | 846,917 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 35,740 | 44,937 | 846,247 |
 
 ## timed-capture-debounce
 
@@ -4079,6 +4118,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 35,612 | 44,233 | 847,657 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,612 | 44,232 | 847,657 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 35,612 | 44,232 | 847,657 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4181,6 +4221,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 32,092 | 36,742 | 745,651 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 32,092 | 36,741 | 745,651 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 32,092 | 36,742 | 745,651 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4283,6 +4324,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 35,548 | 44,168 | 839,786 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,548 | 44,168 | 839,787 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 35,548 | 44,169 | 839,784 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -4385,6 +4427,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,087,783 | 38,805 | 84,105 | 263,233 | 145,809 | 3,351,293 | 2,545,016 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,090,983 | 38,805 | 84,105 | 263,278 | 145,816 | 3,351,241 | 2,544,998 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,092,590 | 38,805 | 84,105 | 262,639 | 145,806 | 3,351,260 | 2,545,014 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,089,390 | 38,805 | 84,105 | 263,443 | 145,791 | 3,351,291 | 2,545,061 |
 
 ## update-on
 
@@ -4487,6 +4530,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 94,605 | 169,004 | 2,872,431 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 94,605 | 169,025 | 2,872,416 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 94,605 | 169,019 | 2,872,336 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 94,605 | 169,024 | 2,872,458 |
 
 ## work-form
 
@@ -4589,6 +4633,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 172,679 | 165,150 | 308,825 | 296,926 | 5,421,808 | 5,334,908 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 172,679 | 165,150 | 308,861 | 296,995 | 5,421,757 | 5,334,903 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 172,679 | 165,150 | 308,861 | 296,979 | 5,421,822 | 5,334,914 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 172,679 | 165,150 | 308,861 | 296,991 | 5,421,823 | 5,334,919 |
 
 ## work-status
 
@@ -4691,6 +4736,7 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 102,045 | 80,235 | 269,342 | 156,125 | 2,659,280 | 2,391,318 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 102,045 | 80,235 | 269,349 | 156,123 | 2,659,303 | 2,391,259 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 102,045 | 80,235 | 269,369 | 156,135 | 2,659,245 | 2,391,271 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 102,045 | 80,235 | 269,347 | 156,124 | 2,659,298 | 2,391,298 |
 
 ## work-value
 
@@ -4793,4 +4839,5 @@
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 109,169 | 121,071 | 269,592 | 283,396 | 2,643,921 | 2,968,434 |
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 109,169 | 121,071 | 269,586 | 283,418 | 2,643,850 | 2,968,422 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 109,169 | 121,071 | 269,548 | 283,399 | 2,643,909 | 2,968,462 |
+| `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 109,169 | 121,071 | 269,604 | 283,389 | 2,643,939 | 2,968,448 |
 
