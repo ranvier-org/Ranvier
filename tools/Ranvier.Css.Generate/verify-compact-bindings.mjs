@@ -91,7 +91,7 @@ function project(reference, files, executable = true) {
   return `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework>${executable ? '<OutputType>Exe</OutputType>' : ''}<GenerateProgramFile>false</GenerateProgramFile><EnableDefaultCompileItems>false</EnableDefaultCompileItems><WarningsAsErrors>44</WarningsAsErrors></PropertyGroup><ItemGroup><ProjectReference Include="${xml(reference)}"/>${files.map(file => `<Compile Include="${xml(file)}"/>`).join('')}</ItemGroup></Project>`;
 }
 async function dotnet(name, args, success = true) {
-  const result = spawnSync('rtk', ['proxy', 'dotnet', ...args], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const result = spawnSync('dotnet', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   const log = (result.stdout ?? '') + (result.stderr ?? '');
   await fs.writeFile(path.join(output, `${name}.log`), log);
   if (result.error || result.signal || result.status === null || (result.status === 0) !== success) {
