@@ -20,7 +20,7 @@ let private equal expected actual =
 let run () =
     let el: Element = document.createElement "div"
     document.body.appendChild el |> ignore
-    let gap = CustomProperty.create "--gap"
+    let gap: CustomProperty<CssValue.Length.Value> = CustomProperty.create "--gap"
     let finish = Css.px 100.
     equal (Some (100., "px")) (RuntimeApi.tryNumericValue finish)
 

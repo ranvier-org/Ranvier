@@ -199,6 +199,9 @@ module internal CompactPrimitiveGeneration =
                 production <> "zero"
                 && not (production.EndsWith ("-token", StringComparison.Ordinal))
                 ->
+                let syntax = "CssGrammar.C" + string categories.Categories[id]
+                let canonical = "global.Ranvier.Css.Value<" + syntax + ">"
+
                 summary
                     [ "Numeric" ]
                     ("A CSS "
@@ -209,7 +212,9 @@ module internal CompactPrimitiveGeneration =
                     [ "Numeric" ]
                     ("type "
                      + owner
-                     + " internal (value: global.Ranvier.Css.Value<obj>, calculation: global.Ranvier.Css.Calculation, data: "
+                     + " internal (value: "
+                     + canonical
+                     + ", calculation: global.Ranvier.Css.Calculation, data: "
                      + runtime
                      + ".ValueData) =")
 
@@ -217,7 +222,9 @@ module internal CompactPrimitiveGeneration =
                     [ "Numeric" ]
                     ("    inherit NumericValue<"
                      + measure
-                     + ",obj,"
+                     + ","
+                     + syntax
+                     + ","
                      + hint
                      + ">(value, calculation)")
 
@@ -300,7 +307,9 @@ module internal CompactPrimitiveGeneration =
                          + magnitude
                          + " "
                          + quote suffix
-                         + " : global.Ranvier.Css.Value<obj>), "
+                         + " : "
+                         + canonical
+                         + "), "
                          + calculation
                          + "literal "
                          + quote literalProduction
@@ -379,7 +388,9 @@ module internal CompactPrimitiveGeneration =
                      + output
                      + "(("
                      + generated
-                     + "value text : global.Ranvier.Css.Value<obj>), calculation, "
+                     + "value text : "
+                     + canonical
+                     + "), calculation, "
                      + runtime
                      + ".opaque CssGrammar.table "
                      + string id
@@ -447,7 +458,9 @@ module internal CompactPrimitiveGeneration =
                          + output
                          + "(("
                          + generated
-                         + "value text : global.Ranvier.Css.Value<obj>), calculation, "
+                         + "value text : "
+                         + canonical
+                         + "), calculation, "
                          + runtime
                          + ".opaque CssGrammar.table "
                          + string id
