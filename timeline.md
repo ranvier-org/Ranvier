@@ -105,6 +105,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 83,445 | 127,566 | 1,742,343 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 83,367 | 127,618 | 1,742,225 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 83,304 | 127,582 | 1,742,194 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 83,302 | 127,531 | 1,742,262 |
 
 ## app-table
 
@@ -211,6 +212,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 4,417,697 | 9,163,311 | 107,930,654 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 4,417,665 | 9,386,141 | 107,851,416 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 4,417,761 | 9,291,753 | 107,851,265 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 4,417,763 | 9,274,877 | 107,674,498 |
 
 ## async-recover
 
@@ -317,6 +319,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 139,139 | 41,272 | 434,860 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 139,139 | 41,262 | 434,852 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 139,139 | 41,269 | 434,854 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 139,139 | 41,259 | 434,856 |
 
 ## async-resolve
 
@@ -423,6 +426,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,790,468 | 1,023,085 | 11,970,199 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 2,790,467 | 1,023,048 | 11,966,904 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 2,790,467 | 1,023,215 | 11,967,121 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,790,467 | 1,023,087 | 11,970,077 |
 
 ## chain
 
@@ -529,6 +533,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -635,6 +640,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,553 | 3,071 | 2,500 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 2,553 | 3,071 | 2,500 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 2,553 | 3,071 | 2,500 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -741,6 +747,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 74,710 | 836,694 | 2,603,244 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 74,710 | 836,450 | 2,603,110 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 74,710 | 836,523 | 2,603,048 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 74,710 | 836,625 | 2,603,161 |
 
 ## create
 
@@ -847,6 +854,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 13,448,341 | 2,865,677 | 2,570,369 | 2,127,891 | 4,041,804 | 33,995,836 | 50,391,353 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 13,448,211 | 2,865,677 | 2,570,368 | 2,127,858 | 4,044,688 | 33,999,830 | 50,424,091 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 13,448,216 | 2,865,678 | 2,570,448 | 2,127,883 | 4,044,626 | 33,999,699 | 50,423,920 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 13,464,316 | 2,865,678 | 2,570,369 | 2,127,747 | 4,044,875 | 33,996,141 | 50,391,478 |
 
 ## create-on
 
@@ -953,6 +961,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,949,500 | 4,179,658 | 55,229,108 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 2,965,484 | 4,179,527 | 55,228,825 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 2,965,564 | 4,179,829 | 55,229,108 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,949,485 | 4,179,528 | 55,229,153 |
 
 ## cutoff
 
@@ -1059,6 +1068,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1165,6 +1175,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 781 | 751 | 16,520 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 781 | 751 | 16,520 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 781 | 751 | 16,520 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1271,6 +1282,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 751 | 802 | 16,543 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 751 | 802 | 16,543 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 751 | 802 | 16,543 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1377,6 +1389,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,706,253 | 806,291 | 367,497 | 475,512 | 495,192 | 13,207,233 | 9,106,135 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 2,707,643 | 806,291 | 367,497 | 475,922 | 495,214 | 13,207,403 | 9,106,717 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 2,707,641 | 806,291 | 367,497 | 476,024 | 495,144 | 13,206,164 | 9,105,971 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,706,242 | 806,291 | 367,497 | 475,739 | 495,299 | 13,206,531 | 9,105,602 |
 
 ## dispose-on
 
@@ -1483,6 +1496,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 346,497 | 487,740 | 8,902,925 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 346,497 | 487,704 | 8,902,647 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 346,497 | 487,814 | 8,902,413 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 346,497 | 487,776 | 8,903,120 |
 
 ## editable-edit
 
@@ -1589,6 +1603,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 181,706 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 181,706 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 181,706 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 181,706 |
 
 ## editable-upstream
 
@@ -1695,6 +1710,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 232,855 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 232,855 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 232,855 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 232,855 |
 
 ## fail-recompute
 
@@ -1801,6 +1817,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 64,938 | 1,370 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 64,938 | 1,370 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 64,938 | 1,370 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 64,938 | 1,370 |
 
 ## flight
 
@@ -1907,6 +1924,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2013,6 +2031,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,921,823 | 54,109 | 55,036 | 3,277,804 | 237,685 | 176,021 | 45,076,328 | 2,634,600 | 2,655,526 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 1,921,737 | 53,917 | 54,961 | 3,277,603 | 237,644 | 175,983 | 45,075,899 | 2,634,484 | 2,655,519 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 1,921,729 | 53,917 | 54,960 | 3,277,660 | 237,647 | 176,039 | 45,075,908 | 2,634,559 | 2,655,531 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,921,727 | 53,917 | 54,958 | 3,277,749 | 237,675 | 175,980 | 45,075,854 | 2,634,535 | 2,655,535 |
 
 ## keyed-remove
 
@@ -2119,6 +2138,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,920,752 | 43,792 | 45,396 | 3,292,885 | 592,288 | 605,938 | 45,041,266 | 1,924,846 | 1,960,163 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 1,920,661 | 43,600 | 45,307 | 3,292,638 | 592,441 | 606,194 | 45,041,246 | 1,924,732 | 1,960,181 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 1,920,655 | 43,600 | 45,299 | 3,292,665 | 592,258 | 606,132 | 45,041,264 | 1,924,837 | 1,960,115 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,920,664 | 43,600 | 45,300 | 3,292,847 | 592,254 | 606,200 | 45,041,251 | 1,924,950 | 1,960,101 |
 
 ## keyed-swap
 
@@ -2225,6 +2245,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,973,451 | 46,397 | 47,008 | 3,626,919 | 149,052 | 512,558 | 46,203,941 | 915,636 | 936,109 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 1,973,356 | 46,205 | 46,928 | 3,607,345 | 149,154 | 512,680 | 46,203,982 | 915,631 | 936,180 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 1,973,356 | 46,205 | 46,928 | 3,602,284 | 149,167 | 512,504 | 46,203,613 | 915,645 | 936,034 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,973,355 | 46,206 | 46,928 | 3,633,693 | 149,150 | 512,706 | 46,203,582 | 915,638 | 936,138 |
 
 ## mvu-dispatch
 
@@ -2331,6 +2352,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 58,292 | 788 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 58,292 | 788 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 58,292 | 788 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 58,292 | 788 |
 
 ## persist-write
 
@@ -2437,6 +2459,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | — | — |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | — | — |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | — | — |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | — | — |
 
 ## project-chain
 
@@ -2543,6 +2566,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,071,811 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 1,071,831 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 1,071,720 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,071,715 |
 
 ## project-churn
 
@@ -2649,6 +2673,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 36,401 | 34,266 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 36,481 | 34,346 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 36,385 | 34,250 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2755,6 +2780,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 50,492 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 50,556 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 50,460 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 50,460 |
 
 ## project-reorder
 
@@ -2861,6 +2887,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 780,085 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 780,180 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 780,084 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 780,084 |
 
 ## server-render
 
@@ -2967,6 +2994,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | — | — | — |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | — | — | — |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | — | — | — |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | — | — | — |
 
 ## shape-diamond
 
@@ -3073,6 +3101,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 59,915 | 80,445 | 1,764,075 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 59,915 | 80,445 | 1,764,075 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 59,915 | 80,445 | 1,764,075 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3179,6 +3208,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 84,378 | 108,947 | 2,038,136 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 84,378 | 108,940 | 2,038,136 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 84,378 | 108,947 | 2,038,136 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3285,6 +3315,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,950 | 1,548 | 2,503 | 4,694 | 3,672 | 13,475 | 47,553 | 45,790 | 55,382 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,470 | 47,555 | 45,790 | 55,377 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,470 | 47,553 | 45,790 | 55,384 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,555 | 45,790 | 55,382 |
 
 ## stream-burst-16
 
@@ -3391,6 +3422,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,068 | 123,791 | 720,148 | 113,731 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,070 | 123,789 | 720,148 | 113,728 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,067 | 123,788 | 720,148 | 113,729 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,069 | 123,787 | 720,148 | 113,734 |
 
 ## stream-burst-256
 
@@ -3497,6 +3529,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 54,162 | 393,702 | 57,052 | 131,872 | 792,883 | 74,743 | 1,343,098 | 11,508,772 | 1,046,762 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 54,162 | 393,702 | 57,052 | 131,880 | 792,808 | 74,743 | 1,343,196 | 11,508,770 | 1,046,749 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 54,162 | 393,702 | 57,052 | 131,909 | 792,883 | 74,743 | 1,343,098 | 11,508,770 | 1,046,762 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 54,162 | 393,702 | 57,052 | 131,878 | 792,883 | 74,743 | 1,343,100 | 11,508,770 | 1,046,764 |
 
 ## stream-restart
 
@@ -3603,6 +3636,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 4,203 | 5,004 | 6,579 | 16,886 | 42,909 | 72,018 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 4,203 | 5,004 | 6,575 | 16,893 | 42,909 | 72,013 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 4,203 | 5,004 | 6,575 | 16,889 | 42,908 | 72,015 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 4,203 | 5,004 | 6,575 | 16,889 | 42,904 | 72,020 |
 
 ## timed-admit-both
 
@@ -3709,6 +3743,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 117,709 | 130,035 | 2,693,563 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 117,709 | 130,035 | 2,693,576 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 117,709 | 130,036 | 2,693,576 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 117,709 | 130,036 | 2,693,576 |
 
 ## timed-admit-debounce
 
@@ -3815,6 +3850,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 116,614 | 128,630 | 2,654,129 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 116,614 | 128,620 | 2,654,129 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 116,614 | 128,615 | 2,654,129 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 116,614 | 128,617 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -3921,6 +3957,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 69,621 | 79,566 | 1,620,677 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 69,621 | 79,565 | 1,620,678 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 69,621 | 79,566 | 1,620,678 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 69,621 | 79,566 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4027,6 +4064,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 116,876 | 128,938 | 2,663,985 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 116,876 | 128,941 | 2,663,985 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 116,876 | 128,952 | 2,663,985 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 116,876 | 128,949 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4133,6 +4171,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 35,740 | 44,935 | 846,249 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 35,740 | 44,933 | 846,247 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 35,740 | 44,936 | 846,247 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 35,740 | 44,936 | 846,247 |
 
 ## timed-capture-debounce
 
@@ -4239,6 +4278,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 35,612 | 44,233 | 847,656 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 35,612 | 44,232 | 847,657 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 35,612 | 44,232 | 847,657 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 35,612 | 44,233 | 847,662 |
 
 ## timed-capture-first
 
@@ -4345,6 +4385,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 32,092 | 36,742 | 745,651 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 32,092 | 36,741 | 745,651 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 32,092 | 36,742 | 745,651 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -4451,6 +4492,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 35,548 | 44,168 | 839,785 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 35,548 | 44,166 | 839,785 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 35,548 | 44,169 | 839,785 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 35,548 | 44,169 | 839,784 |
 
 ## update
 
@@ -4557,6 +4599,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,087,783 | 38,805 | 84,105 | 263,151 | 145,766 | 3,351,277 | 2,545,064 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 1,087,790 | 38,805 | 84,105 | 263,124 | 145,802 | 3,351,254 | 2,545,102 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 1,087,790 | 38,805 | 84,105 | 263,191 | 145,803 | 3,351,301 | 2,545,062 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,087,783 | 38,805 | 84,105 | 262,865 | 145,788 | 3,351,282 | 2,545,055 |
 
 ## update-on
 
@@ -4663,6 +4706,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 94,605 | 169,040 | 2,872,435 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 94,605 | 168,991 | 2,872,514 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 94,605 | 169,016 | 2,872,439 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 94,605 | 169,013 | 2,872,332 |
 
 ## work-form
 
@@ -4769,6 +4813,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 172,679 | 165,183 | 308,861 | 296,988 | 5,421,818 | 5,334,889 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 172,679 | 165,150 | 308,850 | 296,945 | 5,421,848 | 5,334,879 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 172,679 | 165,150 | 308,853 | 296,990 | 5,421,851 | 5,334,904 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 172,679 | 165,150 | 308,822 | 296,912 | 5,421,821 | 5,334,891 |
 
 ## work-status
 
@@ -4875,6 +4920,7 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 102,045 | 80,235 | 269,322 | 156,113 | 2,659,301 | 2,391,322 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 102,045 | 80,235 | 269,332 | 156,109 | 2,659,251 | 2,391,290 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 102,045 | 80,235 | 269,299 | 156,102 | 2,659,261 | 2,391,261 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 102,045 | 80,235 | 269,341 | 156,114 | 2,659,201 | 2,391,249 |
 
 ## work-value
 
@@ -4981,4 +5027,5 @@
 | `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 109,169 | 121,071 | 269,571 | 283,399 | 2,643,945 | 2,968,473 |
 | `01a5d4d` | 2026-10-28 | fix(ci): prepare view checkout before dependency submission | 109,169 | 121,069 | 269,573 | 283,380 | 2,643,921 | 2,968,430 |
 | `68041c0` | 2026-10-28 | fix(ci): include view dependencies in Linux submission scans | 109,170 | 121,069 | 269,612 | 283,395 | 2,643,940 | 2,968,439 |
+| `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 109,169 | 121,071 | 269,625 | 283,397 | 2,643,926 | 2,968,428 |
 
