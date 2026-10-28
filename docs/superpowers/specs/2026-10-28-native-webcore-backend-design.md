@@ -1,7 +1,7 @@
 # Native backend design: Ranvier's DOM and view on Ranvier.WebCore
 
 > **Status 2026-10-28:** draft, for review. Written against Ranvier.WebCore ABI 20 (branch `abi-v20` of
-> `shayanhabibi/Ranvier.WebCore`: the hand-written ABI plus 1,002 generated `rv_dom_*` functions). The prototype it
+> `ranvier-org/Ranvier.WebCore`: the hand-written ABI plus 1,002 generated `rv_dom_*` functions). The prototype it
 > replaces lives on the local evidence branch `codex/native-webcore-feasibility` (at commit `31687183`), not on
 > master: `evidence/webcore-host/ranvier` and gates 4–19 of `evidence/ABI-EXPERIMENT.md` there. "Gate N" below refers
 > to that file. Measured facts carry their source; estimates are marked (E).

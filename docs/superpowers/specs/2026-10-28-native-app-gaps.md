@@ -13,7 +13,7 @@ it and an app a person runs: a window showing Ranvier components, taking input, 
 | Conformance | ConformanceCases' fifteen modules match the DOM twin, except four pending cases |
 | AOT | `tests/Ranvier.View.WebCore.AotSmoke` mounts and paints; publishing it has not run end to end |
 | Window | None. Every check so far reads the RGBA buffer back; nothing has been on screen |
-| Accessibility | ABI complete; no platform bridge ([help wanted](https://github.com/shayanhabibi/Ranvier.WebCore/pull/2)) |
+| Accessibility | ABI complete; no platform bridge ([help wanted](https://github.com/ranvier-org/Ranvier.WebCore/pull/2)) |
 
 Critical path for a first Windows app: gaps 1, 2 and 3. The rest can follow in any order.
 
