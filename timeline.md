@@ -102,6 +102,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 83,373 | 127,624 | 1,742,169 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 83,313 | 127,527 | 1,742,134 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 83,303 | 127,538 | 1,742,345 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 83,445 | 127,566 | 1,742,343 |
 
 ## app-table
 
@@ -205,6 +206,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 4,417,867 | 9,163,007 | 107,727,039 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 4,417,716 | 9,456,160 | 107,629,145 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 4,417,722 | 9,562,436 | 107,851,349 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 4,417,697 | 9,163,311 | 107,930,654 |
 
 ## async-recover
 
@@ -308,6 +310,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 139,183 | 41,241 | 434,851 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 139,183 | 41,266 | 434,847 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 139,139 | 41,263 | 434,855 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 139,139 | 41,272 | 434,860 |
 
 ## async-resolve
 
@@ -411,6 +414,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,791,251 | 1,022,839 | 11,970,195 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,791,251 | 1,023,231 | 11,967,005 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,790,467 | 1,022,959 | 11,967,345 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,790,468 | 1,023,085 | 11,970,199 |
 
 ## chain
 
@@ -514,6 +518,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -617,6 +622,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,553 | 3,071 | 2,500 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,553 | 3,071 | 2,500 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,553 | 3,071 | 2,500 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -720,6 +726,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 74,709 | 836,742 | 2,603,084 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 74,709 | 836,699 | 2,603,057 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 74,710 | 836,545 | 2,603,179 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 74,710 | 836,694 | 2,603,244 |
 
 ## create
 
@@ -823,6 +830,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 13,573,931 | 2,865,677 | 2,570,368 | 2,127,109 | 4,045,390 | 34,003,156 | 50,334,350 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 13,904,875 | 2,865,678 | 2,570,400 | 2,127,589 | 4,045,417 | 34,003,263 | 50,334,402 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 13,480,234 | 2,865,677 | 2,570,368 | 2,128,178 | 4,044,648 | 33,999,974 | 50,423,970 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 13,448,341 | 2,865,677 | 2,570,369 | 2,127,891 | 4,041,804 | 33,995,836 | 50,391,353 |
 
 ## create-on
 
@@ -926,6 +934,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,949,484 | 4,179,730 | 55,229,194 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,949,485 | 4,179,663 | 55,229,279 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,949,487 | 4,179,748 | 55,229,091 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,949,500 | 4,179,658 | 55,229,108 |
 
 ## cutoff
 
@@ -1029,6 +1038,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1132,6 +1142,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 781 | 751 | 16,520 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 781 | 751 | 16,520 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 781 | 751 | 16,520 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1235,6 +1246,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 751 | 802 | 16,543 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 751 | 802 | 16,543 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 751 | 802 | 16,543 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1338,6 +1350,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,707,643 | 806,288 | 367,497 | 476,065 | 495,175 | 13,207,467 | 9,106,408 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 2,707,644 | 806,290 | 367,497 | 475,552 | 494,926 | 13,207,094 | 9,105,844 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 2,706,754 | 806,291 | 367,497 | 475,762 | 495,186 | 13,205,724 | 9,106,519 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 2,706,253 | 806,291 | 367,497 | 475,512 | 495,192 | 13,207,233 | 9,106,135 |
 
 ## dispose-on
 
@@ -1441,6 +1454,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 346,497 | 487,884 | 8,902,906 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 346,497 | 487,787 | 8,902,744 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 346,497 | 487,652 | 8,902,180 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 346,497 | 487,740 | 8,902,925 |
 
 ## editable-edit
 
@@ -1544,6 +1558,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 181,706 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 181,706 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 181,706 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 181,706 |
 
 ## editable-upstream
 
@@ -1647,6 +1662,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 232,855 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 232,855 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 232,855 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 232,855 |
 
 ## fail-recompute
 
@@ -1750,6 +1766,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 65,094 | 1,370 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 65,094 | 1,370 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 64,938 | 1,370 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 64,938 | 1,370 |
 
 ## flight
 
@@ -1853,6 +1870,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -1956,6 +1974,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,921,737 | 53,917 | 54,950 | 3,277,719 | 237,631 | 175,986 | 45,075,876 | 2,634,480 | 2,655,518 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,921,737 | 53,917 | 54,954 | 3,277,611 | 237,646 | 176,000 | 45,075,865 | 2,634,552 | 2,655,530 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,921,743 | 53,917 | 54,969 | 3,277,598 | 237,685 | 176,021 | 45,075,895 | 2,634,579 | 2,655,550 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,921,823 | 54,109 | 55,036 | 3,277,804 | 237,685 | 176,021 | 45,076,328 | 2,634,600 | 2,655,526 |
 
 ## keyed-remove
 
@@ -2059,6 +2078,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,920,676 | 43,607 | 45,301 | 3,292,702 | 591,998 | 606,219 | 45,041,016 | 1,924,667 | 1,960,108 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,920,670 | 43,607 | 45,300 | 3,292,632 | 592,035 | 606,152 | 45,041,072 | 1,924,639 | 1,960,145 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,920,677 | 43,600 | 45,315 | 3,292,991 | 592,225 | 606,037 | 45,041,250 | 1,924,889 | 1,960,192 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,920,752 | 43,792 | 45,396 | 3,292,885 | 592,288 | 605,938 | 45,041,266 | 1,924,846 | 1,960,163 |
 
 ## keyed-swap
 
@@ -2162,6 +2182,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,973,362 | 46,205 | 46,928 | 3,628,789 | 148,914 | 512,985 | 46,198,959 | 915,619 | 936,144 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,973,362 | 46,205 | 46,927 | 3,615,679 | 148,887 | 513,178 | 46,198,619 | 915,628 | 936,050 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,973,371 | 46,206 | 46,943 | 3,628,338 | 149,234 | 512,580 | 46,203,971 | 915,709 | 936,162 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,973,451 | 46,397 | 47,008 | 3,626,919 | 149,052 | 512,558 | 46,203,941 | 915,636 | 936,109 |
 
 ## mvu-dispatch
 
@@ -2265,6 +2286,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 58,292 | 788 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 58,292 | 788 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 58,292 | 788 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 58,292 | 788 |
 
 ## persist-write
 
@@ -2368,6 +2390,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 7,029 | 884 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 7,013 | 884 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | — | — |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | — | — |
 
 ## project-chain
 
@@ -2471,6 +2494,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,071,928 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,071,762 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,071,710 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,071,811 |
 
 ## project-churn
 
@@ -2574,6 +2598,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 36,385 | 34,250 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 36,385 | 34,250 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 36,385 | 34,250 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 36,401 | 34,266 |
 
 ## project-edit
 
@@ -2677,6 +2702,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 50,460 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 50,460 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 50,460 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 50,492 |
 
 ## project-reorder
 
@@ -2780,6 +2806,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 780,067 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 780,068 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 780,084 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 780,085 |
 
 ## server-render
 
@@ -2883,6 +2910,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 680,652 | 1,147,149 | 9,828,685 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 680,652 | 1,147,693 | 9,829,307 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | — | — | — |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | — | — | — |
 
 ## shape-diamond
 
@@ -2986,6 +3014,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 59,915 | 80,445 | 1,764,075 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 59,915 | 80,445 | 1,764,075 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 59,915 | 80,445 | 1,764,075 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3089,6 +3118,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 84,378 | 108,947 | 2,038,136 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 84,378 | 108,947 | 2,038,136 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 84,378 | 108,947 | 2,038,136 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3192,6 +3222,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,468 | 47,580 | 45,790 | 55,383 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,950 | 1,548 | 2,502 | 4,696 | 3,672 | 13,472 | 47,577 | 45,790 | 55,383 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,471 | 47,553 | 45,790 | 55,384 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,950 | 1,548 | 2,503 | 4,694 | 3,672 | 13,475 | 47,553 | 45,790 | 55,382 |
 
 ## stream-burst-16
 
@@ -3295,6 +3326,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 5,022 | 24,618 | 5,728 | 9,727 | 50,033 | 8,067 | 123,808 | 720,148 | 113,734 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 5,022 | 24,618 | 5,712 | 9,732 | 50,032 | 8,071 | 123,810 | 720,150 | 113,733 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,071 | 123,785 | 720,148 | 113,735 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,068 | 123,791 | 720,148 | 113,731 |
 
 ## stream-burst-256
 
@@ -3398,6 +3430,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 54,162 | 393,702 | 57,067 | 131,888 | 792,880 | 74,743 | 1,343,779 | 11,508,864 | 1,046,723 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 54,162 | 393,702 | 57,051 | 131,978 | 792,882 | 74,743 | 1,343,732 | 11,508,770 | 1,046,722 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 54,162 | 393,702 | 57,052 | 131,923 | 792,883 | 74,743 | 1,343,136 | 11,508,770 | 1,046,762 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 54,162 | 393,702 | 57,052 | 131,872 | 792,883 | 74,743 | 1,343,098 | 11,508,772 | 1,046,762 |
 
 ## stream-restart
 
@@ -3501,6 +3534,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 4,204 | 5,011 | 6,571 | 16,883 | 42,883 | 72,024 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 4,204 | 4,995 | 6,579 | 16,886 | 42,902 | 72,026 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 4,203 | 5,004 | 6,576 | 16,889 | 42,909 | 72,023 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 4,203 | 5,004 | 6,579 | 16,886 | 42,909 | 72,018 |
 
 ## timed-admit-both
 
@@ -3604,6 +3638,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 118,733 | 130,036 | 2,693,565 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 117,709 | 130,039 | 2,693,577 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 117,709 | 130,036 | 2,693,564 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 117,709 | 130,035 | 2,693,563 |
 
 ## timed-admit-debounce
 
@@ -3707,6 +3742,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 117,638 | 128,618 | 2,654,116 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 116,614 | 128,616 | 2,654,128 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 116,614 | 128,630 | 2,654,129 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 116,614 | 128,630 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -3810,6 +3846,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 70,645 | 79,566 | 1,620,677 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 69,621 | 79,565 | 1,620,677 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 69,621 | 79,566 | 1,620,678 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3913,6 +3950,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 117,900 | 128,937 | 2,663,985 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 116,876 | 128,933 | 2,663,985 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 116,876 | 128,936 | 2,663,985 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 116,876 | 128,938 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4016,6 +4054,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,740 | 44,935 | 846,917 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 35,740 | 44,936 | 846,917 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 35,740 | 44,937 | 846,247 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 35,740 | 44,935 | 846,249 |
 
 ## timed-capture-debounce
 
@@ -4119,6 +4158,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,612 | 44,232 | 847,657 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 35,612 | 44,232 | 847,657 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 35,612 | 44,232 | 847,657 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 35,612 | 44,233 | 847,656 |
 
 ## timed-capture-first
 
@@ -4222,6 +4262,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 32,092 | 36,741 | 745,651 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 32,092 | 36,742 | 745,651 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 32,092 | 36,742 | 745,651 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4325,6 +4366,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,548 | 44,168 | 839,787 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 35,548 | 44,169 | 839,784 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 35,548 | 44,168 | 839,785 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -4428,6 +4470,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,090,983 | 38,805 | 84,105 | 263,278 | 145,816 | 3,351,241 | 2,544,998 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 1,092,590 | 38,805 | 84,105 | 262,639 | 145,806 | 3,351,260 | 2,545,014 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 1,089,390 | 38,805 | 84,105 | 263,443 | 145,791 | 3,351,291 | 2,545,061 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 1,087,783 | 38,805 | 84,105 | 263,151 | 145,766 | 3,351,277 | 2,545,064 |
 
 ## update-on
 
@@ -4531,6 +4574,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 94,605 | 169,025 | 2,872,416 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 94,605 | 169,019 | 2,872,336 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 94,605 | 169,024 | 2,872,458 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 94,605 | 169,040 | 2,872,435 |
 
 ## work-form
 
@@ -4634,6 +4678,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 172,679 | 165,150 | 308,861 | 296,995 | 5,421,757 | 5,334,903 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 172,679 | 165,150 | 308,861 | 296,979 | 5,421,822 | 5,334,914 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 172,679 | 165,150 | 308,861 | 296,991 | 5,421,823 | 5,334,919 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 172,679 | 165,183 | 308,861 | 296,988 | 5,421,818 | 5,334,889 |
 
 ## work-status
 
@@ -4737,6 +4782,7 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 102,045 | 80,235 | 269,349 | 156,123 | 2,659,303 | 2,391,259 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 102,045 | 80,235 | 269,369 | 156,135 | 2,659,245 | 2,391,271 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 102,045 | 80,235 | 269,347 | 156,124 | 2,659,298 | 2,391,298 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 102,045 | 80,235 | 269,322 | 156,113 | 2,659,301 | 2,391,322 |
 
 ## work-value
 
@@ -4840,4 +4886,5 @@
 | `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 109,169 | 121,071 | 269,586 | 283,418 | 2,643,850 | 2,968,422 |
 | `de8da60` | 2026-10-28 | feat(webcore): Ranvier's DOM and view on Ranvier.WebCore (preview) (#239) | 109,169 | 121,071 | 269,548 | 283,399 | 2,643,909 | 2,968,462 |
 | `61715ab` | 2026-10-28 | refactor!: move the view, analyzer and persistence projects out of core (#244) | 109,169 | 121,071 | 269,604 | 283,389 | 2,643,939 | 2,968,448 |
+| `cb27f92` | 2026-10-28 | fix(docs): exercise the retained signal-map live editor | 109,169 | 121,071 | 269,571 | 283,399 | 2,643,945 | 2,968,473 |
 
