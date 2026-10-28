@@ -192,7 +192,6 @@ let theme =
 /// The og card of each section, keyed by the path segment that names it, with the card's alt text.
 let private ogCards =
     [
-        "native", "native", "Native Ranvier deployment through WebCore, in development"
         "nacara", "nacara", "Runnable Ranvier documentation: components, signal maps and editable examples"
         "async-and-pending", "async", "Async and pending: boundary states along a nerve fibre"
         "tracing", "tracing", "Tracing: a cause chain traced back along a nerve fibre"

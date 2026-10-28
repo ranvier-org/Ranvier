@@ -96,18 +96,24 @@ module Spec =
             ]
         ]
 
-    /// The analyzers built in a sibling ranvier-org/Ranvier.Views checkout, which `analyze` runs.
+    /// The ranvier-org/Ranvier.Views checkout: `RanvierViewsRoot` when set, else a sibling of this repository.
+    let viewsRoot =
+        match System.Environment.GetEnvironmentVariable "RanvierViewsRoot" with
+        | null
+        | "" -> System.IO.Path.Combine (__REPOSITORY_DIRECTORY__, "../Ranvier.Views")
+        | root -> root
+        |> System.IO.Path.GetFullPath
+
+    /// The analyzers built in the Ranvier.Views checkout, which `analyze` runs.
     let analyzersProject =
-        System.IO.Path.GetFullPath (
-            System.IO.Path.Combine (__REPOSITORY_DIRECTORY__, "../Ranvier.Views/tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj")
-        )
+        System.IO.Path.Combine (viewsRoot, "tools/Ranvier.Analyzers/Ranvier.Analyzers.fsproj")
 
     let analyzersDirectory =
         System.IO.Path.Combine (System.IO.Path.GetDirectoryName analyzersProject, "bin/Release/net10.0")
 
-    /// The Playground of a sibling ranvier-org/Ranvier.Views checkout, which runs the trace report's Chromium rows.
+    /// The Playground of the Ranvier.Views checkout, which runs the trace report's Chromium rows.
     let playground =
-        System.IO.Path.GetFullPath (System.IO.Path.Combine (__REPOSITORY_DIRECTORY__, "../Ranvier.Views/examples/Fable.Ranvier.Playground"))
+        System.IO.Path.Combine (viewsRoot, "examples/Fable.Ranvier.Playground")
 
     let sourceProjectsMap =
         sourceProjects

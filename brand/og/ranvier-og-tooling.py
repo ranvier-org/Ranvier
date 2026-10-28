@@ -1,14 +1,9 @@
-"""Open Graph cards for view, server, native and tooling documentation groups."""
+"""Open Graph cards for the Nacara plugin and Fable documentation groups."""
 from pathlib import Path
 from shutil import copyfile
 from oglib import Card, Fibre, CYAN, TEXT, MUTED, dust, exposure, nearest, save, wordmark
 
 CARDS = [
-    ("view", "VIEWS", "Views that follow state", "Templates, events and bindings over a Ranvier graph."),
-    ("server", "SERVER", "Render. Transfer. Hydrate.", "Shared components, server HTML and browser interaction."),
-    ("native", "NATIVE · IN DEVELOPMENT", "The DOM, without JavaScript", "Exploring native Ranvier deployment through WebCore."),
-    ("examples", "EXAMPLES", "Read it. Run it. Change it.", "Interactive views, motion and hydration examples."),
-    ("analyzers", "ANALYZERS", "Catch mistakes as you write", "Diagnostics for reactive state, lifetimes and views."),
     ("nacara", "NACARA PLUGIN", "Runnable documentation", "Ranvier components, signal maps and editable examples."),
     ("fable", "FABLE", "The JavaScript target", "Compile reactive models and browser views from F#."),
 ]
