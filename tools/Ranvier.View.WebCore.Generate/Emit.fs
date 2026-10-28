@@ -126,7 +126,13 @@ let private input (ctx: Context) (fn: Abi.Function) (qualified: string) (v: stri
         if inner = typeof<float> then Some $"{cast} {x}" else None
 
     match p.FSharp with
-    | "string" when inner = typeof<string> -> Ok (if nullable then $"Option.toObj {v}" else v)
+    | "string" when inner = typeof<string> ->
+        Ok (
+            if nullable then
+                $"Option.toObj {v}"
+            else
+                $"(if isNull {v} then \"\" else {v})"
+        )
     | "int" ->
         scalar (fun x ->
             if inner = typeof<bool> then
@@ -205,7 +211,13 @@ let private body (ctx: Context) (fn: Abi.Function) (qualified: string) (paramete
             let text =
                 sprintf "Interop.text \"%s\" (fun buffer capacity length -> %s)" qualified (call [ "buffer"; "capacity"; "length" ])
 
-            Ok [ (if nullable then $"Option.ofObj ({text})" else text) ]
+            Ok
+                [
+                    (if nullable then
+                         $"Option.ofObj ({text})"
+                     else
+                         $"Interop.nonNull ({text})")
+                ]
         | result :: rest when result.Name = "result" ->
             let present = rest |> List.exists (fun p -> p.Name = "present")
             let declare = [ sprintf "let mutable result = %s" (zero result.FSharp) ]
@@ -303,9 +315,50 @@ type private Emitter(ctx: Context, out: StringBuilder, entries: ResizeArray<Entr
         for line in lines do
             this.Line (indent, line)
 
+    /// <summary>True while the class being written is a node class, whose members a harness can intercept.</summary>
+    member val Intercepts = false with get, set
+
+    /// <summary>
+    /// The body run through the session's interceptions of <c>name</c> while it has any: the arguments are rebound from
+    /// the array the interceptions pass on.
+    /// </summary>
+    member this.Intercepted(name: string, parameters: (string * Type) list, returns: Type, lines: string list) : string list =
+        let unitResult = returns = typeof<Void> || returns = typeof<unit>
+
+        let boxed =
+            parameters
+            |> List.map (fun (v, _) -> $"box {v}")
+            |> String.concat "; "
+
+        [
+            "if this.Session.Intercepting then"
+            $"    Interop.intercept this \"{name}\" [| {boxed} |] (fun args ->"
+            yield!
+                parameters
+                |> List.mapi (fun i (v, t) -> $"        let {v}: {Types.name t} = unbox args[{i}]")
+            "        let result ="
+            yield!
+                lines
+                |> List.map (fun line -> "            " + line)
+            "        box result)"
+            (if unitResult then
+                 "    |> ignore"
+             else
+                 $"    |> unbox<{Types.name returns}>")
+            "else"
+            yield! lines |> List.map (fun line -> "    " + line)
+        ]
+
     /// <summary>A member body: hand-written, mapped or a throw, recorded in the report.</summary>
-    member this.Resolve(cls: string, chain, iface: Type, memberName, kind, handKey: string, parameters, returns) : string list =
+    member this.Resolve
+        (cls: string, chain, iface: Type, memberName, kind, handKey: string, parameters, returns, intercepted: string option)
+        : string list =
         let qualified = $"{idl iface.Name}.{memberName}"
+
+        let wrap lines =
+            match intercepted with
+            | Some name when this.Intercepts -> this.Intercepted (name, parameters, returns, lines)
+            | _ -> lines
 
         let record status =
             entries.Add
@@ -323,12 +376,12 @@ type private Emitter(ctx: Context, out: StringBuilder, entries: ResizeArray<Entr
         match ctx.Input.Hand.TryFind handKey with
         | Some hand ->
             record Hand
-            [ hand ]
+            wrap [ hand ]
         | None ->
             match resolve ctx chain iface memberName kind parameters returns qualified with
             | Ok (fn, lines) ->
                 record (Mapped fn)
-                lines
+                wrap lines
             | Error reason ->
                 record (Unmapped reason)
                 [ $"Interop.unsupported \"{idl iface.Name}.{memberName}\"" ]
@@ -368,7 +421,12 @@ type private Emitter(ctx: Context, out: StringBuilder, entries: ResizeArray<Entr
                 if p.CanRead then
                     this.Line (3, $"with get {indexArgs} : {t} =")
 
-                    this.Body (4, this.Resolve (cls, chain, iface, memberName, getKind, $"{prefix}.{p.Name}.get", indexParams, p.PropertyType))
+                    let intercepted = if indexes.Length = 1 then None else Some $"get_{p.Name}"
+
+                    this.Body (
+                        4,
+                        this.Resolve (cls, chain, iface, memberName, getKind, $"{prefix}.{p.Name}.get", indexParams, p.PropertyType, intercepted)
+                    )
 
                 if p.CanWrite then
                     let setArgs =
@@ -392,7 +450,17 @@ type private Emitter(ctx: Context, out: StringBuilder, entries: ResizeArray<Entr
 
                             [ $"Interop.unsupported \"{prefix}.Item\"" ]
                         else
-                            this.Resolve (cls, chain, iface, p.Name, "set", $"{prefix}.{p.Name}.set", [ "value", p.PropertyType ], typeof<Void>)
+                            this.Resolve (
+                                cls,
+                                chain,
+                                iface,
+                                p.Name,
+                                "set",
+                                $"{prefix}.{p.Name}.set",
+                                [ "value", p.PropertyType ],
+                                typeof<Void>,
+                                Some $"set_{p.Name}"
+                            )
 
                     this.Body (4, lines)
 
@@ -447,7 +515,7 @@ type private Emitter(ctx: Context, out: StringBuilder, entries: ResizeArray<Entr
 
                         [ $"Interop.unsupported \"{prefix}.{m.Name}\"" ]
                     else
-                        this.Resolve (cls, chain, iface, m.Name, "op", key, values, m.ReturnType)
+                        this.Resolve (cls, chain, iface, m.Name, "op", key, values, m.ReturnType, Some m.Name)
 
                 this.Body (3, lines)
 
@@ -559,6 +627,13 @@ let run (input: Input) (tagMap: (string * string) list) : string * Entry list =
         let implemented =
             withShared explicitly
             |> List.sortBy (fun i -> i.GetInterfaces().Length, i.Name)
+
+        let root =
+            match List.tryLast chain with
+            | Some root -> root
+            | None -> t
+
+        emitter.Intercepts <- input.Kinds.TryFind root.Name = Some "Kind.Node"
 
         for iface in implemented do
             emitter.Interface (cls, t :: chain, iface)

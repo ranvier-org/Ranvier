@@ -1,10 +1,10 @@
-93 classes; 4926 members: 1551 mapped to 923 of 1002 rv_dom_* functions, 1278 hand-written, 2097 unmapped
+95 classes; 4989 members: 1574 mapped to 922 of 1002 rv_dom_* functions, 1331 hand-written, 2084 unmapped
 
 Unmapped members by reason:
-   1705  no ABI function
+   1693  no ABI function
      51  unconstrained generic overload
      11  indexed setter
-      9  unrecognised results
+     10  unrecognised results
       9  argument: Fable.Core.TS.Dom.InsertPosition as const char*
       4  returns Fable.Core.TS.Dom.DOMRect, which has no class
       3  argument: Fable.Core.TS.Dom.ShadowRootInit as const RvDomShadowRootInit*
@@ -15,7 +15,6 @@ Unmapped members by reason:
       3  argument: Fable.Core.TS.Dom.HTMLElement.HttpWwwW3Org2000Svg as const char*
       3  argument: Fable.Core.TS.Dom.HTMLElement.HttpWwwW3Org1998MathMathML as const char*
       2  argument: Fable.Core.TS.Dom.SelectionMode option as const char*
-      2  argument: optional without an IDL default
       2  argument: Fable.Core.TS.Dom.HTMLMediaElement.HttpWwwW3Org1999Xhtml as const char*
       2  argument: Fable.Core.TS.Dom.HTMLMediaElement.HttpWwwW3Org2000Svg as const char*
       2  argument: Fable.Core.TS.Dom.HTMLMediaElement.HttpWwwW3Org1998MathMathML as const char*
@@ -301,23 +300,24 @@ Members by class (mapped / hand-written / unmapped):
   AbstractRangeObject: 5 / 0 / 0
   AttrObject: 11 / 0 / 0
   CSSStyleDeclarationObject: 9 / 1066 / 2
-  CharacterDataObject: 44 / 25 / 0
+  CharacterDataObject: 43 / 26 / 0
   CompositionEventObject: 1 / 0 / 1
   DOMRectReadOnlyObject: 8 / 0 / 1
   DOMStringMapObject: 0 / 0 / 2
   DOMTokenListObject: 9 / 0 / 8
-  DocumentFragmentObject: 42 / 25 / 2
-  DocumentObject: 82 / 27 / 379
-  ElementObject: 190 / 31 / 49
+  DocumentFragmentObject: 41 / 26 / 2
+  DocumentObject: 81 / 30 / 377
+  DocumentTypeObject: 30 / 26 / 5
+  ElementObject: 189 / 34 / 47
   EventObject: 17 / 5 / 2
   EventTargetObject: 0 / 3 / 0
   FocusEventObject: 1 / 0 / 0
   HTMLAnchorElementObject: 46 / 0 / 7
   HTMLAreaElementObject: 0 / 0 / 45
-  HTMLAudioElementObject: 244 / 31 / 338
+  HTMLAudioElementObject: 243 / 36 / 334
   HTMLBRElementObject: 0 / 0 / 5
   HTMLBaseElementObject: 0 / 0 / 7
-  HTMLBodyElementObject: 12 / 0 / 49
+  HTMLBodyElementObject: 12 / 2 / 47
   HTMLButtonElementObject: 32 / 0 / 5
   HTMLCanvasElementObject: 0 / 0 / 16
   HTMLCollectionObject: 4 / 0 / 1
@@ -328,7 +328,7 @@ Members by class (mapped / hand-written / unmapped):
   HTMLDetailsElementObject: 4 / 0 / 3
   HTMLDialogElementObject: 10 / 0 / 3
   HTMLDivElementObject: 2 / 0 / 3
-  HTMLElementObject: 54 / 0 / 215
+  HTMLElementObject: 54 / 2 / 213
   HTMLEmbedElementObject: 0 / 0 / 16
   HTMLFieldSetElementObject: 13 / 0 / 3
   HTMLFormElementObject: 24 / 0 / 12
@@ -338,7 +338,7 @@ Members by class (mapped / hand-written / unmapped):
   HTMLHtmlElementObject: 0 / 0 / 5
   HTMLIFrameElementObject: 0 / 0 / 38
   HTMLImageElementObject: 40 / 0 / 10
-  HTMLInputElementObject: 91 / 0 / 15
+  HTMLInputElementObject: 91 / 1 / 14
   HTMLLIElementObject: 4 / 0 / 3
   HTMLLabelElementObject: 4 / 0 / 3
   HTMLLegendElementObject: 3 / 0 / 3
@@ -371,22 +371,23 @@ Members by class (mapped / hand-written / unmapped):
   HTMLTableRowElementObject: 0 / 0 / 18
   HTMLTableSectionElementObject: 0 / 0 / 14
   HTMLTemplateElementObject: 0 / 1 / 13
-  HTMLTextAreaElementObject: 44 / 0 / 7
+  HTMLTextAreaElementObject: 44 / 1 / 6
   HTMLTimeElementObject: 0 / 0 / 5
   HTMLTitleElementObject: 0 / 0 / 5
   HTMLTrackElementObject: 0 / 0 / 19
   HTMLUListElementObject: 4 / 0 / 3
-  HTMLVideoElementObject: 244 / 31 / 360
+  HTMLVideoElementObject: 243 / 36 / 356
   InputEventObject: 1 / 2 / 2
   KeyboardEventObject: 11 / 5 / 1
   MouseEventObject: 22 / 0 / 1
   NodeListObject: 3 / 0 / 5
   NodeListOfObject<'TNode when 'TNode :> Fable.Core.TS.Dom.Node>: 2 / 0 / 4
-  NodeObject: 30 / 19 / 0
+  NodeObject: 29 / 20 / 0
   PointerEventObject: 12 / 0 / 3
+  ProcessingInstructionObject: 0 / 0 / 2
   RangeObject: 22 / 4 / 3
   SelectionObject: 24 / 0 / 1
-  ShadowRootObject: 11 / 0 / 16
+  ShadowRootObject: 11 / 2 / 14
   TextObject: 3 / 0 / 0
   UIEventObject: 2 / 0 / 2
   ValidityStateObject: 11 / 0 / 0
@@ -437,11 +438,18 @@ Unmapped members:
   InputEventObject InputEvent.getTargetRanges: no ABI function
   KeyboardEventObject KeyboardEvent.initKeyboardEvent: no ABI function
   MouseEventObject MouseEvent.initMouseEvent: no ABI function
+  DocumentTypeObject ChildNode.remove: no ABI function
+  DocumentTypeObject DocumentType.name (getter): no ABI function
+  DocumentTypeObject DocumentType.publicId (getter): no ABI function
+  DocumentTypeObject DocumentType.systemId (getter): no ABI function
+  DocumentTypeObject DocumentType.textContent (getter): unrecognised results
   PointerEventObject PointerEvent.persistentDeviceId (getter): no ABI function
   PointerEventObject PointerEvent.getCoalescedEvents: no ABI function
   PointerEventObject PointerEvent.getPredictedEvents: no ABI function
   DocumentFragmentObject ParentNode.querySelector<>: unconstrained generic overload
   DocumentFragmentObject ParentNode.querySelectorAll<>: unconstrained generic overload
+  ProcessingInstructionObject LinkStyle.sheet (getter): no ABI function
+  ProcessingInstructionObject ProcessingInstruction.target (getter): no ABI function
   ShadowRootObject DocumentOrShadowRoot.adoptedStyleSheets (getter): no ABI function
   ShadowRootObject DocumentOrShadowRoot.adoptedStyleSheets (setter): no ABI function
   ShadowRootObject DocumentOrShadowRoot.customElementRegistry (getter): no ABI function
@@ -455,9 +463,7 @@ Unmapped members:
   ShadowRootObject ShadowRoot.slotAssignment (getter): returns Fable.Core.TS.Dom.SlotAssignmentMode for int32_t*
   ShadowRootObject ShadowRoot.getHTML: no ABI function
   ShadowRootObject ShadowRoot.addEventListener<>: unconstrained generic overload
-  ShadowRootObject ShadowRoot.addEventListener: no ABI function
   ShadowRootObject ShadowRoot.removeEventListener<>: unconstrained generic overload
-  ShadowRootObject ShadowRoot.removeEventListener: no ABI function
   DocumentObject DocumentOrShadowRoot.adoptedStyleSheets (getter): no ABI function
   DocumentObject DocumentOrShadowRoot.adoptedStyleSheets (setter): no ABI function
   DocumentObject DocumentOrShadowRoot.customElementRegistry (getter): no ABI function
@@ -671,9 +677,7 @@ Unmapped members:
   DocumentObject GlobalEventHandlers.onwheel (getter): no ABI function
   DocumentObject GlobalEventHandlers.onwheel (setter): no ABI function
   DocumentObject GlobalEventHandlers.addEventListener<>: unconstrained generic overload
-  DocumentObject GlobalEventHandlers.addEventListener: no ABI function
   DocumentObject GlobalEventHandlers.removeEventListener<>: unconstrained generic overload
-  DocumentObject GlobalEventHandlers.removeEventListener: no ABI function
   DocumentObject XPathEvaluatorBase.createExpression: no ABI function
   DocumentObject XPathEvaluatorBase.createNSResolver: no ABI function
   DocumentObject XPathEvaluatorBase.evaluate: no ABI function
@@ -883,9 +887,7 @@ Unmapped members:
   ElementObject Element.scrollIntoView: no ABI function
   ElementObject Element.webkitMatchesSelector: no ABI function
   ElementObject Element.addEventListener<>: unconstrained generic overload
-  ElementObject Element.addEventListener: no ABI function
   ElementObject Element.removeEventListener<>: unconstrained generic overload
-  ElementObject Element.removeEventListener: no ABI function
   HTMLElementObject ElementCSSInlineStyle.attributeStyleMap (getter): no ABI function
   HTMLElementObject ElementCSSInlineStyle.style (setter): no ABI function
   HTMLElementObject GlobalEventHandlers.onabort (getter): no ABI function
@@ -1091,9 +1093,7 @@ Unmapped members:
   HTMLElementObject GlobalEventHandlers.onwheel (getter): no ABI function
   HTMLElementObject GlobalEventHandlers.onwheel (setter): no ABI function
   HTMLElementObject GlobalEventHandlers.addEventListener<>: unconstrained generic overload
-  HTMLElementObject GlobalEventHandlers.addEventListener: no ABI function
   HTMLElementObject GlobalEventHandlers.removeEventListener<>: unconstrained generic overload
-  HTMLElementObject GlobalEventHandlers.removeEventListener: no ABI function
   HTMLElementObject HTMLElement.hidden (getter): no ABI function
   HTMLElementObject HTMLElement.hidden (setter): no ABI function
   HTMLElementObject HTMLElement.attachInternals: no ABI function
@@ -1581,7 +1581,6 @@ Unmapped members:
   HTMLTextAreaElementObject HTMLTextAreaElement.selectionDirection (getter): unrecognised results
   HTMLTextAreaElementObject HTMLTextAreaElement.selectionDirection (setter): argument value: Fable.Core.TS.Dom.SelectionDirection as const char*
   HTMLTextAreaElementObject HTMLTextAreaElement.setRangeText: argument selection_mode: Fable.Core.TS.Dom.SelectionMode option as const char*
-  HTMLTextAreaElementObject HTMLTextAreaElement.setSelectionRange: argument start: optional without an IDL default
   HTMLTextAreaElementObject HTMLTextAreaElement.getElementsByTagNameNS: argument namespace_uri: Fable.Core.TS.Dom.HTMLTextAreaElement.HttpWwwW3Org1999Xhtml as const char*
   HTMLTextAreaElementObject HTMLTextAreaElement.getElementsByTagNameNS: argument namespace_uri: Fable.Core.TS.Dom.HTMLTextAreaElement.HttpWwwW3Org2000Svg as const char*
   HTMLTextAreaElementObject HTMLTextAreaElement.getElementsByTagNameNS: argument namespace_uri: Fable.Core.TS.Dom.HTMLTextAreaElement.HttpWwwW3Org1998MathMathML as const char*
@@ -1890,9 +1889,7 @@ Unmapped members:
   HTMLAudioElementObject GlobalEventHandlers.onwheel (getter): no ABI function
   HTMLAudioElementObject GlobalEventHandlers.onwheel (setter): no ABI function
   HTMLAudioElementObject GlobalEventHandlers.addEventListener<>: unconstrained generic overload
-  HTMLAudioElementObject GlobalEventHandlers.addEventListener: no ABI function
   HTMLAudioElementObject GlobalEventHandlers.removeEventListener<>: unconstrained generic overload
-  HTMLAudioElementObject GlobalEventHandlers.removeEventListener: no ABI function
   HTMLAudioElementObject ParentNode.querySelector<>: unconstrained generic overload
   HTMLAudioElementObject ParentNode.querySelectorAll<>: unconstrained generic overload
   HTMLAudioElementObject Element.classList (setter): no ABI function
@@ -1923,9 +1920,7 @@ Unmapped members:
   HTMLAudioElementObject Element.scrollIntoView: no ABI function
   HTMLAudioElementObject Element.webkitMatchesSelector: no ABI function
   HTMLAudioElementObject Element.addEventListener<>: unconstrained generic overload
-  HTMLAudioElementObject Element.addEventListener: no ABI function
   HTMLAudioElementObject Element.removeEventListener<>: unconstrained generic overload
-  HTMLAudioElementObject Element.removeEventListener: no ABI function
   HTMLAudioElementObject HTMLElement.hidden (getter): no ABI function
   HTMLAudioElementObject HTMLElement.hidden (setter): no ABI function
   HTMLAudioElementObject HTMLElement.attachInternals: no ABI function
@@ -2048,9 +2043,7 @@ Unmapped members:
   HTMLBodyElementObject WindowEventHandlers.onunload (getter): no ABI function
   HTMLBodyElementObject WindowEventHandlers.onunload (setter): no ABI function
   HTMLBodyElementObject WindowEventHandlers.addEventListener<>: unconstrained generic overload
-  HTMLBodyElementObject WindowEventHandlers.addEventListener: no ABI function
   HTMLBodyElementObject WindowEventHandlers.removeEventListener<>: unconstrained generic overload
-  HTMLBodyElementObject WindowEventHandlers.removeEventListener: no ABI function
   HTMLBodyElementObject HTMLBodyElement.addEventListener<>: unconstrained generic overload
   HTMLBodyElementObject HTMLBodyElement.removeEventListener<>: unconstrained generic overload
   HTMLBodyElementObject HTMLBodyElement.getElementsByTagNameNS: argument namespace_uri: Fable.Core.TS.Dom.HTMLBodyElement.HttpWwwW3Org1999Xhtml as const char*
@@ -2071,7 +2064,6 @@ Unmapped members:
   HTMLInputElementObject HTMLInputElement.webkitdirectory (getter): no ABI function
   HTMLInputElementObject HTMLInputElement.webkitdirectory (setter): no ABI function
   HTMLInputElementObject HTMLInputElement.setRangeText: argument selection_mode: Fable.Core.TS.Dom.SelectionMode option as const char*
-  HTMLInputElementObject HTMLInputElement.setSelectionRange: argument start: optional without an IDL default
   HTMLInputElementObject HTMLInputElement.showPicker: no ABI function
   HTMLInputElementObject HTMLInputElement.getElementsByTagNameNS: argument namespace_uri: Fable.Core.TS.Dom.HTMLInputElement.HttpWwwW3Org1999Xhtml as const char*
   HTMLInputElementObject HTMLInputElement.getElementsByTagNameNS: argument namespace_uri: Fable.Core.TS.Dom.HTMLInputElement.HttpWwwW3Org2000Svg as const char*
@@ -2351,9 +2343,7 @@ Unmapped members:
   HTMLVideoElementObject GlobalEventHandlers.onwheel (getter): no ABI function
   HTMLVideoElementObject GlobalEventHandlers.onwheel (setter): no ABI function
   HTMLVideoElementObject GlobalEventHandlers.addEventListener<>: unconstrained generic overload
-  HTMLVideoElementObject GlobalEventHandlers.addEventListener: no ABI function
   HTMLVideoElementObject GlobalEventHandlers.removeEventListener<>: unconstrained generic overload
-  HTMLVideoElementObject GlobalEventHandlers.removeEventListener: no ABI function
   HTMLVideoElementObject ParentNode.querySelector<>: unconstrained generic overload
   HTMLVideoElementObject ParentNode.querySelectorAll<>: unconstrained generic overload
   HTMLVideoElementObject Element.classList (setter): no ABI function
@@ -2384,9 +2374,7 @@ Unmapped members:
   HTMLVideoElementObject Element.scrollIntoView: no ABI function
   HTMLVideoElementObject Element.webkitMatchesSelector: no ABI function
   HTMLVideoElementObject Element.addEventListener<>: unconstrained generic overload
-  HTMLVideoElementObject Element.addEventListener: no ABI function
   HTMLVideoElementObject Element.removeEventListener<>: unconstrained generic overload
-  HTMLVideoElementObject Element.removeEventListener: no ABI function
   HTMLVideoElementObject HTMLElement.hidden (getter): no ABI function
   HTMLVideoElementObject HTMLElement.hidden (setter): no ABI function
   HTMLVideoElementObject HTMLElement.attachInternals: no ABI function

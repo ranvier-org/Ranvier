@@ -39,6 +39,9 @@ let private hand (dom: Type) (header: string) : Map<string, string> =
             "ParentNode.prepend", "Nodes.Prepend(this, nodes)"
             "ParentNode.replaceChildren", "Nodes.ReplaceChildren(this, nodes)"
             "Node.nodeType.get", "float (Native.rv_node_type this.Handle)"
+            "Node.cloneNode", "Templates.CloneNode(this, subtree)"
+            "HTMLInputElement.setSelectionRange", "Nodes.SetSelectionRange(this, start, ``end``)"
+            "HTMLTextAreaElement.setSelectionRange", "Nodes.SetSelectionRange(this, start, ``end``)"
             "KeyboardEvent.key.get",
             "Events.Init(this, \"key\", fun () -> Interop.text \"KeyboardEvent.key\" (fun b c l -> NativeDom.rv_dom_keyboard_event_get_key (this.Handle, b, c, l)))"
             "InputEvent.data.get",
@@ -75,7 +78,31 @@ let private hand (dom: Type) (header: string) : Map<string, string> =
                 $"{m.Groups[2].Value}.{m.Groups[3].Value}.get", $"float NativeDom.{m.Groups[1].Value}"
         ]
 
-    Map.ofList (fixedBodies @ styles @ constants)
+    // The interfaces that redeclare EventTarget's listener members with a required listener.
+    let listeners =
+        [
+            for t in dom.GetNestedTypes () do
+                if t.IsInterface && t.Name <> "EventTarget" then
+                    for m in
+                        t.GetMethods (
+                            BindingFlags.Public
+                            ||| BindingFlags.Instance
+                            ||| BindingFlags.DeclaredOnly
+                        ) do
+                        let parameters = m.GetParameters ()
+
+                        if
+                            not m.IsGenericMethodDefinition
+                            && (m.Name = "addEventListener"
+                                || m.Name = "removeEventListener")
+                            && parameters.Length = 3
+                            && parameters[1].Name = "listener"
+                        then
+                            let call = if m.Name = "addEventListener" then "Add" else "Remove"
+                            $"{t.Name}.{m.Name}", $"Events.{call}(this, ``type``, Some listener, options)"
+        ]
+
+    Map.ofList (fixedBodies @ styles @ constants @ listeners)
 
 let private kinds =
     Map.ofList
@@ -122,6 +149,9 @@ let main argv =
                 [
                     "EventTarget"
                     "Comment"
+                    "DocumentType"
+                    "ProcessingInstruction"
+                    "CDATASection"
                     "NodeListOf`1"
                     "HTMLCollectionOf`1"
                     yield! tagMap |> List.map snd

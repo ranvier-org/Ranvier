@@ -141,6 +141,11 @@ and [<Sealed; AllowNullLiteral>] Session internal (host: nativeint) =
 
     member val internal Registrations = HashSet<Registration>(HashIdentity.Reference)
 
+    /// <summary>The interceptions of members by name, in the order they were added; a null target is every node.</summary>
+    member val internal Interceptions = List<struct (obj * string * Func<Func<obj array, obj>, obj, obj array, obj>)>()
+
+    member internal this.Intercepting = this.Interceptions.Count > 0
+
     /// <summary>The listener calls and managed dispatches in progress.</summary>
     member val internal ScriptDepth = 0 with get, set
 
@@ -409,6 +414,27 @@ module internal Interop =
 
             target.Handle
         | other -> raise (ArgumentException $"A {other.GetType().Name} is not an object of the native backend")
+
+    /// <summary>
+    /// Runs <c>original</c> through the interceptions of <c>name</c> on <c>target</c>, the latest outermost, each given
+    /// the inner call, the target and the arguments.
+    /// </summary>
+    let intercept (target: NativeObject) (name: string) (args: obj array) (original: obj array -> obj) : obj =
+        let mutable call = original
+
+        for struct (on, memberName, wrap) in target.Session.Interceptions do
+            if
+                memberName = name
+                && (isNull on || obj.ReferenceEquals (on, target))
+            then
+                let inner = call
+                call <- fun values -> wrap.Invoke (Func<_, _> inner, box target, values)
+
+        call args
+
+    /// <summary>The string, or empty for null: a DOMString result that WebCore reports as null.</summary>
+    let nonNull (value: string) =
+        if isNull value then "" else value
 
     let handleOr (value: 'T option) : nativeint =
         match value with

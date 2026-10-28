@@ -63,6 +63,20 @@ type internal Templates private () =
             | _ -> ()
         | _ -> ()
 
+    /// <summary><c>Node.cloneNode</c>, with a deep clone of a template given a clone of its content.</summary>
+    static member CloneNode(node: NativeObject, subtree: bool option) : Node =
+        let deep = defaultArg subtree false
+
+        match Native.rv_node_clone (node.Handle, (if deep then 1 else 0)) with
+        | 0n -> raise (InvalidOperationException "rv_node_clone returned NULL")
+        | cloned ->
+            let clone = node.Session.Node cloned
+
+            if deep then
+                Templates.CopyContent (node, clone)
+
+            unbox<Node> clone
+
     static member SetInnerHTML(element: NativeObject, value: string) : unit =
         match box element with
         | :? HTMLTemplateElement ->
@@ -156,7 +170,14 @@ type internal Documents private () =
 
         match Native.rv_document_import_node (session.Host, Interop.handle (box node), (if deep then 1 else 0)) with
         | 0n -> raise (WebCoreDomException ("NotSupportedError", "The node cannot be imported"))
-        | handle -> unbox<'T>(session.Node handle)
+        | handle ->
+            let imported = session.Node handle
+
+            match box node with
+            | :? NativeObject as source when deep -> Templates.CopyContent (source, imported)
+            | _ -> ()
+
+            unbox<'T> imported
 
 /// <summary>The variadic <c>ChildNode</c> and <c>ParentNode</c> insertions, through one fragment.</summary>
 [<Sealed; AbstractClass>]
@@ -276,6 +297,11 @@ type internal Nodes private () =
                             Native.rv_node_release next
             finally
                 Native.rv_node_release parent
+
+    /// <summary><c>setSelectionRange</c> of an input or textarea; the direction is not supported natively.</summary>
+    static member SetSelectionRange(field: NativeObject, start: float option, finish: float option) : unit =
+        Native.rv_text_set_selection (field.Handle, int (defaultArg start 0.0), int (defaultArg finish 0.0))
+        |> Interop.check "HTMLInputElement.setSelectionRange"
 
     static member Append(parent: NativeObject, nodes: U2<string, Node> array) : unit =
         Nodes.Insert (parent.Session, parent.Handle, nodes, 0n, "ParentNode.append")
