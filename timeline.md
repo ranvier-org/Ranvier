@@ -99,6 +99,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 83,317 | 127,524 | 1,742,196 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 83,310 | 127,562 | 1,742,193 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 83,439 | 127,576 | 1,742,257 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 83,373 | 127,624 | 1,742,169 |
 
 ## app-table
 
@@ -199,6 +200,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 4,417,787 | 9,275,619 | 107,668,903 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 4,417,772 | 9,275,276 | 107,755,626 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 4,417,699 | 9,451,888 | 107,756,158 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 4,417,867 | 9,163,007 | 107,727,039 |
 
 ## async-recover
 
@@ -299,6 +301,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 139,183 | 41,273 | 434,848 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 139,183 | 41,267 | 434,841 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 139,183 | 41,264 | 434,846 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 139,183 | 41,241 | 434,851 |
 
 ## async-resolve
 
@@ -399,6 +402,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,791,251 | 1,023,152 | 11,966,843 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,791,251 | 1,022,996 | 11,970,218 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,791,251 | 1,023,048 | 11,970,356 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,791,251 | 1,022,839 | 11,970,195 |
 
 ## chain
 
@@ -499,6 +503,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,782 | 66,827 |
 
 ## chain-affinity
 
@@ -599,6 +604,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,553 | 3,071 | 2,500 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,553 | 3,071 | 2,500 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,553 | 3,071 | 2,500 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -699,6 +705,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 74,709 | 836,767 | 2,603,208 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 74,710 | 836,749 | 2,603,114 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 74,710 | 836,660 | 2,603,146 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 74,709 | 836,742 | 2,603,084 |
 
 ## create
 
@@ -799,6 +806,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 13,573,921 | 2,865,678 | 2,570,400 | 2,127,999 | 4,045,090 | 34,003,035 | 50,333,879 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 13,621,910 | 2,865,678 | 2,570,368 | 2,126,793 | 4,045,510 | 34,003,180 | 50,334,160 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 13,448,404 | 2,865,677 | 2,570,368 | 2,127,836 | 4,045,348 | 34,003,308 | 50,334,322 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 13,573,931 | 2,865,677 | 2,570,368 | 2,127,109 | 4,045,390 | 34,003,156 | 50,334,350 |
 
 ## create-on
 
@@ -899,6 +907,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,949,484 | 4,179,771 | 55,229,172 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,949,484 | 4,179,669 | 55,228,942 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,949,484 | 4,179,866 | 55,229,172 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,949,484 | 4,179,730 | 55,229,194 |
 
 ## cutoff
 
@@ -999,6 +1008,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1099,6 +1109,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 781 | 751 | 16,520 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 781 | 751 | 16,520 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 781 | 751 | 16,520 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1199,6 +1210,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 751 | 802 | 16,543 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 751 | 802 | 16,543 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 751 | 802 | 16,543 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1299,6 +1311,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 2,706,247 | 806,288 | 367,497 | 476,299 | 495,394 | 13,207,518 | 9,105,764 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 2,706,244 | 806,288 | 367,497 | 475,510 | 495,048 | 13,207,556 | 9,106,495 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 2,707,639 | 806,288 | 367,497 | 475,508 | 495,005 | 13,207,554 | 9,105,777 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 2,707,643 | 806,288 | 367,497 | 476,065 | 495,175 | 13,207,467 | 9,106,408 |
 
 ## dispose-on
 
@@ -1399,6 +1412,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 346,497 | 487,780 | 8,902,210 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 346,497 | 487,909 | 8,902,609 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 346,497 | 487,911 | 8,902,051 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 346,497 | 487,884 | 8,902,906 |
 
 ## editable-edit
 
@@ -1499,6 +1513,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 181,706 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 181,706 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 181,706 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 181,706 |
 
 ## editable-upstream
 
@@ -1599,6 +1614,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 232,855 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 232,855 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 232,855 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 232,855 |
 
 ## fail-recompute
 
@@ -1699,6 +1715,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 65,094 | 1,370 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 65,094 | 1,370 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 65,094 | 1,370 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 65,094 | 1,370 |
 
 ## flight
 
@@ -1799,6 +1816,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,349 |
 
 ## keyed-insert
 
@@ -1899,6 +1917,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,921,737 | 53,981 | 54,957 | 3,277,797 | 237,669 | 176,020 | 45,075,853 | 2,634,545 | 2,655,534 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,921,737 | 53,917 | 54,953 | 3,277,766 | 237,645 | 176,025 | 45,075,855 | 2,634,573 | 2,655,551 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,921,737 | 54,013 | 54,958 | 3,277,545 | 237,685 | 176,037 | 45,075,865 | 2,634,483 | 2,655,541 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,921,737 | 53,917 | 54,950 | 3,277,719 | 237,631 | 175,986 | 45,075,876 | 2,634,480 | 2,655,518 |
 
 ## keyed-remove
 
@@ -1999,6 +2018,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,920,673 | 43,671 | 45,301 | 3,292,893 | 592,094 | 606,142 | 45,041,057 | 1,924,609 | 1,960,146 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,920,671 | 43,608 | 45,300 | 3,292,923 | 591,910 | 606,070 | 45,052,984 | 1,924,627 | 1,960,153 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,920,676 | 43,702 | 45,301 | 3,292,821 | 592,034 | 605,821 | 45,041,049 | 1,924,630 | 1,960,147 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,920,676 | 43,607 | 45,301 | 3,292,702 | 591,998 | 606,219 | 45,041,016 | 1,924,667 | 1,960,108 |
 
 ## keyed-swap
 
@@ -2099,6 +2119,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,973,362 | 46,253 | 46,927 | 3,626,875 | 148,984 | 512,987 | 46,199,001 | 915,693 | 936,160 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,973,362 | 46,206 | 46,928 | 3,631,793 | 148,900 | 512,953 | 46,203,170 | 915,653 | 936,247 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,973,362 | 46,301 | 46,927 | 3,620,407 | 148,894 | 513,046 | 46,198,638 | 915,663 | 936,145 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,973,362 | 46,205 | 46,928 | 3,628,789 | 148,914 | 512,985 | 46,198,959 | 915,619 | 936,144 |
 
 ## mvu-dispatch
 
@@ -2199,6 +2220,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 58,292 | 788 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 58,292 | 788 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 58,292 | 788 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2299,6 +2321,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 7,029 | 884 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 7,013 | 884 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 7,013 | 884 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 7,029 | 884 |
 
 ## project-chain
 
@@ -2399,6 +2422,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,071,959 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,071,864 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,071,836 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,071,928 |
 
 ## project-churn
 
@@ -2499,6 +2523,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 36,385 | 34,250 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 36,385 | 34,250 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 36,385 | 34,250 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2599,6 +2624,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 50,460 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 50,460 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 50,460 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 50,460 |
 
 ## project-reorder
 
@@ -2699,6 +2725,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 780,068 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 780,068 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 780,067 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 780,067 |
 
 ## server-render
 
@@ -2799,6 +2826,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 682,252 | 1,147,118 | 9,828,900 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 680,652 | 1,146,953 | 9,828,860 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 680,716 | 1,147,507 | 9,829,123 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 680,652 | 1,147,149 | 9,828,685 |
 
 ## shape-diamond
 
@@ -2899,6 +2927,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 59,915 | 80,445 | 1,764,075 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 59,915 | 80,445 | 1,764,075 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 59,915 | 80,445 | 1,764,075 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -2999,6 +3028,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 84,378 | 108,943 | 2,038,136 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 84,378 | 108,947 | 2,038,136 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 84,378 | 108,945 | 2,038,136 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3099,6 +3129,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,950 | 1,548 | 2,502 | 4,692 | 3,672 | 13,466 | 47,577 | 45,790 | 55,380 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,950 | 1,548 | 2,502 | 4,695 | 3,672 | 13,467 | 47,577 | 45,790 | 55,383 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,476 | 47,580 | 45,790 | 55,380 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,950 | 1,548 | 2,518 | 4,695 | 3,672 | 13,468 | 47,580 | 45,790 | 55,383 |
 
 ## stream-burst-16
 
@@ -3199,6 +3230,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 5,022 | 24,618 | 5,712 | 9,738 | 50,033 | 8,069 | 123,812 | 720,148 | 113,734 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 5,022 | 24,618 | 5,712 | 9,738 | 50,032 | 8,067 | 123,810 | 720,150 | 113,733 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 5,022 | 24,618 | 5,728 | 9,728 | 50,033 | 8,067 | 123,810 | 720,148 | 113,734 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 5,022 | 24,618 | 5,728 | 9,727 | 50,033 | 8,067 | 123,808 | 720,148 | 113,734 |
 
 ## stream-burst-256
 
@@ -3299,6 +3331,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 54,162 | 393,702 | 57,051 | 131,938 | 792,830 | 74,743 | 1,343,691 | 11,508,713 | 1,046,728 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 54,162 | 393,702 | 57,051 | 131,987 | 792,876 | 74,693 | 1,343,778 | 11,508,770 | 1,046,727 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 54,162 | 393,702 | 57,067 | 132,065 | 792,882 | 74,743 | 1,343,779 | 11,508,869 | 1,046,727 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 54,162 | 393,702 | 57,067 | 131,888 | 792,880 | 74,743 | 1,343,779 | 11,508,864 | 1,046,723 |
 
 ## stream-restart
 
@@ -3399,6 +3432,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 4,204 | 4,995 | 6,579 | 16,889 | 42,880 | 72,024 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 4,204 | 4,995 | 6,576 | 16,890 | 42,893 | 72,024 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 4,204 | 5,011 | 6,579 | 16,889 | 42,896 | 72,025 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 4,204 | 5,011 | 6,571 | 16,883 | 42,883 | 72,024 |
 
 ## timed-admit-both
 
@@ -3499,6 +3533,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 117,709 | 130,039 | 2,693,577 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 117,709 | 130,037 | 2,693,578 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 117,709 | 130,038 | 2,693,577 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 118,733 | 130,036 | 2,693,565 |
 
 ## timed-admit-debounce
 
@@ -3599,6 +3634,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 116,614 | 128,613 | 2,654,129 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 116,614 | 128,614 | 2,654,117 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 116,618 | 128,619 | 2,654,117 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 117,638 | 128,618 | 2,654,116 |
 
 ## timed-admit-first
 
@@ -3699,6 +3735,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 69,621 | 79,566 | 1,620,677 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 69,621 | 79,566 | 1,620,677 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 69,621 | 79,565 | 1,620,677 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 70,645 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -3799,6 +3836,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 116,876 | 128,938 | 2,663,985 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 116,876 | 128,939 | 2,663,973 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 116,876 | 128,935 | 2,663,985 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 117,900 | 128,937 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -3899,6 +3937,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 35,740 | 44,936 | 846,917 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 35,740 | 44,935 | 846,916 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 35,740 | 44,936 | 846,920 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,740 | 44,935 | 846,917 |
 
 ## timed-capture-debounce
 
@@ -3999,6 +4038,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 35,612 | 44,232 | 847,657 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 35,612 | 44,233 | 847,657 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 35,612 | 44,233 | 847,657 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4099,6 +4139,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 32,092 | 36,742 | 745,653 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 32,092 | 36,742 | 745,651 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 32,092 | 36,742 | 745,651 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -4199,6 +4240,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 35,548 | 44,168 | 839,785 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 35,548 | 44,168 | 839,785 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 35,548 | 44,168 | 839,786 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 35,548 | 44,168 | 839,787 |
 
 ## update
 
@@ -4299,6 +4341,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 1,089,390 | 38,805 | 84,105 | 263,027 | 145,782 | 3,351,346 | 2,545,037 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 1,087,783 | 38,805 | 84,105 | 263,037 | 145,791 | 3,351,344 | 2,545,096 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 1,087,783 | 38,805 | 84,105 | 263,233 | 145,809 | 3,351,293 | 2,545,016 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 1,090,983 | 38,805 | 84,105 | 263,278 | 145,816 | 3,351,241 | 2,544,998 |
 
 ## update-on
 
@@ -4399,6 +4442,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 94,605 | 169,017 | 2,872,412 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 94,605 | 168,991 | 2,872,339 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 94,605 | 169,004 | 2,872,431 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 94,605 | 169,025 | 2,872,416 |
 
 ## work-form
 
@@ -4499,6 +4543,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 172,679 | 165,150 | 308,831 | 296,998 | 5,421,904 | 5,334,884 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 172,679 | 165,150 | 308,847 | 296,985 | 5,421,905 | 5,334,896 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 172,679 | 165,150 | 308,825 | 296,926 | 5,421,808 | 5,334,908 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 172,679 | 165,150 | 308,861 | 296,995 | 5,421,757 | 5,334,903 |
 
 ## work-status
 
@@ -4599,6 +4644,7 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 102,045 | 80,235 | 269,318 | 156,117 | 2,659,246 | 2,391,312 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 102,045 | 80,235 | 269,331 | 156,133 | 2,659,213 | 2,391,299 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 102,045 | 80,235 | 269,342 | 156,125 | 2,659,280 | 2,391,318 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 102,045 | 80,235 | 269,349 | 156,123 | 2,659,303 | 2,391,259 |
 
 ## work-value
 
@@ -4699,4 +4745,5 @@
 | `1099e6a` | 2026-10-27 | feat(anime): animate typed CSS custom properties (#236) | 109,169 | 121,071 | 269,560 | 283,413 | 2,643,893 | 2,968,441 |
 | `827c2c1` | 2026-10-27 | ci: speed up CSS checks and stabilize KurrentDB retries (#237) | 109,169 | 121,069 | 269,577 | 283,434 | 2,643,903 | 2,968,480 |
 | `acb0165` | 2026-10-28 | feat(css): generate compact discoverable grammar bindings (#238) | 109,169 | 121,071 | 269,592 | 283,396 | 2,643,921 | 2,968,434 |
+| `1f10137` | 2026-10-28 | refactor!: move to ranvier-org and remove the extracted CSS libraries (#242) | 109,169 | 121,071 | 269,586 | 283,418 | 2,643,850 | 2,968,422 |
 
