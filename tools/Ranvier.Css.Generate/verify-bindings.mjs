@@ -24,6 +24,7 @@ const committedManifest = await fs.readFile(path.join(root, 'src/Ranvier.Css.Bin
 if (manifestText.replaceAll('\r\n', '\n') !== committedManifest.replaceAll('\r\n', '\n')) throw new Error('Generated CSS binding manifest is stale.');
 const corpusManifest = JSON.parse(manifestText);
 if (corpusManifest.schemaVersion === 2) {
+  process.argv.push('--snapshot', path.join(output, 'model.json'));
   await import('./verify-compact-bindings.mjs');
   process.exit(0);
 }

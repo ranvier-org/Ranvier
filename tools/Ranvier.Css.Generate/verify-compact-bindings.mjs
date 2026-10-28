@@ -11,13 +11,15 @@ const root = path.resolve(directory, '../..');
 const arguments_ = process.argv.slice(2);
 const metadataOnly = arguments_.includes('--metadata-only');
 const manifestOption = arguments_.indexOf('--manifest');
-assert(arguments_.every((argument, index) => argument === '--metadata-only' || argument === '--manifest' || index === manifestOption + 1 && manifestOption >= 0), 'Usage: node verify-compact-bindings.mjs [--metadata-only] [--manifest path]');
+const snapshotOption = arguments_.indexOf('--snapshot');
+assert(arguments_.every((argument, index) => argument === '--metadata-only' || argument === '--manifest' || argument === '--snapshot' || index === manifestOption + 1 && manifestOption >= 0 || index === snapshotOption + 1 && snapshotOption >= 0), 'Usage: node verify-compact-bindings.mjs [--metadata-only] [--manifest path] [--snapshot path]');
 if (manifestOption >= 0) assert(arguments_[manifestOption + 1] && !arguments_[manifestOption + 1].startsWith('--'), '--manifest requires a path');
+if (snapshotOption >= 0) assert(arguments_[snapshotOption + 1] && !arguments_[snapshotOption + 1].startsWith('--'), '--snapshot requires a path');
 const manifestPath = manifestOption >= 0 ? path.resolve(arguments_[manifestOption + 1])
   : path.join(root, 'src/Ranvier.Css.Bindings/Generated/Css.manifest.json');
 const readJson = async file => JSON.parse(await fs.readFile(file, 'utf8'));
 const manifest = await readJson(manifestPath);
-const snapshot = await readJson(path.join(directory, 'out/css-model.json'));
+const snapshot = await readJson(snapshotOption >= 0 ? path.resolve(arguments_[snapshotOption + 1]) : path.join(directory, 'out/css-model.json'));
 
 function decodeGraph(encoded) {
   assert.equal(typeof encoded, 'string', 'Manifest must retain its encoded grammar');
