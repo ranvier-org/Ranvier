@@ -123,7 +123,7 @@ let stateDial =
             [|
                 t.Attrs.className "rv-dial"
                 t.Unsafe.html (UnsafeHtml.Trust dialMarkup)
-                t.Hooks.lend (fun policy (native: TS.Dom.HTMLDivElement) ->
+                t.Hooks.lend (fun policy native ->
                     let root: obj = native
                     let window: obj = emitJsExpr () "window"
                     let mutable step = 0
