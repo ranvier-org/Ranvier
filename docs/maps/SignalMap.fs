@@ -88,12 +88,12 @@ module internal ControlBar =
         | Shown.Text value -> value
         | Shown.Toggle value -> string value
 
-    let private inputOf (event: TS.Dom.Event) =
-        match event.target with
-        | Some target -> unbox<TS.Dom.HTMLInputElement> target
-        | None -> invalidOp "An input event has no target."
+    let private inputOf (event: Ranvier.Dom.Event) =
+        match box event.target with
+        | null -> invalidOp "An input event has no target."
+        | target -> unbox<Ranvier.Dom.HTMLInputElement> target
 
-    let private inputValue (event: TS.Dom.Event) =
+    let private inputValue (event: Ranvier.Dom.Event) =
         (inputOf event).value
 
     let private pressArm =
@@ -1245,13 +1245,13 @@ type internal MapMachine(settings: MapSettings) as this =
 
 /// <summary>The map's rows and template.</summary>
 module internal MapView =
-    let private targetOf (event: TS.Dom.Event) : obj =
-        match event.target with
-        | Some target -> box target
-        | None -> invalidOp "An input event has no target."
+    let private targetOf (event: Ranvier.Dom.Event) : obj =
+        match box event.target with
+        | null -> invalidOp "An input event has no target."
+        | target -> target
 
-    let private inputValue (event: TS.Dom.Event) =
-        (unbox<TS.Dom.HTMLInputElement>(targetOf event)).value
+    let private inputValue (event: Ranvier.Dom.Event) =
+        (unbox<Ranvier.Dom.HTMLInputElement>(targetOf event)).value
 
     let private nodeRow: TemplateView<unit -> NodeItem> =
         g (
@@ -1477,7 +1477,7 @@ module internal MapView =
                 select (
                     Attrs.className "rv-map__speed-select",
                     Events.onChange (fun (m: MapMachine) event ->
-                        let chosen = (unbox<TS.Dom.HTMLSelectElement>(targetOf event)).value
+                        let chosen = (unbox<Ranvier.Dom.HTMLSelectElement>(targetOf event)).value
 
                         match Double.TryParse (chosen, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
                         | true, value -> m.ChangeSpeed value
@@ -1652,7 +1652,7 @@ module SignalMapComponent =
 [<RequireQualifiedAccess>]
 module MapMount =
     [<Emit("document.body")>]
-    let private documentBody () : TS.Dom.Element = jsNative
+    let private documentBody () : Ranvier.Dom.Element = jsNative
 
     /// <summary>
     /// Mounts <c>map</c> at the end of the document body with <c>Ranvier.View.Dom.Mounting.mount</c>; disposing the result
