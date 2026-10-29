@@ -57,3 +57,14 @@ if (descriptors?.GetProperty("font-family")?.PropertyType != typeof(string))
     throw new Exception("The dashed CSS descriptor alias contract is missing");
 
 Console.WriteLine("DOM_PACKAGE_IDENTITY PASS " + Bridge.NodeContract.Assembly.FullName);
+if (Bridge.StyleSheetServiceContract != typeof(Ranvier.Dom.StyleSheetService))
+    throw new Exception("Browser and native packages have different stylesheet service identities");
+if (!typeof(IDisposable).IsAssignableFrom(typeof(Ranvier.Dom.StyleSheetService)))
+    throw new Exception("The stylesheet service lost its ownership contract");
+if (typeof(Ranvier.Dom.StyleSheetService).GetMethod("GetAdopted")?.ReturnType != typeof(Ranvier.Dom.CSSStyleSheet[]))
+    throw new Exception("The stylesheet adoption snapshot contract is missing");
+if (typeof(Ranvier.Dom.StyleSheetService).GetProperty("SupportsBaseUrl")?.PropertyType != typeof(bool))
+    throw new Exception("The stylesheet base URL capability contract is missing");
+if (Ranvier.Dom.StyleSheetOptions.Default.Disabled || Ranvier.Dom.StyleSheetOptions.Default.BaseUrl != null)
+    throw new Exception("Stylesheet constructor defaults changed");
+Console.WriteLine("DOM_PACKAGE_STYLESHEET_SERVICE PASS");
