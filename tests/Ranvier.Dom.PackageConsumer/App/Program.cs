@@ -75,3 +75,9 @@ if (Bridge.EscapeIdentifier("a\0b") != "a\ufffdb" || Ranvier.Dom.CSS.escape(null
 if (Ranvier.Dom.CSS.escape("\ud800") != "\ud800")
     throw new Exception("CSS escaping lost UTF-16 code units");
 Console.WriteLine("DOM_PACKAGE_CSS_ESCAPE PASS");
+if (Bridge.CssQueryServiceContract != typeof(Ranvier.Dom.CssQueryService))
+    throw new Exception("Browser and native packages have different CSS query service identities");
+if (typeof(Ranvier.Dom.CssQueryService).GetMethod("Supports", new[] { typeof(string), typeof(string) })?.ReturnType != typeof(bool)
+    || typeof(Ranvier.Dom.CssQueryService).GetMethod("Supports", new[] { typeof(string) })?.ReturnType != typeof(bool))
+    throw new Exception("A CSS support-query overload is missing");
+Console.WriteLine("DOM_PACKAGE_CSS_QUERIES PASS");
