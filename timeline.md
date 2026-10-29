@@ -116,6 +116,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 83,302 | 127,547 | 1,742,254 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 83,365 | 127,584 | 1,742,203 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 83,493 | 127,601 | 1,742,350 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 83,363 | 127,547 | 1,742,284 |
 
 ## app-table
 
@@ -233,6 +234,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 4,417,753 | 9,271,842 | 107,880,108 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 4,417,699 | 9,272,197 | 107,850,706 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 4,417,771 | 9,451,592 | 107,973,035 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 4,417,713 | 9,274,414 | 107,880,293 |
 
 ## async-recover
 
@@ -350,6 +352,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 139,139 | 41,266 | 434,862 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 139,139 | 41,230 | 434,850 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 139,139 | 41,271 | 434,861 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 139,139 | 41,225 | 434,845 |
 
 ## async-resolve
 
@@ -467,6 +470,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,790,467 | 1,023,149 | 11,967,061 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,790,467 | 1,023,029 | 11,967,117 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,790,467 | 1,022,900 | 11,967,621 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,790,467 | 1,023,165 | 11,970,045 |
 
 ## chain
 
@@ -584,6 +588,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -701,6 +706,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,553 | 3,071 | 2,500 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,553 | 3,071 | 2,500 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,553 | 3,071 | 2,500 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -818,6 +824,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 74,710 | 836,508 | 2,602,894 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 74,710 | 836,560 | 2,603,041 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 74,710 | 836,491 | 2,602,903 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 74,710 | 836,499 | 2,603,127 |
 
 ## create
 
@@ -935,6 +942,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 13,448,204 | 2,865,677 | 2,570,368 | 2,127,747 | 4,044,597 | 33,999,749 | 50,423,875 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 13,448,217 | 2,865,679 | 2,570,369 | 2,127,743 | 4,044,585 | 33,999,861 | 50,423,972 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 13,448,197 | 2,897,677 | 2,570,368 | 2,127,506 | 4,044,836 | 33,999,494 | 50,423,985 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 13,448,212 | 2,865,677 | 2,570,369 | 2,127,930 | 4,044,977 | 33,999,568 | 50,424,007 |
 
 ## create-on
 
@@ -1052,6 +1060,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,949,484 | 4,179,792 | 55,229,036 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,949,485 | 4,179,591 | 55,229,084 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,949,484 | 4,179,756 | 55,229,112 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,949,484 | 4,179,952 | 55,229,384 |
 
 ## cutoff
 
@@ -1169,6 +1178,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1286,6 +1296,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 781 | 751 | 16,520 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 781 | 751 | 16,520 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 781 | 751 | 16,520 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1403,6 +1414,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 751 | 802 | 16,543 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 751 | 802 | 16,543 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 751 | 802 | 16,543 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1520,6 +1532,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,706,247 | 806,291 | 367,497 | 475,400 | 495,310 | 13,206,481 | 9,107,025 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,707,644 | 806,291 | 367,497 | 475,968 | 495,048 | 13,205,970 | 9,106,459 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,707,645 | 806,291 | 367,497 | 476,077 | 495,063 | 13,206,213 | 9,106,120 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,706,242 | 806,291 | 367,497 | 476,166 | 494,954 | 13,206,215 | 9,106,221 |
 
 ## dispose-on
 
@@ -1637,6 +1650,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 346,497 | 488,302 | 8,902,775 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 346,497 | 487,770 | 8,902,601 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 346,497 | 487,944 | 8,902,428 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 346,497 | 487,812 | 8,902,627 |
 
 ## editable-edit
 
@@ -1754,6 +1768,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 181,706 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 181,706 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 181,706 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 181,706 |
 
 ## editable-upstream
 
@@ -1871,6 +1886,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 232,855 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 232,855 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 232,855 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 232,855 |
 
 ## fail-recompute
 
@@ -1988,6 +2004,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 64,938 | 1,370 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 64,938 | 1,370 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 64,938 | 1,370 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 64,938 | 1,370 |
 
 ## flight
 
@@ -2105,6 +2122,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2222,6 +2240,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,921,727 | 53,917 | 54,954 | 3,277,788 | 237,388 | 176,008 | 45,075,883 | 2,634,535 | 2,655,526 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,921,743 | 53,917 | 54,964 | 3,277,792 | 237,625 | 175,990 | 45,086,058 | 2,634,492 | 2,655,509 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,921,729 | 54,013 | 54,957 | 3,277,737 | 237,685 | 176,013 | 45,075,905 | 2,634,548 | 2,655,529 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,921,729 | 53,933 | 54,956 | 3,277,611 | 237,685 | 176,052 | 45,075,913 | 2,634,480 | 2,655,527 |
 
 ## keyed-remove
 
@@ -2339,6 +2358,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,920,651 | 43,600 | 45,299 | 3,292,898 | 592,296 | 606,155 | 45,041,264 | 1,924,919 | 1,960,131 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,920,669 | 43,600 | 45,315 | 3,292,666 | 592,298 | 606,068 | 45,041,251 | 1,924,976 | 1,960,117 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,920,664 | 43,696 | 45,299 | 3,292,917 | 592,161 | 606,103 | 45,041,242 | 1,924,715 | 1,960,147 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,920,654 | 43,616 | 45,299 | 3,293,115 | 591,973 | 606,092 | 45,041,242 | 1,924,852 | 1,960,115 |
 
 ## keyed-swap
 
@@ -2456,6 +2476,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,973,355 | 46,205 | 46,927 | 3,628,259 | 148,901 | 512,461 | 46,203,663 | 915,631 | 936,058 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,973,356 | 46,205 | 46,928 | 3,628,493 | 149,022 | 512,662 | 46,203,970 | 915,648 | 936,275 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,973,356 | 46,301 | 46,928 | 3,626,908 | 149,234 | 512,569 | 46,203,969 | 915,731 | 936,212 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,973,356 | 46,221 | 46,928 | 3,628,542 | 148,966 | 512,576 | 46,203,951 | 915,671 | 936,130 |
 
 ## mvu-dispatch
 
@@ -2573,6 +2594,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 58,292 | 788 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 58,292 | 788 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 58,292 | 788 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 58,292 | 788 |
 
 ## persist-write
 
@@ -2690,6 +2712,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | — | — |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | — | — |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | — | — |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | — | — |
 
 ## project-chain
 
@@ -2807,6 +2830,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,071,783 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,071,719 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,071,783 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,071,732 |
 
 ## project-churn
 
@@ -2924,6 +2948,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 36,385 | 34,250 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 36,401 | 34,266 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 36,401 | 34,266 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 36,401 | 34,266 |
 
 ## project-edit
 
@@ -3041,6 +3066,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 50,460 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 50,476 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 50,460 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 50,460 |
 
 ## project-reorder
 
@@ -3158,6 +3184,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 780,084 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 780,100 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 780,084 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 780,084 |
 
 ## server-render
 
@@ -3275,6 +3302,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | — | — | — |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | — | — | — |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | — | — | — |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | — | — | — |
 
 ## shape-diamond
 
@@ -3392,6 +3420,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 59,915 | 80,445 | 1,764,075 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 59,915 | 80,445 | 1,764,075 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 59,915 | 80,445 | 1,764,075 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3509,6 +3538,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 84,378 | 108,946 | 2,038,136 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 84,378 | 108,947 | 2,038,136 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 84,378 | 108,947 | 2,038,136 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3626,6 +3656,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,555 | 45,790 | 55,381 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,474 | 47,553 | 45,790 | 55,384 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,475 | 47,556 | 45,790 | 55,380 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,476 | 47,553 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -3743,6 +3774,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,788 | 720,150 | 113,734 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,069 | 123,785 | 720,146 | 113,733 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,069 | 123,789 | 720,148 | 113,728 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,071 | 123,787 | 720,150 | 113,734 |
 
 ## stream-burst-256
 
@@ -3860,6 +3892,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 54,162 | 393,702 | 57,052 | 131,879 | 792,881 | 74,743 | 1,343,151 | 11,508,708 | 1,046,732 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 54,162 | 393,702 | 57,052 | 131,828 | 792,883 | 74,743 | 1,343,101 | 11,508,745 | 1,046,764 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 54,162 | 393,702 | 57,052 | 131,915 | 792,823 | 74,743 | 1,343,192 | 11,508,770 | 1,046,745 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 54,162 | 393,702 | 57,052 | 131,897 | 792,886 | 74,743 | 1,343,098 | 11,508,775 | 1,046,762 |
 
 ## stream-restart
 
@@ -3977,6 +4010,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 4,203 | 5,004 | 6,579 | 16,888 | 42,909 | 72,017 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 4,203 | 5,004 | 6,575 | 16,890 | 42,907 | 72,018 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 4,203 | 5,004 | 6,574 | 16,891 | 42,906 | 72,008 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 4,203 | 5,020 | 6,575 | 16,890 | 42,905 | 72,022 |
 
 ## timed-admit-both
 
@@ -4094,6 +4128,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 117,709 | 130,034 | 2,693,576 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 117,709 | 130,034 | 2,693,575 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 117,709 | 130,036 | 2,693,575 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 117,709 | 130,035 | 2,693,576 |
 
 ## timed-admit-debounce
 
@@ -4211,6 +4246,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 116,614 | 128,627 | 2,654,129 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 116,614 | 128,616 | 2,654,129 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 116,614 | 128,619 | 2,654,129 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 116,614 | 128,630 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4328,6 +4364,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 69,621 | 79,563 | 1,620,678 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 69,621 | 79,564 | 1,620,677 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 69,621 | 79,566 | 1,620,678 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 69,621 | 79,566 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4445,6 +4482,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 116,876 | 128,948 | 2,663,985 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 116,876 | 128,950 | 2,663,985 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 116,876 | 128,939 | 2,663,985 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 116,876 | 128,952 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4562,6 +4600,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 35,740 | 44,935 | 846,247 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 35,740 | 44,936 | 846,247 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 35,740 | 44,936 | 846,247 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 35,740 | 44,936 | 846,247 |
 
 ## timed-capture-debounce
 
@@ -4679,6 +4718,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 35,612 | 44,232 | 847,657 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 35,612 | 44,232 | 847,657 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 35,612 | 44,232 | 847,657 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4796,6 +4836,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 32,092 | 36,742 | 745,651 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 32,092 | 36,741 | 745,651 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 32,092 | 36,741 | 745,651 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4913,6 +4954,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 35,548 | 44,169 | 839,785 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 35,548 | 44,168 | 839,785 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 35,548 | 44,168 | 839,787 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 35,548 | 44,168 | 839,787 |
 
 ## update
 
@@ -5030,6 +5072,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,090,990 | 38,805 | 84,105 | 263,137 | 145,854 | 3,351,274 | 2,544,984 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,087,790 | 38,805 | 84,105 | 263,178 | 145,809 | 3,351,307 | 2,545,052 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,087,790 | 38,805 | 84,105 | 262,820 | 145,819 | 3,351,249 | 2,545,067 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,087,790 | 38,805 | 84,105 | 263,385 | 145,815 | 3,351,299 | 2,545,099 |
 
 ## update-on
 
@@ -5147,6 +5190,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 94,605 | 169,048 | 2,872,422 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 94,605 | 169,048 | 2,872,438 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 94,605 | 169,003 | 2,872,472 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 94,605 | 169,044 | 2,872,460 |
 
 ## work-form
 
@@ -5264,6 +5308,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,853 | 5,334,913 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 172,679 | 165,150 | 308,877 | 296,971 | 5,421,871 | 5,334,874 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 172,679 | 165,150 | 308,842 | 296,993 | 5,421,866 | 5,334,908 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 172,679 | 165,150 | 308,861 | 296,993 | 5,421,861 | 5,334,903 |
 
 ## work-status
 
@@ -5381,6 +5426,7 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 102,045 | 80,235 | 269,373 | 156,109 | 2,659,231 | 2,391,292 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 102,045 | 80,235 | 269,346 | 156,127 | 2,659,268 | 2,391,258 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 102,045 | 80,235 | 269,322 | 156,097 | 2,659,276 | 2,391,284 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 102,045 | 80,235 | 269,377 | 156,114 | 2,659,269 | 2,391,224 |
 
 ## work-value
 
@@ -5498,4 +5544,5 @@
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 109,169 | 121,069 | 269,607 | 283,399 | 2,643,884 | 2,968,411 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 109,168 | 121,069 | 269,593 | 283,386 | 2,643,831 | 2,968,477 |
 | `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 109,170 | 121,069 | 269,598 | 283,397 | 2,643,944 | 2,968,395 |
+| `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 109,170 | 121,069 | 269,547 | 283,407 | 2,643,832 | 2,968,393 |
 
