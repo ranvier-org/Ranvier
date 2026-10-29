@@ -20,6 +20,13 @@ let private queryDocument () : Document = jsNative
 })()""")>]
 let private computedFixture () : Document * Element = jsNative
 
+[<Emit("""(() => {
+    const rectangle = { x:10.25, y:20.5, width:30.75, height:12 };
+    const fragments = { length:1, item(index) { return index === 0 ? rectangle : null; } };
+    return [{ getClientRects() { return fragments; } }, { getClientRects() { return fragments; } }];
+})()""")>]
+let private fragmentFixture () : Element * Ranvier.Dom.Range = jsNative
+
 let private codeUnit (value: int) =
     string (char value)
 
@@ -79,6 +86,26 @@ let main _ =
         failwith "The packaged computed-style query lost its pseudo-element"
 
     printfn "DOM_PACKAGE_COMPUTED_STYLE PASS"
+    let fragmentElement, fragmentRange = fragmentFixture ()
+    let elementFragments = fragmentElement.getClientRects ()
+    let rangeFragments = fragmentRange.getClientRects ()
+
+    if
+        elementFragments.length <> 1u
+        || rangeFragments.length <> 1u
+    then
+        failwith "The packaged fragment query/list contract changed"
+
+    if
+        (elementFragments.item 0u).x <> 10.25
+        || (rangeFragments.item 0u).width <> 30.75
+    then
+        failwith "The packaged rectangle contract lost double precision"
+
+    if not (isNull (box (elementFragments.item 1u))) then
+        failwith "The packaged fragment list lost nullable indexing"
+
+    printfn "DOM_PACKAGE_FRAGMENTS PASS"
     printfn "DOM_PACKAGE_CSS_QUERIES PASS"
     printfn "DOM_PACKAGE_CSS_ESCAPE PASS"
     printfn "DOM_PACKAGE_BROWSER PASS"

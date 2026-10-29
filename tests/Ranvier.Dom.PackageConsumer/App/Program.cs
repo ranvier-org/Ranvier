@@ -86,3 +86,18 @@ if (Bridge.ComputedStyleServiceContract != typeof(Ranvier.Dom.ComputedStyleServi
 if (typeof(Ranvier.Dom.ComputedStyleService).GetMethod("Get")?.ReturnType != typeof(Ranvier.Dom.CSSStyleDeclaration))
     throw new Exception("The computed-style declaration contract is missing");
 Console.WriteLine("DOM_PACKAGE_COMPUTED_STYLE PASS");
+if (Bridge.FragmentListContract != typeof(Ranvier.Dom.DOMRectList))
+    throw new Exception("Browser and native packages have different fragment list identities");
+if (typeof(Ranvier.Dom.Element).GetMethod("getClientRects")?.ReturnType != typeof(Ranvier.Dom.DOMRectList)
+    || typeof(Ranvier.Dom.Range).GetMethod("getClientRects")?.ReturnType != typeof(Ranvier.Dom.DOMRectList))
+    throw new Exception("A fragment rectangle query contract is missing");
+if (typeof(Ranvier.Dom.DOMRectList).GetProperty("length")?.PropertyType != typeof(uint)
+    || Bridge.FirstFragment(new EmptyFragments()) != null)
+    throw new Exception("Fragment list indexing or nullable item identity changed");
+Console.WriteLine("DOM_PACKAGE_FRAGMENTS PASS");
+
+sealed class EmptyFragments : Ranvier.Dom.DOMRectList
+{
+    public uint length => 0u;
+    public Ranvier.Dom.DOMRect item(uint index) => null;
+}
