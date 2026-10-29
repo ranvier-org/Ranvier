@@ -22,3 +22,7 @@ errors. Null strings convert to `"null"`, and embedded NUL remains part of the q
 Browser code uses `Ranvier.Dom.ComputedStyles.forDocument document`; the native View backend supplies
 its host provider. Elements belong to the provider's document. Unresolved pseudo-element selectors
 return empty declarations; later style changes update successful queries.
+
+`Element.getClientRects()` and `Range.getClientRects()` return the engine's fragment rectangle snapshot.
+`DOMRectList.length` counts its entries, and `item` returns a null-capable `DOMRect` for each index.
+Coordinates retain double precision; an out-of-range item returns null.
