@@ -38,4 +38,22 @@ if (!typeof(Ranvier.Dom.HTMLOrSVGElement).IsAssignableFrom(typeof(Ranvier.Dom.Ma
     throw new Exception("MathML elements lost the shared focus/data contract");
 if (typeof(Ranvier.Dom.SVGElement).GetProperty("viewportElement")?.PropertyType != typeof(Ranvier.Dom.SVGElement))
     throw new Exception("The SVG element introspection contract is missing");
+if (typeof(Ranvier.Dom.CSSStyleSheet).GetMethod("insertRule")?.ReturnType != typeof(uint))
+
+    throw new Exception("The stylesheet rule insertion contract is missing");
+
+if (typeof(Ranvier.Dom.CSSStyleSheet).GetProperty("cssRules")?.PropertyType.FullName != "Ranvier.Dom.CSSRuleList")
+
+    throw new Exception("The stylesheet rule collection contract is missing");
+
+if (typeof(Ranvier.Dom.HTMLAreaElement).GetProperty("coords")?.PropertyType != typeof(string))
+
+    throw new Exception("The area reflection contract is missing");
+
+var descriptors = typeof(Ranvier.Dom.Node).Assembly.GetType("Ranvier.Dom.CSSFontFaceDescriptors");
+
+if (descriptors?.GetProperty("font-family")?.PropertyType != typeof(string))
+
+    throw new Exception("The dashed CSS descriptor alias contract is missing");
+
 Console.WriteLine("DOM_PACKAGE_IDENTITY PASS " + Bridge.NodeContract.Assembly.FullName);
