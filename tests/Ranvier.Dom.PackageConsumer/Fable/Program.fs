@@ -12,6 +12,14 @@ let private styled () : ElementCSSInlineStyle = jsNative
 [<Emit("({ defaultView: { CSS: { supports(...args) { return args.length === 2 ? args[0] === 'display' && args[1] === 'block' : args[0] === '(display: block)'; } } } })")>]
 let private queryDocument () : Document = jsNative
 
+[<Emit("""(() => {
+    const document = { defaultView: { getComputedStyle(element, pseudo) {
+        return { getPropertyValue(property) { return property === 'width' ? (pseudo === '::before' ? '11px' : '120px') : ''; } };
+    } } };
+    return [document, { ownerDocument: document }];
+})()""")>]
+let private computedFixture () : Document * Element = jsNative
+
 let private codeUnit (value: int) =
     string (char value)
 
@@ -55,6 +63,22 @@ let main _ =
     if queries.Supports ("display", "invalid") then
         failwith "The packaged declaration result changed"
 
+    let document, element = computedFixture ()
+    let computed = ComputedStyles.forDocument document
+
+    if
+        (computed.Get (element, None)).getPropertyValue "width"
+        <> "120px"
+    then
+        failwith "The packaged computed-style element query changed"
+
+    if
+        (computed.Get (element, Some "::before")).getPropertyValue "width"
+        <> "11px"
+    then
+        failwith "The packaged computed-style query lost its pseudo-element"
+
+    printfn "DOM_PACKAGE_COMPUTED_STYLE PASS"
     printfn "DOM_PACKAGE_CSS_QUERIES PASS"
     printfn "DOM_PACKAGE_CSS_ESCAPE PASS"
     printfn "DOM_PACKAGE_BROWSER PASS"
