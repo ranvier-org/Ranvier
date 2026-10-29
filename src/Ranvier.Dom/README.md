@@ -12,3 +12,8 @@ The shared `Ranvier.Dom.CSS.escape` function serializes complete UTF-16 text for
 
 Members outside the generated scope remain available in browser code through an explicit cast to the
 corresponding Xantham interface. The generated native report records omitted members and their reasons.
+
+`CssQueryService` provides both CSS support-query overloads through the document's engine parser.
+Browser code uses `Ranvier.Dom.CssQueries.forDocument document`; the native View backend supplies its
+host provider. Invalid CSS returns false, while unavailable providers and invalid host lifetimes raise
+errors. Null strings convert to `"null"`, and embedded NUL remains part of the query input.
