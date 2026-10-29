@@ -68,3 +68,10 @@ if (typeof(Ranvier.Dom.StyleSheetService).GetProperty("SupportsBaseUrl")?.Proper
 if (Ranvier.Dom.StyleSheetOptions.Default.Disabled || Ranvier.Dom.StyleSheetOptions.Default.BaseUrl != null)
     throw new Exception("Stylesheet constructor defaults changed");
 Console.WriteLine("DOM_PACKAGE_STYLESHEET_SERVICE PASS");
+if (Bridge.EscapeIdentifier("0a") != "\\30 a" || Ranvier.Dom.CSS.escape("-1") != "-\\31 ")
+    throw new Exception("CSS identifier digit escaping changed");
+if (Bridge.EscapeIdentifier("a\0b") != "a\ufffdb" || Ranvier.Dom.CSS.escape(null) != "null")
+    throw new Exception("CSS identifier full-string conversion changed");
+if (Ranvier.Dom.CSS.escape("\ud800") != "\ud800")
+    throw new Exception("CSS escaping lost UTF-16 code units");
+Console.WriteLine("DOM_PACKAGE_CSS_ESCAPE PASS");
