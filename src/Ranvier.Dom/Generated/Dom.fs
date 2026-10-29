@@ -2200,7 +2200,7 @@ and [<AllowNullLiteral>] CSSUnparsedValue =
 
     /// <summary>CSSUnparsedValue.setItem.</summary>
 #if FABLE_COMPILER
-    [<Fable.Core.Emit("$0[$1] = $2")>]
+    [<Fable.Core.Emit("((v,i,s)=>{if(i===4294967295)throw new RangeError('Index out of range.');v[i]=s;})($0,$1,$2)")>]
     abstract member __ranvier_setItem: index: uint32 * ``val``: obj -> unit
 #else
     abstract member setItem: index: uint32 * ``val``: string -> unit
