@@ -16,6 +16,7 @@
     <Compile Include="CSS.fs" />
     <Compile Include="CssQueries.fs" />
     <Compile Include="CustomProperties.fs" />
+    <Compile Include="StyleValues.fs" />
     <Compile Include="ComputedStyles.fs" />
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="/" />
