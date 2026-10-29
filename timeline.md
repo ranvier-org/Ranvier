@@ -112,6 +112,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 83,304 | 127,572 | 1,742,347 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 83,368 | 127,600 | 1,742,336 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 83,304 | 127,580 | 1,742,252 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 83,303 | 127,664 | 1,742,291 |
 
 ## app-table
 
@@ -225,6 +226,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 4,417,699 | 9,275,415 | 107,924,361 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 4,417,723 | 9,562,983 | 107,851,188 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 4,417,665 | 9,272,721 | 107,753,031 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 4,417,689 | 9,272,738 | 107,627,544 |
 
 ## async-recover
 
@@ -338,6 +340,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 139,139 | 41,270 | 434,860 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 139,139 | 41,231 | 434,848 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 139,139 | 41,268 | 434,857 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 139,139 | 41,265 | 434,852 |
 
 ## async-resolve
 
@@ -451,6 +454,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,790,467 | 1,023,120 | 11,967,054 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,790,467 | 1,022,918 | 11,970,277 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 2,790,467 | 1,022,850 | 11,967,106 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,790,467 | 1,023,034 | 11,967,190 |
 
 ## chain
 
@@ -564,6 +568,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -677,6 +682,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,553 | 3,071 | 2,500 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,553 | 3,071 | 2,500 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 2,553 | 3,071 | 2,500 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -790,6 +796,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 74,710 | 836,493 | 2,603,047 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 74,710 | 836,557 | 2,602,986 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 74,710 | 836,442 | 2,603,213 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 74,710 | 836,457 | 2,602,933 |
 
 ## create
 
@@ -903,6 +910,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 13,448,206 | 2,865,677 | 2,570,368 | 2,127,161 | 4,042,131 | 33,999,671 | 50,423,928 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 13,448,316 | 2,865,677 | 2,570,368 | 2,127,146 | 4,041,987 | 33,999,620 | 50,423,933 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 13,448,202 | 2,865,678 | 2,570,368 | 2,127,153 | 4,044,382 | 33,999,646 | 50,424,084 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 13,448,229 | 2,865,677 | 2,570,368 | 2,127,785 | 4,044,408 | 33,999,986 | 50,423,879 |
 
 ## create-on
 
@@ -1016,6 +1024,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,949,484 | 4,179,715 | 55,229,084 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,949,484 | 4,179,737 | 55,228,972 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 2,949,484 | 4,179,772 | 55,229,072 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,949,484 | 4,179,370 | 55,228,993 |
 
 ## cutoff
 
@@ -1129,6 +1138,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1242,6 +1252,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 781 | 751 | 16,520 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 781 | 751 | 16,520 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 781 | 751 | 16,520 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1355,6 +1366,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 751 | 802 | 16,543 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 751 | 802 | 16,543 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 751 | 802 | 16,543 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1468,6 +1480,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,706,247 | 806,291 | 367,497 | 475,715 | 495,349 | 13,207,544 | 9,105,937 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,707,643 | 806,291 | 367,497 | 475,431 | 495,101 | 13,205,825 | 9,105,950 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 2,707,643 | 806,291 | 367,497 | 475,796 | 495,012 | 13,206,534 | 9,106,664 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,706,750 | 806,291 | 367,497 | 475,773 | 494,921 | 13,206,139 | 9,105,734 |
 
 ## dispose-on
 
@@ -1581,6 +1594,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 346,497 | 488,078 | 8,902,755 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 346,497 | 488,005 | 8,902,518 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 346,497 | 487,759 | 8,902,928 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 346,497 | 487,728 | 8,902,374 |
 
 ## editable-edit
 
@@ -1694,6 +1708,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 181,706 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 181,706 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 181,706 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 181,706 |
 
 ## editable-upstream
 
@@ -1807,6 +1822,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 232,855 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 232,855 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 232,855 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 232,855 |
 
 ## fail-recompute
 
@@ -1920,6 +1936,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 64,938 | 1,370 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 64,938 | 1,370 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 64,938 | 1,370 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 64,938 | 1,370 |
 
 ## flight
 
@@ -2033,6 +2050,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2146,6 +2164,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,921,727 | 53,917 | 54,956 | 3,277,825 | 237,626 | 176,117 | 45,075,858 | 2,634,553 | 2,655,549 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,921,735 | 53,933 | 54,957 | 3,277,748 | 237,685 | 176,052 | 45,075,891 | 2,634,550 | 2,655,556 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 1,921,727 | 53,917 | 54,952 | 3,277,606 | 237,826 | 176,026 | 45,075,872 | 2,634,512 | 2,655,542 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,921,727 | 53,917 | 54,956 | 3,277,750 | 237,601 | 176,016 | 45,079,006 | 2,634,559 | 2,655,536 |
 
 ## keyed-remove
 
@@ -2259,6 +2278,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,920,664 | 43,600 | 45,300 | 3,292,703 | 592,237 | 606,156 | 45,041,280 | 1,924,855 | 1,960,148 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,920,669 | 43,616 | 45,308 | 3,292,681 | 592,297 | 606,186 | 45,041,262 | 1,924,963 | 1,960,161 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 1,920,652 | 43,600 | 45,299 | 3,292,669 | 592,212 | 606,138 | 45,041,267 | 1,924,922 | 1,960,137 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,920,660 | 43,600 | 45,299 | 3,292,733 | 591,919 | 606,222 | 45,041,273 | 1,924,627 | 1,960,161 |
 
 ## keyed-swap
 
@@ -2372,6 +2392,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,973,355 | 46,205 | 46,927 | 3,628,622 | 148,968 | 512,618 | 46,203,927 | 915,625 | 936,077 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,973,355 | 46,221 | 46,928 | 3,628,400 | 148,942 | 512,571 | 46,203,956 | 915,614 | 936,190 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 1,973,355 | 46,205 | 46,927 | 3,628,470 | 149,203 | 512,478 | 46,203,944 | 915,649 | 936,260 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,973,355 | 46,205 | 46,927 | 3,622,272 | 149,123 | 512,672 | 46,203,611 | 915,630 | 934,612 |
 
 ## mvu-dispatch
 
@@ -2485,6 +2506,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 58,292 | 788 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 58,292 | 788 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 58,292 | 788 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2598,6 +2620,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | — | — |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | — | — |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | — | — |
 
 ## project-chain
 
@@ -2711,6 +2734,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,071,748 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,071,732 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 1,071,712 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,071,748 |
 
 ## project-churn
 
@@ -2824,6 +2848,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 36,385 | 34,250 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 36,385 | 34,250 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 36,385 | 34,250 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2937,6 +2962,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 50,460 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 50,460 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 50,460 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 50,492 |
 
 ## project-reorder
 
@@ -3050,6 +3076,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 780,083 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 780,083 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 780,084 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 780,116 |
 
 ## server-render
 
@@ -3163,6 +3190,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — | — |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | — | — | — |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | — | — | — |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | — | — | — |
 
 ## shape-diamond
 
@@ -3276,6 +3304,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 59,915 | 80,445 | 1,764,075 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 59,915 | 80,445 | 1,764,075 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 59,915 | 80,445 | 1,764,075 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3389,6 +3418,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 84,378 | 108,947 | 2,038,136 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 84,378 | 108,947 | 2,038,136 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 84,378 | 108,945 | 2,038,135 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 84,378 | 108,944 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3502,6 +3532,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,469 | 47,553 | 45,790 | 55,384 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,476 | 47,553 | 45,790 | 55,384 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,474 | 47,553 | 45,790 | 55,382 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,469 | 47,553 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -3615,6 +3646,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,070 | 123,785 | 720,148 | 113,733 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 5,022 | 24,618 | 5,713 | 9,741 | 50,033 | 8,071 | 123,785 | 720,148 | 113,734 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,070 | 123,785 | 720,148 | 113,735 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 5,022 | 24,618 | 5,713 | 9,737 | 50,033 | 8,070 | 123,785 | 720,148 | 113,730 |
 
 ## stream-burst-256
 
@@ -3728,6 +3760,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 54,162 | 393,702 | 57,052 | 131,952 | 792,883 | 74,743 | 1,343,254 | 11,508,770 | 1,046,728 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 54,162 | 393,702 | 57,052 | 131,898 | 792,883 | 74,745 | 1,343,101 | 11,508,770 | 1,046,762 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 54,162 | 393,702 | 57,052 | 131,972 | 792,880 | 74,743 | 1,343,160 | 11,508,774 | 1,046,762 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 54,162 | 393,702 | 57,052 | 131,757 | 792,886 | 74,743 | 1,343,190 | 11,508,770 | 1,046,750 |
 
 ## stream-restart
 
@@ -3841,6 +3874,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 4,203 | 5,004 | 6,576 | 16,888 | 42,907 | 72,019 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 4,203 | 5,004 | 6,579 | 16,890 | 42,908 | 72,022 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 4,203 | 5,004 | 6,579 | 16,893 | 42,904 | 72,018 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 4,203 | 5,004 | 6,575 | 16,893 | 42,905 | 72,024 |
 
 ## timed-admit-both
 
@@ -3954,6 +3988,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 117,709 | 130,037 | 2,693,576 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 117,709 | 130,035 | 2,693,575 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 117,709 | 130,036 | 2,693,563 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 117,709 | 130,035 | 2,693,563 |
 
 ## timed-admit-debounce
 
@@ -4067,6 +4102,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 116,614 | 128,632 | 2,654,129 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 116,614 | 128,620 | 2,654,128 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 116,614 | 128,627 | 2,654,129 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 116,614 | 128,630 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4180,6 +4216,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 69,621 | 79,566 | 1,620,678 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 69,621 | 79,566 | 1,620,678 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 69,621 | 79,566 | 1,620,678 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 69,621 | 79,564 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4293,6 +4330,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 116,876 | 128,950 | 2,663,985 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 116,876 | 128,950 | 2,663,985 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 116,876 | 128,938 | 2,663,985 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 116,876 | 128,950 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4406,6 +4444,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,740 | 44,936 | 846,247 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 35,740 | 44,936 | 846,247 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 35,740 | 44,937 | 846,246 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 35,740 | 44,936 | 846,248 |
 
 ## timed-capture-debounce
 
@@ -4519,6 +4558,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,612 | 44,232 | 847,658 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 35,612 | 44,232 | 847,657 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 35,612 | 44,233 | 847,656 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 35,612 | 44,233 | 847,657 |
 
 ## timed-capture-first
 
@@ -4632,6 +4672,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 32,092 | 36,742 | 745,651 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 32,092 | 36,742 | 745,651 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 32,092 | 36,742 | 745,651 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 32,092 | 36,740 | 745,652 |
 
 ## timed-capture-last
 
@@ -4745,6 +4786,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,548 | 44,168 | 839,785 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 35,548 | 44,168 | 839,785 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 35,548 | 44,167 | 839,785 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 35,548 | 44,166 | 839,785 |
 
 ## update
 
@@ -4858,6 +4900,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,087,790 | 38,805 | 84,105 | 263,168 | 145,832 | 3,351,297 | 2,545,089 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,087,782 | 38,805 | 84,105 | 263,167 | 145,819 | 3,351,294 | 2,545,098 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 1,087,790 | 38,805 | 84,105 | 263,351 | 145,814 | 3,351,258 | 2,545,031 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,087,790 | 38,805 | 84,105 | 263,111 | 145,819 | 3,351,296 | 2,544,929 |
 
 ## update-on
 
@@ -4971,6 +5014,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 94,605 | 169,006 | 2,872,475 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 94,605 | 169,008 | 2,872,449 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 94,605 | 169,011 | 2,872,445 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 94,605 | 169,000 | 2,872,453 |
 
 ## work-form
 
@@ -5084,6 +5128,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,818 | 5,334,887 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 172,679 | 165,150 | 308,850 | 297,019 | 5,421,858 | 5,334,918 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 172,679 | 165,150 | 308,861 | 297,008 | 5,421,901 | 5,334,961 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 172,679 | 165,150 | 308,824 | 296,942 | 5,421,895 | 5,334,867 |
 
 ## work-status
 
@@ -5197,6 +5242,7 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 102,045 | 80,235 | 269,355 | 156,111 | 2,659,298 | 2,391,317 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 102,045 | 80,235 | 269,348 | 156,129 | 2,659,272 | 2,391,322 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 102,045 | 80,235 | 269,375 | 156,107 | 2,659,296 | 2,391,238 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 102,045 | 80,235 | 269,370 | 156,097 | 2,659,241 | 2,391,299 |
 
 ## work-value
 
@@ -5310,4 +5356,5 @@
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 109,169 | 121,071 | 269,594 | 283,390 | 2,643,935 | 2,968,475 |
 | `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 109,169 | 121,071 | 269,529 | 283,394 | 2,643,938 | 2,968,475 |
 | `be08904` | 2026-10-29 | feat(dom): expose shared stylesheet and area contracts | 109,169 | 121,069 | 269,541 | 283,411 | 2,643,945 | 2,968,438 |
+| `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 109,169 | 121,071 | 269,570 | 283,406 | 2,643,805 | 2,968,420 |
 
