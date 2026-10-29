@@ -1,7 +1,7 @@
 {
   "project": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/src/Ranvier.Dom/Ranvier.Dom.fsproj",
-  "revision": "dde930549744fb58e15caadd034b56e7b45e949e with uncommitted approved service/provider",
-  "sourceProfile": "Pinned WebKit b95c91b1; Core alpha.14 private source; Native ABI22 producer pin pending",
+  "revision": "f815b21dd6cb32342f74d84b9b709b693d3e8813; service and canonical reference/index guards, followed by the metadata-only producer pin",
+  "sourceProfile": "Pinned WebKit b95c91b1; Core alpha.14 private source; Native ABI22 canonical producer 8f2a8c68c8f665c3f961f616c6a14d79f3bf746d",
   "check": {
     "content": [
       {
