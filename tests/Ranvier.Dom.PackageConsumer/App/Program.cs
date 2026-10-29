@@ -81,3 +81,8 @@ if (typeof(Ranvier.Dom.CssQueryService).GetMethod("Supports", new[] { typeof(str
     || typeof(Ranvier.Dom.CssQueryService).GetMethod("Supports", new[] { typeof(string) })?.ReturnType != typeof(bool))
     throw new Exception("A CSS support-query overload is missing");
 Console.WriteLine("DOM_PACKAGE_CSS_QUERIES PASS");
+if (Bridge.ComputedStyleServiceContract != typeof(Ranvier.Dom.ComputedStyleService))
+    throw new Exception("Browser and native packages have different computed-style service identities");
+if (typeof(Ranvier.Dom.ComputedStyleService).GetMethod("Get")?.ReturnType != typeof(Ranvier.Dom.CSSStyleDeclaration))
+    throw new Exception("The computed-style declaration contract is missing");
+Console.WriteLine("DOM_PACKAGE_COMPUTED_STYLE PASS");

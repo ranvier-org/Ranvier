@@ -17,3 +17,8 @@ corresponding Xantham interface. The generated native report records omitted mem
 Browser code uses `Ranvier.Dom.CssQueries.forDocument document`; the native View backend supplies its
 host provider. Invalid CSS returns false, while unavailable providers and invalid host lifetimes raise
 errors. Null strings convert to `"null"`, and embedded NUL remains part of the query input.
+
+`ComputedStyleService` returns live, read-only CSS declarations for an element or pseudo-element.
+Browser code uses `Ranvier.Dom.ComputedStyles.forDocument document`; the native View backend supplies
+its host provider. Elements belong to the provider's document. Unresolved pseudo-element selectors
+return empty declarations; later style changes update successful queries.
