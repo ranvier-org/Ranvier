@@ -109,6 +109,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 83,429 | 127,580 | 1,742,265 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 83,367 | 127,573 | 1,742,361 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 83,302 | 127,592 | 1,742,348 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 83,304 | 127,572 | 1,742,347 |
 
 ## app-table
 
@@ -219,6 +220,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 4,417,697 | 9,272,681 | 107,852,004 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 4,417,715 | 9,274,198 | 107,753,357 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 4,417,713 | 9,460,388 | 107,850,418 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 4,417,699 | 9,275,415 | 107,924,361 |
 
 ## async-recover
 
@@ -329,6 +331,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 139,139 | 41,230 | 434,865 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 139,139 | 41,269 | 434,851 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 139,139 | 41,267 | 434,859 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 139,139 | 41,270 | 434,860 |
 
 ## async-resolve
 
@@ -439,6 +442,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,790,468 | 1,023,174 | 11,966,843 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,790,468 | 1,022,998 | 11,970,390 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,790,467 | 1,023,128 | 11,967,124 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,790,467 | 1,023,120 | 11,967,054 |
 
 ## chain
 
@@ -549,6 +553,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -659,6 +664,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,553 | 3,071 | 2,500 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,553 | 3,071 | 2,500 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,553 | 3,071 | 2,500 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -769,6 +775,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 74,710 | 836,503 | 2,603,040 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 74,710 | 836,545 | 2,603,028 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 74,710 | 836,499 | 2,603,042 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 74,710 | 836,493 | 2,603,047 |
 
 ## create
 
@@ -879,6 +886,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 13,448,311 | 2,865,678 | 2,570,369 | 2,127,896 | 4,044,462 | 33,999,868 | 50,423,695 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 13,448,238 | 2,865,677 | 2,570,369 | 2,127,884 | 4,044,557 | 33,999,743 | 50,424,116 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 13,448,328 | 2,865,677 | 2,570,368 | 2,127,747 | 4,044,912 | 33,999,759 | 50,424,106 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 13,448,206 | 2,865,677 | 2,570,368 | 2,127,161 | 4,042,131 | 33,999,671 | 50,423,928 |
 
 ## create-on
 
@@ -989,6 +997,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,949,484 | 4,179,773 | 55,229,017 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,949,485 | 4,179,699 | 55,228,915 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,949,484 | 4,179,839 | 55,229,064 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,949,484 | 4,179,715 | 55,229,084 |
 
 ## cutoff
 
@@ -1099,6 +1108,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1209,6 +1219,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 797 | 751 | 16,520 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 781 | 751 | 16,520 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 781 | 751 | 16,520 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1319,6 +1330,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 751 | 802 | 16,543 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 751 | 802 | 16,543 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 751 | 802 | 16,543 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1429,6 +1441,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,707,645 | 806,290 | 367,497 | 475,598 | 495,535 | 13,206,208 | 9,106,020 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,706,248 | 806,291 | 367,497 | 475,886 | 495,280 | 13,206,807 | 9,106,156 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,707,643 | 806,291 | 367,497 | 476,046 | 495,206 | 13,207,325 | 9,107,272 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,706,247 | 806,291 | 367,497 | 475,715 | 495,349 | 13,207,544 | 9,105,937 |
 
 ## dispose-on
 
@@ -1539,6 +1552,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 346,497 | 487,931 | 8,902,736 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 346,497 | 487,884 | 8,901,969 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 346,497 | 487,911 | 8,902,749 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 346,497 | 488,078 | 8,902,755 |
 
 ## editable-edit
 
@@ -1649,6 +1663,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 181,706 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 181,706 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 181,706 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 181,706 |
 
 ## editable-upstream
 
@@ -1759,6 +1774,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 232,855 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 232,855 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 232,855 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 232,855 |
 
 ## fail-recompute
 
@@ -1869,6 +1885,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 64,938 | 1,370 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 64,938 | 1,370 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 64,938 | 1,370 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 64,938 | 1,370 |
 
 ## flight
 
@@ -1979,6 +1996,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2089,6 +2107,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,921,871 | 53,941 | 54,989 | 3,277,794 | 237,685 | 176,038 | 45,075,908 | 2,634,583 | 2,655,550 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,921,959 | 54,061 | 55,002 | 3,277,839 | 237,685 | 176,013 | 45,075,858 | 2,634,570 | 2,655,534 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,921,727 | 53,917 | 54,954 | 3,277,724 | 237,685 | 175,993 | 45,075,872 | 2,634,577 | 2,655,517 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,921,727 | 53,917 | 54,956 | 3,277,825 | 237,626 | 176,117 | 45,075,858 | 2,634,553 | 2,655,549 |
 
 ## keyed-remove
 
@@ -2199,6 +2218,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,920,800 | 43,624 | 45,348 | 3,293,015 | 592,299 | 606,262 | 45,041,267 | 1,924,878 | 1,960,182 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,920,885 | 43,744 | 45,364 | 3,292,850 | 592,257 | 605,970 | 45,041,283 | 1,924,929 | 1,960,166 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,920,658 | 43,600 | 45,300 | 3,293,094 | 592,269 | 605,804 | 45,041,258 | 1,924,811 | 1,960,162 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,920,664 | 43,600 | 45,300 | 3,292,703 | 592,237 | 606,156 | 45,041,280 | 1,924,855 | 1,960,148 |
 
 ## keyed-swap
 
@@ -2309,6 +2329,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,973,483 | 46,221 | 46,959 | 3,621,293 | 148,903 | 512,644 | 46,203,543 | 915,647 | 936,036 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,973,547 | 46,333 | 46,975 | 3,618,443 | 148,951 | 512,539 | 46,203,601 | 915,662 | 936,079 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,973,355 | 46,205 | 46,927 | 3,620,039 | 148,853 | 512,656 | 46,203,578 | 915,629 | 936,265 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,973,355 | 46,205 | 46,927 | 3,628,622 | 148,968 | 512,618 | 46,203,927 | 915,625 | 936,077 |
 
 ## mvu-dispatch
 
@@ -2419,6 +2440,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 58,292 | 788 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 58,292 | 788 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 58,292 | 788 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 58,292 | 788 |
 
 ## persist-write
 
@@ -2529,6 +2551,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | — | — |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — |
 
 ## project-chain
 
@@ -2639,6 +2662,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,071,716 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,071,687 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,071,747 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,071,748 |
 
 ## project-churn
 
@@ -2749,6 +2773,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 36,385 | 34,250 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 36,385 | 34,250 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 36,385 | 34,250 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2859,6 +2884,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 50,476 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 50,476 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 50,460 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 50,460 |
 
 ## project-reorder
 
@@ -2969,6 +2995,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 780,083 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 780,083 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 780,084 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 780,083 |
 
 ## server-render
 
@@ -3079,6 +3106,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | — | — | — |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — | — |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — | — |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — | — |
 
 ## shape-diamond
 
@@ -3189,6 +3217,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 59,915 | 80,445 | 1,764,075 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 59,915 | 80,445 | 1,764,075 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 59,915 | 80,445 | 1,764,075 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3299,6 +3328,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 84,378 | 108,947 | 2,038,136 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 84,378 | 108,947 | 2,038,136 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 84,378 | 108,947 | 2,038,136 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3409,6 +3439,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,469 | 47,553 | 45,790 | 55,384 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,471 | 47,553 | 45,790 | 55,383 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,555 | 45,790 | 55,381 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,469 | 47,553 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -3519,6 +3550,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,071 | 123,785 | 720,148 | 113,733 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,071 | 123,790 | 720,148 | 113,735 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,785 | 720,148 | 113,732 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,070 | 123,785 | 720,148 | 113,733 |
 
 ## stream-burst-256
 
@@ -3629,6 +3661,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 54,162 | 393,702 | 57,052 | 131,957 | 792,886 | 74,743 | 1,343,098 | 11,508,772 | 1,046,724 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 54,162 | 393,702 | 57,052 | 131,977 | 792,834 | 74,743 | 1,343,098 | 11,508,754 | 1,046,729 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 54,162 | 393,702 | 57,052 | 131,922 | 792,883 | 74,745 | 1,343,098 | 11,508,770 | 1,046,735 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 54,162 | 393,702 | 57,052 | 131,952 | 792,883 | 74,743 | 1,343,254 | 11,508,770 | 1,046,728 |
 
 ## stream-restart
 
@@ -3739,6 +3772,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 4,203 | 5,004 | 6,576 | 16,893 | 42,906 | 72,024 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 4,203 | 5,004 | 6,576 | 16,889 | 42,909 | 72,022 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 4,203 | 5,004 | 6,579 | 16,893 | 42,907 | 72,022 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 4,203 | 5,004 | 6,576 | 16,888 | 42,907 | 72,019 |
 
 ## timed-admit-both
 
@@ -3849,6 +3883,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 118,733 | 130,036 | 2,693,575 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 117,709 | 130,036 | 2,693,562 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 117,709 | 130,037 | 2,693,563 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 117,709 | 130,037 | 2,693,576 |
 
 ## timed-admit-debounce
 
@@ -3959,6 +3994,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 117,638 | 128,631 | 2,654,129 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 116,614 | 128,619 | 2,654,129 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 116,614 | 128,619 | 2,654,129 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 116,614 | 128,632 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4069,6 +4105,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 70,645 | 79,565 | 1,620,678 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 69,621 | 79,566 | 1,620,677 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 69,621 | 79,566 | 1,620,678 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 69,621 | 79,566 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4179,6 +4216,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 117,900 | 128,939 | 2,663,985 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 116,876 | 128,947 | 2,663,985 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 116,876 | 128,939 | 2,663,985 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 116,876 | 128,950 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4289,6 +4327,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 35,740 | 44,936 | 846,247 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,740 | 44,937 | 846,247 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,740 | 44,937 | 846,247 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,740 | 44,936 | 846,247 |
 
 ## timed-capture-debounce
 
@@ -4399,6 +4438,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 35,612 | 44,232 | 847,657 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,612 | 44,232 | 847,658 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,612 | 44,232 | 847,657 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,612 | 44,232 | 847,658 |
 
 ## timed-capture-first
 
@@ -4509,6 +4549,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 32,092 | 36,742 | 745,651 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 32,092 | 36,741 | 745,651 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 32,092 | 36,742 | 745,651 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4619,6 +4660,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 35,548 | 44,168 | 839,785 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,548 | 44,168 | 839,785 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,548 | 44,168 | 839,785 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -4729,6 +4771,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,087,782 | 38,805 | 84,105 | 263,132 | 145,805 | 3,351,296 | 2,545,050 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,819 | 3,351,297 | 2,545,079 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,090,983 | 38,805 | 84,105 | 262,893 | 145,806 | 3,351,296 | 2,545,083 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,087,790 | 38,805 | 84,105 | 263,168 | 145,832 | 3,351,297 | 2,545,089 |
 
 ## update-on
 
@@ -4839,6 +4882,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 94,605 | 169,026 | 2,872,447 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 94,605 | 169,008 | 2,872,477 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 94,605 | 169,039 | 2,872,473 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 94,605 | 169,006 | 2,872,475 |
 
 ## work-form
 
@@ -4949,6 +4993,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 174,695 | 165,183 | 308,814 | 296,995 | 5,421,863 | 5,334,882 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 172,679 | 165,183 | 308,861 | 296,992 | 5,421,841 | 5,334,914 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 172,679 | 165,150 | 308,845 | 296,958 | 5,421,851 | 5,334,913 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,818 | 5,334,887 |
 
 ## work-status
 
@@ -5059,6 +5104,7 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 103,645 | 80,235 | 269,366 | 156,128 | 2,659,293 | 2,391,317 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 102,045 | 80,235 | 269,330 | 156,156 | 2,659,272 | 2,391,289 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 102,045 | 80,235 | 269,337 | 156,131 | 2,659,334 | 2,391,318 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 102,045 | 80,235 | 269,355 | 156,111 | 2,659,298 | 2,391,317 |
 
 ## work-value
 
@@ -5169,4 +5215,5 @@
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 110,769 | 121,071 | 269,610 | 283,410 | 2,643,938 | 2,968,466 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 109,169 | 121,071 | 269,569 | 283,388 | 2,643,943 | 2,968,470 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 109,169 | 121,071 | 269,542 | 283,411 | 2,643,941 | 2,968,477 |
+| `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 109,169 | 121,071 | 269,594 | 283,390 | 2,643,935 | 2,968,475 |
 
