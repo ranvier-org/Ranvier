@@ -108,6 +108,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 83,302 | 127,531 | 1,742,262 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 83,429 | 127,580 | 1,742,265 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 83,367 | 127,573 | 1,742,361 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 83,302 | 127,592 | 1,742,348 |
 
 ## app-table
 
@@ -217,6 +218,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 4,417,763 | 9,274,877 | 107,674,498 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 4,417,697 | 9,272,681 | 107,852,004 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 4,417,715 | 9,274,198 | 107,753,357 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 4,417,713 | 9,460,388 | 107,850,418 |
 
 ## async-recover
 
@@ -326,6 +328,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 139,139 | 41,259 | 434,856 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 139,139 | 41,230 | 434,865 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 139,139 | 41,269 | 434,851 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 139,139 | 41,267 | 434,859 |
 
 ## async-resolve
 
@@ -435,6 +438,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,790,467 | 1,023,087 | 11,970,077 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,790,468 | 1,023,174 | 11,966,843 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,790,468 | 1,022,998 | 11,970,390 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,790,467 | 1,023,128 | 11,967,124 |
 
 ## chain
 
@@ -544,6 +548,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -653,6 +658,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,553 | 3,071 | 2,500 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,553 | 3,071 | 2,500 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,553 | 3,071 | 2,500 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -762,6 +768,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 74,710 | 836,625 | 2,603,161 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 74,710 | 836,503 | 2,603,040 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 74,710 | 836,545 | 2,603,028 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 74,710 | 836,499 | 2,603,042 |
 
 ## create
 
@@ -871,6 +878,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 13,464,316 | 2,865,678 | 2,570,369 | 2,127,747 | 4,044,875 | 33,996,141 | 50,391,478 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 13,448,311 | 2,865,678 | 2,570,369 | 2,127,896 | 4,044,462 | 33,999,868 | 50,423,695 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 13,448,238 | 2,865,677 | 2,570,369 | 2,127,884 | 4,044,557 | 33,999,743 | 50,424,116 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 13,448,328 | 2,865,677 | 2,570,368 | 2,127,747 | 4,044,912 | 33,999,759 | 50,424,106 |
 
 ## create-on
 
@@ -980,6 +988,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,949,485 | 4,179,528 | 55,229,153 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,949,484 | 4,179,773 | 55,229,017 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,949,485 | 4,179,699 | 55,228,915 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,949,484 | 4,179,839 | 55,229,064 |
 
 ## cutoff
 
@@ -1089,6 +1098,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1198,6 +1208,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 781 | 751 | 16,520 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 797 | 751 | 16,520 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 781 | 751 | 16,520 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1307,6 +1318,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 751 | 802 | 16,543 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 751 | 802 | 16,543 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 751 | 802 | 16,543 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1416,6 +1428,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 2,706,242 | 806,291 | 367,497 | 475,739 | 495,299 | 13,206,531 | 9,105,602 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 2,707,645 | 806,290 | 367,497 | 475,598 | 495,535 | 13,206,208 | 9,106,020 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,706,248 | 806,291 | 367,497 | 475,886 | 495,280 | 13,206,807 | 9,106,156 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,707,643 | 806,291 | 367,497 | 476,046 | 495,206 | 13,207,325 | 9,107,272 |
 
 ## dispose-on
 
@@ -1525,6 +1538,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 346,497 | 487,776 | 8,903,120 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 346,497 | 487,931 | 8,902,736 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 346,497 | 487,884 | 8,901,969 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 346,497 | 487,911 | 8,902,749 |
 
 ## editable-edit
 
@@ -1634,6 +1648,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 181,706 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 181,706 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 181,706 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 181,706 |
 
 ## editable-upstream
 
@@ -1743,6 +1758,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 232,855 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 232,855 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 232,855 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 232,855 |
 
 ## fail-recompute
 
@@ -1852,6 +1868,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 64,938 | 1,370 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 64,938 | 1,370 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 64,938 | 1,370 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 64,938 | 1,370 |
 
 ## flight
 
@@ -1961,6 +1978,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2070,6 +2088,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,921,727 | 53,917 | 54,958 | 3,277,749 | 237,675 | 175,980 | 45,075,854 | 2,634,535 | 2,655,535 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,921,871 | 53,941 | 54,989 | 3,277,794 | 237,685 | 176,038 | 45,075,908 | 2,634,583 | 2,655,550 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,921,959 | 54,061 | 55,002 | 3,277,839 | 237,685 | 176,013 | 45,075,858 | 2,634,570 | 2,655,534 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,921,727 | 53,917 | 54,954 | 3,277,724 | 237,685 | 175,993 | 45,075,872 | 2,634,577 | 2,655,517 |
 
 ## keyed-remove
 
@@ -2179,6 +2198,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,920,664 | 43,600 | 45,300 | 3,292,847 | 592,254 | 606,200 | 45,041,251 | 1,924,950 | 1,960,101 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,920,800 | 43,624 | 45,348 | 3,293,015 | 592,299 | 606,262 | 45,041,267 | 1,924,878 | 1,960,182 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,920,885 | 43,744 | 45,364 | 3,292,850 | 592,257 | 605,970 | 45,041,283 | 1,924,929 | 1,960,166 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,920,658 | 43,600 | 45,300 | 3,293,094 | 592,269 | 605,804 | 45,041,258 | 1,924,811 | 1,960,162 |
 
 ## keyed-swap
 
@@ -2288,6 +2308,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,973,355 | 46,206 | 46,928 | 3,633,693 | 149,150 | 512,706 | 46,203,582 | 915,638 | 936,138 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,973,483 | 46,221 | 46,959 | 3,621,293 | 148,903 | 512,644 | 46,203,543 | 915,647 | 936,036 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,973,547 | 46,333 | 46,975 | 3,618,443 | 148,951 | 512,539 | 46,203,601 | 915,662 | 936,079 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,973,355 | 46,205 | 46,927 | 3,620,039 | 148,853 | 512,656 | 46,203,578 | 915,629 | 936,265 |
 
 ## mvu-dispatch
 
@@ -2397,6 +2418,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 58,292 | 788 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 58,292 | 788 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 58,292 | 788 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 58,292 | 788 |
 
 ## persist-write
 
@@ -2506,6 +2528,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | — | — |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | — | — |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — |
 
 ## project-chain
 
@@ -2615,6 +2638,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,071,715 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,071,716 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,071,687 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,071,747 |
 
 ## project-churn
 
@@ -2724,6 +2748,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 36,385 | 34,250 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 36,385 | 34,250 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 36,385 | 34,250 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2833,6 +2858,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 50,460 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 50,476 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 50,476 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 50,460 |
 
 ## project-reorder
 
@@ -2942,6 +2968,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 780,084 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 780,083 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 780,083 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 780,084 |
 
 ## server-render
 
@@ -3051,6 +3078,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | — | — | — |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | — | — | — |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — | — |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — | — |
 
 ## shape-diamond
 
@@ -3160,6 +3188,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 59,915 | 80,445 | 1,764,075 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 59,915 | 80,445 | 1,764,075 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 59,915 | 80,445 | 1,764,075 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3269,6 +3298,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 84,378 | 108,947 | 2,038,136 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 84,378 | 108,947 | 2,038,136 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 84,378 | 108,947 | 2,038,136 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3378,6 +3408,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,555 | 45,790 | 55,382 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,469 | 47,553 | 45,790 | 55,384 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,471 | 47,553 | 45,790 | 55,383 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,555 | 45,790 | 55,381 |
 
 ## stream-burst-16
 
@@ -3487,6 +3518,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,069 | 123,787 | 720,148 | 113,734 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,071 | 123,785 | 720,148 | 113,733 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,071 | 123,790 | 720,148 | 113,735 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,785 | 720,148 | 113,732 |
 
 ## stream-burst-256
 
@@ -3596,6 +3628,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 54,162 | 393,702 | 57,052 | 131,878 | 792,883 | 74,743 | 1,343,100 | 11,508,770 | 1,046,764 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 54,162 | 393,702 | 57,052 | 131,957 | 792,886 | 74,743 | 1,343,098 | 11,508,772 | 1,046,724 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 54,162 | 393,702 | 57,052 | 131,977 | 792,834 | 74,743 | 1,343,098 | 11,508,754 | 1,046,729 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 54,162 | 393,702 | 57,052 | 131,922 | 792,883 | 74,745 | 1,343,098 | 11,508,770 | 1,046,735 |
 
 ## stream-restart
 
@@ -3705,6 +3738,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 4,203 | 5,004 | 6,575 | 16,889 | 42,904 | 72,020 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 4,203 | 5,004 | 6,576 | 16,893 | 42,906 | 72,024 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 4,203 | 5,004 | 6,576 | 16,889 | 42,909 | 72,022 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 4,203 | 5,004 | 6,579 | 16,893 | 42,907 | 72,022 |
 
 ## timed-admit-both
 
@@ -3814,6 +3848,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 117,709 | 130,036 | 2,693,576 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 118,733 | 130,036 | 2,693,575 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 117,709 | 130,036 | 2,693,562 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 117,709 | 130,037 | 2,693,563 |
 
 ## timed-admit-debounce
 
@@ -3923,6 +3958,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 116,614 | 128,617 | 2,654,129 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 117,638 | 128,631 | 2,654,129 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 116,614 | 128,619 | 2,654,129 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 116,614 | 128,619 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4032,6 +4068,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 69,621 | 79,566 | 1,620,678 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 70,645 | 79,565 | 1,620,678 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 69,621 | 79,566 | 1,620,677 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 69,621 | 79,566 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4141,6 +4178,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 116,876 | 128,949 | 2,663,985 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 117,900 | 128,939 | 2,663,985 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 116,876 | 128,947 | 2,663,985 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 116,876 | 128,939 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4250,6 +4288,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 35,740 | 44,936 | 846,247 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 35,740 | 44,936 | 846,247 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,740 | 44,937 | 846,247 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,740 | 44,937 | 846,247 |
 
 ## timed-capture-debounce
 
@@ -4359,6 +4398,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 35,612 | 44,233 | 847,662 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 35,612 | 44,232 | 847,657 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,612 | 44,232 | 847,658 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4468,6 +4508,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 32,092 | 36,741 | 745,651 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 32,092 | 36,742 | 745,651 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 32,092 | 36,741 | 745,651 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4577,6 +4618,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 35,548 | 44,169 | 839,784 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 35,548 | 44,168 | 839,785 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,548 | 44,168 | 839,785 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -4686,6 +4728,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 1,087,783 | 38,805 | 84,105 | 262,865 | 145,788 | 3,351,282 | 2,545,055 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 1,087,782 | 38,805 | 84,105 | 263,132 | 145,805 | 3,351,296 | 2,545,050 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,819 | 3,351,297 | 2,545,079 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,090,983 | 38,805 | 84,105 | 262,893 | 145,806 | 3,351,296 | 2,545,083 |
 
 ## update-on
 
@@ -4795,6 +4838,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 94,605 | 169,013 | 2,872,332 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 94,605 | 169,026 | 2,872,447 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 94,605 | 169,008 | 2,872,477 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 94,605 | 169,039 | 2,872,473 |
 
 ## work-form
 
@@ -4904,6 +4948,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 172,679 | 165,150 | 308,822 | 296,912 | 5,421,821 | 5,334,891 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 174,695 | 165,183 | 308,814 | 296,995 | 5,421,863 | 5,334,882 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 172,679 | 165,183 | 308,861 | 296,992 | 5,421,841 | 5,334,914 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 172,679 | 165,150 | 308,845 | 296,958 | 5,421,851 | 5,334,913 |
 
 ## work-status
 
@@ -5013,6 +5058,7 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 102,045 | 80,235 | 269,341 | 156,114 | 2,659,201 | 2,391,249 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 103,645 | 80,235 | 269,366 | 156,128 | 2,659,293 | 2,391,317 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 102,045 | 80,235 | 269,330 | 156,156 | 2,659,272 | 2,391,289 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 102,045 | 80,235 | 269,337 | 156,131 | 2,659,334 | 2,391,318 |
 
 ## work-value
 
@@ -5122,4 +5168,5 @@
 | `f371df7` | 2026-10-28 | feat(dom): publish shared native and Fable contracts | 109,169 | 121,071 | 269,625 | 283,397 | 2,643,926 | 2,968,428 |
 | `ef19d86` | 2026-10-28 | fix(dom): preserve inline style getters in shared contracts (#250) | 110,769 | 121,071 | 269,610 | 283,410 | 2,643,938 | 2,968,466 |
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 109,169 | 121,071 | 269,569 | 283,388 | 2,643,943 | 2,968,470 |
+| `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 109,169 | 121,071 | 269,542 | 283,411 | 2,643,941 | 2,968,477 |
 
