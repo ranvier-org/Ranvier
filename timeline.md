@@ -110,6 +110,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 83,367 | 127,573 | 1,742,361 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 83,302 | 127,592 | 1,742,348 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 83,304 | 127,572 | 1,742,347 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 83,368 | 127,600 | 1,742,336 |
 
 ## app-table
 
@@ -221,6 +222,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 4,417,715 | 9,274,198 | 107,753,357 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 4,417,713 | 9,460,388 | 107,850,418 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 4,417,699 | 9,275,415 | 107,924,361 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 4,417,723 | 9,562,983 | 107,851,188 |
 
 ## async-recover
 
@@ -332,6 +334,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 139,139 | 41,269 | 434,851 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 139,139 | 41,267 | 434,859 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 139,139 | 41,270 | 434,860 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 139,139 | 41,231 | 434,848 |
 
 ## async-resolve
 
@@ -443,6 +446,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,790,468 | 1,022,998 | 11,970,390 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,790,467 | 1,023,128 | 11,967,124 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,790,467 | 1,023,120 | 11,967,054 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,790,467 | 1,022,918 | 11,970,277 |
 
 ## chain
 
@@ -554,6 +558,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -665,6 +670,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,553 | 3,071 | 2,500 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,553 | 3,071 | 2,500 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,553 | 3,071 | 2,500 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -776,6 +782,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 74,710 | 836,545 | 2,603,028 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 74,710 | 836,499 | 2,603,042 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 74,710 | 836,493 | 2,603,047 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 74,710 | 836,557 | 2,602,986 |
 
 ## create
 
@@ -887,6 +894,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 13,448,238 | 2,865,677 | 2,570,369 | 2,127,884 | 4,044,557 | 33,999,743 | 50,424,116 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 13,448,328 | 2,865,677 | 2,570,368 | 2,127,747 | 4,044,912 | 33,999,759 | 50,424,106 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 13,448,206 | 2,865,677 | 2,570,368 | 2,127,161 | 4,042,131 | 33,999,671 | 50,423,928 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 13,448,316 | 2,865,677 | 2,570,368 | 2,127,146 | 4,041,987 | 33,999,620 | 50,423,933 |
 
 ## create-on
 
@@ -998,6 +1006,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,949,485 | 4,179,699 | 55,228,915 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,949,484 | 4,179,839 | 55,229,064 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,949,484 | 4,179,715 | 55,229,084 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,949,484 | 4,179,737 | 55,228,972 |
 
 ## cutoff
 
@@ -1109,6 +1118,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1220,6 +1230,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 781 | 751 | 16,520 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 781 | 751 | 16,520 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 781 | 751 | 16,520 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1331,6 +1342,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 751 | 802 | 16,543 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 751 | 802 | 16,543 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 751 | 802 | 16,543 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1442,6 +1454,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 2,706,248 | 806,291 | 367,497 | 475,886 | 495,280 | 13,206,807 | 9,106,156 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 2,707,643 | 806,291 | 367,497 | 476,046 | 495,206 | 13,207,325 | 9,107,272 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 2,706,247 | 806,291 | 367,497 | 475,715 | 495,349 | 13,207,544 | 9,105,937 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 2,707,643 | 806,291 | 367,497 | 475,431 | 495,101 | 13,205,825 | 9,105,950 |
 
 ## dispose-on
 
@@ -1553,6 +1566,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 346,497 | 487,884 | 8,901,969 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 346,497 | 487,911 | 8,902,749 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 346,497 | 488,078 | 8,902,755 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 346,497 | 488,005 | 8,902,518 |
 
 ## editable-edit
 
@@ -1664,6 +1678,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 181,706 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 181,706 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 181,706 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 181,706 |
 
 ## editable-upstream
 
@@ -1775,6 +1790,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 232,855 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 232,855 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 232,855 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 232,855 |
 
 ## fail-recompute
 
@@ -1886,6 +1902,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 64,938 | 1,370 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 64,938 | 1,370 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 64,938 | 1,370 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 64,938 | 1,370 |
 
 ## flight
 
@@ -1997,6 +2014,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2108,6 +2126,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,921,959 | 54,061 | 55,002 | 3,277,839 | 237,685 | 176,013 | 45,075,858 | 2,634,570 | 2,655,534 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,921,727 | 53,917 | 54,954 | 3,277,724 | 237,685 | 175,993 | 45,075,872 | 2,634,577 | 2,655,517 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,921,727 | 53,917 | 54,956 | 3,277,825 | 237,626 | 176,117 | 45,075,858 | 2,634,553 | 2,655,549 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,921,735 | 53,933 | 54,957 | 3,277,748 | 237,685 | 176,052 | 45,075,891 | 2,634,550 | 2,655,556 |
 
 ## keyed-remove
 
@@ -2219,6 +2238,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,920,885 | 43,744 | 45,364 | 3,292,850 | 592,257 | 605,970 | 45,041,283 | 1,924,929 | 1,960,166 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,920,658 | 43,600 | 45,300 | 3,293,094 | 592,269 | 605,804 | 45,041,258 | 1,924,811 | 1,960,162 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,920,664 | 43,600 | 45,300 | 3,292,703 | 592,237 | 606,156 | 45,041,280 | 1,924,855 | 1,960,148 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,920,669 | 43,616 | 45,308 | 3,292,681 | 592,297 | 606,186 | 45,041,262 | 1,924,963 | 1,960,161 |
 
 ## keyed-swap
 
@@ -2330,6 +2350,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,973,547 | 46,333 | 46,975 | 3,618,443 | 148,951 | 512,539 | 46,203,601 | 915,662 | 936,079 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,973,355 | 46,205 | 46,927 | 3,620,039 | 148,853 | 512,656 | 46,203,578 | 915,629 | 936,265 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,973,355 | 46,205 | 46,927 | 3,628,622 | 148,968 | 512,618 | 46,203,927 | 915,625 | 936,077 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,973,355 | 46,221 | 46,928 | 3,628,400 | 148,942 | 512,571 | 46,203,956 | 915,614 | 936,190 |
 
 ## mvu-dispatch
 
@@ -2441,6 +2462,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 58,292 | 788 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 58,292 | 788 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 58,292 | 788 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 58,292 | 788 |
 
 ## persist-write
 
@@ -2552,6 +2574,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | — | — |
 
 ## project-chain
 
@@ -2663,6 +2686,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,071,687 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,071,747 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,071,748 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,071,732 |
 
 ## project-churn
 
@@ -2774,6 +2798,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 36,385 | 34,250 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 36,385 | 34,250 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 36,385 | 34,250 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -2885,6 +2910,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 50,476 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 50,460 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 50,460 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 50,460 |
 
 ## project-reorder
 
@@ -2996,6 +3022,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 780,083 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 780,084 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 780,083 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 780,083 |
 
 ## server-render
 
@@ -3107,6 +3134,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | — | — | — |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | — | — | — |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | — | — | — |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | — | — | — |
 
 ## shape-diamond
 
@@ -3218,6 +3246,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 59,915 | 80,445 | 1,764,075 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 59,915 | 80,445 | 1,764,075 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 59,915 | 80,445 | 1,764,075 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3329,6 +3358,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 84,378 | 108,947 | 2,038,136 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 84,378 | 108,947 | 2,038,136 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 84,378 | 108,947 | 2,038,136 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3440,6 +3470,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,471 | 47,553 | 45,790 | 55,383 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,555 | 45,790 | 55,381 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,469 | 47,553 | 45,790 | 55,384 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,476 | 47,553 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -3551,6 +3582,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,071 | 123,790 | 720,148 | 113,735 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,785 | 720,148 | 113,732 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,070 | 123,785 | 720,148 | 113,733 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 5,022 | 24,618 | 5,713 | 9,741 | 50,033 | 8,071 | 123,785 | 720,148 | 113,734 |
 
 ## stream-burst-256
 
@@ -3662,6 +3694,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 54,162 | 393,702 | 57,052 | 131,977 | 792,834 | 74,743 | 1,343,098 | 11,508,754 | 1,046,729 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 54,162 | 393,702 | 57,052 | 131,922 | 792,883 | 74,745 | 1,343,098 | 11,508,770 | 1,046,735 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 54,162 | 393,702 | 57,052 | 131,952 | 792,883 | 74,743 | 1,343,254 | 11,508,770 | 1,046,728 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 54,162 | 393,702 | 57,052 | 131,898 | 792,883 | 74,745 | 1,343,101 | 11,508,770 | 1,046,762 |
 
 ## stream-restart
 
@@ -3773,6 +3806,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 4,203 | 5,004 | 6,576 | 16,889 | 42,909 | 72,022 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 4,203 | 5,004 | 6,579 | 16,893 | 42,907 | 72,022 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 4,203 | 5,004 | 6,576 | 16,888 | 42,907 | 72,019 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 4,203 | 5,004 | 6,579 | 16,890 | 42,908 | 72,022 |
 
 ## timed-admit-both
 
@@ -3884,6 +3918,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 117,709 | 130,036 | 2,693,562 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 117,709 | 130,037 | 2,693,563 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 117,709 | 130,037 | 2,693,576 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 117,709 | 130,035 | 2,693,575 |
 
 ## timed-admit-debounce
 
@@ -3995,6 +4030,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 116,614 | 128,619 | 2,654,129 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 116,614 | 128,619 | 2,654,129 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 116,614 | 128,632 | 2,654,129 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 116,614 | 128,620 | 2,654,128 |
 
 ## timed-admit-first
 
@@ -4106,6 +4142,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 69,621 | 79,566 | 1,620,677 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 69,621 | 79,566 | 1,620,678 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 69,621 | 79,566 | 1,620,678 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 69,621 | 79,566 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4217,6 +4254,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 116,876 | 128,947 | 2,663,985 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 116,876 | 128,939 | 2,663,985 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 116,876 | 128,950 | 2,663,985 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 116,876 | 128,950 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4328,6 +4366,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,740 | 44,937 | 846,247 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,740 | 44,937 | 846,247 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,740 | 44,936 | 846,247 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 35,740 | 44,936 | 846,247 |
 
 ## timed-capture-debounce
 
@@ -4439,6 +4478,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,612 | 44,232 | 847,658 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,612 | 44,232 | 847,657 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,612 | 44,232 | 847,658 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4550,6 +4590,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 32,092 | 36,741 | 745,651 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 32,092 | 36,742 | 745,651 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 32,092 | 36,742 | 745,651 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -4661,6 +4702,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 35,548 | 44,168 | 839,785 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 35,548 | 44,168 | 839,785 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 35,548 | 44,168 | 839,785 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -4772,6 +4814,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,819 | 3,351,297 | 2,545,079 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 1,090,983 | 38,805 | 84,105 | 262,893 | 145,806 | 3,351,296 | 2,545,083 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 1,087,790 | 38,805 | 84,105 | 263,168 | 145,832 | 3,351,297 | 2,545,089 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 1,087,782 | 38,805 | 84,105 | 263,167 | 145,819 | 3,351,294 | 2,545,098 |
 
 ## update-on
 
@@ -4883,6 +4926,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 94,605 | 169,008 | 2,872,477 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 94,605 | 169,039 | 2,872,473 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 94,605 | 169,006 | 2,872,475 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 94,605 | 169,008 | 2,872,449 |
 
 ## work-form
 
@@ -4994,6 +5038,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 172,679 | 165,183 | 308,861 | 296,992 | 5,421,841 | 5,334,914 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 172,679 | 165,150 | 308,845 | 296,958 | 5,421,851 | 5,334,913 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,818 | 5,334,887 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 172,679 | 165,150 | 308,850 | 297,019 | 5,421,858 | 5,334,918 |
 
 ## work-status
 
@@ -5105,6 +5150,7 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 102,045 | 80,235 | 269,330 | 156,156 | 2,659,272 | 2,391,289 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 102,045 | 80,235 | 269,337 | 156,131 | 2,659,334 | 2,391,318 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 102,045 | 80,235 | 269,355 | 156,111 | 2,659,298 | 2,391,317 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 102,045 | 80,235 | 269,348 | 156,129 | 2,659,272 | 2,391,322 |
 
 ## work-value
 
@@ -5216,4 +5262,5 @@
 | `3d4fa2d` | 2026-10-28 | fix(docs): wait for replay recording before enabling playback (#251) | 109,169 | 121,071 | 269,569 | 283,388 | 2,643,943 | 2,968,470 |
 | `efaa13c` | 2026-10-29 | feat(dom): expose typed table editing contracts | 109,169 | 121,071 | 269,542 | 283,411 | 2,643,941 | 2,968,477 |
 | `789c7d3` | 2026-10-29 | feat(dom): expose semantic HTML reflection contracts | 109,169 | 121,071 | 269,594 | 283,390 | 2,643,935 | 2,968,475 |
+| `0071ca7` | 2026-10-29 | feat(dom): expose shared SVG and MathML element contracts | 109,169 | 121,071 | 269,529 | 283,394 | 2,643,938 | 2,968,475 |
 
