@@ -24,4 +24,12 @@ if (typeof(Ranvier.Dom.HTMLTableCellElement).GetProperty("colSpan")?.PropertyTyp
     throw new Exception("The reflected table cell span contract is missing");
 if (typeof(Ranvier.Dom.HTMLTableColElement).GetProperty("span")?.PropertyType != typeof(uint))
     throw new Exception("The reflected table column span contract is missing");
+if (typeof(Ranvier.Dom.HTMLTimeElement).GetProperty("dateTime")?.PropertyType != typeof(string))
+    throw new Exception("The typed time reflection contract is missing");
+if (typeof(Ranvier.Dom.HTMLDataListElement).GetProperty("options")?.PropertyType != typeof(Ranvier.Dom.HTMLCollection))
+    throw new Exception("The live datalist options contract is missing");
+if (typeof(Ranvier.Dom.HTMLSourceElement).GetProperty("width")?.PropertyType != typeof(uint))
+    throw new Exception("The reflected source dimensions contract is missing");
+if (typeof(Ranvier.Dom.HTMLModElement).GetProperty("cite")?.PropertyType != typeof(string))
+    throw new Exception("The edit annotation reflection contract is missing");
 Console.WriteLine("DOM_PACKAGE_IDENTITY PASS " + Bridge.NodeContract.Assembly.FullName);
