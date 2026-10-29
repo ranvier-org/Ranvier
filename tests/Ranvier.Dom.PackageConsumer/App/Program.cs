@@ -32,4 +32,10 @@ if (typeof(Ranvier.Dom.HTMLSourceElement).GetProperty("width")?.PropertyType != 
     throw new Exception("The reflected source dimensions contract is missing");
 if (typeof(Ranvier.Dom.HTMLModElement).GetProperty("cite")?.PropertyType != typeof(string))
     throw new Exception("The edit annotation reflection contract is missing");
+if (!typeof(Ranvier.Dom.ElementCSSInlineStyle).IsAssignableFrom(typeof(Ranvier.Dom.MathMLElement)))
+    throw new Exception("MathML elements lost the shared inline style contract");
+if (!typeof(Ranvier.Dom.HTMLOrSVGElement).IsAssignableFrom(typeof(Ranvier.Dom.MathMLElement)))
+    throw new Exception("MathML elements lost the shared focus/data contract");
+if (typeof(Ranvier.Dom.SVGElement).GetProperty("viewportElement")?.PropertyType != typeof(Ranvier.Dom.SVGElement))
+    throw new Exception("The SVG element introspection contract is missing");
 Console.WriteLine("DOM_PACKAGE_IDENTITY PASS " + Bridge.NodeContract.Assembly.FullName);
