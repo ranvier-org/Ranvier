@@ -115,6 +115,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 83,303 | 127,664 | 1,742,291 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 83,302 | 127,547 | 1,742,254 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 83,365 | 127,584 | 1,742,203 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 83,493 | 127,601 | 1,742,350 |
 
 ## app-table
 
@@ -231,6 +232,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 4,417,689 | 9,272,738 | 107,627,544 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 4,417,753 | 9,271,842 | 107,880,108 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 4,417,699 | 9,272,197 | 107,850,706 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 4,417,771 | 9,451,592 | 107,973,035 |
 
 ## async-recover
 
@@ -347,6 +349,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 139,139 | 41,265 | 434,852 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 139,139 | 41,266 | 434,862 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 139,139 | 41,230 | 434,850 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 139,139 | 41,271 | 434,861 |
 
 ## async-resolve
 
@@ -463,6 +466,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,790,467 | 1,023,034 | 11,967,190 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,790,467 | 1,023,149 | 11,967,061 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,790,467 | 1,023,029 | 11,967,117 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,790,467 | 1,022,900 | 11,967,621 |
 
 ## chain
 
@@ -579,6 +583,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -695,6 +700,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,553 | 3,071 | 2,500 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,553 | 3,071 | 2,500 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,553 | 3,071 | 2,500 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -811,6 +817,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 74,710 | 836,457 | 2,602,933 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 74,710 | 836,508 | 2,602,894 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 74,710 | 836,560 | 2,603,041 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 74,710 | 836,491 | 2,602,903 |
 
 ## create
 
@@ -927,6 +934,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 13,448,229 | 2,865,677 | 2,570,368 | 2,127,785 | 4,044,408 | 33,999,986 | 50,423,879 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 13,448,204 | 2,865,677 | 2,570,368 | 2,127,747 | 4,044,597 | 33,999,749 | 50,423,875 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 13,448,217 | 2,865,679 | 2,570,369 | 2,127,743 | 4,044,585 | 33,999,861 | 50,423,972 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 13,448,197 | 2,897,677 | 2,570,368 | 2,127,506 | 4,044,836 | 33,999,494 | 50,423,985 |
 
 ## create-on
 
@@ -1043,6 +1051,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,949,484 | 4,179,370 | 55,228,993 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,949,484 | 4,179,792 | 55,229,036 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,949,485 | 4,179,591 | 55,229,084 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,949,484 | 4,179,756 | 55,229,112 |
 
 ## cutoff
 
@@ -1159,6 +1168,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1275,6 +1285,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 781 | 751 | 16,520 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 781 | 751 | 16,520 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 781 | 751 | 16,520 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1391,6 +1402,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 751 | 802 | 16,543 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 751 | 802 | 16,543 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 751 | 802 | 16,543 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1507,6 +1519,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 2,706,750 | 806,291 | 367,497 | 475,773 | 494,921 | 13,206,139 | 9,105,734 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 2,706,247 | 806,291 | 367,497 | 475,400 | 495,310 | 13,206,481 | 9,107,025 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 2,707,644 | 806,291 | 367,497 | 475,968 | 495,048 | 13,205,970 | 9,106,459 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 2,707,645 | 806,291 | 367,497 | 476,077 | 495,063 | 13,206,213 | 9,106,120 |
 
 ## dispose-on
 
@@ -1623,6 +1636,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 346,497 | 487,728 | 8,902,374 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 346,497 | 488,302 | 8,902,775 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 346,497 | 487,770 | 8,902,601 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 346,497 | 487,944 | 8,902,428 |
 
 ## editable-edit
 
@@ -1739,6 +1753,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 181,706 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 181,706 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 181,706 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 181,706 |
 
 ## editable-upstream
 
@@ -1855,6 +1870,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 232,855 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 232,855 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 232,855 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 232,855 |
 
 ## fail-recompute
 
@@ -1971,6 +1987,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 64,938 | 1,370 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 64,938 | 1,370 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 64,938 | 1,370 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 64,938 | 1,370 |
 
 ## flight
 
@@ -2087,6 +2104,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2203,6 +2221,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,921,727 | 53,917 | 54,956 | 3,277,750 | 237,601 | 176,016 | 45,079,006 | 2,634,559 | 2,655,536 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,921,727 | 53,917 | 54,954 | 3,277,788 | 237,388 | 176,008 | 45,075,883 | 2,634,535 | 2,655,526 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,921,743 | 53,917 | 54,964 | 3,277,792 | 237,625 | 175,990 | 45,086,058 | 2,634,492 | 2,655,509 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,921,729 | 54,013 | 54,957 | 3,277,737 | 237,685 | 176,013 | 45,075,905 | 2,634,548 | 2,655,529 |
 
 ## keyed-remove
 
@@ -2319,6 +2338,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,920,660 | 43,600 | 45,299 | 3,292,733 | 591,919 | 606,222 | 45,041,273 | 1,924,627 | 1,960,161 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,920,651 | 43,600 | 45,299 | 3,292,898 | 592,296 | 606,155 | 45,041,264 | 1,924,919 | 1,960,131 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,920,669 | 43,600 | 45,315 | 3,292,666 | 592,298 | 606,068 | 45,041,251 | 1,924,976 | 1,960,117 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,920,664 | 43,696 | 45,299 | 3,292,917 | 592,161 | 606,103 | 45,041,242 | 1,924,715 | 1,960,147 |
 
 ## keyed-swap
 
@@ -2435,6 +2455,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,973,355 | 46,205 | 46,927 | 3,622,272 | 149,123 | 512,672 | 46,203,611 | 915,630 | 934,612 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,973,355 | 46,205 | 46,927 | 3,628,259 | 148,901 | 512,461 | 46,203,663 | 915,631 | 936,058 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,973,356 | 46,205 | 46,928 | 3,628,493 | 149,022 | 512,662 | 46,203,970 | 915,648 | 936,275 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,973,356 | 46,301 | 46,928 | 3,626,908 | 149,234 | 512,569 | 46,203,969 | 915,731 | 936,212 |
 
 ## mvu-dispatch
 
@@ -2551,6 +2572,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 58,292 | 788 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 58,292 | 788 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 58,292 | 788 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 58,292 | 788 |
 
 ## persist-write
 
@@ -2667,6 +2689,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | — | — |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | — | — |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | — | — |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | — | — |
 
 ## project-chain
 
@@ -2783,6 +2806,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,071,748 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,071,783 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,071,719 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,071,783 |
 
 ## project-churn
 
@@ -2899,6 +2923,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 36,385 | 34,250 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 36,385 | 34,250 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 36,401 | 34,266 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 36,401 | 34,266 |
 
 ## project-edit
 
@@ -3015,6 +3040,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 50,492 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 50,460 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 50,476 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 50,460 |
 
 ## project-reorder
 
@@ -3131,6 +3157,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 780,116 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 780,084 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 780,100 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 780,084 |
 
 ## server-render
 
@@ -3247,6 +3274,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | — | — | — |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | — | — | — |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | — | — | — |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | — | — | — |
 
 ## shape-diamond
 
@@ -3363,6 +3391,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 59,915 | 80,445 | 1,764,075 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 59,915 | 80,445 | 1,764,075 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 59,915 | 80,445 | 1,764,075 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3479,6 +3508,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 84,378 | 108,944 | 2,038,136 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 84,378 | 108,946 | 2,038,136 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 84,378 | 108,947 | 2,038,136 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3595,6 +3625,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,469 | 47,553 | 45,790 | 55,384 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,555 | 45,790 | 55,381 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,474 | 47,553 | 45,790 | 55,384 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,475 | 47,556 | 45,790 | 55,380 |
 
 ## stream-burst-16
 
@@ -3711,6 +3742,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 5,022 | 24,618 | 5,713 | 9,737 | 50,033 | 8,070 | 123,785 | 720,148 | 113,730 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,788 | 720,150 | 113,734 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,069 | 123,785 | 720,146 | 113,733 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,069 | 123,789 | 720,148 | 113,728 |
 
 ## stream-burst-256
 
@@ -3827,6 +3859,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 54,162 | 393,702 | 57,052 | 131,757 | 792,886 | 74,743 | 1,343,190 | 11,508,770 | 1,046,750 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 54,162 | 393,702 | 57,052 | 131,879 | 792,881 | 74,743 | 1,343,151 | 11,508,708 | 1,046,732 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 54,162 | 393,702 | 57,052 | 131,828 | 792,883 | 74,743 | 1,343,101 | 11,508,745 | 1,046,764 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 54,162 | 393,702 | 57,052 | 131,915 | 792,823 | 74,743 | 1,343,192 | 11,508,770 | 1,046,745 |
 
 ## stream-restart
 
@@ -3943,6 +3976,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 4,203 | 5,004 | 6,575 | 16,893 | 42,905 | 72,024 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 4,203 | 5,004 | 6,579 | 16,888 | 42,909 | 72,017 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 4,203 | 5,004 | 6,575 | 16,890 | 42,907 | 72,018 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 4,203 | 5,004 | 6,574 | 16,891 | 42,906 | 72,008 |
 
 ## timed-admit-both
 
@@ -4059,6 +4093,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 117,709 | 130,035 | 2,693,563 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 117,709 | 130,034 | 2,693,576 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 117,709 | 130,034 | 2,693,575 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 117,709 | 130,036 | 2,693,575 |
 
 ## timed-admit-debounce
 
@@ -4175,6 +4210,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 116,614 | 128,630 | 2,654,129 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 116,614 | 128,627 | 2,654,129 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 116,614 | 128,616 | 2,654,129 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 116,614 | 128,619 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4291,6 +4327,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 69,621 | 79,564 | 1,620,678 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 69,621 | 79,563 | 1,620,678 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 69,621 | 79,564 | 1,620,677 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 69,621 | 79,566 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4407,6 +4444,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 116,876 | 128,950 | 2,663,985 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 116,876 | 128,948 | 2,663,985 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 116,876 | 128,950 | 2,663,985 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 116,876 | 128,939 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4523,6 +4561,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 35,740 | 44,936 | 846,248 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 35,740 | 44,935 | 846,247 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 35,740 | 44,936 | 846,247 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 35,740 | 44,936 | 846,247 |
 
 ## timed-capture-debounce
 
@@ -4639,6 +4678,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 35,612 | 44,233 | 847,657 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 35,612 | 44,232 | 847,657 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 35,612 | 44,232 | 847,657 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4755,6 +4795,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 32,092 | 36,740 | 745,652 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 32,092 | 36,742 | 745,651 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 32,092 | 36,741 | 745,651 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -4871,6 +4912,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 35,548 | 44,166 | 839,785 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 35,548 | 44,169 | 839,785 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 35,548 | 44,168 | 839,785 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 35,548 | 44,168 | 839,787 |
 
 ## update
 
@@ -4987,6 +5029,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 1,087,790 | 38,805 | 84,105 | 263,111 | 145,819 | 3,351,296 | 2,544,929 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 1,090,990 | 38,805 | 84,105 | 263,137 | 145,854 | 3,351,274 | 2,544,984 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 1,087,790 | 38,805 | 84,105 | 263,178 | 145,809 | 3,351,307 | 2,545,052 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 1,087,790 | 38,805 | 84,105 | 262,820 | 145,819 | 3,351,249 | 2,545,067 |
 
 ## update-on
 
@@ -5103,6 +5146,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 94,605 | 169,000 | 2,872,453 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 94,605 | 169,048 | 2,872,422 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 94,605 | 169,048 | 2,872,438 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 94,605 | 169,003 | 2,872,472 |
 
 ## work-form
 
@@ -5219,6 +5263,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 172,679 | 165,150 | 308,824 | 296,942 | 5,421,895 | 5,334,867 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,853 | 5,334,913 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 172,679 | 165,150 | 308,877 | 296,971 | 5,421,871 | 5,334,874 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 172,679 | 165,150 | 308,842 | 296,993 | 5,421,866 | 5,334,908 |
 
 ## work-status
 
@@ -5335,6 +5380,7 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 102,045 | 80,235 | 269,370 | 156,097 | 2,659,241 | 2,391,299 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 102,045 | 80,235 | 269,373 | 156,109 | 2,659,231 | 2,391,292 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 102,045 | 80,235 | 269,346 | 156,127 | 2,659,268 | 2,391,258 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 102,045 | 80,235 | 269,322 | 156,097 | 2,659,276 | 2,391,284 |
 
 ## work-value
 
@@ -5451,4 +5497,5 @@
 | `edabc3b` | 2026-10-29 | feat(dom): add shared stylesheet services (#256) | 109,169 | 121,071 | 269,570 | 283,406 | 2,643,805 | 2,968,420 |
 | `08617ae` | 2026-10-29 | feat(dom): add shared CSS identifier escaping (#257) | 109,169 | 121,069 | 269,607 | 283,399 | 2,643,884 | 2,968,411 |
 | `04fc417` | 2026-10-29 | feat(dom): add shared CSS support-query providers | 109,168 | 121,069 | 269,593 | 283,386 | 2,643,831 | 2,968,477 |
+| `939df32` | 2026-10-29 | feat(dom): share live computed-style queries | 109,170 | 121,069 | 269,598 | 283,397 | 2,643,944 | 2,968,395 |
 
