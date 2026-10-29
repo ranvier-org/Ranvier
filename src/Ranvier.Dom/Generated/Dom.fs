@@ -3725,7 +3725,7 @@ module BrowserUnionAdapters =
     let private normalizeUSVString (_: string) : string =
         Fable.Core.Util.jsNative
 
-    [<Fable.Core.Emit("Object.prototype.toString.call($0) === '[object CSSVariableReferenceValue]'")>]
+    [<Fable.Core.Emit("((v)=>{if(v==null)return false;try{Object.getOwnPropertyDescriptor(globalThis.CSSVariableReferenceValue.prototype,'variable').get.call(v);return true;}catch{return false;} })($0)")>]
     let private isCSSOMVariableReferenceValue (_: obj) : bool =
         Fable.Core.Util.jsNative
 
@@ -3933,6 +3933,12 @@ module BrowserUnionAdapters =
             this.__ranvier_setItem (index, box (normalizeUSVString ``val``))
 
         member this.setItem(index: uint32, ``val``: CSSVariableReferenceValue) : unit =
+            if isNull (box ``val``) then
+                nullArg "val"
+
+            if not (isCSSOMVariableReferenceValue (box ``val``)) then
+                invalidArg "val" "Expected a CSSVariableReferenceValue."
+
             this.__ranvier_setItem (index, box ``val``)
 
 
