@@ -16,12 +16,9 @@ type internal DomDictionaryAttribute() =
     inherit Attribute()
 #endif
 
-/// <summary>StylePropertyMapReadOnly in the scoped DOM interface model.</summary>
-[<AllowNullLiteral>]
-type StylePropertyMapReadOnly = interface end
-
 /// <summary>SVGTextContentElement in the scoped DOM interface model.</summary>
-and [<AllowNullLiteral>] SVGTextContentElement =
+[<AllowNullLiteral>]
+type SVGTextContentElement =
     inherit SVGGraphicsElement
 
 /// <summary>SVGTextPositioningElement in the scoped DOM interface model.</summary>
@@ -192,8 +189,13 @@ and [<AllowNullLiteral>] ShadowRoot =
     abstract member elementFromPoint: x: float * y: float -> Element
     /// <summary>ShadowRoot.elementsFromPoint.</summary>
     abstract member elementsFromPoint: x: float * y: float -> (Element) array
+
     /// <summary>ShadowRoot.styleSheets.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("((r)=>{const s=r.styleSheets;if(r.nodeType===9){const k=Symbol.for('Ranvier.Dom.StyleSheetList.documents.v1');const m=globalThis[k]||(globalThis[k]=new WeakMap());let v=m.get(s);if(!v){v=new WeakRef(r);m.set(s,v);}if(!Object.getOwnPropertyDescriptor(s,k))Reflect.defineProperty(s,k,{value:v});}return s;})($0)")>]
+#endif
     abstract member styleSheets: StyleSheetList with get
+
     /// <summary>ShadowRoot.fullscreenElement.</summary>
     abstract member fullscreenElement: Element with get
     /// <summary>ShadowRoot.pointerLockElement.</summary>
@@ -332,8 +334,13 @@ and [<AllowNullLiteral>] Document =
     abstract member elementFromPoint: x: float * y: float -> Element
     /// <summary>Document.elementsFromPoint.</summary>
     abstract member elementsFromPoint: x: float * y: float -> (Element) array
+
     /// <summary>Document.styleSheets.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("((r)=>{const s=r.styleSheets;if(r.nodeType===9){const k=Symbol.for('Ranvier.Dom.StyleSheetList.documents.v1');const m=globalThis[k]||(globalThis[k]=new WeakMap());let v=m.get(s);if(!v){v=new WeakRef(r);m.set(s,v);}if(!Object.getOwnPropertyDescriptor(s,k))Reflect.defineProperty(s,k,{value:v});}return s;})($0)")>]
+#endif
     abstract member styleSheets: StyleSheetList with get
+
 
 /// <summary>HTMLDocument in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] HTMLDocument =
@@ -484,6 +491,8 @@ and [<AllowNullLiteral>] Element =
     abstract member releasePointerCapture: pointerId: int -> unit
     /// <summary>Element.hasPointerCapture.</summary>
     abstract member hasPointerCapture: pointerId: int -> bool
+    /// <summary>Element.computedStyleMap.</summary>
+    abstract member computedStyleMap: unit -> StylePropertyMapReadOnly
     /// <summary>Element.role.</summary>
     abstract member role: string with get, set
     /// <summary>Element.setHTMLUnsafe.</summary>
@@ -1836,7 +1845,7 @@ and [<AllowNullLiteral>] StyleSheetList =
 
     /// <summary>StyleSheetList.namedItem.</summary>
 #if FABLE_COMPILER
-    [<Fable.Core.Emit("$0[$1]")>]
+    [<Fable.Core.Emit("((s,n)=>{const k=Symbol.for('Ranvier.Dom.StyleSheetList.documents.v1');const m=globalThis[k];let d;try{d=WeakRef.prototype.deref.call(Object.getOwnPropertyDescriptor(s,k)?.value);}catch{}d=d||m?.get(s)?.deref()||(s.length?s.item(0)?.ownerNode?.ownerDocument:null);if(!d||d.styleSheets!==s)return null;const e=d.getElementById(n??'');return e&&e.namespaceURI==='http://www.w3.org/1999/xhtml'&&e.localName==='style'?e.sheet:null;})($0,$1)")>]
 #endif
     abstract member namedItem: name: string -> CSSStyleSheet
 
@@ -1905,6 +1914,8 @@ and [<AllowNullLiteral>] CSSStyleRule =
     abstract member insertRule: rule: string * ?index: uint32 -> uint32
     /// <summary>CSSStyleRule.deleteRule.</summary>
     abstract member deleteRule: index: uint32 -> unit
+    /// <summary>CSSStyleRule.styleMap.</summary>
+    abstract member styleMap: StylePropertyMap with get
 
 /// <summary>CSSStyleProperties in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] CSSStyleProperties =
@@ -2129,6 +2140,296 @@ and [<AllowNullLiteral>] CSSCounterStyleRule =
     /// <summary>CSSCounterStyleRule.fallback.</summary>
     abstract member fallback: string with get, set
 
+/// <summary>CSSPropertyRule in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSPropertyRule =
+    inherit CSSRule
+    /// <summary>CSSPropertyRule.name.</summary>
+    abstract member name: string with get
+    /// <summary>CSSPropertyRule.syntax.</summary>
+    abstract member syntax: string with get
+    /// <summary>CSSPropertyRule.inherits.</summary>
+    abstract member inherits: bool with get
+    /// <summary>CSSPropertyRule.initialValue.</summary>
+    abstract member initialValue: string with get
+
+/// <summary>CSSStyleValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSStyleValue =
+    /// <summary>CSSStyleValue.toString.</summary>
+    abstract member toString: unit -> string
+
+/// <summary>CSSNumericValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSNumericValue =
+    inherit CSSStyleValue
+
+/// <summary>CSSTransformValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSTransformValue =
+    inherit CSSStyleValue
+    /// <summary>CSSTransformValue.length.</summary>
+    abstract member length: uint32 with get
+
+    /// <summary>CSSTransformValue.item.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0[$1]")>]
+#endif
+    abstract member item: index: uint32 -> CSSTransformComponent
+
+
+    /// <summary>CSSTransformValue.setItem.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("((v,i,s)=>{if(i===4294967295)throw new RangeError('Index out of range.');v[i]=s;})($0,$1,$2)")>]
+#endif
+    abstract member setItem: index: uint32 * ``val``: CSSTransformComponent -> unit
+
+    /// <summary>CSSTransformValue.is2D.</summary>
+    abstract member is2D: bool with get
+
+    /// <summary>CSSTransformValue.toMatrix.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("((v)=>{const m=v.toMatrix();return v.is2D===false&&m.is2D===true?new m.constructor([m.m11,m.m12,m.m13,m.m14,m.m21,m.m22,m.m23,m.m24,m.m31,m.m32,m.m33,m.m34,m.m41,m.m42,m.m43,m.m44]):m;})($0)")>]
+#endif
+    abstract member toMatrix: unit -> DOMMatrix
+
+/// <summary>CSSTransformComponent in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSTransformComponent =
+    /// <summary>CSSTransformComponent.toString.</summary>
+    abstract member toString: unit -> string
+    /// <summary>CSSTransformComponent.is2D.</summary>
+    abstract member is2D: bool with get, set
+
+    /// <summary>CSSTransformComponent.toMatrix.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("((v)=>{const m=v.toMatrix();return v.is2D===false&&m.is2D===true?new m.constructor([m.m11,m.m12,m.m13,m.m14,m.m21,m.m22,m.m23,m.m24,m.m31,m.m32,m.m33,m.m34,m.m41,m.m42,m.m43,m.m44]):m;})($0)")>]
+#endif
+    abstract member toMatrix: unit -> DOMMatrix
+
+/// <summary>CSSTranslate in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSTranslate =
+    inherit CSSTransformComponent
+    /// <summary>CSSTranslate.x.</summary>
+    abstract member x: CSSNumericValue with get, set
+    /// <summary>CSSTranslate.y.</summary>
+    abstract member y: CSSNumericValue with get, set
+    /// <summary>CSSTranslate.z.</summary>
+    abstract member z: CSSNumericValue with get, set
+
+/// <summary>CSSRotate in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSRotate =
+    inherit CSSTransformComponent
+
+    /// <summary>CSSRotate.x.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.x")>]
+    abstract member __ranvier_get_x: unit -> obj
+
+    [<Fable.Core.Emit("$0.x = $1")>]
+    abstract member __ranvier_set_x: value: obj -> unit
+#else
+    abstract member x: DoubleOrCSSNumericValue with get, set
+#endif
+
+    /// <summary>CSSRotate.y.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.y")>]
+    abstract member __ranvier_get_y: unit -> obj
+
+    [<Fable.Core.Emit("$0.y = $1")>]
+    abstract member __ranvier_set_y: value: obj -> unit
+#else
+    abstract member y: DoubleOrCSSNumericValue with get, set
+#endif
+
+    /// <summary>CSSRotate.z.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.z")>]
+    abstract member __ranvier_get_z: unit -> obj
+
+    [<Fable.Core.Emit("$0.z = $1")>]
+    abstract member __ranvier_set_z: value: obj -> unit
+#else
+    abstract member z: DoubleOrCSSNumericValue with get, set
+#endif
+    /// <summary>CSSRotate.angle.</summary>
+    abstract member angle: CSSNumericValue with get, set
+
+/// <summary>CSSScale in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSScale =
+    inherit CSSTransformComponent
+
+    /// <summary>CSSScale.x.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.x")>]
+    abstract member __ranvier_get_x: unit -> obj
+
+    [<Fable.Core.Emit("$0.x = $1")>]
+    abstract member __ranvier_set_x: value: obj -> unit
+#else
+    abstract member x: DoubleOrCSSNumericValue with get, set
+#endif
+
+    /// <summary>CSSScale.y.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.y")>]
+    abstract member __ranvier_get_y: unit -> obj
+
+    [<Fable.Core.Emit("$0.y = $1")>]
+    abstract member __ranvier_set_y: value: obj -> unit
+#else
+    abstract member y: DoubleOrCSSNumericValue with get, set
+#endif
+
+    /// <summary>CSSScale.z.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.z")>]
+    abstract member __ranvier_get_z: unit -> obj
+
+    [<Fable.Core.Emit("$0.z = $1")>]
+    abstract member __ranvier_set_z: value: obj -> unit
+#else
+    abstract member z: DoubleOrCSSNumericValue with get, set
+#endif
+
+/// <summary>CSSSkew in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSSkew =
+    inherit CSSTransformComponent
+    /// <summary>CSSSkew.ax.</summary>
+    abstract member ax: CSSNumericValue with get, set
+    /// <summary>CSSSkew.ay.</summary>
+    abstract member ay: CSSNumericValue with get, set
+
+/// <summary>CSSSkewX in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSSkewX =
+    inherit CSSTransformComponent
+    /// <summary>CSSSkewX.ax.</summary>
+    abstract member ax: CSSNumericValue with get, set
+
+/// <summary>CSSSkewY in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSSkewY =
+    inherit CSSTransformComponent
+    /// <summary>CSSSkewY.ay.</summary>
+    abstract member ay: CSSNumericValue with get, set
+
+/// <summary>CSSPerspective in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSPerspective =
+    inherit CSSTransformComponent
+
+    /// <summary>CSSPerspective.length.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.length")>]
+    abstract member __ranvier_get_length: unit -> obj
+
+    [<Fable.Core.Emit("$0.length = $1")>]
+    abstract member __ranvier_set_length: value: obj -> unit
+#else
+    abstract member length: CSSNumericValueOrDOMStringOrCSSOMKeywordValue with get, set
+#endif
+
+/// <summary>CSSMatrixComponent in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSMatrixComponent =
+    inherit CSSTransformComponent
+    /// <summary>CSSMatrixComponent.matrix.</summary>
+    abstract member matrix: DOMMatrix with get, set
+
+/// <summary>CSSUnitValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSUnitValue =
+    inherit CSSNumericValue
+    /// <summary>CSSUnitValue.value.</summary>
+    abstract member value: float with get, set
+    /// <summary>CSSUnitValue.unit.</summary>
+    abstract member unit: string with get
+
+/// <summary>CSSKeywordValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSKeywordValue =
+    inherit CSSStyleValue
+
+    /// <summary>CSSKeywordValue.value.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.value{{=((v)=>String(v==null?'null':v).toWellFormed())($1)}}")>]
+#endif
+    abstract member value: string with get, set
+
+
+/// <summary>CSSImageValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSImageValue =
+    inherit CSSStyleValue
+
+/// <summary>CSSUnparsedValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSUnparsedValue =
+    inherit CSSStyleValue
+    /// <summary>CSSUnparsedValue.length.</summary>
+    abstract member length: uint32 with get
+
+    /// <summary>CSSUnparsedValue.item.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0[$1]")>]
+    abstract member __ranvier_item: index: uint32 -> obj
+#else
+    abstract member item: index: uint32 -> (USVStringOrCSSOMVariableReferenceValue) option
+#endif
+
+
+    /// <summary>CSSUnparsedValue.setItem.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("((v,i,s)=>{if(i===4294967295)throw new RangeError('Index out of range.');v[i]=s;})($0,$1,$2)")>]
+    abstract member __ranvier_setItem: index: uint32 * ``val``: obj -> unit
+#else
+    abstract member setItem: index: uint32 * ``val``: string -> unit
+    abstract member setItem: index: uint32 * ``val``: CSSVariableReferenceValue -> unit
+#endif
+
+
+/// <summary>CSSVariableReferenceValue in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] CSSVariableReferenceValue =
+
+    /// <summary>CSSVariableReferenceValue.variable.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.variable{{=((v)=>String(v==null?'null':v).toWellFormed())($1)}}")>]
+#endif
+    abstract member variable: string with get, set
+
+    /// <summary>CSSVariableReferenceValue.fallback.</summary>
+    abstract member fallback: CSSUnparsedValue with get
+
+/// <summary>StylePropertyMapReadOnly in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] StylePropertyMapReadOnly =
+
+    /// <summary>StylePropertyMapReadOnly.get.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.get($1)")>]
+    abstract member __ranvier_get: property: string -> obj
+#else
+    abstract member get: property: string -> UndefinedOrCSSStyleValue
+#endif
+    /// <summary>StylePropertyMapReadOnly.getAll.</summary>
+    abstract member getAll: property: string -> (CSSStyleValue) array
+    /// <summary>StylePropertyMapReadOnly.has.</summary>
+    abstract member has: property: string -> bool
+    /// <summary>StylePropertyMapReadOnly.size.</summary>
+    abstract member size: uint32 with get
+
+/// <summary>StylePropertyMap in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] StylePropertyMap =
+    inherit StylePropertyMapReadOnly
+
+    /// <summary>StylePropertyMap.set.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.set($1, ...$2)")>]
+    abstract member __ranvier_set: property: string * values: obj array -> unit
+#else
+    abstract member set: property: string * [<System.ParamArray>] values: CSSStyleValueOrUSVString array -> unit
+#endif
+
+    /// <summary>StylePropertyMap.append.</summary>
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0.append($1, ...$2)")>]
+    abstract member __ranvier_append: property: string * values: obj array -> unit
+#else
+    abstract member append: property: string * [<System.ParamArray>] values: CSSStyleValueOrUSVString array -> unit
+#endif
+    /// <summary>StylePropertyMap.delete.</summary>
+    abstract member delete: property: string -> unit
+    /// <summary>StylePropertyMap.clear.</summary>
+    abstract member clear: unit -> unit
+
 /// <summary>CSSPositionTryRule in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] CSSPositionTryRule =
     inherit CSSRule
@@ -2340,7 +2641,7 @@ and [<AllowNullLiteral>] DOMStringMap =
 
     /// <summary>DOMStringMap.namedItem.</summary>
 #if FABLE_COMPILER
-    [<Fable.Core.Emit("$0[$1]")>]
+    [<Fable.Core.Emit("(Object.prototype.hasOwnProperty.call($0,$1)?$0[$1]:'')")>]
 #endif
     abstract member namedItem: name: string -> string
 
@@ -2523,6 +2824,14 @@ and [<AllowNullLiteral>] DOMRectReadOnly =
 /// <summary>DOMRect in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] DOMRect =
     inherit DOMRectReadOnly
+    /// <summary>DOMRect.x.</summary>
+    abstract member x: float with get, set
+    /// <summary>DOMRect.y.</summary>
+    abstract member y: float with get, set
+    /// <summary>DOMRect.width.</summary>
+    abstract member width: float with get, set
+    /// <summary>DOMRect.height.</summary>
+    abstract member height: float with get, set
 
 /// <summary>DOMRectList in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] DOMRectList =
@@ -2530,6 +2839,197 @@ and [<AllowNullLiteral>] DOMRectList =
     abstract member length: uint32 with get
     /// <summary>DOMRectList.item.</summary>
     abstract member item: index: uint32 -> DOMRect
+
+/// <summary>DOMPointReadOnly in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] DOMPointReadOnly =
+    /// <summary>DOMPointReadOnly.x.</summary>
+    abstract member x: float with get
+    /// <summary>DOMPointReadOnly.y.</summary>
+    abstract member y: float with get
+    /// <summary>DOMPointReadOnly.z.</summary>
+    abstract member z: float with get
+    /// <summary>DOMPointReadOnly.w.</summary>
+    abstract member w: float with get
+    /// <summary>DOMPointReadOnly.matrixTransform.</summary>
+    abstract member matrixTransform: ?matrix: DOMMatrixInit -> DOMPoint
+
+/// <summary>DOMPoint in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] DOMPoint =
+    inherit DOMPointReadOnly
+    /// <summary>DOMPoint.x.</summary>
+    abstract member x: float with get, set
+    /// <summary>DOMPoint.y.</summary>
+    abstract member y: float with get, set
+    /// <summary>DOMPoint.z.</summary>
+    abstract member z: float with get, set
+    /// <summary>DOMPoint.w.</summary>
+    abstract member w: float with get, set
+
+/// <summary>DOMQuad in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] DOMQuad =
+    /// <summary>DOMQuad.p1.</summary>
+    abstract member p1: DOMPoint with get
+    /// <summary>DOMQuad.p2.</summary>
+    abstract member p2: DOMPoint with get
+    /// <summary>DOMQuad.p3.</summary>
+    abstract member p3: DOMPoint with get
+    /// <summary>DOMQuad.p4.</summary>
+    abstract member p4: DOMPoint with get
+    /// <summary>DOMQuad.getBounds.</summary>
+    abstract member getBounds: unit -> DOMRect
+
+/// <summary>DOMMatrixReadOnly in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] DOMMatrixReadOnly =
+    /// <summary>DOMMatrixReadOnly.a.</summary>
+    abstract member a: float with get
+    /// <summary>DOMMatrixReadOnly.b.</summary>
+    abstract member b: float with get
+    /// <summary>DOMMatrixReadOnly.c.</summary>
+    abstract member c: float with get
+    /// <summary>DOMMatrixReadOnly.d.</summary>
+    abstract member d: float with get
+    /// <summary>DOMMatrixReadOnly.e.</summary>
+    abstract member e: float with get
+    /// <summary>DOMMatrixReadOnly.f.</summary>
+    abstract member f: float with get
+    /// <summary>DOMMatrixReadOnly.m11.</summary>
+    abstract member m11: float with get
+    /// <summary>DOMMatrixReadOnly.m12.</summary>
+    abstract member m12: float with get
+    /// <summary>DOMMatrixReadOnly.m13.</summary>
+    abstract member m13: float with get
+    /// <summary>DOMMatrixReadOnly.m14.</summary>
+    abstract member m14: float with get
+    /// <summary>DOMMatrixReadOnly.m21.</summary>
+    abstract member m21: float with get
+    /// <summary>DOMMatrixReadOnly.m22.</summary>
+    abstract member m22: float with get
+    /// <summary>DOMMatrixReadOnly.m23.</summary>
+    abstract member m23: float with get
+    /// <summary>DOMMatrixReadOnly.m24.</summary>
+    abstract member m24: float with get
+    /// <summary>DOMMatrixReadOnly.m31.</summary>
+    abstract member m31: float with get
+    /// <summary>DOMMatrixReadOnly.m32.</summary>
+    abstract member m32: float with get
+    /// <summary>DOMMatrixReadOnly.m33.</summary>
+    abstract member m33: float with get
+    /// <summary>DOMMatrixReadOnly.m34.</summary>
+    abstract member m34: float with get
+    /// <summary>DOMMatrixReadOnly.m41.</summary>
+    abstract member m41: float with get
+    /// <summary>DOMMatrixReadOnly.m42.</summary>
+    abstract member m42: float with get
+    /// <summary>DOMMatrixReadOnly.m43.</summary>
+    abstract member m43: float with get
+    /// <summary>DOMMatrixReadOnly.m44.</summary>
+    abstract member m44: float with get
+    /// <summary>DOMMatrixReadOnly.is2D.</summary>
+    abstract member is2D: bool with get
+    /// <summary>DOMMatrixReadOnly.isIdentity.</summary>
+    abstract member isIdentity: bool with get
+    /// <summary>DOMMatrixReadOnly.translate.</summary>
+    abstract member translate: ?tx: float * ?ty: float * ?tz: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.scale.</summary>
+    abstract member scale: ?scaleX: float * ?scaleY: float * ?scaleZ: float * ?originX: float * ?originY: float * ?originZ: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.scale3d.</summary>
+    abstract member scale3d: ?scale: float * ?originX: float * ?originY: float * ?originZ: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.scaleNonUniform.</summary>
+    abstract member scaleNonUniform: ?scaleX: float * ?scaleY: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.rotate.</summary>
+    abstract member rotate: ?rotX: float * ?rotY: float * ?rotZ: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.rotateFromVector.</summary>
+    abstract member rotateFromVector: ?x: float * ?y: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.rotateAxisAngle.</summary>
+    abstract member rotateAxisAngle: ?x: float * ?y: float * ?z: float * ?angle: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.skewX.</summary>
+    abstract member skewX: ?sx: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.skewY.</summary>
+    abstract member skewY: ?sy: float -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.multiply.</summary>
+    abstract member multiply: ?other: DOMMatrixInit -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.flipX.</summary>
+    abstract member flipX: unit -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.flipY.</summary>
+    abstract member flipY: unit -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.inverse.</summary>
+    abstract member inverse: unit -> DOMMatrix
+    /// <summary>DOMMatrixReadOnly.transformPoint.</summary>
+    abstract member transformPoint: ?point: DOMPointInit -> DOMPoint
+    /// <summary>DOMMatrixReadOnly.toString.</summary>
+    abstract member toString: unit -> string
+
+/// <summary>DOMMatrix in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral>] DOMMatrix =
+    inherit DOMMatrixReadOnly
+    /// <summary>DOMMatrix.a.</summary>
+    abstract member a: float with get, set
+    /// <summary>DOMMatrix.b.</summary>
+    abstract member b: float with get, set
+    /// <summary>DOMMatrix.c.</summary>
+    abstract member c: float with get, set
+    /// <summary>DOMMatrix.d.</summary>
+    abstract member d: float with get, set
+    /// <summary>DOMMatrix.e.</summary>
+    abstract member e: float with get, set
+    /// <summary>DOMMatrix.f.</summary>
+    abstract member f: float with get, set
+    /// <summary>DOMMatrix.m11.</summary>
+    abstract member m11: float with get, set
+    /// <summary>DOMMatrix.m12.</summary>
+    abstract member m12: float with get, set
+    /// <summary>DOMMatrix.m13.</summary>
+    abstract member m13: float with get, set
+    /// <summary>DOMMatrix.m14.</summary>
+    abstract member m14: float with get, set
+    /// <summary>DOMMatrix.m21.</summary>
+    abstract member m21: float with get, set
+    /// <summary>DOMMatrix.m22.</summary>
+    abstract member m22: float with get, set
+    /// <summary>DOMMatrix.m23.</summary>
+    abstract member m23: float with get, set
+    /// <summary>DOMMatrix.m24.</summary>
+    abstract member m24: float with get, set
+    /// <summary>DOMMatrix.m31.</summary>
+    abstract member m31: float with get, set
+    /// <summary>DOMMatrix.m32.</summary>
+    abstract member m32: float with get, set
+    /// <summary>DOMMatrix.m33.</summary>
+    abstract member m33: float with get, set
+    /// <summary>DOMMatrix.m34.</summary>
+    abstract member m34: float with get, set
+    /// <summary>DOMMatrix.m41.</summary>
+    abstract member m41: float with get, set
+    /// <summary>DOMMatrix.m42.</summary>
+    abstract member m42: float with get, set
+    /// <summary>DOMMatrix.m43.</summary>
+    abstract member m43: float with get, set
+    /// <summary>DOMMatrix.m44.</summary>
+    abstract member m44: float with get, set
+    /// <summary>DOMMatrix.multiplySelf.</summary>
+    abstract member multiplySelf: ?other: DOMMatrixInit -> DOMMatrix
+    /// <summary>DOMMatrix.preMultiplySelf.</summary>
+    abstract member preMultiplySelf: ?other: DOMMatrixInit -> DOMMatrix
+    /// <summary>DOMMatrix.translateSelf.</summary>
+    abstract member translateSelf: ?tx: float * ?ty: float * ?tz: float -> DOMMatrix
+    /// <summary>DOMMatrix.scaleSelf.</summary>
+    abstract member scaleSelf: ?scaleX: float * ?scaleY: float * ?scaleZ: float * ?originX: float * ?originY: float * ?originZ: float -> DOMMatrix
+    /// <summary>DOMMatrix.scale3dSelf.</summary>
+    abstract member scale3dSelf: ?scale: float * ?originX: float * ?originY: float * ?originZ: float -> DOMMatrix
+    /// <summary>DOMMatrix.rotateSelf.</summary>
+    abstract member rotateSelf: ?rotX: float * ?rotY: float * ?rotZ: float -> DOMMatrix
+    /// <summary>DOMMatrix.rotateFromVectorSelf.</summary>
+    abstract member rotateFromVectorSelf: ?x: float * ?y: float -> DOMMatrix
+    /// <summary>DOMMatrix.rotateAxisAngleSelf.</summary>
+    abstract member rotateAxisAngleSelf: ?x: float * ?y: float * ?z: float * ?angle: float -> DOMMatrix
+    /// <summary>DOMMatrix.skewXSelf.</summary>
+    abstract member skewXSelf: ?sx: float -> DOMMatrix
+    /// <summary>DOMMatrix.skewYSelf.</summary>
+    abstract member skewYSelf: ?sy: float -> DOMMatrix
+    /// <summary>DOMMatrix.invertSelf.</summary>
+    abstract member invertSelf: unit -> DOMMatrix
+    /// <summary>DOMMatrix.setMatrixValue.</summary>
+    abstract member setMatrixValue: transformList: string -> DOMMatrix
 
 /// <summary>NodeList in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] NodeList =
@@ -3177,10 +3677,6 @@ and [<AllowNullLiteral>] SecurityPolicyViolationEvent =
 and [<AllowNullLiteral>] StorageEvent =
     inherit Event
 
-/// <summary>StylePropertyMap in the scoped DOM interface model.</summary>
-and [<AllowNullLiteral>] StylePropertyMap =
-    inherit StylePropertyMapReadOnly
-
 /// <summary>SubmitEvent in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] SubmitEvent =
     inherit Event
@@ -3379,6 +3875,8 @@ and [<AllowNullLiteral>] GlobalEventHandlers = interface end
 and [<AllowNullLiteral>] ElementCSSInlineStyle =
     /// <summary>ElementCSSInlineStyle.style.</summary>
     abstract member style: CSSStyleProperties with get
+    /// <summary>ElementCSSInlineStyle.attributeStyleMap.</summary>
+    abstract member attributeStyleMap: StylePropertyMap with get
 
 /// <summary>ElementContentEditable in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral>] ElementContentEditable =
@@ -3476,6 +3974,32 @@ and [<RequireQualifiedAccess>] ElementOrText =
     | Element of Element
     | Text of Text
 
+/// <summary>DoubleOrCSSNumericValue in the scoped DOM interface model.</summary>
+and [<RequireQualifiedAccess>] DoubleOrCSSNumericValue =
+    | Double of float
+    | CSSNumericValue of CSSNumericValue
+
+/// <summary>CSSNumericValueOrDOMStringOrCSSOMKeywordValue in the scoped DOM interface model.</summary>
+and [<RequireQualifiedAccess>] CSSNumericValueOrDOMStringOrCSSOMKeywordValue =
+    | CSSNumericValue of CSSNumericValue
+    | DOMString of string
+    | CSSOMKeywordValue of CSSKeywordValue
+
+/// <summary>USVStringOrCSSOMVariableReferenceValue in the scoped DOM interface model.</summary>
+and [<RequireQualifiedAccess>] USVStringOrCSSOMVariableReferenceValue =
+    | USVString of string
+    | CSSOMVariableReferenceValue of CSSVariableReferenceValue
+
+/// <summary>UndefinedOrCSSStyleValue in the scoped DOM interface model.</summary>
+and [<RequireQualifiedAccess>] UndefinedOrCSSStyleValue =
+    | Undefined of unit
+    | CSSStyleValue of CSSStyleValue
+
+/// <summary>CSSStyleValueOrUSVString in the scoped DOM interface model.</summary>
+and [<RequireQualifiedAccess>] CSSStyleValueOrUSVString =
+    | CSSStyleValue of CSSStyleValue
+    | USVString of string
+
 /// <summary>ShadowRootOrGetComposedRangesOptions in the scoped DOM interface model.</summary>
 and [<RequireQualifiedAccess>] ShadowRootOrGetComposedRangesOptions =
     | ShadowRoot of ShadowRoot
@@ -3563,6 +4087,39 @@ and [<AllowNullLiteral; DomDictionary>] AssignedNodesOptions() =
 and [<AllowNullLiteral; DomDictionary>] GetComposedRangesOptions() =
     member val shadowRoots: (ShadowRoot) array = [||] with get, set
 
+/// <summary>DOMMatrixInit in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral; DomDictionary>] DOMMatrixInit() =
+    member val a: (float) option = None with get, set
+    member val b: (float) option = None with get, set
+    member val c: (float) option = None with get, set
+    member val d: (float) option = None with get, set
+    member val e: (float) option = None with get, set
+    member val f: (float) option = None with get, set
+    member val m11: (float) option = None with get, set
+    member val m12: (float) option = None with get, set
+    member val m21: (float) option = None with get, set
+    member val m22: (float) option = None with get, set
+    member val m41: (float) option = None with get, set
+    member val m42: (float) option = None with get, set
+    member val m13: float = 0 with get, set
+    member val m14: float = 0 with get, set
+    member val m23: float = 0 with get, set
+    member val m24: float = 0 with get, set
+    member val m31: float = 0 with get, set
+    member val m32: float = 0 with get, set
+    member val m33: float = 1 with get, set
+    member val m34: float = 0 with get, set
+    member val m43: float = 0 with get, set
+    member val m44: float = 1 with get, set
+    member val is2D: (bool) option = None with get, set
+
+/// <summary>DOMPointInit in the scoped DOM interface model.</summary>
+and [<AllowNullLiteral; DomDictionary>] DOMPointInit() =
+    member val x: float = 0 with get, set
+    member val y: float = 0 with get, set
+    member val z: float = 0 with get, set
+    member val w: float = 1 with get, set
+
 /// <summary>FocusOptions in the scoped DOM interface model.</summary>
 and [<AllowNullLiteral; DomDictionary>] FocusOptions() =
     member val preventScroll: bool = false with get, set
@@ -3625,6 +4182,30 @@ and [<DomStringEnum; RequireQualifiedAccess>] ScrollLogicalPosition =
 #if FABLE_COMPILER
 [<AutoOpen>]
 module BrowserUnionAdapters =
+    [<Fable.Core.Emit("$0 === undefined")>]
+    let private isUndefinedUnionValue (_: obj) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("((v)=>String(v==null?'null':v).toWellFormed())($0)")>]
+    let private normalizeUSVString (_: string) : string =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("((v)=>{if(v==null)return false;try{globalThis.CSSNumericValue.prototype.type.call(v);return true;}catch{return false;}})($0)")>]
+    let private isCSSNumericValue (_: obj) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("((v)=>{if(v==null)return false;try{Object.getOwnPropertyDescriptor(globalThis.CSSKeywordValue.prototype,'value').get.call(v);return true;}catch{return false;}})($0)")>]
+    let private isCSSOMKeywordValue (_: obj) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("((v)=>{if(v==null)return false;try{Object.getOwnPropertyDescriptor(globalThis.CSSVariableReferenceValue.prototype,'variable').get.call(v);return true;}catch{return false;} })($0)")>]
+    let private isCSSOMVariableReferenceValue (_: obj) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("((v)=>{if(v==null)return false;try{globalThis.CSSStyleValue.prototype.toString.call(v);return true;}catch{return false;}})($0)")>]
+    let private isCSSStyleValue (_: obj) : bool =
+        Fable.Core.Util.jsNative
+
     [<Fable.Core.Emit("$0 != null && $0.nodeType === 1")>]
     let private isElement (_: obj) : bool =
         Fable.Core.Util.jsNative
@@ -3692,6 +4273,105 @@ module BrowserUnionAdapters =
         match value with
         | ElementOrText.Element value -> box value
         | ElementOrText.Text value -> box value
+
+    let private boxDoubleOrCSSNumericValue (value: DoubleOrCSSNumericValue) : obj =
+        if isNull (box value) then
+            nullArg "value"
+
+        match value with
+        | DoubleOrCSSNumericValue.Double value -> box value
+        | DoubleOrCSSNumericValue.CSSNumericValue value ->
+            if isNull (box value) then
+                nullArg "value"
+
+            if not (isCSSNumericValue (box value)) then
+                invalidArg "value" "Expected a CSSNumericValue."
+
+            box value
+
+    let private unboxDoubleOrCSSNumericValue (value: obj) : DoubleOrCSSNumericValue =
+        match value with
+        | :? float as arm -> DoubleOrCSSNumericValue.Double arm
+        | arm when isCSSNumericValue arm -> DoubleOrCSSNumericValue.CSSNumericValue (unbox<CSSNumericValue> arm)
+        | _ -> failwith "Unexpected DOM union result"
+
+    let private boxCSSNumericValueOrDOMStringOrCSSOMKeywordValue (value: CSSNumericValueOrDOMStringOrCSSOMKeywordValue) : obj =
+        if isNull (box value) then
+            nullArg "value"
+
+        match value with
+        | CSSNumericValueOrDOMStringOrCSSOMKeywordValue.CSSNumericValue value ->
+            if isNull (box value) then
+                nullArg "value"
+
+            if not (isCSSNumericValue (box value)) then
+                invalidArg "value" "Expected a CSSNumericValue."
+
+            box value
+        | CSSNumericValueOrDOMStringOrCSSOMKeywordValue.DOMString value -> box value
+        | CSSNumericValueOrDOMStringOrCSSOMKeywordValue.CSSOMKeywordValue value ->
+            if isNull (box value) then
+                nullArg "value"
+
+            if not (isCSSOMKeywordValue (box value)) then
+                invalidArg "value" "Expected a CSSKeywordValue."
+
+            box value
+
+    let private unboxCSSNumericValueOrDOMStringOrCSSOMKeywordValue (value: obj) : CSSNumericValueOrDOMStringOrCSSOMKeywordValue =
+        match value with
+        | arm when isCSSNumericValue arm -> CSSNumericValueOrDOMStringOrCSSOMKeywordValue.CSSNumericValue (unbox<CSSNumericValue> arm)
+        | :? string as arm -> CSSNumericValueOrDOMStringOrCSSOMKeywordValue.DOMString arm
+        | arm when isCSSOMKeywordValue arm -> CSSNumericValueOrDOMStringOrCSSOMKeywordValue.CSSOMKeywordValue (unbox<CSSKeywordValue> arm)
+        | _ -> failwith "Unexpected DOM union result"
+
+    let private boxUSVStringOrCSSOMVariableReferenceValue (value: USVStringOrCSSOMVariableReferenceValue) : obj =
+        if isNull (box value) then
+            nullArg "value"
+
+        match value with
+        | USVStringOrCSSOMVariableReferenceValue.USVString value -> box (normalizeUSVString value)
+        | USVStringOrCSSOMVariableReferenceValue.CSSOMVariableReferenceValue value ->
+            if isNull (box value) then
+                nullArg "value"
+
+            if not (isCSSOMVariableReferenceValue (box value)) then
+                invalidArg "value" "Expected a CSSVariableReferenceValue."
+
+            box value
+
+    let private unboxUSVStringOrCSSOMVariableReferenceValue (value: obj) : USVStringOrCSSOMVariableReferenceValue =
+        match value with
+        | :? string as arm -> USVStringOrCSSOMVariableReferenceValue.USVString arm
+        | arm when isCSSOMVariableReferenceValue arm ->
+            USVStringOrCSSOMVariableReferenceValue.CSSOMVariableReferenceValue (unbox<CSSVariableReferenceValue> arm)
+        | _ -> failwith "Unexpected DOM union result"
+
+    let private boxUndefinedOrCSSStyleValue (value: UndefinedOrCSSStyleValue) : obj =
+        match value with
+        | UndefinedOrCSSStyleValue.Undefined value -> Fable.Core.JsInterop.emitJsExpr () "undefined"
+        | UndefinedOrCSSStyleValue.CSSStyleValue value -> box value
+
+    let private unboxUndefinedOrCSSStyleValue (value: obj) : UndefinedOrCSSStyleValue =
+        match value with
+        | arm when isUndefinedUnionValue arm -> UndefinedOrCSSStyleValue.Undefined ()
+        | arm when isCSSStyleValue arm -> UndefinedOrCSSStyleValue.CSSStyleValue (unbox<CSSStyleValue> arm)
+        | _ -> failwith "Unexpected DOM union result"
+
+    let private boxCSSStyleValueOrUSVString (value: CSSStyleValueOrUSVString) : obj =
+        if isNull (box value) then
+            nullArg "value"
+
+        match value with
+        | CSSStyleValueOrUSVString.CSSStyleValue value ->
+            if isNull (box value) then
+                nullArg "value"
+
+            if not (isCSSStyleValue (box value)) then
+                invalidArg "value" "Expected a CSSStyleValue."
+
+            box value
+        | CSSStyleValueOrUSVString.USVString value -> box (normalizeUSVString value)
 
     let private boxShadowRootOrGetComposedRangesOptions (value: ShadowRootOrGetComposedRangesOptions) : obj =
         match value with
@@ -3802,6 +4482,92 @@ module BrowserUnionAdapters =
     type HTMLSlotElement with
         member this.assign([<System.ParamArray>] nodes: ElementOrText array) : unit =
             this.__ranvier_assign (nodes |> Array.map boxElementOrText)
+
+
+    type CSSRotate with
+        member this.x
+            with get (): DoubleOrCSSNumericValue =
+                let value = this.__ranvier_get_x ()
+                unboxDoubleOrCSSNumericValue value
+            and set (value: DoubleOrCSSNumericValue) = this.__ranvier_set_x (boxDoubleOrCSSNumericValue value)
+
+        member this.y
+            with get (): DoubleOrCSSNumericValue =
+                let value = this.__ranvier_get_y ()
+                unboxDoubleOrCSSNumericValue value
+            and set (value: DoubleOrCSSNumericValue) = this.__ranvier_set_y (boxDoubleOrCSSNumericValue value)
+
+        member this.z
+            with get (): DoubleOrCSSNumericValue =
+                let value = this.__ranvier_get_z ()
+                unboxDoubleOrCSSNumericValue value
+            and set (value: DoubleOrCSSNumericValue) = this.__ranvier_set_z (boxDoubleOrCSSNumericValue value)
+
+
+    type CSSScale with
+        member this.x
+            with get (): DoubleOrCSSNumericValue =
+                let value = this.__ranvier_get_x ()
+                unboxDoubleOrCSSNumericValue value
+            and set (value: DoubleOrCSSNumericValue) = this.__ranvier_set_x (boxDoubleOrCSSNumericValue value)
+
+        member this.y
+            with get (): DoubleOrCSSNumericValue =
+                let value = this.__ranvier_get_y ()
+                unboxDoubleOrCSSNumericValue value
+            and set (value: DoubleOrCSSNumericValue) = this.__ranvier_set_y (boxDoubleOrCSSNumericValue value)
+
+        member this.z
+            with get (): DoubleOrCSSNumericValue =
+                let value = this.__ranvier_get_z ()
+                unboxDoubleOrCSSNumericValue value
+            and set (value: DoubleOrCSSNumericValue) = this.__ranvier_set_z (boxDoubleOrCSSNumericValue value)
+
+
+    type CSSPerspective with
+        member this.length
+            with get (): CSSNumericValueOrDOMStringOrCSSOMKeywordValue =
+                let value = this.__ranvier_get_length ()
+                unboxCSSNumericValueOrDOMStringOrCSSOMKeywordValue value
+            and set (value: CSSNumericValueOrDOMStringOrCSSOMKeywordValue) =
+                this.__ranvier_set_length (boxCSSNumericValueOrDOMStringOrCSSOMKeywordValue value)
+
+
+    type CSSUnparsedValue with
+        member this.item(index: uint32) : (USVStringOrCSSOMVariableReferenceValue) option =
+            let value = this.__ranvier_item (index)
+
+            if isNull value then
+                None
+            else
+                Some (unboxUSVStringOrCSSOMVariableReferenceValue value)
+
+        member this.setItem(index: uint32, ``val``: string) : unit =
+            this.__ranvier_setItem (index, box (normalizeUSVString ``val``))
+
+        member this.setItem(index: uint32, ``val``: CSSVariableReferenceValue) : unit =
+            if isNull (box ``val``) then
+                nullArg "val"
+
+            if not (isCSSOMVariableReferenceValue (box ``val``)) then
+                invalidArg "val" "Expected a CSSVariableReferenceValue."
+
+            this.__ranvier_setItem (index, box ``val``)
+
+
+    type StylePropertyMapReadOnly with
+        member this.get(property: string) : UndefinedOrCSSStyleValue =
+            let value = this.__ranvier_get (property)
+
+            unboxUndefinedOrCSSStyleValue value
+
+
+    type StylePropertyMap with
+        member this.set(property: string, [<System.ParamArray>] values: CSSStyleValueOrUSVString array) : unit =
+            this.__ranvier_set (property, values |> Array.map boxCSSStyleValueOrUSVString)
+
+        member this.append(property: string, [<System.ParamArray>] values: CSSStyleValueOrUSVString array) : unit =
+            this.__ranvier_append (property, values |> Array.map boxCSSStyleValueOrUSVString)
 
 
     type DOMSelection with

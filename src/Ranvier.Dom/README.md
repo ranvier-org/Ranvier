@@ -8,6 +8,16 @@ Reference `Ranvier.Dom` for .NET or `Fable.Ranvier.Dom` for a browser build. Bot
 generated contracts and shared utility sources. Browser-only conversion code handles typed unions at the JavaScript boundary. Components use
 the same public member names on both targets.
 
+`StyleSheetList.namedItem` uses the associated document's first matching ID and returns the sheet of
+an HTML style element, or null. Reserved names such as `length`, `item`, `0` and `__proto__` remain
+document IDs. Shadow-root lists return null. Obtain a document's list through the typed `styleSheets`
+getter so its association is retained even when the browser list is empty. The browser facade adds
+non-enumerable Symbol metadata containing a weak document reference; this metadata is visible through
+`Reflect.ownKeys`. A list supplied directly by JavaScript needs that typed getter before named lookup.
+
+`DOMStringMap.namedItem` reads dataset own keys and returns an empty string for a missing key on both
+targets. Prototype member names remain ordinary dataset keys.
+
 The shared `Ranvier.Dom.CSS.escape` function serializes complete UTF-16 text for CSS identifiers on all targets, including embedded null characters. It uses the [CSSOM 2021 identifier serialization profile](https://www.w3.org/TR/2021/WD-cssom-1-20210826/#serialize-an-identifier), matching pinned WebCore and the tested Chromium build. A null string reference becomes `"null"`.
 
 Members outside the generated scope remain available in browser code through an explicit cast to the

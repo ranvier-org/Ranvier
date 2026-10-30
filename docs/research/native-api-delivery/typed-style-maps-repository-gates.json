@@ -1,0 +1,122 @@
+{
+  "group": "C13",
+  "source": {
+    "coreImplementation": "711b26fd2239735670c3794ca48dbb6d6fdc8992",
+    "viewsImplementation": "d2f2bf28e250b02df56c0fb9d7ae63d20d9482ba",
+    "nativeProducerCheckpoint": "a5ae1ab222120015ab26f96f9842e0125222ca77",
+    "releaseQualification": "Unpublished cohort15 source checkpoint; not a final release-tag pin"
+  },
+  "contractCheck": {
+    "command": "rtk proxy node .github/scripts/dom-contracts.cjs C:/wk/native-typed-style-maps C:/wk/src C:/Python314/python.exe",
+    "exitCode": 0,
+    "interfaces": 138,
+    "exports": 1739,
+    "handleRoots": 20,
+    "exactSharedSources": true
+  },
+  "tests": {
+    "normalCore": {
+      "command": "rtk proxy dotnet test tests/Ranvier.Tests -c Release",
+      "passed": 1568,
+      "skipped": 0,
+      "exitCode": 0,
+      "capture": "Terminal tool result; no standalone log was retained for this invocation"
+    },
+    "csharp": {
+      "passed": 95,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "wire": {
+      "passed": 290,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "tracedCore": {
+      "passed": 1833,
+      "skipped": 13,
+      "exitCode": 0,
+      "qualification": "Existing traced retention/allocation skips"
+    }
+  },
+  "analyzers": {
+    "coreLibrary": {
+      "normal": true,
+      "traced": true,
+      "exitCode": 0
+    },
+    "viewsLibrary": {
+      "exitCode": 0
+    },
+    "viewsView": {
+      "exitCode": 0
+    },
+    "viewsExamples": {
+      "exitCode": 0
+    },
+    "backendSdlOrdinaryBuild": {
+      "exitCode": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    "extraBackendSdlAnalyzerBuild": {
+      "exitCode": 1,
+      "analyzerExitCode": -4,
+      "status": "FAILED; not waived as a successful check",
+      "failure": "Ranvier.Analyzers.Index.walk calls FSharpExprPatterns.Call on unchanged SDL Window.fs/Presentation.fs pointer conversion expressions; FCS throws ConstraintSolverError: byref<byte> does not support conversion to nativeint. Analyzer messages for those files are missing.",
+      "scope": "The configured library/view/examples analyzer groups all pass; SDL is outside those configured groups. This additional direct analyzer-enabled build exposed the limitation."
+    }
+  },
+  "childOnlyEnvironment": {
+    "RanvierViewRoot": "C:/wk/rv-custom-properties",
+    "RanvierRoot": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier",
+    "UseLocalRanvier": "true",
+    "RestoreConfigFile": "C:/wk/rv-custom-properties/artifacts/c15.nuget.config",
+    "RestorePackagesPath": "C:/Users/shaya/.nuget/packages",
+    "qualification": "Views ignored Local.Build.props selects its private cohort15 restore cache. Existing local Xantham package caches supply the pre-existing Anime dependencies. No tracked configuration or machine environment changed."
+  },
+  "logs": [
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-core-csharp.log",
+      "sha256": "5c24a738dbafe69b2aca1ed048e0fda45b790d8cfcc261d38d8b09554b038e7c"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-core-wire.log",
+      "sha256": "373cacd9eed9a84b27099f7fd093e056483f470a93dbcccfcb879456a65e8a9d"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-core-traced.log",
+      "sha256": "b1ccd2570e10a76c385d57c4f0b08ee45345019265a8d1ef19a7ede8a2978ecc"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-core-analyzers.log",
+      "sha256": "f1f0e59772e1cbff7ef2fa5a9c999ea2d8028e917abea6e3d96779eb6e3c7c14"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-views-analyzers-library.log",
+      "sha256": "27b5b8ebe94adef58503c2afd1952ade1db2b0dc4db5d35f1347e37f73a843e1"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-views-analyzers-view.log",
+      "sha256": "64689a27d7bffe78d74b3dae71f31fff39f7ef03d1c57f35b6265ce9e3098878"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-views-analyzers-examples.log",
+      "sha256": "db9fd21f03a4d12cfaefe361e0be59eb2a9f5e9a2ef484673b8e0ada405e6df8"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-backend-build.log",
+      "sha256": "3f2becc8498959a5ac5e085ce1a2cb62e5d7e86151833d8d04a077d73ea9b113"
+    },
+    {
+      "path": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/artifacts/c13-backend-plain-build.log",
+      "sha256": "affdcadac5fa6e6dd2a1e086895756028c15574009f994aa784dc5badfd589dd"
+    }
+  ],
+  "limitations": [
+    "No C13 conformance suite was rerun after its independently verified six logs; these additional gates do not change source behavior.",
+    "Initial build-script restore failed under a fresh private cache lacking Partas.Build0.8.2; using the existing global build-tool cache fixed resolution without installation.",
+    "The batch reporter hit a cp1252 UnicodeEncodeError after the successful Core analyzer process. Explicit UTF-8 reporter output fixed continuation; Core was not rerun.",
+    "Public platform/profile/released-cohort acceptance remains pending."
+  ]
+}

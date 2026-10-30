@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "group": "C16",
+  "status": "private-cohort17-repository-verification",
+  "canonicalNativeSource": "4091b07c5bff99d7acbe91c717165e7f94f40f81",
+  "contract": {
+    "interfaces": 153,
+    "exports": 1926,
+    "handleRoots": 24,
+    "dictionaries": 21,
+    "stubs": 0,
+    "exactSharedSources": true
+  },
+  "gates": [
+    {
+      "name": "contract",
+      "command": "rtk proxy node .github/scripts/dom-contracts.cjs C:/wk/native-css-transforms C:/wk/src C:/Python314/python.exe",
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\artifacts\\c17-contract.log",
+      "sha256": "0c32184da8603170108f499fdacb2451db8200b25e92f380f65ba5a29483b466",
+      "exitCode": 0
+    },
+    {
+      "name": "core-normal",
+      "command": "rtk proxy dotnet test tests/Ranvier.Tests -c Release",
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\artifacts\\c17-core-normal.log",
+      "sha256": "5ba0b90660457ef5c8f37ca02eaa546e7887188b13d71e7c7e75c99c04d9fff8",
+      "exitCode": 0,
+      "passed": 1568,
+      "skipped": 0
+    },
+    {
+      "name": "core-csharp",
+      "command": "rtk proxy dotnet test tests/Ranvier.CSharp.Tests -c Release",
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\artifacts\\c17-core-csharp.log",
+      "sha256": "314bc7b260e22543cd22714ead4935d48e681d25714bb4cc20e15087b97d4914",
+      "exitCode": 0,
+      "passed": 95,
+      "skipped": 0
+    },
+    {
+      "name": "core-wire",
+      "command": "rtk proxy dotnet test tests/Ranvier.Wire.Tests -c Release",
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\artifacts\\c17-core-wire.log",
+      "sha256": "79c1fc9e4fa09ecf00b8201acd188ca0cf2acea08163f302e418d9f4e0711950",
+      "exitCode": 0,
+      "passed": 290,
+      "skipped": 0
+    },
+    {
+      "name": "core-traced",
+      "command": "rtk proxy dotnet test tests/Ranvier.Tests -c Release -p:RanvierTrace=true",
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\artifacts\\c17-core-traced.log",
+      "sha256": "e04d0fee2a9e198d0146a24863479c412e7cb39c72063cedb027ebb4d654fe80",
+      "exitCode": 0,
+      "passed": 1833,
+      "skipped": 13
+    },
+    {
+      "name": "core-library-normal-and-traced",
+      "command": "rtk proxy dotnet fsi build.fsx -- analyze --group library --build",
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\artifacts\\c17-core-analyzers-library-complete-cache.log",
+      "sha256": "f01fb11445e5c78f85671082b9b79a7f58338e278cae70c5310677f038249954",
+      "exitCode": 0,
+      "pipelineOutcome": "succeeded",
+      "coversNormalAndTraced": true
+    },
+    {
+      "name": "views-library",
+      "command": "rtk proxy dotnet fsi build.fsx -- analyze --group library --build",
+      "log": "C:\\wk\\rv-transform-values\\artifacts\\c17-views-analyzers-library-complete-cache.log",
+      "sha256": "363334e474dbd2cc351d83a8df83be5f768a5db580d82f8f2884543c3514973e",
+      "exitCode": 0,
+      "pipelineOutcome": "succeeded"
+    },
+    {
+      "name": "views-view",
+      "command": "rtk proxy dotnet fsi build.fsx -- analyze --group view --build",
+      "log": "C:\\wk\\rv-transform-values\\artifacts\\c17-views-analyzers-view-complete-cache.log",
+      "sha256": "4f7be17dcd64998a4f950024354a45a885cded5f0ff8e43ce34973766eab46bb",
+      "exitCode": 0,
+      "pipelineOutcome": "succeeded"
+    },
+    {
+      "name": "views-examples",
+      "command": "rtk proxy dotnet fsi build.fsx -- analyze --group examples --build",
+      "log": "C:\\wk\\rv-transform-values\\artifacts\\c17-views-analyzers-examples-complete-cache.log",
+      "sha256": "2d39eafacb103e6202a4de08f96029fc6ba4e34c5f6640fe2ad7296395d8e1a8",
+      "exitCode": 0,
+      "pipelineOutcome": "succeeded"
+    },
+    {
+      "name": "backend-sdl-build",
+      "command": "rtk proxy dotnet build src/Ranvier.View.WebCore.Sdl/Ranvier.View.WebCore.Sdl.fsproj -c Release",
+      "log": "C:\\wk\\rv-transform-values\\artifacts\\c17-backend-build.log",
+      "sha256": "6cf04e2c1bb5ec90bf322fbfdc253595252c37d6408f0fb954903ce07f8802d3",
+      "exitCode": 0
+    }
+  ],
+  "runtimeEvidence": {
+    "file": "C:\\wk\\rv-transform-values\\docs\\research\\native-api-delivery\\typed-transform-values-runtime-evidence.json",
+    "sha256": "4c6523cc509dd75b88b11d55b313b69c8c8197084f0331d4b9c61e61526a4b43"
+  },
+  "freshFcs": {
+    "core": {
+      "status": "succeeded",
+      "verdict": "clean",
+      "analyzed": true,
+      "scope": "project",
+      "speed": "trusted",
+      "errorCount": 0,
+      "warningCount": 0,
+      "diagnosticsFileCount": 0,
+      "files": [],
+      "diagnostics": [],
+      "diagnosticsTruncated": false,
+      "escalated": "fcs-reanalyze",
+      "via": "fcs",
+      "fresh": true,
+      "groundTruth": true,
+      "totalDiagnostics": 0,
+      "infoCount": 0,
+      "belowSeverityFloorCount": 0,
+      "diagnosticsNote": null,
+      "reason": null,
+      "projectFileName": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "projectsSwept": 1
+    },
+    "native": {
+      "status": "succeeded",
+      "verdict": "clean",
+      "analyzed": true,
+      "scope": "project",
+      "speed": "trusted",
+      "errorCount": 0,
+      "warningCount": 0,
+      "diagnosticsFileCount": 0,
+      "files": [],
+      "diagnostics": [],
+      "diagnosticsTruncated": false,
+      "escalated": "fcs-reanalyze",
+      "via": "fcs",
+      "fresh": true,
+      "groundTruth": true,
+      "totalDiagnostics": 0,
+      "infoCount": 0,
+      "belowSeverityFloorCount": 0,
+      "diagnosticsNote": null,
+      "reason": null,
+      "projectFileName": "C:\\wk\\rv-transform-values\\tests\\NativeApi.Conformance\\Native.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "projectsSwept": 1
+    }
+  },
+  "sourceChecks": {
+    "xmlAuditFindings": 0,
+    "publicSourceFilesAudited": 5,
+    "commentHygieneExitCode": 0,
+    "formatterExitCode": 0,
+    "gitDiffCheckExitCode": 0,
+    "utf8CrLf": true,
+    "regeneratedObjectsAndReportByteIdentical": true
+  },
+  "childOnlyOverrides": {
+    "RanvierRoot": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier",
+    "RanvierViewRoot": "C:\\wk\\rv-transform-values",
+    "UseLocalRanvier": "true",
+    "RestoreConfigFile": "C:\\wk\\rv-transform-values\\artifacts\\c17.nuget.config",
+    "RestorePackagesPath": "C:\\wk\\rv-transform-values\\artifacts\\c17-package-cache",
+    "runtime": "C:\\wk\\rv-transform-values\\artifacts\\c17-runtime-stage",
+    "browserDependencyPath": "C:/wk/ranvier-views/tests/NativeApi.Conformance/package.json"
+  },
+  "qualifications": [
+    "Core library analyzer pipeline itself checks both normal and traced projects; it ran once successfully, without a redundant second traced invocation.",
+    "The fresh private cache required the existing cached Partas.Build0.8.2, Partas.Build.Baked0.3.0, Partas.Build.Cmd0.4.1, local Nacara.Plugin.LiveExample and Xantham.TypeScript.Wire feeds. Failed restore/bootstrap logs are preserved. No system build tools, credentials or machine-wide settings were changed.",
+    "The first Views library capture wrapper hit a console encoding error after preserving the underlying failed restore log. The wrapper now writes raw captured bytes; the final complete-cache pipeline logs show actual exit0.",
+    "Existing traced tests retain13 skips; existing C# analyzer warnings, docs NU1608, native AOT dependency warnings and analyzer OS-binding warnings remain visible in logs.",
+    "The extra SDL/FCS byref analyzer defect remains tracked separately at https://github.com/ranvier-org/Ranvier.View/issues/14; it is outside configured groups and was not rerun or claimed fixed. Ordinary SDL build passed0warnings0errors.",
+    "All runtime proof is private coherent ABI25 Windows and Chromium execution. Official package consumption, remaining platform/profile gates and final released producer-pin replacement remain open.",
+    "No new PR/push/build begins at the user-requested agent-limit reload breakpoint."
+  ],
+  "resourceCleanup": {
+    "ownedSageSession": "0a6d690f stopped",
+    "ownedProcesses": "all completed",
+    "finalBuildLeaseRelease": "already_gone_or_not_owned for both completed analyzer batches",
+    "ownedTestLeases": "none live",
+    "sharedSerena": "not stopped; no newly owned Serena process"
+  }
+}
