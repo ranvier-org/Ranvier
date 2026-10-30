@@ -14,7 +14,7 @@ module Geometry =
 
     [<Emit("""(() => {
         const r=$0.defaultView;
-        return r!=null && ['DOMRect','DOMRectReadOnly','DOMPoint','DOMPointReadOnly','DOMQuad']
+        return r!=null && ['DOMRect','DOMRectReadOnly','DOMPoint','DOMPointReadOnly','DOMQuad','DOMMatrix','DOMMatrixReadOnly']
             .every(name => typeof r[name]==='function');
     })()""")>]
     let private available (document: Document) : bool = jsNative
@@ -52,6 +52,24 @@ module Geometry =
     [<Emit("$0.defaultView.DOMQuad.fromQuad($1)")>]
     let private quadFrom (document: Document) (init: obj) : DOMQuad = jsNative
 
+    [<Emit("new $0.defaultView.DOMMatrix()")>]
+    let private matrix (document: Document) : DOMMatrix = jsNative
+
+    [<Emit("new $0.defaultView.DOMMatrix($1)")>]
+    let private matrixInput (document: Document) (init: obj) : DOMMatrix = jsNative
+
+    [<Emit("new $0.defaultView.DOMMatrixReadOnly()")>]
+    let private readonlyMatrix (document: Document) : DOMMatrixReadOnly = jsNative
+
+    [<Emit("new $0.defaultView.DOMMatrixReadOnly($1)")>]
+    let private readonlyMatrixInput (document: Document) (init: obj) : DOMMatrixReadOnly = jsNative
+
+    [<Emit("$0.defaultView.DOMMatrix.fromMatrix($1)")>]
+    let private matrixFrom (document: Document) (init: obj) : DOMMatrix = jsNative
+
+    [<Emit("$0.defaultView.DOMMatrixReadOnly.fromMatrix($1)")>]
+    let private readonlyMatrixFrom (document: Document) (init: obj) : DOMMatrixReadOnly = jsNative
+
     [<Emit("$0.name || 'Error'")>]
     let private errorName (error: obj) : string = jsNative
 
@@ -59,14 +77,49 @@ module Geometry =
     let private errorMessage (error: obj) : string = jsNative
 
     let private pointInput (init: DOMPointInit) =
-        let init = if isNull (box init) then DOMPointInit.Empty else init
+        let init = if isNull init then DOMPointInit () else init
+        createObj [ "x" ==> init.x; "y" ==> init.y; "z" ==> init.z; "w" ==> init.w ]
+
+    let private matrixDictionary (init: DOMMatrixInit) =
+        let init = if isNull init then DOMMatrixInit () else init
 
         createObj
             [
-                for key, value in [ "x", init.X; "y", init.Y; "z", init.Z; "w", init.W ] do
+                for key, value in
+                    [
+                        "a", init.a
+                        "b", init.b
+                        "c", init.c
+                        "d", init.d
+                        "e", init.e
+                        "f", init.f
+                        "m11", init.m11
+                        "m12", init.m12
+                        "m21", init.m21
+                        "m22", init.m22
+                        "m41", init.m41
+                        "m42", init.m42
+                    ] do
                     match value with
-                    | Some number -> yield key ==> number
+                    | Some value -> yield key ==> value
                     | None -> ()
+                for key, value in
+                    [
+                        "m13", init.m13
+                        "m14", init.m14
+                        "m23", init.m23
+                        "m24", init.m24
+                        "m31", init.m31
+                        "m32", init.m32
+                        "m33", init.m33
+                        "m34", init.m34
+                        "m43", init.m43
+                        "m44", init.m44
+                    ] do
+                    yield key ==> value
+                match init.is2D with
+                | Some value -> yield "is2D" ==> value
+                | None -> ()
             ]
 
     let private rectInput (init: DOMRectInit) =
@@ -167,6 +220,46 @@ module Geometry =
             member _.QuadFrom init =
                 active ()
                 engine (fun () -> quadFrom document (quadInput init))
+
+            member _.CreateMatrix() =
+                active ()
+                engine (fun () -> matrix document)
+
+            member _.CreateMatrix(transformList: string) =
+                active ()
+                engine (fun () -> matrixInput document (box (if isNull transformList then "null" else transformList)))
+
+            member _.CreateMatrix(values: float array) =
+                active ()
+
+                if isNull values then
+                    nullArg (nameof values)
+
+                engine (fun () -> matrixInput document (box values))
+
+            member _.CreateReadOnlyMatrix() =
+                active ()
+                engine (fun () -> readonlyMatrix document)
+
+            member _.CreateReadOnlyMatrix(transformList: string) =
+                active ()
+                engine (fun () -> readonlyMatrixInput document (box (if isNull transformList then "null" else transformList)))
+
+            member _.CreateReadOnlyMatrix(values: float array) =
+                active ()
+
+                if isNull values then
+                    nullArg (nameof values)
+
+                engine (fun () -> readonlyMatrixInput document (box values))
+
+            member _.MatrixFrom init =
+                active ()
+                engine (fun () -> matrixFrom document (matrixDictionary init))
+
+            member _.ReadOnlyMatrixFrom init =
+                active ()
+                engine (fun () -> readonlyMatrixFrom document (matrixDictionary init))
 
             member _.Dispose() =
                 disposed <- true

@@ -1,24 +1,5 @@
 namespace Ranvier.Dom
 
-/// <summary>Optional point coordinates for geometry factories, defaulting to x/y/z=0 and w=1.</summary>
-/// <remarks>None omits a dictionary field. Present values preserve unrestricted doubles, including NaN and infinities.</remarks>
-type DOMPointInit =
-    {
-        X: float option
-        Y: float option
-        Z: float option
-        W: float option
-    }
-
-    /// <summary>Omits every point field and uses the engine's coordinate defaults.</summary>
-    static member Empty =
-        {
-            X = None
-            Y = None
-            Z = None
-            W = None
-        }
-
 /// <summary>Optional rectangle coordinates and signed extents, each defaulting to zero.</summary>
 /// <remarks>None omits a dictionary field. Present values preserve unrestricted doubles.</remarks>
 type DOMRectInit =
@@ -90,10 +71,10 @@ type GeometryService =
     /// <summary>Constructs a read-only point with omitted x/y/z defaulting to zero and w defaulting to one.</summary>
     abstract CreateReadOnlyPoint: ?x: float * ?y: float * ?z: float * ?w: float -> DOMPointReadOnly
 
-    /// <summary>Copies optional dictionary coordinates into a mutable point.</summary>
+    /// <summary>Copies a canonical point dictionary, whose omitted fields use 0/0/0/1 defaults.</summary>
     abstract PointFrom: init: DOMPointInit -> DOMPoint
 
-    /// <summary>Copies optional dictionary coordinates into a read-only point.</summary>
+    /// <summary>Copies a canonical point dictionary into a read-only point, preserving its unrestricted doubles.</summary>
     abstract ReadOnlyPointFrom: init: DOMPointInit -> DOMPointReadOnly
 
     /// <summary>Copies four optional corner dictionaries into a quad containing live mutable points.</summary>
@@ -104,3 +85,27 @@ type GeometryService =
 
     /// <summary>Copies optional nested corner dictionaries into a quad containing live mutable points.</summary>
     abstract QuadFrom: init: DOMQuadInit -> DOMQuad
+
+    /// <summary>Constructs an identity mutable matrix with the initializer omitted.</summary>
+    abstract CreateMatrix: unit -> DOMMatrix
+
+    /// <summary>Parses a transform string using the engine's geometry constructor.</summary>
+    abstract CreateMatrix: transformList: string -> DOMMatrix
+
+    /// <summary>Copies six or sixteen doubles into a mutable matrix; present empty arrays remain invalid inputs.</summary>
+    abstract CreateMatrix: values: float array -> DOMMatrix
+
+    /// <summary>Constructs an identity read-only matrix with the initializer omitted.</summary>
+    abstract CreateReadOnlyMatrix: unit -> DOMMatrixReadOnly
+
+    /// <summary>Parses a transform string into a read-only matrix.</summary>
+    abstract CreateReadOnlyMatrix: transformList: string -> DOMMatrixReadOnly
+
+    /// <summary>Copies six or sixteen doubles into a read-only matrix.</summary>
+    abstract CreateReadOnlyMatrix: values: float array -> DOMMatrixReadOnly
+
+    /// <summary>Copies a canonical matrix dictionary, preserving optional aliases and is2D for engine validation.</summary>
+    abstract MatrixFrom: init: DOMMatrixInit -> DOMMatrix
+
+    /// <summary>Copies a canonical matrix dictionary into a read-only matrix with engine alias validation.</summary>
+    abstract ReadOnlyMatrixFrom: init: DOMMatrixInit -> DOMMatrixReadOnly
