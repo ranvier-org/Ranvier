@@ -27,7 +27,7 @@ export const test = base.extend({
     page.on("pageerror", error => problems.push(`pageerror: ${error.stack ?? error.message}`));
     page.on("console", message => { if (message.type() === "error") problems.push(`console: ${message.text()}`); });
     await use(problems);
-    if (testInfo.status !== testInfo.expectedStatus) {
+    if (testInfo.status !== testInfo.expectedStatus || problems.length) {
       const live = await page.locator(".nacara-live__actions").evaluateAll(actions => actions.map(action => ({
         status: action.querySelector(".nacara-live__status")?.textContent,
         disabled: action.querySelector(".nacara-live__run")?.disabled
