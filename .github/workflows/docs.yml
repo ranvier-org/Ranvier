@@ -101,6 +101,7 @@ jobs:
           path: docs/output
 
   deploy:
+    if: github.ref == 'refs/heads/master'
     needs: [resolve, build]
     runs-on: ubuntu-latest
     concurrency:
