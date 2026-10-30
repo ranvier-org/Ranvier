@@ -47,13 +47,17 @@ Root owns the canonical Native producer, WebKit source/repairs, native candidate
 - [x] Import the exact canonical producer contract and inspect the fresh generated interfaces with FCS before public signature changes.
 - [x] Prove context exclusion, monostate and nullable decoding in Sage, persist the bounded backend changes, regenerate and compare all pre-existing wrapper bodies.
 - [x] Implement and independently review the Core/browser/native service providers and exact public API snapshot.
-- [ ] Add focused shared proof for missing values, list order/cardinality, empty variadics, grammar/property/type errors, null/foreign inputs, USV/NUL, read-only maps, inline priority and actual computed effects.
-- [ ] Prove entries snapshot order/liveness/null preservation, owner/document/session/thread behavior and same-object context retention across services.
+- [x] Add focused shared proof for missing values, list order/cardinality, empty variadics, grammar/property/type errors, null/foreign inputs, USV/NUL, read-only maps, inline priority and actual computed effects.
+- [x] Prove entries snapshot order/liveness and owner/document/session/thread behavior across services; independently review nullable decoding, with forced null-slot/partial-error injection explicitly unverified.
 - [x] Preserve all six two-sheet COW mutations with complete survivor CSSOM and actual owning/survivor layout checks. Root's reviewed engine repairs preserve the required scope.
-- [ ] Run focused Windows JIT/NativeAOT/Chromium and exact count guards, then one combined batch. Audit XML/comments/formatting and obtain independent review.
+- [x] Run focused Windows JIT/NativeAOT/Chromium and exact count guards, then one combined batch. Audit XML/comments/formatting and obtain independent review.
 - [ ] Allocate the next cohort and producer pins with root before publication. Platform CI and released normal/traced consumers remain separate acceptance gates.
 
-The first focused private ABI23 run passes 127 shared assertions and 33 native lifecycle assertions; actual Chromium passes the same 127 shared assertions after canonical selected-union validation repair. Exact count guards, final navigation context checks, AOT and combined gates remain in progress. Public package availability and completed platform acceptance are not claimed. The C14 branch and its CI head remain unchanged.
+Final private ABI23 focused Windows JIT and NativeAOT pass 127 shared + 33 lifecycle assertions; Chromium 156.0.8078.4 passes 127 shared + 3 document-navigation assertions. Exact count guards apply to focused and full modes. Combined Windows JIT/NativeAOT pass 1755 shared + 87 lifecycle assertions, while Chromium passes 1768 shared + 13 context assertions, 196609 CSS.escape oracle comparisons and Tab. Native teardown is clean. Root and tracker final independent reviews found no actionable source issue. Public package availability and completed platform acceptance are not claimed. The C14 branch and its CI head remain unchanged.
+
+The Core canonical producer checkpoint is a5ae1ab222120015ab26f96f9842e0125222ca77, an unpublished cohort 15 source head including the selected-union guard and frame/publication fixes. Canonical generation matches all 1739 exports / 138 interfaces / 20 handle roots. This is a coordinated source checkpoint, not a final release-tag claim.
+
+Repository gates pass: normal Core 1568 tests, C# 95 tests, Wire 290 tests; traced Core 1833 tests with 13 existing skips. Core library analyzers pass normal and traced, and Views library/view/examples analyzer groups all pass. Ordinary WebCore/SDL build passes with zero warnings/errors. The additional direct SDL analyzer-enabled build fails inside FCS on unchanged byref-to-nativeint expressions in Window.fs and Presentation.fs; its missing analyzer messages are not claimed as successful coverage. Exact commands, log hashes and this limitation are in ../../research/native-api-delivery/typed-style-maps-repository-gates.json.
 
 ## Runtime staging diagnostic
 
