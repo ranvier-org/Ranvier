@@ -2466,6 +2466,7 @@
     "SVGPoint and SVGRect fields use float precision; SVGMatrix coefficients use double precision. Actual Chromium156 exposes genuine SVGPoint/SVGMatrix brands, not interchangeable DOMMatrix inputs for the three transform dictionary routes.",
     "The browser adapter normalizes DOMMatrix2DInit through DOMMatrix.fromMatrix, creates a genuine SVGMatrix and copies a-f. Legacy SVGMatrix finite setters reject NaN/infinity dictionary coefficients; native dictionary coefficients stay unrestricted. This measured difference is explicit, not a global DTO restriction.",
     "Incidental view/animation/filter APIs do not close S03/S05/S06/S07/S09. Legacy SVGPathSeg APIs are outside the current selected scope.",
-    "Fresh Core FCS check was clean0warnings0errors; net10 Release compile and canonical formatter passed. Wider consumer/platform/profile/public gates remain separate."
+    "Fresh Core FCS check was clean0warnings0errors; net10 Release compile and canonical formatter passed. Wider consumer/platform/profile/public gates remain separate.",
+    "SVG number/length/point/transform list method results retain stable managed wrapper identity on native and create fresh live JavaScript views in measured Chromium156. Both preserve bidirectional mutation aliases, detach/reattach behavior and cross-list cloning. Exact SameObject property identity remains enforced; no public identity flag or JavaScript object registry is introduced."
   ]
 }
