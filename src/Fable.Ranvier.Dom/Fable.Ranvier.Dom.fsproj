@@ -18,6 +18,8 @@
     <Compile Include="BrowserCssQueries.fs" />
     <Compile Include="../Ranvier.Dom/ComputedStyles.fs" Link="ComputedStyles.fs" />
     <Compile Include="BrowserComputedStyles.fs" />
+    <Compile Include="../Ranvier.Dom/Timing.fs" Link="Timing.fs" />
+    <Compile Include="BrowserTiming.fs" />
     <PackageReference Include="Fable.Core" Version="5.3.0" />
     <None Include="../Ranvier.Dom/README.md" Pack="true" PackagePath="README.md" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="/" />
@@ -35,6 +37,6 @@
       </_PackageFiles>
     </ItemGroup>
     <WriteLinesToFile File="$(NuspecOutputPath)fable/$(MSBuildProjectFile)" Overwrite="true"
-                      Lines="&lt;Project Sdk=&quot;Microsoft.NET.Sdk&quot;&gt;;  &lt;PropertyGroup&gt;;    &lt;TargetFramework&gt;netstandard2.1&lt;/TargetFramework&gt;;    &lt;AssemblyName&gt;Ranvier.Dom&lt;/AssemblyName&gt;;  &lt;/PropertyGroup&gt;;  &lt;ItemGroup&gt;;    &lt;Compile Include=&quot;Generated/Dom.fs&quot; /&gt;;    &lt;Compile Include=&quot;StyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserStyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;CSS.fs&quot; /&gt;;    &lt;Compile Include=&quot;CssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserCssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;ComputedStyles.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserComputedStyles.fs&quot; /&gt;;  &lt;/ItemGroup&gt;;&lt;/Project&gt;" />
+                      Lines="&lt;Project Sdk=&quot;Microsoft.NET.Sdk&quot;&gt;;  &lt;PropertyGroup&gt;;    &lt;TargetFramework&gt;netstandard2.1&lt;/TargetFramework&gt;;    &lt;AssemblyName&gt;Ranvier.Dom&lt;/AssemblyName&gt;;  &lt;/PropertyGroup&gt;;  &lt;ItemGroup&gt;;    &lt;Compile Include=&quot;Generated/Dom.fs&quot; /&gt;;    &lt;Compile Include=&quot;StyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserStyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;CSS.fs&quot; /&gt;;    &lt;Compile Include=&quot;CssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserCssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;ComputedStyles.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserComputedStyles.fs&quot; /&gt;;    &lt;Compile Include=&quot;Timing.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserTiming.fs&quot; /&gt;;  &lt;/ItemGroup&gt;;&lt;/Project&gt;" />
   </Target>
 </Project>
