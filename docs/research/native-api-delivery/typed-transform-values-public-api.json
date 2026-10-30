@@ -1,6 +1,7 @@
 {
   "group": "C16",
-  "qualification": "Private unpublished transform source checkpoint; final producer SHA/ABI25 execution and official platform gates pending",
+  "qualification": "Private transform API source checkpoint; Windows ABI25 and Chromium runtime proof is recorded separately; official package/platform acceptance remains pending",
+  "canonicalNativeSource": "4091b07c5bff99d7acbe91c717165e7f94f40f81",
   "baseRevision": "88109eacc025b487cf803a5faaa61e2cb90fd7ec",
   "canonicalGeneratedSourceSha256": "07a00eac135210b9c80cfe947612e9f7d3c9e697de8afda8ca517c4a6dd0b04b",
   "project": "C:/Users/shaya/.codex/worktrees/native-api-transform-values/Ranvier/src/Ranvier.Dom/Ranvier.Dom.fsproj",
