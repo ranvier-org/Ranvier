@@ -51,6 +51,7 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /Source/WebCore/**/*.idl
+            /Source/WebCore/svg/properties/SVGAnimatedPropertyImpl.h
             /Source/WebCore/html/HTMLTagNames.in
             /Source/WebCore/svg/svgtags.in
           persist-credentials: false
