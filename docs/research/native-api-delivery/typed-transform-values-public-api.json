@@ -1,0 +1,477 @@
+{
+  "group": "C16",
+  "qualification": "Private unpublished transform source checkpoint; final producer SHA/ABI25 execution and official platform gates pending",
+  "baseRevision": "88109eacc025b487cf803a5faaa61e2cb90fd7ec",
+  "canonicalGeneratedSourceSha256": "07a00eac135210b9c80cfe947612e9f7d3c9e697de8afda8ca517c4a6dd0b04b",
+  "project": "C:/Users/shaya/.codex/worktrees/native-api-transform-values/Ranvier/src/Ranvier.Dom/Ranvier.Dom.fsproj",
+  "freshCheck": {
+    "verdict": "clean",
+    "errors": 0,
+    "warnings": 0,
+    "diagnostics": []
+  },
+  "note": "FCS reports declared members; inherited component/StyleValue members are captured on the corresponding base type. Property signatures are reported by FCS as accessor signatures.",
+  "results": [
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.TransformValueService",
+      "entityCount": 1,
+      "memberCount": 13,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.TransformValueService",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "CreateList",
+              "kind": "method",
+              "signature": "CreateList(components: array<Ranvier.Dom.CSSTransformComponent>) -> Ranvier.Dom.CSSTransformValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateMatrixComponent",
+              "kind": "method",
+              "signature": "CreateMatrixComponent(matrix: Ranvier.Dom.DOMMatrixReadOnly, is2D: bool option) -> Ranvier.Dom.CSSMatrixComponent",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreatePerspective",
+              "kind": "method",
+              "signature": "CreatePerspective(length: Ranvier.Dom.CSSNumericValueOrDOMStringOrCSSOMKeywordValue) -> Ranvier.Dom.CSSPerspective",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateRotate",
+              "kind": "method",
+              "signature": "CreateRotate(angle: Ranvier.Dom.CSSNumericValue) -> Ranvier.Dom.CSSRotate",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateRotate",
+              "kind": "method",
+              "signature": "CreateRotate(x: Ranvier.Dom.DoubleOrCSSNumericValue, y: Ranvier.Dom.DoubleOrCSSNumericValue, z: Ranvier.Dom.DoubleOrCSSNumericValue, angle: Ranvier.Dom.CSSNumericValue) -> Ranvier.Dom.CSSRotate",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateScale",
+              "kind": "method",
+              "signature": "CreateScale(x: Ranvier.Dom.DoubleOrCSSNumericValue, y: Ranvier.Dom.DoubleOrCSSNumericValue) -> Ranvier.Dom.CSSScale",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateScale",
+              "kind": "method",
+              "signature": "CreateScale(x: Ranvier.Dom.DoubleOrCSSNumericValue, y: Ranvier.Dom.DoubleOrCSSNumericValue, z: Ranvier.Dom.DoubleOrCSSNumericValue) -> Ranvier.Dom.CSSScale",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateSkew",
+              "kind": "method",
+              "signature": "CreateSkew(ax: Ranvier.Dom.CSSNumericValue, ay: Ranvier.Dom.CSSNumericValue) -> Ranvier.Dom.CSSSkew",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateSkewX",
+              "kind": "method",
+              "signature": "CreateSkewX(ax: Ranvier.Dom.CSSNumericValue) -> Ranvier.Dom.CSSSkewX",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateSkewY",
+              "kind": "method",
+              "signature": "CreateSkewY(ay: Ranvier.Dom.CSSNumericValue) -> Ranvier.Dom.CSSSkewY",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateTranslate",
+              "kind": "method",
+              "signature": "CreateTranslate(x: Ranvier.Dom.CSSNumericValue, y: Ranvier.Dom.CSSNumericValue) -> Ranvier.Dom.CSSTranslate",
+              "accessibility": "public"
+            },
+            {
+              "name": "CreateTranslate",
+              "kind": "method",
+              "signature": "CreateTranslate(x: Ranvier.Dom.CSSNumericValue, y: Ranvier.Dom.CSSNumericValue, z: Ranvier.Dom.CSSNumericValue) -> Ranvier.Dom.CSSTranslate",
+              "accessibility": "public"
+            },
+            {
+              "name": "Get",
+              "kind": "method",
+              "signature": "Get(value: Ranvier.Dom.CSSTransformValue, index: uint32) -> Ranvier.Dom.CSSTransformComponent option",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSTransformValue",
+      "entityCount": 1,
+      "memberCount": 5,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSTransformValue",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "is2D",
+              "kind": "property",
+              "signature": "is2D() -> bool",
+              "accessibility": "public"
+            },
+            {
+              "name": "item",
+              "kind": "method",
+              "signature": "item(index: uint32) -> Ranvier.Dom.CSSTransformComponent",
+              "accessibility": "public"
+            },
+            {
+              "name": "length",
+              "kind": "property",
+              "signature": "length() -> uint32",
+              "accessibility": "public"
+            },
+            {
+              "name": "setItem",
+              "kind": "method",
+              "signature": "setItem(index: uint32, val: Ranvier.Dom.CSSTransformComponent) -> unit",
+              "accessibility": "public"
+            },
+            {
+              "name": "toMatrix",
+              "kind": "method",
+              "signature": "toMatrix() -> Ranvier.Dom.DOMMatrix",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSTransformComponent",
+      "entityCount": 1,
+      "memberCount": 3,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSTransformComponent",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "is2D",
+              "kind": "property",
+              "signature": "is2D() -> bool",
+              "accessibility": "public"
+            },
+            {
+              "name": "toMatrix",
+              "kind": "method",
+              "signature": "toMatrix() -> Ranvier.Dom.DOMMatrix",
+              "accessibility": "public"
+            },
+            {
+              "name": "toString",
+              "kind": "method",
+              "signature": "toString() -> string",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSTranslate",
+      "entityCount": 1,
+      "memberCount": 3,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSTranslate",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "x",
+              "kind": "property",
+              "signature": "x() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "y",
+              "kind": "property",
+              "signature": "y() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "z",
+              "kind": "property",
+              "signature": "z() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSRotate",
+      "entityCount": 1,
+      "memberCount": 4,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSRotate",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "angle",
+              "kind": "property",
+              "signature": "angle() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "x",
+              "kind": "property",
+              "signature": "x() -> Ranvier.Dom.DoubleOrCSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "y",
+              "kind": "property",
+              "signature": "y() -> Ranvier.Dom.DoubleOrCSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "z",
+              "kind": "property",
+              "signature": "z() -> Ranvier.Dom.DoubleOrCSSNumericValue",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSScale",
+      "entityCount": 1,
+      "memberCount": 3,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSScale",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "x",
+              "kind": "property",
+              "signature": "x() -> Ranvier.Dom.DoubleOrCSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "y",
+              "kind": "property",
+              "signature": "y() -> Ranvier.Dom.DoubleOrCSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "z",
+              "kind": "property",
+              "signature": "z() -> Ranvier.Dom.DoubleOrCSSNumericValue",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSSkew",
+      "entityCount": 3,
+      "memberCount": 4,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSSkew",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "ax",
+              "kind": "property",
+              "signature": "ax() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            },
+            {
+              "name": "ay",
+              "kind": "property",
+              "signature": "ay() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            }
+          ]
+        },
+        {
+          "fullName": "Ranvier.Dom.CSSSkewX",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "ax",
+              "kind": "property",
+              "signature": "ax() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            }
+          ]
+        },
+        {
+          "fullName": "Ranvier.Dom.CSSSkewY",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "ay",
+              "kind": "property",
+              "signature": "ay() -> Ranvier.Dom.CSSNumericValue",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 3
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSPerspective",
+      "entityCount": 1,
+      "memberCount": 1,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSPerspective",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "length",
+              "kind": "property",
+              "signature": "length() -> Ranvier.Dom.CSSNumericValueOrDOMStringOrCSSOMKeywordValue",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    },
+    {
+      "status": "ok",
+      "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-transform-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "includeInternal": false,
+      "namespaceFilter": "Ranvier.Dom.CSSMatrixComponent",
+      "entityCount": 1,
+      "memberCount": 1,
+      "entities": [
+        {
+          "fullName": "Ranvier.Dom.CSSMatrixComponent",
+          "kind": "interface",
+          "accessibility": "public",
+          "members": [
+            {
+              "name": "matrix",
+              "kind": "property",
+              "signature": "matrix() -> Ranvier.Dom.DOMMatrix",
+              "accessibility": "public"
+            }
+          ]
+        }
+      ],
+      "truncated": false,
+      "nextCursor": null,
+      "totalEstimate": {
+        "entities": 1
+      },
+      "pageOffset": 0,
+      "pageSize": 20
+    }
+  ]
+}
