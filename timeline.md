@@ -119,6 +119,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 83,363 | 127,547 | 1,742,284 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 83,303 | 127,571 | 1,742,244 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 83,303 | 127,619 | 1,742,286 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 83,303 | 127,553 | 1,742,239 |
 
 ## app-table
 
@@ -239,6 +240,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 4,417,713 | 9,274,414 | 107,880,293 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 4,417,658 | 9,272,748 | 107,970,482 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 4,417,665 | 9,272,275 | 107,746,771 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 4,417,729 | 9,273,022 | 107,667,373 |
 
 ## async-recover
 
@@ -359,6 +361,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 139,139 | 41,225 | 434,845 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 139,139 | 41,282 | 434,855 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 139,139 | 41,256 | 434,868 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 139,139 | 41,271 | 434,851 |
 
 ## async-resolve
 
@@ -479,6 +482,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,790,467 | 1,023,165 | 11,970,045 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,790,467 | 1,023,077 | 11,966,840 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,790,467 | 1,023,077 | 11,970,445 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,790,467 | 1,023,208 | 11,966,829 |
 
 ## chain
 
@@ -599,6 +603,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -719,6 +724,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,553 | 3,071 | 2,500 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,553 | 3,071 | 2,500 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,553 | 3,071 | 2,500 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -839,6 +845,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 74,710 | 836,499 | 2,603,127 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 74,710 | 836,509 | 2,603,063 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 74,710 | 836,516 | 2,603,168 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 74,710 | 836,533 | 2,603,086 |
 
 ## create
 
@@ -959,6 +966,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 13,448,212 | 2,865,677 | 2,570,369 | 2,127,930 | 4,044,977 | 33,999,568 | 50,424,007 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 13,573,751 | 2,865,678 | 2,570,368 | 2,127,930 | 4,044,900 | 34,067,875 | 50,420,093 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 13,448,197 | 2,865,677 | 2,570,368 | 2,128,167 | 4,044,038 | 34,068,017 | 50,420,344 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 13,448,284 | 2,865,677 | 2,570,368 | 2,128,046 | 4,044,959 | 34,067,976 | 50,420,084 |
 
 ## create-on
 
@@ -1079,6 +1087,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,949,484 | 4,179,952 | 55,229,384 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,949,484 | 4,179,768 | 55,229,108 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,949,484 | 4,179,831 | 55,228,908 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,949,484 | 4,179,760 | 55,229,058 |
 
 ## cutoff
 
@@ -1199,6 +1208,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1319,6 +1329,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 781 | 751 | 16,520 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 781 | 751 | 16,520 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 781 | 751 | 16,520 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1439,6 +1450,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 751 | 802 | 16,543 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 751 | 802 | 16,543 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 751 | 802 | 16,543 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1559,6 +1571,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 2,706,242 | 806,291 | 367,497 | 476,166 | 494,954 | 13,206,215 | 9,106,221 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,707,643 | 806,291 | 367,497 | 475,990 | 495,065 | 13,207,524 | 9,106,656 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,707,640 | 806,291 | 367,497 | 475,621 | 495,260 | 13,205,055 | 9,106,330 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,707,643 | 806,291 | 367,497 | 475,532 | 495,205 | 13,205,582 | 9,105,778 |
 
 ## dispose-on
 
@@ -1679,6 +1692,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 346,497 | 487,812 | 8,902,627 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 346,497 | 487,755 | 8,903,036 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 346,497 | 488,011 | 8,902,788 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 346,497 | 487,986 | 8,902,998 |
 
 ## editable-edit
 
@@ -1799,6 +1813,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 181,706 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 181,706 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 181,706 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 181,706 |
 
 ## editable-upstream
 
@@ -1919,6 +1934,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 232,855 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 232,855 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 232,855 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 232,855 |
 
 ## fail-recompute
 
@@ -2039,6 +2055,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 64,938 | 1,370 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 64,938 | 1,370 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 64,938 | 1,370 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 64,938 | 1,370 |
 
 ## flight
 
@@ -2159,6 +2176,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2279,6 +2297,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,921,729 | 53,933 | 54,956 | 3,277,611 | 237,685 | 176,052 | 45,075,913 | 2,634,480 | 2,655,527 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,921,727 | 53,917 | 54,962 | 3,277,610 | 237,651 | 175,989 | 45,072,271 | 2,634,567 | 2,655,498 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,921,727 | 53,917 | 54,948 | 3,277,837 | 237,687 | 176,064 | 45,072,273 | 2,634,511 | 2,655,498 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,921,727 | 53,917 | 54,956 | 3,277,764 | 237,637 | 175,992 | 45,072,279 | 2,634,455 | 2,655,524 |
 
 ## keyed-remove
 
@@ -2399,6 +2418,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,920,654 | 43,616 | 45,299 | 3,293,115 | 591,973 | 606,092 | 45,041,242 | 1,924,852 | 1,960,115 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,920,665 | 43,600 | 45,300 | 3,292,667 | 592,212 | 605,792 | 45,036,801 | 1,924,598 | 1,960,146 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,920,655 | 43,600 | 45,299 | 3,292,962 | 592,273 | 606,292 | 45,036,810 | 1,924,554 | 1,960,142 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,920,667 | 43,600 | 45,299 | 3,292,772 | 592,217 | 606,194 | 45,036,832 | 1,924,626 | 1,960,165 |
 
 ## keyed-swap
 
@@ -2519,6 +2539,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,973,356 | 46,221 | 46,928 | 3,628,542 | 148,966 | 512,576 | 46,203,951 | 915,671 | 936,130 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,973,355 | 46,205 | 46,927 | 3,628,822 | 149,189 | 512,689 | 46,199,060 | 915,584 | 936,144 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,973,355 | 46,205 | 46,928 | 3,631,887 | 149,234 | 512,558 | 46,198,689 | 915,617 | 936,121 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,973,355 | 46,205 | 46,927 | 3,628,513 | 149,148 | 512,597 | 46,198,706 | 915,595 | 936,049 |
 
 ## mvu-dispatch
 
@@ -2639,6 +2660,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 58,292 | 788 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 58,292 | 788 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 58,292 | 788 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2759,6 +2781,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | — | — |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | — | — |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | — | — |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — |
 
 ## project-chain
 
@@ -2879,6 +2902,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,071,732 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,071,719 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,071,783 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,071,745 |
 
 ## project-churn
 
@@ -2999,6 +3023,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 36,401 | 34,266 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 36,385 | 34,250 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 36,385 | 34,250 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -3119,6 +3144,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 50,460 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 50,460 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 50,460 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 50,460 |
 
 ## project-reorder
 
@@ -3239,6 +3265,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 780,084 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 780,084 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 780,085 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 780,084 |
 
 ## server-render
 
@@ -3359,6 +3386,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | — | — | — |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | — | — | — |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | — | — | — |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — | — |
 
 ## shape-diamond
 
@@ -3479,6 +3507,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 59,915 | 80,445 | 1,764,075 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 59,915 | 80,445 | 1,764,075 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 59,915 | 80,445 | 1,764,075 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3599,6 +3628,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 84,378 | 108,947 | 2,038,136 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 84,378 | 108,945 | 2,038,136 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 84,378 | 108,947 | 2,038,136 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3719,6 +3749,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,476 | 47,553 | 45,790 | 55,384 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,473 | 47,578 | 45,790 | 55,384 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,579 | 45,790 | 55,380 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,580 | 45,790 | 55,381 |
 
 ## stream-burst-16
 
@@ -3839,6 +3870,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,071 | 123,787 | 720,150 | 113,734 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,811 | 720,148 | 113,734 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,070 | 123,812 | 720,148 | 113,735 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,070 | 123,814 | 720,146 | 113,735 |
 
 ## stream-burst-256
 
@@ -3959,6 +3991,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 54,162 | 393,702 | 57,052 | 131,897 | 792,886 | 74,743 | 1,343,098 | 11,508,775 | 1,046,762 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 54,162 | 393,702 | 57,052 | 131,979 | 792,883 | 74,743 | 1,343,725 | 11,508,772 | 1,046,763 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 54,162 | 393,702 | 57,052 | 131,910 | 792,886 | 74,743 | 1,343,781 | 11,508,770 | 1,046,762 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 54,162 | 393,702 | 57,052 | 131,881 | 792,766 | 74,745 | 1,343,728 | 11,508,770 | 1,046,686 |
 
 ## stream-restart
 
@@ -4079,6 +4112,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 4,203 | 5,020 | 6,575 | 16,890 | 42,905 | 72,022 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 4,203 | 5,004 | 6,579 | 16,891 | 42,907 | 72,019 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 4,203 | 5,004 | 6,577 | 16,889 | 42,909 | 72,021 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 4,203 | 5,004 | 6,576 | 16,892 | 42,907 | 72,017 |
 
 ## timed-admit-both
 
@@ -4199,6 +4233,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 117,709 | 130,035 | 2,693,576 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 119,757 | 130,036 | 2,693,577 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 117,709 | 130,037 | 2,693,576 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 117,709 | 130,037 | 2,693,577 |
 
 ## timed-admit-debounce
 
@@ -4319,6 +4354,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 116,614 | 128,630 | 2,654,129 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 118,662 | 128,630 | 2,654,129 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 116,614 | 128,632 | 2,654,129 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 116,614 | 128,630 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4439,6 +4475,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 69,621 | 79,566 | 1,620,678 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 71,669 | 79,566 | 1,620,677 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 69,621 | 79,566 | 1,620,677 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -4559,6 +4596,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 116,876 | 128,952 | 2,663,985 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 118,924 | 128,950 | 2,663,985 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 116,876 | 128,935 | 2,663,985 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 116,876 | 128,953 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4679,6 +4717,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 35,740 | 44,936 | 846,247 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 35,740 | 44,936 | 846,286 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 35,740 | 44,935 | 846,286 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,740 | 44,936 | 846,286 |
 
 ## timed-capture-debounce
 
@@ -4799,6 +4838,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 35,612 | 44,232 | 847,657 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 35,612 | 44,232 | 847,657 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 35,612 | 44,232 | 847,657 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4919,6 +4959,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 32,092 | 36,742 | 745,651 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 32,092 | 36,742 | 745,651 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 32,092 | 36,742 | 745,651 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -5039,6 +5080,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 35,548 | 44,168 | 839,787 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 35,548 | 44,168 | 839,785 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 35,548 | 44,168 | 839,785 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -5159,6 +5201,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 1,087,790 | 38,805 | 84,105 | 263,385 | 145,815 | 3,351,299 | 2,545,099 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,090,983 | 38,805 | 84,105 | 262,888 | 145,799 | 3,351,284 | 2,545,023 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,089,390 | 38,805 | 84,105 | 263,438 | 145,854 | 3,351,295 | 2,545,046 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,087,790 | 38,805 | 84,105 | 262,838 | 145,788 | 3,351,296 | 2,545,099 |
 
 ## update-on
 
@@ -5279,6 +5322,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 94,605 | 169,044 | 2,872,460 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 94,605 | 169,042 | 2,872,440 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 94,605 | 169,043 | 2,872,471 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 94,605 | 169,020 | 2,872,472 |
 
 ## work-form
 
@@ -5399,6 +5443,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 172,679 | 165,150 | 308,861 | 296,993 | 5,421,861 | 5,334,903 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 172,679 | 165,150 | 308,827 | 296,990 | 5,421,861 | 5,334,884 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 172,679 | 165,150 | 308,831 | 296,995 | 5,421,865 | 5,334,914 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 172,679 | 165,150 | 308,853 | 296,966 | 5,421,819 | 5,334,844 |
 
 ## work-status
 
@@ -5519,6 +5564,7 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 102,045 | 80,235 | 269,377 | 156,114 | 2,659,269 | 2,391,224 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 102,045 | 80,235 | 269,332 | 156,123 | 2,659,264 | 2,391,280 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 102,045 | 80,235 | 269,359 | 156,133 | 2,659,304 | 2,391,321 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 102,045 | 80,235 | 269,347 | 156,158 | 2,659,187 | 2,391,279 |
 
 ## work-value
 
@@ -5639,4 +5685,5 @@
 | `b248f0d` | 2026-10-29 | feat(dom): share fragment rectangle lists | 109,170 | 121,069 | 269,547 | 283,407 | 2,643,832 | 2,968,393 |
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 109,169 | 121,069 | 269,573 | 283,407 | 2,643,945 | 2,968,475 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 109,171 | 121,069 | 269,611 | 283,434 | 2,643,946 | 2,968,475 |
+| `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 109,171 | 121,070 | 269,631 | 283,409 | 2,643,887 | 2,968,463 |
 
