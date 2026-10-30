@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "group": "H02",
+  "status": "private-integrated-repository-verification",
+  "versions": {
+    "coreDom": "0.1.0-alpha.18",
+    "views": "0.1.8",
+    "backend": "0.1.0-alpha.8",
+    "native": "0.1.0-preview.17"
+  },
+  "gates": [
+    {
+      "name": "core-normal",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-core-normal.log",
+      "bytes": 1464,
+      "sha256": "8f255578af97593a7c16fac5fc518310b201349c9e5f9d52a4d9a4aa9594b469",
+      "exitCode": 0
+    },
+    {
+      "name": "core-csharp",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-core-csharp.log",
+      "bytes": 3368,
+      "sha256": "778a3db11b032c210a2b35154884867b765c4027e15f8d8c6ade5b16249c687e",
+      "exitCode": 0
+    },
+    {
+      "name": "core-wire",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-core-wire.log",
+      "bytes": 1015,
+      "sha256": "d1716a222b2a4e9c64b1a1ba6e15e8042fe9ba293d34c120b5941d2140d5b8a1",
+      "exitCode": 0
+    },
+    {
+      "name": "core-traced",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-core-traced.log",
+      "bytes": 2665,
+      "sha256": "d622b048d0493692f5799b4ddec6108ca15400da4a913de7261566112680d2b9",
+      "exitCode": 0
+    },
+    {
+      "name": "backend-tests",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-backend-tests.log",
+      "bytes": 4770,
+      "sha256": "d428aa687156e33ce878431ad9aa87530a0ce57d290f24f9441476ff97c790c2",
+      "exitCode": 0
+    },
+    {
+      "name": "core-analyze-library",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-core-analyze-library.log",
+      "bytes": 4199,
+      "sha256": "468c1c8d5cdb24174c32bc31299533940d69bf4cda041dbaf2585053cb775084",
+      "exitCode": 0
+    },
+    {
+      "name": "views-analyze-library",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-views-analyze-library.log",
+      "bytes": 8753,
+      "sha256": "f2b7bca23182aee750b49a1d6ffdf09319818bd5905d99d1be7abe35781a2812",
+      "exitCode": 0
+    },
+    {
+      "name": "views-analyze-view",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-views-analyze-view.log",
+      "bytes": 6303,
+      "sha256": "219014775b42af14867dc7c2144f148c719c6e7fcb9a7d375fc451c18b76313b",
+      "exitCode": 0
+    },
+    {
+      "name": "views-analyze-examples",
+      "path": "C:\\wk\\rv-timing-views\\artifacts\\h02-final-views-analyze-examples.log",
+      "bytes": 6101,
+      "sha256": "064ccbce90ad0b9072b24fecd3bcd708bf19e5b74e5a97ad60d68961044085a9",
+      "exitCode": 0
+    }
+  ],
+  "freshFcs": {
+    "core": {
+      "status": "succeeded",
+      "verdict": "clean",
+      "analyzed": true,
+      "scope": "project",
+      "speed": "trusted",
+      "errorCount": 0,
+      "warningCount": 0,
+      "diagnosticsFileCount": 0,
+      "files": [],
+      "diagnostics": [],
+      "diagnosticsTruncated": false,
+      "escalated": "fcs-reanalyze",
+      "via": "fcs",
+      "fresh": true,
+      "groundTruth": true,
+      "totalDiagnostics": 0,
+      "infoCount": 0,
+      "belowSeverityFloorCount": 0,
+      "diagnosticsNote": null,
+      "reason": null,
+      "projectFileName": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-timing\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "projectsSwept": 1
+    },
+    "fable": {
+      "status": "succeeded",
+      "verdict": "clean",
+      "analyzed": true,
+      "scope": "project",
+      "speed": "trusted",
+      "errorCount": 0,
+      "warningCount": 0,
+      "diagnosticsFileCount": 0,
+      "files": [],
+      "diagnostics": [],
+      "diagnosticsTruncated": false,
+      "escalated": "fcs-reanalyze",
+      "via": "fcs",
+      "fresh": true,
+      "groundTruth": true,
+      "totalDiagnostics": 0,
+      "infoCount": 0,
+      "belowSeverityFloorCount": 0,
+      "diagnosticsNote": null,
+      "reason": null,
+      "projectFileName": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-timing\\Ranvier\\src\\Fable.Ranvier.Dom\\Fable.Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "projectsSwept": 1
+    },
+    "backend": {
+      "status": "succeeded",
+      "verdict": "clean",
+      "analyzed": true,
+      "scope": "project",
+      "speed": "trusted",
+      "errorCount": 0,
+      "warningCount": 0,
+      "diagnosticsFileCount": 0,
+      "files": [],
+      "diagnostics": [],
+      "diagnosticsTruncated": false,
+      "escalated": "fcs-reanalyze",
+      "via": "fcs",
+      "fresh": true,
+      "groundTruth": true,
+      "totalDiagnostics": 0,
+      "infoCount": 0,
+      "belowSeverityFloorCount": 0,
+      "diagnosticsNote": null,
+      "reason": null,
+      "projectFileName": "C:\\wk\\rv-timing-views\\src\\Ranvier.View.WebCore\\Ranvier.View.WebCore.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "projectsSwept": 1
+    },
+    "shared": {
+      "status": "succeeded",
+      "verdict": "clean",
+      "analyzed": true,
+      "scope": "project",
+      "speed": "trusted",
+      "errorCount": 0,
+      "warningCount": 0,
+      "diagnosticsFileCount": 0,
+      "files": [],
+      "diagnostics": [],
+      "diagnosticsTruncated": false,
+      "escalated": "fcs-reanalyze",
+      "via": "fcs",
+      "fresh": true,
+      "groundTruth": true,
+      "totalDiagnostics": 0,
+      "infoCount": 0,
+      "belowSeverityFloorCount": 0,
+      "diagnosticsNote": null,
+      "reason": null,
+      "projectFileName": "C:\\wk\\rv-timing-views\\tests\\NativeApi.Conformance\\Native.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "projectsSwept": 1
+    }
+  },
+  "testCounts": {
+    "coreNormal": 1568,
+    "csharp": 95,
+    "wire": 290,
+    "coreTraced": 1833,
+    "coreTracedExistingSkips": 13,
+    "backend": 782,
+    "backendExistingSkips": 12
+  },
+  "sourceChecks": {
+    "xmlAuditFindings": 0,
+    "commentHygieneExitCode": 0,
+    "formatterExitCode": 0,
+    "gitDiffCheckExitCode": 0,
+    "utf8CrLf": true
+  },
+  "qualifications": [
+    "Private candidate verification; official package, supported-platform/profile and released-pin acceptance remain open.",
+    "Core library analyzer pipeline checks both normal and traced libraries.",
+    "Native runtime files are borrowed read-only from the coherent Native17 stage; package cache, feeds and sibling properties are caller-owned.",
+    "Existing FSharp.Core/SameValueZero AOT warnings and existing test skips remain visible."
+  ]
+}

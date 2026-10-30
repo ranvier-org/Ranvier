@@ -92,6 +92,7 @@ type TimingService =
     /// <summary>Records a mark and returns a copied entry; duplicate names remain distinct.</summary>
     abstract Mark: name: string * options: TimingMarkOptions -> TimingEntry
     /// <summary>Records a measure; missing marks and invalid options leave the entry buffer unchanged.</summary>
+    /// <remarks>Checks name, options and portable detail before resolving named endpoints.</remarks>
     abstract Measure: name: string * options: TimingMeasureOptions -> TimingEntry
     /// <summary>Copies user entries ordered by startTime, preserving insertion order on ties.</summary>
     abstract GetEntries: unit -> TimingEntry array
@@ -283,11 +284,11 @@ type TimingTimeline(clock: TimingClock) =
     let add name kind start duration detail =
         let entry: TimingEntry =
             {
-                Name = TimingContract.name name
+                Name = name
                 Kind = kind
                 StartTime = start
                 Duration = duration
-                Detail = TimingContract.copyDetail detail
+                Detail = detail
             }
 
         entries.Add entry
@@ -321,17 +322,20 @@ type TimingTimeline(clock: TimingClock) =
                 run (fun () ->
                     TimingContract.markName name |> ignore
                     TimingContract.markOptions options
+                    let detail = TimingContract.copyDetail options.Detail
 
                     let start =
                         options.StartTime
                         |> Option.map TimingContract.timestamp
                         |> Option.defaultWith now
 
-                    add name TimingEntryKind.Mark start 0. options.Detail)
+                    add name TimingEntryKind.Mark start 0. detail)
 
             member _.Measure(name, options) =
                 run (fun () ->
+                    TimingContract.name name |> ignore
                     TimingContract.measureOptions options
+                    let detail = TimingContract.copyDetail options.Detail
 
                     let finish =
                         match options.End, options.Start, options.Duration with
@@ -345,7 +349,7 @@ type TimingTimeline(clock: TimingClock) =
                         | TimingEndpoint.Omitted, Some duration -> finish - duration
                         | _ -> 0.
 
-                    add name TimingEntryKind.Measure start (finish - start) options.Detail)
+                    add name TimingEntryKind.Measure start (finish - start) detail)
 
             member _.GetEntries() =
                 run (fun () ->
