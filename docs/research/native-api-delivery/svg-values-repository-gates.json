@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "groups": [
+    "S01",
+    "S02",
+    "S04"
+  ],
+  "status": "private-cohort19-repository-verification",
+  "coreSourceBody": "cb6dd807c57af94f8d72c676b41b39e156231f7e",
+  "viewsSourceBody": "cf25ac18095d93b5a9d49bca7aa013cf44b8ac76",
+  "tests": [
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.Tests",
+        "-c",
+        "Release"
+      ],
+      "pid": 123860,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-core-normal.log",
+      "sha256": "5a123a30341d3b54b224a138be09cdd05ebb78e83d5141f77e5311b463ab1b69",
+      "passed": 1568,
+      "skipped": 0
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.CSharp.Tests",
+        "-c",
+        "Release"
+      ],
+      "pid": 122304,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-core-csharp.log",
+      "sha256": "b00d0469e1a4178fa0feb9b26f2d08c54f5609a1e08753842774cbc846396542",
+      "passed": 95,
+      "skipped": 0
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.Wire.Tests",
+        "-c",
+        "Release"
+      ],
+      "pid": 50692,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-core-wire.log",
+      "sha256": "29f4d7a77d72c95e561f1601da3dd81c3e3a553a8f822e7708c3405e32e491a7",
+      "passed": 290,
+      "skipped": 0
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.Tests",
+        "-c",
+        "Release",
+        "-p:RanvierTrace=true"
+      ],
+      "pid": 115112,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-core-traced.log",
+      "sha256": "00563915cf64c58f88c7be9b8e6fea8a1b4d015070848d0d9892a57a2f096599",
+      "passed": 1833,
+      "skipped": 13
+    }
+  ],
+  "builds": [
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "node",
+        ".github/scripts/dom-contracts.cjs",
+        "C:/wk/native-svg-geometry",
+        "C:/wk/src",
+        "C:/Python314/python.exe"
+      ],
+      "cwd": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-svg-values\\Ranvier",
+      "pid": 22864,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-contract.log",
+      "sha256": "1649d91906d90fc8ba2f1921514699a3b5511825d180debb40dc890be4a4ba86"
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "build",
+        "tools/Ranvier.View.WebCore.Generate",
+        "-c",
+        "Release"
+      ],
+      "cwd": "C:\\wk\\rv-svg-values",
+      "pid": 27056,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-generator-build.log",
+      "sha256": "7976e9bc9b372833351eaa8f3ada2b97d959d05ad71ba705cc171ca2f7c8d6b1"
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "tools/Ranvier.View.WebCore.Generate/bin/Release/net10.0/Ranvier.View.WebCore.Generate.dll",
+        "C:\\wk\\rv-svg-values\\artifacts\\svg-input\\dom-api.json",
+        "C:\\Users\\shaya\\.codex\\worktrees\\native-api-svg-values\\Ranvier\\src\\Ranvier.Dom\\bin\\Release\\net10.0\\Ranvier.Dom.dll",
+        "C:\\wk\\rv-svg-values\\artifacts\\svg-managed\\src\\Ranvier.WebCore\\bin\\Release\\net10.0\\Ranvier.WebCore.dll",
+        "C:\\wk\\rv-svg-values\\artifacts\\svg-regenerated"
+      ],
+      "cwd": "C:\\wk\\rv-svg-values",
+      "pid": 48460,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-generator-exact.log",
+      "sha256": "4240c0c9a9adf050178a43f80bcd313689a2edc43e16757ac2993d7c6d1417cf"
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "library",
+        "--build"
+      ],
+      "cwd": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-svg-values\\Ranvier",
+      "pid": 77576,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-core-analyzers-library.log",
+      "sha256": "55423a1e2fab94207b4e255d9a2e7b57896bf5f79a4f891e3287761afa454267",
+      "pipelineOutcome": "succeeded"
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "library",
+        "--build"
+      ],
+      "cwd": "C:\\wk\\rv-svg-values",
+      "pid": 47856,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-views-analyzers-library.log",
+      "sha256": "9aa82e5a85a844a9684d92a83392ee632ae54bd86bf2e86f973665628f717152",
+      "pipelineOutcome": "succeeded"
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "view",
+        "--build"
+      ],
+      "cwd": "C:\\wk\\rv-svg-values",
+      "pid": 50408,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-views-analyzers-view.log",
+      "sha256": "7bf19957bcd6d74a55476bef54f8d1baf859275fdf1375c1e4507c1d30c8d9a5",
+      "pipelineOutcome": "succeeded"
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "examples",
+        "--build"
+      ],
+      "cwd": "C:\\wk\\rv-svg-values",
+      "pid": 67356,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-views-analyzers-examples.log",
+      "sha256": "2cd0e22058d6c22c3431a3fda1a23cf38ced8597e7c1f3a8e7ef54385c2da199",
+      "pipelineOutcome": "succeeded"
+    },
+    {
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "build",
+        "src/Ranvier.View.WebCore.Sdl/Ranvier.View.WebCore.Sdl.fsproj",
+        "-c",
+        "Release"
+      ],
+      "cwd": "C:\\wk\\rv-svg-values",
+      "pid": 57028,
+      "exitCode": 0,
+      "terminal": true,
+      "log": "C:\\wk\\rv-svg-values\\artifacts\\svg-backend-sdl-build.log",
+      "sha256": "04f20a74694265446382a1a9710d561dd1a2a2b2381a81d9a91aa75762d92f50"
+    }
+  ],
+  "contract": {
+    "interfaces": 189,
+    "exports": 2182,
+    "handleRoots": 49,
+    "dictionaries": 22,
+    "stubs": 0,
+    "exactCanonicalSharedSource": true
+  },
+  "freshFcs": {
+    "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-final-fcs-checks.json",
+    "sha256": "c49ebd26f848ab7b16f5295d147bec51f3212b333202c9b4a42d23be1949d58c",
+    "checks": {
+      "checks": {
+        "core": {
+          "status": "succeeded",
+          "verdict": "clean",
+          "analyzed": true,
+          "scope": "project",
+          "speed": "trusted",
+          "errorCount": 0,
+          "warningCount": 0,
+          "diagnosticsFileCount": 0,
+          "files": [],
+          "diagnostics": [],
+          "diagnosticsTruncated": false,
+          "escalated": "fcs-reanalyze",
+          "via": "fcs",
+          "fresh": true,
+          "groundTruth": true,
+          "totalDiagnostics": 0,
+          "infoCount": 0,
+          "belowSeverityFloorCount": 0,
+          "diagnosticsNote": null,
+          "reason": null,
+          "projectFileName": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-svg-values\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+          "optionsSource": "ionide-proj-info",
+          "projectsSwept": 1
+        },
+        "views": {
+          "status": "succeeded",
+          "verdict": "clean",
+          "analyzed": true,
+          "scope": "project",
+          "speed": "trusted",
+          "errorCount": 0,
+          "warningCount": 0,
+          "diagnosticsFileCount": 0,
+          "files": [],
+          "diagnostics": [],
+          "diagnosticsTruncated": false,
+          "escalated": "fcs-reanalyze",
+          "via": "fcs",
+          "fresh": true,
+          "groundTruth": true,
+          "totalDiagnostics": 0,
+          "infoCount": 0,
+          "belowSeverityFloorCount": 0,
+          "diagnosticsNote": null,
+          "reason": null,
+          "projectFileName": "C:\\wk\\rv-svg-values\\src\\Ranvier.View.WebCore\\Ranvier.View.WebCore.fsproj",
+          "optionsSource": "ionide-proj-info",
+          "projectsSwept": 1
+        }
+      },
+      "environment": {
+        "OS": "Windows_NT",
+        "UseLocalRanvier": "true",
+        "RanvierRoot": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-svg-values\\Ranvier",
+        "UseLocalRanvierWebCore": "true",
+        "RanvierWebCoreRoot": "C:\\wk\\rv-svg-values\\artifacts\\svg-managed",
+        "RanvierWebCoreNativeDir": "C:\\wk\\rv-svg-values\\artifacts\\svg-runtime-stage",
+        "RestoreConfigFile": "C:\\wk\\rv-svg-values\\artifacts\\svg.nuget.config",
+        "RestorePackagesPath": "C:\\wk\\rv-svg-values\\artifacts\\svg-package-cache",
+        "RanvierTrace": "false"
+      }
+    }
+  },
+  "generation": {
+    "summary": "179 member-bearing classes; 2219 members: 2206 mapped to 2136 of 2182 exports, 13 handwritten, 0 unmapped",
+    "objectsAndReportByteExact": true,
+    "oldWrapperInvariants": {
+      "comparison": "Textual generated class block provenance; not semantic usage analysis",
+      "parent": "9af5c13a8dadf7825eceef54a81795b0655d0621",
+      "oldClasses": 261,
+      "newClasses": 286,
+      "unchangedCommonClasses": 248,
+      "changedOldSvgClasses": [
+        "SVGElementObject",
+        "SVGGeometryElementObject",
+        "SVGGraphicsElementObject",
+        "SVGMarkerElementObject",
+        "SVGPatternElementObject",
+        "SVGPolygonElementObject",
+        "SVGPolylineElementObject",
+        "SVGSVGElementObject",
+        "SVGSymbolElementObject",
+        "SVGTextContentElementObject",
+        "SVGTextPositioningElementObject",
+        "SVGViewElementObject"
+      ],
+      "documentAddition": "Document.rootElement only; every previous Document member block unchanged",
+      "addedClasses": [
+        "SVGAngleObject",
+        "SVGAnimatedAngleObject",
+        "SVGAnimatedBooleanObject",
+        "SVGAnimatedEnumerationObject",
+        "SVGAnimatedLengthListObject",
+        "SVGAnimatedLengthObject",
+        "SVGAnimatedNumberListObject",
+        "SVGAnimatedNumberObject",
+        "SVGAnimatedPreserveAspectRatioObject",
+        "SVGAnimatedRectObject",
+        "SVGAnimatedStringObject",
+        "SVGAnimatedTransformListObject",
+        "SVGLengthListObject",
+        "SVGLengthObject",
+        "SVGMatrixObject",
+        "SVGNumberListObject",
+        "SVGNumberObject",
+        "SVGPointListObject",
+        "SVGPointObject",
+        "SVGPreserveAspectRatioObject",
+        "SVGRectObject",
+        "SVGStringListObject",
+        "SVGTransformListObject",
+        "SVGTransformObject",
+        "SVGViewSpecObject"
+      ],
+      "removedClasses": [],
+      "unexpectedChangedNonSvgClasses": []
+    }
+  },
+  "packages": [
+    {
+      "path": "C:\\wk\\rv-svg-values\\artifacts\\svg-packages\\Fable.Ranvier.Dom.0.1.0-alpha.19.nupkg",
+      "sha256": "6e1de16cd917b51a64fdd927d56fea50bff8b04bd62c7fe66131d39faa8b0ee4"
+    },
+    {
+      "path": "C:\\wk\\rv-svg-values\\artifacts\\svg-packages\\Fable.Ranvier.Dom.Traced.0.1.0-alpha.19.nupkg",
+      "sha256": "bc9fe9126f4fae404aabc4e06a4e5100f9c285986a51bcc0d25369806c102358"
+    },
+    {
+      "path": "C:\\wk\\rv-svg-values\\artifacts\\svg-packages\\Ranvier.Dom.0.1.0-alpha.19.nupkg",
+      "sha256": "596e5de30f1c86d5cda8ffe5d66a031de3129867382b762d5203c8a41ad41492"
+    },
+    {
+      "path": "C:\\wk\\rv-svg-values\\artifacts\\svg-packages\\Ranvier.Dom.Traced.0.1.0-alpha.19.nupkg",
+      "sha256": "1605fb336bf6169a7defeb283a96389d61a667cc4a895f1a518d683fa9fde1bb"
+    }
+  ],
+  "sourceChecks": {
+    "xmlDocAuditFindings": 0,
+    "commentHygieneExitCode": 0,
+    "manualSourceFormatterExitCode": 0,
+    "gitDiffCheckExitCode": 0,
+    "generatedWrapperFormatting": "Generated source is explicitly excluded by .fantomasignore. Compare raw generator output; formatting the temporary copy changed representation only and its original failed receipt is retained."
+  },
+  "qualifications": [
+    "Core analyzer library pipeline includes both normal and traced passes; each configured pipeline ran successfully once after restoring its required sibling path setup.",
+    "All four test variants pass; 13 existing traced skips, C# analyzer warnings, docs NU1608 and native AOT dependency/trim warnings remain visible in preserved logs.",
+    "The first configured analyzer attempt failed at its explicit sibling Local.Build.props existence guard. Own ignored Local.Build.props now holds paths only; browser child UseLocalRanvier=false remains effective.",
+    "No global tool install, shared daemon restart, credentials or machine-wide environment change occurred.",
+    "All proof is private coherent Windows ABI26 and packaged Chromium. Ordered official releases, exact released producer pin replacement, remaining platforms/profiles and public acceptance are open. Full S04 remains open for the real Boolean provider in Native19."
+  ],
+  "operationalReceipts": [
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-final-aot-publish.json",
+      "sha256": "4998d3e5fab859f01f9e47a4c87761efc5387be61240ad8beb7bb9f165175446"
+    },
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-svgFinalAotRun.json",
+      "sha256": "52a5838a94203560d0e2ad7c5e94b3a0d9cda032eb0cc1e3703363445bfedd76"
+    },
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-svgFinalAotCombined.json",
+      "sha256": "3af92c38a6387cf119d8e9adbba1f0a24d0781b91f917de5894952f2bfaaf805"
+    },
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-svgJitCombined.json",
+      "sha256": "5f15d9b33bca013d888c31d7e695d596af89e15a6276ca612bf713412a48cd36"
+    },
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-svgMergedPackages.json",
+      "sha256": "b6df32d9a4968f9a9d4ce7ba894c96fdb3d0587bc789afe3d2072aaf0fe6f67d"
+    },
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-svgBrowserCombined.json",
+      "sha256": "2b7dbe42427afa3766e2bb8fbd52a5d611454f4353c27d3bd8cca5f8c62bfdeb"
+    },
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-repository-tests.json",
+      "sha256": "ed054d15a983e2fa25bbde13b66ee00ee094c94139856f9089ae162593b4430b"
+    },
+    {
+      "file": "C:\\wk\\rv-svg-values\\artifacts\\svg-operation-repository-builds.json",
+      "sha256": "fb1d53fd10d4e8cd74a1b82491cd98ea317f5a29f7530a9e28e803d3f1a32bce"
+    }
+  ]
+}
