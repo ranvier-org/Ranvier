@@ -5,7 +5,7 @@
     <PackageId Condition="'$(RanvierTrace)' == 'true'">Fable.Ranvier.Dom.Traced</PackageId>
     <AssemblyName>Ranvier.Dom</AssemblyName>
     <AssemblyVersion>0.0.0.0</AssemblyVersion>
-    <Version>0.1.0-alpha.14</Version>
+    <Version>0.1.0-alpha.20</Version>
     <Description>Fable DOM contracts sharing Ranvier.Dom's generated WebKit interface sources.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
@@ -20,8 +20,16 @@
     <Compile Include="BrowserCustomProperties.fs" />
     <Compile Include="../Ranvier.Dom/StyleValues.fs" Link="StyleValues.fs" />
     <Compile Include="BrowserStyleValues.fs" />
+    <Compile Include="../Ranvier.Dom/StyleMaps.fs" Link="StyleMaps.fs" />
+    <Compile Include="BrowserStyleMaps.fs" />
+    <Compile Include="../Ranvier.Dom/Geometry.fs" Link="Geometry.fs" />
+    <Compile Include="BrowserGeometry.fs" />
+    <Compile Include="../Ranvier.Dom/TransformValues.fs" Link="TransformValues.fs" />
+    <Compile Include="BrowserTransformValues.fs" />
     <Compile Include="../Ranvier.Dom/ComputedStyles.fs" Link="ComputedStyles.fs" />
     <Compile Include="BrowserComputedStyles.fs" />
+    <Compile Include="../Ranvier.Dom/Timing.fs" Link="Timing.fs" />
+    <Compile Include="BrowserTiming.fs" />
     <Compile Include="../Ranvier.Dom/Locales.fs" Link="Locales.fs" />
     <Compile Include="BrowserLocales.fs" />
     <PackageReference Include="Fable.Core" Version="5.3.0" />
@@ -41,6 +49,6 @@
       </_PackageFiles>
     </ItemGroup>
     <WriteLinesToFile File="$(NuspecOutputPath)fable/$(MSBuildProjectFile)" Overwrite="true"
-                      Lines="&lt;Project Sdk=&quot;Microsoft.NET.Sdk&quot;&gt;;  &lt;PropertyGroup&gt;;    &lt;TargetFramework&gt;netstandard2.1&lt;/TargetFramework&gt;;    &lt;AssemblyName&gt;Ranvier.Dom&lt;/AssemblyName&gt;;  &lt;/PropertyGroup&gt;;  &lt;ItemGroup&gt;;    &lt;Compile Include=&quot;Generated/Dom.fs&quot; /&gt;;    &lt;Compile Include=&quot;StyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserStyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;CSS.fs&quot; /&gt;;    &lt;Compile Include=&quot;CssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserCssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;CustomProperties.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserCustomProperties.fs&quot; /&gt;;    &lt;Compile Include=&quot;StyleValues.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserStyleValues.fs&quot; /&gt;;    &lt;Compile Include=&quot;ComputedStyles.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserComputedStyles.fs&quot; /&gt;;    &lt;Compile Include=&quot;Locales.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserLocales.fs&quot; /&gt;;  &lt;/ItemGroup&gt;;&lt;/Project&gt;" />
+                      Lines="&lt;Project Sdk=&quot;Microsoft.NET.Sdk&quot;&gt;;  &lt;PropertyGroup&gt;;    &lt;TargetFramework&gt;netstandard2.1&lt;/TargetFramework&gt;;    &lt;AssemblyName&gt;Ranvier.Dom&lt;/AssemblyName&gt;;  &lt;/PropertyGroup&gt;;  &lt;ItemGroup&gt;;    &lt;Compile Include=&quot;Generated/Dom.fs&quot; /&gt;;    &lt;Compile Include=&quot;StyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserStyleSheets.fs&quot; /&gt;;    &lt;Compile Include=&quot;CSS.fs&quot; /&gt;;    &lt;Compile Include=&quot;CssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserCssQueries.fs&quot; /&gt;;    &lt;Compile Include=&quot;CustomProperties.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserCustomProperties.fs&quot; /&gt;;    &lt;Compile Include=&quot;StyleValues.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserStyleValues.fs&quot; /&gt;;    &lt;Compile Include=&quot;StyleMaps.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserStyleMaps.fs&quot; /&gt;;    &lt;Compile Include=&quot;Geometry.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserGeometry.fs&quot; /&gt;;    &lt;Compile Include=&quot;TransformValues.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserTransformValues.fs&quot; /&gt;;    &lt;Compile Include=&quot;ComputedStyles.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserComputedStyles.fs&quot; /&gt;;    &lt;Compile Include=&quot;Timing.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserTiming.fs&quot; /&gt;;    &lt;Compile Include=&quot;Locales.fs&quot; /&gt;;    &lt;Compile Include=&quot;BrowserLocales.fs&quot; /&gt;;  &lt;/ItemGroup&gt;;&lt;/Project&gt;" />
   </Target>
 </Project>

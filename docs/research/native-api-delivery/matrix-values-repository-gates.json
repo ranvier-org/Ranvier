@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "groups": [
+    "G07",
+    "G08"
+  ],
+  "status": "private-cohort16-repository-checkpoint",
+  "canonicalNativeSource": "fe51afb53d7c372788cdcebf9d41a9c9d2dd1e0e",
+  "contract": {
+    "interfaces": 143,
+    "exports": 1875,
+    "handleRoots": 23,
+    "stubs": 0,
+    "exactSharedSources": true
+  },
+  "tests": [
+    {
+      "name": "contract",
+      "command": [
+        "rtk",
+        "proxy",
+        "node",
+        ".github/scripts/dom-contracts.cjs",
+        "C:/wk/native-geometry-values",
+        "C:/wk/src",
+        "C:/Python314/python.exe"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-contract.log",
+      "sha256": "c156f6c330681124af4cd3632a772b82c3fb7db0ddcc79fa9ff0546b8addaf32"
+    },
+    {
+      "name": "core-normal",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.Tests",
+        "-c",
+        "Release"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-core-normal.log",
+      "sha256": "9fa5ae83c531cde917400cd3254b70ce3a38ba3558b4b30c13a9bac25e7b75c5",
+      "passed": 1568,
+      "skipped": 0
+    },
+    {
+      "name": "core-csharp",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.CSharp.Tests",
+        "-c",
+        "Release"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-core-csharp.log",
+      "sha256": "44ba0fffca498d04d0f2b274f4bd00209fd9d32e66a7782f289fbb073794e5cc",
+      "passed": 95,
+      "skipped": 0
+    },
+    {
+      "name": "core-wire",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.Wire.Tests",
+        "-c",
+        "Release"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-core-wire.log",
+      "sha256": "1e2859881b37bbc5db39444be67b5f615d5f024c53b2e29c19a7fd29c779a202",
+      "passed": 290,
+      "skipped": 0
+    },
+    {
+      "name": "core-traced",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "test",
+        "tests/Ranvier.Tests",
+        "-c",
+        "Release",
+        "-p:RanvierTrace=true"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-core-traced.log",
+      "sha256": "09b4ba04956969a407930684cd099b62d96d43ab32ea2c4424e727a09b772f48",
+      "passed": 1833,
+      "skipped": 13
+    }
+  ],
+  "coreAnalyzers": [
+    {
+      "traced": false,
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "library",
+        "--build"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-core-analyzers-normal.log",
+      "sha256": "3187b96da2afc9ef79bcb740839636922610244d305a31c99387b0fd601a45af"
+    },
+    {
+      "traced": true,
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "library",
+        "--build"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-core-analyzers-traced.log",
+      "sha256": "4d4ef0b9f3fc4bbef9909a1d3defc237ef4a1613e82e700f560c47666e8f236d"
+    }
+  ],
+  "viewsAnalyzersAndBuild": [
+    {
+      "name": "library",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "library",
+        "--build"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-views-library.log",
+      "sha256": "280f50701f2eff2172a1b5538032c0990117219161ba5ce1ffa00fee705aadbf"
+    },
+    {
+      "name": "view",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "view",
+        "--build"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-views-view.log",
+      "sha256": "126c34df75898046e16e200768f55c77aa25f7613b5d8966e26700538fc6babe"
+    },
+    {
+      "name": "examples",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "fsi",
+        "build.fsx",
+        "--",
+        "analyze",
+        "--group",
+        "examples",
+        "--build"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-views-examples.log",
+      "sha256": "9a2ec74ee90f4d8c3c7f90d1b0c587ad4aeac6cb66081a7fe5f4e28b037f234b"
+    },
+    {
+      "name": "backend-build",
+      "command": [
+        "rtk",
+        "proxy",
+        "dotnet",
+        "build",
+        "src/Ranvier.View.WebCore.Sdl/Ranvier.View.WebCore.Sdl.fsproj",
+        "-c",
+        "Release"
+      ],
+      "exitCode": 0,
+      "log": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier\\artifacts\\g08-views-backend-build.log",
+      "sha256": "d90c219fdc10842c298b2826c1e34c58c186d713e98e9292fed22142afe811cf"
+    }
+  ],
+  "sourceChecks": {
+    "xmlAuditFindings": 0,
+    "commentHygieneExitCode": 0,
+    "commentHygieneFiles": 8,
+    "formatterExitCode": 0,
+    "gitDiffCheckExitCode": 0,
+    "utf8CrLf": true
+  },
+  "childOnlyOverrides": {
+    "RanvierRoot": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-custom-properties\\Ranvier",
+    "RanvierViewRoot": "C:/wk/rv-custom-properties",
+    "UseLocalRanvier": "true",
+    "RestoreConfigFile": "C:/wk/rv-custom-properties/artifacts/g08.nuget.config",
+    "RestorePackagesPath": "C:/Users/shaya/.nuget/packages",
+    "qualification": "Views ignored Local.Build.props selects a separate private cohort16 cache/runtime. No machine environment or tracked local override was changed."
+  },
+  "limitations": [
+    "Core library analyzer pipeline itself already covers normal and traced projects. The second explicit traced-environment invocation was redundant; both succeeded, and no extra conformance batch follows.",
+    "Existing traced Core tests retain13 skips. Existing docs restore NU1608 warnings and native AOT dependency warnings remain visible.",
+    "The separately documented SDL analyzer/FCS byref conversion failure remains tracked as Ranvier.View issue14, outside configured library/view/examples groups; the additional known-failing analyzer build was not repeated or reported green. Ordinary SDL build is green0warnings0errors.",
+    "All runtime checks use private coherent ABI24 dependencies, with official source/package/platform/profile acceptance still pending."
+  ]
+}
