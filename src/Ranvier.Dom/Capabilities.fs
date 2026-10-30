@@ -81,7 +81,8 @@ type CapabilityProvider =
     }
 
 /// <summary>A context or affinity failure that must propagate instead of becoming unknown provider evidence.</summary>
-exception CapabilityContextException of detail: string
+exception CapabilityContextException of detail: string with
+    override this.Message = this.detail
 
 /// <summary>An extensible observation registry; each read uses current providers without caching runtime facts.</summary>
 #if FABLE_COMPILER

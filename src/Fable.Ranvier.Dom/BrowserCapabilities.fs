@@ -144,6 +144,7 @@ module BrowserCapabilities =
 
                     observation <-
                         { observation with
+                            Scope = "ImageDecoder.isTypeSupported / current document realm; HTML image rendering is separate."
                             Exported = fact "Actual realm ImageDecoder.isTypeSupported function presence." true
                             Implemented =
                                 fact "ImageDecoder format-support query; HTML image support and actual decode/render remain unverified." supported
