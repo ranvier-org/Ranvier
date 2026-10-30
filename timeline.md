@@ -120,6 +120,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 83,303 | 127,571 | 1,742,244 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 83,303 | 127,619 | 1,742,286 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 83,303 | 127,553 | 1,742,239 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 83,304 | 127,574 | 1,742,182 |
 
 ## app-table
 
@@ -241,6 +242,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 4,417,658 | 9,272,748 | 107,970,482 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 4,417,665 | 9,272,275 | 107,746,771 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 4,417,729 | 9,273,022 | 107,667,373 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 4,417,745 | 9,272,839 | 107,845,295 |
 
 ## async-recover
 
@@ -362,6 +364,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 139,139 | 41,282 | 434,855 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 139,139 | 41,256 | 434,868 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 139,139 | 41,271 | 434,851 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 139,139 | 41,270 | 434,848 |
 
 ## async-resolve
 
@@ -483,6 +486,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,790,467 | 1,023,077 | 11,966,840 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,790,467 | 1,023,077 | 11,970,445 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,790,467 | 1,023,208 | 11,966,829 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,790,468 | 1,023,095 | 11,967,001 |
 
 ## chain
 
@@ -604,6 +608,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -725,6 +730,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,553 | 3,071 | 2,500 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,553 | 3,071 | 2,500 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,553 | 3,071 | 2,500 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -846,6 +852,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 74,710 | 836,509 | 2,603,063 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 74,710 | 836,516 | 2,603,168 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 74,710 | 836,533 | 2,603,086 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 74,710 | 836,491 | 2,603,048 |
 
 ## create
 
@@ -967,6 +974,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 13,573,751 | 2,865,678 | 2,570,368 | 2,127,930 | 4,044,900 | 34,067,875 | 50,420,093 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 13,448,197 | 2,865,677 | 2,570,368 | 2,128,167 | 4,044,038 | 34,068,017 | 50,420,344 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 13,448,284 | 2,865,677 | 2,570,368 | 2,128,046 | 4,044,959 | 34,067,976 | 50,420,084 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 13,448,301 | 2,865,678 | 2,570,368 | 2,127,747 | 4,044,226 | 34,068,363 | 50,420,294 |
 
 ## create-on
 
@@ -1088,6 +1096,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,949,484 | 4,179,768 | 55,229,108 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,949,484 | 4,179,831 | 55,228,908 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,949,484 | 4,179,760 | 55,229,058 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,949,484 | 4,179,808 | 55,229,212 |
 
 ## cutoff
 
@@ -1209,6 +1218,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1330,6 +1340,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 781 | 751 | 16,520 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 781 | 751 | 16,520 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 781 | 751 | 16,520 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1451,6 +1462,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 751 | 802 | 16,543 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 751 | 802 | 16,543 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 751 | 802 | 16,543 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1572,6 +1584,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 2,707,643 | 806,291 | 367,497 | 475,990 | 495,065 | 13,207,524 | 9,106,656 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 2,707,640 | 806,291 | 367,497 | 475,621 | 495,260 | 13,205,055 | 9,106,330 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,707,643 | 806,291 | 367,497 | 475,532 | 495,205 | 13,205,582 | 9,105,778 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,707,641 | 806,291 | 367,497 | 475,781 | 495,342 | 13,205,937 | 9,106,549 |
 
 ## dispose-on
 
@@ -1693,6 +1706,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 346,497 | 487,755 | 8,903,036 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 346,497 | 488,011 | 8,902,788 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 346,497 | 487,986 | 8,902,998 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 346,497 | 487,787 | 8,902,920 |
 
 ## editable-edit
 
@@ -1814,6 +1828,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 181,706 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 181,706 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 181,706 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 181,706 |
 
 ## editable-upstream
 
@@ -1935,6 +1950,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 232,855 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 232,855 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 232,855 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 232,855 |
 
 ## fail-recompute
 
@@ -2056,6 +2072,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 64,938 | 1,370 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 64,938 | 1,370 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 64,938 | 1,370 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 64,938 | 1,370 |
 
 ## flight
 
@@ -2177,6 +2194,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2298,6 +2316,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,921,727 | 53,917 | 54,962 | 3,277,610 | 237,651 | 175,989 | 45,072,271 | 2,634,567 | 2,655,498 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,921,727 | 53,917 | 54,948 | 3,277,837 | 237,687 | 176,064 | 45,072,273 | 2,634,511 | 2,655,498 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,921,727 | 53,917 | 54,956 | 3,277,764 | 237,637 | 175,992 | 45,072,279 | 2,634,455 | 2,655,524 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,921,743 | 53,917 | 54,972 | 3,277,823 | 237,647 | 176,062 | 45,072,273 | 2,634,551 | 2,655,481 |
 
 ## keyed-remove
 
@@ -2419,6 +2438,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,920,665 | 43,600 | 45,300 | 3,292,667 | 592,212 | 605,792 | 45,036,801 | 1,924,598 | 1,960,146 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,920,655 | 43,600 | 45,299 | 3,292,962 | 592,273 | 606,292 | 45,036,810 | 1,924,554 | 1,960,142 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,920,667 | 43,600 | 45,299 | 3,292,772 | 592,217 | 606,194 | 45,036,832 | 1,924,626 | 1,960,165 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,920,673 | 43,600 | 45,315 | 3,292,922 | 592,232 | 606,057 | 45,036,807 | 1,924,568 | 1,960,148 |
 
 ## keyed-swap
 
@@ -2540,6 +2560,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,973,355 | 46,205 | 46,927 | 3,628,822 | 149,189 | 512,689 | 46,199,060 | 915,584 | 936,144 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,973,355 | 46,205 | 46,928 | 3,631,887 | 149,234 | 512,558 | 46,198,689 | 915,617 | 936,121 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,973,355 | 46,205 | 46,927 | 3,628,513 | 149,148 | 512,597 | 46,198,706 | 915,595 | 936,049 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,973,355 | 46,205 | 46,927 | 3,628,442 | 148,898 | 512,532 | 46,198,682 | 915,650 | 936,129 |
 
 ## mvu-dispatch
 
@@ -2661,6 +2682,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 58,292 | 788 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 58,292 | 788 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 58,292 | 788 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2782,6 +2804,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | — | — |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | — | — |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | — | — |
 
 ## project-chain
 
@@ -2903,6 +2926,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,071,719 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,071,783 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,071,745 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,071,703 |
 
 ## project-churn
 
@@ -3024,6 +3048,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 36,385 | 34,250 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 36,385 | 34,250 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 36,385 | 34,250 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -3145,6 +3170,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 50,460 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 50,460 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 50,460 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 50,460 |
 
 ## project-reorder
 
@@ -3266,6 +3292,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 780,084 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 780,085 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 780,084 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 780,084 |
 
 ## server-render
 
@@ -3387,6 +3414,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | — | — | — |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | — | — | — |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — | — |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | — | — | — |
 
 ## shape-diamond
 
@@ -3508,6 +3536,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 59,915 | 80,445 | 1,764,075 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 59,915 | 80,445 | 1,764,075 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 59,915 | 80,445 | 1,764,075 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3629,6 +3658,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 84,378 | 108,945 | 2,038,136 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 84,378 | 108,947 | 2,038,136 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 84,378 | 108,947 | 2,038,136 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3750,6 +3780,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,473 | 47,578 | 45,790 | 55,384 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,579 | 45,790 | 55,380 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,580 | 45,790 | 55,381 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,581 | 45,790 | 55,381 |
 
 ## stream-burst-16
 
@@ -3871,6 +3902,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,811 | 720,148 | 113,734 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,070 | 123,812 | 720,148 | 113,735 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,070 | 123,814 | 720,146 | 113,735 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 5,022 | 24,618 | 5,713 | 9,741 | 50,033 | 8,067 | 123,812 | 720,145 | 113,733 |
 
 ## stream-burst-256
 
@@ -3992,6 +4024,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 54,162 | 393,702 | 57,052 | 131,979 | 792,883 | 74,743 | 1,343,725 | 11,508,772 | 1,046,763 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 54,162 | 393,702 | 57,052 | 131,910 | 792,886 | 74,743 | 1,343,781 | 11,508,770 | 1,046,762 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 54,162 | 393,702 | 57,052 | 131,881 | 792,766 | 74,745 | 1,343,728 | 11,508,770 | 1,046,686 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 54,162 | 393,702 | 57,052 | 131,822 | 792,883 | 74,743 | 1,343,781 | 11,508,770 | 1,046,730 |
 
 ## stream-restart
 
@@ -4113,6 +4146,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 4,203 | 5,004 | 6,579 | 16,891 | 42,907 | 72,019 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 4,203 | 5,004 | 6,577 | 16,889 | 42,909 | 72,021 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 4,203 | 5,004 | 6,576 | 16,892 | 42,907 | 72,017 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 4,203 | 5,004 | 6,578 | 16,885 | 42,908 | 72,020 |
 
 ## timed-admit-both
 
@@ -4234,6 +4268,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 119,757 | 130,036 | 2,693,577 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 117,709 | 130,037 | 2,693,576 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 117,709 | 130,037 | 2,693,577 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 117,709 | 130,039 | 2,693,577 |
 
 ## timed-admit-debounce
 
@@ -4355,6 +4390,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 118,662 | 128,630 | 2,654,129 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 116,614 | 128,632 | 2,654,129 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 116,614 | 128,630 | 2,654,129 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 116,614 | 128,631 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4476,6 +4512,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 71,669 | 79,566 | 1,620,677 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 69,621 | 79,566 | 1,620,677 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 69,621 | 79,566 | 1,620,677 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 69,621 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -4597,6 +4634,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 118,924 | 128,950 | 2,663,985 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 116,876 | 128,935 | 2,663,985 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 116,876 | 128,953 | 2,663,985 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 116,876 | 128,950 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4718,6 +4756,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 35,740 | 44,936 | 846,286 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 35,740 | 44,935 | 846,286 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,740 | 44,936 | 846,286 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 35,740 | 44,935 | 846,286 |
 
 ## timed-capture-debounce
 
@@ -4839,6 +4878,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 35,612 | 44,232 | 847,657 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 35,612 | 44,232 | 847,657 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,612 | 44,232 | 847,657 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -4960,6 +5000,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 32,092 | 36,742 | 745,651 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 32,092 | 36,742 | 745,651 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 32,092 | 36,742 | 745,651 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -5081,6 +5122,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 35,548 | 44,168 | 839,785 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 35,548 | 44,168 | 839,785 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,548 | 44,168 | 839,785 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -5202,6 +5244,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 1,090,983 | 38,805 | 84,105 | 262,888 | 145,799 | 3,351,284 | 2,545,023 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 1,089,390 | 38,805 | 84,105 | 263,438 | 145,854 | 3,351,295 | 2,545,046 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,087,790 | 38,805 | 84,105 | 262,838 | 145,788 | 3,351,296 | 2,545,099 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,087,790 | 38,805 | 84,105 | 263,112 | 145,873 | 3,351,273 | 2,545,080 |
 
 ## update-on
 
@@ -5323,6 +5366,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 94,605 | 169,042 | 2,872,440 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 94,605 | 169,043 | 2,872,471 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 94,605 | 169,020 | 2,872,472 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 94,605 | 169,006 | 2,872,414 |
 
 ## work-form
 
@@ -5444,6 +5488,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 172,679 | 165,150 | 308,827 | 296,990 | 5,421,861 | 5,334,884 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 172,679 | 165,150 | 308,831 | 296,995 | 5,421,865 | 5,334,914 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 172,679 | 165,150 | 308,853 | 296,966 | 5,421,819 | 5,334,844 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 172,679 | 165,150 | 308,861 | 296,974 | 5,421,830 | 5,334,905 |
 
 ## work-status
 
@@ -5565,6 +5610,7 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 102,045 | 80,235 | 269,332 | 156,123 | 2,659,264 | 2,391,280 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 102,045 | 80,235 | 269,359 | 156,133 | 2,659,304 | 2,391,321 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 102,045 | 80,235 | 269,347 | 156,158 | 2,659,187 | 2,391,279 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 102,045 | 80,235 | 269,362 | 156,135 | 2,659,268 | 2,391,247 |
 
 ## work-value
 
@@ -5686,4 +5732,5 @@
 | `e4293e0` | 2026-10-29 | chore: release shared DOM 0.1.0-alpha.13 | 109,169 | 121,069 | 269,573 | 283,407 | 2,643,945 | 2,968,475 |
 | `955b141` | 2026-10-30 | feat(dom): add custom-property registration and typed CSS values | 109,171 | 121,069 | 269,611 | 283,434 | 2,643,946 | 2,968,475 |
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 109,171 | 121,070 | 269,631 | 283,409 | 2,643,887 | 2,968,463 |
+| `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 109,169 | 121,070 | 269,573 | 283,390 | 2,643,919 | 2,968,435 |
 
