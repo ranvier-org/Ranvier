@@ -12,6 +12,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Generated/Dom.fs" />
+    <Compile Include="SvgPaths.fs" />
+    <Compile Include="SvgViews.fs" />
     <Compile Include="StyleSheets.fs" />
     <Compile Include="CSS.fs" />
     <Compile Include="CssQueries.fs" />
