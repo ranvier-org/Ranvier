@@ -53,20 +53,29 @@ export const test = base.extend({
     page.on("pageerror", error => problems.push(`pageerror: ${error.stack ?? error.message}`));
     page.on("console", message => { if (message.type() === "error") problems.push(`console: ${message.text()}`); });
     await use(problems);
-    if (testInfo.status !== testInfo.expectedStatus || problems.length) {
+    const failed = testInfo.status !== testInfo.expectedStatus || problems.length > 0;
+    const diagnostic = process.env.DOCS_COMPILER_DIAGNOSTIC === "1";
+    const capture = async (label, filename) => {
       const live = await page.locator(".nacara-live__actions").evaluateAll(actions => actions.map(action => ({
         status: action.querySelector(".nacara-live__status")?.textContent,
         disabled: action.querySelector(".nacara-live__run")?.disabled,
         editor: !!action.closest(".nacara-code")?.querySelector(".cm-editor")
       }))).catch(error => ({ error: String(error) }));
       const workerProtocol = await page.evaluate(() => globalThis.__docsWorkerProtocol ?? []).catch(error => [{ error: String(error) }]);
-      const diagnostics = { problems, live, events, workerProtocol, pending: [...requests].map(([request, time]) => ({
+      const diagnostics = { problems, live, events, workerProtocol, test: { title: testInfo.title, status: testInfo.status, worker: testInfo.workerIndex }, pending: [...requests].map(([request, time]) => ({
         url: request.url(), ms: Date.now() - time
       })) };
-      console.log("DOCS_BROWSER_FAILURE", JSON.stringify(diagnostics));
-      const path = testInfo.outputPath("browser-diagnostics.json");
+      console.log(label, JSON.stringify(diagnostics));
+      const path = testInfo.outputPath(filename);
       await writeFile(path, JSON.stringify(diagnostics, null, 2));
-      await testInfo.attach("browser-diagnostics", { path, contentType: "application/json" });
+      await testInfo.attach(filename, { path, contentType: "application/json" });
+    };
+    if (failed || diagnostic) {
+      await capture(failed ? "DOCS_BROWSER_FAILURE" : "DOCS_BROWSER_DIAGNOSTIC", "browser-diagnostics.json");
+    }
+    if (failed && diagnostic) {
+      await new Promise(resolve => setTimeout(resolve, 10_000));
+      await capture("DOCS_BROWSER_OBSERVATION", "browser-observation.json");
     }
     expect(problems).toEqual([]);
   }
