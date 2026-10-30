@@ -22,6 +22,7 @@
     <Compile Include="TransformValues.fs" />
     <Compile Include="ComputedStyles.fs" />
     <Compile Include="Timing.fs" />
+    <Compile Include="Capabilities.fs" />
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
