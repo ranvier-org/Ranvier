@@ -1,0 +1,37 @@
+{
+  "group": "C12",
+  "sourceProfile": "Unpublished ABI22/Core alpha.14 candidate; no public-package acceptance",
+  "coreRevision": "f473ea1015d88c70e0d7455b4dac0d0147355a56",
+  "nativeRevision": "f18d943cebfad3f348bc818c4f02433f68e21aed",
+  "nativeContractPin": "7b3d69805668130613387e8f130a75a705d23bdb",
+  "webkitRevision": "b95c91b1c0ee43cc86d25ff7af73038f67a88e04",
+  "project": "C:/Users/shaya/.codex/worktrees/native-api-custom-properties/Ranvier/src/Ranvier.Dom/Ranvier.Dom.fsproj",
+  "selectedTypes": [
+    "Ranvier.Dom.CSSPropertyRule",
+    "Ranvier.Dom.CustomPropertyException",
+    "Ranvier.Dom.CustomPropertyInitialValue",
+    "Ranvier.Dom.CustomPropertyService",
+    "Ranvier.Dom.PropertyDefinition"
+  ],
+  "qualifications": [
+    "CSSPropertyRule inherits existing CSSRule metadata. Its initialValue getter is readonly nullable in pinned IDL; the shared F# string return uses null for absence, verified by private raw regression.",
+    "CustomPropertyInitialValue is a non-erased presence union because actual Fable5.13 erased Some null, including with nullable-string annotations.",
+    "Disposal invalidates the provider without unregistering document definitions. BCL disposal exception identity is provider-specific; engine error names use CustomPropertyException."
+  ],
+  "checkResult": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\r\n  \"status\": \"succeeded\",\r\n  \"verdict\": \"clean\",\r\n  \"analyzed\": true,\r\n  \"scope\": \"project\",\r\n  \"speed\": \"trusted\",\r\n  \"errorCount\": 0,\r\n  \"warningCount\": 0,\r\n  \"diagnosticsFileCount\": 0,\r\n  \"files\": [],\r\n  \"diagnostics\": [],\r\n  \"diagnosticsTruncated\": false,\r\n  \"escalated\": \"fcs-reanalyze\",\r\n  \"via\": \"fcs\",\r\n  \"fresh\": true,\r\n  \"groundTruth\": true,\r\n  \"totalDiagnostics\": 0,\r\n  \"infoCount\": 0,\r\n  \"belowSeverityFloorCount\": 0,\r\n  \"diagnosticsNote\": null,\r\n  \"reason\": null,\r\n  \"projectFileName\": \"C:\\\\Users\\\\shaya\\\\.codex\\\\worktrees\\\\native-api-custom-properties\\\\Ranvier\\\\src\\\\Ranvier.Dom\\\\Ranvier.Dom.fsproj\",\r\n  \"optionsSource\": \"ionide-proj-info\",\r\n  \"projectsSwept\": 1\r\n}"
+      }
+    ]
+  },
+  "publicApiResult": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\r\n  \"status\": \"ok\",\r\n  \"project\": \"C:\\\\Users\\\\shaya\\\\.codex\\\\worktrees\\\\native-api-custom-properties\\\\Ranvier\\\\src\\\\Ranvier.Dom\\\\Ranvier.Dom.fsproj\",\r\n  \"optionsSource\": \"ionide-proj-info\",\r\n  \"includeInternal\": false,\r\n  \"namespaceFilter\": \"Property\",\r\n  \"entityCount\": 7,\r\n  \"memberCount\": 15,\r\n  \"entities\": [\r\n    {\r\n      \"fullName\": \"Ranvier.Dom.CSSPropertyRule\",\r\n      \"kind\": \"interface\",\r\n      \"accessibility\": \"public\",\r\n      \"members\": [\r\n        {\r\n          \"name\": \"inherits\",\r\n          \"kind\": \"property\",\r\n          \"signature\": \"inherits() -> bool\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"initialValue\",\r\n          \"kind\": \"property\",\r\n          \"signature\": \"initialValue() -> string\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"name\",\r\n          \"kind\": \"property\",\r\n          \"signature\": \"name() -> string\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"syntax\",\r\n          \"kind\": \"property\",\r\n          \"signature\": \"syntax() -> string\",\r\n          \"accessibility\": \"public\"\r\n        }\r\n      ]\r\n    },\r\n    {\r\n      \"fullName\": \"Ranvier.Dom.CustomPropertyException\",\r\n      \"kind\": \"type\",\r\n      \"accessibility\": \"public\",\r\n      \"members\": [\r\n        {\r\n          \"name\": \"Message\",\r\n          \"kind\": \"property\",\r\n          \"signature\": \"Message() -> string\",\r\n          \"accessibility\": \"public\"\r\n        }\r\n      ]\r\n    },\r\n    {\r\n      \"fullName\": \"Ranvier.Dom.CustomPropertyInitialValue\",\r\n      \"kind\": \"union\",\r\n      \"accessibility\": \"public\",\r\n      \"members\": [\r\n        {\r\n          \"name\": \"IsOmitted\",\r\n          \"kind\": \"property\",\r\n          \"signature\": \"IsOmitted() -> bool\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"IsValue\",\r\n          \"kind\": \"property\",\r\n          \"signature\": \"IsValue() -> bool\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"Omitted\",\r\n          \"kind\": \"union-case\",\r\n          \"signature\": \"Omitted\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"Value\",\r\n          \"kind\": \"union-case\",\r\n          \"signature\": \"Value of string\",\r\n          \"accessibility\": \"public\"\r\n        }\r\n      ]\r\n    },\r\n    {\r\n      \"fullName\": \"Ranvier.Dom.CustomPropertyService\",\r\n      \"kind\": \"interface\",\r\n      \"accessibility\": \"public\",\r\n      \"members\": [\r\n        {\r\n          \"name\": \"Register\",\r\n          \"kind\": \"method\",\r\n          \"signature\": \"Register(definition: Ranvier.Dom.PropertyDefinition) -> unit\",\r\n          \"accessibility\": \"public\"\r\n        }\r\n      ]\r\n    },\r\n    {\r\n      \"fullName\": \"Ranvier.Dom.PropertyDefinition\",\r\n      \"kind\": \"record\",\r\n      \"accessibility\": \"public\",\r\n      \"members\": [\r\n        {\r\n          \"name\": \"Create\",\r\n          \"kind\": \"method\",\r\n          \"signature\": \"Create(name: string, inherits: bool) -> Ranvier.Dom.PropertyDefinition\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"Inherits\",\r\n          \"kind\": \"field\",\r\n          \"signature\": \"Inherits: bool\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"InitialValue\",\r\n          \"kind\": \"field\",\r\n          \"signature\": \"InitialValue: Ranvier.Dom.CustomPropertyInitialValue\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"Name\",\r\n          \"kind\": \"field\",\r\n          \"signature\": \"Name: string\",\r\n          \"accessibility\": \"public\"\r\n        },\r\n        {\r\n          \"name\": \"Syntax\",\r\n          \"kind\": \"field\",\r\n          \"signature\": \"Syntax: string\",\r\n          \"accessibility\": \"public\"\r\n        }\r\n      ]\r\n    },\r\n    {\r\n      \"fullName\": \"Ranvier.Dom.StylePropertyMap\",\r\n      \"kind\": \"interface\",\r\n      \"accessibility\": \"public\",\r\n      \"members\": []\r\n    },\r\n    {\r\n      \"fullName\": \"Ranvier.Dom.StylePropertyMapReadOnly\",\r\n      \"kind\": \"interface\",\r\n      \"accessibility\": \"public\",\r\n      \"members\": []\r\n    }\r\n  ],\r\n  \"truncated\": false,\r\n  \"nextCursor\": null,\r\n  \"totalEstimate\": {\r\n    \"entities\": 7\r\n  },\r\n  \"pageOffset\": 0,\r\n  \"pageSize\": 100\r\n}"
+      }
+    ]
+  }
+}
