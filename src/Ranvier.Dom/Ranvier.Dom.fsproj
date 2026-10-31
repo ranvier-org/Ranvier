@@ -12,6 +12,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Generated/Dom.fs" />
+    <Compile Include="SvgPaths.fs" />
+    <Compile Include="SvgViews.fs" />
     <Compile Include="StyleSheets.fs" />
     <Compile Include="CSS.fs" />
     <Compile Include="CssQueries.fs" />
@@ -22,6 +24,7 @@
     <Compile Include="TransformValues.fs" />
     <Compile Include="ComputedStyles.fs" />
     <Compile Include="Timing.fs" />
+    <Compile Include="Locales.fs" />
     <Compile Include="Capabilities.fs" />
     <Compile Include="Cancellation.fs" />
     <None Include="README.md" Pack="true" PackagePath="/" />
