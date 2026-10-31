@@ -4356,5 +4356,221 @@
     "projectsSwept": 1
   },
   "impactQualification": "fcs_refactor_impact resolved8 references but incorrectly reported SVGGeometryElement as internal. Complete compiler public API records show the interface; the negative public flag is not used as assurance. Empty named test results do not imply untested runtime behavior.",
-  "runtime": "ABI27 producer handoff pending; no execution or acceptance claim"
+  "runtime": "Native20/ABI28 private win-x64 JIT, NativeAOT and packaged Fable/Chromium results are recorded in Ranvier.Views docs/research/native-api-delivery/svg-surfaces-runtime-evidence.json; no acceptance claim.",
+  "facades": {
+    "entities": [
+      {
+        "fullName": "Ranvier.Dom.SvgPaths",
+        "kind": "module",
+        "accessibility": "public",
+        "members": [
+          {
+            "name": "getData",
+            "kind": "function",
+            "signature": "getData(path: Ranvier.Dom.SVGPathElement) -> string option",
+            "accessibility": "public"
+          },
+          {
+            "name": "setData",
+            "kind": "function",
+            "signature": "setData(path: Ranvier.Dom.SVGPathElement, value: string option) -> unit",
+            "accessibility": "public"
+          }
+        ]
+      },
+      {
+        "fullName": "Ranvier.Dom.SvgViewAvailability`1",
+        "kind": "union",
+        "accessibility": "public",
+        "members": [
+          {
+            "name": "Available",
+            "kind": "union-case",
+            "signature": "Available of 'T",
+            "accessibility": "public"
+          },
+          {
+            "name": "IsAvailable",
+            "kind": "property",
+            "signature": "IsAvailable() -> bool",
+            "accessibility": "public"
+          },
+          {
+            "name": "IsNotExposed",
+            "kind": "property",
+            "signature": "IsNotExposed() -> bool",
+            "accessibility": "public"
+          },
+          {
+            "name": "IsUnknown",
+            "kind": "property",
+            "signature": "IsUnknown() -> bool",
+            "accessibility": "public"
+          },
+          {
+            "name": "IsUnsupported",
+            "kind": "property",
+            "signature": "IsUnsupported() -> bool",
+            "accessibility": "public"
+          },
+          {
+            "name": "NotExposed",
+            "kind": "union-case",
+            "signature": "NotExposed",
+            "accessibility": "public"
+          },
+          {
+            "name": "Unknown",
+            "kind": "union-case",
+            "signature": "Unknown of string",
+            "accessibility": "public"
+          },
+          {
+            "name": "Unsupported",
+            "kind": "union-case",
+            "signature": "Unsupported of string",
+            "accessibility": "public"
+          }
+        ]
+      },
+      {
+        "fullName": "Ranvier.Dom.SvgViewState",
+        "kind": "record",
+        "accessibility": "public",
+        "members": [
+          {
+            "name": "CurrentView",
+            "kind": "field",
+            "signature": "CurrentView: Ranvier.Dom.SvgViewAvailability<Ranvier.Dom.SVGViewSpec>",
+            "accessibility": "public"
+          },
+          {
+            "name": "UseCurrentView",
+            "kind": "field",
+            "signature": "UseCurrentView: Ranvier.Dom.SvgViewAvailability<bool>",
+            "accessibility": "public"
+          }
+        ]
+      }
+    ],
+    "complete": true
+  },
+  "browserFacades": {
+    "project": "src/Fable.Ranvier.Dom/Fable.Ranvier.Dom.fsproj",
+    "entities": [
+      {
+        "fullName": "Ranvier.Dom.SVGViewSpec",
+        "kind": "interface",
+        "accessibility": "public",
+        "members": [
+          {
+            "name": "preserveAspectRatio",
+            "kind": "property",
+            "signature": "preserveAspectRatio() -> Ranvier.Dom.SVGAnimatedPreserveAspectRatio",
+            "accessibility": "public"
+          },
+          {
+            "name": "preserveAspectRatioString",
+            "kind": "property",
+            "signature": "preserveAspectRatioString() -> string",
+            "accessibility": "public"
+          },
+          {
+            "name": "transform",
+            "kind": "property",
+            "signature": "transform() -> Ranvier.Dom.SVGTransformList",
+            "accessibility": "public"
+          },
+          {
+            "name": "transformString",
+            "kind": "property",
+            "signature": "transformString() -> string",
+            "accessibility": "public"
+          },
+          {
+            "name": "viewBox",
+            "kind": "property",
+            "signature": "viewBox() -> Ranvier.Dom.SVGAnimatedRect",
+            "accessibility": "public"
+          },
+          {
+            "name": "viewBoxString",
+            "kind": "property",
+            "signature": "viewBoxString() -> string",
+            "accessibility": "public"
+          },
+          {
+            "name": "zoomAndPan",
+            "kind": "property",
+            "signature": "zoomAndPan() -> uint16",
+            "accessibility": "public"
+          }
+        ]
+      },
+      {
+        "fullName": "Ranvier.Dom.SvgViewState",
+        "kind": "record",
+        "accessibility": "public",
+        "members": [
+          {
+            "name": "CurrentView",
+            "kind": "field",
+            "signature": "CurrentView: Ranvier.Dom.SvgViewAvailability<Ranvier.Dom.SVGViewSpec>",
+            "accessibility": "public"
+          },
+          {
+            "name": "UseCurrentView",
+            "kind": "field",
+            "signature": "UseCurrentView: Ranvier.Dom.SvgViewAvailability<bool>",
+            "accessibility": "public"
+          }
+        ]
+      },
+      {
+        "fullName": "Ranvier.Dom.SvgViews",
+        "kind": "module",
+        "accessibility": "public",
+        "members": [
+          {
+            "name": "inspect",
+            "kind": "function",
+            "signature": "inspect(root: Ranvier.Dom.SVGSVGElement) -> Ranvier.Dom.SvgViewState",
+            "accessibility": "public"
+          },
+          {
+            "name": "requestView",
+            "kind": "function",
+            "signature": "requestView(document: Ranvier.Dom.Document, fragment: string) -> unit",
+            "accessibility": "public"
+          }
+        ]
+      }
+    ],
+    "complete": true,
+    "freshCheck": {
+      "status": "succeeded",
+      "verdict": "clean",
+      "analyzed": true,
+      "scope": "project",
+      "speed": "trusted",
+      "errorCount": 0,
+      "warningCount": 0,
+      "diagnosticsFileCount": 0,
+      "files": [],
+      "diagnostics": [],
+      "diagnosticsTruncated": false,
+      "escalated": "fcs-reanalyze",
+      "via": "fcs",
+      "fresh": true,
+      "groundTruth": true,
+      "totalDiagnostics": 0,
+      "infoCount": 0,
+      "belowSeverityFloorCount": 0,
+      "diagnosticsNote": null,
+      "reason": null,
+      "projectFileName": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-svg-surfaces\\Ranvier\\src\\Fable.Ranvier.Dom\\Fable.Ranvier.Dom.fsproj",
+      "optionsSource": "ionide-proj-info",
+      "projectsSwept": 1
+    }
+  }
 }
