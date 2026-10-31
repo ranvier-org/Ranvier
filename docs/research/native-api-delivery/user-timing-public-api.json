@@ -1,0 +1,382 @@
+{
+  "status": "ok",
+  "project": "C:\\Users\\shaya\\.codex\\worktrees\\native-api-timing\\Ranvier\\src\\Ranvier.Dom\\Ranvier.Dom.fsproj",
+  "optionsSource": "ionide-proj-info",
+  "includeInternal": false,
+  "namespaceFilter": "Timing",
+  "entityCount": 10,
+  "memberCount": 49,
+  "entities": [
+    {
+      "fullName": "Ranvier.Dom.TimingClock",
+      "kind": "interface",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "Now",
+          "kind": "method",
+          "signature": "Now() -> float",
+          "accessibility": "public"
+        },
+        {
+          "name": "TimeOrigin",
+          "kind": "property",
+          "signature": "TimeOrigin() -> float",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingDetail",
+      "kind": "union",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "Array",
+          "kind": "union-case",
+          "signature": "Array of array<Ranvier.Dom.TimingDetail>",
+          "accessibility": "public"
+        },
+        {
+          "name": "Boolean",
+          "kind": "union-case",
+          "signature": "Boolean of bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsArray",
+          "kind": "property",
+          "signature": "IsArray() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsBoolean",
+          "kind": "property",
+          "signature": "IsBoolean() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsNull",
+          "kind": "property",
+          "signature": "IsNull() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsNumber",
+          "kind": "property",
+          "signature": "IsNumber() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsObject",
+          "kind": "property",
+          "signature": "IsObject() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsText",
+          "kind": "property",
+          "signature": "IsText() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "Null",
+          "kind": "union-case",
+          "signature": "Null",
+          "accessibility": "public"
+        },
+        {
+          "name": "Number",
+          "kind": "union-case",
+          "signature": "Number of float",
+          "accessibility": "public"
+        },
+        {
+          "name": "Object",
+          "kind": "union-case",
+          "signature": "Object of array<string * Ranvier.Dom.TimingDetail>",
+          "accessibility": "public"
+        },
+        {
+          "name": "Text",
+          "kind": "union-case",
+          "signature": "Text of string",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingEndpoint",
+      "kind": "union",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "IsMark",
+          "kind": "property",
+          "signature": "IsMark() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsOmitted",
+          "kind": "property",
+          "signature": "IsOmitted() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsTimestamp",
+          "kind": "property",
+          "signature": "IsTimestamp() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "Mark",
+          "kind": "union-case",
+          "signature": "Mark of string",
+          "accessibility": "public"
+        },
+        {
+          "name": "Omitted",
+          "kind": "union-case",
+          "signature": "Omitted",
+          "accessibility": "public"
+        },
+        {
+          "name": "Timestamp",
+          "kind": "union-case",
+          "signature": "Timestamp of float",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingEntry",
+      "kind": "record",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "Detail",
+          "kind": "field",
+          "signature": "Detail: Ranvier.Dom.TimingDetail",
+          "accessibility": "public"
+        },
+        {
+          "name": "Duration",
+          "kind": "field",
+          "signature": "Duration: float",
+          "accessibility": "public"
+        },
+        {
+          "name": "Kind",
+          "kind": "field",
+          "signature": "Kind: Ranvier.Dom.TimingEntryKind",
+          "accessibility": "public"
+        },
+        {
+          "name": "Name",
+          "kind": "field",
+          "signature": "Name: string",
+          "accessibility": "public"
+        },
+        {
+          "name": "StartTime",
+          "kind": "field",
+          "signature": "StartTime: float",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingEntryKind",
+      "kind": "union",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "IsMark",
+          "kind": "property",
+          "signature": "IsMark() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "IsMeasure",
+          "kind": "property",
+          "signature": "IsMeasure() -> bool",
+          "accessibility": "public"
+        },
+        {
+          "name": "Mark",
+          "kind": "union-case",
+          "signature": "Mark",
+          "accessibility": "public"
+        },
+        {
+          "name": "Measure",
+          "kind": "union-case",
+          "signature": "Measure",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingException",
+      "kind": "type",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "Message",
+          "kind": "property",
+          "signature": "Message() -> string",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingMarkOptions",
+      "kind": "record",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "Default",
+          "kind": "property",
+          "signature": "Default() -> Ranvier.Dom.TimingMarkOptions",
+          "accessibility": "public"
+        },
+        {
+          "name": "Detail",
+          "kind": "field",
+          "signature": "Detail: Ranvier.Dom.TimingDetail",
+          "accessibility": "public"
+        },
+        {
+          "name": "StartTime",
+          "kind": "field",
+          "signature": "StartTime: float option",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingMeasureOptions",
+      "kind": "record",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "Default",
+          "kind": "property",
+          "signature": "Default() -> Ranvier.Dom.TimingMeasureOptions",
+          "accessibility": "public"
+        },
+        {
+          "name": "Detail",
+          "kind": "field",
+          "signature": "Detail: Ranvier.Dom.TimingDetail",
+          "accessibility": "public"
+        },
+        {
+          "name": "Duration",
+          "kind": "field",
+          "signature": "Duration: float option",
+          "accessibility": "public"
+        },
+        {
+          "name": "End",
+          "kind": "field",
+          "signature": "End: Ranvier.Dom.TimingEndpoint",
+          "accessibility": "public"
+        },
+        {
+          "name": "Start",
+          "kind": "field",
+          "signature": "Start: Ranvier.Dom.TimingEndpoint",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingService",
+      "kind": "interface",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "ClearMarks",
+          "kind": "method",
+          "signature": "ClearMarks() -> unit",
+          "accessibility": "public"
+        },
+        {
+          "name": "ClearMarks",
+          "kind": "method",
+          "signature": "ClearMarks(name: string) -> unit",
+          "accessibility": "public"
+        },
+        {
+          "name": "ClearMeasures",
+          "kind": "method",
+          "signature": "ClearMeasures() -> unit",
+          "accessibility": "public"
+        },
+        {
+          "name": "ClearMeasures",
+          "kind": "method",
+          "signature": "ClearMeasures(name: string) -> unit",
+          "accessibility": "public"
+        },
+        {
+          "name": "GetEntries",
+          "kind": "method",
+          "signature": "GetEntries() -> array<Ranvier.Dom.TimingEntry>",
+          "accessibility": "public"
+        },
+        {
+          "name": "Mark",
+          "kind": "method",
+          "signature": "Mark(name: string, options: Ranvier.Dom.TimingMarkOptions) -> Ranvier.Dom.TimingEntry",
+          "accessibility": "public"
+        },
+        {
+          "name": "Measure",
+          "kind": "method",
+          "signature": "Measure(name: string, options: Ranvier.Dom.TimingMeasureOptions) -> Ranvier.Dom.TimingEntry",
+          "accessibility": "public"
+        },
+        {
+          "name": "Now",
+          "kind": "method",
+          "signature": "Now() -> float",
+          "accessibility": "public"
+        },
+        {
+          "name": "TimeOrigin",
+          "kind": "property",
+          "signature": "TimeOrigin() -> float",
+          "accessibility": "public"
+        }
+      ]
+    },
+    {
+      "fullName": "Ranvier.Dom.TimingTimeline",
+      "kind": "class",
+      "accessibility": "public",
+      "members": [
+        {
+          "name": "CreateService",
+          "kind": "method",
+          "signature": "CreateService() -> Ranvier.Dom.TimingService",
+          "accessibility": "public"
+        },
+        {
+          "name": "``.ctor``",
+          "kind": "constructor",
+          "signature": "``.ctor``(clock: Ranvier.Dom.TimingClock) -> Ranvier.Dom.TimingTimeline",
+          "accessibility": "public"
+        }
+      ]
+    }
+  ],
+  "truncated": false,
+  "nextCursor": null,
+  "totalEstimate": {
+    "entities": 10
+  },
+  "pageOffset": 0,
+  "pageSize": 1000
+}
