@@ -207,6 +207,9 @@ module BrowserCapabilities =
                 service.Register provider
 
             member _.Observe(key, token) =
+                if isNull (box key) then
+                    nullArg "key"
+
                 let key = Capabilities.key key.Category key.Name
 
                 if token.IsCancellationRequested then
