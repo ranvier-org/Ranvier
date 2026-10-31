@@ -28,7 +28,7 @@ type EventOptions =
         }
 
 /// <summary>The MouseEventInit fields; <c>RelatedTarget</c> is null for none.</summary>
-/// <remarks>Native WebCore exposes ClientX and ClientY as integers; Chromium keeps fractions.</remarks>
+/// <remarks>Both measured engines, native WebCore and Chromium, expose ClientX and ClientY as integers.</remarks>
 type MouseFields =
     {
         Detail: int
@@ -109,7 +109,7 @@ type EventService =
     abstract CreateTarget: unit -> EventTarget
 
 /// <summary>Argument validation shared by event construction providers.</summary>
-module internal EventContract =
+module EventContract =
     let private finite (name: string) (value: float) =
         if Double.IsNaN value || Double.IsInfinity value then
             raise (ArgumentException ($"{name} must be finite", name))
