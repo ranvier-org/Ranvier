@@ -122,6 +122,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 83,303 | 127,553 | 1,742,239 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 83,304 | 127,574 | 1,742,182 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 83,368 | 127,564 | 1,742,186 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 83,303 | 127,597 | 1,742,252 |
 
 ## app-table
 
@@ -245,6 +246,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 4,417,729 | 9,273,022 | 107,667,373 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 4,417,745 | 9,272,839 | 107,845,295 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 4,417,715 | 9,208,914 | 107,542,426 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 4,417,707 | 9,273,428 | 107,843,926 |
 
 ## async-recover
 
@@ -368,6 +370,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 139,139 | 41,271 | 434,851 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 139,139 | 41,270 | 434,848 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 139,139 | 41,265 | 434,861 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 139,139 | 41,267 | 434,856 |
 
 ## async-resolve
 
@@ -491,6 +494,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,790,467 | 1,023,208 | 11,966,829 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,790,468 | 1,023,095 | 11,967,001 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 2,790,467 | 1,022,786 | 11,970,242 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 2,790,467 | 1,023,083 | 11,970,625 |
 
 ## chain
 
@@ -614,6 +618,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 13,035 | 318 | 2,454 | 4,490 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -737,6 +742,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,553 | 3,071 | 2,500 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,553 | 3,071 | 2,500 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 2,553 | 3,071 | 2,500 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -860,6 +866,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 74,710 | 836,533 | 2,603,086 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 74,710 | 836,491 | 2,603,048 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 74,710 | 836,450 | 2,603,121 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 74,710 | 836,491 | 2,603,173 |
 
 ## create
 
@@ -983,6 +990,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 13,448,284 | 2,865,677 | 2,570,368 | 2,128,046 | 4,044,959 | 34,067,976 | 50,420,084 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 13,448,301 | 2,865,678 | 2,570,368 | 2,127,747 | 4,044,226 | 34,068,363 | 50,420,294 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 13,448,206 | 2,865,678 | 2,570,368 | 2,127,252 | 4,044,287 | 34,067,778 | 50,420,036 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 13,480,192 | 2,865,677 | 2,570,384 | 2,127,881 | 4,044,865 | 34,067,803 | 50,419,922 |
 
 ## create-on
 
@@ -1106,6 +1114,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,949,484 | 4,179,760 | 55,229,058 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,949,484 | 4,179,808 | 55,229,212 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 2,965,484 | 4,179,924 | 55,229,212 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 2,949,484 | 4,179,611 | 55,229,156 |
 
 ## cutoff
 
@@ -1229,6 +1238,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1352,6 +1362,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 781 | 751 | 16,520 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 781 | 751 | 16,520 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 781 | 751 | 16,520 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1475,6 +1486,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 751 | 802 | 16,543 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 751 | 802 | 16,543 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 751 | 802 | 16,543 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1598,6 +1610,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 2,707,643 | 806,291 | 367,497 | 475,532 | 495,205 | 13,205,582 | 9,105,778 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 2,707,641 | 806,291 | 367,497 | 475,781 | 495,342 | 13,205,937 | 9,106,549 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 2,707,646 | 806,291 | 367,497 | 476,070 | 495,146 | 13,203,762 | 9,105,607 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 2,706,244 | 806,291 | 367,497 | 476,151 | 495,569 | 13,205,737 | 9,105,547 |
 
 ## dispose-on
 
@@ -1721,6 +1734,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 346,497 | 487,986 | 8,902,998 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 346,497 | 487,787 | 8,902,920 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 346,497 | 487,682 | 8,902,725 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 346,497 | 487,897 | 8,902,696 |
 
 ## editable-edit
 
@@ -1844,6 +1858,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 181,706 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 181,706 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 181,706 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 181,706 |
 
 ## editable-upstream
 
@@ -1967,6 +1982,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 232,855 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 232,855 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 232,855 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 232,855 |
 
 ## fail-recompute
 
@@ -2090,6 +2106,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 64,938 | 1,370 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 64,938 | 1,370 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 64,938 | 1,370 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 64,938 | 1,370 |
 
 ## flight
 
@@ -2213,6 +2230,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2336,6 +2354,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,921,727 | 53,917 | 54,956 | 3,277,764 | 237,637 | 175,992 | 45,072,279 | 2,634,455 | 2,655,524 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,921,743 | 53,917 | 54,972 | 3,277,823 | 237,647 | 176,062 | 45,072,273 | 2,634,551 | 2,655,481 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 1,921,735 | 53,917 | 54,957 | 3,277,661 | 237,352 | 176,022 | 45,072,265 | 2,634,544 | 2,655,543 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 1,921,727 | 53,917 | 54,954 | 3,277,515 | 237,651 | 176,013 | 45,082,493 | 2,634,498 | 2,655,509 |
 
 ## keyed-remove
 
@@ -2459,6 +2478,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,920,667 | 43,600 | 45,299 | 3,292,772 | 592,217 | 606,194 | 45,036,832 | 1,924,626 | 1,960,165 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,920,673 | 43,600 | 45,315 | 3,292,922 | 592,232 | 606,057 | 45,036,807 | 1,924,568 | 1,960,148 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 1,920,663 | 43,600 | 45,307 | 3,292,767 | 592,236 | 606,067 | 45,036,827 | 1,924,592 | 1,960,148 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 1,920,661 | 43,600 | 45,299 | 3,292,874 | 592,047 | 606,154 | 45,036,824 | 1,924,596 | 1,960,113 |
 
 ## keyed-swap
 
@@ -2582,6 +2602,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,973,355 | 46,205 | 46,927 | 3,628,513 | 149,148 | 512,597 | 46,198,706 | 915,595 | 936,049 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,973,355 | 46,205 | 46,927 | 3,628,442 | 148,898 | 512,532 | 46,198,682 | 915,650 | 936,129 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 1,973,355 | 46,205 | 46,927 | 3,628,640 | 149,234 | 512,745 | 46,199,079 | 915,634 | 936,045 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 1,973,355 | 46,205 | 46,928 | 3,628,548 | 148,910 | 512,616 | 46,198,999 | 915,657 | 936,131 |
 
 ## mvu-dispatch
 
@@ -2705,6 +2726,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 58,292 | 788 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 58,292 | 788 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 58,292 | 788 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2828,6 +2850,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | — | — |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | — | — |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | — | — |
 
 ## project-chain
 
@@ -2951,6 +2974,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,071,745 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,071,703 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 1,071,767 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 1,071,751 |
 
 ## project-churn
 
@@ -3074,6 +3098,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 36,385 | 34,250 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 36,385 | 34,250 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 36,401 | 34,266 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -3197,6 +3222,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 50,460 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 50,460 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 50,460 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 50,460 |
 
 ## project-reorder
 
@@ -3320,6 +3346,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 780,084 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 780,084 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 780,084 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 780,084 |
 
 ## server-render
 
@@ -3443,6 +3470,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | — | — | — |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | — | — | — |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | — | — | — |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | — | — | — |
 
 ## shape-diamond
 
@@ -3566,6 +3594,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 59,915 | 80,445 | 1,764,075 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 59,915 | 80,445 | 1,764,075 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 59,915 | 80,445 | 1,764,075 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3689,6 +3718,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 84,378 | 108,947 | 2,038,136 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 84,378 | 108,947 | 2,038,136 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 84,378 | 108,947 | 2,038,136 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 84,378 | 108,944 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3812,6 +3842,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,580 | 45,790 | 55,381 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,581 | 45,790 | 55,381 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,476 | 47,581 | 45,790 | 55,384 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,476 | 47,581 | 45,790 | 55,383 |
 
 ## stream-burst-16
 
@@ -3935,6 +3966,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 5,022 | 24,618 | 5,713 | 9,739 | 50,033 | 8,070 | 123,814 | 720,146 | 113,735 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 5,022 | 24,618 | 5,713 | 9,741 | 50,033 | 8,067 | 123,812 | 720,145 | 113,733 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 5,022 | 24,618 | 5,713 | 9,739 | 50,031 | 8,070 | 123,812 | 720,148 | 113,735 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,071 | 123,809 | 720,148 | 113,731 |
 
 ## stream-burst-256
 
@@ -4058,6 +4090,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 54,162 | 393,702 | 57,052 | 131,881 | 792,766 | 74,745 | 1,343,728 | 11,508,770 | 1,046,686 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 54,162 | 393,702 | 57,052 | 131,822 | 792,883 | 74,743 | 1,343,781 | 11,508,770 | 1,046,730 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 54,162 | 393,702 | 57,052 | 131,879 | 792,881 | 74,745 | 1,343,783 | 11,508,770 | 1,046,735 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 54,162 | 393,702 | 57,052 | 131,878 | 792,883 | 74,743 | 1,343,778 | 11,508,772 | 1,046,762 |
 
 ## stream-restart
 
@@ -4181,6 +4214,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 4,203 | 5,004 | 6,576 | 16,892 | 42,907 | 72,017 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 4,203 | 5,004 | 6,578 | 16,885 | 42,908 | 72,020 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 4,203 | 5,004 | 6,577 | 16,890 | 42,910 | 72,022 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 4,203 | 5,004 | 6,579 | 16,893 | 42,907 | 72,018 |
 
 ## timed-admit-both
 
@@ -4304,6 +4338,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 117,709 | 130,037 | 2,693,577 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 117,709 | 130,039 | 2,693,577 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 117,709 | 130,035 | 2,693,577 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 117,709 | 130,038 | 2,693,577 |
 
 ## timed-admit-debounce
 
@@ -4427,6 +4462,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 116,614 | 128,630 | 2,654,129 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 116,614 | 128,631 | 2,654,129 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 116,614 | 128,630 | 2,654,129 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 116,614 | 128,630 | 2,654,116 |
 
 ## timed-admit-first
 
@@ -4550,6 +4586,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 69,621 | 79,566 | 1,620,677 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 69,621 | 79,565 | 1,620,678 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 69,621 | 79,566 | 1,620,677 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -4673,6 +4710,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 116,876 | 128,953 | 2,663,985 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 116,876 | 128,950 | 2,663,985 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 116,876 | 128,940 | 2,663,985 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 116,876 | 128,949 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4796,6 +4834,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,740 | 44,936 | 846,286 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 35,740 | 44,935 | 846,286 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 35,740 | 44,936 | 846,286 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 35,740 | 44,936 | 846,285 |
 
 ## timed-capture-debounce
 
@@ -4919,6 +4958,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,612 | 44,232 | 847,657 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 35,612 | 44,232 | 847,657 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 35,612 | 44,232 | 847,657 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5042,6 +5082,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 32,092 | 36,742 | 745,651 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 32,092 | 36,742 | 745,651 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 32,092 | 36,741 | 745,651 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 32,092 | 36,741 | 745,653 |
 
 ## timed-capture-last
 
@@ -5165,6 +5206,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 35,548 | 44,168 | 839,785 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 35,548 | 44,168 | 839,785 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 35,548 | 44,168 | 839,785 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -5288,6 +5330,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 1,087,790 | 38,805 | 84,105 | 262,838 | 145,788 | 3,351,296 | 2,545,099 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 1,087,790 | 38,805 | 84,105 | 263,112 | 145,873 | 3,351,273 | 2,545,080 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 1,087,790 | 38,805 | 84,105 | 263,187 | 145,811 | 3,351,295 | 2,545,055 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 1,089,390 | 38,805 | 84,105 | 263,152 | 145,819 | 3,351,273 | 2,545,049 |
 
 ## update-on
 
@@ -5411,6 +5454,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 94,605 | 169,020 | 2,872,472 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 94,605 | 169,006 | 2,872,414 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 94,605 | 169,023 | 2,872,467 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 94,605 | 169,030 | 2,872,470 |
 
 ## work-form
 
@@ -5534,6 +5578,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 172,679 | 165,150 | 308,853 | 296,966 | 5,421,819 | 5,334,844 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 172,679 | 165,150 | 308,861 | 296,974 | 5,421,830 | 5,334,905 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 172,679 | 165,150 | 308,811 | 296,958 | 5,421,869 | 5,334,893 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 172,679 | 165,150 | 308,861 | 297,002 | 5,421,825 | 5,334,911 |
 
 ## work-status
 
@@ -5657,6 +5702,7 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 102,045 | 80,235 | 269,347 | 156,158 | 2,659,187 | 2,391,279 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 102,045 | 80,235 | 269,362 | 156,135 | 2,659,268 | 2,391,247 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 102,045 | 80,235 | 269,345 | 156,107 | 2,659,285 | 2,391,227 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 102,045 | 80,235 | 269,363 | 156,139 | 2,659,263 | 2,391,291 |
 
 ## work-value
 
@@ -5780,4 +5826,5 @@
 | `a412e67` | 2026-10-30 | feat(dom): expose typed style map services and entry snapshots (#264) | 109,171 | 121,070 | 269,631 | 283,409 | 2,643,887 | 2,968,463 |
 | `34261eb` | 2026-10-30 | ci(docs): retain live compiler failure diagnostics (#266) | 109,169 | 121,070 | 269,573 | 283,390 | 2,643,919 | 2,968,435 |
 | `9f57c32` | 2026-10-30 | feat(dom): expose geometry value and matrix services (#265) | 109,169 | 121,070 | 269,584 | 283,407 | 2,643,788 | 2,968,426 |
+| `4a398d0` | 2026-10-31 | test(docs): separate cold compiler startup from warm interactions (#271) | 109,170 | 121,069 | 269,590 | 283,399 | 2,643,833 | 2,968,442 |
 
