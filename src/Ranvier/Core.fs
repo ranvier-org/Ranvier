@@ -3409,6 +3409,20 @@ type Graph(options: GraphOptions) =
     member internal _.CurrentComputation = current
 
     /// <summary>
+    /// Marks the running computation dirty, if any. Called by a tracked read that has just linked a source still
+    /// stale after its pull.
+    /// </summary>
+    /// <remarks>
+    /// A source can be marked dirty during its own run, when a read in its body resolves a <c>Check</c> to
+    /// <c>Dirty</c>. That notice reaches only the observers linked at the time, and a reader pulling the source for
+    /// the first time links after the pull. Once dirty, the source's <c>MarkDirty</c> notifies no one, so without
+    /// this mark the reader is never told the value it read is stale, and waits forever on a settled flight.
+    /// </remarks>
+    member internal _.MarkReaderDirty() =
+        if not (obj.ReferenceEquals (current, null)) then
+            current.MarkDirty ()
+
+    /// <summary>
     /// Evaluates <c>body</c> with <c>host</c> as the tracking context and its scope as
     /// the owner of every node <c>body</c> creates. <c>host</c> implements <c>IScopeHost</c>.
     /// </summary>
@@ -4454,6 +4468,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
 
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
         if status.HasFlag Status.Pending then
             raise (graph.NotReady (this :> INode))
 
@@ -4468,6 +4485,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     member this.TryValue: Reading<'T> =
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
 
         if status.HasFlag Status.Pending then Pending
         elif status.HasFlag Status.Error then Failed failure.Error
@@ -5923,6 +5943,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
 
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
         if status.HasFlag Status.Pending then
             raise (graph.NotReady (this :> INode))
 
@@ -5937,6 +5960,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     member this.TryValue: Reading<'T> =
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
 
         if status.HasFlag Status.Pending then Pending
         elif status.HasFlag Status.Error then Failed failure.Error
@@ -6416,6 +6442,10 @@ type Boundary<'T>
     member this.IsWaiting =
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
         waiting
 
     /// <summary>The error the boundary recovered from on its current run, or null.</summary>
@@ -6423,6 +6453,10 @@ type Boundary<'T>
     member this.Caught =
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
         Failure.ErrorOf caught
 
     /// <summary>The node <c>Caught</c> originated in, or null when <c>Caught</c> is null.</summary>
@@ -6433,6 +6467,10 @@ type Boundary<'T>
     member this.CaughtFrom: INode =
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
         Failure.OriginOf caught
 
     /// <summary>
@@ -6462,6 +6500,9 @@ type Boundary<'T>
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
 
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
         if status.HasFlag Status.Pending then
             raise (graph.NotReady (this :> INode))
 
@@ -6476,6 +6517,9 @@ type Boundary<'T>
     member this.TryValue: Reading<'T> =
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
 
         if status.HasFlag Status.Pending then Pending
         elif status.HasFlag Status.Error then Failed failure.Error

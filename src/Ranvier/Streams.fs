@@ -558,6 +558,9 @@ type StreamMemo<'S>
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
 
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
         if status.HasFlag Status.Pending then
             raise (graph.NotReady (this :> INode))
 
@@ -570,6 +573,9 @@ type StreamMemo<'S>
     member this.TryValue: Reading<'S> =
         this.EnsureCurrent ()
         graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
 
         if status.HasFlag Status.Pending then Pending
         elif status.HasFlag Status.Error then Failed failure.Error
