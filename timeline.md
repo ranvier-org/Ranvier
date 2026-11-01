@@ -126,6 +126,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 83,365 | 127,622 | 1,742,213 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 83,301 | 127,619 | 1,742,200 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 83,303 | 127,612 | 1,742,146 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 83,368 | 127,519 | 1,742,205 |
 
 ## app-table
 
@@ -253,6 +254,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 4,417,713 | 9,273,019 | 107,844,550 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 4,417,674 | 9,274,595 | 107,667,364 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 4,417,657 | 9,383,746 | 107,749,228 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 4,417,698 | 9,454,735 | 107,843,851 |
 
 ## async-recover
 
@@ -380,6 +382,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 139,139 | 41,271 | 434,853 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 139,139 | 41,269 | 434,854 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 139,139 | 41,271 | 434,857 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 139,139 | 41,256 | 434,858 |
 
 ## async-resolve
 
@@ -507,6 +510,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 2,790,467 | 1,023,238 | 11,970,410 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 2,790,467 | 1,022,891 | 11,967,272 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 2,790,467 | 1,023,086 | 11,967,189 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 2,790,467 | 1,023,091 | 11,967,113 |
 
 ## chain
 
@@ -634,6 +638,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 13,163 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -761,6 +766,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 2,553 | 3,071 | 2,500 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 2,553 | 3,071 | 2,500 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 2,553 | 3,071 | 2,500 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -888,6 +894,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 74,710 | 836,508 | 2,603,166 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 74,710 | 836,513 | 2,603,194 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 74,710 | 836,467 | 2,603,051 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 74,710 | 836,498 | 2,603,177 |
 
 ## create
 
@@ -1015,6 +1022,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 13,448,337 | 2,865,677 | 2,570,368 | 2,127,908 | 4,044,232 | 34,067,969 | 50,420,150 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 13,448,219 | 2,865,677 | 2,570,369 | 2,128,062 | 4,044,732 | 34,067,787 | 50,420,302 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 13,448,204 | 2,865,678 | 2,570,368 | 2,127,935 | 4,045,134 | 34,067,888 | 50,420,070 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 13,448,264 | 2,897,677 | 2,570,384 | 2,127,925 | 4,045,332 | 34,067,978 | 50,420,273 |
 
 ## create-on
 
@@ -1142,6 +1150,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 2,965,484 | 4,179,753 | 55,229,089 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 2,949,485 | 4,179,940 | 55,229,108 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 2,949,484 | 4,179,816 | 55,229,107 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 2,949,500 | 4,179,855 | 55,229,093 |
 
 ## cutoff
 
@@ -1269,6 +1278,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1396,6 +1406,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 781 | 751 | 16,520 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 781 | 751 | 16,520 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 781 | 751 | 16,520 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1523,6 +1534,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 751 | 802 | 16,543 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 751 | 802 | 16,543 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 751 | 802 | 16,543 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1650,6 +1662,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 2,707,643 | 806,291 | 367,497 | 475,873 | 495,238 | 13,205,820 | 9,106,197 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 2,706,249 | 806,291 | 367,497 | 475,968 | 495,078 | 13,205,970 | 9,106,190 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 2,707,648 | 806,291 | 367,497 | 475,980 | 495,290 | 13,206,250 | 9,106,067 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 2,706,248 | 806,290 | 367,497 | 475,877 | 495,259 | 13,205,970 | 9,105,986 |
 
 ## dispose-on
 
@@ -1777,6 +1790,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 346,497 | 487,906 | 8,902,452 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 346,497 | 488,008 | 8,902,859 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 346,497 | 487,772 | 8,902,950 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 346,497 | 487,913 | 8,902,807 |
 
 ## editable-edit
 
@@ -1904,6 +1918,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 181,706 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 181,706 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 181,706 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 181,706 |
 
 ## editable-upstream
 
@@ -2031,6 +2046,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 232,855 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 232,855 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 232,855 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 232,855 |
 
 ## fail-recompute
 
@@ -2158,6 +2174,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 64,938 | 1,370 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 64,938 | 1,370 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 64,938 | 1,370 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 64,938 | 1,370 |
 
 ## flight
 
@@ -2285,6 +2302,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2412,6 +2430,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 1,921,759 | 53,917 | 54,982 | 3,277,518 | 237,622 | 175,996 | 45,072,264 | 2,634,543 | 2,655,512 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 1,921,727 | 53,917 | 54,952 | 3,277,771 | 237,685 | 176,030 | 45,072,273 | 2,634,616 | 2,655,446 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 1,921,729 | 53,917 | 54,953 | 3,277,777 | 237,689 | 176,009 | 45,082,494 | 2,634,605 | 2,655,511 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 1,921,727 | 53,933 | 54,956 | 3,277,679 | 237,610 | 176,013 | 45,072,261 | 2,634,544 | 2,655,555 |
 
 ## keyed-remove
 
@@ -2539,6 +2558,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 1,920,683 | 43,600 | 45,332 | 3,292,871 | 592,242 | 606,080 | 45,036,820 | 1,924,569 | 1,960,128 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 1,920,655 | 43,600 | 45,300 | 3,292,975 | 591,956 | 606,261 | 45,036,796 | 1,924,558 | 1,960,137 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 1,920,666 | 43,600 | 45,307 | 3,292,855 | 592,281 | 606,162 | 45,036,805 | 1,924,637 | 1,960,133 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 1,920,660 | 43,616 | 45,299 | 3,292,937 | 592,260 | 605,972 | 45,036,766 | 1,924,662 | 1,960,205 |
 
 ## keyed-swap
 
@@ -2666,6 +2686,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 1,973,371 | 46,206 | 46,943 | 3,628,832 | 148,925 | 512,585 | 46,198,671 | 915,668 | 936,166 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 1,973,355 | 46,205 | 46,927 | 3,626,659 | 149,219 | 512,629 | 46,198,693 | 915,641 | 936,101 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 1,973,356 | 46,205 | 46,928 | 3,626,074 | 149,181 | 512,739 | 46,198,700 | 915,597 | 936,133 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 1,973,355 | 46,221 | 46,927 | 3,628,490 | 148,889 | 512,562 | 46,198,700 | 915,675 | 936,076 |
 
 ## mvu-dispatch
 
@@ -2793,6 +2814,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 58,292 | 788 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 58,292 | 788 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 58,292 | 788 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 58,292 | 788 |
 
 ## persist-write
 
@@ -2920,6 +2942,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | — | — |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | — | — |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | — | — |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | — | — |
 
 ## project-chain
 
@@ -3047,6 +3070,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 1,071,719 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 1,071,729 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 1,071,758 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 1,071,768 |
 
 ## project-churn
 
@@ -3174,6 +3198,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 36,401 | 34,266 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 36,385 | 34,250 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 36,385 | 34,250 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -3301,6 +3326,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 50,460 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 50,460 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 50,492 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 50,508 |
 
 ## project-reorder
 
@@ -3428,6 +3454,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 780,085 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 780,085 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 780,116 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 780,132 |
 
 ## server-render
 
@@ -3555,6 +3582,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | — | — | — |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | — | — | — |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | — | — | — |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | — | — | — |
 
 ## shape-diamond
 
@@ -3682,6 +3710,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 59,915 | 80,445 | 1,764,075 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 59,915 | 80,445 | 1,764,075 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 59,915 | 80,445 | 1,764,075 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3809,6 +3838,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 84,378 | 108,947 | 2,038,136 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 84,378 | 108,947 | 2,038,136 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 84,378 | 108,947 | 2,038,136 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -3936,6 +3966,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,470 | 47,581 | 45,790 | 55,381 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,472 | 47,581 | 45,790 | 55,383 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,581 | 45,787 | 55,381 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,469 | 47,578 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -4063,6 +4094,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 5,022 | 24,618 | 5,713 | 9,736 | 50,033 | 8,070 | 123,809 | 720,148 | 113,735 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,070 | 123,812 | 720,148 | 113,735 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,071 | 123,805 | 720,148 | 113,720 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,071 | 123,813 | 720,148 | 113,735 |
 
 ## stream-burst-256
 
@@ -4190,6 +4222,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 54,162 | 393,702 | 57,052 | 131,974 | 792,883 | 74,743 | 1,343,701 | 11,508,770 | 1,046,763 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 54,162 | 393,702 | 57,052 | 131,928 | 792,888 | 74,743 | 1,343,781 | 11,508,770 | 1,046,762 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 54,162 | 393,702 | 57,052 | 131,974 | 792,883 | 74,743 | 1,343,739 | 11,508,775 | 1,046,762 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 54,162 | 393,702 | 57,052 | 131,898 | 792,848 | 74,743 | 1,343,783 | 11,508,770 | 1,046,722 |
 
 ## stream-restart
 
@@ -4317,6 +4350,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 4,203 | 5,004 | 6,575 | 16,889 | 42,909 | 72,018 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 4,203 | 5,004 | 6,579 | 16,893 | 42,909 | 72,022 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 4,203 | 5,004 | 6,577 | 16,889 | 42,908 | 72,019 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 4,203 | 5,004 | 6,579 | 16,893 | 42,905 | 72,022 |
 
 ## timed-admit-both
 
@@ -4444,6 +4478,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 117,709 | 130,036 | 2,693,577 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 117,709 | 130,035 | 2,693,577 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 117,709 | 130,037 | 2,693,577 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 117,709 | 130,036 | 2,693,576 |
 
 ## timed-admit-debounce
 
@@ -4571,6 +4606,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 116,614 | 128,630 | 2,654,128 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 116,614 | 128,621 | 2,654,129 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 116,614 | 128,617 | 2,654,129 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 116,614 | 128,632 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4698,6 +4734,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 69,621 | 79,566 | 1,620,677 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 69,621 | 79,566 | 1,620,677 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 69,621 | 79,566 | 1,620,678 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 69,621 | 79,565 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -4825,6 +4862,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 116,876 | 128,950 | 2,663,985 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 116,876 | 128,940 | 2,663,985 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 116,876 | 128,948 | 2,663,973 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 116,876 | 128,940 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -4952,6 +4990,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 35,740 | 44,937 | 846,286 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 35,740 | 44,936 | 846,285 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 35,740 | 44,936 | 846,287 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 35,740 | 44,936 | 846,286 |
 
 ## timed-capture-debounce
 
@@ -5079,6 +5118,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 35,612 | 44,233 | 847,657 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 35,612 | 44,232 | 847,657 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 35,612 | 44,233 | 847,659 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5206,6 +5246,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 32,092 | 36,741 | 745,651 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 32,092 | 36,742 | 745,651 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 32,092 | 36,742 | 745,652 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -5333,6 +5374,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 35,548 | 44,168 | 839,785 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 35,548 | 44,168 | 839,785 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 35,548 | 44,167 | 839,785 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -5460,6 +5502,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 1,087,790 | 38,805 | 84,105 | 262,746 | 145,834 | 3,351,282 | 2,545,084 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 1,090,990 | 38,805 | 84,105 | 263,191 | 145,806 | 3,351,297 | 2,545,100 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 1,089,390 | 38,805 | 84,105 | 263,167 | 145,779 | 3,351,292 | 2,545,096 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 1,087,790 | 38,805 | 84,105 | 263,117 | 145,814 | 3,351,297 | 2,545,086 |
 
 ## update-on
 
@@ -5587,6 +5630,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 94,605 | 169,011 | 2,872,473 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 94,605 | 169,008 | 2,872,454 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 94,605 | 168,997 | 2,872,421 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 94,605 | 169,011 | 2,872,468 |
 
 ## work-form
 
@@ -5714,6 +5758,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,861 | 5,334,914 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 172,679 | 165,150 | 308,861 | 296,993 | 5,421,868 | 5,334,916 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,826 | 5,334,901 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 172,679 | 165,150 | 308,861 | 296,979 | 5,421,861 | 5,334,914 |
 
 ## work-status
 
@@ -5841,6 +5886,7 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 102,045 | 80,235 | 269,332 | 156,127 | 2,659,304 | 2,391,318 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 102,045 | 80,235 | 269,332 | 156,135 | 2,659,251 | 2,391,317 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 102,045 | 80,235 | 269,369 | 156,137 | 2,659,239 | 2,391,316 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 102,045 | 80,235 | 269,300 | 156,135 | 2,659,301 | 2,391,317 |
 
 ## work-value
 
@@ -5968,4 +6014,5 @@
 | `d2f24d8` | 2026-10-31 | feat(dom): expose shared typed transform construction (#267) | 109,169 | 121,069 | 269,610 | 283,397 | 2,643,947 | 2,968,497 |
 | `b6cdd12` | 2026-10-31 | feat(dom): add shared monotonic user timing (#268) | 109,169 | 121,070 | 269,612 | 283,408 | 2,643,949 | 2,968,475 |
 | `7beab57` | 2026-10-31 | feat(dom): add SVG geometry and live value contracts (#269) | 109,169 | 121,069 | 269,598 | 283,395 | 2,643,833 | 2,968,444 |
+| `b203b5f` | 2026-11-01 | feat(dom): batch 1 shared DOM contracts (alpha.49) (#278) | 109,169 | 121,069 | 269,586 | 283,408 | 2,643,910 | 2,968,476 |
 
