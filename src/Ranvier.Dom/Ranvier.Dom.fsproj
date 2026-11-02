@@ -11,6 +11,7 @@
     <IsAotCompatible Condition="'$(TargetFramework)' == 'net10.0'">true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="DomDisplay.fs" />
     <Compile Include="Generated/Dom.fs" />
     <Compile Include="SvgPaths.fs" />
     <Compile Include="SvgViews.fs" />
@@ -72,6 +73,7 @@
     <Compile Include="CustomEffects.fs" />
     <Compile Include="ViewTransitions.fs" />
     <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="DomDisplay.LICENSE.txt" Pack="true" PackagePath="licenses/FSharp-MIT.txt" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
   <ItemGroup>
