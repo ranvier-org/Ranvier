@@ -576,7 +576,7 @@ let run (create: unit -> SubtleCryptoService) (vectors: Vector array) =
 
                         failwith "Expected null availability error"
                     with :? ArgumentNullException as failure ->
-                        equal "legacy null availability parameter" "algorithm" failure.ParamName
+                        equal "legacy null availability message" "Value cannot be null. (Parameter 'algorithm')" failure.Message
 
                     match CryptoContract.availability SubtleOperation.Sign "'quoted'" with
                     | CryptoOutcome.Unsupported reason ->
