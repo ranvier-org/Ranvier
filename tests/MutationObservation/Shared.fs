@@ -519,7 +519,9 @@ let main _ =
 
     cleanupFailures ()
 
-    if checks <> 59 then
+    MutationObservationConcurrency.run check named
+
+    if checks <> 67 then
         failwithf "Incomplete shared fixture: %d" checks
 
     printfn "MutationObservation shared: %d assertions PASS" checks

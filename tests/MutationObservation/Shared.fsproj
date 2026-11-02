@@ -7,6 +7,7 @@
     <RanvierIntegrationTest>true</RanvierIntegrationTest>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Concurrency.fs" />
     <Compile Include="Shared.fs" />
     <ProjectReference Include="../../src/Ranvier.Dom/Ranvier.Dom.fsproj" />
   </ItemGroup>

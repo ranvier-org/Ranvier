@@ -436,4 +436,33 @@ phases.Enqueue (fun () ->
 
 phases.Enqueue (fun () -> check "Faulted service disposal suppresses queued callbacks" (faultCalls = 0))
 
+phases.Enqueue (fun () ->
+    let mutable lateService = Unchecked.defaultof<MutationObservationService>
+    let mutable lateDeliver = ignore
+    let mutable lateReleases = 0
+    let mutable lateCalls = 0
+
+    lateService <-
+        Ranvier.Dom.MutationObservation.create
+            {
+                Create =
+                    fun deliver _ ->
+                        lateDeliver <- deliver
+                        lateService.Dispose ()
+
+                        {
+                            Observe = (fun _ _ -> ())
+                            Disconnect = ignore
+                            TakeRecords = (fun () -> [||])
+                            Release = (fun () -> lateReleases <- lateReleases + 1)
+                        }
+            }
+
+    let lateObserver = lateService.Create (fun _ _ -> lateCalls <- lateCalls + 1)
+    lateDeliver [||]
+    check "Synchronous service close releases late handle" (lateReleases = 1)
+    check "Synchronous service close disables late callback" (lateCalls = 0)
+    check "Late factory observer is closed" (lateObserver.TakeRecords().Length = 0)
+    lateObserver.Dispose ())
+
 advance ()

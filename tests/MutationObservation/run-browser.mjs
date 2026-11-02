@@ -27,7 +27,7 @@ try {
   await page.waitForFunction(() => globalThis.__mutationProof !== undefined);
   const result = await page.evaluate(() => globalThis.__mutationProof);
   if (result.error || errors.length) throw new Error(JSON.stringify({ ...result, errors }));
-  if (result.checks !== 47) throw new Error(`Incomplete fixture: ${result.checks}`);
+  if (result.checks !== 50) throw new Error(`Incomplete fixture: ${result.checks}`);
   console.log(JSON.stringify({ ...result, browser: browser.version(), pass: true }));
 } finally {
   await browser?.close();

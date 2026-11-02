@@ -71,11 +71,16 @@ type MutationObserverHandle =
 type MutationObservationProvider =
     {
         /// <summary>Creates an observer delivering records at the engine's mutation notification checkpoint.</summary>
-        /// <remarks>Calls onClosed for provider-originated automatic closure. Reports callback exceptions through the host.</remarks>
+        /// <remarks>
+        /// Delivery begins after Create returns. Calls onClosed for provider-originated automatic closure.
+        /// Reports callback exceptions through the host.
+        /// </remarks>
         Create: (MutationRecord array -> unit) -> (unit -> unit) -> MutationObserverHandle
     }
 
 /// <summary>A DOM mutation observer; disposal disconnects it and releases its callback.</summary>
+/// <remarks>DOM operations follow the provider's owner-thread rules. Disposal may be requested off-thread;
+/// a callback admitted before closure may finish.</remarks>
 #if FABLE_COMPILER
 [<Fable.Core.Mangle>]
 #endif
@@ -124,10 +129,12 @@ module MutationObservation =
 
         let mutable disposed = false
         let observers = List<IDisposable>()
+        let gate = obj ()
 
         let live () =
-            if disposed then
-                raise (MutationObserverException ("InvalidStateError", "The mutation observation service is disposed"))
+            lock gate (fun () ->
+                if disposed then
+                    raise (MutationObserverException ("InvalidStateError", "The mutation observation service is disposed")))
 
         let observer callback (signal: AbortSignal option) =
             let mutable released = false
@@ -135,14 +142,17 @@ module MutationObservation =
             let mutable handle: MutationObserverHandle option = None
             let mutable registration: IDisposable option = None
 
-            let active () =
-                if released then
-                    raise (MutationObserverException ("InvalidStateError", "The mutation observer is disposed"))
+            let currentEngine () =
+                lock gate (fun () ->
+                    if released || disposed then
+                        raise (MutationObserverException ("InvalidStateError", "The mutation observer is disposed"))
+
+                    handle.Value)
 
             let self =
                 { new MutationObserver with
                     member _.Observe(target, options) =
-                        active ()
+                        let engine = currentEngine ()
 
                         if isNull (box target) then
                             nullArg "target"
@@ -164,25 +174,35 @@ module MutationObservation =
                                     AttributeFilter = Some (Array.copy filter)
                                 }
 
-                        handle.Value.Observe target snapshot
+                        engine.Observe target snapshot
 
                     member _.Disconnect() =
-                        active ()
-                        handle.Value.Disconnect ()
+                        (currentEngine ()).Disconnect()
 
                     member _.TakeRecords() =
-                        if released then [||] else handle.Value.TakeRecords ()
+                        let engine = lock gate (fun () -> if released || disposed then None else handle)
+
+                        match engine with
+                        | Some value -> value.TakeRecords ()
+                        | None -> [||]
 
                     member this.Dispose() =
-                        if not released then
-                            released <- true
-                            callback <- None
-                            observers.Remove this |> ignore
-                            let abortRegistration = registration
-                            let engine = handle
-                            registration <- None
-                            handle <- None
+                        let resources =
+                            lock gate (fun () ->
+                                if released then
+                                    None
+                                else
+                                    released <- true
+                                    callback <- None
+                                    observers.Remove this |> ignore
+                                    let owned = Some (registration, handle)
+                                    registration <- None
+                                    handle <- None
+                                    owned)
 
+                        match resources with
+                        | None -> ()
+                        | Some (abortRegistration, engine) ->
                             finishCleanup
                                 [|
                                     (fun () ->
@@ -194,35 +214,56 @@ module MutationObservation =
                                 |]
                 }
 
-            match signal with
-            | Some signal when signal.Aborted -> self.Dispose ()
-            | _ ->
-                try
+            lock gate (fun () ->
+                if disposed then
+                    raise (MutationObserverException ("InvalidStateError", "The mutation observation service is disposed"))
+
+                observers.Add self)
+
+            try
+                match signal with
+                | Some signal when signal.Aborted -> self.Dispose ()
+                | _ ->
                     let engine =
                         provider.Create
                             (fun entries ->
-                                callback
+                                let admitted = lock gate (fun () -> if released || disposed then None else callback)
+
+                                admitted
                                 |> Option.iter (fun deliver -> deliver entries self))
                             self.Dispose
 
-                    if released then
-                        engine.Release ()
+                    let attached =
+                        lock gate (fun () ->
+                            if released || disposed then
+                                false
+                            else
+                                handle <- Some engine
+                                true)
+
+                    if not attached then
+                        finishCleanup [| self.Dispose; engine.Release |]
                     else
-                        handle <- Some engine
-                        observers.Add self
+                        match signal with
+                        | Some signal ->
+                            let value = signal.OnAbort (fun _ -> self.Dispose ())
 
-                    match signal with
-                    | Some signal ->
-                        let value = signal.OnAbort (fun _ -> self.Dispose ())
+                            let registered =
+                                lock gate (fun () ->
+                                    if released || disposed then
+                                        false
+                                    else
+                                        registration <- Some value
+                                        true)
 
-                        if released then
-                            value.Dispose ()
-                        else
-                            registration <- Some value
-                    | None -> ()
-                with _ ->
-                    self.Dispose ()
-                    reraise ()
+                            if not registered then
+                                value.Dispose ()
+
+                            if signal.Aborted then
+                                self.Dispose ()
+                        | None -> ()
+            with error ->
+                finishCleanup [| (fun () -> raise error); self.Dispose |]
 
             self
 
@@ -241,10 +282,15 @@ module MutationObservation =
                 observer callback signal
 
             member _.Dispose() =
-                if not disposed then
-                    disposed <- true
+                let snapshot =
+                    lock gate (fun () ->
+                        if disposed then
+                            [||]
+                        else
+                            disposed <- true
+                            observers.ToArray ())
 
-                    Seq.toArray observers
-                    |> Seq.map (fun observer -> fun () -> observer.Dispose ())
-                    |> finishCleanup
+                snapshot
+                |> Seq.map (fun observer -> fun () -> observer.Dispose ())
+                |> finishCleanup
         }
