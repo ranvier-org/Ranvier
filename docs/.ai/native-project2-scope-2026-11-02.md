@@ -8,7 +8,7 @@ Sixteen retained group/AOT issue titles and bodies now explicitly define the nat
 
 ## Retained native items
 
-- [ranvier-org/Ranvier#291](https://github.com/ranvier-org/Ranvier/issues/291): Make whole Ranvier.Dom root pass strict NativeAOT while preserving display contracts
+- [ranvier-org/Ranvier#291](https://github.com/ranvier-org/Ranvier/issues/291): Make native Ranvier View/Interop applications pass strict NativeAOT
 - [ranvier-org/Ranvier.View#14](https://github.com/ranvier-org/Ranvier.View/issues/14): bug(analyzers): fixed SDL byte buffers crash FCS expression traversal
 - [ranvier-org/Ranvier.View#48](https://github.com/ranvier-org/Ranvier.View/issues/48): CanvasExport and Snapshots duplicate the image encoding map
 - [ranvier-org/Ranvier.View#51](https://github.com/ranvier-org/Ranvier.View/issues/51): Four .fsx files are not fantomas-formatted: build.fsx, PluginTests.fsx, and two under .claude/skills/fsharp-xml-docs
@@ -18,21 +18,21 @@ Sixteen retained group/AOT issue titles and bodies now explicitly define the nat
 - [ranvier-org/Ranvier.WebCore#120](https://github.com/ranvier-org/Ranvier.WebCore/issues/120): Maintain a matching Windows GPU package cohort for native previews
 - [ranvier-org/Ranvier.WebCore#146](https://github.com/ranvier-org/Ranvier.WebCore/issues/146): ResizeObserver device-pixel-content-box in the native engine (follow-up to G10)
 - [ranvier-org/Ranvier.WebCore#156](https://github.com/ranvier-org/Ranvier.WebCore/issues/156): Linux (WPE): drops expose no files; DataTransfer::allowsFileAccess() is false for every drag
-- [ranvier-org/Ranvier.WebCore#157](https://github.com/ranvier-org/Ranvier.WebCore/issues/157): D02: Mutation observation
-- [ranvier-org/Ranvier.WebCore#162](https://github.com/ranvier-org/Ranvier.WebCore/issues/162): D15: Native control pickers
-- [ranvier-org/Ranvier.WebCore#169](https://github.com/ranvier-org/Ranvier.WebCore/issues/169): T05: Undo transaction integration
-- [ranvier-org/Ranvier.WebCore#171](https://github.com/ranvier-org/Ranvier.WebCore/issues/171): T08: Rich IME state
-- [ranvier-org/Ranvier.WebCore#172](https://github.com/ranvier-org/Ranvier.WebCore/issues/172): T10: Spellchecking and writing assistance
-- [ranvier-org/Ranvier.WebCore#176](https://github.com/ranvier-org/Ranvier.WebCore/issues/176): R13: Compositor/presentation integration
-- [ranvier-org/Ranvier.WebCore#177](https://github.com/ranvier-org/Ranvier.WebCore/issues/177): R14: Printing/PDF/pagination
-- [ranvier-org/Ranvier.WebCore#180](https://github.com/ranvier-org/Ranvier.WebCore/issues/180): I05: Gesture and force input
-- [ranvier-org/Ranvier.WebCore#182](https://github.com/ranvier-org/Ranvier.WebCore/issues/182): I10: Accessibility platform adapters
-- [ranvier-org/Ranvier.WebCore#186](https://github.com/ranvier-org/Ranvier.WebCore/issues/186): H09: Paint/style/layout change tracing
-- [ranvier-org/Ranvier.WebCore#187](https://github.com/ranvier-org/Ranvier.WebCore/issues/187): H10: Error/reporting records
-- [ranvier-org/Ranvier.WebCore#190](https://github.com/ranvier-org/Ranvier.WebCore/issues/190): B01: Audio playback/processing
-- [ranvier-org/Ranvier.WebCore#191](https://github.com/ranvier-org/Ranvier.WebCore/issues/191): B02: Video/media elements
-- [ranvier-org/Ranvier.WebCore#195](https://github.com/ranvier-org/Ranvier.WebCore/issues/195): B07: OS media session/remote playback
-- [ranvier-org/Ranvier.WebCore#199](https://github.com/ranvier-org/Ranvier.WebCore/issues/199): B13: Window/display modes
+- [ranvier-org/Ranvier.WebCore#157](https://github.com/ranvier-org/Ranvier.WebCore/issues/157): D02: D02: Native live-DOM mutation observation
+- [ranvier-org/Ranvier.WebCore#162](https://github.com/ranvier-org/Ranvier.WebCore/issues/162): D15: D15: Native control picker integration
+- [ranvier-org/Ranvier.WebCore#169](https://github.com/ranvier-org/Ranvier.WebCore/issues/169): T05: T05: Native editing undo transactions
+- [ranvier-org/Ranvier.WebCore#171](https://github.com/ranvier-org/Ranvier.WebCore/issues/171): T08: T08: Native IME and text-service integration
+- [ranvier-org/Ranvier.WebCore#172](https://github.com/ranvier-org/Ranvier.WebCore/issues/172): T10: T10: Native spelling-provider and editor integration
+- [ranvier-org/Ranvier.WebCore#176](https://github.com/ranvier-org/Ranvier.WebCore/issues/176): R13: R13: Native compositor and presentation integration
+- [ranvier-org/Ranvier.WebCore#177](https://github.com/ranvier-org/Ranvier.WebCore/issues/177): R14: R14: Native printing and PDF output
+- [ranvier-org/Ranvier.WebCore#180](https://github.com/ranvier-org/Ranvier.WebCore/issues/180): I05: I05: Native gesture and force-input integration
+- [ranvier-org/Ranvier.WebCore#182](https://github.com/ranvier-org/Ranvier.WebCore/issues/182): I10: I10: Native accessibility platform adapters
+- [ranvier-org/Ranvier.WebCore#186](https://github.com/ranvier-org/Ranvier.WebCore/issues/186): H09: H09: Native paint, style and layout tracing
+- [ranvier-org/Ranvier.WebCore#187](https://github.com/ranvier-org/Ranvier.WebCore/issues/187): H10: H10: Native host and renderer error records
+- [ranvier-org/Ranvier.WebCore#190](https://github.com/ranvier-org/Ranvier.WebCore/issues/190): B01: B01: Native media/audio playback integration
+- [ranvier-org/Ranvier.WebCore#191](https://github.com/ranvier-org/Ranvier.WebCore/issues/191): B02: B02: Native video surface and playback integration
+- [ranvier-org/Ranvier.WebCore#195](https://github.com/ranvier-org/Ranvier.WebCore/issues/195): B07: B07: Native OS media-session integration
+- [ranvier-org/Ranvier.WebCore#199](https://github.com/ranvier-org/Ranvier.WebCore/issues/199): B13: B13: Native window and display integration
 - [ranvier-org/Ranvier.WebCore#210](https://github.com/ranvier-org/Ranvier.WebCore/issues/210): Linux host does not register the WPE image GResource, so built-in icons are empty
 - [ranvier-org/Ranvier.WebCore#211](https://github.com/ranvier-org/Ranvier.WebCore/issues/211): macOS: WTF RunLoop::Timer CF timers still wait for kernel delivery (residual of #155)
 - [ranvier-org/Ranvier.WebCore#212](https://github.com/ranvier-org/Ranvier.WebCore/issues/212): abi_layouts missing for RvImageDataLayout, RvImageBitmapOptions, RvDomKeyframeAnimationOptions
@@ -52,9 +52,9 @@ Sixteen retained group/AOT issue titles and bodies now explicitly define the nat
 ## Delivery and active work
 
 - Project2 is NOT complete. Required native platform, rendering, interaction/accessibility, JIT/AOT, release and actual public-consumer gates remain.
-- Native preview3 ce24 Linux two-RID CI completed successfully. All CI watchers are terminal; acceptance is downloading actual artifacts and checking final TEN public bytes/signatures. Do not claim TEN until that audit passes.
+- Native preview3 exactce24 TEN public packages independently verified against actual producer ZIP members, hashes, clean manifests and official repository signatures; fresh public HEAD200. Linux x64/ARM64 each97 groups including9EGL frames and64context sentinels; producer total769groups. All CI watchers terminal. Receipt native-preview3-ten-public-audit.json. Managed Core288/View publication still on Root HOLD for actual native AOT source fixes and exact final heads.
 - HOLD managed Core288/View publication pending current real native AOT source fixes and exact head review; implementation proceeds independently of CI. Native preview4 eebd View JIT175, GPU/UIA30 reopen, A11 and P3false controls pass; strict AOT remains RED.
-- Native Mounting structtuple trial removes all3 IL3054 with zero boxing/System.Tuple heap constructors; final normal/traced backend784pass/12ignored each, Fable source check/handoff pending. Linux SameValueZero candidate35 parity/strictcompile clean, actualnative runtime proof pending. No full native AOT success yet.
+- Native Mounting commitc6d9 removes all3 IL3054 with zero boxing/System.Tuple heap constructors; final normal/traced backend784pass/12ignored each and Fable159sourcecompile pass. Windows port1c9d clean/pushed. Linux SameValueZero candidate2 actualnative35/strictcompile0warnings proven; minimal3lookup source edit approved and fullproductgates underway. No full native AOT success yet.
 - Minimal native Core future base e982 = first78e+D02AAD2+point fix. Four private normal/traced Dom/Fable packages exclude all new CryptoKey/UTF8 facade sources and embedded compile includes, preserve existing legacyCryptoService+D02; source unchanged and67 D02 tests pass. No public version/pin allocation. Its worktree archived after QA reader release.
 - First native View release excludes4 optional Anime IDs after reviewed publisher filter; proposed cohort22 =10Native+4Dom+8View instead of26. Filter source/aggregate verification is being completed; no public publication claim.
 - GPU/API agent now researches native177 print layout/output only; aot_dom owns private mount fix/Core actualroots; Linux owns SameValueZero; Windows owns P4platform proof; acceptance owns immutable audits/merges/publication; root coordinates. All six lanes assigned.

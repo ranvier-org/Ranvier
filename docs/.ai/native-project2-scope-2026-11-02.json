@@ -251,12 +251,13 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 157,
-      "title": "D02: Mutation observation",
+      "title": "D02: Native live-DOM mutation observation",
       "decision": "keep",
       "action": "retain",
       "rationale": "Effects observe Ranvier state dependencies, whereas the renderer can mutate editable DOM independently. Native engine mutation records can notify a managed editor or maintain a native extension without polling the whole tree. Browser-library compatibility and completed WIP are not the justification.",
       "nativeUseCase": "An editor observes actual engine text/child changes caused by native editing and updates managed document state; closing/replacing its host must release callbacks and records safely.",
-      "scopeAdjustment": "Keep opt-in live-DOM observation, ownership and teardown. Effects remain the normal signal update path. Do not add a generic reactive framework, browser library porting target, or claim mutation observation is an optimization for all views."
+      "scopeAdjustment": "Keep opt-in live-DOM observation, ownership and teardown. Effects remain the normal signal update path. Do not add a generic reactive framework, browser library porting target, or claim mutation observation is an optimization for all views.",
+      "originalTitle": "D02: Mutation observation"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -301,12 +302,13 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 162,
-      "title": "D15: Native control pickers",
+      "title": "D15: Native control picker integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "A date/color/file/select control rendered by WebCore needs the application host to own popup/dialog UI, UI-thread dispatch and cancellation. .NET can implement the dialog, but the renderer-to-host request and result integration still belongs to this product.",
       "nativeUseCase": "User opens a native date/color or file chooser from a rendered control; accepted/cancelled values update that same live control.",
-      "scopeAdjustment": "Expose only supported requests with explicit availability and host-owned typed result/cancellation. Do not reproduce browser activation policies or every browser picker."
+      "scopeAdjustment": "Expose only supported requests with explicit availability and host-owned typed result/cancellation. Do not reproduce browser activation policies or every browser picker.",
+      "originalTitle": "D15: Native control pickers"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -331,12 +333,13 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 169,
-      "title": "T05: Undo transaction integration",
+      "title": "T05: Native editing undo transactions",
       "decision": "keep",
       "action": "retain",
       "rationale": "Rendered editable controls can perform engine-owned changes that must participate coherently in the native application undo command. .NET undo state alone does not join WebCore editing transactions automatically.",
       "nativeUseCase": "A native editor routes Ctrl+Z/Redo to the focused engine editor and groups a user edit once while coordinating with its application command history.",
-      "scopeAdjustment": "Keep the focused engine editing transaction boundary, ownership, redo/reset and host command routing. Do not implement a universal browser UndoManager or a general application undo framework."
+      "scopeAdjustment": "Keep the focused engine editing transaction boundary, ownership, redo/reset and host command routing. Do not implement a universal browser UndoManager or a general application undo framework.",
+      "originalTitle": "T05: Undo transaction integration"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -351,32 +354,35 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 171,
-      "title": "T08: Rich IME state",
+      "title": "T08: Native IME and text-service integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "Composition clauses, surrounding-text and caret queries connect an actual input method to the rendered editor. This cannot be replaced by a general .NET string service or synthetic CompositionEvent payloads.",
       "nativeUseCase": "A user enters Japanese/Chinese text through the OS candidate UI with correct selection, surrounding text, cancellation and caret placement.",
-      "scopeAdjustment": "Implement only required OS text-service/editor bridge with explicit platform support. Do not demand identical private IME state on all platforms."
+      "scopeAdjustment": "Implement only required OS text-service/editor bridge with explicit platform support. Do not demand identical private IME state on all platforms.",
+      "originalTitle": "T08: Rich IME state"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 172,
-      "title": "T10: Spellchecking and writing assistance",
+      "title": "T10: Native spelling-provider and editor integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "Spelling UI annotations and applying a native suggestion must map to live engine text ranges. The host may use OS/.NET providers, but correct range/replacement integration is renderer-specific.",
       "nativeUseCase": "A native text field displays a platform spelling suggestion and replaces precisely the selected engine range without losing composition or undo state.",
-      "scopeAdjustment": "No bundled NLP/LLM/writing-assistance framework, dictionary engine, browser-menu emulation or exact suggestion parity. Keep providers optional and unavailable results explicit."
+      "scopeAdjustment": "No bundled NLP/LLM/writing-assistance framework, dictionary engine, browser-menu emulation or exact suggestion parity. Keep providers optional and unavailable results explicit.",
+      "originalTitle": "T10: Spellchecking and writing assistance"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 180,
-      "title": "I05: Gesture and force input",
+      "title": "I05: Native gesture and force-input integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "Touchpad pinch/rotate/pan and force input need host recognition/arbitration and delivery into the native viewport or live controls. They are native interaction capabilities rather than a browser data API.",
       "nativeUseCase": "Pinch-zoom a native canvas/editor viewport, cancel a pan, or apply pen/trackpad force while preserving focus/capture.",
-      "scopeAdjustment": "Use native recognizers or pointer fallback and defined units/phases. Do not clone vendor WebKit gesture event names as universal semantics or require force where unavailable."
+      "scopeAdjustment": "Use native recognizers or pointer fallback and defined units/phases. Do not clone vendor WebKit gesture event names as universal semantics or require force where unavailable.",
+      "originalTitle": "I05: Gesture and force input"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -391,12 +397,13 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 182,
-      "title": "I10: Accessibility platform adapters",
+      "title": "I10: Native accessibility platform adapters",
       "decision": "keep",
       "action": "retain",
       "rationale": "An AX tree exposed only to tests does not make a native window accessible to UIA/AT-SPI/NSAccessibility clients. Platform actions/events must reach the rendered application.",
       "nativeUseCase": "A screen reader announces controls and invokes focus/value/activation actions in the real native window.",
-      "scopeAdjustment": "Keep native semantics/actions/events and real assistive-technology evidence. Do not use browser DOM inspection as platform acceptance or add custom-element registration as prerequisite."
+      "scopeAdjustment": "Keep native semantics/actions/events and real assistive-technology evidence. Do not use browser DOM inspection as platform acceptance or add custom-element registration as prerequisite.",
+      "originalTitle": "I10: Accessibility platform adapters"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -501,22 +508,24 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 186,
-      "title": "H09: Paint/style/layout change tracing",
+      "title": "H09: Native paint, style and layout tracing",
       "decision": "keep",
       "action": "retain",
       "rationale": "Style calculation, layout and paint are work the native WebCore renderer owns. .NET application timers cannot identify which native renderer phase caused an interactive frame stall. The full body's opt-in extension with overhead/provenance metadata fits this requirement when implemented as host diagnostics.",
       "nativeUseCase": "A native window has delayed input-to-paint after a DOM update; opt-in engine events distinguish style/layout invalidation from painting, helping fix native frame latency and repeated relayout.",
-      "scopeAdjustment": "Keep bounded opt-in native trace hooks, phase/time units, source provenance and measured disabled/enabled overhead. Share an envelope only where existing consumers need it. Exclude PerformanceObserver emulation, browser entry taxonomy and cross-engine event equality as acceptance requirements."
+      "scopeAdjustment": "Keep bounded opt-in native trace hooks, phase/time units, source provenance and measured disabled/enabled overhead. Share an envelope only where existing consumers need it. Exclude PerformanceObserver emulation, browser entry taxonomy and cross-engine event equality as acceptance requirements.",
+      "originalTitle": "H09: Paint/style/layout change tracing"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 187,
-      "title": "H10: Error/reporting records",
+      "title": "H10: Native host and renderer error records",
       "decision": "keep",
       "action": "retain",
       "rationale": "A native renderer must report errors originating across its C ABI, resource loader, graphics/device and window lifecycle boundaries without silent failure or process hangs. The body has usable severity/source/cause fields, but browser-only categories and a general cross-provider reporting platform are not required.",
       "nativeUseCase": "A native asset fails to decode, a graphics context is lost, or an interop operation returns an error. The host needs an actionable operation/source/status record and existing managed exception or result routing, with correct lifetime and ownership.",
-      "scopeAdjustment": "First inventory existing native status/error callbacks and managed exceptions. Add only missing boundary information and safe delivery needed by retained native operations. Exclude ReportingObserver/Reporting API categories, browser report queues, remote telemetry services and a replacement for .NET application logging."
+      "scopeAdjustment": "First inventory existing native status/error callbacks and managed exceptions. Add only missing boundary information and safe delivery needed by retained native operations. Exclude ReportingObserver/Reporting API categories, browser report queues, remote telemetry services and a replacement for .NET application logging.",
+      "originalTitle": "H10: Error/reporting records"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -571,12 +580,13 @@
     {
       "repository": "ranvier-org/Ranvier",
       "number": 291,
-      "title": "Make whole Ranvier.Dom root pass strict NativeAOT while preserving display contracts",
+      "title": "Make native Ranvier View/Interop applications pass strict NativeAOT",
       "decision": "keep",
       "action": "retain",
       "rationale": "The preUTF8 whole-Dom defect is real, and even an ordinarily referenced native-relevant record can retain reflective virtual display code: CoordinatePoint construction or readingX failed native generation until a focused formatter fix. The Linux/native View lane also has a directly proved NativeObject.ToString printf root and remaining strict AOT failures. Those affect native app delivery. However, rooting every optional browser facade and reproducing212 generated displays across a future242-type cohort is broader than a demonstrated native product closure.",
       "nativeUseCase": "A trimmed NativeAOT application opens a native Ranvier.View.WebCore window and uses retained DOM/layout, geometry, mutation, graphics and native lifecycle APIs. It must actually generate a native executable without reflective formatting failures, then execute the native routes with supported public normal/traced packages.",
-      "scopeAdjustment": "Base the gate on explicit supported native scenarios and their reachable types, including virtual/default/debug display roots proven by compiledIL and compiler dependency reasons. Keep strict relevant trim/AOT diagnostics, actual native-code generation and runtime proof; do not suppress warnings or add global reflectionfree flags. Preserve ordinaryJIT/Fable and existing manualCrypto security policies for any touched types. Reuse exact CoordinatePoint fix and Core10cc/Nativeb9 nullary cohort selectively where the native closure needs them; these are scoped proofs, not whole-library success. Pause sharedDoc, all-type layout reproduction and open/opaque payload rollout. Exclude optional HMAC/Crypto289 and UTF8 browser-style facades from this AOT cohort unless a concrete retained native dependency is independently demonstrated. Native wire encoding/length-safe interop remains required. Whole-Dom red stays documented as a broader repository limitation; changing Project2 acceptance scope must be explicit, not reported as fixing that gate."
+      "scopeAdjustment": "Base the gate on explicit supported native scenarios and their reachable types, including virtual/default/debug display roots proven by compiledIL and compiler dependency reasons. Keep strict relevant trim/AOT diagnostics, actual native-code generation and runtime proof; do not suppress warnings or add global reflectionfree flags. Preserve ordinaryJIT/Fable and existing manualCrypto security policies for any touched types. Reuse exact CoordinatePoint fix and Core10cc/Nativeb9 nullary cohort selectively where the native closure needs them; these are scoped proofs, not whole-library success. Pause sharedDoc, all-type layout reproduction and open/opaque payload rollout. Exclude optional HMAC/Crypto289 and UTF8 browser-style facades from this AOT cohort unless a concrete retained native dependency is independently demonstrated. Native wire encoding/length-safe interop remains required. Whole-Dom red stays documented as a broader repository limitation; changing Project2 acceptance scope must be explicit, not reported as fixing that gate.",
+      "originalTitle": "Make whole Ranvier.Dom root pass strict NativeAOT while preserving display contracts"
     },
     {
       "repository": "ranvier-org/Ranvier.View",
@@ -741,22 +751,24 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 176,
-      "title": "R13: Compositor/presentation integration",
+      "title": "R13: Native compositor and presentation integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "The owned native window must present WebCore frames efficiently and coordinate device/context loss, resize, synchronization and retained-frame lifetime. Ordinary browser DOM access cannot replace this boundary; the existing D3D/EGL proofs demonstrate actual native dependencies.",
       "nativeUseCase": "Present a responsive composited native window at high DPI without CPU readback/fallback, including resize/reopen and safe device/context teardown.",
-      "scopeAdjustment": "Keep a native-only capability with explicit platform transports, format/stride/synchronization and lifetime contracts. No WebGL/WebGPU/browser remote-layer API is required."
+      "scopeAdjustment": "Keep a native-only capability with explicit platform transports, format/stride/synchronization and lifetime contracts. No WebGL/WebGPU/browser remote-layer API is required.",
+      "originalTitle": "R13: Compositor/presentation integration"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 177,
-      "title": "R14: Printing/PDF/pagination",
+      "title": "R14: Native printing and PDF output",
       "decision": "keep",
       "action": "retain",
       "rationale": "WebCore owns the styled document, fonts and pagination; general .NET printing cannot reproduce that layout without a renderer output boundary. This directly enables a standard native application capability.",
       "nativeUseCase": "Print or export a report/invoice made from the same native UI/document layout with explicit page geometry and predictable resource lifetime.",
-      "scopeAdjustment": "Use a focused optional native print/PDF provider and renderer page-layout/export contract. Separate OS printer/dialog interaction from deterministic PDF generation; exclude browser print-window/navigation semantics."
+      "scopeAdjustment": "Use a focused optional native print/PDF provider and renderer page-layout/export contract. Separate OS printer/dialog interaction from deterministic PDF generation; exclude browser print-window/navigation semantics.",
+      "originalTitle": "R14: Printing/PDF/pagination"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -781,22 +793,24 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 190,
-      "title": "B01: Audio playback/processing",
+      "title": "B01: Native media/audio playback integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "A native media surface may need audio/video clocks, mute/pause and lease teardown coordinated with its retained host/player. That is an owned playback boundary; the full Web Audio node/automation/offline graph is not required.",
       "nativeUseCase": "Play synchronized sound for a native video/player window and stop/release the audio sink when that owned playback session ends.",
-      "scopeAdjustment": "Rewrite narrowly around an optional native media/audio provider and explicit playback/lifetime controls coupled to #191. Remove Web Audio graph, HTML-audio parity and browser permission/activation machinery. No unconditional audio dependency in the lean renderer."
+      "scopeAdjustment": "Rewrite narrowly around an optional native media/audio provider and explicit playback/lifetime controls coupled to #191. Remove Web Audio graph, HTML-audio parity and browser permission/activation machinery. No unconditional audio dependency in the lean renderer.",
+      "originalTitle": "B01: Audio playback/processing"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 191,
-      "title": "B02: Video/media elements",
+      "title": "B02: Native video surface and playback integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "The host renderer must composite a video surface into its layout with clipping, scaling, device/context loss and frame scheduling, and release retained surfaces correctly. An application-owned decoder still needs that renderer boundary.",
       "nativeUseCase": "A native application embeds a video preview/player in its UI and keeps frames/captions synchronized through resize, DPI changes, pause and host disposal.",
-      "scopeAdjustment": "Keep an optional native media provider with tested surface/frame/clock/caption controls. Avoid full HTMLMediaElement network/source selection, browser event-policy and format-completeness obligations; let native libraries own decoding and transport."
+      "scopeAdjustment": "Keep an optional native media provider with tested surface/frame/clock/caption controls. Avoid full HTMLMediaElement network/source selection, browser event-policy and format-completeness obligations; let native libraries own decoding and transport.",
+      "originalTitle": "B02: Video/media elements"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -831,12 +845,13 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 195,
-      "title": "B07: OS media session/remote playback",
+      "title": "B07: Native OS media-session integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "Hardware/OS play-pause and session teardown must route to the actual retained native player/window. That focused application-host integration is useful; browser RemotePlayback discovery, AirPlay parity and browser PiP policies are separate unrelated subsystems.",
       "nativeUseCase": "A native player window responds to OS media keys/transport controls, publishes truthful playback state and unregisters handlers when its session closes.",
-      "scopeAdjustment": "Keep only an optional native application-host media-session adapter coupled to #190/#191. Remove RemotePlayback/AirPlay/browser PiP completeness and browser activation/denial equivalence. Review whether an application-owned adapter suffices before adding any WebCore ABI."
+      "scopeAdjustment": "Keep only an optional native application-host media-session adapter coupled to #190/#191. Remove RemotePlayback/AirPlay/browser PiP completeness and browser activation/denial equivalence. Review whether an application-owned adapter suffices before adding any WebCore ABI.",
+      "originalTitle": "B07: OS media session/remote playback"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
@@ -871,12 +886,13 @@
     {
       "repository": "ranvier-org/Ranvier.WebCore",
       "number": 199,
-      "title": "B13: Window/display modes",
+      "title": "B13: Native window and display integration",
       "decision": "keep",
       "action": "retain",
       "rationale": "The native presenter/window owns dimensions, DPI, input coordinates, focus, accessibility handles and close ordering; these must be synchronized with WebCore layout and frame resources.",
       "nativeUseCase": "Create and move a native application window between monitors, update device scale/input transforms, enter fullscreen and close/reopen without dangling render/input resources.",
-      "scopeAdjustment": "Use a native window-manager/host provider rather than DOM window emulation. Keep OS capability/error semantics; remove browser move/close/activation restriction parity."
+      "scopeAdjustment": "Use a native window-manager/host provider rather than DOM window emulation. Keep OS capability/error semantics; remove browser move/close/activation restriction parity.",
+      "originalTitle": "B13: Window/display modes"
     },
     {
       "repository": "ranvier-org/Ranvier.WebCore",
