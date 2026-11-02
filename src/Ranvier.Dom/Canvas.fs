@@ -164,6 +164,33 @@ type TextMeasurement =
         IdeographicBaseline: float
     }
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun nested ->
+            [
+                "Width", (fun () -> NativeDisplay.float64 context nested this.Width)
+                "ActualBoundingBoxLeft", (fun () -> NativeDisplay.float64 context nested this.ActualBoundingBoxLeft)
+                "ActualBoundingBoxRight", (fun () -> NativeDisplay.float64 context nested this.ActualBoundingBoxRight)
+                "FontBoundingBoxAscent", (fun () -> NativeDisplay.float64 context nested this.FontBoundingBoxAscent)
+                "FontBoundingBoxDescent", (fun () -> NativeDisplay.float64 context nested this.FontBoundingBoxDescent)
+                "ActualBoundingBoxAscent", (fun () -> NativeDisplay.float64 context nested this.ActualBoundingBoxAscent)
+                "ActualBoundingBoxDescent", (fun () -> NativeDisplay.float64 context nested this.ActualBoundingBoxDescent)
+                "EmHeightAscent",
+                (fun () -> NativeDisplay.option context nested 3 (fun c d _ value -> NativeDisplay.float64 c d value) this.EmHeightAscent)
+                "EmHeightDescent",
+                (fun () -> NativeDisplay.option context nested 3 (fun c d _ value -> NativeDisplay.float64 c d value) this.EmHeightDescent)
+                "HangingBaseline", (fun () -> NativeDisplay.float64 context nested this.HangingBaseline)
+                "AlphabeticBaseline", (fun () -> NativeDisplay.float64 context nested this.AlphabeticBaseline)
+                "IdeographicBaseline", (fun () -> NativeDisplay.float64 context nested this.IdeographicBaseline)
+            ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>Canvas text measurement shared by canvas providers.</summary>
 module CanvasText =
     // An absent JavaScript member reads as undefined, which boxes to null under Fable.

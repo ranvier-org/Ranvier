@@ -6,6 +6,9 @@ open System.Threading
 /// <summary>How a service's successful-response byte cache takes part in a request.</summary>
 /// <remarks>The cache belongs to one service; browser HTTP caches and engine-wide caches are outside it.</remarks>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResourceCachePolicy =
     /// <summary>Reuses a successful response this service already holds for the URL.</summary>
     | UseCache
@@ -14,6 +17,21 @@ type ResourceCachePolicy =
     /// <summary>Bypasses the held response and leaves the cache unchanged.</summary>
     | NoStore
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun _ ->
+            match this with
+            | ResourceCachePolicy.UseCache -> "UseCache", []
+            | ResourceCachePolicy.Reload -> "Reload", []
+            | ResourceCachePolicy.NoStore -> "NoStore", [])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>An absolute http, https or data URL with its cache policy.</summary>
 type ResourceRequest =
     {
@@ -21,12 +39,43 @@ type ResourceRequest =
         CachePolicy: ResourceCachePolicy
     }
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun nested ->
+            [
+                "Url", (fun () -> NativeDisplay.text context nested this.Url)
+                "CachePolicy",
+                (fun () -> NativeDisplay.known context nested this.CachePolicy (fun value -> value.NativeDisplay (context, nested, 3)))
+            ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>A response whose bytes the caller owns; services copy them at every ownership boundary.</summary>
 type ResourceResponse =
     {
         ContentType: string
         Bytes: byte array
     }
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun nested ->
+            [
+                "ContentType", (fun () -> NativeDisplay.text context nested this.ContentType)
+                "Bytes", (fun () -> NativeDisplay.array context nested (fun c d _ value -> NativeDisplay.uint8 c d value) this.Bytes)
+            ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
 
 /// <summary>Why an operation ended without a value.</summary>
 [<RequireQualifiedAccess>]
