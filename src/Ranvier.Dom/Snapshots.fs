@@ -2,57 +2,6 @@ namespace Ranvier.Dom
 
 open System
 
-/// <summary>An image encoding, shared by snapshots and canvas export.</summary>
-/// <remarks>
-/// <c>Rgba8</c> is unpremultiplied RGBA8 rows, <c>Width * 4</c> bytes each, in the image's color space. PNG ignores
-/// quality. JPEG and WEBP take a quality from 0 to 1; <c>None</c>, NaN or a value outside [0, 1] selects the encoder's
-/// default, as <c>toBlob</c> does, and WEBP at exactly 1 is lossless.
-/// </remarks>
-[<RequireQualifiedAccess>]
-type ImageEncoding =
-    | Rgba8
-    | Png
-    | Jpeg
-    | Webp
-
-#if !FABLE_COMPILER
-    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
-        NativeDisplay.union context depth precedence (box this) (fun _ ->
-            match this with
-            | ImageEncoding.Rgba8 -> "Rgba8", []
-            | ImageEncoding.Png -> "Png", []
-            | ImageEncoding.Jpeg -> "Jpeg", []
-            | ImageEncoding.Webp -> "Webp", [])
-
-    override this.ToString() =
-        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
-            sprintf "%+A" this
-        else
-            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
-#endif
-
-/// <summary>The color space of a snapshot's pixels.</summary>
-[<RequireQualifiedAccess>]
-#if !FABLE_COMPILER
-[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
-#endif
-type SnapshotColorSpace =
-    | Srgb
-    | DisplayP3
-
-#if !FABLE_COMPILER
-    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
-        NativeDisplay.union context depth precedence (box this) (fun nested ->
-            match this with
-            | SnapshotColorSpace.Srgb -> "Srgb", []
-            | SnapshotColorSpace.DisplayP3 -> "DisplayP3", [])
-
-    override this.ToString() =
-        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
-            sprintf "%+A" this
-        else
-            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
-#endif
 
 /// <summary>What a snapshot paints.</summary>
 [<RequireQualifiedAccess>]
@@ -175,47 +124,6 @@ type SnapshotOptions =
             NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
 #endif
 
-/// <summary>A captured image; the operation owns its data until it is disposed.</summary>
-#if !FABLE_COMPILER
-[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
-#endif
-type SnapshotImage =
-    {
-        PixelWidth: int
-        PixelHeight: int
-        Format: ImageEncoding
-        PixelColorSpace: SnapshotColorSpace
-        Data: byte array
-    }
-
-#if !FABLE_COMPILER
-    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
-        NativeDisplay.record context depth (box this) (fun nested ->
-            [
-                "PixelWidth", (fun () -> NativeDisplay.int32 context nested (this.PixelWidth))
-                "PixelHeight", (fun () -> NativeDisplay.int32 context nested (this.PixelHeight))
-                "Format",
-                (fun () ->
-                    NativeDisplay.known context nested (this.Format) (fun (retained: ImageEncoding) -> retained.NativeDisplay (context, nested, 3)))
-                "PixelColorSpace",
-                (fun () ->
-                    NativeDisplay.known context nested (this.PixelColorSpace) (fun (retained: SnapshotColorSpace) ->
-                        retained.NativeDisplay (context, nested, 3)))
-                "Data",
-                (fun () ->
-                    NativeDisplay.array
-                        context
-                        nested
-                        (fun c211 d211 p211 (item211: System.Byte) -> NativeDisplay.uint8 c211 d211 (item211))
-                        (this.Data))
-            ])
-
-    override this.ToString() =
-        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
-            sprintf "%+A" this
-        else
-            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
-#endif
 
 /// <summary>Snapshots of a host's viewport or elements (Ranvier.WebCore #98).</summary>
 /// <remarks>

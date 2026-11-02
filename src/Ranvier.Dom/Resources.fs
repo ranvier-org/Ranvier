@@ -3,6 +3,100 @@ namespace Ranvier.Dom
 open System
 open System.Threading
 
+/// <summary>An image encoding, shared by snapshots and canvas export.</summary>
+/// <remarks>
+/// <c>Rgba8</c> is unpremultiplied RGBA8 rows, <c>Width * 4</c> bytes each, in the image's color space. PNG ignores
+/// quality. JPEG and WEBP take a quality from 0 to 1; <c>None</c>, NaN or a value outside [0, 1] selects the encoder's
+/// default, as <c>toBlob</c> does, and WEBP at exactly 1 is lossless.
+/// </remarks>
+[<RequireQualifiedAccess>]
+type ImageEncoding =
+    | Rgba8
+    | Png
+    | Jpeg
+    | Webp
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun _ ->
+            match this with
+            | ImageEncoding.Rgba8 -> "Rgba8", []
+            | ImageEncoding.Png -> "Png", []
+            | ImageEncoding.Jpeg -> "Jpeg", []
+            | ImageEncoding.Webp -> "Webp", [])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
+/// <summary>The color space of a snapshot's pixels.</summary>
+[<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
+type SnapshotColorSpace =
+    | Srgb
+    | DisplayP3
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun nested ->
+            match this with
+            | SnapshotColorSpace.Srgb -> "Srgb", []
+            | SnapshotColorSpace.DisplayP3 -> "DisplayP3", [])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
+/// <summary>A captured image; the operation owns its data until it is disposed.</summary>
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
+type SnapshotImage =
+    {
+        PixelWidth: int
+        PixelHeight: int
+        Format: ImageEncoding
+        PixelColorSpace: SnapshotColorSpace
+        Data: byte array
+    }
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun nested ->
+            [
+                "PixelWidth", (fun () -> NativeDisplay.int32 context nested (this.PixelWidth))
+                "PixelHeight", (fun () -> NativeDisplay.int32 context nested (this.PixelHeight))
+                "Format",
+                (fun () ->
+                    NativeDisplay.known context nested (this.Format) (fun (retained: ImageEncoding) -> retained.NativeDisplay (context, nested, 3)))
+                "PixelColorSpace",
+                (fun () ->
+                    NativeDisplay.known context nested (this.PixelColorSpace) (fun (retained: SnapshotColorSpace) ->
+                        retained.NativeDisplay (context, nested, 3)))
+                "Data",
+                (fun () ->
+                    NativeDisplay.array
+                        context
+                        nested
+                        (fun c211 d211 p211 (item211: System.Byte) -> NativeDisplay.uint8 c211 d211 (item211))
+                        (this.Data))
+            ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>How a service's successful-response byte cache takes part in a request.</summary>
 /// <remarks>The cache belongs to one service; browser HTTP caches and engine-wide caches are outside it.</remarks>
 [<RequireQualifiedAccess>]
@@ -111,70 +205,6 @@ type ResourceFailure =
             NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
 #endif
 
-/// <summary>The single terminal outcome of an operation.</summary>
-[<RequireQualifiedAccess>]
-#if !FABLE_COMPILER
-[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
-#endif
-type ResourceOutcome<'T> =
-    | Succeeded of value: 'T
-    | Failed of failure: ResourceFailure
-
-#if !FABLE_COMPILER
-    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
-        NativeDisplay.union context depth precedence (box this) (fun n0 ->
-            match this with
-            | ResourceOutcome.Succeeded value ->
-                "Succeeded",
-                [
-                    Some (fun _ ->
-                        match box value with
-                        | :? string as text -> NativeDisplay.text context n0 text
-                        | :? int as number -> NativeDisplay.int32 context n0 number
-                        | :? bool as flag -> NativeDisplay.boolean context n0 flag
-                        | :? ImageBitmap as bitmap -> NativeDisplay.opaque context n0 "<Ranvier.Dom.ImageBitmap>" (box bitmap)
-                        | other -> NativeDisplay.opaque context n0 "<'T>" other)
-                ]
-            | ResourceOutcome.Failed failure ->
-                "Failed",
-                [
-                    Some (fun p -> NativeDisplay.known context n0 failure (fun value -> value.NativeDisplay (context, n0, p)))
-                ])
-
-    override this.ToString() =
-        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
-            sprintf "%+A" this
-        else
-            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
-#endif
-
-/// <summary>An operation's state as seen on its owner context.</summary>
-[<RequireQualifiedAccess>]
-#if !FABLE_COMPILER
-[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
-#endif
-type ResourceState<'T> =
-    | Pending
-    | Settled of outcome: ResourceOutcome<'T>
-
-#if !FABLE_COMPILER
-    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
-        NativeDisplay.union context depth precedence (box this) (fun n0 ->
-            match this with
-            | ResourceState.Pending -> "Pending", []
-            | ResourceState.Settled outcome ->
-                "Settled",
-                [
-                    Some (fun p -> NativeDisplay.known context n0 outcome (fun value -> value.NativeDisplay (context, n0, p)))
-                ])
-
-    override this.ToString() =
-        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
-            sprintf "%+A" this
-        else
-            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
-#endif
-
 /// <summary>A decoded image the operation owns until it is disposed.</summary>
 /// <remarks><c>SourceUrl</c> is the requested URL; <c>TransportUrl</c> is the per-operation URL the engine loaded.</remarks>
 #if !FABLE_COMPILER
@@ -244,6 +274,76 @@ type ResourceFont =
 #if !FABLE_COMPILER
     member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
         NativeDisplay.record context depth (box this) (fun nested -> [ "Family", (fun () -> NativeDisplay.text context nested (this.Family)) ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
+/// <summary>The single terminal outcome of an operation.</summary>
+[<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
+type ResourceOutcome<'T> =
+    | Succeeded of value: 'T
+    | Failed of failure: ResourceFailure
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun n0 ->
+            match this with
+            | ResourceOutcome.Succeeded value ->
+                "Succeeded",
+                [
+                    Some (fun _ ->
+                        match box value with
+                        | :? string as text -> NativeDisplay.text context n0 text
+                        | :? int as number -> NativeDisplay.int32 context n0 number
+                        | :? bool as flag -> NativeDisplay.boolean context n0 flag
+                        | :? (byte array) as bytes -> NativeDisplay.array context n0 (fun c d _ value -> NativeDisplay.uint8 c d value) bytes
+                        | :? ResourceResponse as response -> response.NativeDisplay (context, n0, 3)
+                        | :? ResourceImage as image -> image.NativeDisplay (context, n0, 3)
+                        | :? ResourceImageInfo as info -> info.NativeDisplay (context, n0, 3)
+                        | :? ResourceFont as font -> font.NativeDisplay (context, n0, 3)
+                        | :? SnapshotImage as snapshot -> snapshot.NativeDisplay (context, n0, 3)
+                        | :? ImageBitmap as bitmap -> NativeDisplay.opaque context n0 "<Ranvier.Dom.ImageBitmap>" (box bitmap)
+                        | other -> NativeDisplay.opaque context n0 "<'T>" other)
+                ]
+            | ResourceOutcome.Failed failure ->
+                "Failed",
+                [
+                    Some (fun p -> NativeDisplay.known context n0 failure (fun value -> value.NativeDisplay (context, n0, p)))
+                ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
+/// <summary>An operation's state as seen on its owner context.</summary>
+[<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
+type ResourceState<'T> =
+    | Pending
+    | Settled of outcome: ResourceOutcome<'T>
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun n0 ->
+            match this with
+            | ResourceState.Pending -> "Pending", []
+            | ResourceState.Settled outcome ->
+                "Settled",
+                [
+                    Some (fun p -> NativeDisplay.known context n0 outcome (fun value -> value.NativeDisplay (context, n0, p)))
+                ])
 
     override this.ToString() =
         if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
