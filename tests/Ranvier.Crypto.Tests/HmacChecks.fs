@@ -1,6 +1,7 @@
 module internal Ranvier.Crypto.Tests.HmacChecks
 
 open System
+open System.Threading
 open Ranvier.Dom
 open Ranvier.Dom.Cryptography
 
@@ -273,6 +274,63 @@ let run (create: unit -> SubtleCryptoService) (vectors: Vector array) =
                     do!
                         errorName "InvalidStateError" (fun () ->
                             b.GenerateKey (keyParameters "SHA-256" CryptoField.Missing, true, [| CryptoKeyUsage.Sign |]))
+                })
+
+        do!
+            group "lifetime/waiter-local-cancellation" (fun () ->
+                async {
+                    use service = create ()
+                    use observerCancellation = new CancellationTokenSource ()
+
+                    let operation =
+                        service.GenerateKey (keyParameters "SHA-256" CryptoField.Missing, true, [| CryptoKeyUsage.Sign; CryptoKeyUsage.Verify |])
+
+                    let mutable observed: CryptoKey option = None
+
+                    let! cancelled =
+                        Async.FromContinuations (fun (success, failure, _) ->
+                            let observer =
+                                async {
+                                    let! generated = operation
+
+                                    observed <-
+                                        match value generated with
+                                        | CryptoGeneratedKey.Key key -> Some key
+                                        | _ -> failwith "Expected secret key"
+
+                                    observerCancellation.Cancel ()
+                                    do! Async.Sleep 1
+                                }
+
+                            Async.StartWithContinuations (
+                                observer,
+                                (fun () -> success false),
+                                failure,
+                                (fun _ -> success true),
+                                observerCancellation.Token
+                            ))
+
+                    let! generated = operation
+
+                    let key =
+                        match value generated with
+                        | CryptoGeneratedKey.Key key -> key
+                        | _ -> failwith "Expected secret key"
+
+                    try
+                        equal "first waiter cancelled" true cancelled
+                        equal "same cached key after cancellation" true (obj.ReferenceEquals (key, observed.Value))
+                        let input = CryptoBuffer.whole [| 1uy; 2uy |]
+                        let! signed = service.Sign (CryptoAlgorithm.Name "HMAC", key, input)
+                        let signature = value signed
+                        equal "key remains signable" 32 signature.Length
+
+                        let! verified =
+                            service.Verify (CryptoAlgorithm.Name "HMAC", key, CryptoBuffer.whole signature, input)
+
+                        equal "signature verifies after waiter cancellation" true (value verified)
+                    finally
+                        key.Dispose ()
                 })
 
         do!

@@ -86,8 +86,10 @@ module Spec =
                 "src/Ranvier.Query/Ranvier.Query.fsproj"
                 "src/Ranvier.Elmish/Ranvier.Elmish.fsproj"
                 "src/Ranvier.Wire/Ranvier.Wire.fsproj"
+                "src/Ranvier.Crypto/Ranvier.Crypto.fsproj"
                 "tests/Ranvier.Tests/Ranvier.Tests.fsproj"
                 "tests/Ranvier.Wire.Tests/Ranvier.Wire.Tests.fsproj"
+                "tests/Ranvier.Crypto.Tests/Ranvier.Crypto.Tests.fsproj"
             ]
             "examples",
             [

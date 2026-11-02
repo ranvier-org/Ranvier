@@ -245,8 +245,8 @@ type CryptoAlgorithm =
 
 /// <summary>Asynchronous WebCrypto key operations of a provider.</summary>
 /// <remarks>
-/// Inputs are copied at admission; repeated awaits observe the same operation. Closed-service admission raises
-/// CryptoException InvalidStateError. Disposal closes pending publication and leaves returned keys usable.
+/// Inputs are copied at admission; repeated awaits observe the same operation. Cancelling a waiter leaves its operation usable.
+/// Closed-service admission raises CryptoException InvalidStateError. Disposal closes pending publication and leaves returned keys usable.
 /// </remarks>
 #if FABLE_COMPILER
 [<Fable.Core.Mangle>]

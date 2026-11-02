@@ -67,6 +67,8 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-${{ github.job }}-
       - name: Test Ranvier.Tests
         run: dotnet test tests/Ranvier.Tests -c Release
+      - name: Test Ranvier.Crypto.Tests
+        run: dotnet test tests/Ranvier.Crypto.Tests -c Release
       - name: Test Ranvier.CSharp.Tests
         run: dotnet test tests/Ranvier.CSharp.Tests -c Release
       - name: Test Ranvier.Wire.Tests
