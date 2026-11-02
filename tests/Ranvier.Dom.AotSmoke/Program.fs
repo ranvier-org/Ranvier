@@ -70,6 +70,15 @@ let main _ =
         ((ResourceOutcome.Succeeded info).ToString())
 
     expect "bytes" "Succeeded [|1uy; 2uy|]" ((ResourceOutcome.Succeeded [| 1uy; 2uy |]).ToString())
+    expect "null font" "Succeeded null" ((ResourceOutcome.Succeeded (Unchecked.defaultof<ResourceFont>)).ToString())
+    expect "null bytes" "Succeeded null" ((ResourceOutcome.Succeeded (Unchecked.defaultof<byte array>)).ToString())
+    expect "empty bytes" "Succeeded [||]" ((ResourceOutcome.Succeeded ([||]: byte array)).ToString())
+
+    let longBytes =
+        (ResourceOutcome.Succeeded [| for i in 0..149 -> byte i |]).ToString()
+
+    if not (longBytes.Contains "99uy; ...|]") then
+        raise (InvalidOperationException ("long bytes: " + longBytes))
 
     expect
         "snapshot"
