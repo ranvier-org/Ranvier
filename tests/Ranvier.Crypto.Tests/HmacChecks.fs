@@ -565,6 +565,19 @@ let run (create: unit -> SubtleCryptoService) (vectors: Vector array) =
                         equal "legacy digest reason" "SubtleCrypto.digest supports SHA-1, SHA-256, SHA-384 and SHA-512, not ''quoted''." reason
                     | _ -> failwith "Expected unsupported digest"
 
+                    match CryptoContract.unsupportedDigest null with
+                    | CryptoOutcome.Unsupported reason ->
+                        equal "legacy null digest reason" "SubtleCrypto.digest supports SHA-1, SHA-256, SHA-384 and SHA-512, not ''." reason
+                    | _ -> failwith "Expected unsupported digest"
+
+                    try
+                        CryptoContract.availability SubtleOperation.Sign null
+                        |> ignore
+
+                        failwith "Expected null availability error"
+                    with :? ArgumentNullException as failure ->
+                        equal "legacy null availability parameter" "algorithm" failure.ParamName
+
                     match CryptoContract.availability SubtleOperation.Sign "'quoted'" with
                     | CryptoOutcome.Unsupported reason ->
                         equal "legacy availability reason" "SubtleCrypto.sign is not implemented for ''quoted''." reason

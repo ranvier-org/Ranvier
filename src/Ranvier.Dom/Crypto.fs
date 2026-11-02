@@ -217,6 +217,8 @@ module CryptoContract =
 
     /// <summary>The Unsupported outcome of a digest of an algorithm outside the SHA family.</summary>
     let unsupportedDigest (name: string) : CryptoOutcome<'T> =
+        let name = if isNull name then "" else name
+
         CryptoOutcome.Unsupported (
             "SubtleCrypto.digest supports SHA-1, SHA-256, SHA-384 and SHA-512, not '"
             + name
