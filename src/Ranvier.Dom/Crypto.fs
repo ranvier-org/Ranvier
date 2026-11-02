@@ -23,10 +23,17 @@ exception CryptoException of name: string * detail: string with
     override this.Message = this.name + ": " + this.detail
 
 /// <summary>A Web Crypto result, or the reason the provider has no implementation of the operation.</summary>
-[<RequireQualifiedAccess>]
+/// <remarks>Diagnostic text is Value or Unsupported: reason; matching retains access to the original payload.</remarks>
+[<RequireQualifiedAccess; Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
 type CryptoOutcome<'T> =
     | Value of value: 'T
     | Unsupported of reason: string
+
+    /// <summary>A diagnostic label whose Value case omits its payload.</summary>
+    override this.ToString() =
+        match this with
+        | CryptoOutcome.Value _ -> "Value"
+        | CryptoOutcome.Unsupported reason -> "Unsupported: " + reason
 
 /// <summary>A SHA digest algorithm of SubtleCrypto.digest.</summary>
 [<RequireQualifiedAccess>]
@@ -35,6 +42,14 @@ type DigestAlgorithm =
     | Sha256
     | Sha384
     | Sha512
+
+    /// <summary>The algorithm's F# case name.</summary>
+    override this.ToString() =
+        match this with
+        | DigestAlgorithm.Sha1 -> "Sha1"
+        | DigestAlgorithm.Sha256 -> "Sha256"
+        | DigestAlgorithm.Sha384 -> "Sha384"
+        | DigestAlgorithm.Sha512 -> "Sha512"
 
 /// <summary>A SubtleCrypto operation.</summary>
 [<RequireQualifiedAccess>]
@@ -51,6 +66,22 @@ type SubtleOperation =
     | ExportKey
     | WrapKey
     | UnwrapKey
+
+    /// <summary>The operation's F# case name.</summary>
+    override this.ToString() =
+        match this with
+        | SubtleOperation.Digest -> "Digest"
+        | SubtleOperation.Encrypt -> "Encrypt"
+        | SubtleOperation.Decrypt -> "Decrypt"
+        | SubtleOperation.Sign -> "Sign"
+        | SubtleOperation.Verify -> "Verify"
+        | SubtleOperation.GenerateKey -> "GenerateKey"
+        | SubtleOperation.DeriveKey -> "DeriveKey"
+        | SubtleOperation.DeriveBits -> "DeriveBits"
+        | SubtleOperation.ImportKey -> "ImportKey"
+        | SubtleOperation.ExportKey -> "ExportKey"
+        | SubtleOperation.WrapKey -> "WrapKey"
+        | SubtleOperation.UnwrapKey -> "UnwrapKey"
 
 /// <summary>Random values, random UUIDs and SHA digests of one document's crypto object.</summary>
 /// <remarks>
@@ -142,7 +173,16 @@ module CryptoContract =
             raise (CryptoException ("TypeMismatchError", "The view is not an integer typed array."))
 
         if count > RandomValuesQuota then
-            raise (CryptoException ("QuotaExceededError", $"The byte length {count} exceeds {RandomValuesQuota}."))
+            raise (
+                CryptoException (
+                    "QuotaExceededError",
+                    "The byte length "
+                    + count.ToString (Globalization.CultureInfo.InvariantCulture)
+                    + " exceeds "
+                    + RandomValuesQuota.ToString (Globalization.CultureInfo.InvariantCulture)
+                    + "."
+                )
+            )
 
         if count % size <> 0 then
             raise (CryptoException ("RangeError", "The byte length is not a multiple of the element size."))
@@ -177,7 +217,11 @@ module CryptoContract =
 
     /// <summary>The Unsupported outcome of a digest of an algorithm outside the SHA family.</summary>
     let unsupportedDigest (name: string) : CryptoOutcome<'T> =
-        CryptoOutcome.Unsupported $"SubtleCrypto.digest supports SHA-1, SHA-256, SHA-384 and SHA-512, not '{name}'."
+        CryptoOutcome.Unsupported (
+            "SubtleCrypto.digest supports SHA-1, SHA-256, SHA-384 and SHA-512, not '"
+            + name
+            + "'."
+        )
 
     /// <summary>The SubtleCrypto method name of <c>operation</c>, such as <c>digest</c> or <c>generateKey</c>.</summary>
     let operationName (operation: SubtleOperation) =
@@ -206,4 +250,11 @@ module CryptoContract =
         match operation, digestAlgorithm algorithm with
         | SubtleOperation.Digest, Some _ -> CryptoOutcome.Value ()
         | SubtleOperation.Digest, None -> unsupportedDigest algorithm
-        | _ -> CryptoOutcome.Unsupported $"SubtleCrypto.{operationName operation} is not implemented for '{algorithm}'."
+        | _ ->
+            CryptoOutcome.Unsupported (
+                "SubtleCrypto."
+                + operationName operation
+                + " is not implemented for '"
+                + algorithm
+                + "'."
+            )

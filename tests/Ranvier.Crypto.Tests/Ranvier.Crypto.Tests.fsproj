@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsAotCompatible>true</IsAotCompatible>
+    <RanvierAotClean>true</RanvierAotClean>
     <PublishAot Condition="'$(RanvierCryptoAot)' == 'true'">true</PublishAot>
   </PropertyGroup>
   <ItemGroup>

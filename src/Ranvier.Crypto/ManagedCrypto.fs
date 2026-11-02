@@ -22,7 +22,13 @@ module ManagedCrypto =
         | DigestAlgorithm.Sha512 -> HMACSHA512.HashData (key, data)
 
     type private Lease =
-        { Bytes: byte[]; Release: unit -> unit }
+        {
+            Bytes: byte[]
+            Release: unit -> unit
+        }
+
+        override _.ToString() =
+            "CryptoKeyLease"
 
     type private HmacKey(bytes: byte[], hash, bits: uint64, extractable, permitted: CryptoKeyUsage[]) =
         let gate = obj ()

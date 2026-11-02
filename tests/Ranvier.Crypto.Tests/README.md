@@ -18,7 +18,7 @@ The project is included in `Ranvier.slnx` and the build script's test-project sc
 Publish and execute the same checks with NativeAOT:
 
 ```sh
-dotnet publish tests/Ranvier.Crypto.Tests/Ranvier.Crypto.Tests.fsproj -c Release -r win-x64 -f net10.0 -p:RanvierCryptoAot=true -p:RanvierAotClean=true -p:TrimmerSingleWarn=false -o artifacts/crypto-aot
+dotnet publish tests/Ranvier.Crypto.Tests/Ranvier.Crypto.Tests.fsproj -c Release -r win-x64 -f net10.0 -p:RanvierCryptoAot=true -p:TreatWarningsAsErrors=true -p:TrimmerSingleWarn=false -o artifacts/crypto-aot
 artifacts/crypto-aot/Ranvier.Crypto.Tests.exe --expect-aot
 ```
 
@@ -26,10 +26,10 @@ Use the matching RID and executable name on another platform. The app-scoped
 `RanvierCryptoAot` switch avoids setting `PublishAot` on the shared contract's
 netstandard target. `--expect-aot` fails if dynamic code is available.
 
-The initial Windows JIT, NativeAOT executable and Chromium runs each completed
-259 assertions in 41 groups. NativeAOT static analysis remains under investigation:
-the executable passes, but a strict warning-as-error publish reports FSharp.Core
-formatting/reflection reachability. This is not a clean trimming qualification.
+The app uses the repository's `RanvierAotClean` convention for its own compilation.
+Dependency libraries use their ordinary build configuration. The initial Windows
+JIT, NativeAOT executable and Chromium runs completed 259 assertions in 41 groups;
+later checks add waiter cancellation, name normalization and diagnostic displays.
 No warning suppression or test exclusion is part of the project.
 
 Service disposal rejects new admission with `CryptoException("InvalidStateError", ...)`

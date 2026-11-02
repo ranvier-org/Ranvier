@@ -458,6 +458,116 @@ let run (create: unit -> SubtleCryptoService) (vectors: Vector array) =
                 })
 
         do!
+            group "aot/diagnostic-displays" (fun () ->
+                async {
+                    let secret = "private-material-do-not-print"
+                    equal "Value display" "Value" ((CryptoOutcome.Value secret).ToString())
+                    equal "Unsupported display" "Unsupported: reason" ((CryptoOutcome.Unsupported "reason").ToString())
+
+                    for algorithm, expected in
+                        [
+                            DigestAlgorithm.Sha1, "Sha1"
+                            DigestAlgorithm.Sha256, "Sha256"
+                            DigestAlgorithm.Sha384, "Sha384"
+                            DigestAlgorithm.Sha512, "Sha512"
+                        ] do
+                        equal "digest case display" expected (algorithm.ToString ())
+
+                    for operation, expected in
+                        [
+                            SubtleOperation.Digest, "Digest"
+                            SubtleOperation.Encrypt, "Encrypt"
+                            SubtleOperation.Decrypt, "Decrypt"
+                            SubtleOperation.Sign, "Sign"
+                            SubtleOperation.Verify, "Verify"
+                            SubtleOperation.GenerateKey, "GenerateKey"
+                            SubtleOperation.DeriveKey, "DeriveKey"
+                            SubtleOperation.DeriveBits, "DeriveBits"
+                            SubtleOperation.ImportKey, "ImportKey"
+                            SubtleOperation.ExportKey, "ExportKey"
+                            SubtleOperation.WrapKey, "WrapKey"
+                            SubtleOperation.UnwrapKey, "UnwrapKey"
+                        ] do
+                        equal "operation case display" expected (operation.ToString ())
+
+                    equal "present display" "Present" ((CryptoField.Present secret).ToString())
+                    equal "missing display" "Missing" (CryptoField<string>.Missing.ToString())
+                    let buffer = CryptoBuffer.whole [| 42uy |]
+                    equal "buffer display" "CryptoBuffer" (buffer.ToString ())
+
+                    let jwk =
+                        { JsonWebKey.empty with
+                            K = CryptoField.Present secret
+                            D = CryptoField.Present secret
+                        }
+
+                    equal "JWK display" "JsonWebKey" (jwk.ToString ())
+
+                    let prime: RsaOtherPrime =
+                        {
+                            R = CryptoField.Present secret
+                            D = CryptoField.Present secret
+                            T = CryptoField.Present secret
+                        }
+
+                    equal "prime display" "RsaOtherPrime" (prime.ToString ())
+
+                    let parameters: HmacKeyParameters =
+                        {
+                            Name = "HMAC"
+                            Hash = CryptoField.Present "SHA-256"
+                            LengthBits = CryptoField.Missing
+                        }
+
+                    equal "parameter display" "HmacKeyParameters" (parameters.ToString ())
+                    equal "algorithm display" "HMAC" ((CryptoAlgorithm.HmacKey parameters).ToString())
+                    equal "raw import display" "Bytes" ((CryptoKeyData.Bytes buffer).ToString())
+                    equal "JWK import display" "Jwk" ((CryptoKeyData.Jwk jwk).ToString())
+                    equal "raw export display" "Bytes" ((CryptoExportedKey.Bytes buffer.Bytes).ToString())
+                    equal "JWK export display" "Jwk" ((CryptoExportedKey.Jwk jwk).ToString())
+                    use service = create ()
+
+                    let! imported =
+                        createImported service "SHA-256" [| 1uy; 2uy |] CryptoField.Missing true [| CryptoKeyUsage.Sign |]
+
+                    use key = imported
+                    equal "metadata display" "HMAC" (key.Algorithm.ToString ())
+                    equal "generated key display" "Key" ((CryptoGeneratedKey.Key key).ToString())
+                })
+
+        do!
+            group "aot/legacy-crypto-diagnostics" (fun () ->
+                async {
+                    let expect name detail action =
+                        try
+                            action ()
+                            failwith "Expected legacy crypto error"
+                        with CryptoException (actualName, actualDetail) as failure ->
+                            equal "legacy error name" name actualName
+                            equal "legacy error detail" detail actualDetail
+                            equal "legacy Message" (name + ": " + detail) failure.Message
+
+                    expect "QuotaExceededError" "The byte length 65537 exceeds 65536." (fun () ->
+                        CryptoContract.randomValues RandomValuesKind.Uint8 (Array.zeroCreate 65537) 0 65537)
+
+                    expect "TypeMismatchError" "The view is not an integer typed array." (fun () ->
+                        CryptoContract.randomValues RandomValuesKind.Float32 (Array.zeroCreate 65537) 0 65537)
+
+                    expect "RangeError" "The byte length is not a multiple of the element size." (fun () ->
+                        CryptoContract.randomValues RandomValuesKind.Uint16 (Array.zeroCreate 3) 0 3)
+
+                    match CryptoContract.unsupportedDigest "'quoted'" with
+                    | CryptoOutcome.Unsupported reason ->
+                        equal "legacy digest reason" "SubtleCrypto.digest supports SHA-1, SHA-256, SHA-384 and SHA-512, not ''quoted''." reason
+                    | _ -> failwith "Expected unsupported digest"
+
+                    match CryptoContract.availability SubtleOperation.Sign "'quoted'" with
+                    | CryptoOutcome.Unsupported reason ->
+                        equal "legacy availability reason" "SubtleCrypto.sign is not implemented for ''quoted''." reason
+                    | _ -> failwith "Expected unsupported operation"
+                })
+
+        do!
             group "logical-import-and-masking" (fun () ->
                 async {
                     use service = create ()

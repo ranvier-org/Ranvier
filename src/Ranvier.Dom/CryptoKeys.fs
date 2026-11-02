@@ -4,10 +4,16 @@ open System
 open Ranvier.Dom
 
 /// <summary>A missing dictionary member or an explicitly supplied value, including zero, false and empty values.</summary>
-[<RequireQualifiedAccess>]
+[<RequireQualifiedAccess; Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
 type CryptoField<'T> =
     | Missing
     | Present of 'T
+
+    /// <summary>The field's presence label, with its value omitted.</summary>
+    override this.ToString() =
+        match this with
+        | CryptoField.Missing -> "Missing"
+        | CryptoField.Present _ -> "Present"
 
 /// <summary>A byte range copied by a crypto operation before its method returns.</summary>
 type CryptoBuffer =
@@ -16,6 +22,10 @@ type CryptoBuffer =
         Offset: int
         Count: int
     }
+
+    /// <summary>A diagnostic label with byte contents omitted.</summary>
+    override _.ToString() =
+        "CryptoBuffer"
 
 /// <summary>An operation a key permits; values outside this enumeration fail conversion with TypeError.</summary>
 type CryptoKeyUsage =
@@ -52,6 +62,9 @@ type CryptoKeyAlgorithm =
         PublicExponent: byte array option
     }
 
+    /// <summary>The normalized algorithm name.</summary>
+    override this.ToString() = this.Name
+
 /// <summary>An owned key usable by compatible provider instances until it is disposed.</summary>
 /// <remarks>Disposal rejects new uses while admitted operations retain their material. Service disposal leaves returned keys usable.</remarks>
 #if FABLE_COMPILER
@@ -76,10 +89,16 @@ type CryptoKeyPair =
     }
 
 /// <summary>The single key or key pair returned by generation.</summary>
-[<RequireQualifiedAccess>]
+[<RequireQualifiedAccess; Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
 type CryptoGeneratedKey =
     | Key of CryptoKey
     | Pair of CryptoKeyPair
+
+    /// <summary>The result's case name, with key material omitted.</summary>
+    override this.ToString() =
+        match this with
+        | CryptoGeneratedKey.Key _ -> "Key"
+        | CryptoGeneratedKey.Pair _ -> "Pair"
 
 /// <summary>Optional RSA additional-prime JWK members.</summary>
 type RsaOtherPrime =
@@ -88,6 +107,10 @@ type RsaOtherPrime =
         D: CryptoField<string>
         T: CryptoField<string>
     }
+
+    /// <summary>A diagnostic label with prime parameters omitted.</summary>
+    override _.ToString() =
+        "RsaOtherPrime"
 
 /// <summary>A presence-aware JSON Web Key dictionary; key_ops contains DOMStrings rather than requested-usage enums.</summary>
 type JsonWebKey =
@@ -112,17 +135,33 @@ type JsonWebKey =
         Oth: CryptoField<RsaOtherPrime array>
     }
 
+    /// <summary>A diagnostic label with JWK member values omitted.</summary>
+    override _.ToString() =
+        "JsonWebKey"
+
 /// <summary>An encoded byte range or a JWK dictionary supplied to import.</summary>
-[<RequireQualifiedAccess>]
+[<RequireQualifiedAccess; Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
 type CryptoKeyData =
     | Bytes of CryptoBuffer
     | Jwk of JsonWebKey
 
+    /// <summary>The encoding's case name, with key material omitted.</summary>
+    override this.ToString() =
+        match this with
+        | CryptoKeyData.Bytes _ -> "Bytes"
+        | CryptoKeyData.Jwk _ -> "Jwk"
+
 /// <summary>An independent encoded byte array or JWK dictionary returned by export.</summary>
-[<RequireQualifiedAccess>]
+[<RequireQualifiedAccess; Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
 type CryptoExportedKey =
     | Bytes of byte array
     | Jwk of JsonWebKey
+
+    /// <summary>The encoding's case name, with key material omitted.</summary>
+    override this.ToString() =
+        match this with
+        | CryptoExportedKey.Bytes _ -> "Bytes"
+        | CryptoExportedKey.Jwk _ -> "Jwk"
 
 /// <summary>HMAC key parameters with optional logical length in bits.</summary>
 type HmacKeyParameters =
@@ -131,6 +170,10 @@ type HmacKeyParameters =
         Hash: CryptoField<string>
         LengthBits: CryptoField<uint64>
     }
+
+    /// <summary>The parameter dictionary's type name.</summary>
+    override _.ToString() =
+        "HmacKeyParameters"
 
 /// <summary>AES key parameters with length in bits.</summary>
 type AesKeyParameters =
@@ -226,7 +269,7 @@ type AgreementParameters =
     }
 
 /// <summary>A named algorithm or typed dictionary; normalization reads members required by the requested operation.</summary>
-[<RequireQualifiedAccess>]
+[<RequireQualifiedAccess; Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
 type CryptoAlgorithm =
     | Name of string
     | HmacKey of HmacKeyParameters
@@ -242,6 +285,24 @@ type CryptoAlgorithm =
     | EcKey of EcKeyParameters
     | Ecdsa of EcdsaParameters
     | Agreement of AgreementParameters
+
+    /// <summary>The algorithm name carried by the selected dictionary.</summary>
+    override this.ToString() =
+        match this with
+        | CryptoAlgorithm.Name name -> name
+        | CryptoAlgorithm.HmacKey p -> p.Name
+        | CryptoAlgorithm.AesKey p -> p.Name
+        | CryptoAlgorithm.AesCbc p -> p.Name
+        | CryptoAlgorithm.AesCtr p -> p.Name
+        | CryptoAlgorithm.AesGcm p -> p.Name
+        | CryptoAlgorithm.Hkdf p -> p.Name
+        | CryptoAlgorithm.Pbkdf2 p -> p.Name
+        | CryptoAlgorithm.RsaKey p -> p.Name
+        | CryptoAlgorithm.RsaPss p -> p.Name
+        | CryptoAlgorithm.RsaOaep p -> p.Name
+        | CryptoAlgorithm.EcKey p -> p.Name
+        | CryptoAlgorithm.Ecdsa p -> p.Name
+        | CryptoAlgorithm.Agreement p -> p.Name
 
 /// <summary>Asynchronous WebCrypto key operations of a provider.</summary>
 /// <remarks>
