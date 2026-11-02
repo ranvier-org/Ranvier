@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <DefineConstants>FABLE_COMPILER</DefineConstants>
+    <IsPackable>false</IsPackable>
+    <IsExcludedFromRootBuild>true</IsExcludedFromRootBuild>
+    <RanvierIntegrationTest>true</RanvierIntegrationTest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Ranvier.Crypto.Tests/HmacChecks.fs" Link="HmacChecks.fs" />
+    <Compile Include="BrowserMain.fs" />
+    <ProjectReference Include="../../src/Fable.Ranvier.Dom/Fable.Ranvier.Dom.fsproj" />
+    <PackageReference Include="Fable.Core" Version="5.3.0" />
+  </ItemGroup>
+</Project>

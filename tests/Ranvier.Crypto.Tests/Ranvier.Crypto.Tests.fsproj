@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
+    <PublishAot Condition="'$(RanvierCryptoAot)' == 'true'">true</PublishAot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="HmacChecks.fs" />
+    <Compile Include="Main.fs" />
+    <None Include="fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="../../src/Ranvier.Crypto/Ranvier.Crypto.fsproj" />
+  </ItemGroup>
+  <Target Name="RunCryptoConformance" AfterTargets="VSTest" DependsOnTargets="Build">
+    <Exec Command="dotnet &quot;$(TargetPath)&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+</Project>

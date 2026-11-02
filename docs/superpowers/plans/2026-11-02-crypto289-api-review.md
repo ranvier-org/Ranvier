@@ -131,7 +131,7 @@ type SubtleCryptoService =
         CryptoKeyFormat * CryptoBuffer * unwrappingKey: CryptoKey * CryptoAlgorithm * target: CryptoAlgorithm * extractable: bool * CryptoKeyUsage array -> Async<CryptoOutcome<CryptoKey>>
 ```
 
-Use `CryptoAlgorithm.Name "Ed25519"`, `Name "X25519"`, `Name "HMAC"` for operation names, `Name "HKDF"`/`Name "PBKDF2"` for base-key import, and `Name "AES-KW"` for wrapping. Algorithm dictionaries are typed variants, rather than an untyped object or a parameter bag with unrelated fields. Missing required dictionaries/members produce conversion errors; wrong-operation dictionaries are rejected using normalized names and the operation's required shape. Names are case-insensitive; JWK string restrictions remain exact-case.
+Use `CryptoAlgorithm.Name "Ed25519"`, `Name "X25519"`, `Name "HMAC"` for operation names, `Name "HKDF"`/`Name "PBKDF2"` for base-key import, and `Name "AES-KW"` for wrapping. Algorithm dictionaries are typed variants. Normalization reads only the fields required by the requested operation: a `HmacKey` value can identify HMAC for signing without supplying its irrelevant hash or length fields. Missing fields required by the requested operation produce conversion errors. Names are case-insensitive; JWK string restrictions remain exact-case.
 
 Helper module signatures, with implementations kept pure and small:
 
@@ -157,7 +157,7 @@ module BrowserSubtleCrypto =
 - Browser wrappers contain actual browser CryptoKey references. Same-compatible-provider services can use them; browser cross-realm compatibility follows actual WebCrypto behavior and is measured, rather than imposing an artificial service-origin rule.
 - Every metadata read returns snapshots of arrays/records containing arrays. Callers cannot alter internal usages, exponent or algorithm metadata. Public key pair records contain caller-owned keys; disposing one does not dispose the other.
 - All request buffers/JWK arrays are copied synchronously when the service method is called. The returned Async observes a single admitted computation, including repeated awaits. Native work is scheduled away from the UI thread; captured key material stays retained. Promise/Async completion names/errors preserve the validated stage. Long provider calls may finish after cancellation, but their result is dropped and owned temporary buffers released.
-- Service disposal closes only that service's admission/publication boundary and pending operations. Native key material is not document-owned. Browser secure-context/document capability loss is explicit; native keys have no WebCoreHost dependency.
+- Service disposal closes only that service's admission/publication boundary and pending operations. New admission raises CryptoException InvalidStateError on both targets; this is the facade's lifetime rule because browser WebCrypto itself has no Dispose. Native key material is not document-owned. Browser secure-context/document capability loss is explicit; native keys have no WebCoreHost dependency. Existing CryptoService behavior is unchanged.
 - Unsupported means this provider/context has no implementation, not invalid data. The initial native HMAC slice supports only valid HMAC generation/import/export/sign/verify; the remaining operations and algorithm families remain open until implemented and qualified. Digest stays on the existing CryptoService; this new interface's Availability returns Unsupported for Digest because digest remains on the existing service.
 
 ## First-slice review tests
