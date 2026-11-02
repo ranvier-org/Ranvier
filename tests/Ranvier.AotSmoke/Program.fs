@@ -7,6 +7,7 @@ open Ranvier
 open Ranvier.CSharp
 open Ranvier.Elmish
 open Ranvier.Query
+open Ranvier.Dom
 
 let mutable private failures = 0
 
@@ -34,6 +35,10 @@ let private equals (name: string) (expected: string) (actual: string) =
 
 [<EntryPoint>]
 let main _ =
+    let utf8 = Utf8.encode "A🌍"
+    report "UTF-8 encode under NativeAOT" (utf8 = [| 0x41uy; 0xF0uy; 0x9Fuy; 0x8Cuy; 0x8Duy |]) "unexpected bytes"
+    let utf8Decoder = Utf8.createDecoder { Fatal = true; IgnoreBOM = false }
+    report "UTF-8 decode under NativeAOT" (utf8Decoder.Decode (utf8, true) = Ok "A🌍") "unexpected decoded text"
 #if RANVIER_TRACE
     for name, expected, value in TraceTextCases.cases () do
         equals ("trace text: " + name) expected (value.ToString ())

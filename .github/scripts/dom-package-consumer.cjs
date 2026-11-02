@@ -44,6 +44,18 @@ for (const suffix of ['', '.Traced']) {
   });
   fs.writeFileSync(path.join(output, 'package.json'), '{"type":"module"}');
   execFileSync('node', [path.join(output, 'Program.js')], { cwd: root, stdio: 'inherit' });
+
+  const utf8Project = path.join(root, 'tests/Utf8/PackageBrowser.fsproj');
+  const utf8Output = path.join(temporary, suffix ? 'utf8-traced' : 'utf8-plain');
+  execFileSync('dotnet', ['restore', utf8Project, '--configfile', config, '--packages', path.join(temporary, 'packages'),
+    ...properties], { cwd: root, stdio: 'inherit' });
+  execFileSync('dotnet', ['fickl', utf8Project, '-c', 'Release', '--noCache', '-o', utf8Output], {
+    cwd: root, stdio: 'inherit', env: { ...process.env, NUGET_PACKAGES: path.join(temporary, 'packages'),
+      RanvierDomVersion: version, RanvierDomPackageSuffix: suffix }
+  });
+  fs.writeFileSync(path.join(utf8Output, 'package.json'), '{"type":"module"}');
+  execFileSync('node', [path.join(root, 'tests/Utf8/run-node.mjs'), path.join(utf8Output, 'Browser.js')],
+    { cwd: root, stdio: 'inherit' });
 }
 } finally {
   const resolved = fs.realpathSync(temporary);
