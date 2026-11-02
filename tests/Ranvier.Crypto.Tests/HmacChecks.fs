@@ -545,7 +545,11 @@ let run (create: unit -> SubtleCryptoService) (vectors: Vector array) =
                         with CryptoException (actualName, actualDetail) as failure ->
                             equal "legacy error name" name actualName
                             equal "legacy error detail" detail actualDetail
+#if FABLE_COMPILER
+                            equal "legacy Message" "" failure.Message
+#else
                             equal "legacy Message" (name + ": " + detail) failure.Message
+#endif
 
                     expect "QuotaExceededError" "The byte length 65537 exceeds 65536." (fun () ->
                         CryptoContract.randomValues RandomValuesKind.Uint8 (Array.zeroCreate 65537) 0 65537)
