@@ -39,9 +39,11 @@ const server = createServer(async (request, response) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 let browser;
+let browserVersion;
 const results = [];
 try {
   browser = await chromium.launch({ headless: true, args: ['--host-resolver-rules=MAP local.test 127.0.0.1'] });
+  browserVersion = browser.version();
   for (const [host, secure] of [['localhost', true], ['local.test', false]]) {
     const context = await browser.newContext();
     try {
@@ -60,8 +62,8 @@ try {
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
-  await writeFile(reportPath, JSON.stringify({ results }, null, 2) + '\n');
+  await writeFile(reportPath, JSON.stringify({ browserVersion, results }, null, 2) + '\n');
 }
 const failed = results.length !== 2 || results.some(row => row.errors.length || row.report.failures.length || row.report.assertions < (row.secure ? 339 : 2));
-console.log(JSON.stringify({ results, failed }));
+console.log(JSON.stringify({ browserVersion, results, failed }));
 process.exitCode = failed ? 1 : 0;
