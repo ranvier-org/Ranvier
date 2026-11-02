@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Ranvier.Crypto</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ManagedCrypto.fs" />
+    <ProjectReference Include="../Ranvier.Dom/Ranvier.Dom.fsproj" />
+  </ItemGroup>
+</Project>

@@ -47,6 +47,9 @@
     <Compile Include="EventDetails.fs" />
     <Compile Include="Urls.fs" />
     <Compile Include="Crypto.fs" />
+    <Compile Include="CryptoKeys.fs" />
+    <Compile Include="CryptoKeyValidation.fs" />
+    <Compile Include="CryptoKeyJwk.fs" />
     <Compile Include="Screen.fs" />
     <Compile Include="Highlights.fs" />
     <Compile Include="Diagnostics.fs" />
@@ -68,6 +71,9 @@
     <Compile Include="ViewTransitions.fs" />
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ranvier.Crypto" />
   </ItemGroup>
   <ItemGroup Condition="'$(RanvierTrace)' == 'true'">
     <AssemblyMetadata Include="RanvierTrace" Value="true" />

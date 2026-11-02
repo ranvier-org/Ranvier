@@ -67,6 +67,8 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-${{ github.job }}-
       - name: Test Ranvier.Tests
         run: dotnet test tests/Ranvier.Tests -c Release
+      - name: Test Ranvier.Crypto.Tests
+        run: dotnet test tests/Ranvier.Crypto.Tests -c Release
       - name: Test Ranvier.CSharp.Tests
         run: dotnet test tests/Ranvier.CSharp.Tests -c Release
       - name: Test Ranvier.Wire.Tests
@@ -202,6 +204,27 @@ jobs:
         run: npx --prefix tests/MutationObservation playwright install --with-deps chromium
       - name: Test browser mutation observation
         run: node tests/MutationObservation/run-browser.mjs artifacts/mutation-browser
+      - name: Install HMAC browser test tooling
+        run: npm ci --prefix tests/Ranvier.Crypto.Browser
+      - name: Install pinned HMAC headless browser
+        timeout-minutes: 5
+        run: node tests/Ranvier.Crypto.Browser/node_modules/playwright/cli.js install --with-deps chromium-headless-shell
+      - name: Compile HMAC browser tests
+        timeout-minutes: 5
+        env:
+          FABLE_COMPILER: 'true'
+          FICKL_SERVER: '0'
+        run: dotnet tool run fickl -- tests/Ranvier.Crypto.Browser/Browser.fsproj --outDir artifacts/crypto-browser --extension .js --configuration Release --noPackageCache --noCache
+      - name: Verify actual secure and insecure HMAC contexts
+        timeout-minutes: 3
+        run: node tests/Ranvier.Crypto.Browser/browser.mjs artifacts/crypto-browser tests/Ranvier.Crypto.Tests/fixtures/hmac-provider-rows.json artifacts/crypto-browser-result.json
+      - name: Upload HMAC browser proof
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: crypto-browser-proof
+          path: artifacts/crypto-browser-result.json
+          if-no-files-found: warn
       - name: Check Fable package consumers
         shell: pwsh
         run: ./tests/check-package-compatibility.ps1 -CheckFable

@@ -88,8 +88,10 @@ module Spec =
                 "src/Ranvier.Wire/Ranvier.Wire.fsproj"
                 "src/Ranvier.Dom/Ranvier.Dom.fsproj"
                 "tests/MutationObservation/Shared.fsproj"
+                "src/Ranvier.Crypto/Ranvier.Crypto.fsproj"
                 "tests/Ranvier.Tests/Ranvier.Tests.fsproj"
                 "tests/Ranvier.Wire.Tests/Ranvier.Wire.Tests.fsproj"
+                "tests/Ranvier.Crypto.Tests/Ranvier.Crypto.Tests.fsproj"
             ]
             "examples",
             [
@@ -676,6 +678,8 @@ module private Analyze =
                                             "fsharp-analyzers"
                                             "--project"
                                             "src/Ranvier/Ranvier.fsproj"
+                                            "src/Ranvier.Crypto/Ranvier.Crypto.fsproj"
+                                            "tests/Ranvier.Crypto.Tests/Ranvier.Crypto.Tests.fsproj"
                                             "--property"
                                             "RanvierTrace=true"
                                          ]
