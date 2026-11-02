@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="HmacChecks.fs" />
+    <Compile Include="AesCbcChecks.fs" />
     <Compile Include="Main.fs" />
     <None Include="fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="../../src/Ranvier.Crypto/Ranvier.Crypto.fsproj" />

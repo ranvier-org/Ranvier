@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Ranvier.Crypto.Tests/HmacChecks.fs" Link="HmacChecks.fs" />
+    <Compile Include="../Ranvier.Crypto.Tests/AesCbcChecks.fs" Link="AesCbcChecks.fs" />
     <Compile Include="BrowserMain.fs" />
     <ProjectReference Include="../../src/Fable.Ranvier.Dom/Fable.Ranvier.Dom.fsproj" />
     <PackageReference Include="Fable.Core" Version="5.3.0" />

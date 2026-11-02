@@ -53,7 +53,15 @@ let private run () =
                 let! report =
                     HmacChecks.run (fun () -> BrowserSubtleCrypto.forDocument document) rows
 
-                finish report
+                let! cbcReport =
+                    AesCbcChecks.run (fun () -> BrowserSubtleCrypto.forDocument document)
+
+                finish
+                    {
+                        assertions = report.assertions + cbcReport.assertions
+                        groups = report.groups + cbcReport.groups
+                        failures = Array.append report.failures cbcReport.failures
+                    }
         with error ->
             finish
                 {

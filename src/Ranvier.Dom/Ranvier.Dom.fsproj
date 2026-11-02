@@ -50,6 +50,7 @@
     <Compile Include="CryptoKeys.fs" />
     <Compile Include="CryptoKeyValidation.fs" />
     <Compile Include="CryptoKeyJwk.fs" />
+    <Compile Include="CryptoAesValidation.fs" />
     <Compile Include="Screen.fs" />
     <Compile Include="Highlights.fs" />
     <Compile Include="Diagnostics.fs" />

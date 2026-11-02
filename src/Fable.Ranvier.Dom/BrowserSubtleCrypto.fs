@@ -47,15 +47,31 @@ module BrowserSubtleCrypto =
     [<Emit("$0.crypto.subtle.verify('HMAC',$1,$2,$3)")>]
     let private verify (window: obj) (key: obj) (signature: byte array) (bytes: byte array) : JS.Promise<bool> = jsNative
 
+    [<Emit("$0.crypto.subtle.generateKey({name:'AES-CBC',length:$1},$2,$3)")>]
+    let private generateCbc (window: obj) (bits: uint16) (extractable: bool) (usages: string[]) : JS.Promise<obj> = jsNative
+
+    [<Emit("$0.crypto.subtle.importKey('raw',$1,'AES-CBC',$2,$3)")>]
+    let private importCbc (window: obj) (bytes: byte[]) (extractable: bool) (usages: string[]) : JS.Promise<obj> = jsNative
+
+    [<Emit("$0.crypto.subtle[$1 ? 'decrypt' : 'encrypt']({name:'AES-CBC',iv:$3},$2,$4).then(b=>new Uint8Array(b))")>]
+    let private cryptCbc (window: obj) (decrypt: bool) (key: obj) (iv: byte[]) (bytes: byte[]) : JS.Promise<byte[]> = jsNative
+
     [<Emit("String($0?.name ?? 'Error')")>]
     let private errorName (value: obj) : string = jsNative
 
     [<Emit("String($0?.message ?? $0)")>]
     let private errorMessage (value: obj) : string = jsNative
 
-    type private BrowserKey(native: obj, hash, bits: uint64, extractable, permitted: CryptoKeyUsage array) =
+    type private BrowserKey(native: obj, name: string, hash: DigestAlgorithm option, bits: uint64, extractable, permitted: CryptoKeyUsage array) =
         let mutable key = Some native
-        member _.Hash = hash
+        let permitted = Array.copy permitted
+        member _.Name = name
+
+        member _.Hash =
+            match hash with
+            | Some value -> value
+            | None -> error "InvalidAccessError" "Key is not an HMAC key."
+
         member _.Permitted = Array.copy permitted
 
         member _.Capture() =
@@ -69,8 +85,8 @@ module BrowserSubtleCrypto =
 
             member _.Algorithm =
                 {
-                    Name = "HMAC"
-                    Hash = Some (CryptoContract.digestName hash)
+                    Name = name
+                    Hash = Option.map CryptoContract.digestName hash
                     LengthBits = Some bits
                     NamedCurve = None
                     ModulusLengthBits = None
@@ -156,14 +172,43 @@ module BrowserSubtleCrypto =
                 SubtleOperation.Verify
             ]
 
+        let crypt decrypt algorithm inputKey input =
+            check ()
+            let bytes = copyBuffer input
+            let iv = CryptoAesContract.copyIv algorithm
+            let key, captured = capture inputKey
+
+            if not (ready ()) then
+                unsupported ()
+            else
+                start
+                    (fun () ->
+                        let held = native captured
+
+                        if key.Name <> "AES-CBC" then
+                            error "InvalidAccessError" "Key is not an AES-CBC key."
+
+                        checkUse
+                            key
+                            (if decrypt then
+                                 CryptoKeyUsage.Decrypt
+                             else
+                                 CryptoKeyUsage.Encrypt)
+
+                        CryptoAesContract.checkIv iv
+                        cryptCbc window decrypt held iv bytes)
+                    ignore
+
         { new SubtleCryptoService with
             member _.Availability(operation, algorithm) =
                 check ()
 
                 if
                     ready ()
-                    && isHmacName algorithm
-                    && List.contains operation supported
+                    && ((isHmacName algorithm
+                         && List.contains operation supported)
+                        || (CryptoAesContract.isCbcName algorithm
+                            && CryptoAesContract.supports operation))
                 then
                     CryptoOutcome.Value ()
                 else
@@ -178,19 +223,40 @@ module BrowserSubtleCrypto =
                 else
                     start
                         (fun () ->
-                            let hash, length = hmacParameters algorithm
-                            allowedHmac requested
-                            let bits = defaultArg length (defaultBits hash)
+                            if name algorithm = "AES-CBC" then
+                                let bits = CryptoAesContract.generationLength algorithm
+                                CryptoAesContract.allowedUsages requested
+                                CryptoAesContract.validLength "OperationError" (uint64 bits)
+                                nonemptyUsages requested
 
-                            if bits = 0u then
-                                error "OperationError" "HMAC length is zero."
+                                generateCbc window bits extractable (Array.map usageName requested)
+                                |> fun pending ->
+                                    map pending (fun key ->
+                                        CryptoGeneratedKey.Key (
+                                            new BrowserKey (key, "AES-CBC", None, uint64 bits, extractable, requested) :> CryptoKey
+                                        ))
+                            else
+                                let hash, length = hmacParameters algorithm
+                                allowedHmac requested
+                                let bits = defaultArg length (defaultBits hash)
 
-                            nonemptyUsages requested
+                                if bits = 0u then
+                                    error "OperationError" "HMAC length is zero."
 
-                            generate window (CryptoContract.digestName hash) (Option.isSome length) bits extractable (Array.map usageName requested)
-                            |> fun pending ->
-                                map pending (fun key ->
-                                    CryptoGeneratedKey.Key (new BrowserKey (key, hash, uint64 bits, extractable, requested) :> CryptoKey)))
+                                nonemptyUsages requested
+
+                                generate
+                                    window
+                                    (CryptoContract.digestName hash)
+                                    (Option.isSome length)
+                                    bits
+                                    extractable
+                                    (Array.map usageName requested)
+                                |> fun pending ->
+                                    map pending (fun key ->
+                                        CryptoGeneratedKey.Key (
+                                            new BrowserKey (key, "HMAC", Some hash, uint64 bits, extractable, requested) :> CryptoKey
+                                        )))
                         (function
                          | CryptoGeneratedKey.Key key -> key.Dispose ()
                          | CryptoGeneratedKey.Pair pair ->
@@ -212,34 +278,54 @@ module BrowserSubtleCrypto =
                 else
                     start
                         (fun () ->
-                            let hash, length = hmacParameters algorithm
+                            if name algorithm = "AES-CBC" then
+                                CryptoAesContract.allowedUsages requested
 
-                            if length = Some 0u then
-                                error "DataError" "HMAC length is zero."
+                                let bytes =
+                                    match formatValue, data with
+                                    | CryptoKeyFormat.Raw, CryptoKeyData.Bytes buffer -> buffer.Bytes
+                                    | CryptoKeyFormat.Jwk, CryptoKeyData.Jwk jwk -> CryptoAesContract.importJwk extractable requested jwk
+                                    | CryptoKeyFormat.Raw, _
+                                    | CryptoKeyFormat.Jwk, _ -> error "DataError" "Key data does not match its format."
+                                    | _ -> error "NotSupportedError" "AES-CBC permits raw and jwk formats."
 
-                            allowedHmac requested
+                                let bits = uint64 bytes.Length * 8UL
+                                CryptoAesContract.validLength "DataError" bits
+                                nonemptyUsages requested
 
-                            let bytes =
-                                match formatValue, data with
-                                | CryptoKeyFormat.Raw, CryptoKeyData.Bytes buffer -> buffer.Bytes
-                                | CryptoKeyFormat.Jwk, CryptoKeyData.Jwk jwk -> CryptoKeyJwk.importHmac hash extractable requested jwk
-                                | CryptoKeyFormat.Raw, _
-                                | CryptoKeyFormat.Jwk, _ -> error "DataError" "Key data does not match its format."
-                                | _ -> error "NotSupportedError" "HMAC permits raw and jwk formats."
+                                importCbc window bytes extractable (Array.map usageName requested)
+                                |> fun pending ->
+                                    map pending (fun key -> new BrowserKey (key, "AES-CBC", None, bits, extractable, requested) :> CryptoKey)
+                            else
+                                let hash, length = hmacParameters algorithm
 
-                            let bits = logicalBits bytes (length |> Option.map uint64)
-                            nonemptyUsages requested
-                            let canonical = mask bytes bits
+                                if length = Some 0u then
+                                    error "DataError" "HMAC length is zero."
 
-                            importRaw
-                                window
-                                canonical
-                                (CryptoContract.digestName hash)
-                                true
-                                (checked32 bits)
-                                extractable
-                                (Array.map usageName requested)
-                            |> fun pending -> map pending (fun key -> new BrowserKey (key, hash, bits, extractable, requested) :> CryptoKey))
+                                allowedHmac requested
+
+                                let bytes =
+                                    match formatValue, data with
+                                    | CryptoKeyFormat.Raw, CryptoKeyData.Bytes buffer -> buffer.Bytes
+                                    | CryptoKeyFormat.Jwk, CryptoKeyData.Jwk jwk -> CryptoKeyJwk.importHmac hash extractable requested jwk
+                                    | CryptoKeyFormat.Raw, _
+                                    | CryptoKeyFormat.Jwk, _ -> error "DataError" "Key data does not match its format."
+                                    | _ -> error "NotSupportedError" "HMAC permits raw and jwk formats."
+
+                                let bits = logicalBits bytes (length |> Option.map uint64)
+                                nonemptyUsages requested
+                                let canonical = mask bytes bits
+
+                                importRaw
+                                    window
+                                    canonical
+                                    (CryptoContract.digestName hash)
+                                    true
+                                    (checked32 bits)
+                                    extractable
+                                    (Array.map usageName requested)
+                                |> fun pending ->
+                                    map pending (fun key -> new BrowserKey (key, "HMAC", Some hash, bits, extractable, requested) :> CryptoKey))
                         (fun key -> key.Dispose ())
 
             member _.ExportKey(formatValue, inputKey) =
@@ -269,7 +355,13 @@ module BrowserSubtleCrypto =
                                     if formatValue = CryptoKeyFormat.Raw then
                                         CryptoExportedKey.Bytes bytes
                                     else
-                                        CryptoExportedKey.Jwk (CryptoKeyJwk.exportHmac key.Hash inputKey.Extractable key.Permitted bytes)))
+                                        let jwk =
+                                            if key.Name = "AES-CBC" then
+                                                CryptoAesContract.exportJwk (uint64 bytes.Length * 8UL) inputKey.Extractable key.Permitted bytes
+                                            else
+                                                CryptoKeyJwk.exportHmac key.Hash inputKey.Extractable key.Permitted bytes
+
+                                        CryptoExportedKey.Jwk jwk))
                         ignore
 
             member _.Sign(algorithm, inputKey, input) =
@@ -284,6 +376,10 @@ module BrowserSubtleCrypto =
                         (fun () ->
                             requireHmac algorithm
                             let held = native captured
+
+                            if key.Name <> "HMAC" then
+                                error "InvalidAccessError" "Key is not an HMAC key."
+
                             checkUse key CryptoKeyUsage.Sign
                             sign window held bytes)
                         ignore
@@ -301,15 +397,19 @@ module BrowserSubtleCrypto =
                         (fun () ->
                             requireHmac algorithm
                             let held = native captured
+
+                            if key.Name <> "HMAC" then
+                                error "InvalidAccessError" "Key is not an HMAC key."
+
                             checkUse key CryptoKeyUsage.Verify
                             verify window held signature bytes)
                         ignore
 
-            member _.Encrypt(_, _, _) =
-                unsupported ()
+            member _.Encrypt(algorithm, key, input) =
+                crypt false algorithm key input
 
-            member _.Decrypt(_, _, _) =
-                unsupported ()
+            member _.Decrypt(algorithm, key, input) =
+                crypt true algorithm key input
 
             member _.DeriveBits(_, _, _) =
                 unsupported ()

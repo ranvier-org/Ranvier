@@ -5,7 +5,7 @@ open System.IO
 open System.Runtime.CompilerServices
 open System.Text.Json
 
-/// <summary>Runs the full HMAC checks and returns nonzero for a failure or unmet NativeAOT expectation.</summary>
+/// <summary>Runs all provider checks and returns nonzero for a failure or unmet NativeAOT expectation.</summary>
 [<EntryPoint>]
 let main args =
     let path =
@@ -29,9 +29,20 @@ let main args =
             vector)
         |> Seq.toArray
 
-    let report =
+    let hmacReport =
         HmacChecks.run Ranvier.Crypto.ManagedCrypto.create vectors
         |> Async.RunSynchronously
+
+    let cbcReport =
+        AesCbcChecks.run Ranvier.Crypto.ManagedCrypto.create
+        |> Async.RunSynchronously
+
+    let report: HmacChecks.Report =
+        {
+            assertions = hmacReport.assertions + cbcReport.assertions
+            groups = hmacReport.groups + cbcReport.groups
+            failures = Array.append hmacReport.failures cbcReport.failures
+        }
 
     Console.WriteLine (
         "HMAC289 assertions="

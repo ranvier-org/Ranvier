@@ -28,6 +28,9 @@ module internal ManagedKeys =
         static member CreateHmac(bytes, hash, bits, extractable, permitted) =
             new SecretKey (bytes, "HMAC", Some hash, bits, extractable, permitted)
 
+        static member CreateCbc(bytes, extractable, permitted) =
+            new SecretKey (bytes, "AES-CBC", None, uint64 bytes.Length * 8UL, extractable, permitted)
+
         member _.Name = name
 
         member _.Hash =
