@@ -75,6 +75,8 @@ jobs:
         run: dotnet test tests/Ranvier.Wire.Tests -c Release
       - name: Test shared mutation observation
         run: dotnet run --project tests/MutationObservation/Shared.fsproj -c Release
+      - name: Test shared UTF-8 encoding
+        run: dotnet run --project tests/Utf8/Shared.fsproj -c Release
       # The vendored Thoth.Json files must equal the pinned upstream commit plus src/Ranvier.Wire/Vendor/Thoth.Json/patches.
       - name: Check the vendored Thoth.Json
         shell: pwsh
@@ -225,6 +227,14 @@ jobs:
           name: crypto-browser-proof
           path: artifacts/crypto-browser-result.json
           if-no-files-found: warn
+      - name: Install UTF-8 browser fixture dependencies
+        run: npm ci --prefix tests/Utf8
+      - name: Install Chromium for UTF-8 browser fixture
+        run: npx --prefix tests/Utf8 playwright install --with-deps chromium
+      - name: Compile browser UTF-8 vectors
+        run: dotnet fickl tests/Utf8/Browser.fsproj -c Release --noCache -o artifacts/utf8-browser
+      - name: Test browser UTF-8 vectors
+        run: node tests/Utf8/run-browser.mjs artifacts/utf8-browser
       - name: Check Fable package consumers
         shell: pwsh
         run: ./tests/check-package-compatibility.ps1 -CheckFable
