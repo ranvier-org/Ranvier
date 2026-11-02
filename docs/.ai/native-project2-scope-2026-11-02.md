@@ -18,21 +18,21 @@ Sixteen retained group/AOT issue titles and bodies now explicitly define the nat
 - [ranvier-org/Ranvier.WebCore#120](https://github.com/ranvier-org/Ranvier.WebCore/issues/120): Maintain a matching Windows GPU package cohort for native previews
 - [ranvier-org/Ranvier.WebCore#146](https://github.com/ranvier-org/Ranvier.WebCore/issues/146): ResizeObserver device-pixel-content-box in the native engine (follow-up to G10)
 - [ranvier-org/Ranvier.WebCore#156](https://github.com/ranvier-org/Ranvier.WebCore/issues/156): Linux (WPE): drops expose no files; DataTransfer::allowsFileAccess() is false for every drag
-- [ranvier-org/Ranvier.WebCore#157](https://github.com/ranvier-org/Ranvier.WebCore/issues/157): D02: D02: Native live-DOM mutation observation
-- [ranvier-org/Ranvier.WebCore#162](https://github.com/ranvier-org/Ranvier.WebCore/issues/162): D15: D15: Native control picker integration
-- [ranvier-org/Ranvier.WebCore#169](https://github.com/ranvier-org/Ranvier.WebCore/issues/169): T05: T05: Native editing undo transactions
-- [ranvier-org/Ranvier.WebCore#171](https://github.com/ranvier-org/Ranvier.WebCore/issues/171): T08: T08: Native IME and text-service integration
-- [ranvier-org/Ranvier.WebCore#172](https://github.com/ranvier-org/Ranvier.WebCore/issues/172): T10: T10: Native spelling-provider and editor integration
-- [ranvier-org/Ranvier.WebCore#176](https://github.com/ranvier-org/Ranvier.WebCore/issues/176): R13: R13: Native compositor and presentation integration
-- [ranvier-org/Ranvier.WebCore#177](https://github.com/ranvier-org/Ranvier.WebCore/issues/177): R14: R14: Native printing and PDF output
-- [ranvier-org/Ranvier.WebCore#180](https://github.com/ranvier-org/Ranvier.WebCore/issues/180): I05: I05: Native gesture and force-input integration
-- [ranvier-org/Ranvier.WebCore#182](https://github.com/ranvier-org/Ranvier.WebCore/issues/182): I10: I10: Native accessibility platform adapters
-- [ranvier-org/Ranvier.WebCore#186](https://github.com/ranvier-org/Ranvier.WebCore/issues/186): H09: H09: Native paint, style and layout tracing
-- [ranvier-org/Ranvier.WebCore#187](https://github.com/ranvier-org/Ranvier.WebCore/issues/187): H10: H10: Native host and renderer error records
-- [ranvier-org/Ranvier.WebCore#190](https://github.com/ranvier-org/Ranvier.WebCore/issues/190): B01: B01: Native media/audio playback integration
-- [ranvier-org/Ranvier.WebCore#191](https://github.com/ranvier-org/Ranvier.WebCore/issues/191): B02: B02: Native video surface and playback integration
-- [ranvier-org/Ranvier.WebCore#195](https://github.com/ranvier-org/Ranvier.WebCore/issues/195): B07: B07: Native OS media-session integration
-- [ranvier-org/Ranvier.WebCore#199](https://github.com/ranvier-org/Ranvier.WebCore/issues/199): B13: B13: Native window and display integration
+- [ranvier-org/Ranvier.WebCore#157](https://github.com/ranvier-org/Ranvier.WebCore/issues/157): D02: Native live-DOM mutation observation
+- [ranvier-org/Ranvier.WebCore#162](https://github.com/ranvier-org/Ranvier.WebCore/issues/162): D15: Native control picker integration
+- [ranvier-org/Ranvier.WebCore#169](https://github.com/ranvier-org/Ranvier.WebCore/issues/169): T05: Native editing undo transactions
+- [ranvier-org/Ranvier.WebCore#171](https://github.com/ranvier-org/Ranvier.WebCore/issues/171): T08: Native IME and text-service integration
+- [ranvier-org/Ranvier.WebCore#172](https://github.com/ranvier-org/Ranvier.WebCore/issues/172): T10: Native spelling-provider and editor integration
+- [ranvier-org/Ranvier.WebCore#176](https://github.com/ranvier-org/Ranvier.WebCore/issues/176): R13: Native compositor and presentation integration
+- [ranvier-org/Ranvier.WebCore#177](https://github.com/ranvier-org/Ranvier.WebCore/issues/177): R14: Native printing and PDF output
+- [ranvier-org/Ranvier.WebCore#180](https://github.com/ranvier-org/Ranvier.WebCore/issues/180): I05: Native gesture and force-input integration
+- [ranvier-org/Ranvier.WebCore#182](https://github.com/ranvier-org/Ranvier.WebCore/issues/182): I10: Native accessibility platform adapters
+- [ranvier-org/Ranvier.WebCore#186](https://github.com/ranvier-org/Ranvier.WebCore/issues/186): H09: Native paint, style and layout tracing
+- [ranvier-org/Ranvier.WebCore#187](https://github.com/ranvier-org/Ranvier.WebCore/issues/187): H10: Native host and renderer error records
+- [ranvier-org/Ranvier.WebCore#190](https://github.com/ranvier-org/Ranvier.WebCore/issues/190): B01: Native media/audio playback integration
+- [ranvier-org/Ranvier.WebCore#191](https://github.com/ranvier-org/Ranvier.WebCore/issues/191): B02: Native video surface and playback integration
+- [ranvier-org/Ranvier.WebCore#195](https://github.com/ranvier-org/Ranvier.WebCore/issues/195): B07: Native OS media-session integration
+- [ranvier-org/Ranvier.WebCore#199](https://github.com/ranvier-org/Ranvier.WebCore/issues/199): B13: Native window and display integration
 - [ranvier-org/Ranvier.WebCore#210](https://github.com/ranvier-org/Ranvier.WebCore/issues/210): Linux host does not register the WPE image GResource, so built-in icons are empty
 - [ranvier-org/Ranvier.WebCore#211](https://github.com/ranvier-org/Ranvier.WebCore/issues/211): macOS: WTF RunLoop::Timer CF timers still wait for kernel delivery (residual of #155)
 - [ranvier-org/Ranvier.WebCore#212](https://github.com/ranvier-org/Ranvier.WebCore/issues/212): abi_layouts missing for RvImageDataLayout, RvImageBitmapOptions, RvDomKeyframeAnimationOptions
