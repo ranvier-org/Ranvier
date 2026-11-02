@@ -9,6 +9,8 @@ open Ranvier.Dom.Cryptography.CryptoKeyContract
 
 /// <summary>Host-independent .NET crypto services.</summary>
 module ManagedCrypto =
+    open ManagedKeys
+
     module Jwk = CryptoKeyJwk
 
     let private wipe (bytes: byte[]) =
@@ -20,87 +22,6 @@ module ManagedCrypto =
         | DigestAlgorithm.Sha256 -> HMACSHA256.HashData (key, data)
         | DigestAlgorithm.Sha384 -> HMACSHA384.HashData (key, data)
         | DigestAlgorithm.Sha512 -> HMACSHA512.HashData (key, data)
-
-    type private Lease =
-        {
-            Bytes: byte[]
-            Release: unit -> unit
-        }
-
-        override _.ToString() =
-            "CryptoKeyLease"
-
-    type private HmacKey(bytes: byte[], hash, bits: uint64, extractable, permitted: CryptoKeyUsage[]) =
-        let gate = obj ()
-        let mutable disposed = false
-        let mutable readers = 0
-        member _.Hash = hash
-        member _.Bits = bits
-        member _.Permitted = Array.copy permitted
-
-        member _.Acquire() =
-            lock gate (fun () ->
-                if disposed then
-                    Result.Error (CryptoException ("InvalidAccessError", "Key is disposed."))
-                else
-                    readers <- readers + 1
-                    let mutable released = false
-
-                    Result.Ok
-                        {
-                            Bytes = bytes
-                            Release =
-                                fun () ->
-                                    lock gate (fun () ->
-                                        if not released then
-                                            released <- true
-                                            readers <- readers - 1
-
-                                            if disposed && readers = 0 then
-                                                wipe bytes)
-                        })
-
-        interface CryptoKey with
-            member _.Type = CryptoKeyType.Secret
-            member _.Extractable = extractable
-
-            member _.Algorithm =
-                {
-                    Name = "HMAC"
-                    Hash = Some (CryptoContract.digestName hash)
-                    LengthBits = Some bits
-                    NamedCurve = None
-                    ModulusLengthBits = None
-                    PublicExponent = None
-                }
-
-            member _.Usages = Array.copy permitted
-
-            member _.Dispose() =
-                lock gate (fun () ->
-                    disposed <- true
-
-                    if readers = 0 then
-                        wipe bytes)
-
-    let private retain (key: CryptoKey) =
-        match box key with
-        | :? HmacKey as own -> own, own.Acquire ()
-        | _ -> Unchecked.defaultof<HmacKey>, Result.Error (CryptoException ("InvalidAccessError", "Key is not a compatible managed key."))
-
-    let private release retained =
-        match retained with
-        | Result.Ok lease -> lease.Release ()
-        | _ -> ()
-
-    let private lease retained =
-        match retained with
-        | Result.Ok value -> value
-        | Result.Error error -> raise error
-
-    let private checkUse (key: HmacKey) usage =
-        if not (Array.contains usage key.Permitted) then
-            error "InvalidAccessError" "Key usage does not permit this operation."
 
     let private importKey formatValue keyData algorithm extractable requested =
         let hash, length = hmacParameters algorithm
@@ -123,7 +44,7 @@ module ManagedCrypto =
             nonemptyUsages requested
 
             let key =
-                new HmacKey (mask bytes bits, hash, bits, extractable, requested) :> CryptoKey
+                SecretKey.CreateHmac (mask bytes bits, hash, bits, extractable, requested) :> CryptoKey
 
             key
         finally
@@ -233,7 +154,7 @@ module ManagedCrypto =
                         wipe bytes
 
                         CryptoOutcome.Value (
-                            CryptoGeneratedKey.Key (new HmacKey (canonical, hash, uint64 bits, extractable, requested) :> CryptoKey)
+                            CryptoGeneratedKey.Key (SecretKey.CreateHmac (canonical, hash, uint64 bits, extractable, requested) :> CryptoKey)
                         ))
                     dropGenerated
                     noRelease

@@ -6,6 +6,7 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ManagedKeys.fs" />
     <Compile Include="ManagedCrypto.fs" />
     <ProjectReference Include="../Ranvier.Dom/Ranvier.Dom.fsproj" />
   </ItemGroup>
