@@ -662,6 +662,8 @@ module private Analyze =
                                             "fsharp-analyzers"
                                             "--project"
                                             "src/Ranvier/Ranvier.fsproj"
+                                            "src/Ranvier.Crypto/Ranvier.Crypto.fsproj"
+                                            "tests/Ranvier.Crypto.Tests/Ranvier.Crypto.Tests.fsproj"
                                             "--property"
                                             "RanvierTrace=true"
                                          ]
