@@ -177,6 +177,9 @@ type ResourceState<'T> =
 
 /// <summary>A decoded image the operation owns until it is disposed.</summary>
 /// <remarks><c>SourceUrl</c> is the requested URL; <c>TransportUrl</c> is the per-operation URL the engine loaded.</remarks>
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResourceImage =
     {
         Width: int
@@ -185,7 +188,27 @@ type ResourceImage =
         TransportUrl: string
     }
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun nested ->
+            [
+                "Width", (fun () -> NativeDisplay.int32 context nested (this.Width))
+                "Height", (fun () -> NativeDisplay.int32 context nested (this.Height))
+                "SourceUrl", (fun () -> NativeDisplay.text context nested (this.SourceUrl))
+                "TransportUrl", (fun () -> NativeDisplay.text context nested (this.TransportUrl))
+            ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>Decode readiness of an existing image element, with the source URL the element currently uses.</summary>
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResourceImageInfo =
     {
         Width: int
@@ -193,8 +216,41 @@ type ResourceImageInfo =
         SourceUrl: string
     }
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun nested ->
+            [
+                "Width", (fun () -> NativeDisplay.int32 context nested (this.Width))
+                "Height", (fun () -> NativeDisplay.int32 context nested (this.Height))
+                "SourceUrl", (fun () -> NativeDisplay.text context nested (this.SourceUrl))
+            ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>A font family registered with the document while the operation is held.</summary>
-type ResourceFont = { Family: string }
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
+type ResourceFont =
+    {
+        Family: string
+    }
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun nested -> [ "Family", (fun () -> NativeDisplay.text context nested (this.Family)) ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
 
 /// <summary>
 /// Starts a request and reports its result through <c>complete</c>, from any thread, synchronously or later, once or
