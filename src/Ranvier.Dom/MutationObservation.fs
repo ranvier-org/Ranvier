@@ -89,7 +89,8 @@ type MutationObserver =
     /// <summary>Drains the queued records without invoking the callback; returns empty after disposal.</summary>
     abstract TakeRecords: unit -> MutationRecord array
 
-/// <summary>Creates mutation observers; disposal releases every observer it created.</summary>
+/// <summary>Creates mutation observers; disposal closes every observer it created.</summary>
+/// <remarks>Cleanup attempts every observer and propagates the first cleanup failure after those attempts.</remarks>
 #if FABLE_COMPILER
 [<Fable.Core.Mangle>]
 #endif
@@ -102,6 +103,20 @@ type MutationObservationService =
 /// <summary>Creates mutation observation services over an engine provider.</summary>
 [<RequireQualifiedAccess>]
 module MutationObservation =
+    let private finishCleanup (actions: (unit -> unit) seq) =
+        let mutable first: exn option = None
+
+        for action in actions do
+            try
+                action ()
+            with error ->
+                if first.IsNone then
+                    first <- Some error
+
+        match first with
+        | Some error -> raise error
+        | None -> ()
+
     /// <summary>A service over provider; calls on disposed services or observers raise named InvalidStateError.</summary>
     let create (provider: MutationObservationProvider) : MutationObservationService =
         if isNull (box provider) then
@@ -168,12 +183,15 @@ module MutationObservation =
                             registration <- None
                             handle <- None
 
-                            try
-                                abortRegistration
-                                |> Option.iter (fun value -> value.Dispose ())
-                            finally
-                                engine
-                                |> Option.iter (fun value -> value.Release ())
+                            finishCleanup
+                                [|
+                                    (fun () ->
+                                        abortRegistration
+                                        |> Option.iter (fun value -> value.Dispose ()))
+                                    (fun () ->
+                                        engine
+                                        |> Option.iter (fun value -> value.Release ()))
+                                |]
                 }
 
             match signal with
@@ -226,6 +244,7 @@ module MutationObservation =
                 if not disposed then
                     disposed <- true
 
-                    for observer in Seq.toArray observers do
-                        observer.Dispose ()
+                    Seq.toArray observers
+                    |> Seq.map (fun observer -> fun () -> observer.Dispose ())
+                    |> finishCleanup
         }

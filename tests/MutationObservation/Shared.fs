@@ -133,6 +133,135 @@ let callbackRetention (service: MutationObservationService) =
     let observer = service.Create (fun _ _ -> GC.KeepAlive payload)
     observer, weak
 
+let cleanupFailures () =
+    let releases = ResizeArray<int>()
+    let mutable next = 0
+    let mutable takes = 0
+    let mutable service = Unchecked.defaultof<MutationObservationService>
+    let failure = InvalidOperationException ("release failure")
+    let mutable caught = None
+
+    service <-
+        MutationObservation.create
+            {
+                Create =
+                    fun _ _ ->
+                        next <- next + 1
+                        let id = next
+
+                        {
+                            Observe = (fun _ _ -> ())
+                            Disconnect = ignore
+                            TakeRecords =
+                                (fun () ->
+                                    takes <- takes + 1
+                                    [||])
+                            Release =
+                                (fun () ->
+                                    releases.Add id
+                                    service.Dispose ()
+
+                                    if id = 1 then
+                                        raise failure)
+                        }
+            }
+
+    let first = service.Create (fun _ _ -> ())
+    let second = service.Create (fun _ _ -> ())
+
+    try
+        service.Dispose ()
+    with error ->
+        caught <- Some error
+
+    check
+        "Release failure preserves first error"
+        (caught
+         |> Option.exists (fun error -> obj.ReferenceEquals (error, failure)))
+
+    check "Release failure continues snapshot cleanup" (releases.ToArray () = [| 1; 2 |])
+    second.TakeRecords () |> ignore
+    check "Later observer is closed after first release failure" (takes = 0)
+    service.Dispose ()
+    first.Dispose ()
+    second.Dispose ()
+    check "Failed/reentrant service disposal remains idempotent" (releases.ToArray () = [| 1; 2 |])
+
+    let phases = ResizeArray<string>()
+    let deliveries = ResizeArray<MutationRecord array -> unit>()
+    let mutable nextRegistration = 0
+    let mutable nextEngine = 0
+    let mutable calls = 0
+    let registrationFailure = InvalidOperationException ("registration release failure")
+
+    let signal =
+        { new AbortSignal with
+            member _.Aborted = false
+            member _.Reason = None
+            member _.ThrowIfAborted() = ()
+
+            member _.OnAbort _ =
+                nextRegistration <- nextRegistration + 1
+                let id = nextRegistration
+
+                { new IDisposable with
+                    member _.Dispose() =
+                        phases.Add ("abort" + string id)
+                        raise registrationFailure
+                }
+        }
+
+    let failingService =
+        MutationObservation.create
+            {
+                Create =
+                    fun deliver closed ->
+                        deliveries.Add deliver
+                        nextEngine <- nextEngine + 1
+                        let id = nextEngine
+
+                        {
+                            Observe = (fun _ _ -> ())
+                            Disconnect = ignore
+                            TakeRecords = (fun () -> failwith "closed observer consulted provider")
+                            Release =
+                                (fun () ->
+                                    phases.Add ("engine" + string id)
+                                    closed ()
+                                    failwith "secondary engine release failure")
+                        }
+            }
+
+    let left = failingService.Create ((fun _ _ -> calls <- calls + 1), signal)
+    let right = failingService.Create ((fun _ _ -> calls <- calls + 1), signal)
+    caught <- None
+
+    try
+        failingService.Dispose ()
+    with error ->
+        caught <- Some error
+
+    check
+        "Abort registration failure remains first"
+        (caught
+         |> Option.exists (fun error -> obj.ReferenceEquals (error, registrationFailure)))
+
+    check "All registrations and engines attempted after failures" (phases.ToArray () = [| "abort1"; "engine1"; "abort2"; "engine2" |])
+
+    for deliver in deliveries do
+        deliver [||]
+
+    check "Cleanup failures still clear every callback" (calls = 0)
+    failingService.Dispose ()
+    left.Dispose ()
+    right.Dispose ()
+
+    check
+        "Registration/engine failure retries do not repeat release"
+        (phases.Count = 4
+         && left.TakeRecords().Length = 0
+         && right.TakeRecords().Length = 0)
+
 [<EntryPoint>]
 let main _ =
     nullArgument (fun () ->
@@ -388,7 +517,9 @@ let main _ =
     check "Closure during Create releases returned handle" (immediateReleases = 1)
     check "Closure during Create returns disposed observer" (immediateObserver.TakeRecords().Length = 0)
 
-    if checks <> 51 then
+    cleanupFailures ()
+
+    if checks <> 59 then
         failwithf "Incomplete shared fixture: %d" checks
 
     printfn "MutationObservation shared: %d assertions PASS" checks

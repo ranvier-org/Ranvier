@@ -368,4 +368,72 @@ phases.Enqueue (fun () ->
     service.Dispose ()
     named "InvalidStateError" (fun () -> service.Create (fun _ _ -> ()) |> ignore))
 
+let mutable faultCalls = 0
+let faultReleases = ResizeArray<int>()
+let mutable faultIndex = 0
+
+let releaseFailure =
+    InvalidOperationException ("controlled mutation release failure")
+
+let browserProvider = BrowserMutationObservation.provider document
+
+let faultService =
+    own (
+        Ranvier.Dom.MutationObservation.create
+            {
+                Create =
+                    fun deliver closed ->
+                        let engine = browserProvider.Create deliver closed
+                        faultIndex <- faultIndex + 1
+                        let id = faultIndex
+
+                        { engine with
+                            Release =
+                                fun () ->
+                                    engine.Release ()
+                                    faultReleases.Add id
+
+                                    if id = 1 then
+                                        raise releaseFailure
+                        }
+            }
+    )
+
+phases.Enqueue (fun () ->
+    let first = faultService.Create (fun _ _ -> faultCalls <- faultCalls + 1)
+    let second = faultService.Create (fun _ _ -> faultCalls <- faultCalls + 1)
+
+    first.Observe (
+        root,
+        { MutationObserverOptions.Default with
+            Attributes = Some true
+        }
+    )
+
+    second.Observe (
+        root,
+        { MutationObserverOptions.Default with
+            Attributes = Some true
+        }
+    )
+
+    attribute (root, "data-fault", "queued")
+    let mutable actual = None
+
+    try
+        faultService.Dispose ()
+    with error ->
+        actual <- Some error
+
+    check
+        "Service disposal preserves first provider failure"
+        (actual
+         |> Option.exists (fun error -> obj.ReferenceEquals (error, releaseFailure)))
+
+    check "Service disposal continues real browser releases" (faultReleases.ToArray () = [| 1; 2 |])
+    check "Service failure still closes later observer" (second.TakeRecords().Length = 0)
+    faultService.Dispose ())
+
+phases.Enqueue (fun () -> check "Faulted service disposal suppresses queued callbacks" (faultCalls = 0))
+
 advance ()
