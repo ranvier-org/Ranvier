@@ -53,6 +53,7 @@
     <Compile Include="Coordinates.fs" />
     <Compile Include="ResizeObservation.fs" />
     <Compile Include="IntersectionObservation.fs" />
+    <Compile Include="MutationObservation.fs" />
     <Compile Include="TextSegmentation.fs" />
     <Compile Include="Frames.fs" />
     <Compile Include="Canvas.fs" />
