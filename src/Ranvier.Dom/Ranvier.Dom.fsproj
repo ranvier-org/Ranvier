@@ -67,6 +67,7 @@
     <Compile Include="CustomEffects.fs" />
     <Compile Include="ViewTransitions.fs" />
     <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="NativeDisplay.LICENSE.txt" Pack="true" PackagePath="/" />
     <None Include="../../brand/icon/ranvier-icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
   <ItemGroup Condition="'$(RanvierTrace)' == 'true'">
