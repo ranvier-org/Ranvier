@@ -173,4 +173,9 @@ let run () =
     callerBytes[1] <- 0x59uy
     equal "retained input is copied before caller mutation" (Ok "AB") (retainedInput.Decode ([||], false))
 
+    let largeText = String.replicate 4096 "Aé🌍"
+    let largeBytes = Utf8.encode largeText
+    let largeDecoder = Utf8.createDecoder { Fatal = true; IgnoreBOM = false }
+    equal "large mixed-scalar fatal chunk decodes in order" (Ok largeText) (largeDecoder.Decode (largeBytes, true))
+
     checks

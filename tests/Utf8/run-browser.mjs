@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 const require = createRequire(new URL('./package.json', import.meta.url));
 const { chromium } = require('playwright');
 const root = path.resolve(process.argv[2]);
-const expectedChecks = Number(process.argv[4] || 61);
+const expectedChecks = Number(process.argv[4] || 62);
 const server = http.createServer(async (request, response) => {
   try {
     const relative = decodeURIComponent(new URL(request.url, 'http://localhost').pathname).replace(/^\//, '');

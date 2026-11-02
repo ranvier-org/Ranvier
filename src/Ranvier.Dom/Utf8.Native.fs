@@ -90,6 +90,7 @@ module Utf8 =
     let createDecoder (options: Utf8DecoderOptions) : IUtf8Decoder =
         let decoder = UTF8Encoding(false, options.Fatal).GetDecoder()
         let pendingInput = ResizeArray<byte>()
+        let oneByte = Array.zeroCreate<byte> 1
         let mutable bomPending = true
         let mutable pendingContinuations = 0
 
@@ -135,22 +136,23 @@ module Utf8 =
                     let chars = Array.zeroCreate<char> 2
                     let output = StringBuilder ()
                     let mutable failed = false
+                    let mutable consumed = 0
 
-                    while pendingInput.Count > 0 && not failed do
-                        let value = pendingInput[0]
-                        let input = [| value |]
+                    while consumed < pendingInput.Count && not failed do
+                        let value = pendingInput[consumed]
+                        oneByte[0] <- value
                         let mutable bytesUsed = 0
                         let mutable charsUsed = 0
                         let mutable completed = false
                         let hadPendingSequence = pendingContinuations > 0
 
                         try
-                            decoder.Convert (input, 0, 1, chars, 0, chars.Length, false, &bytesUsed, &charsUsed, &completed)
+                            decoder.Convert (oneByte, 0, 1, chars, 0, chars.Length, false, &bytesUsed, &charsUsed, &completed)
 
                             if bytesUsed <> 1 then
                                 invalidOp "The UTF-8 decoder did not consume its input byte."
 
-                            pendingInput.RemoveAt 0
+                            consumed <- consumed + 1
                             updatePendingState value
                             output.Append (chars, 0, charsUsed) |> ignore
                         with :? DecoderFallbackException ->
@@ -160,9 +162,12 @@ module Utf8 =
                             pendingContinuations <- 0
 
                             if not hadPendingSequence then
-                                pendingInput.RemoveAt 0
+                                consumed <- consumed + 1
 
                             failed <- true
+
+                    if consumed > 0 then
+                        pendingInput.RemoveRange (0, consumed)
 
                     if not failed && finalChunk then
                         try
