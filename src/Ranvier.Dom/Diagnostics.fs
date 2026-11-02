@@ -581,7 +581,11 @@ module Diagnostics =
 
         let flags (options: RenderTreeOptions) forbidden =
             if options &&& ~~~known <> RenderTreeOptions.None then
-                invalidArg "options" $"Unknown render tree options {int options}."
+                invalidArg
+                    "options"
+                    ("Unknown render tree options "
+                     + (int options).ToString(System.Globalization.CultureInfo.CurrentCulture)
+                     + ".")
 
             if options &&& forbidden <> RenderTreeOptions.None then
                 invalidArg "options" "Layer options apply to a document dump only."
