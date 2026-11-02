@@ -62,6 +62,6 @@ try {
   await new Promise(resolve => server.close(resolve));
   await writeFile(reportPath, JSON.stringify({ results }, null, 2) + '\n');
 }
-const failed = results.length !== 2 || results.some(row => row.errors.length || row.report.failures.length || row.report.assertions < (row.secure ? 259 : 2));
+const failed = results.length !== 2 || results.some(row => row.errors.length || row.report.failures.length || row.report.assertions < (row.secure ? 339 : 2));
 console.log(JSON.stringify({ results, failed }));
 process.exitCode = failed ? 1 : 0;

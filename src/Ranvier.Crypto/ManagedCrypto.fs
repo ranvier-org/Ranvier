@@ -193,8 +193,7 @@ module ManagedCrypto =
                     check ()
 
                     if
-                        not (isNull algorithm)
-                        && algorithm.Equals ("HMAC", StringComparison.OrdinalIgnoreCase)
+                        isHmacName algorithm
                         && List.contains
                             operation
                             [

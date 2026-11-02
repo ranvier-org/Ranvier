@@ -5,6 +5,17 @@ open Ranvier.Dom
 
 /// <summary>Pure argument conversion and HMAC normalization shared by native and browser providers.</summary>
 module internal CryptoKeyContract =
+    let private asciiCanonical (value: string) =
+        let value = if isNull value then "null" else value
+
+        value.ToCharArray ()
+        |> Array.map (fun c -> if c >= 'a' && c <= 'z' then char (int c - 32) else c)
+        |> fun chars -> new String (chars)
+
+    /// <summary>Whether a DOMString names HMAC under ASCII case-insensitive matching.</summary>
+    let isHmacName value =
+        asciiCanonical value = "HMAC"
+
     /// <summary>Raises a WebCrypto error with the supplied name.</summary>
     let error name detail =
         raise (CryptoException (name, detail))
@@ -91,12 +102,7 @@ module internal CryptoKeyContract =
         if isNull (box algorithm) then
             error "TypeError" "Algorithm is required."
 
-        let result = algorithmName algorithm
-
-        if isNull result then
-            error "TypeError" "Algorithm name is required."
-
-        result.ToUpperInvariant ()
+        algorithmName algorithm |> asciiCanonical
 
     /// <summary>Rejects algorithm names outside the HMAC slice.</summary>
     let requireHmac algorithm =
@@ -132,9 +138,12 @@ module internal CryptoKeyContract =
             |> Option.map checked32
 
         let normalized =
-            match CryptoContract.digestAlgorithm hash with
-            | Some value -> value
-            | None -> error "NotSupportedError" "Unknown HMAC hash."
+            match asciiCanonical hash with
+            | "SHA-1" -> DigestAlgorithm.Sha1
+            | "SHA-256" -> DigestAlgorithm.Sha256
+            | "SHA-384" -> DigestAlgorithm.Sha384
+            | "SHA-512" -> DigestAlgorithm.Sha512
+            | _ -> error "NotSupportedError" "Unknown HMAC hash."
 
         normalized, length
 

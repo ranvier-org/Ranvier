@@ -333,6 +333,130 @@ let run (create: unit -> SubtleCryptoService) (vectors: Vector array) =
                         key.Dispose ()
                 })
 
+        let nameCases =
+            [|
+                "upper", "HMAC", "SHA-256", true
+                "lower", "hmac", "SHA-256", true
+                "mixed", "HmAc", "SHA-256", true
+                "long-s", "\u017fHMAC", "SHA-256", false
+                "dotless-i", "HMA\u0131", "SHA-256", false
+                "kelvin", "HMA\u212a", "SHA-256", false
+                "accent", "H\u00c1MAC", "SHA-256", false
+                "unicode-leading", "\u00a0HMAC", "SHA-256", false
+                "unicode-trailing", "HMAC\u00a0", "SHA-256", false
+                "bom-leading", "\ufeffHMAC", "SHA-256", false
+                "ascii-leading", " HMAC", "SHA-256", false
+                "ascii-trailing", "HMAC ", "SHA-256", false
+                "nul", "HMAC\u0000", "SHA-256", false
+                "null", null, "SHA-256", false
+                "empty", "", "SHA-256", false
+            |]
+
+        let hashCases =
+            [|
+                "upper", "HMAC", "SHA-256", true
+                "lower", "HMAC", "sha-256", true
+                "mixed", "HMAC", "sHa-256", true
+                "long-s", "HMAC", "\u017fHA-256", false
+                "dotless-i", "HMAC", "SHA-\u0131", false
+                "kelvin", "HMAC", "\u212aSHA-256", false
+                "accent", "HMAC", "SH\u00c1-256", false
+                "unicode-leading", "HMAC", "\u00a0SHA-256", false
+                "unicode-trailing", "HMAC", "SHA-256\u00a0", false
+                "bom-leading", "HMAC", "\ufeffSHA-256", false
+                "ascii-leading", "HMAC", " SHA-256", false
+                "ascii-trailing", "HMAC", "SHA-256 ", false
+                "nul", "HMAC", "SHA\u0000-256", false
+                "null", "HMAC", null, false
+                "empty", "HMAC", "", false
+            |]
+
+        for field, cases in [ "name", nameCases; "hash", hashCases ] do
+            for label, name, hash, accepted in cases do
+                do!
+                    group ("ascii-normalization/" + field + "/" + label) (fun () ->
+                        async {
+                            use service = create ()
+
+                            let algorithm =
+                                CryptoAlgorithm.HmacKey
+                                    {
+                                        Name = name
+                                        Hash = CryptoField.Present hash
+                                        LengthBits = CryptoField.Missing
+                                    }
+
+                            let generate () =
+                                service.GenerateKey (algorithm, true, [| CryptoKeyUsage.Sign |])
+
+                            let import () =
+                                service.ImportKey (
+                                    CryptoKeyFormat.Raw,
+                                    CryptoKeyData.Bytes (CryptoBuffer.whole [| 1uy; 2uy |]),
+                                    algorithm,
+                                    true,
+                                    [| CryptoKeyUsage.Sign |]
+                                )
+
+                            if accepted then
+                                let! generated = generate ()
+
+                                use generatedKey =
+                                    match value generated with
+                                    | CryptoGeneratedKey.Key key -> key
+                                    | _ -> failwith "Expected secret key"
+
+                                equal "generated name" "HMAC" generatedKey.Algorithm.Name
+                                equal "generated hash" (Some "SHA-256") generatedKey.Algorithm.Hash
+                                let! imported = import ()
+                                use importedKey = value imported
+                                equal "imported name" "HMAC" importedKey.Algorithm.Name
+                                equal "imported hash" (Some "SHA-256") importedKey.Algorithm.Hash
+                            else
+                                do! errorName "NotSupportedError" generate
+                                do! errorName "NotSupportedError" import
+                        })
+
+        do!
+            group "ascii-normalization/ignored-operation-fields" (fun () ->
+                async {
+                    use service = create ()
+
+                    let! imported =
+                        createImported service "SHA-256" [| 1uy; 2uy |] CryptoField.Missing true [| CryptoKeyUsage.Sign; CryptoKeyUsage.Verify |]
+
+                    use key = imported
+
+                    let operation =
+                        CryptoAlgorithm.HmacKey
+                            {
+                                Name = "hMaC"
+                                Hash = CryptoField.Present "\u017fHA-256"
+                                LengthBits = CryptoField.Present UInt64.MaxValue
+                            }
+
+                    let input = CryptoBuffer.whole [| 3uy |]
+                    let! signed = service.Sign (operation, key, input)
+                    equal "irrelevant fields ignored when signing" 32 (value signed).Length
+
+                    let! verified =
+                        service.Verify (operation, key, CryptoBuffer.whole (value signed), input)
+
+                    equal "irrelevant fields ignored when verifying" true (value verified)
+
+                    do! errorName "TypeError" (fun () -> service.GenerateKey (Unchecked.defaultof<CryptoAlgorithm>, true, [| CryptoKeyUsage.Sign |]))
+
+                    do!
+                        errorName "TypeError" (fun () ->
+                            service.ImportKey (
+                                CryptoKeyFormat.Raw,
+                                CryptoKeyData.Bytes input,
+                                Unchecked.defaultof<CryptoAlgorithm>,
+                                true,
+                                [| CryptoKeyUsage.Sign |]
+                            ))
+                })
+
         do!
             group "logical-import-and-masking" (fun () ->
                 async {

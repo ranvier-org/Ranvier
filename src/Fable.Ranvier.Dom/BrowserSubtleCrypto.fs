@@ -162,8 +162,7 @@ module BrowserSubtleCrypto =
 
                 if
                     ready ()
-                    && not (isNull algorithm)
-                    && algorithm.Equals ("HMAC", StringComparison.OrdinalIgnoreCase)
+                    && isHmacName algorithm
                     && List.contains operation supported
                 then
                     CryptoOutcome.Value ()
