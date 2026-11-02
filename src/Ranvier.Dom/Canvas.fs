@@ -30,6 +30,24 @@ type Canvas2DSettings =
         ColorType: CanvasColorType
     }
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, _precedence: int) =
+        NativeDisplay.record context depth (box this) (fun n0 ->
+            [
+                "Alpha", (fun () -> NativeDisplay.boolean context n0 this.Alpha)
+                "Desynchronized", (fun () -> NativeDisplay.boolean context n0 this.Desynchronized)
+                "WillReadFrequently", (fun () -> NativeDisplay.boolean context n0 this.WillReadFrequently)
+                "ColorSpace", (fun () -> NativeDisplay.manual context n0 (box this.ColorSpace) (fun () -> this.ColorSpace.ToString ()))
+                "ColorType", (fun () -> NativeDisplay.manual context n0 (box this.ColorType) (fun () -> this.ColorType.ToString ()))
+            ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
     /// <summary>The getContext defaults: alpha, synchronized, sRGB and unorm8.</summary>
     static member Default =
         {
@@ -42,6 +60,9 @@ type Canvas2DSettings =
 
 /// <summary>The result of a getContext request.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type CanvasContextOutcome =
     /// <summary>The canvas's one 2D context: the same object on every request.</summary>
     | Context of context: CanvasRenderingContext2D
@@ -49,6 +70,25 @@ type CanvasContextOutcome =
     | OtherContext
     /// <summary>The provider renders no context of the requested type or settings; the canvas is unchanged.</summary>
     | Unsupported of reason: string
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun n0 ->
+            match this with
+            | CanvasContextOutcome.Context value ->
+                "Context",
+                [
+                    Some (fun _ -> NativeDisplay.opaque context n0 "<Ranvier.Dom.CanvasRenderingContext2D>" (box value))
+                ]
+            | CanvasContextOutcome.OtherContext -> "OtherContext", []
+            | CanvasContextOutcome.Unsupported value -> "Unsupported", [ Some (fun _ -> NativeDisplay.text context n0 value) ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
 
 /// <summary>Canvas context and Path2D creation for one document.</summary>
 /// <remarks>

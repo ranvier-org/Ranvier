@@ -30,6 +30,9 @@ type ResourceResponse =
 
 /// <summary>Why an operation ended without a value.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResourceFailure =
     /// <summary>The provider, transport or access check failed.</summary>
     | LoadFailed of message: string
@@ -42,17 +45,86 @@ type ResourceFailure =
     /// <summary>The engine rejected the operation with the named DOMException, such as AbortError.</summary>
     | Aborted of name: string
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun n0 ->
+            match this with
+            | ResourceFailure.LoadFailed value -> "LoadFailed", [ Some (fun _ -> NativeDisplay.text context n0 value) ]
+            | ResourceFailure.DecodeFailed value -> "DecodeFailed", [ Some (fun _ -> NativeDisplay.text context n0 value) ]
+            | ResourceFailure.Cancelled -> "Cancelled", []
+            | ResourceFailure.Invalidated value -> "Invalidated", [ Some (fun _ -> NativeDisplay.text context n0 value) ]
+            | ResourceFailure.Aborted value -> "Aborted", [ Some (fun _ -> NativeDisplay.text context n0 value) ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>The single terminal outcome of an operation.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResourceOutcome<'T> =
     | Succeeded of value: 'T
     | Failed of failure: ResourceFailure
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun n0 ->
+            match this with
+            | ResourceOutcome.Succeeded value ->
+                "Succeeded",
+                [
+                    Some (fun _ ->
+                        match box value with
+                        | :? string as text -> NativeDisplay.text context n0 text
+                        | :? int as number -> NativeDisplay.int32 context n0 number
+                        | :? bool as flag -> NativeDisplay.boolean context n0 flag
+                        | :? ImageBitmap as bitmap -> NativeDisplay.opaque context n0 "<Ranvier.Dom.ImageBitmap>" (box bitmap)
+                        | other -> NativeDisplay.opaque context n0 "<'T>" other)
+                ]
+            | ResourceOutcome.Failed failure ->
+                "Failed",
+                [
+                    Some (fun p -> NativeDisplay.known context n0 failure (fun value -> value.NativeDisplay (context, n0, p)))
+                ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>An operation's state as seen on its owner context.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResourceState<'T> =
     | Pending
     | Settled of outcome: ResourceOutcome<'T>
+
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun n0 ->
+            match this with
+            | ResourceState.Pending -> "Pending", []
+            | ResourceState.Settled outcome ->
+                "Settled",
+                [
+                    Some (fun p -> NativeDisplay.known context n0 outcome (fun value -> value.NativeDisplay (context, n0, p)))
+                ])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
 
 /// <summary>A decoded image the operation owns until it is disposed.</summary>
 /// <remarks><c>SourceUrl</c> is the requested URL; <c>TransportUrl</c> is the per-operation URL the engine loaded.</remarks>

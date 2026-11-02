@@ -15,6 +15,22 @@ type ImageEncoding =
     | Jpeg
     | Webp
 
+#if !FABLE_COMPILER
+    member internal this.NativeDisplay(context: NativeDisplay.Context, depth: int, precedence: int) =
+        NativeDisplay.union context depth precedence (box this) (fun _ ->
+            match this with
+            | ImageEncoding.Rgba8 -> "Rgba8", []
+            | ImageEncoding.Png -> "Png", []
+            | ImageEncoding.Jpeg -> "Jpeg", []
+            | ImageEncoding.Webp -> "Webp", [])
+
+    override this.ToString() =
+        if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
+            sprintf "%+A" this
+        else
+            NativeDisplay.format (fun context depth precedence -> this.NativeDisplay (context, depth, precedence))
+#endif
+
 /// <summary>The color space of a snapshot's pixels.</summary>
 [<RequireQualifiedAccess>]
 type SnapshotColorSpace =
