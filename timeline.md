@@ -130,6 +130,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 83,303 | 127,512 | 1,742,289 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 83,303 | 127,600 | 1,742,275 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 83,304 | 127,541 | 1,742,161 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 83,307 | 127,597 | 1,742,135 |
 
 ## app-table
 
@@ -261,6 +262,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 4,417,713 | 9,274,742 | 107,972,783 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 4,417,697 | 9,274,316 | 107,748,769 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 4,418,008 | 9,163,593 | 107,752,736 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 4,417,721 | 9,272,052 | 107,669,078 |
 
 ## async-recover
 
@@ -392,6 +394,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 139,139 | 41,264 | 434,859 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 139,139 | 41,272 | 434,861 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 139,139 | 41,261 | 434,851 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 139,139 | 41,256 | 434,857 |
 
 ## async-resolve
 
@@ -523,6 +526,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 2,790,467 | 1,023,053 | 11,967,518 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 2,790,467 | 1,022,932 | 11,967,461 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 2,790,467 | 1,023,062 | 11,969,963 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 2,790,468 | 1,022,989 | 11,970,314 |
 
 ## chain
 
@@ -654,6 +658,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -785,6 +790,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 2,553 | 3,071 | 2,500 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 2,553 | 3,071 | 2,500 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 2,553 | 3,071 | 2,500 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -916,6 +922,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 74,710 | 836,519 | 2,603,183 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 74,710 | 836,479 | 2,603,200 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 74,710 | 836,461 | 2,603,180 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 74,710 | 836,514 | 2,603,101 |
 
 ## create
 
@@ -1047,6 +1054,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 13,448,256 | 2,865,678 | 2,570,369 | 2,127,953 | 4,042,288 | 34,068,035 | 50,420,175 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 13,448,355 | 2,865,678 | 2,570,369 | 2,127,836 | 4,044,241 | 34,068,013 | 50,420,226 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 13,448,201 | 2,865,678 | 2,570,369 | 2,127,914 | 4,044,531 | 34,067,798 | 50,420,302 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 13,573,705 | 2,881,677 | 2,570,369 | 2,127,919 | 4,042,281 | 34,068,039 | 50,420,275 |
 
 ## create-on
 
@@ -1178,6 +1186,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 2,949,484 | 4,179,935 | 55,229,045 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 2,965,484 | 4,179,998 | 55,229,095 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 2,965,484 | 4,179,846 | 55,229,130 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 2,949,484 | 4,179,756 | 55,229,092 |
 
 ## cutoff
 
@@ -1309,6 +1318,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1440,6 +1450,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 781 | 751 | 16,520 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 781 | 751 | 16,520 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 781 | 751 | 16,520 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1571,6 +1582,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 751 | 802 | 16,543 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 751 | 802 | 16,543 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 751 | 802 | 16,543 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1702,6 +1714,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 2,707,639 | 806,291 | 367,497 | 475,956 | 495,044 | 13,205,496 | 9,106,109 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 2,707,646 | 806,291 | 367,497 | 475,853 | 495,259 | 13,206,818 | 9,106,356 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 2,707,643 | 806,291 | 367,497 | 475,541 | 494,908 | 13,206,546 | 9,106,587 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 2,707,646 | 806,290 | 367,497 | 475,557 | 495,031 | 13,206,079 | 9,105,876 |
 
 ## dispose-on
 
@@ -1833,6 +1846,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 346,497 | 488,147 | 8,902,814 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 346,497 | 487,743 | 8,902,012 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 346,497 | 487,753 | 8,902,737 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 346,497 | 487,888 | 8,902,779 |
 
 ## editable-edit
 
@@ -1964,6 +1978,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 181,706 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 181,706 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 181,706 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 181,706 |
 
 ## editable-upstream
 
@@ -2095,6 +2110,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 232,855 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 232,855 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 232,855 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 232,855 |
 
 ## fail-recompute
 
@@ -2226,6 +2242,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 64,938 | 1,370 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 64,938 | 1,370 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 64,938 | 1,370 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 64,938 | 1,370 |
 
 ## flight
 
@@ -2357,6 +2374,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2488,6 +2506,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 1,921,727 | 53,917 | 54,954 | 3,277,813 | 237,583 | 175,968 | 45,072,245 | 2,634,490 | 2,655,518 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 1,921,727 | 53,917 | 54,955 | 3,277,787 | 237,674 | 176,010 | 45,072,231 | 2,634,541 | 2,655,541 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 1,921,729 | 53,917 | 54,956 | 3,277,718 | 237,603 | 176,009 | 45,072,292 | 2,634,543 | 2,655,514 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 1,921,839 | 54,133 | 54,982 | 3,277,648 | 237,595 | 176,035 | 45,072,262 | 2,634,593 | 2,655,435 |
 
 ## keyed-remove
 
@@ -2619,6 +2638,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 1,920,652 | 43,600 | 45,300 | 3,292,932 | 592,211 | 606,132 | 45,045,829 | 1,924,640 | 1,960,223 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 1,920,662 | 43,600 | 45,300 | 3,292,709 | 592,199 | 605,986 | 45,036,797 | 1,924,657 | 1,960,156 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 1,920,659 | 43,600 | 45,299 | 3,292,645 | 591,960 | 606,243 | 45,048,852 | 1,924,629 | 1,960,189 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 1,920,765 | 43,816 | 45,347 | 3,292,859 | 592,257 | 606,017 | 45,036,801 | 1,924,580 | 1,960,132 |
 
 ## keyed-swap
 
@@ -2750,6 +2770,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 1,973,355 | 46,206 | 46,927 | 3,620,152 | 148,876 | 512,554 | 46,199,038 | 915,662 | 936,086 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 1,973,355 | 46,206 | 46,928 | 3,618,187 | 148,865 | 512,551 | 46,198,713 | 915,600 | 936,067 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 1,973,356 | 46,205 | 46,928 | 3,628,635 | 148,900 | 512,658 | 46,198,684 | 915,679 | 936,038 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 1,973,467 | 46,413 | 46,959 | 3,628,183 | 148,957 | 512,525 | 46,198,684 | 915,670 | 936,170 |
 
 ## mvu-dispatch
 
@@ -2881,6 +2902,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 58,292 | 788 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 58,292 | 788 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 58,292 | 788 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 58,292 | 788 |
 
 ## persist-write
 
@@ -3012,6 +3034,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | — | — |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | — | — |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | — | — |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | — | — |
 
 ## project-chain
 
@@ -3143,6 +3166,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 1,071,822 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 1,071,816 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 1,071,865 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 1,071,814 |
 
 ## project-churn
 
@@ -3274,6 +3298,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 36,481 | 34,346 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 36,385 | 34,250 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 36,401 | 34,266 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 36,449 | 34,298 |
 
 ## project-edit
 
@@ -3405,6 +3430,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 50,556 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 50,492 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 50,460 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 50,508 |
 
 ## project-reorder
 
@@ -3536,6 +3562,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 780,179 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 780,116 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 780,084 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 780,132 |
 
 ## server-render
 
@@ -3667,6 +3694,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | — | — | — |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | — | — | — |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | — | — | — |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | — | — | — |
 
 ## shape-diamond
 
@@ -3798,6 +3826,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 59,915 | 80,445 | 1,764,075 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 59,915 | 80,445 | 1,764,075 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 59,915 | 80,445 | 1,764,075 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -3929,6 +3958,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 84,378 | 108,947 | 2,038,136 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 84,378 | 108,947 | 2,038,136 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 84,378 | 108,946 | 2,038,136 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4060,6 +4090,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,581 | 45,790 | 55,383 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,469 | 47,578 | 45,790 | 55,380 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,578 | 45,790 | 55,384 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,472 | 47,581 | 45,790 | 55,381 |
 
 ## stream-burst-16
 
@@ -4191,6 +4222,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,071 | 123,812 | 720,148 | 113,731 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,071 | 123,812 | 720,148 | 113,733 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 5,022 | 24,618 | 5,713 | 9,741 | 50,033 | 8,071 | 123,812 | 720,151 | 113,734 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 5,022 | 24,618 | 5,713 | 9,742 | 50,033 | 8,070 | 123,812 | 720,150 | 113,735 |
 
 ## stream-burst-256
 
@@ -4322,6 +4354,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 54,162 | 393,702 | 57,052 | 131,860 | 792,881 | 74,743 | 1,343,783 | 11,508,770 | 1,046,762 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 54,162 | 393,702 | 57,052 | 131,899 | 792,883 | 74,743 | 1,343,781 | 11,508,770 | 1,046,729 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 54,162 | 393,702 | 57,052 | 131,890 | 792,886 | 74,743 | 1,343,690 | 11,508,770 | 1,046,735 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 54,162 | 393,702 | 57,052 | 131,977 | 792,883 | 74,743 | 1,343,781 | 11,508,720 | 1,046,762 |
 
 ## stream-restart
 
@@ -4453,6 +4486,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 4,203 | 5,004 | 6,575 | 16,889 | 42,909 | 72,022 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 4,203 | 5,004 | 6,579 | 16,891 | 42,909 | 72,017 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 4,203 | 5,004 | 6,579 | 16,887 | 42,905 | 72,015 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 4,203 | 5,004 | 6,578 | 16,891 | 42,909 | 72,020 |
 
 ## timed-admit-both
 
@@ -4584,6 +4618,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 117,709 | 130,037 | 2,693,577 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 117,709 | 130,036 | 2,693,575 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 117,709 | 130,036 | 2,693,577 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 117,709 | 130,036 | 2,693,577 |
 
 ## timed-admit-debounce
 
@@ -4715,6 +4750,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 116,614 | 128,632 | 2,654,129 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 116,614 | 128,615 | 2,654,129 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 116,614 | 128,627 | 2,654,129 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 116,614 | 128,623 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4846,6 +4882,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 69,621 | 79,566 | 1,620,677 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 69,621 | 79,565 | 1,620,677 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 69,621 | 79,566 | 1,620,677 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -4977,6 +5014,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 116,876 | 128,951 | 2,663,985 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 116,876 | 128,938 | 2,663,985 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 116,876 | 128,950 | 2,663,985 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 116,876 | 128,938 | 2,663,972 |
 
 ## timed-capture-both
 
@@ -5108,6 +5146,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 35,740 | 44,937 | 846,285 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 35,740 | 44,936 | 846,286 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 35,740 | 44,936 | 846,285 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 35,740 | 44,936 | 846,286 |
 
 ## timed-capture-debounce
 
@@ -5239,6 +5278,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 35,612 | 44,232 | 847,657 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 35,612 | 44,232 | 847,657 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 35,612 | 44,232 | 847,658 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 35,612 | 44,233 | 847,659 |
 
 ## timed-capture-first
 
@@ -5370,6 +5410,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 32,092 | 36,741 | 745,651 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 32,092 | 36,741 | 745,651 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 32,092 | 36,742 | 745,651 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -5501,6 +5542,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 35,548 | 44,168 | 839,784 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 35,548 | 44,168 | 839,785 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 35,548 | 44,168 | 839,785 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 35,548 | 44,168 | 839,784 |
 
 ## update
 
@@ -5632,6 +5674,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 1,087,790 | 38,805 | 84,105 | 263,107 | 145,794 | 3,351,295 | 2,545,087 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 1,089,383 | 38,805 | 84,105 | 263,118 | 145,798 | 3,351,295 | 2,545,096 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 1,087,790 | 38,805 | 84,105 | 263,157 | 145,770 | 3,351,271 | 2,545,094 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 1,089,390 | 38,805 | 84,105 | 263,147 | 145,817 | 3,351,209 | 2,545,087 |
 
 ## update-on
 
@@ -5763,6 +5806,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 94,605 | 169,009 | 2,872,456 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 94,605 | 169,031 | 2,872,467 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 94,605 | 169,005 | 2,872,431 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 94,605 | 169,031 | 2,872,451 |
 
 ## work-form
 
@@ -5894,6 +5938,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 172,679 | 165,150 | 308,861 | 296,994 | 5,421,824 | 5,334,916 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 172,679 | 165,150 | 308,861 | 296,999 | 5,421,862 | 5,334,914 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 172,679 | 165,150 | 308,807 | 296,985 | 5,421,867 | 5,334,877 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 172,679 | 165,167 | 308,861 | 296,973 | 5,421,780 | 5,334,877 |
 
 ## work-status
 
@@ -6025,6 +6070,7 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 102,045 | 80,235 | 269,356 | 156,103 | 2,659,304 | 2,391,320 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 102,045 | 80,235 | 269,334 | 156,130 | 2,659,275 | 2,391,292 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 102,045 | 80,235 | 269,332 | 156,123 | 2,659,302 | 2,391,253 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 102,045 | 80,235 | 269,367 | 156,102 | 2,659,284 | 2,391,304 |
 
 ## work-value
 
@@ -6156,4 +6202,5 @@
 | `a677659` | 2026-11-01 | ci: triage new issues with the shared ranvier-org workflow (#286) | 109,169 | 121,071 | 269,571 | 283,412 | 2,643,911 | 2,968,476 |
 | `6c5e447` | 2026-11-01 | feat(dom): batch 6 DOM services (A02-A10 Web Animations) (#283) | 109,169 | 121,071 | 269,568 | 283,400 | 2,643,921 | 2,968,453 |
 | `54f004b` | 2026-11-02 | feat(dom): integrate native contracts and AOT diagnostics | 109,170 | 121,069 | 269,569 | 283,395 | 2,643,867 | 2,968,473 |
+| `9ca55b3` | 2026-11-02 | fix(dom): support retained diagnostics under native AOT | 109,171 | 121,070 | 269,614 | 283,401 | 2,643,910 | 2,968,422 |
 
