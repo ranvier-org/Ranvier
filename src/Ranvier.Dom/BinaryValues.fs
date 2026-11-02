@@ -15,11 +15,22 @@ type BlobPart =
 
 /// <summary>How the line breaks of a Text part are written.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type BlobLineEndings =
     /// <summary>The line breaks are written unchanged.</summary>
     | Transparent
     /// <summary>Every CR, LF and CRLF is written as the platform's line break: CRLF on Windows, LF elsewhere.</summary>
     | Native
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | BlobLineEndings.Transparent -> "Transparent"
+        | BlobLineEndings.Native -> "Native"
+#endif
 
 /// <summary>The type and line endings of a new Blob.</summary>
 /// <remarks>A type with a character outside U+0020 to U+007E becomes the empty type; any other type is lowercased.</remarks>

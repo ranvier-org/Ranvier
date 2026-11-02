@@ -35,6 +35,9 @@ let private equals (name: string) (expected: string) (actual: string) =
 
 [<EntryPoint>]
 let main _ =
+    for name, expected, actual in DomDisplaySmoke.checks () do
+        equals name expected actual
+
     let utf8 = Utf8.encode "A🌍"
     report "UTF-8 encode under NativeAOT" (utf8 = [| 0x41uy; 0xF0uy; 0x9Fuy; 0x8Cuy; 0x8Duy |]) "unexpected bytes"
     let utf8Decoder = Utf8.createDecoder { Fatal = true; IgnoreBOM = false }

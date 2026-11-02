@@ -6,10 +6,22 @@ open System.Threading.Tasks
 
 /// <summary>The kind of the most recent trusted user input since the service was created.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type InputModality =
     | Unknown
     | Keyboard
     | Pointer
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | InputModality.Unknown -> "Unknown"
+        | InputModality.Keyboard -> "Keyboard"
+        | InputModality.Pointer -> "Pointer"
+#endif
 
 /// <summary>Live window activation, modality, focus visibility and touch capacity of one document.</summary>
 type InputSnapshot =

@@ -4,37 +4,96 @@ open System
 
 /// <summary><c>MediaDecodingType</c>.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type MediaDecodingType =
     | File
     | MediaSource
     | WebRtc
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | MediaDecodingType.File -> "File"
+        | MediaDecodingType.MediaSource -> "MediaSource"
+        | MediaDecodingType.WebRtc -> "WebRtc"
+#endif
+
 /// <summary><c>MediaEncodingType</c>.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type MediaEncodingType =
     | Record
     | WebRtc
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | MediaEncodingType.Record -> "Record"
+        | MediaEncodingType.WebRtc -> "WebRtc"
+#endif
+
 /// <summary><c>HdrMetadataType</c>.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type MediaHdrMetadataType =
     | SmpteSt2086
     | SmpteSt2094_10
     | SmpteSt2094_40
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | MediaHdrMetadataType.SmpteSt2086 -> "SmpteSt2086"
+        | MediaHdrMetadataType.SmpteSt2094_10 -> "SmpteSt2094_10"
+        | MediaHdrMetadataType.SmpteSt2094_40 -> "SmpteSt2094_40"
+#endif
+
 /// <summary><c>ColorGamut</c>.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type MediaColorGamut =
     | Srgb
     | P3
     | Rec2020
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | MediaColorGamut.Srgb -> "Srgb"
+        | MediaColorGamut.P3 -> "P3"
+        | MediaColorGamut.Rec2020 -> "Rec2020"
+#endif
+
 /// <summary><c>TransferFunction</c>.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type MediaTransferFunction =
     | Srgb
     | Pq
     | Hlg
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | MediaTransferFunction.Srgb -> "Srgb"
+        | MediaTransferFunction.Pq -> "Pq"
+        | MediaTransferFunction.Hlg -> "Hlg"
+#endif
 
 /// <summary><c>VideoConfiguration</c>; <c>None</c> leaves an optional member absent.</summary>
 type MediaVideoConfiguration =

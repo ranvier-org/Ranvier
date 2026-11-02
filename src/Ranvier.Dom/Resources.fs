@@ -6,6 +6,9 @@ open System.Threading
 /// <summary>How a service's successful-response byte cache takes part in a request.</summary>
 /// <remarks>The cache belongs to one service; browser HTTP caches and engine-wide caches are outside it.</remarks>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResourceCachePolicy =
     /// <summary>Reuses a successful response this service already holds for the URL.</summary>
     | UseCache
@@ -13,6 +16,15 @@ type ResourceCachePolicy =
     | Reload
     /// <summary>Bypasses the held response and leaves the cache unchanged.</summary>
     | NoStore
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ResourceCachePolicy.UseCache -> "UseCache"
+        | ResourceCachePolicy.Reload -> "Reload"
+        | ResourceCachePolicy.NoStore -> "NoStore"
+#endif
 
 /// <summary>An absolute http, https or data URL with its cache policy.</summary>
 type ResourceRequest =

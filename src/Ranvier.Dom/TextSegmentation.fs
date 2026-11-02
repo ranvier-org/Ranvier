@@ -4,6 +4,9 @@ open System
 
 /// <summary>The unit a text segmenter splits text into.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type SegmentGranularity =
     /// <summary>Extended grapheme clusters: what a reader sees as one character.</summary>
     | Grapheme
@@ -13,6 +16,16 @@ type SegmentGranularity =
     | Sentence
     /// <summary>Spans between line-break opportunities (CSS <c>line-break: normal</c>).</summary>
     | Line
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | SegmentGranularity.Grapheme -> "Grapheme"
+        | SegmentGranularity.Word -> "Word"
+        | SegmentGranularity.Sentence -> "Sentence"
+        | SegmentGranularity.Line -> "Line"
+#endif
 
 /// <summary>One segment of a text, as <c>Intl.Segmenter</c> reports it.</summary>
 type TextSegment =

@@ -19,9 +19,19 @@ type EncodeIntoResult =
     }
 
 /// <summary>A malformed UTF-8 sequence encountered by a fatal decoder.</summary>
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type Utf8DecodeError =
     /// <summary>The input contains a byte sequence that is not valid UTF-8.</summary>
     | InvalidUtf8Sequence
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | Utf8DecodeError.InvalidUtf8Sequence -> "InvalidUtf8Sequence"
+#endif
 
 /// <summary>A stateful UTF-8 decoder.</summary>
 /// <remarks>

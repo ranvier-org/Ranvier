@@ -4,9 +4,20 @@ open System
 
 /// <summary>Whether a font set has faces loading.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type FontSetStatus =
     | Loading
     | Loaded
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | FontSetStatus.Loading -> "Loading"
+        | FontSetStatus.Loaded -> "Loaded"
+#endif
 
 /// <summary>A CSS Font Loading event of a document's font set.</summary>
 [<RequireQualifiedAccess>]

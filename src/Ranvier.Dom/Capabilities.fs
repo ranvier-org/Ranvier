@@ -7,12 +7,26 @@ open System.Threading.Tasks
 
 /// <summary>The runtime observation domain; format domains describe support queries.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type CapabilityCategory =
     | Abi
     | RendererSetting
     | ImageFormat
     | FontFormat
     | PlatformFacility
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CapabilityCategory.Abi -> "Abi"
+        | CapabilityCategory.RendererSetting -> "RendererSetting"
+        | CapabilityCategory.ImageFormat -> "ImageFormat"
+        | CapabilityCategory.FontFormat -> "FontFormat"
+        | CapabilityCategory.PlatformFacility -> "PlatformFacility"
+#endif
 
 /// <summary>A category and normalized nonempty name; use Capabilities.key to validate external input.</summary>
 type CapabilityKey =
@@ -23,10 +37,22 @@ type CapabilityKey =
 
 /// <summary>An independently observed fact, with Unknown for unobservable or contradictory evidence.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type CapabilityState =
     | Yes
     | No
     | Unknown
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CapabilityState.Yes -> "Yes"
+        | CapabilityState.No -> "No"
+        | CapabilityState.Unknown -> "Unknown"
+#endif
 
 /// <summary>A fact and the reason supported by its provider's evidence.</summary>
 type CapabilityFact =

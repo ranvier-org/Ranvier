@@ -5,10 +5,22 @@ open System.Collections.Generic
 
 /// <summary>The category of a DOM mutation.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type MutationType =
     | ChildList
     | Attributes
     | CharacterData
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | MutationType.ChildList -> "ChildList"
+        | MutationType.Attributes -> "Attributes"
+        | MutationType.CharacterData -> "CharacterData"
+#endif
 
 /// <summary>The categories, subtree and old values to observe on a node.</summary>
 /// <remarks>None omits an option. A present old-value option or filter can enable its omitted category.</remarks>

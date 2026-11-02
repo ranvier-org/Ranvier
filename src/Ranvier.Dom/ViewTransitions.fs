@@ -4,10 +4,22 @@ open System
 
 /// <summary>The promise whose settlement a same-document transition reports.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ViewTransitionPromise =
     | UpdateCallbackDone
     | Ready
     | Finished
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ViewTransitionPromise.UpdateCallbackDone -> "UpdateCallbackDone"
+        | ViewTransitionPromise.Ready -> "Ready"
+        | ViewTransitionPromise.Finished -> "Finished"
+#endif
 
 /// <summary>A transition promise's fulfillment, or its rejection's WebIDL exception name.</summary>
 type ViewTransitionSettlement =

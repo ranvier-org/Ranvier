@@ -9,17 +9,41 @@ open System
 /// default, as <c>toBlob</c> does, and WEBP at exactly 1 is lossless.
 /// </remarks>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ImageEncoding =
     | Rgba8
     | Png
     | Jpeg
     | Webp
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ImageEncoding.Rgba8 -> "Rgba8"
+        | ImageEncoding.Png -> "Png"
+        | ImageEncoding.Jpeg -> "Jpeg"
+        | ImageEncoding.Webp -> "Webp"
+#endif
+
 /// <summary>The color space of a snapshot's pixels.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type SnapshotColorSpace =
     | Srgb
     | DisplayP3
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | SnapshotColorSpace.Srgb -> "Srgb"
+        | SnapshotColorSpace.DisplayP3 -> "DisplayP3"
+#endif
 
 /// <summary>What a snapshot paints.</summary>
 [<RequireQualifiedAccess>]

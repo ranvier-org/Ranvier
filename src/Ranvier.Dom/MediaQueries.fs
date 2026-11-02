@@ -5,30 +5,76 @@ open System.Collections.Generic
 
 /// <summary>The <c>prefers-color-scheme</c> value a host supplies.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ColorSchemePreference =
     | Light
     | Dark
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ColorSchemePreference.Light -> "Light"
+        | ColorSchemePreference.Dark -> "Dark"
+#endif
+
 /// <summary>The <c>prefers-reduced-motion</c> value a host supplies.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type MotionPreference =
     | NoPreference
     | Reduce
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | MotionPreference.NoPreference -> "NoPreference"
+        | MotionPreference.Reduce -> "Reduce"
+#endif
+
 /// <summary>The <c>prefers-contrast</c> value a host supplies.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ContrastPreference =
     | NoPreference
     | More
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ContrastPreference.NoPreference -> "NoPreference"
+        | ContrastPreference.More -> "More"
+#endif
+
 /// <summary>The accuracy of pointing devices, as <c>pointer</c> and <c>any-pointer</c> report it.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type PointerAccuracy =
     | NoPointer
     | Coarse
     | Fine
     /// <summary>Coarse and fine devices together; <c>any-pointer</c> only.</summary>
     | CoarseAndFine
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | PointerAccuracy.NoPointer -> "NoPointer"
+        | PointerAccuracy.Coarse -> "Coarse"
+        | PointerAccuracy.Fine -> "Fine"
+        | PointerAccuracy.CoarseAndFine -> "CoarseAndFine"
+#endif
 
 /// <summary>
 /// The user preferences and input devices a host supplies to media query evaluation. <c>None</c> keeps the engine's

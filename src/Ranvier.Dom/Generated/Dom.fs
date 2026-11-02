@@ -6656,129 +6656,395 @@ and NodeFilterResult =
 and ViewTransitionUpdateCallback = unit -> unit
 
 /// <summary>CompositeOperation in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] CompositeOperation =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] CompositeOperation =
+#endif
     | [<CompiledName("replace")>] Replace
     | [<CompiledName("add")>] Add
     | [<CompiledName("accumulate")>] Accumulate
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CompositeOperation.Replace -> "Replace"
+        | CompositeOperation.Add -> "Add"
+        | CompositeOperation.Accumulate -> "Accumulate"
+#endif
+
 /// <summary>FillMode in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] FillMode =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] FillMode =
+#endif
     | [<CompiledName("none")>] None
     | [<CompiledName("forwards")>] Forwards
     | [<CompiledName("backwards")>] Backwards
     | [<CompiledName("both")>] Both
     | [<CompiledName("auto")>] Auto
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | FillMode.None -> "None"
+        | FillMode.Forwards -> "Forwards"
+        | FillMode.Backwards -> "Backwards"
+        | FillMode.Both -> "Both"
+        | FillMode.Auto -> "Auto"
+#endif
+
 /// <summary>IterationCompositeOperation in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] IterationCompositeOperation =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] IterationCompositeOperation =
+#endif
     | [<CompiledName("replace")>] Replace
     | [<CompiledName("accumulate")>] Accumulate
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | IterationCompositeOperation.Replace -> "Replace"
+        | IterationCompositeOperation.Accumulate -> "Accumulate"
+#endif
+
 /// <summary>PlaybackDirection in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] PlaybackDirection =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] PlaybackDirection =
+#endif
     | [<CompiledName("normal")>] Normal
     | [<CompiledName("reverse")>] Reverse
     | [<CompiledName("alternate")>] Alternate
     | [<CompiledName("alternate-reverse")>] AlternateReverse
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | PlaybackDirection.Normal -> "Normal"
+        | PlaybackDirection.Reverse -> "Reverse"
+        | PlaybackDirection.Alternate -> "Alternate"
+        | PlaybackDirection.AlternateReverse -> "AlternateReverse"
+#endif
+
 /// <summary>ScrollAxis in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] ScrollAxis =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] ScrollAxis =
+#endif
     | [<CompiledName("block")>] Block
     | [<CompiledName("inline")>] Inline
     | [<CompiledName("x")>] X
     | [<CompiledName("y")>] Y
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ScrollAxis.Block -> "Block"
+        | ScrollAxis.Inline -> "Inline"
+        | ScrollAxis.X -> "X"
+        | ScrollAxis.Y -> "Y"
+#endif
+
 /// <summary>AnimationPlayState in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] AnimationPlayState =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] AnimationPlayState =
+#endif
     | [<CompiledName("idle")>] Idle
     | [<CompiledName("running")>] Running
     | [<CompiledName("paused")>] Paused
     | [<CompiledName("finished")>] Finished
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | AnimationPlayState.Idle -> "Idle"
+        | AnimationPlayState.Running -> "Running"
+        | AnimationPlayState.Paused -> "Paused"
+        | AnimationPlayState.Finished -> "Finished"
+#endif
+
 /// <summary>AnimationReplaceState in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] AnimationReplaceState =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] AnimationReplaceState =
+#endif
     | [<CompiledName("active")>] Active
     | [<CompiledName("removed")>] Removed
     | [<CompiledName("persisted")>] Persisted
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | AnimationReplaceState.Active -> "Active"
+        | AnimationReplaceState.Removed -> "Removed"
+        | AnimationReplaceState.Persisted -> "Persisted"
+#endif
+
 /// <summary>FontFaceLoadStatus in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] FontFaceLoadStatus =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] FontFaceLoadStatus =
+#endif
     | [<CompiledName("unloaded")>] Unloaded
     | [<CompiledName("loading")>] Loading
     | [<CompiledName("loaded")>] Loaded
     | [<CompiledName("error")>] Error
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | FontFaceLoadStatus.Unloaded -> "Unloaded"
+        | FontFaceLoadStatus.Loading -> "Loading"
+        | FontFaceLoadStatus.Loaded -> "Loaded"
+        | FontFaceLoadStatus.Error -> "Error"
+#endif
+
 /// <summary>FontFaceSetLoadStatus in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] FontFaceSetLoadStatus =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] FontFaceSetLoadStatus =
+#endif
     | [<CompiledName("loading")>] Loading
     | [<CompiledName("loaded")>] Loaded
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | FontFaceSetLoadStatus.Loading -> "Loading"
+        | FontFaceSetLoadStatus.Loaded -> "Loaded"
+#endif
+
 /// <summary>AriaNotificationPriority in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] AriaNotificationPriority =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] AriaNotificationPriority =
+#endif
     | [<CompiledName("normal")>] Normal
     | [<CompiledName("high")>] High
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | AriaNotificationPriority.Normal -> "Normal"
+        | AriaNotificationPriority.High -> "High"
+#endif
+
 /// <summary>AriaNotificationInterrupt in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] AriaNotificationInterrupt =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] AriaNotificationInterrupt =
+#endif
     | [<CompiledName("none")>] None
     | [<CompiledName("all")>] All
     | [<CompiledName("pending")>] Pending
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | AriaNotificationInterrupt.None -> "None"
+        | AriaNotificationInterrupt.All -> "All"
+        | AriaNotificationInterrupt.Pending -> "Pending"
+#endif
+
 /// <summary>DocumentReadyState in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] DocumentReadyState =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] DocumentReadyState =
+#endif
     | [<CompiledName("loading")>] Loading
     | [<CompiledName("interactive")>] Interactive
     | [<CompiledName("complete")>] Complete
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | DocumentReadyState.Loading -> "Loading"
+        | DocumentReadyState.Interactive -> "Interactive"
+        | DocumentReadyState.Complete -> "Complete"
+#endif
+
 /// <summary>ShadowRootMode in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] ShadowRootMode =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] ShadowRootMode =
+#endif
     | [<CompiledName("user-agent")>] UserAgent
     | [<CompiledName("closed")>] Closed
     | [<CompiledName("open")>] Open
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ShadowRootMode.UserAgent -> "UserAgent"
+        | ShadowRootMode.Closed -> "Closed"
+        | ShadowRootMode.Open -> "Open"
+#endif
+
 /// <summary>SlotAssignmentMode in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] SlotAssignmentMode =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] SlotAssignmentMode =
+#endif
     | [<CompiledName("manual")>] Manual
     | [<CompiledName("named")>] Named
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | SlotAssignmentMode.Manual -> "Manual"
+        | SlotAssignmentMode.Named -> "Named"
+#endif
+
 /// <summary>VisibilityState in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] VisibilityState =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] VisibilityState =
+#endif
     | [<CompiledName("hidden")>] Hidden
     | [<CompiledName("visible")>] Visible
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | VisibilityState.Hidden -> "Hidden"
+        | VisibilityState.Visible -> "Visible"
+#endif
+
 /// <summary>CanvasDirection in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] CanvasDirection =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] CanvasDirection =
+#endif
     | [<CompiledName("ltr")>] Ltr
     | [<CompiledName("rtl")>] Rtl
     | [<CompiledName("inherit")>] Inherit
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CanvasDirection.Ltr -> "Ltr"
+        | CanvasDirection.Rtl -> "Rtl"
+        | CanvasDirection.Inherit -> "Inherit"
+#endif
+
 /// <summary>CanvasFillRule in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] CanvasFillRule =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] CanvasFillRule =
+#endif
     | [<CompiledName("nonzero")>] Nonzero
     | [<CompiledName("evenodd")>] Evenodd
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CanvasFillRule.Nonzero -> "Nonzero"
+        | CanvasFillRule.Evenodd -> "Evenodd"
+#endif
+
 /// <summary>CanvasLineCap in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] CanvasLineCap =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] CanvasLineCap =
+#endif
     | [<CompiledName("butt")>] Butt
     | [<CompiledName("round")>] Round
     | [<CompiledName("square")>] Square
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CanvasLineCap.Butt -> "Butt"
+        | CanvasLineCap.Round -> "Round"
+        | CanvasLineCap.Square -> "Square"
+#endif
+
 /// <summary>CanvasLineJoin in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] CanvasLineJoin =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] CanvasLineJoin =
+#endif
     | [<CompiledName("round")>] Round
     | [<CompiledName("bevel")>] Bevel
     | [<CompiledName("miter")>] Miter
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CanvasLineJoin.Round -> "Round"
+        | CanvasLineJoin.Bevel -> "Bevel"
+        | CanvasLineJoin.Miter -> "Miter"
+#endif
+
 /// <summary>CanvasTextAlign in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] CanvasTextAlign =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] CanvasTextAlign =
+#endif
     | [<CompiledName("start")>] Start
     | [<CompiledName("end")>] End
     | [<CompiledName("left")>] Left
     | [<CompiledName("right")>] Right
     | [<CompiledName("center")>] Center
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CanvasTextAlign.Start -> "Start"
+        | CanvasTextAlign.End -> "End"
+        | CanvasTextAlign.Left -> "Left"
+        | CanvasTextAlign.Right -> "Right"
+        | CanvasTextAlign.Center -> "Center"
+#endif
+
 /// <summary>CanvasTextBaseline in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] CanvasTextBaseline =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] CanvasTextBaseline =
+#endif
     | [<CompiledName("top")>] Top
     | [<CompiledName("hanging")>] Hanging
     | [<CompiledName("middle")>] Middle
@@ -6786,30 +7052,95 @@ and [<DomStringEnum; RequireQualifiedAccess>] CanvasTextBaseline =
     | [<CompiledName("ideographic")>] Ideographic
     | [<CompiledName("bottom")>] Bottom
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CanvasTextBaseline.Top -> "Top"
+        | CanvasTextBaseline.Hanging -> "Hanging"
+        | CanvasTextBaseline.Middle -> "Middle"
+        | CanvasTextBaseline.Alphabetic -> "Alphabetic"
+        | CanvasTextBaseline.Ideographic -> "Ideographic"
+        | CanvasTextBaseline.Bottom -> "Bottom"
+#endif
+
 /// <summary>ImageSmoothingQuality in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] ImageSmoothingQuality =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] ImageSmoothingQuality =
+#endif
     | [<CompiledName("low")>] Low
     | [<CompiledName("medium")>] Medium
     | [<CompiledName("high")>] High
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ImageSmoothingQuality.Low -> "Low"
+        | ImageSmoothingQuality.Medium -> "Medium"
+        | ImageSmoothingQuality.High -> "High"
+#endif
+
 /// <summary>HighlightType in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] HighlightType =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] HighlightType =
+#endif
     | [<CompiledName("highlight")>] Highlight
     | [<CompiledName("spelling-error")>] SpellingError
     | [<CompiledName("grammar-error")>] GrammarError
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | HighlightType.Highlight -> "Highlight"
+        | HighlightType.SpellingError -> "SpellingError"
+        | HighlightType.GrammarError -> "GrammarError"
+#endif
+
 /// <summary>ScrollBehavior in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] ScrollBehavior =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] ScrollBehavior =
+#endif
     | [<CompiledName("auto")>] Auto
     | [<CompiledName("instant")>] Instant
     | [<CompiledName("smooth")>] Smooth
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ScrollBehavior.Auto -> "Auto"
+        | ScrollBehavior.Instant -> "Instant"
+        | ScrollBehavior.Smooth -> "Smooth"
+#endif
+
 /// <summary>ScrollLogicalPosition in the scoped DOM interface model.</summary>
+#if FABLE_COMPILER
 and [<DomStringEnum; RequireQualifiedAccess>] ScrollLogicalPosition =
+#else
+and [<DomStringEnum; RequireQualifiedAccess; System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>] ScrollLogicalPosition =
+#endif
     | [<CompiledName("start")>] Start
     | [<CompiledName("center")>] Center
     | [<CompiledName("end")>] End
     | [<CompiledName("nearest")>] Nearest
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ScrollLogicalPosition.Start -> "Start"
+        | ScrollLogicalPosition.Center -> "Center"
+        | ScrollLogicalPosition.End -> "End"
+        | ScrollLogicalPosition.Nearest -> "Nearest"
+#endif
 
 
 #if FABLE_COMPILER

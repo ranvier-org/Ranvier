@@ -15,9 +15,20 @@ type TimingDetail =
 
 /// <summary>The kind of a user-created performance entry.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type TimingEntryKind =
     | Mark
     | Measure
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | TimingEntryKind.Mark -> "Mark"
+        | TimingEntryKind.Measure -> "Measure"
+#endif
 
 /// <summary>A performance entry snapshot with millisecond timestamps relative to TimeOrigin.</summary>
 type TimingEntry =

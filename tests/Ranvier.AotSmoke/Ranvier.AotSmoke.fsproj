@@ -20,6 +20,7 @@
     <ItemGroup>
         <Compile Include="../TraceTextCases.fs" Link="TraceTextCases.fs" />
         <Compile Include="WireSmoke.fs" />
+        <Compile Include="DomDisplaySmoke.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

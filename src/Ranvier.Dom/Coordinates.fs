@@ -67,12 +67,24 @@ type CoordinateSpace =
 
 /// <summary>A CSS box of an element.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type CoordinateBox =
     | Border
     | Padding
     | Content
     | Margin
 
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | CoordinateBox.Border -> "Border"
+        | CoordinateBox.Padding -> "Padding"
+        | CoordinateBox.Content -> "Content"
+        | CoordinateBox.Margin -> "Margin"
+#endif
 
 /// <summary>Why a conversion has no result.</summary>
 [<RequireQualifiedAccess>]

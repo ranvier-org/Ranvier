@@ -5,6 +5,9 @@ open System.Collections.Generic
 
 /// <summary><c>ResizeObserverOptions.box</c>: the box whose size changes are reported.</summary>
 [<RequireQualifiedAccess>]
+#if !FABLE_COMPILER
+[<System.Diagnostics.DebuggerDisplay("{ToString(),nq}")>]
+#endif
 type ResizeObserverBox =
     /// <summary><c>"content-box"</c>, the default.</summary>
     | ContentBox
@@ -12,6 +15,15 @@ type ResizeObserverBox =
     | BorderBox
     /// <summary><c>"device-pixel-content-box"</c>: the content box in device pixels.</summary>
     | DevicePixelContentBox
+
+#if !FABLE_COMPILER
+    /// <summary>Returns the declared union case name.</summary>
+    override this.ToString() =
+        match this with
+        | ResizeObserverBox.ContentBox -> "ContentBox"
+        | ResizeObserverBox.BorderBox -> "BorderBox"
+        | ResizeObserverBox.DevicePixelContentBox -> "DevicePixelContentBox"
+#endif
 
 /// <summary>A <c>ResizeObserverSize</c>: a box size in the element's writing mode.</summary>
 /// <remarks>Inline is the width in a horizontal writing mode and the height in a vertical one.</remarks>
