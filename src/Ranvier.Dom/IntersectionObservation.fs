@@ -28,6 +28,7 @@ type IntersectionObserverRoot =
                     Some (fun _ -> NativeDisplay.opaque context nested "<Element>" (box element))
                 ])
 
+    /// <summary>Returns diagnostic text; native compilation represents element references as opaque values.</summary>
     override this.ToString() =
         if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
             sprintf "%+A" this
@@ -62,6 +63,7 @@ type IntersectionObserverInit =
                 "Threshold", (fun () -> NativeDisplay.array context nested (fun c d _ value -> NativeDisplay.float64 c d value) this.Threshold)
             ])
 
+    /// <summary>Returns diagnostic text; native compilation bounds the displayed thresholds.</summary>
     override this.ToString() =
         if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
             sprintf "%+A" this
@@ -100,6 +102,7 @@ type IntersectionObserverRect =
                 "Height", (fun () -> NativeDisplay.float64 context nested this.Height)
             ])
 
+    /// <summary>Returns structured rectangle diagnostics.</summary>
     override this.ToString() =
         if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
             sprintf "%+A" this
@@ -151,6 +154,7 @@ type IntersectionObserverEntry =
                 "IntersectionRatio", (fun () -> NativeDisplay.float64 context nested this.IntersectionRatio)
             ])
 
+    /// <summary>Returns diagnostic text; native compilation represents the target as an opaque value.</summary>
     override this.ToString() =
         if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
             sprintf "%+A" this
@@ -189,6 +193,7 @@ type IntersectionObserverHandle =
                 "Release", (fun () -> NativeDisplay.opaque context nested "<fun>" (box this.Release))
             ])
 
+    /// <summary>Returns diagnostic text; native compilation represents callbacks as opaque values.</summary>
     override this.ToString() =
         if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
             sprintf "%+A" this
@@ -219,6 +224,7 @@ type IntersectionObservationProvider =
                 "Create", (fun () -> NativeDisplay.opaque context nested "<fun>" (box this.Create))
             ])
 
+    /// <summary>Returns diagnostic text; native compilation represents callbacks as opaque values.</summary>
     override this.ToString() =
         if System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported then
             sprintf "%+A" this
