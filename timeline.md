@@ -134,6 +134,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 83,303 | 127,585 | 1,742,282 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 83,305 | 127,592 | 1,742,243 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 83,302 | 127,559 | 1,742,181 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 83,304 | 127,593 | 1,742,263 |
 
 ## app-table
 
@@ -269,6 +270,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 4,417,674 | 9,161,385 | 107,926,084 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 4,417,730 | 9,272,057 | 107,844,945 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 4,417,713 | 9,274,108 | 107,930,744 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 4,417,714 | 9,274,386 | 107,748,539 |
 
 ## async-recover
 
@@ -404,6 +406,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 139,139 | 41,257 | 434,853 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 139,139 | 41,265 | 434,851 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 139,139 | 41,284 | 434,856 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 139,139 | 41,249 | 434,858 |
 
 ## async-resolve
 
@@ -539,6 +542,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 2,790,468 | 1,023,032 | 11,967,244 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 2,790,468 | 1,023,067 | 11,966,818 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,790,467 | 1,023,060 | 11,970,603 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,790,467 | 1,023,028 | 11,967,340 |
 
 ## chain
 
@@ -674,6 +678,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -809,6 +814,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 2,553 | 3,071 | 2,500 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 2,553 | 3,071 | 2,500 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,553 | 3,071 | 2,500 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -944,6 +950,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 74,710 | 836,473 | 2,603,152 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 74,710 | 836,483 | 2,603,201 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 74,710 | 836,484 | 2,603,136 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 74,710 | 836,516 | 2,603,167 |
 
 ## create
 
@@ -1079,6 +1086,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 13,448,256 | 2,865,678 | 2,570,368 | 2,127,151 | 4,045,253 | 34,067,962 | 50,420,098 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 13,448,309 | 2,865,678 | 2,570,368 | 2,126,834 | 4,042,694 | 34,068,210 | 50,419,912 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 13,448,205 | 2,865,677 | 2,570,368 | 2,127,910 | 4,042,183 | 34,068,274 | 50,420,279 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 13,448,202 | 2,865,677 | 2,570,368 | 2,127,926 | 4,044,845 | 34,071,994 | 50,423,357 |
 
 ## create-on
 
@@ -1214,6 +1222,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 2,949,484 | 4,179,986 | 55,229,013 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 2,965,484 | 4,179,689 | 55,228,893 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,949,484 | 4,179,707 | 55,229,142 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,965,484 | 4,179,743 | 55,229,095 |
 
 ## cutoff
 
@@ -1349,6 +1358,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1484,6 +1494,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 781 | 751 | 16,520 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 781 | 751 | 16,520 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 781 | 751 | 16,520 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1619,6 +1630,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 751 | 802 | 16,543 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 767 | 802 | 16,543 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 751 | 802 | 16,543 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1754,6 +1766,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 2,707,644 | 806,291 | 367,497 | 475,985 | 495,012 | 13,205,834 | 9,106,116 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 2,707,645 | 806,290 | 367,497 | 475,853 | 495,204 | 13,204,213 | 9,107,084 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,706,749 | 806,291 | 367,497 | 475,839 | 495,088 | 13,205,970 | 9,106,183 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,707,643 | 806,291 | 367,497 | 475,887 | 495,092 | 13,206,001 | 9,106,240 |
 
 ## dispose-on
 
@@ -1889,6 +1902,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 346,497 | 487,965 | 8,902,222 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 346,497 | 487,817 | 8,902,063 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 346,497 | 488,009 | 8,902,746 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 346,497 | 487,948 | 8,902,786 |
 
 ## editable-edit
 
@@ -2024,6 +2038,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 181,706 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 181,706 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 181,706 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 181,706 |
 
 ## editable-upstream
 
@@ -2159,6 +2174,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 232,855 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 232,855 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 232,855 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 232,855 |
 
 ## fail-recompute
 
@@ -2294,6 +2310,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 64,938 | 1,370 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 64,938 | 1,370 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 64,938 | 1,370 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 64,938 | 1,370 |
 
 ## flight
 
@@ -2429,6 +2446,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2564,6 +2582,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 1,921,727 | 53,917 | 54,955 | 3,277,796 | 237,339 | 176,021 | 45,072,278 | 2,634,496 | 2,655,504 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 1,921,727 | 53,917 | 54,958 | 3,277,584 | 237,635 | 176,015 | 45,072,268 | 2,634,458 | 2,655,451 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,921,727 | 53,917 | 54,955 | 3,277,859 | 237,661 | 176,018 | 45,072,258 | 2,634,568 | 2,655,586 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,921,727 | 53,917 | 54,956 | 3,277,850 | 237,685 | 175,986 | 45,082,451 | 2,634,568 | 2,655,552 |
 
 ## keyed-remove
 
@@ -2699,6 +2718,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 1,920,660 | 43,600 | 45,299 | 3,292,693 | 592,274 | 606,154 | 45,036,806 | 1,924,641 | 1,960,176 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 1,920,671 | 43,600 | 45,299 | 3,292,701 | 592,201 | 606,217 | 45,048,846 | 1,924,635 | 1,960,134 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,920,660 | 43,600 | 45,299 | 3,293,039 | 592,215 | 606,118 | 45,036,794 | 1,924,594 | 1,960,167 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,920,664 | 43,600 | 45,300 | 3,292,710 | 592,172 | 606,045 | 45,048,850 | 1,924,553 | 1,960,099 |
 
 ## keyed-swap
 
@@ -2834,6 +2854,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 1,973,355 | 46,205 | 46,927 | 3,628,836 | 148,924 | 512,661 | 46,198,690 | 915,625 | 936,099 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 1,973,355 | 46,205 | 46,928 | 3,634,308 | 148,877 | 512,554 | 46,199,062 | 915,705 | 936,107 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,973,355 | 46,205 | 46,927 | 3,631,790 | 148,985 | 512,581 | 46,198,677 | 915,619 | 936,124 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,973,355 | 46,205 | 46,927 | 3,608,560 | 148,941 | 512,562 | 46,199,028 | 915,605 | 936,174 |
 
 ## mvu-dispatch
 
@@ -2969,6 +2990,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 58,292 | 788 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 58,292 | 788 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 58,292 | 788 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 58,292 | 788 |
 
 ## persist-write
 
@@ -3104,6 +3126,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | — | — |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | — | — |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | — | — |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — |
 
 ## project-chain
 
@@ -3239,6 +3262,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 1,071,732 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 1,071,729 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,071,749 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,071,784 |
 
 ## project-churn
 
@@ -3374,6 +3398,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 36,385 | 34,250 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 36,385 | 34,250 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 36,385 | 34,250 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -3509,6 +3534,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 50,476 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 50,476 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 50,460 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 50,460 |
 
 ## project-reorder
 
@@ -3644,6 +3670,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 780,100 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 780,100 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 780,084 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 780,085 |
 
 ## server-render
 
@@ -3779,6 +3806,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | — | — | — |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | — | — | — |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | — | — | — |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — | — |
 
 ## shape-diamond
 
@@ -3914,6 +3942,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 59,915 | 80,445 | 1,764,075 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 59,915 | 80,445 | 1,764,075 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 59,915 | 80,445 | 1,764,075 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -4049,6 +4078,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 84,378 | 108,947 | 2,038,136 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 84,378 | 108,947 | 2,038,136 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 84,378 | 108,947 | 2,038,136 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4184,6 +4214,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,577 | 45,790 | 55,380 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,474 | 47,581 | 45,790 | 55,384 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,473 | 47,581 | 45,790 | 55,380 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,470 | 47,581 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -4319,6 +4350,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,070 | 123,810 | 720,148 | 113,735 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 5,022 | 24,618 | 5,713 | 9,738 | 50,033 | 8,070 | 123,812 | 720,148 | 113,735 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 5,022 | 24,618 | 5,713 | 9,742 | 50,034 | 8,071 | 123,812 | 720,148 | 113,734 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,812 | 720,148 | 113,735 |
 
 ## stream-burst-256
 
@@ -4454,6 +4486,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 54,162 | 393,702 | 57,052 | 131,852 | 792,888 | 74,743 | 1,343,567 | 11,508,830 | 1,046,762 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 54,162 | 393,702 | 57,052 | 131,889 | 792,883 | 74,743 | 1,343,781 | 11,508,699 | 1,046,694 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 54,162 | 393,702 | 57,052 | 131,895 | 792,826 | 74,745 | 1,343,799 | 11,508,788 | 1,046,727 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 54,162 | 393,702 | 57,052 | 131,805 | 792,883 | 74,745 | 1,343,779 | 11,508,770 | 1,046,760 |
 
 ## stream-restart
 
@@ -4589,6 +4622,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 4,203 | 5,004 | 6,578 | 16,893 | 42,909 | 72,022 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 4,203 | 5,004 | 6,576 | 16,893 | 42,907 | 72,022 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 4,203 | 5,004 | 6,575 | 16,889 | 42,909 | 72,022 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 4,203 | 5,004 | 6,579 | 16,890 | 42,909 | 72,022 |
 
 ## timed-admit-both
 
@@ -4724,6 +4758,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 117,709 | 130,035 | 2,693,577 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 117,709 | 130,034 | 2,693,576 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 117,709 | 130,036 | 2,693,577 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 117,709 | 130,035 | 2,693,576 |
 
 ## timed-admit-debounce
 
@@ -4859,6 +4894,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 116,614 | 128,617 | 2,654,129 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 116,614 | 128,629 | 2,654,129 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 116,614 | 128,624 | 2,654,116 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 116,614 | 128,617 | 2,654,129 |
 
 ## timed-admit-first
 
@@ -4994,6 +5030,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 69,621 | 79,565 | 1,620,677 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 69,621 | 79,564 | 1,620,677 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 69,621 | 79,564 | 1,620,677 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 69,621 | 79,566 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -5129,6 +5166,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 116,876 | 128,944 | 2,663,985 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 116,876 | 128,951 | 2,663,985 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 116,876 | 128,943 | 2,663,985 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 116,876 | 128,950 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -5264,6 +5302,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 35,740 | 44,937 | 846,286 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 35,740 | 44,937 | 846,285 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 35,740 | 44,935 | 846,286 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,740 | 44,936 | 846,286 |
 
 ## timed-capture-debounce
 
@@ -5399,6 +5438,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 35,612 | 44,232 | 847,657 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 35,612 | 44,233 | 847,657 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 35,612 | 44,232 | 847,657 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5534,6 +5574,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 32,092 | 36,742 | 745,651 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 32,092 | 36,741 | 745,651 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 32,092 | 36,741 | 745,651 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -5669,6 +5710,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 35,548 | 44,168 | 839,785 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 35,548 | 44,168 | 839,785 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 35,548 | 44,168 | 839,785 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,548 | 44,169 | 839,785 |
 
 ## update
 
@@ -5804,6 +5846,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 1,090,990 | 38,805 | 84,105 | 262,602 | 145,839 | 3,351,250 | 2,545,084 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 1,087,790 | 38,805 | 84,105 | 263,255 | 145,756 | 3,351,328 | 2,545,091 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,087,790 | 38,805 | 84,105 | 262,619 | 145,822 | 3,351,202 | 2,544,978 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,087,790 | 38,805 | 84,105 | 263,115 | 145,803 | 3,351,295 | 2,545,042 |
 
 ## update-on
 
@@ -5939,6 +5982,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 94,605 | 169,028 | 2,872,460 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 96,205 | 169,042 | 2,872,432 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 94,605 | 169,028 | 2,872,370 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 94,605 | 169,010 | 2,872,429 |
 
 ## work-form
 
@@ -6074,6 +6118,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 172,679 | 165,150 | 308,861 | 296,954 | 5,421,810 | 5,334,904 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 172,679 | 167,150 | 308,833 | 296,955 | 5,421,827 | 5,334,917 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 172,679 | 165,150 | 308,834 | 296,997 | 5,421,878 | 5,334,916 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 172,679 | 165,150 | 308,861 | 296,987 | 5,421,862 | 5,334,869 |
 
 ## work-status
 
@@ -6209,6 +6254,7 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 102,045 | 80,235 | 269,299 | 156,111 | 2,659,272 | 2,391,318 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 102,045 | 81,835 | 269,371 | 156,115 | 2,659,187 | 2,391,292 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 102,045 | 80,235 | 269,355 | 156,130 | 2,659,196 | 2,391,286 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 102,045 | 80,235 | 269,338 | 156,133 | 2,659,264 | 2,391,291 |
 
 ## work-value
 
@@ -6344,4 +6390,5 @@
 | `fc7a751` | 2026-11-02 | chore(release): allocate DOM alpha.56 | 109,169 | 121,070 | 269,613 | 283,391 | 2,643,882 | 2,968,441 |
 | `f4f2e1c` | 2026-11-03 | fix(dom): keep mutation diagnostics compatible with NativeAOT (#294) | 109,169 | 122,670 | 269,575 | 283,381 | 2,643,947 | 2,968,425 |
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 109,170 | 121,070 | 269,592 | 283,394 | 2,643,947 | 2,968,442 |
+| `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 109,169 | 121,071 | 269,573 | 283,410 | 2,643,923 | 2,968,449 |
 
