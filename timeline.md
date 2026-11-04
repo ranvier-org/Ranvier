@@ -136,6 +136,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 83,302 | 127,559 | 1,742,181 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 83,304 | 127,593 | 1,742,263 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 83,365 | 127,571 | 1,742,215 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 83,362 | 127,572 | 1,742,182 |
 
 ## app-table
 
@@ -273,6 +274,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 4,417,713 | 9,274,108 | 107,930,744 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 4,417,714 | 9,274,386 | 107,748,539 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 4,417,684 | 9,383,865 | 107,851,507 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 4,417,658 | 9,383,689 | 107,872,666 |
 
 ## async-recover
 
@@ -410,6 +412,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 139,139 | 41,284 | 434,856 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 139,139 | 41,249 | 434,858 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 139,139 | 41,265 | 434,859 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 139,139 | 41,270 | 434,867 |
 
 ## async-resolve
 
@@ -547,6 +550,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,790,467 | 1,023,060 | 11,970,603 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,790,467 | 1,023,028 | 11,967,340 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,790,467 | 1,023,038 | 11,970,323 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,790,467 | 1,023,129 | 11,967,000 |
 
 ## chain
 
@@ -684,6 +688,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 
 ## chain-affinity
 
@@ -821,6 +826,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,553 | 3,071 | 2,500 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,553 | 3,071 | 2,500 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,553 | 3,071 | 2,500 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,553 | 3,071 | 2,500 |
 
 ## control
 
@@ -958,6 +964,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 74,710 | 836,484 | 2,603,136 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 74,710 | 836,516 | 2,603,167 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 74,710 | 836,500 | 2,603,117 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 74,710 | 836,491 | 2,603,186 |
 
 ## create
 
@@ -1095,6 +1102,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 13,448,205 | 2,865,677 | 2,570,368 | 2,127,910 | 4,042,183 | 34,068,274 | 50,420,279 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 13,448,202 | 2,865,677 | 2,570,368 | 2,127,926 | 4,044,845 | 34,071,994 | 50,423,357 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 13,448,187 | 2,865,677 | 2,570,368 | 2,127,046 | 4,044,884 | 34,068,038 | 50,420,433 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 13,448,252 | 2,865,678 | 2,570,368 | 2,127,930 | 4,044,770 | 34,068,032 | 50,420,056 |
 
 ## create-on
 
@@ -1232,6 +1240,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,949,484 | 4,179,707 | 55,229,142 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,965,484 | 4,179,743 | 55,229,095 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,949,484 | 4,179,713 | 55,229,190 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,981,484 | 4,179,863 | 55,229,069 |
 
 ## cutoff
 
@@ -1369,6 +1378,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1506,6 +1516,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 781 | 751 | 16,520 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 781 | 751 | 16,520 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 781 | 751 | 16,520 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1643,6 +1654,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 751 | 802 | 16,543 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 751 | 802 | 16,543 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 751 | 802 | 16,543 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1780,6 +1792,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 2,706,749 | 806,291 | 367,497 | 475,839 | 495,088 | 13,205,970 | 9,106,183 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,707,643 | 806,291 | 367,497 | 475,887 | 495,092 | 13,206,001 | 9,106,240 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,707,644 | 806,290 | 367,497 | 476,001 | 495,158 | 13,207,470 | 9,106,306 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,707,640 | 806,290 | 367,497 | 476,070 | 495,092 | 13,205,516 | 9,105,856 |
 
 ## dispose-on
 
@@ -1917,6 +1930,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 346,497 | 488,009 | 8,902,746 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 346,497 | 487,948 | 8,902,786 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 346,497 | 487,818 | 8,902,204 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 346,497 | 487,896 | 8,902,665 |
 
 ## editable-edit
 
@@ -2054,6 +2068,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 181,706 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 181,706 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 181,706 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 181,706 |
 
 ## editable-upstream
 
@@ -2191,6 +2206,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 232,855 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 232,855 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 232,855 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 232,855 |
 
 ## fail-recompute
 
@@ -2328,6 +2344,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 64,938 | 1,370 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 64,938 | 1,370 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 64,938 | 1,370 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 64,938 | 1,370 |
 
 ## flight
 
@@ -2465,6 +2482,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 
 ## keyed-insert
 
@@ -2602,6 +2620,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,921,727 | 53,917 | 54,955 | 3,277,859 | 237,661 | 176,018 | 45,072,258 | 2,634,568 | 2,655,586 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,921,727 | 53,917 | 54,956 | 3,277,850 | 237,685 | 175,986 | 45,082,451 | 2,634,568 | 2,655,552 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,921,759 | 53,917 | 54,982 | 3,277,703 | 237,914 | 176,028 | 45,072,296 | 2,634,492 | 2,655,510 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,921,759 | 53,917 | 54,982 | 3,277,828 | 237,503 | 175,977 | 45,072,248 | 2,634,558 | 2,655,519 |
 
 ## keyed-remove
 
@@ -2739,6 +2758,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,920,660 | 43,600 | 45,299 | 3,293,039 | 592,215 | 606,118 | 45,036,794 | 1,924,594 | 1,960,167 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,920,664 | 43,600 | 45,300 | 3,292,710 | 592,172 | 606,045 | 45,048,850 | 1,924,553 | 1,960,099 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,920,685 | 43,600 | 45,332 | 3,292,892 | 592,146 | 606,091 | 45,036,782 | 1,924,525 | 1,960,174 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,920,684 | 43,600 | 45,331 | 3,292,717 | 592,110 | 606,202 | 45,036,775 | 1,924,599 | 1,960,030 |
 
 ## keyed-swap
 
@@ -2876,6 +2896,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,973,355 | 46,205 | 46,927 | 3,631,790 | 148,985 | 512,581 | 46,198,677 | 915,619 | 936,124 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,973,355 | 46,205 | 46,927 | 3,608,560 | 148,941 | 512,562 | 46,199,028 | 915,605 | 936,174 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,973,387 | 46,205 | 46,959 | 3,634,149 | 148,931 | 512,617 | 46,199,038 | 915,616 | 936,075 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,973,356 | 46,205 | 46,928 | 3,626,999 | 148,863 | 512,662 | 46,199,035 | 915,721 | 936,082 |
 
 ## mvu-dispatch
 
@@ -3013,6 +3034,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 58,292 | 788 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 58,292 | 788 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 58,292 | 788 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 58,292 | 788 |
 
 ## persist-write
 
@@ -3150,6 +3172,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | — | — |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | — | — |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — |
 
 ## project-chain
 
@@ -3287,6 +3310,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,071,749 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,071,784 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,071,731 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,071,692 |
 
 ## project-churn
 
@@ -3424,6 +3448,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 36,385 | 34,250 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 36,385 | 34,250 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 36,385 | 34,250 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -3561,6 +3586,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 50,460 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 50,460 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 50,492 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 50,492 |
 
 ## project-reorder
 
@@ -3698,6 +3724,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 780,084 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 780,085 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 780,116 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 780,116 |
 
 ## server-render
 
@@ -3835,6 +3862,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | — | — | — |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — | — |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | — | — | — |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — | — |
 
 ## shape-diamond
 
@@ -3972,6 +4000,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 59,915 | 80,445 | 1,764,075 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 59,915 | 80,445 | 1,764,075 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 59,915 | 80,445 | 1,764,075 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 59,915 | 80,445 | 1,764,075 |
 
 ## shape-dynamic
 
@@ -4109,6 +4138,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 84,378 | 108,947 | 2,038,136 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 84,378 | 108,947 | 2,038,136 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 84,378 | 108,942 | 2,038,136 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4246,6 +4276,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,473 | 47,581 | 45,790 | 55,380 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,470 | 47,581 | 45,790 | 55,384 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,476 | 47,581 | 45,790 | 55,383 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,579 | 45,790 | 55,384 |
 
 ## stream-burst-16
 
@@ -4383,6 +4414,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 5,022 | 24,618 | 5,713 | 9,742 | 50,034 | 8,071 | 123,812 | 720,148 | 113,734 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,812 | 720,148 | 113,735 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 5,022 | 24,618 | 5,713 | 9,740 | 50,030 | 8,071 | 123,802 | 720,148 | 113,730 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 5,022 | 24,618 | 5,713 | 9,740 | 50,034 | 8,071 | 123,812 | 720,148 | 113,731 |
 
 ## stream-burst-256
 
@@ -4520,6 +4552,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 54,162 | 393,702 | 57,052 | 131,895 | 792,826 | 74,745 | 1,343,799 | 11,508,788 | 1,046,727 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 54,162 | 393,702 | 57,052 | 131,805 | 792,883 | 74,745 | 1,343,779 | 11,508,770 | 1,046,760 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 54,162 | 393,702 | 57,052 | 131,972 | 792,795 | 74,743 | 1,343,719 | 11,508,884 | 1,046,728 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 54,162 | 393,702 | 57,052 | 131,893 | 792,838 | 74,743 | 1,343,781 | 11,508,675 | 1,046,728 |
 
 ## stream-restart
 
@@ -4657,6 +4690,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 4,203 | 5,004 | 6,575 | 16,889 | 42,909 | 72,022 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 4,203 | 5,004 | 6,579 | 16,890 | 42,909 | 72,022 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 4,203 | 5,004 | 6,576 | 16,887 | 42,906 | 72,021 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 4,203 | 5,004 | 6,576 | 16,888 | 42,909 | 72,016 |
 
 ## timed-admit-both
 
@@ -4794,6 +4828,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 117,709 | 130,036 | 2,693,577 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 117,709 | 130,035 | 2,693,576 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 117,709 | 130,036 | 2,693,577 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 117,709 | 130,036 | 2,693,577 |
 
 ## timed-admit-debounce
 
@@ -4931,6 +4966,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 116,614 | 128,624 | 2,654,116 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 116,614 | 128,617 | 2,654,129 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 116,614 | 128,629 | 2,654,129 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 116,614 | 128,630 | 2,654,116 |
 
 ## timed-admit-first
 
@@ -5068,6 +5104,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 69,621 | 79,564 | 1,620,677 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 69,621 | 79,566 | 1,620,677 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 69,621 | 79,564 | 1,620,677 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 69,621 | 79,564 | 1,620,677 |
 
 ## timed-admit-last
 
@@ -5205,6 +5242,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 116,876 | 128,943 | 2,663,985 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 116,876 | 128,950 | 2,663,985 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 116,876 | 128,949 | 2,663,985 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 116,876 | 128,950 | 2,663,985 |
 
 ## timed-capture-both
 
@@ -5342,6 +5380,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 35,740 | 44,935 | 846,286 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,740 | 44,936 | 846,286 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 35,740 | 44,936 | 846,285 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,740 | 44,936 | 846,286 |
 
 ## timed-capture-debounce
 
@@ -5479,6 +5518,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 35,612 | 44,232 | 847,657 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,612 | 44,232 | 847,657 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 35,612 | 44,232 | 847,658 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5616,6 +5656,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 32,092 | 36,741 | 745,651 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 32,092 | 36,742 | 745,651 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 32,092 | 36,741 | 745,652 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -5753,6 +5794,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 35,548 | 44,168 | 839,785 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,548 | 44,169 | 839,785 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 35,548 | 44,168 | 839,785 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,548 | 44,168 | 839,787 |
 
 ## update
 
@@ -5890,6 +5932,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 1,087,790 | 38,805 | 84,105 | 262,619 | 145,822 | 3,351,202 | 2,544,978 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,087,790 | 38,805 | 84,105 | 263,115 | 145,803 | 3,351,295 | 2,545,042 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,087,790 | 38,805 | 84,105 | 263,421 | 145,819 | 3,351,277 | 2,544,974 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,087,790 | 38,805 | 84,105 | 263,136 | 145,818 | 3,351,291 | 2,544,974 |
 
 ## update-on
 
@@ -6027,6 +6070,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 94,605 | 169,028 | 2,872,370 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 94,605 | 169,010 | 2,872,429 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 94,605 | 169,023 | 2,872,406 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 94,605 | 168,986 | 2,872,365 |
 
 ## work-form
 
@@ -6164,6 +6208,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 172,679 | 165,150 | 308,834 | 296,997 | 5,421,878 | 5,334,916 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 172,679 | 165,150 | 308,861 | 296,987 | 5,421,862 | 5,334,869 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 172,679 | 165,150 | 308,854 | 296,997 | 5,421,846 | 5,334,895 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 172,679 | 169,150 | 308,842 | 296,960 | 5,421,845 | 5,334,883 |
 
 ## work-status
 
@@ -6301,6 +6346,7 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 102,045 | 80,235 | 269,355 | 156,130 | 2,659,196 | 2,391,286 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 102,045 | 80,235 | 269,338 | 156,133 | 2,659,264 | 2,391,291 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 102,045 | 80,235 | 269,334 | 156,099 | 2,659,303 | 2,391,310 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 102,045 | 80,235 | 269,382 | 156,123 | 2,659,264 | 2,391,304 |
 
 ## work-value
 
@@ -6438,4 +6484,5 @@
 | `c9fbaf8` | 2026-11-03 | chore(release): allocate DOM alpha.57 (#295) | 109,170 | 121,070 | 269,592 | 283,394 | 2,643,947 | 2,968,442 |
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 109,169 | 121,071 | 269,573 | 283,410 | 2,643,923 | 2,968,449 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 109,169 | 121,071 | 269,627 | 283,405 | 2,643,825 | 2,968,517 |
+| `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 109,170 | 121,069 | 269,599 | 283,399 | 2,643,921 | 2,968,402 |
 
