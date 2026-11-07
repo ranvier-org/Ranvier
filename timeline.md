@@ -137,6 +137,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 83,304 | 127,593 | 1,742,263 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 83,365 | 127,571 | 1,742,215 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 83,362 | 127,572 | 1,742,182 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 83,402 | 126,798 | 1,744,256 |
 
 ## app-table
 
@@ -275,6 +276,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 4,417,714 | 9,274,386 | 107,748,539 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 4,417,684 | 9,383,865 | 107,851,507 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 4,417,658 | 9,383,689 | 107,872,666 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 4,431,346 | 9,449,039 | 108,016,225 |
 
 ## async-recover
 
@@ -413,6 +415,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 139,139 | 41,249 | 434,858 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 139,139 | 41,265 | 434,859 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 139,139 | 41,270 | 434,867 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 139,087 | 41,264 | 434,863 |
 
 ## async-resolve
 
@@ -551,6 +554,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,790,467 | 1,023,028 | 11,967,340 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,790,467 | 1,023,038 | 11,970,323 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,790,467 | 1,023,129 | 11,967,000 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,788,128 | 1,022,847 | 11,970,368 |
 
 ## chain
 
@@ -689,6 +693,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 13,035 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 13,035 | 318 | 2,457 | 4,491 | 3,173 | 72,781 | 66,934 |
 
 ## chain-affinity
 
@@ -827,6 +832,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,553 | 3,071 | 2,500 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,553 | 3,071 | 2,500 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,553 | 3,071 | 2,500 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,556 | 3,074 | 2,503 |
 
 ## control
 
@@ -965,6 +971,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 74,710 | 836,516 | 2,603,167 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 74,710 | 836,500 | 2,603,117 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 74,710 | 836,491 | 2,603,186 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 74,710 | 836,468 | 2,602,868 |
 
 ## create
 
@@ -1103,6 +1110,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 13,448,202 | 2,865,677 | 2,570,368 | 2,127,926 | 4,044,845 | 34,071,994 | 50,423,357 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 13,448,187 | 2,865,677 | 2,570,368 | 2,127,046 | 4,044,884 | 34,068,038 | 50,420,433 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 13,448,252 | 2,865,678 | 2,570,368 | 2,127,930 | 4,044,770 | 34,068,032 | 50,420,056 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 13,448,224 | 2,865,677 | 2,570,368 | 2,128,085 | 4,045,596 | 34,074,136 | 50,439,707 |
 
 ## create-on
 
@@ -1241,6 +1249,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,965,484 | 4,179,743 | 55,229,095 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,949,484 | 4,179,713 | 55,229,190 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,981,484 | 4,179,863 | 55,229,069 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,949,484 | 4,179,676 | 55,229,107 |
 
 ## cutoff
 
@@ -1379,6 +1388,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1517,6 +1527,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 781 | 751 | 16,520 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 781 | 751 | 16,520 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 781 | 751 | 16,520 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1655,6 +1666,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 751 | 802 | 16,543 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 751 | 802 | 16,543 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 751 | 802 | 16,543 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1793,6 +1805,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 2,707,643 | 806,291 | 367,497 | 475,887 | 495,092 | 13,206,001 | 9,106,240 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 2,707,644 | 806,290 | 367,497 | 476,001 | 495,158 | 13,207,470 | 9,106,306 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,707,640 | 806,290 | 367,497 | 476,070 | 495,092 | 13,205,516 | 9,105,856 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,706,243 | 806,291 | 367,497 | 475,987 | 495,184 | 13,205,791 | 9,106,157 |
 
 ## dispose-on
 
@@ -1931,6 +1944,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 346,497 | 487,948 | 8,902,786 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 346,497 | 487,818 | 8,902,204 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 346,497 | 487,896 | 8,902,665 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 346,497 | 487,971 | 8,902,523 |
 
 ## editable-edit
 
@@ -2069,6 +2083,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 181,706 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 181,706 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 181,706 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 181,706 |
 
 ## editable-upstream
 
@@ -2207,6 +2222,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 232,855 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 232,855 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 232,855 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 232,855 |
 
 ## fail-recompute
 
@@ -2345,6 +2361,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 64,938 | 1,370 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 64,938 | 1,370 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 64,938 | 1,370 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 64,877 | 1,373 |
 
 ## flight
 
@@ -2483,6 +2500,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 10,960 | 6,212 | 6,213 | 11,292 | 10,732 | 22,368 |
 
 ## keyed-insert
 
@@ -2621,6 +2639,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,921,727 | 53,917 | 54,956 | 3,277,850 | 237,685 | 175,986 | 45,082,451 | 2,634,568 | 2,655,552 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,921,759 | 53,917 | 54,982 | 3,277,703 | 237,914 | 176,028 | 45,072,296 | 2,634,492 | 2,655,510 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,921,759 | 53,917 | 54,982 | 3,277,828 | 237,503 | 175,977 | 45,072,248 | 2,634,558 | 2,655,519 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,921,745 | 53,917 | 54,966 | 3,277,789 | 237,685 | 175,953 | 45,072,218 | 2,634,548 | 2,655,599 |
 
 ## keyed-remove
 
@@ -2759,6 +2778,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,920,664 | 43,600 | 45,300 | 3,292,710 | 592,172 | 606,045 | 45,048,850 | 1,924,553 | 1,960,099 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,920,685 | 43,600 | 45,332 | 3,292,892 | 592,146 | 606,091 | 45,036,782 | 1,924,525 | 1,960,174 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,920,684 | 43,600 | 45,331 | 3,292,717 | 592,110 | 606,202 | 45,036,775 | 1,924,599 | 1,960,030 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,920,675 | 43,600 | 45,318 | 3,299,615 | 591,933 | 605,615 | 45,036,756 | 1,924,895 | 1,960,245 |
 
 ## keyed-swap
 
@@ -2897,6 +2917,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,973,355 | 46,205 | 46,927 | 3,608,560 | 148,941 | 512,562 | 46,199,028 | 915,605 | 936,174 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,973,387 | 46,205 | 46,959 | 3,634,149 | 148,931 | 512,617 | 46,199,038 | 915,616 | 936,075 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,973,356 | 46,205 | 46,928 | 3,626,999 | 148,863 | 512,662 | 46,199,035 | 915,721 | 936,082 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,973,371 | 46,205 | 46,943 | 3,631,799 | 149,609 | 514,459 | 46,198,859 | 915,644 | 936,086 |
 
 ## mvu-dispatch
 
@@ -3035,6 +3056,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 58,292 | 788 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 58,292 | 788 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 58,292 | 788 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 58,292 | 788 |
 
 ## persist-write
 
@@ -3173,6 +3195,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | — | — |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | — | — |
 
 ## project-chain
 
@@ -3311,6 +3334,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,071,784 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,071,731 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,071,692 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,077,231 |
 
 ## project-churn
 
@@ -3449,6 +3473,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 36,385 | 34,250 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 36,385 | 34,250 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 36,385 | 34,250 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 36,385 | 34,250 |
 
 ## project-edit
 
@@ -3587,6 +3612,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 50,460 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 50,492 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 50,492 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 50,491 |
 
 ## project-reorder
 
@@ -3725,6 +3751,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 780,085 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 780,116 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 780,116 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 780,083 |
 
 ## server-render
 
@@ -3863,6 +3890,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | — | — | — |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | — | — | — |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — | — |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | — | — | — |
 
 ## shape-diamond
 
@@ -4001,6 +4029,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 59,915 | 80,445 | 1,764,075 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 59,915 | 80,445 | 1,764,075 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 59,915 | 80,445 | 1,764,075 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 60,212 | 81,521 | 1,774,667 |
 
 ## shape-dynamic
 
@@ -4139,6 +4168,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 84,378 | 108,947 | 2,038,136 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 84,378 | 108,942 | 2,038,136 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 84,378 | 108,947 | 2,038,136 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4277,6 +4307,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,950 | 1,548 | 2,503 | 4,695 | 3,672 | 13,470 | 47,581 | 45,790 | 55,384 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,476 | 47,581 | 45,790 | 55,383 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,579 | 45,790 | 55,384 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,950 | 1,548 | 2,506 | 4,707 | 7,305 | 13,884 | 47,579 | 45,786 | 55,379 |
 
 ## stream-burst-16
 
@@ -4415,6 +4446,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 5,022 | 24,618 | 5,713 | 9,740 | 50,033 | 8,071 | 123,812 | 720,148 | 113,735 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 5,022 | 24,618 | 5,713 | 9,740 | 50,030 | 8,071 | 123,802 | 720,148 | 113,730 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 5,022 | 24,618 | 5,713 | 9,740 | 50,034 | 8,071 | 123,812 | 720,148 | 113,731 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 5,022 | 24,618 | 5,716 | 9,742 | 49,105 | 8,254 | 123,807 | 720,148 | 113,732 |
 
 ## stream-burst-256
 
@@ -4553,6 +4585,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 54,162 | 393,702 | 57,052 | 131,805 | 792,883 | 74,745 | 1,343,779 | 11,508,770 | 1,046,760 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 54,162 | 393,702 | 57,052 | 131,972 | 792,795 | 74,743 | 1,343,719 | 11,508,884 | 1,046,728 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 54,162 | 393,702 | 57,052 | 131,893 | 792,838 | 74,743 | 1,343,781 | 11,508,675 | 1,046,728 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 54,162 | 393,702 | 57,055 | 132,696 | 798,004 | 45,112 | 1,343,781 | 11,508,730 | 1,046,731 |
 
 ## stream-restart
 
@@ -4691,6 +4724,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 4,203 | 5,004 | 6,579 | 16,890 | 42,909 | 72,022 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 4,203 | 5,004 | 6,576 | 16,887 | 42,906 | 72,021 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 4,203 | 5,004 | 6,576 | 16,888 | 42,909 | 72,016 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 4,207 | 5,033 | 5,726 | 5,324 | 43,015 | 72,134 |
 
 ## timed-admit-both
 
@@ -4829,6 +4863,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 117,709 | 130,035 | 2,693,576 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 117,709 | 130,036 | 2,693,577 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 117,709 | 130,036 | 2,693,577 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 119,757 | 130,034 | 2,693,553 |
 
 ## timed-admit-debounce
 
@@ -4967,6 +5002,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 116,614 | 128,617 | 2,654,129 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 116,614 | 128,629 | 2,654,129 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 116,614 | 128,630 | 2,654,116 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 118,662 | 128,618 | 2,654,130 |
 
 ## timed-admit-first
 
@@ -5105,6 +5141,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 69,621 | 79,566 | 1,620,677 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 69,621 | 79,564 | 1,620,677 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 69,621 | 79,564 | 1,620,677 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 70,645 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -5243,6 +5280,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 116,876 | 128,950 | 2,663,985 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 116,876 | 128,949 | 2,663,985 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 116,876 | 128,950 | 2,663,985 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 118,924 | 128,950 | 2,663,986 |
 
 ## timed-capture-both
 
@@ -5381,6 +5419,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,740 | 44,936 | 846,286 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 35,740 | 44,936 | 846,285 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,740 | 44,936 | 846,286 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 35,740 | 44,936 | 847,075 |
 
 ## timed-capture-debounce
 
@@ -5519,6 +5558,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,612 | 44,232 | 847,657 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 35,612 | 44,232 | 847,658 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,612 | 44,232 | 847,657 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 35,612 | 44,233 | 847,657 |
 
 ## timed-capture-first
 
@@ -5657,6 +5697,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 32,092 | 36,742 | 745,651 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 32,092 | 36,741 | 745,652 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 32,092 | 36,741 | 745,651 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 32,092 | 36,742 | 745,651 |
 
 ## timed-capture-last
 
@@ -5795,6 +5836,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 35,548 | 44,169 | 839,785 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 35,548 | 44,168 | 839,785 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,548 | 44,168 | 839,787 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -5933,6 +5975,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 1,087,790 | 38,805 | 84,105 | 263,115 | 145,803 | 3,351,295 | 2,545,042 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 1,087,790 | 38,805 | 84,105 | 263,421 | 145,819 | 3,351,277 | 2,544,974 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,087,790 | 38,805 | 84,105 | 263,136 | 145,818 | 3,351,291 | 2,544,974 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,089,390 | 38,805 | 84,105 | 262,911 | 145,819 | 3,351,282 | 2,545,085 |
 
 ## update-on
 
@@ -6071,6 +6114,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 94,605 | 169,010 | 2,872,429 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 94,605 | 169,023 | 2,872,406 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 94,605 | 168,986 | 2,872,365 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 94,605 | 169,042 | 2,872,421 |
 
 ## work-form
 
@@ -6209,6 +6253,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 172,679 | 165,150 | 308,861 | 296,987 | 5,421,862 | 5,334,869 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 172,679 | 165,150 | 308,854 | 296,997 | 5,421,846 | 5,334,895 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 172,679 | 169,150 | 308,842 | 296,960 | 5,421,845 | 5,334,883 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 172,679 | 165,150 | 308,861 | 296,983 | 5,421,846 | 5,334,898 |
 
 ## work-status
 
@@ -6347,6 +6392,7 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 102,045 | 80,235 | 269,338 | 156,133 | 2,659,264 | 2,391,291 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 102,045 | 80,235 | 269,334 | 156,099 | 2,659,303 | 2,391,310 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 102,045 | 80,235 | 269,382 | 156,123 | 2,659,264 | 2,391,304 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 102,045 | 80,235 | 269,367 | 156,111 | 2,659,270 | 2,391,283 |
 
 ## work-value
 
@@ -6485,4 +6531,5 @@
 | `3debb5e` | 2026-11-03 | fix(dom): support intersection diagnostics in native AOT (#296) | 109,169 | 121,071 | 269,573 | 283,410 | 2,643,923 | 2,968,449 |
 | `59c6821` | 2026-11-03 | chore(release): allocate DOM alpha.58 (#298) | 109,169 | 121,071 | 269,627 | 283,405 | 2,643,825 | 2,968,517 |
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 109,170 | 121,069 | 269,599 | 283,399 | 2,643,921 | 2,968,402 |
+| `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 109,169 | 121,071 | 269,604 | 283,395 | 2,643,832 | 2,968,432 |
 
