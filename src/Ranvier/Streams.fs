@@ -409,20 +409,6 @@ type StreamMemo<'S>
         if freshness <> Freshness.Clean && not disposed then
             this.Pull ()
 
-    /// <summary>
-    /// <c>EnsureCurrent</c>, then links this stream into the running reader, as on <c>Memo</c>. <c>Dirty</c>, as
-    /// <c>MarkDirty</c> tells readers.
-    /// </summary>
-    member private this.TrackCurrent() =
-        if freshness <> Freshness.Clean && not disposed then
-            this.Pull ()
-            graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderDirty ()
-        else
-            graph.Track (this :> ISource)
-
     member private this.Pull() =
         graph.EnterPull ()
 
@@ -569,7 +555,8 @@ type StreamMemo<'S>
 
     /// <summary>Tracks and reads the published state; raises while it is pending or failed.</summary>
     member this.Value: 'S =
-        this.TrackCurrent ()
+        this.EnsureCurrent ()
+        graph.Track (this :> ISource)
 
         if status.HasFlag Status.Pending then
             raise (graph.NotReady (this :> INode))
@@ -581,7 +568,8 @@ type StreamMemo<'S>
 
     /// <summary>Tracks and returns the published ready, pending or failed state.</summary>
     member this.TryValue: Reading<'S> =
-        this.TrackCurrent ()
+        this.EnsureCurrent ()
+        graph.Track (this :> ISource)
 
         if status.HasFlag Status.Pending then Pending
         elif status.HasFlag Status.Error then Failed failure.Error
