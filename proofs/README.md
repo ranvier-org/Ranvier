@@ -102,8 +102,16 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `effect_mark_queues` | `Pure/Marking.v` | An effect outside disposal and cleanups ends queued, with at most one pending entry. |
 | `mark_keeps_queue_once` | `Pure/Marking.v` | All five marking operations keep `queue_once`, for every node. |
 | `disposed_effect_ignores_marks`, `in_cleanup_ignores_marks` | `Pure/Marking.v` | Such an effect's marks return the state unchanged. |
-| `in_cleanup_observer_stays_clean` | `Pure/Witnesses.v` | A memo's in-cleanup observer stays clean, which `takes_marks` excepts. Modelled in `BUGS.md`. |
+| `mark_dirty_ends_dirty` | `Pure/Marking.v` | `mark_dirty` leaves a memo or an effect in `takes_marks` `Dirty`, an already-queued effect included. |
+| `notify_dirty_ends_dirty` | `Pure/Marking.v` | `notify_dirty` and `notify_dirty_except` leave each observer in `takes_marks` `Dirty`, apart from the skipped computation. |
+| `mark_check_keeps_check` | `Pure/Marking.v` | `mark_check` and `notify_check` raise no node to `Dirty`. |
+| `memo_mark_dirty_tells_check` | `Pure/Marking.v` | `mark_dirty` of a memo raises no other node to `Dirty`. |
+| `clean_memo_keeps_unann` | `Pure/Marking.v` | The `Clean` transition starts its walk with `n_unann` unchanged. |
+| `in_cleanup_observer_stays_clean` | `Pure/Witnesses.v` | A memo's in-cleanup observer, with a coherent edge, stays clean, which `takes_marks` excepts. Modelled in `BUGS.md`. |
+| `disposed_running_observer_stays_clean` | `Pure/Witnesses.v` | An effect disposed mid-body holds an edge while running, and ignores the mark. Modelled in `BUGS.md`. |
 | `requeue_holds_two_entries` | `Pure/Witnesses.v` | A re-queued effect has two entries in `g_queue` and one in `pending`. |
+
+`Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` and removing `MarkReaderCheck` fall to Tasks 7, 9 and 11, and `wake_ok` arrives at Task 9.
 
 ## Literature
 

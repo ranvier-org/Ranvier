@@ -34,9 +34,14 @@ intended, the entry closes as "spec corrected".
   `mark_forwards_on_clean` and `mark_forwards_on_unannounced` conclude it for each observer in `takes_marks`.
   Reachable: `Effect.Run` keeps its edges through `Discharge` (Core.fs 4813-4825). Core.fs 4651-4671 documents
   the suppression as intended and not lossy, since the body runs next and reads the written value, so the entry
-  is expected to close as "spec corrected". A disposed effect is excepted as well, and `DetachSources` (4900)
-  leaves it with no edge. Task 7 runs the witness against the F# in `Scenarios.fsx`: an effect reads a memo over a
-  signal, and its cleanup writes that signal.
+  is expected to close as "spec corrected". Task 7 runs the witness against the F# in `Scenarios.fsx`: an effect
+  reads a memo over a signal, and its cleanup writes that signal.
+- `disposed_running_observer_stays_clean` (`theories/Pure/Witnesses.v`): a disposed effect can hold an edge and
+  ignore the mark, so `takes_marks` excepts it too. An effect that disposes itself mid-body keeps running:
+  `Track` (3420) and `AddSource` (4737) have no disposed test, so a later read links an edge, and the `finally` at
+  4854-4855 clears it. This matches the spec's "once its run has ended". The case is covered by the running
+  disjunct of "stale, queued or running", and not by `takes_marks`. Task 7 runs the witness against the F# in
+  `Scenarios.fsx`: an effect disposes itself, reads a memo over a signal, and writes that signal.
 
 ## Confirmed
 

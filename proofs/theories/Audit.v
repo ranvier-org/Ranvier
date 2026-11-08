@@ -82,5 +82,11 @@ Print Assumptions effect_mark_queues.
 Print Assumptions mark_keeps_queue_once.
 Print Assumptions disposed_effect_ignores_marks.
 Print Assumptions in_cleanup_ignores_marks.
+Print Assumptions mark_dirty_ends_dirty.
+Print Assumptions notify_dirty_ends_dirty.
+Print Assumptions mark_check_keeps_check.
+Print Assumptions memo_mark_dirty_tells_check.
+Print Assumptions clean_memo_keeps_unann.
 Print Assumptions in_cleanup_observer_stays_clean.
+Print Assumptions disposed_running_observer_stays_clean.
 Print Assumptions requeue_holds_two_entries.

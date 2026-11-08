@@ -4,7 +4,7 @@ From Ranvier.Pure Require Import ObserverSet SourceList State.
 
 (** ** Marks *)
 
-(** [d] with the three fields a mark writes replaced. *)
+(** A copy of [d] with new values of [n_fresh], [n_unann] and [n_queued]. *)
 Definition node_marked (f : fresh) (u q : bool) (d : node) : node :=
   {| n_kind := n_kind d; n_value := n_value d; n_failure := n_failure d; n_status := n_status d;
      n_fresh := f; n_unann := u; n_runs := n_runs d; n_published := n_published d;
@@ -130,7 +130,8 @@ Definition mark_score (d : node) : nat :=
 Definition nodes_score (m : gmap nid node) : nat :=
   sum_list (mark_score ∘ snd <$> map_to_list m).
 
-(** The walks a sequence of marks can still start. *)
+(** Bound on the walks started by later marks: one per memo in [Clean], one per memo holding an
+    announcement. *)
 Definition mark_measure (s : state) : nat := nodes_score (g_nodes s).
 
 (** ** The primitive steps *)
@@ -335,10 +336,8 @@ Proof.
   - destruct Hu as [-> | ->]; [lia|destruct (n_unann d); lia].
 Qed.
 
-Lemma score_effect d f u q : n_kind d = KEffect -> mark_score (node_marked f u q d) = 0.
-Proof. intros Hk. unfold mark_score. simpl. by rewrite Hk. Qed.
 
-Lemma score_effect_kind d : n_kind d = KEffect -> mark_score d = 0.
+Lemma score_effect d : n_kind d = KEffect -> mark_score d = 0.
 Proof. intros Hk. unfold mark_score. by rewrite Hk. Qed.
 
 Lemma prim_measure s s' : mark_prim s s' -> mark_measure s' <= mark_measure s.
@@ -348,9 +347,9 @@ Proof.
   - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f u (n_queued d) d) Hd).
     pose proof (score_marked_le d f u (n_queued d) Hf Hu). lia.
   - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unann d) true d) Hd).
-    rewrite score_effect, score_effect_kind in * by done. lia.
+    rewrite (score_effect (node_marked f (n_unann d) true d)), (score_effect d) in * by done. lia.
   - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unann d) true d) Hd).
-    rewrite score_effect, score_effect_kind in * by done. lia.
+    rewrite (score_effect (node_marked f (n_unann d) true d)), (score_effect d) in * by done. lia.
 Qed.
 
 Lemma marks_measure s s' : marks s s' -> mark_measure s' <= mark_measure s.
@@ -572,8 +571,9 @@ Proof. rewrite !list_elem_of_In. apply in_rev. Qed.
 
 (** ** Forwarding *)
 
-(** A computation whose freshness a mark moves: a memo, or an effect outside its disposal and its
-    cleanups. [in_cleanup_observer_stays_clean] in [Pure/Witnesses.v] is an observer outside this. *)
+(** The computations affected by a mark: a memo, or an effect outside its disposal and its cleanups.
+    [in_cleanup_observer_stays_clean] and [disposed_running_observer_stays_clean] show observers
+    outside this set. *)
 Definition takes_marks (s : state) (m : nid) : Prop :=
   exists d, g_nodes s !! m = Some d /\
     (n_kind d = KMemo \/ (n_kind d = KEffect /\ n_disposed d = false /\ n_in_cleanup d = false)).
@@ -642,6 +642,21 @@ Proof.
   - simplify_eq. by apply effect_marked_stale.
 Qed.
 
+Lemma notify_with_reaches (P : state -> Prop) (mark : nid -> state -> option state) src s s' m :
+  (forall s0 s1, marks s0 s1 -> P s0 -> P s1) ->
+  (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
+  (forall s0 s1, takes_marks s0 m -> mark m s0 = Some s1 -> P s1) ->
+  notify_with mark src s = Some s' ->
+  m ∈ obs_view (obs_of (g_edges s) src) ->
+  takes_marks s m ->
+  P s'.
+Proof.
+  intros Hp Hr Hst Hn Hin Ht. rewrite notify_with_list in Hn by done.
+  destruct (mark_list_visit _ _ _ _ m Hr Hn (elem_rev _ _ Hin))
+    as (s1 & s2 & H1 & H2 & H3).
+  eapply Hp; [done|]. eapply Hst; [|done]. by eapply marks_takes.
+Qed.
+
 Lemma notify_with_stale (mark : nid -> state -> option state) src s s' m :
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
   (forall s0 s1, takes_marks s0 m -> mark m s0 = Some s1 -> ends_stale s1 m) ->
@@ -650,10 +665,7 @@ Lemma notify_with_stale (mark : nid -> state -> option state) src s s' m :
   takes_marks s m ->
   ends_stale s' m.
 Proof.
-  intros Hr Hst Hn Hin Ht. rewrite notify_with_list in Hn by done.
-  destruct (mark_list_visit _ _ _ _ m Hr Hn (elem_rev _ _ Hin))
-    as (s1 & s2 & H1 & H2 & H3).
-  eapply marks_stale; [done|]. eapply Hst; [|done]. by eapply marks_takes.
+  apply (notify_with_reaches (fun s0 => ends_stale s0 m)). intros ???. by eapply marks_stale.
 Qed.
 
 (** Each walk leaves each observer that takes marks stale, with the running computation excepted from
@@ -886,4 +898,168 @@ Theorem in_cleanup_ignores_marks fuel n d s :
   mark_check (S fuel) n s = Some s /\ mark_dirty (S fuel) n s = Some s.
 Proof.
   intros Hd Hk Hcl. simpl. rewrite Hd, Hk. unfold effect_marked. rewrite Hcl, orb_true_r. done.
+Qed.
+
+(** ** What separates [mark_dirty] from [mark_check] *)
+
+Definition ends_dirty (s : state) (m : nid) : Prop :=
+  exists d, g_nodes s !! m = Some d /\ n_fresh d = Dirty.
+
+Lemma marks_dirty s s' m : marks s s' -> ends_dirty s m -> ends_dirty s' m.
+Proof.
+  intros Hr (d & Hd & Hf). destruct (marks_rises _ _ _ _ Hr Hd) as (d' & Hd' & _ & _ & _ & Hle & _).
+  exists d'. split; [done|]. rewrite Hf in Hle. destruct (n_fresh d'); [| |done];
+    unfold fresh_le in Hle; simpl in Hle; lia.
+Qed.
+
+Lemma set_node_dirty s n d : n_fresh d = Dirty -> ends_dirty (set_node n d s) n.
+Proof. intros Hf. exists d. split; [apply lookup_insert_eq|done]. Qed.
+
+(** A memo, or an effect outside its disposal and cleanups, ends [Dirty]. An effect already queued on
+    [Check] upgrades, and [Execute] reads the upgrade to decide whether to run. *)
+Theorem mark_dirty_ends_dirty fuel n s s' :
+  takes_marks s n -> mark_dirty fuel n s = Some s' -> ends_dirty s' n.
+Proof.
+  intros (d & Hd & Hk) Hc.
+  destruct fuel as [|f]; simpl in Hc; [done|]. rewrite Hd in Hc.
+  destruct Hk as [Hk|(Hk & Hdi & Hcl)]; rewrite Hk in Hc.
+  - destruct (decide (n_fresh d = Clean)).
+    { eapply marks_dirty; [by eapply notify_with_rtc_check|]. by apply set_node_dirty. }
+    destruct (announce_due s d).
+    { eapply marks_dirty; [by eapply notify_with_rtc_check|]. by apply set_node_dirty. }
+    destruct (decide (n_fresh d = Dirty)); simplify_eq; [by exists d|]. by apply set_node_dirty.
+  - simplify_eq. unfold effect_marked. rewrite Hdi, Hcl. simpl.
+    destruct (n_queued d); by apply set_node_dirty.
+Qed.
+
+(** Each dirty walk leaves each observer that takes marks [Dirty], with the running computation excepted
+    from [notify_dirty_except]. *)
+Theorem notify_dirty_ends_dirty fuel src r s s' m :
+  m ∈ obs_view (obs_of (g_edges s) src) ->
+  takes_marks s m ->
+  (notify_dirty fuel src s = Some s' \/
+   (notify_dirty_except fuel src r s = Some s' /\ r <> Some m)) ->
+  ends_dirty s' m.
+Proof.
+  intros Hin Ht [Hn|[Hn Hne]].
+  - eapply (notify_with_reaches (fun s0 => ends_dirty s0 m));
+      [intros ???; by eapply marks_dirty|intros ???; apply mark_dirty_rtc|
+       intros ??; apply mark_dirty_ends_dirty|done|done|done].
+  - eapply (notify_with_reaches (fun s0 => ends_dirty s0 m));
+      [intros ???; by eapply marks_dirty|intros ???; apply mark_except_rtc| |done|done|done].
+    intros s0 s1 Ht0. unfold mark_except. rewrite decide_False by done. by apply mark_dirty_ends_dirty.
+Qed.
+
+(** Every node of [s] is present in [s'], and is [Dirty] in [s'] only if it was in [s]. *)
+Definition keeps_undirty (s s' : state) : Prop :=
+  forall m d, g_nodes s !! m = Some d ->
+    exists d', g_nodes s' !! m = Some d' /\ (n_fresh d' = Dirty -> n_fresh d = Dirty).
+
+Lemma keeps_undirty_refl s : keeps_undirty s s.
+Proof. intros m d Hd. eauto. Qed.
+
+Lemma keeps_undirty_trans s1 s2 s3 :
+  keeps_undirty s1 s2 -> keeps_undirty s2 s3 -> keeps_undirty s1 s3.
+Proof.
+  intros H1 H2 m d Hd. destruct (H1 _ _ Hd) as (d2 & Hd2 & Hf2).
+  destruct (H2 _ _ Hd2) as (d3 & Hd3 & Hf3). eauto.
+Qed.
+
+Lemma set_node_undirty s n d f u q :
+  g_nodes s !! n = Some d -> (f = Dirty -> n_fresh d = Dirty) ->
+  keeps_undirty s (set_node n (node_marked f u q d) s).
+Proof.
+  intros Hd Hf m d0 Hm. simpl. destruct (decide (m = n)) as [->|Hne].
+  - rewrite lookup_insert_eq. rewrite Hd in Hm. simplify_eq. eauto.
+  - rewrite lookup_insert_ne by done. eauto.
+Qed.
+
+Lemma walk_undirty (mark : nid -> state -> option state) src n s s' :
+  (forall c s0 s1, mark c s0 = Some s1 -> keeps_undirty s0 s1) ->
+  walk_marks mark src n s = Some s' ->
+  keeps_undirty s s'.
+Proof.
+  intros Hm. revert s. induction n as [|i IH]; intros s Hw; simpl in Hw.
+  - simplify_eq. apply keeps_undirty_refl.
+  - destruct (decide _) as [_|_]; [by apply IH|].
+    destruct (oitems (obs_of (g_edges s) src) !! i) as [[c ?]|]; [|done].
+    destruct (mark c s) as [s1|] eqn:Ec; simpl in Hw; [|done].
+    eapply keeps_undirty_trans; [by eapply Hm|by apply IH].
+Qed.
+
+Lemma mark_check_undirty f n s s' : mark_check f n s = Some s' -> keeps_undirty s s'.
+Proof.
+  revert n s s'. induction f as [|f IH]; intros n s s' Hm; simpl in Hm; [done|].
+  destruct (g_nodes s !! n) as [d|] eqn:Hd; [|simplify_eq; apply keeps_undirty_refl].
+  destruct (n_kind d).
+  - simplify_eq. apply keeps_undirty_refl.
+  - destruct (decide (n_fresh d = Clean)).
+    { eapply keeps_undirty_trans;
+        [|eapply (walk_undirty (mark_check f)); [intros ???; apply IH|exact Hm]].
+      apply set_node_undirty; [done|by intros]. }
+    destruct (announce_due s d); [|simplify_eq; apply keeps_undirty_refl].
+    eapply keeps_undirty_trans;
+      [|eapply (walk_undirty (mark_check f)); [intros ???; apply IH|exact Hm]].
+    apply set_node_undirty; [done|by intros].
+  - simplify_eq. unfold effect_marked.
+    assert (Hup : keeps_undirty s (set_node n (node_marked
+                    (if decide (n_fresh d = Clean) then Check else n_fresh d) (n_unann d) true d) s)).
+    { apply set_node_undirty; [done|]. destruct (decide _); by intros. }
+    destruct (_ || _); [apply keeps_undirty_refl|].
+    destruct (n_queued d); exact Hup.
+Qed.
+
+(** [mark_check] and [notify_check] leave short of [Dirty] every node that started short of it. With
+    [mark_monotone], a [Check] stays [Check], and its resolution can stop at the cutoff. *)
+Theorem mark_check_keeps_check fuel n s s' m d :
+  (mark_check fuel n s = Some s' \/ notify_check fuel n s = Some s') ->
+  g_nodes s !! m = Some d ->
+  n_fresh d <> Dirty ->
+  exists d', g_nodes s' !! m = Some d' /\ n_fresh d' <> Dirty.
+Proof.
+  intros Hc Hm Hf.
+  assert (Hk : keeps_undirty s s').
+  { destruct Hc as [Hc|Hc]; [by eapply mark_check_undirty|].
+    eapply (walk_undirty (mark_check fuel)); [intros ???; apply mark_check_undirty|exact Hc]. }
+  destruct (Hk _ _ Hm) as (d' & Hd' & Hd). exists d'. split; [done|]. intros Hx. by apply Hf, Hd.
+Qed.
+
+(** [mark_dirty] of a memo tells its observers [Check]: every other node stays short of [Dirty]. *)
+Theorem memo_mark_dirty_tells_check fuel n d s s' m d0 :
+  g_nodes s !! n = Some d ->
+  n_kind d = KMemo ->
+  mark_dirty fuel n s = Some s' ->
+  m <> n ->
+  g_nodes s !! m = Some d0 ->
+  n_fresh d0 <> Dirty ->
+  exists d', g_nodes s' !! m = Some d' /\ n_fresh d' <> Dirty.
+Proof.
+  intros Hd Hk Hc Hne Hm Hf.
+  assert (Hset : forall f u q, g_nodes (set_node n (node_marked f u q d) s) !! m = Some d0).
+  { intros. simpl. by rewrite lookup_insert_ne. }
+  assert (Hwalk : forall f g u,
+            notify_with (mark_check f) n (set_node n (node_marked g u (n_queued d) d) s) = Some s' ->
+            exists d', g_nodes s' !! m = Some d' /\ n_fresh d' <> Dirty).
+  { intros f g u Hn. eapply (mark_check_keeps_check f n); [right; exact Hn|apply Hset|done]. }
+  destruct fuel as [|f]; simpl in Hc; [done|]. rewrite Hd, Hk in Hc.
+  destruct (decide (n_fresh d = Clean)); [by eapply Hwalk|].
+  destruct (announce_due s d); [by eapply Hwalk|].
+  destruct (decide (n_fresh d = Dirty)); simplify_eq; [by exists d0|].
+  exists d0. split; [apply Hset|done].
+Qed.
+
+(** The [Clean] transition starts its walk with [n_unann] unchanged. A walk that reaches the memo again
+    spends the announcement. *)
+Theorem clean_memo_keeps_unann fuel n d s :
+  g_nodes s !! n = Some d ->
+  n_kind d = KMemo ->
+  n_fresh d = Clean ->
+  mark_check (S fuel) n s =
+    notify_with (mark_check fuel) n (set_node n (node_marked Check (n_unann d) (n_queued d) d) s) /\
+  mark_dirty (S fuel) n s =
+    notify_with (mark_check fuel) n (set_node n (node_marked Dirty (n_unann d) (n_queued d) d) s).
+Proof.
+  intros Hd Hk Hc. split.
+  - simpl. rewrite Hd, Hk, decide_True by done. reflexivity.
+  - unfold mark_dirty. simpl. rewrite Hd, Hk, decide_True by done. reflexivity.
 Qed.
