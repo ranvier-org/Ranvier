@@ -17,6 +17,9 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 - `theories/Reference/Semantics.v`: the meaning of a program and an input history, observations and
   the refinement relation.
 - `theories/Reference/Properties.v`: determinism, glitch freedom, refinement, redundancy, examples.
+- `theories/Pure/ObserverSet.v`: `ObserverSet`, and the backward re-clamped walk.
+- `theories/Pure/SourceList.v`: `SourceList` over both ends of every edge, and the edge invariants.
+- `theories/Pure/Witnesses.v`: checked counterexamples and behaviour witnesses.
 - `theories/Audit.v`: one `Print Assumptions` per theorem; `check.sh` reads it.
 - `BUGS.md`: defect ledger. `CORRESPONDENCE.md`: model-to-F# map.
 
@@ -54,6 +57,27 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `order_varies_by_round` | `Reference/Properties.v` | The effect order can differ between rounds of a history. |
 | `redundant_run_settled_equal` | `Reference/Properties.v` | On the cleanup-free `resetting` program, traces differing by a redundant run have equal `obs_settled`. |
 | `redundant_run_full_differs` | `Reference/Properties.v` | The same traces have unequal `obs_full`. |
+| `obs_add_position` | `Pure/ObserverSet.v` | The handle is the position, the view appends, and `olatest` is the handle. |
+| `obs_remove_at_swap` | `Pure/ObserverSet.v` | The last observer moves into the hole and the notice names it. Removing the last gives no notice. |
+| `obs_remove_mismatch` | `Pure/ObserverSet.v` | A handle holding another observer, or none, gives `None`. |
+| `obs_try_add_cases` | `Pure/ObserverSet.v` | At or below `scan_limit`, `TUnknown` is impossible and `TUnlinked` holds exactly when the observer is held. |
+| `walk_covers` | `Pure/ObserverSet.v` | An observer held exactly once at every point of a walk is visited, under any mutations. |
+| `walk_visits_only_seen` | `Pure/ObserverSet.v` | Each visited observer was present at its visit. |
+| `sl_add_positional` | `Pure/SourceList.v` | A read matching the cursor's slot advances the cursor and leaves every edge unchanged. |
+| `sl_add_repeat` | `Pure/SourceList.v` | A read of the source just matched leaves the world unchanged. |
+| `sl_add_truncates` | `Pure/SourceList.v` | A miss drops every slot from the cursor and the edges they held, then appends. |
+| `sl_no_duplicate_edge` | `Pure/SourceList.v` | In a reachable world, a slot holds an edge exactly when it is its source's first slot. |
+| `observer_held_once` | `Pure/SourceList.v` | In a reachable world, an observer occupies at most one position of a source's observers. |
+| `trim_moves_only_others` | `Pure/SourceList.v` | With one edge per source, a removal moves only another computation's edge. |
+| `sl_trim_moves_own_edge` | `Pure/SourceList.v` | Review Focus 4: for A, B, A with two A edges, the later handle is read after the move, and a clear removes every edge. |
+| `sl_add_unknown_no_duplicate` | `Pure/SourceList.v` | Review Focus 5: above the limit with a stale `olatest`, the answer is `TUnknown` and the source ends with one edge. |
+| `unknown_held`, `unknown_unheld` | `Pure/SourceList.v` | Runs reaching that case, with and without an earlier slot. |
+| `aba_reachable_trim` | `Pure/SourceList.v` | A, B, A from a run: a trim moves another observer's edge, and its slot follows. |
+| `aba_world_premises` | `Pure/SourceList.v` | A concrete world meets the premises of `sl_trim_moves_own_edge`. |
+| `snapshot_trim_fails` | `Pure/SourceList.v` | Handles read before the removals fail on that world. |
+| `walk_covers_duplicate_observer` | `Pure/Witnesses.v` | An observer held twice can be missed though present throughout. |
+| `walk_visits_moved_twice` | `Pure/Witnesses.v` | A moved observer is visited twice. |
+| `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. |
 
 ## Literature
 

@@ -43,6 +43,14 @@ intended, the entry closes as "spec corrected".
 
 ## Closed
 
+- `walk_covers_duplicate_observer` (`theories/Pure/Witnesses.v`), spec corrected. The first statement of
+  `walk_covers` asked only that the observer be present at every point. That is false for an observer
+  held at two positions: the walk can miss it. `ObserverSet` documents each observer as held at most once
+  (Core.fs 190), and `SourceList` is the only caller of `AddObserver` (744, 769). `observer_held_once`
+  proves that of every reachable world, so `walk_covers` now takes `held_once` at every point. Not run
+  against the F#: a duplicate has no route through `SourceList`, so no `Scenarios.fsx` scenario can build
+  one.
+
 ## Definition changes
 
 Changes to `redundant` from its first statement in the plan.

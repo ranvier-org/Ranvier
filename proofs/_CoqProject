@@ -4,4 +4,7 @@ theories/Base/Prelude.v
 theories/Base/Syntax.v
 theories/Reference/Semantics.v
 theories/Reference/Properties.v
+theories/Pure/ObserverSet.v
+theories/Pure/SourceList.v
+theories/Pure/Witnesses.v
 theories/Audit.v

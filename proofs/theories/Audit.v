@@ -1,5 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
 
@@ -34,3 +35,25 @@ Print Assumptions host_read_sees_earlier_write.
 Print Assumptions host_read_then_dispose_memo.
 Print Assumptions dropped_write_unobserved_before_read.
 Print Assumptions dropped_write_observed_by_host_read.
+Print Assumptions obs_add_position.
+Print Assumptions obs_remove_at_swap.
+Print Assumptions obs_remove_mismatch.
+Print Assumptions obs_try_add_cases.
+Print Assumptions walk_covers.
+Print Assumptions walk_visits_only_seen.
+Print Assumptions sl_add_positional.
+Print Assumptions sl_add_repeat.
+Print Assumptions sl_add_truncates.
+Print Assumptions sl_no_duplicate_edge.
+Print Assumptions sl_trim_moves_own_edge.
+Print Assumptions sl_add_unknown_no_duplicate.
+Print Assumptions observer_held_once.
+Print Assumptions trim_moves_only_others.
+Print Assumptions unknown_held.
+Print Assumptions unknown_unheld.
+Print Assumptions aba_reachable_trim.
+Print Assumptions aba_world_premises.
+Print Assumptions snapshot_trim_fails.
+Print Assumptions walk_covers_duplicate_observer.
+Print Assumptions walk_visits_moved_twice.
+Print Assumptions walk_visits_added_observer.
