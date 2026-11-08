@@ -139,6 +139,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 83,362 | 127,572 | 1,742,182 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 83,402 | 126,798 | 1,744,256 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 83,367 | 126,768 | 1,744,387 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 83,472 | 127,076 | 1,751,049 |
 
 ## app-table
 
@@ -279,6 +280,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 4,417,658 | 9,383,689 | 107,872,666 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 4,431,346 | 9,449,039 | 108,016,225 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 4,431,486 | 9,354,616 | 107,989,834 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 4,436,368 | 9,346,352 | 107,994,402 |
 
 ## async-recover
 
@@ -419,6 +421,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 139,139 | 41,270 | 434,867 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 139,087 | 41,264 | 434,863 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 139,175 | 41,261 | 434,862 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 139,123 | 41,385 | 435,918 |
 
 ## async-resolve
 
@@ -559,6 +562,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,790,467 | 1,023,129 | 11,967,000 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,788,128 | 1,022,847 | 11,970,368 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,791,327 | 1,022,933 | 11,970,236 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,789,437 | 1,002,119 | 12,001,293 |
 
 ## chain
 
@@ -699,6 +703,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 13,099 | 318 | 2,454 | 4,491 | 3,218 | 72,781 | 66,827 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 13,035 | 318 | 2,457 | 4,491 | 3,173 | 72,781 | 66,934 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 13,035 | 318 | 2,457 | 4,491 | 3,173 | 72,781 | 66,934 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,779 | 67,991 |
 
 ## chain-affinity
 
@@ -839,6 +844,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,553 | 3,071 | 2,500 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,556 | 3,074 | 2,503 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,556 | 3,074 | 2,503 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,578 | 3,096 | 2,525 |
 
 ## control
 
@@ -979,6 +985,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 74,710 | 836,491 | 2,603,186 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 74,710 | 836,468 | 2,602,868 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 74,710 | 839,887 | 2,598,328 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 74,710 | 839,916 | 2,599,746 |
 
 ## create
 
@@ -1119,6 +1126,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 13,448,252 | 2,865,678 | 2,570,368 | 2,127,930 | 4,044,770 | 34,068,032 | 50,420,056 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 13,448,224 | 2,865,677 | 2,570,368 | 2,128,085 | 4,045,596 | 34,074,136 | 50,439,707 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 13,448,272 | 2,861,677 | 2,570,368 | 2,127,335 | 4,045,335 | 34,034,704 | 50,427,819 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 13,448,320 | 2,861,677 | 2,570,368 | 2,127,029 | 4,045,288 | 34,034,540 | 50,427,542 |
 
 ## create-on
 
@@ -1259,6 +1267,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,981,484 | 4,179,863 | 55,229,069 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,949,484 | 4,179,676 | 55,229,107 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,949,484 | 4,179,831 | 55,228,833 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,965,484 | 4,179,738 | 55,228,826 |
 
 ## cutoff
 
@@ -1399,6 +1408,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1539,6 +1549,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 781 | 751 | 16,520 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 781 | 751 | 16,520 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 781 | 751 | 16,520 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1679,6 +1690,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 751 | 802 | 16,543 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 751 | 802 | 16,543 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 751 | 802 | 16,543 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 767 | 802 | 16,543 |
 
 ## dispose
 
@@ -1819,6 +1831,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 2,707,640 | 806,290 | 367,497 | 476,070 | 495,092 | 13,205,516 | 9,105,856 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 2,706,243 | 806,291 | 367,497 | 475,987 | 495,184 | 13,205,791 | 9,106,157 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,707,641 | 806,291 | 367,497 | 476,112 | 494,942 | 13,205,966 | 9,105,898 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,706,242 | 806,291 | 367,497 | 475,912 | 495,063 | 13,207,421 | 9,105,864 |
 
 ## dispose-on
 
@@ -1959,6 +1972,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 346,497 | 487,896 | 8,902,665 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 346,497 | 487,971 | 8,902,523 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 346,497 | 487,810 | 8,902,684 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 346,497 | 488,010 | 8,902,473 |
 
 ## editable-edit
 
@@ -2099,6 +2113,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 181,706 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 181,706 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 181,706 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 182,106 |
 
 ## editable-upstream
 
@@ -2239,6 +2254,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 232,855 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 232,855 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 232,855 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 233,855 |
 
 ## fail-recompute
 
@@ -2379,6 +2395,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 64,938 | 1,370 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 64,877 | 1,373 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 64,941 | 1,373 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 64,895 | 1,383 |
 
 ## flight
 
@@ -2519,6 +2536,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 10,949 | 6,197 | 6,198 | 11,271 | 10,717 | 22,353 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 10,960 | 6,212 | 6,213 | 11,292 | 10,732 | 22,368 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 10,964 | 6,212 | 6,213 | 11,292 | 10,732 | 22,368 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 
 ## keyed-insert
 
@@ -2659,6 +2677,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,921,759 | 53,917 | 54,982 | 3,277,828 | 237,503 | 175,977 | 45,072,248 | 2,634,558 | 2,655,519 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,921,745 | 53,917 | 54,966 | 3,277,789 | 237,685 | 175,953 | 45,072,218 | 2,634,548 | 2,655,599 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,921,729 | 53,917 | 54,961 | 3,277,646 | 237,740 | 175,910 | 45,095,928 | 2,634,743 | 2,655,606 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,925,731 | 53,917 | 54,960 | 3,280,002 | 660,378 | 243,099 | 45,313,167 | 2,634,661 | 2,655,749 |
 
 ## keyed-remove
 
@@ -2799,6 +2818,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,920,684 | 43,600 | 45,331 | 3,292,717 | 592,110 | 606,202 | 45,036,775 | 1,924,599 | 1,960,030 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,920,675 | 43,600 | 45,318 | 3,299,615 | 591,933 | 605,615 | 45,036,756 | 1,924,895 | 1,960,245 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,920,672 | 43,600 | 45,302 | 3,299,680 | 591,911 | 606,036 | 45,051,184 | 1,924,671 | 1,960,222 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,924,662 | 43,600 | 45,304 | 3,284,123 | 595,995 | 602,228 | 45,268,308 | 1,924,733 | 1,960,386 |
 
 ## keyed-swap
 
@@ -2939,6 +2959,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,973,356 | 46,205 | 46,928 | 3,626,999 | 148,863 | 512,662 | 46,199,035 | 915,721 | 936,082 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,973,371 | 46,205 | 46,943 | 3,631,799 | 149,609 | 514,459 | 46,198,859 | 915,644 | 936,086 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,973,355 | 46,205 | 46,927 | 3,630,161 | 149,240 | 513,562 | 46,212,794 | 915,647 | 936,121 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,977,355 | 46,205 | 46,927 | 3,650,183 | 147,932 | 508,942 | 46,429,291 | 915,636 | 935,766 |
 
 ## mvu-dispatch
 
@@ -3079,6 +3100,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 58,292 | 788 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 58,292 | 788 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 58,292 | 788 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 58,548 | 788 |
 
 ## persist-write
 
@@ -3219,6 +3241,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | — | — |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | — | — |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — |
 
 ## project-chain
 
@@ -3359,6 +3382,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,071,692 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,077,231 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,077,249 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,077,312 |
 
 ## project-churn
 
@@ -3499,6 +3523,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 36,385 | 34,250 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 36,385 | 34,250 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 36,385 | 34,263 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 36,386 | 34,251 |
 
 ## project-edit
 
@@ -3639,6 +3664,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 50,492 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 50,491 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 50,493 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 50,495 |
 
 ## project-reorder
 
@@ -3779,6 +3805,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 780,116 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 780,083 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 780,084 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 780,083 |
 
 ## server-render
 
@@ -3919,6 +3946,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | — | — | — |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | — | — | — |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | — | — | — |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — | — |
 
 ## shape-diamond
 
@@ -4059,6 +4087,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 59,915 | 80,445 | 1,764,075 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 60,212 | 81,521 | 1,774,667 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 60,212 | 81,521 | 1,774,667 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 60,816 | 82,845 | 1,802,883 |
 
 ## shape-dynamic
 
@@ -4199,6 +4228,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 84,378 | 108,947 | 2,038,136 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 84,378 | 108,947 | 2,038,136 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 84,378 | 108,947 | 2,038,136 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4339,6 +4369,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,950 | 1,548 | 2,503 | 4,696 | 3,672 | 13,470 | 47,579 | 45,790 | 55,384 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,950 | 1,548 | 2,506 | 4,707 | 7,305 | 13,884 | 47,579 | 45,786 | 55,379 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,950 | 1,548 | 2,505 | 4,703 | 7,305 | 13,878 | 47,579 | 45,786 | 55,381 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,048 | 47,796 | 46,003 | 55,600 |
 
 ## stream-burst-16
 
@@ -4479,6 +4510,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 5,022 | 24,618 | 5,713 | 9,740 | 50,034 | 8,071 | 123,812 | 720,148 | 113,731 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 5,022 | 24,618 | 5,716 | 9,742 | 49,105 | 8,254 | 123,807 | 720,148 | 113,732 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 5,022 | 24,618 | 5,715 | 9,744 | 49,105 | 8,253 | 123,811 | 720,148 | 113,733 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 5,056 | 24,682 | 5,719 | 9,818 | 49,282 | 8,192 | 124,966 | 723,620 | 113,950 |
 
 ## stream-burst-256
 
@@ -4619,6 +4651,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 54,162 | 393,702 | 57,052 | 131,893 | 792,838 | 74,743 | 1,343,781 | 11,508,675 | 1,046,728 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 54,162 | 393,702 | 57,055 | 132,696 | 798,004 | 45,112 | 1,343,781 | 11,508,730 | 1,046,731 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 54,162 | 393,702 | 57,054 | 132,673 | 797,953 | 45,138 | 1,343,781 | 11,508,728 | 1,046,728 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 54,676 | 394,726 | 57,058 | 133,543 | 800,308 | 45,152 | 1,359,966 | 11,564,280 | 1,046,887 |
 
 ## stream-restart
 
@@ -4759,6 +4792,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 4,203 | 5,004 | 6,576 | 16,888 | 42,909 | 72,016 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 4,207 | 5,033 | 5,726 | 5,324 | 43,015 | 72,134 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 4,209 | 5,035 | 5,729 | 5,327 | 43,015 | 72,135 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 4,216 | 5,040 | 5,740 | 5,334 | 43,390 | 72,512 |
 
 ## timed-admit-both
 
@@ -4899,6 +4933,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 117,709 | 130,036 | 2,693,577 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 119,757 | 130,034 | 2,693,553 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 117,709 | 130,037 | 2,693,830 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 117,709 | 130,037 | 2,693,850 |
 
 ## timed-admit-debounce
 
@@ -5039,6 +5074,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 116,614 | 128,630 | 2,654,116 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 118,662 | 128,618 | 2,654,130 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 116,614 | 128,619 | 2,654,132 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 116,614 | 128,619 | 2,654,132 |
 
 ## timed-admit-first
 
@@ -5179,6 +5215,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 69,621 | 79,564 | 1,620,677 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 70,645 | 79,565 | 1,620,678 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 69,621 | 79,565 | 1,620,678 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 69,621 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -5319,6 +5356,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 116,876 | 128,950 | 2,663,985 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 118,924 | 128,950 | 2,663,986 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 116,876 | 128,937 | 2,663,988 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 116,876 | 128,939 | 2,663,988 |
 
 ## timed-capture-both
 
@@ -5459,6 +5497,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,740 | 44,936 | 846,286 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 35,740 | 44,936 | 847,075 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 35,740 | 44,936 | 847,273 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,740 | 44,936 | 847,271 |
 
 ## timed-capture-debounce
 
@@ -5599,6 +5638,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,612 | 44,232 | 847,657 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 35,612 | 44,233 | 847,657 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 35,612 | 44,232 | 847,657 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5739,6 +5779,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 32,092 | 36,741 | 745,651 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 32,092 | 36,742 | 745,651 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 32,092 | 36,741 | 745,651 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -5879,6 +5920,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 35,548 | 44,168 | 839,787 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 35,548 | 44,168 | 839,785 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 35,548 | 44,168 | 839,785 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,548 | 44,169 | 839,785 |
 
 ## update
 
@@ -6019,6 +6061,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 1,087,790 | 38,805 | 84,105 | 263,136 | 145,818 | 3,351,291 | 2,544,974 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 1,089,390 | 38,805 | 84,105 | 262,911 | 145,819 | 3,351,282 | 2,545,085 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,781 | 3,351,295 | 2,545,097 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,087,783 | 38,805 | 84,105 | 263,101 | 145,791 | 3,351,293 | 2,545,076 |
 
 ## update-on
 
@@ -6159,6 +6202,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 94,605 | 168,986 | 2,872,365 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 94,605 | 169,042 | 2,872,421 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 94,605 | 169,036 | 2,872,451 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 96,205 | 169,022 | 2,872,468 |
 
 ## work-form
 
@@ -6299,6 +6343,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 172,679 | 169,150 | 308,842 | 296,960 | 5,421,845 | 5,334,883 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 172,679 | 165,150 | 308,861 | 296,983 | 5,421,846 | 5,334,898 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 172,679 | 165,150 | 308,861 | 296,993 | 5,421,850 | 5,334,910 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 172,679 | 165,150 | 308,860 | 296,991 | 5,421,847 | 5,334,916 |
 
 ## work-status
 
@@ -6439,6 +6484,7 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 102,045 | 80,235 | 269,382 | 156,123 | 2,659,264 | 2,391,304 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 102,045 | 80,235 | 269,367 | 156,111 | 2,659,270 | 2,391,283 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 102,045 | 80,235 | 269,333 | 156,135 | 2,659,266 | 2,391,299 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 102,045 | 81,835 | 269,342 | 156,127 | 2,659,268 | 2,391,317 |
 
 ## work-value
 
@@ -6579,4 +6625,5 @@
 | `aca4d73` | 2026-11-04 | chore(release): resync DOM to WebCore 0.1.1-rc.1 as 0.1.0-rc.1 (#299) | 109,170 | 121,069 | 269,599 | 283,399 | 2,643,921 | 2,968,402 |
 | `2e8f969` | 2026-11-07 | fix(core): wake a reader that links a node dirtied during its own run (#290) | 109,169 | 121,071 | 269,604 | 283,395 | 2,643,832 | 2,968,432 |
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 109,169 | 121,071 | 269,596 | 283,404 | 2,643,900 | 2,968,474 |
+| `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 109,169 | 122,671 | 269,603 | 283,402 | 2,643,913 | 2,968,473 |
 
