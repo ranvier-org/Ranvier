@@ -2,4 +2,6 @@
 
 theories/Base/Prelude.v
 theories/Base/Syntax.v
+theories/Reference/Semantics.v
+theories/Reference/Properties.v
 theories/Audit.v

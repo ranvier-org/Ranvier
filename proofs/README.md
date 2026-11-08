@@ -13,9 +13,17 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 ## Layout
 
 - `theories/Base/Prelude.v`: identifiers and the freshness order.
+- `theories/Base/Syntax.v`: the command language.
+- `theories/Reference/Semantics.v`: the meaning of a program and an input history.
+- `theories/Reference/Properties.v`: determinism, glitch freedom, redundancy, examples.
 - `theories/Audit.v`: one `Print Assumptions` per theorem; `check.sh` reads it.
 - `BUGS.md`: defect ledger. `CORRESPONDENCE.md`: model-to-F# map.
 
 ## Theorem index
 
-None yet.
+| Theorem | File | Claim |
+|---|---|---|
+| `rtrace_deterministic` | `Reference/Properties.v` | Agreeing orders and any two sufficient fuels give one trace. |
+| `memo_value_extensional` | `Reference/Properties.v` | A memo's value depends only on the signals its evaluation discovers. |
+| `glitch_free_by_definition` | `Reference/Properties.v` | Each `EvLog` belongs to one run, and a run that writes no signal is computed from one snapshot. |
+| `reference_run_redundant` | `Reference/Properties.v` | Witness: the reference tier has a redundant run when an effect restores a value mid-round. |

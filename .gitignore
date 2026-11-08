@@ -45,6 +45,7 @@ artifacts/
 *.vok
 *.vos
 *.glob
+.lia.cache
 .*.aux
 Makefile.rocq*
 .Makefile.rocq*
