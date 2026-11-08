@@ -2,13 +2,15 @@
 
 ## Intent
 
+The goal is to machine-check the semantics of Ranvier's reactive core, so that every optimisation has a formal contract to preserve. Never losing a wake-up is one of those semantics, and the theorem the whole-graph results rest on.
+
 Ranvier's core propagates marks only on state transitions. That is fast, and it depends on a global
 fact nobody can see in one place: everything that may need waking has already been told. #290 and #302
 were both breaks in that fact. In #302, a node marked during its own run ended stale, a reader resolved
 its `Check` to `Clean` while the node ran, and every later mark on the node was swallowed.
 
 This project replaces "we found another one with a test" with machine-checked proofs, built up
-from the primitive data structures to whole-graph behaviour. The owner's words for the target: bugs
+from the primitive data structures to whole-graph behaviour. The owner's words for the class of bug to catch: bugs
 "like a node marked during its own run swallows its next wake up".
 
 ### The longer purpose
@@ -72,7 +74,7 @@ with its link to the executable F#, and proving the current engine alone does no
 - Thread affinity and `Serialised` entry. The model is single-threaded, as the graph's guarded modes
   require of callers.
 - The Fable compilation target and its representation differences.
-- Performance, and machine-checked links between the model and the F# or its IL.
+- Proved performance or work bounds, and machine-checked links between the model and the F# or its IL.
 - Modelling or proving a parallel engine, epochs, atomics, weak memory or progress. Later work may use
   this project; it does not build any of that speculatively.
 - A verified-transformation framework or a formal intermediate representation. They wait for the worked
@@ -95,6 +97,8 @@ Rocq cannot read F#. The proofs cover a hand-written model of the algorithm, so 
 model's correctness, and Core.fs's only as far as the model matches it. Every theorem's claim about
 Ranvier passes through the correspondence table, and the differential check is the evidence for that table: agreement on
 generated programs, which is not a proof of equivalence.
+
+**Decided:** the link stays a proved model plus hand-written F#, strengthened by the differential check. The owner expects better tooling at Clef, and the link is revisited then. Generated code, a verified translation of the F# and verified transformations are not part of this project.
 
 ## Architecture: three tiers
 
@@ -283,6 +287,8 @@ the command language, not arbitrary HeapLang closures. A theorem that fails is n
 stalls, meaning a proof remains neither finished nor refuted, stop and report to the owner;
 the proposed cut order is heap layers 8, then 7, then 6, with the pure-tier results standing. Fixes wait
 until the proof project is complete, as the owner instructed.
+
+The Adapton results are read at the start of Task 3a, while the reference semantics is cheap to change. The worked optimisation stays after the engine proofs, because proving that it refines the reference needs most of the same invariants.
 
 ## Left to the builder
 
