@@ -554,6 +554,87 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (freshnessOf x = "Clean") $"after its read the reader is {freshnessOf x}"
             c.Check (a.Peek = 1) $"the source holds {a.Peek}"
 
+        // BUGS.md, check_resolves_over_moved_source. The same skip through a second read of the source.
+        "check_two_reads",
+        fun c ->
+            let s = c.Signal 1 0
+            let a = c.Memo 2 (fun () -> s.Value)
+
+            let x =
+                c.Memo 3 (fun () ->
+                    let v = a.Value
+                    s.Value <- 1
+                    a.Value |> ignore
+                    c.Log 3 v
+                    v)
+
+            c.HostRead 2 (fun () -> a.Value) |> ignore
+            c.HostRead 3 (fun () -> x.Value) |> ignore
+            c.Check (freshnessOf x = "Check") $"the reader is {freshnessOf x}"
+            c.Check (freshnessOf a = "Clean") $"the source is {freshnessOf a}"
+            c.Check (c.HostRead 3 (fun () -> x.Value) = 0) "the resolved read answers the value of the first read"
+            c.Check (freshnessOf x = "Clean") $"after its read the reader is {freshnessOf x}"
+            c.Check (a.Peek = 1) $"the source holds {a.Peek}"
+
+        // BUGS.md, self_marking_wake_lost. A reading memo resolves clean over a source that ended its run stale.
+        "stale_source_reader",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m =
+                c.Memo 2 (fun () ->
+                    let v = s.Value
+                    c.Log 2 v
+
+                    if v < 3 then
+                        s.Value <- v + 1
+
+                    if v < 2 then 0 else v)
+
+            let r = c.Memo 3 (fun () -> m.Value)
+            c.HostRead 3 (fun () -> r.Value) |> ignore
+            c.Check (freshnessOf r = "Check") $"the reader is {freshnessOf r}"
+            c.HostRead 3 (fun () -> r.Value) |> ignore
+            c.Check (freshnessOf r = "Clean") $"after its read the reader is {freshnessOf r}"
+            c.Check (freshnessOf m = "Dirty") $"the source is {freshnessOf m}"
+
+        // BUGS.md, disposed_window_keeps_unannounced. A nested run ends stale and registers a cleanup that disposes the
+        // memo. The next untracked self-read discharges it in RecomputeScoped's window, with the nested run's flag set.
+        "disposed_self_window",
+        fun c ->
+            let s = c.Signal 1 0
+            let g = c.Signal 2 0
+            let m = c.Memo 3 (fun () -> s.Value)
+            let self: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
+
+            let n =
+                c.OwningMemo 4 (fun () ->
+                    if m.Value = 0 then
+                        0
+                    elif g.Value = 0 then
+                        g.Value <- 1
+
+                        c.Graph.Untrack (Func<int>(fun () -> self.Value.Value))
+                        |> ignore
+
+                        c.Graph.Untrack (Func<int>(fun () -> self.Value.Value))
+                        |> ignore
+
+                        0
+                    else
+                        c.Cleanup 4 (fun () -> c.Dispose 4 (fun () -> self.Value.Dispose ()) (box self.Value))
+                        g.Value <- 2
+                        0)
+
+            self.Value <- n
+            c.HostRead 4 (fun () -> n.Value) |> ignore
+            s.Value <- 1
+            c.Check (freshnessOf n = "Check") $"the memo is {freshnessOf n}"
+            c.HostRead 4 (fun () -> n.Value) |> ignore
+            c.Check (freshnessOf n = "Clean") $"after its read the memo is {freshnessOf n}"
+            c.Check (privateField n "unannounced" :?> bool) "the memo holds its flag"
+            c.Check (privateField n "disposed" :?> bool) "the memo is disposed"
+
         // A memo's previous value. A memo nested in a published memo starts with none, and a later run has its own.
         "previous_value",
         fun c ->

@@ -745,8 +745,8 @@ type nview = ((val0, status) prod, val0 option) prod
 val nview_of : node -> nview
 
 type ghost = { gh_pub : (nid, nview) gmap;
-               gh_seen : ((nid, nid) prod, nview) gmap;
-               gh_unnoticed : nid gset }
+               gh_seen : ((nid, nid) prod, nview list) gmap;
+               gh_unnoticed : nid gset; gh_window : (nid, nat) gmap }
 
 val empty_ghost : ghost
 
@@ -876,7 +876,7 @@ val pop_running : unit0 m
 
 val read_prefix : edgeWorld -> nid -> nid list
 
-val ghost_read : nid -> nid -> state -> state
+val ghost_read : nid -> nid -> nid list -> state -> state
 
 val ghost_run_start : nid -> state -> state
 
@@ -886,7 +886,7 @@ val run_end_unnoticed : nid -> nid option -> bool -> node -> state -> nid gset
 
 val ghost_run_end : nid -> nid option -> bool -> state -> state
 
-val ghost_dirty_cleared : nid -> state -> state
+val ghost_dirty_cleared : nid -> nat -> state -> state
 
 val root_oid : oid
 

@@ -117,6 +117,18 @@ Definition exp_check_over_moved : list event := [
   EvHostRead 3 (Ok 0%Z); EvLog 4 0%Z; EvHostRead 4 (Ok 0%Z); EvHostRead 4 (Ok 0%Z)
 ].
 
+Definition exp_check_two_reads : list event := [
+  EvHostRead 2 (Ok 0%Z); EvLog 3 0%Z; EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z)
+].
+
+Definition exp_stale_source_reader : list event := [
+  EvLog 2 0%Z; EvHostRead 3 (Ok 0%Z); EvLog 2 1%Z; EvHostRead 3 (Ok 0%Z)
+].
+
+Definition exp_disposed_self_window : list event := [
+  EvHostRead 4 (Ok 0%Z); EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0%Z)
+].
+
 Definition exp_previous_value : list event := [
   EvHostRead 2 (Ok 1%Z); EvHostRead 3 (Ok 42%Z); EvHostRead 2 (Ok 2%Z); EvLog 3 7%Z; EvHostRead 3 (Ok 5%Z)
 ].

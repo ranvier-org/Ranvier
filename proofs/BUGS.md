@@ -32,11 +32,6 @@ intended, the entry closes as "spec corrected".
   writes `h` and `y`'s source. Under the effect's run, `y`'s run moves and marks the effect through its old edge,
   since `NotifyDirtyExcept` skips only `x`, the current computation. The effect runs again on equal reads. F# trace:
   `[EvRun 5; EvLog 3 0; EvLog 4 0; EvLog 5 0; EvRun 5; EvLog 3 1; EvLog 4 2; EvLog 5 4; EvRun 5; EvLog 5 4]`.
-- `recompute_scoped_keeps_unannounced` (from reading, no trace): `RecomputeScoped` sets `Clean` before `Discharge`
-  (Core.fs 4191-4192) and does not clear `unannounced`. Verified from reading, not run: the flag from before the window
-  survives only when the memo is disposed in the window. With the memo live, `runs = before` takes `Run`, which clears it
-  (4208), and otherwise a nested `Run` has cleared it, and any later value comes from that run's end (4289-4290). A mark in
-  the window takes the `Clean` branch and leaves the flag. Whether the disposed case can miss or gain a notice is open.
 - `disposed_memo_keeps_observers` (from reading, no trace): `Memo.Dispose` clears the memo's sources and leaves its
   observers (Core.fs 4377-4398). A reader keeps an edge to the disposed memo, which marks no one again once its sources
   are gone, except for the marks of a run in progress when it was disposed.
@@ -69,7 +64,7 @@ intended, the entry closes as "spec corrected".
   current signals. A form over each source's stored value passes on these witnesses, since the effect read the stored 0.
   These programs are outside the well-behaved fragment, since `well_behaved_memo` rejects `CWrite` and `CCleanup`, so the
   fragment's convergence theorem and refinement are not falsified. Task 11 owns the statement of that property over all
-  programs, so no open theorem is named here. Task 8's `resolve_clean_no_move` meets this shape.
+  programs, so no open theorem is named here. `resolve_clean_no_stale_source` (Task 8) is the Open theorem this entry falsifies, through `stale_source_reader`.
   **Contrary evidence, by shape.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the
   contract" and "The same shape arises legitimately from a source that settles inline". `self_marking_body` and
   `self_marking_through_memo` are memos that write, so that comment puts them outside the contract. `self_marking_cleanup` is
@@ -134,19 +129,36 @@ intended, the entry closes as "spec corrected".
   The next read walks `x`'s sources, both now clean, and `x` goes `Clean` with no run: `x` answers 0 with `a` at 1. F# trace:
   `[EvHostRead 3 (Ok 0); EvLog 4 0; EvHostRead 4 (Ok 0); EvHostRead 4 (Ok 0)]`. The harness asserts `Check`, the answer 0, `Clean`
   and `a` at 1. Against the documents: Core.fs 4301-4302 says "Reaching the end still in `Check` means nothing above moved", and
-  here `a` moved. The skip's reason at 4283 fits a reader about to read the source, and this reader read it earlier in the run.
+  here `a` moved. The doc of `NotifyDirtyExcept` (Core.fs 386-393) gives the skip's reason: the running computation "receives the
+  new value from that very read". This reader read the source earlier in its run, and takes no new value from the walk.
+  `well_behaved_memo` rejects this program, since it writes.
+  **Variant, same cause:** `check_two_reads`, witness `check_two_reads_over_moved_source`. The body reads `a`, writes the source,
+  reads `a` again and answers the first read. F# trace: `[EvHostRead 2 (Ok 0); EvLog 3 0; EvHostRead 3 (Ok 0); EvHostRead 3 (Ok 0)]`.
+  The harness asserts `Check`, the answer 0, `Clean`, and `a` at 1. `gh_seen` keeps every view of a source read in a run, so
+  `moved_since_last_run` sees the first read.
   **Contrary evidence.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the contract", and this
   memo writes. From reading, not run: a cleanup that writes under `x`'s run reaches the same skip, which Core.fs 4178-4181 documents
   as a behaviour. **Theorems.** `resolve_clean_no_move` is false on this engine, and is the Open theorem below.
-  `resolve_clean_unmoved` proves the strongest form found, under `reads_settled`: the memo is not in `gh_unnoticed`, and neither it
+  `resolve_clean_unmoved` proves it under `reads_settled`, from `check_inv`'s preservation and `unmoved_short_of_dirty`, without using the walk: the memo is not in `gh_unnoticed`, and neither it
   nor a source is running. `gh_unnoticed` records four events: this skip, a read of a running node, the `Dirty` cleared at the start
   of `RecomputeScoped` (Core.fs 4191), and a run with no move ending on a view other than the published one, which takes a nested run.
   `check_cutoff_settled` shows the premise holding on an ordinary resolution. From `Clean` or `Check`, the conclusion holds of any
   memo: `unmoved_short_of_dirty`.
-  **The other Confirmed entries.** `self_marking_wake_lost` does not falsify this theorem, since the reader read the stored value:
-  `self_marking_through_memo_unmoved`. `read_move_leaves_effect_queued` changes no memo's reads. `nested_self_recompute_resets_cursor`
+  **The other Confirmed entries.** `self_marking_wake_lost` does not falsify `resolve_clean_no_move`, since the reader read the
+  stored value: `self_marking_through_memo_unmoved`. It falsifies `resolve_clean_no_stale_source`, a separate Open theorem, so a fix
+  of the skip alone leaves that one open: `resolve_clean_no_stale_source_falsified`, scenario `stale_source_reader`. `read_move_leaves_effect_queued` changes no memo's reads. `nested_self_recompute_resets_cursor`
   starts from `Dirty`, and its lost read has no slot, so `moved_since_last_run` does not see it. `self_read_check_overflow` has no
   result to conclude from, and the theorem's premise is conditional on one: `self_read_check_resolves_itself` has the read at no result.
+
+- `disposed_window_keeps_unannounced` (scenario `disposed_self_window`; `theories/Pure/Witnesses.v`, same name): `RecomputeScoped` sets
+  `Clean` before `Discharge` (Core.fs 4191-4192) and does not clear `unannounced`. A nested run ends stale, so the flag is set, and
+  registers a cleanup that disposes the memo. An untracked self-read then enters the window, and the cleanup disposes the memo: it
+  ends `Clean`, disposed, with the flag set, from a read that started in `Check`. F# trace:
+  `[EvHostRead 4 (Ok 0); EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0)]`, and the harness asserts `Clean`, the flag and the disposal
+  from the private fields. No document covers the flag on a disposed memo, and no consequence was found: a later mark on the memo
+  forwards a `Check` its observers can resolve. This is the only path found where the flag survives: `resolve_clears_unannounced`
+  takes `n_disposed d' = false` for this witness, and proves every path of a live memo. A write and an owning body put the program
+  outside the well-behaved fragment.
 
 ## Awaiting ruling
 
@@ -231,5 +243,7 @@ Names of theorems that may contain `Admitted`, `admit` or an `Axiom`, one per li
 `check.sh` compares its findings against this section.
 
 - `resolve_clean_no_move` (`theories/Pure/Check.v`): `check_resolves_over_moved_source` falsifies it on the present engine, and
-  `resolve_clean_no_move_falsified` proves that. It states what the fix owes, and nothing may use it until the fix closes it. Use
-  `resolve_clean_unmoved` until then.
+  `resolve_clean_no_move_falsified` proves that. It states what the fix owes, and `check.sh` fails any other theorem in `Audit.v`
+  that rests on it. Use `resolve_clean_unmoved` until the fix.
+- `resolve_clean_no_stale_source` (`theories/Pure/Check.v`): `self_marking_wake_lost` falsifies it on the present engine, and
+  `resolve_clean_no_stale_source_falsified` proves that. `check.sh` holds it to the same rule.

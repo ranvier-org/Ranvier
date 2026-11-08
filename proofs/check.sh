@@ -3,7 +3,8 @@
 #
 # Exits 0 when
 #   1. the build is clean;
-#   2. every `Print Assumptions` in theories/Audit.v lists only allowlisted assumptions;
+#   2. every `Print Assumptions` in theories/Audit.v lists only allowlisted assumptions, and an Open theorem
+#      only on its own line;
 #   3. `Admitted`, `admit`, `give_up`, `Admit Obligations` and top-level `Axiom`, `Parameter` and
 #      `Conjecture` occur only in declarations named under `## Open theorems` in BUGS.md.
 #      A failure of the scan itself fails the check.
@@ -68,6 +69,20 @@ while IFS= read -r name; do
   [ -n "$name" ] || continue
   is_allowed "$name" || note "assumption not allowlisted: $name"
 done <<<"$assumption_names"
+
+# An Open theorem is false on the present engine, so a theorem resting on it proves nothing. Its name may
+# appear only under its own `Print Assumptions`. Blocks of the output follow the lines of Audit.v in order.
+audit_names="$(sed -n 's/^[[:space:]]*Print Assumptions \(.*\)\.[[:space:]]*$/\1/p' theories/Audit.v)" \
+  || { echo "check.sh: could not read the Print Assumptions lines of Audit.v" >&2; exit 1; }
+assumption_owners="$(awk '/^Closed under/{k++; a=0; next} /^Axioms:/{k++; a=1; next}
+              a && /^[^[:space:]]/{ print k, $1 }' "$out")" \
+  || { echo "check.sh: could not assign the assumptions to their Audit.v lines" >&2; exit 1; }
+while read -r k name; do
+  [ -n "${k:-}" ] || continue
+  is_open "${name##*.}" || continue
+  owner="$(sed -n "${k}p" <<<"$audit_names")"
+  [ "${owner##*.}" = "${name##*.}" ] || note "$owner rests on the Open theorem $name"
+done <<<"$assumption_owners"
 
 # 3. Admitted / admit / give_up / Admit Obligations / Axiom / Parameter / Conjecture.
 # Section `Variable` and `Hypothesis` are not scanned: they are named premises, not assumptions of the

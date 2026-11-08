@@ -256,21 +256,25 @@ Definition pop_running : M unit := m_mod (fun s => with_running (tail (g_running
 Definition read_prefix (w : EdgeWorld) (c : nid) : list nid :=
   fst <$> take (scursor (src_of w c)) (sslots (src_of w c)).
 
-(** A tracked read of [n] by [c]. A read of a running node takes a view its run has yet to publish. *)
-Definition ghost_read (c n : nid) (s : state) : state :=
+(** A tracked read of [n] by [c], where [pre] is [c]'s read prefix ahead of the read. A read of a running
+    node takes a view its run has yet to publish. *)
+Definition ghost_read (c n : nid) (pre : list nid) (s : state) : state :=
   match g_nodes s !! n with
   | Some d =>
     let g := g_ghost s in
-    with_ghost {| gh_pub := gh_pub g; gh_seen := <[(c, n) := nview_of d]> (gh_seen g);
+    let older := if decide (n ∈ pre) then default [] (gh_seen g !! (c, n)) else [] in
+    with_ghost {| gh_pub := gh_pub g; gh_seen := <[(c, n) := nview_of d :: older]> (gh_seen g);
                   gh_unnoticed := if decide (n ∈ g_running s) then {[c]} ∪ gh_unnoticed g
-                                  else gh_unnoticed g |} s
+                                  else gh_unnoticed g;
+                  gh_window := gh_window g |} s
   | None => s
   end.
 
 (** The start of a memo's run, which empties the slots before its cursor. *)
 Definition ghost_run_start (n : nid) (s : state) : state :=
   let g := g_ghost s in
-  with_ghost {| gh_pub := gh_pub g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g ∖ {[n]} |} s.
+  with_ghost {| gh_pub := gh_pub g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g ∖ {[n]};
+                gh_window := gh_window g |} s.
 
 (** A view told to every observer: a creation or a write. *)
 Definition ghost_publish (n : nid) (s : state) : state :=
@@ -278,7 +282,7 @@ Definition ghost_publish (n : nid) (s : state) : state :=
   | Some d =>
     let g := g_ghost s in
     with_ghost {| gh_pub := <[n := nview_of d]> (gh_pub g); gh_seen := gh_seen g;
-                  gh_unnoticed := gh_unnoticed g |} s
+                  gh_unnoticed := gh_unnoticed g; gh_window := gh_window g |} s
   | None => s
   end.
 
@@ -300,14 +304,16 @@ Definition ghost_run_end (n : nid) (r : option nid) (moved : bool) (s : state) :
   | Some d =>
     let g := g_ghost s in
     with_ghost {| gh_pub := <[n := nview_of d]> (gh_pub g); gh_seen := gh_seen g;
-                  gh_unnoticed := run_end_unnoticed n r moved d s ∪ gh_unnoticed g |} s
+                  gh_unnoticed := run_end_unnoticed n r moved d s ∪ gh_unnoticed g;
+                  gh_window := gh_window g |} s
   | None => s
   end.
 
-(** [RecomputeScoped] clears a [Dirty] ahead of its discharge. *)
-Definition ghost_dirty_cleared (n : nid) (s : state) : state :=
+(** [RecomputeScoped] clears a [Dirty] ahead of its discharge, with [runs] as [n_runs]. *)
+Definition ghost_dirty_cleared (n : nid) (runs : nat) (s : state) : state :=
   let g := g_ghost s in
-  with_ghost {| gh_pub := gh_pub g; gh_seen := gh_seen g; gh_unnoticed := {[n]} ∪ gh_unnoticed g |} s.
+  with_ghost {| gh_pub := gh_pub g; gh_seen := gh_seen g; gh_unnoticed := {[n]} ∪ gh_unnoticed g;
+                gh_window := <[n := runs]> (gh_window g) |} s.
 
 (** ** Owners *)
 
@@ -457,7 +463,7 @@ Definition track (n : nid) : M unit :=
     match g_current s with
     | Some c =>
       match sl_add c n (g_edges s) with
-      | Some w => Some (ghost_read c n (with_edges w s), tt)
+      | Some w => Some (ghost_read c n (read_prefix (g_edges s) c) (with_edges w s), tt)
       | None => None
       end
     | None => Some (s, tt)
@@ -768,7 +774,7 @@ with recompute (fuel : nat) (n : nid) {struct fuel} : M unit :=
     | None => run_memo f n
     | Some o =>
       let* _ := mod_node n (nset_fresh Clean) in
-      let* _ := m_mod (ghost_dirty_cleared n) in
+      let* _ := m_mod (ghost_dirty_cleared n (n_runs d)) in
       let* _ := discharge f o in
       let* d' := get_node n in
       if n_disposed d' then m_ret tt

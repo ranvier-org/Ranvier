@@ -157,6 +157,9 @@ Definition prog_self_marking_body : cmd := self_marking_body (R 20 (V 2) Nop).
 Definition prog_self_marking_through_memo : cmd := self_marking_through_memo (R 20 (V 3) Nop).
 Definition prog_nested_self_run : cmd := nested_self_run (R 20 (V 4) Nop).
 Definition prog_check_over_moved : cmd := check_over_moved (R 22 (V 4) Nop).
+Definition prog_check_two_reads : cmd := check_two_reads (R 22 (V 3) Nop).
+Definition prog_stale_source_reader : cmd := stale_source_reader (R 22 (V 3) Nop).
+Definition prog_disposed_self_window : cmd := disposed_window (R 22 (V 4) Nop).
 
 Definition prog_previous_value : cmd :=
   CSignal 1 (K 0) (
@@ -260,6 +263,15 @@ Example check_nested_self_run :
 Proof. vm_compute. reflexivity. Qed.
 Example check_check_over_moved :
   trace_of 100000 current_flags prog_check_over_moved = Some exp_check_over_moved.
+Proof. vm_compute. reflexivity. Qed.
+Example check_check_two_reads :
+  trace_of 100000 current_flags prog_check_two_reads = Some exp_check_two_reads.
+Proof. vm_compute. reflexivity. Qed.
+Example check_stale_source_reader :
+  trace_of 100000 current_flags prog_stale_source_reader = Some exp_stale_source_reader.
+Proof. vm_compute. reflexivity. Qed.
+Example check_disposed_self_window :
+  trace_of 100000 current_flags prog_disposed_self_window = Some exp_disposed_self_window.
 Proof. vm_compute. reflexivity. Qed.
 Example check_previous_value :
   trace_of 100000 current_flags prog_previous_value = Some exp_previous_value.

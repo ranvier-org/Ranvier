@@ -147,13 +147,17 @@ copy, so it needs no Rocq.
 | `read_without_edge` | `Pure/Edges.v` | A coherent world where a computation read a source and has no edge to it, so `first_owns` fails. |
 | `check_inv_init`, `check_inv_run_top`, `check_inv_update` | `Pure/Check.v` | `check_inv` holds of a new graph and after every function of the engine, for all programs and fuel. `engine_ok_all` is the induction. |
 | `unmoved_short_of_dirty` | `Pure/Check.v` | Under `check_inv` and `reads_settled`, a memo in `Clean` or `Check` has `moved_since_last_run` false. |
-| `resolve_clean_unmoved` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` leaves no moved source, under `reads_settled`. The strongest true form of `resolve_clean_no_move`. |
+| `resolve_clean_unmoved` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` leaves no moved source, under `reads_settled`. It follows from `check_inv`'s preservation and `unmoved_short_of_dirty`, without using the walk. |
 | `resolve_clean_no_move` | `Pure/Check.v` | **Open.** The unqualified statement, false on the present engine: `resolve_clean_no_move_falsified`. |
+| `resolve_clean_no_stale_source` | `Pure/Check.v` | **Open.** A memo resolved `Clean` has no stale source, false on the present engine: `resolve_clean_no_stale_source_falsified`. |
 | `resolve_dirty_stops_walk`, `resolve_walk_step` | `Pure/Check.v` | A node out of `Check` ends the walk with the state unchanged. In `Check`, the walk updates the slot's source and moves to the next slot. |
-| `resolve_clears_unannounced` | `Pure/Check.v` | A walk ending in `Check` makes `refresh` return the node `Clean` with `n_unann` false and no run. |
+| `resolve_clears_unannounced` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` ends a live memo's `n_unann`, on every path. A disposed memo can keep it: `disposed_window_keeps_unannounced`. |
+| `resolve_walk_check_clears` | `Pure/Check.v` | A walk ending in `Check` makes `refresh` return the node `Clean` with `n_unann` false and no run. |
 | `signal_update_noop` | `Pure/Check.v` | `update_if_necessary` on a signal returns the state unchanged. |
 | `disposed_memo_no_refresh` | `Pure/Check.v` | A read of a disposed memo keeps every node, and answers the stored value or failure. |
 | `check_resolves_over_moved_source`, `resolve_clean_no_move_falsified` | `Pure/Witnesses.v` | A memo resolves to `Clean` over a source that moved after its read. Confirmed. |
+| `check_two_reads_over_moved_source` | `Pure/Witnesses.v` | The same skip through a second read of the source. |
+| `resolve_clean_no_stale_source_falsified`, `disposed_window_keeps_unannounced` | `Pure/Witnesses.v` | A reader resolves `Clean` over a `Dirty` source. A memo disposed in `RecomputeScoped`'s window ends `Clean` with `n_unann`. |
 | `check_cutoff_settled`, `self_marking_through_memo_unmoved` | `Pure/Witnesses.v` | `reads_settled` holds on an ordinary resolution, and on the reader of `self_marking_wake_lost`, which goes clean over its source's stored value. |
 | `mark_terminates`, `notify_terminates` | `Pure/Marking.v` | Fuel above `mark_measure` gives a result for every mark and walk, on any graph, cycles included. |
 | `mark_monotone` | `Pure/Marking.v` | Freshness only rises, for every node, under all five marking operations. |

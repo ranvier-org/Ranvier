@@ -357,7 +357,9 @@ Proof.
   split_and!; try (vm_compute; reflexivity).
   exists 2, 0, (Some 1), (default (signal_node 0%Z) (g_nodes over_moved_end !! 2)).
   split_and!; [vm_compute; reflexivity|vm_compute; reflexivity|].
-  vm_compute. intros H. discriminate H.
+  right. exists (0%Z, StNone, None). split.
+  - vm_compute. left.
+  - vm_compute. intros H. discriminate H.
 Qed.
 
 Theorem resolve_clean_no_move_falsified : ~ resolve_clean_no_move_statement.
@@ -415,3 +417,85 @@ Proof.
   refine (unmoved_short_of_dirty s 3 d (check_inv_final _) Hd _ _ Hset).
   all: subst s; vm_compute in Hd; injection Hd as <-; first [reflexivity|discriminate].
 Qed.
+
+(** The same skip through a second read of the source: [x] reads [a], writes [a]'s source, reads [a] again,
+    and answers the first read. Its latest read of [a] holds the current view, and its first does not. *)
+Definition check_two_reads (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq
+    (CRead 10 (V 2) (CWrite (V 1) (K 1%Z) (CRead 11 (V 2) (CLog (V 10) (CRet (V 10)))))) (
+  CRead 19 (V 2) (CRead 20 (V 3) k)))).
+
+Local Definition two_reads_start : state := final (check_two_reads Nop).
+
+Local Definition two_reads_end : state :=
+  default two_reads_start (fst <$> update_if_necessary 1000 3 two_reads_start).
+
+Example check_two_reads_over_moved_source :
+  node_view two_reads_start 3 = Some (Check, true, false, StNone, 0%Z) /\
+  update_if_necessary 1000 3 two_reads_start = Some (two_reads_end, tt) /\
+  node_view two_reads_end 3 = Some (Clean, false, false, StNone, 0%Z) /\
+  node_view two_reads_end 2 = Some (Clean, false, false, StNone, 1%Z) /\
+  seen_of (g_ghost two_reads_end) 3 2 = [(1%Z, StNone, None); (0%Z, StNone, None)] /\
+  moved_since_last_run two_reads_end 3 /\
+  gh_unnoticed (g_ghost two_reads_end) = {[3]}.
+Proof.
+  split_and!; try (vm_compute; reflexivity).
+  exists 2, 0, (Some 0), (default (signal_node 0%Z) (g_nodes two_reads_end !! 2)).
+  split_and!; [vm_compute; reflexivity|vm_compute; reflexivity|].
+  right. exists (0%Z, StNone, None). split.
+  - vm_compute. right. left.
+  - vm_compute. intros H. discriminate H.
+Qed.
+
+(** The memo of [self_marking_body] under a reading memo, with no effect. The reader's walk runs the memo,
+    which ends [Dirty] with its value unchanged, and the reader goes [Clean] over it. *)
+Definition stale_source_reader (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq self_marking_memo_body (
+  CMemo 3 Pure CmpEq (CRead 10 (V 2) (CRet (V 10))) (
+  CRead 20 (V 3) k))).
+
+Local Definition stale_start : state := final (stale_source_reader Nop).
+
+Local Definition stale_end : state :=
+  default stale_start (fst <$> update_if_necessary 1000 3 stale_start).
+
+Theorem resolve_clean_no_stale_source_falsified : ~ resolve_clean_no_stale_source_statement.
+Proof.
+  intros H.
+  assert (Hu : update_if_necessary 1000 3 stale_start = Some (stale_end, tt)) by (vm_compute; reflexivity).
+  destruct (g_nodes stale_start !! 3) as [d|] eqn:Hd; [|vm_compute in Hd; discriminate Hd].
+  destruct (g_nodes stale_end !! 3) as [d'|] eqn:Hd'; [|vm_compute in Hd'; discriminate Hd'].
+  destruct (g_nodes stale_end !! 2) as [e|] eqn:He; [|vm_compute in He; discriminate He].
+  assert (Hin : 2 ∈ fst <$> sslots (src_of (g_edges stale_end) 3)) by (vm_compute; left).
+  assert (Hst : stale (n_fresh e) = false).
+  { refine (H 1000 3 stale_start stale_end d d' (check_inv_final _) Hd _ _ Hu Hd' _ 2 e Hin He).
+    all: vm_compute in Hd; vm_compute in Hd'; injection Hd as <-; injection Hd' as <-; reflexivity. }
+  vm_compute in He. injection He as <-. discriminate Hst.
+Qed.
+
+(** A cleanup of a memo's nested run disposes the memo in [RecomputeScoped]'s window, with the flag of that
+    nested run. The memo goes from [Check] to [Clean] holding [n_unann]. Confirmed in [BUGS.md]. *)
+Definition disposed_window (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 4 Owning CmpEq
+    (CRead 10 (V 3) (CIf (EEq (V 10) (K 0%Z)) Nop (
+     CRead 11 (V 2) (CIf (EEq (V 11) (K 0%Z))
+       (CWrite (V 2) (K 1%Z) (CReadU 12 (K 4%Z) (CReadU 13 (K 4%Z) Nop)))
+       (CCleanup (CDispose (K 4%Z) Nop) (CWrite (V 2) (K 2%Z) Nop)))))) (
+  CRead 20 (V 4) (CWrite (V 1) (K 1%Z) k))))).
+
+Local Definition window_start : state := final (disposed_window Nop).
+
+Local Definition window_end : state :=
+  default window_start (fst <$> update_if_necessary 2000 4 window_start).
+
+Example disposed_window_keeps_unannounced :
+  node_view window_start 4 = Some (Check, false, false, StNone, 0%Z) /\
+  update_if_necessary 2000 4 window_start = Some (window_end, tt) /\
+  node_view window_end 4 = Some (Clean, true, false, StNone, 0%Z) /\
+  n_disposed <$> g_nodes window_end !! 4 = Some true.
+Proof. split_and!; vm_compute; reflexivity. Qed.

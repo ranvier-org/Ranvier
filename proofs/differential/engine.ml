@@ -2251,8 +2251,8 @@ let nview_of d =
   Pair ((Pair (d.n_value, d.n_status)), d.n_failure)
 
 type ghost = { gh_pub : (nid, nview) gmap;
-               gh_seen : ((nid, nid) prod, nview) gmap;
-               gh_unnoticed : nid gset }
+               gh_seen : ((nid, nid) prod, nview list) gmap;
+               gh_unnoticed : nid gset; gh_window : (nid, nat) gmap }
 
 (** val empty_ghost : ghost **)
 
@@ -2262,7 +2262,8 @@ let empty_ghost =
       (gmap_empty (prod_eq_dec Coq_Nat.eq_dec Coq_Nat.eq_dec)
         (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
           nat_countable)));
-    gh_unnoticed = (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)) }
+    gh_unnoticed = (empty0 (gset_empty Coq_Nat.eq_dec nat_countable));
+    gh_window = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
 
 type state = { g_flags : flags; g_edges : edgeWorld;
                g_nodes : (nid, node) gmap; g_owners : (oid, ownerS) gmap;
@@ -2810,19 +2811,31 @@ let read_prefix w c =
   fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
     (firstn (src_of w c).scursor (Obj.magic (src_of w c).sslots))
 
-(** val ghost_read : nid -> nid -> state -> state **)
+(** val ghost_read : nid -> nid -> nid list -> state -> state **)
 
-let ghost_read c n0 s =
+let ghost_read c n0 pre s =
   match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
   | Some d ->
     let g = s.g_ghost in
+    let older =
+      match decide
+              (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0 pre) with
+      | Left ->
+        from_option (Obj.magic id) Nil
+          (lookup0
+            (gmap_lookup (prod_eq_dec Coq_Nat.eq_dec Coq_Nat.eq_dec)
+              (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
+                nat_countable))
+            (Pair (c, n0)) g.gh_seen)
+      | Right -> Nil
+    in
     with_ghost { gh_pub = g.gh_pub; gh_seen =
       (insert0
         (map_insert
           (gmap_partial_alter (prod_eq_dec Coq_Nat.eq_dec Coq_Nat.eq_dec)
             (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
               nat_countable)))
-        (Pair (c, n0)) (nview_of d) g.gh_seen);
+        (Pair (c, n0)) (Cons ((nview_of d), older)) g.gh_seen);
       gh_unnoticed =
       (match decide
                (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
@@ -2831,8 +2844,8 @@ let ghost_read c n0 s =
          union0 (gset_union Coq_Nat.eq_dec nat_countable)
            (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) c)
            g.gh_unnoticed
-       | Right -> g.gh_unnoticed) }
-      s
+       | Right -> g.gh_unnoticed);
+      gh_window = g.gh_window } s
   | None -> s
 
 (** val ghost_run_start : nid -> state -> state **)
@@ -2842,8 +2855,8 @@ let ghost_run_start n0 s =
   with_ghost { gh_pub = g.gh_pub; gh_seen = g.gh_seen; gh_unnoticed =
     (difference0 (gset_difference Coq_Nat.eq_dec nat_countable)
       g.gh_unnoticed
-      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)) }
-    s
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
+    gh_window = g.gh_window } s
 
 (** val ghost_publish : nid -> state -> state **)
 
@@ -2854,7 +2867,8 @@ let ghost_publish n0 s =
     with_ghost { gh_pub =
       (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
         n0 (nview_of d) g.gh_pub);
-      gh_seen = g.gh_seen; gh_unnoticed = g.gh_unnoticed } s
+      gh_seen = g.gh_seen; gh_unnoticed = g.gh_unnoticed; gh_window =
+      g.gh_window } s
   | None -> s
 
 (** val run_end_unnoticed :
@@ -2898,18 +2912,21 @@ let ghost_run_end n0 r moved s =
         n0 (nview_of d) g.gh_pub);
       gh_seen = g.gh_seen; gh_unnoticed =
       (union0 (gset_union Coq_Nat.eq_dec nat_countable)
-        (run_end_unnoticed n0 r moved d s) g.gh_unnoticed) }
-      s
+        (run_end_unnoticed n0 r moved d s) g.gh_unnoticed);
+      gh_window = g.gh_window } s
   | None -> s
 
-(** val ghost_dirty_cleared : nid -> state -> state **)
+(** val ghost_dirty_cleared : nid -> nat -> state -> state **)
 
-let ghost_dirty_cleared n0 s =
+let ghost_dirty_cleared n0 runs s =
   let g = s.g_ghost in
   with_ghost { gh_pub = g.gh_pub; gh_seen = g.gh_seen; gh_unnoticed =
     (union0 (gset_union Coq_Nat.eq_dec nat_countable)
       (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)
-      g.gh_unnoticed) }
+      g.gh_unnoticed);
+    gh_window =
+    (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+      n0 runs g.gh_window) }
     s
 
 (** val root_oid : oid **)
@@ -3298,7 +3315,9 @@ let track n0 s =
   match s.g_current with
   | Some c ->
     (match sl_add c n0 s.g_edges with
-     | Some w -> Some (Pair ((ghost_read c n0 (with_edges w s)), Tt))
+     | Some w ->
+       Some (Pair
+         ((ghost_read c n0 (read_prefix s.g_edges c) (with_edges w s)), Tt))
      | None -> None)
   | None -> Some (Pair (s, Tt))
 
@@ -3679,7 +3698,7 @@ and recompute fuel n0 =
       match d.n_scope with
       | Some o ->
         m_bind (mod_node n0 (nset_fresh Clean)) (fun _ ->
-          m_bind (m_mod (ghost_dirty_cleared n0)) (fun _ ->
+          m_bind (m_mod (ghost_dirty_cleared n0 d.n_runs)) (fun _ ->
             m_bind (discharge f o) (fun _ ->
               m_bind (get_node n0) (fun d' ->
                 match d'.n_disposed with
