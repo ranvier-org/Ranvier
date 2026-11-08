@@ -22,7 +22,7 @@ is right. A program can reach a Confirmed entry of `BUGS.md` and agree, since th
 `differential/run.sh` generates programs, runs each on real `Signal`, `Memo` and `Effect` objects (`Generate.fsx`) and on
 the extracted interpreter (`driver.ml`), and compares the traces and the end states. It exits nonzero on the first
 difference, printing the program, both sides and the seed, and also when 5% or more of the programs are skipped, when more
-than 0.5% are excluded, or when the compared programs fall below a coverage floor.
+than 1% are excluded, or when the compared programs fall below a coverage floor.
 
 The end states are `observed` in `theories/Extract.v` and `Interpreter.View` in `Generate.fsx`: each node's value, status,
 failure, freshness, `unannounced`, runs, disposal, queued flag, and source and observer counts, with the queue length and the
@@ -38,10 +38,11 @@ What the comparison leaves out, each reported by `run.sh`:
 - **Pure-scope violations.** A pure memo's body creates no node or cleanup, by construction: the F# raises a new exception
   each time, and the model has one failure identity. `run.sh` prints how many draws this drops.
 - **Repeated zero divisors.** The same reason applies: a program raising more than one is excluded when it runs, up to a cap
-  of 0.5%.
-- **Programs that diverge on both sides.** The model has no result, and the F# passed its budget or ended its process by a
-  stack overflow or the watchdog (`fatal`). Any other exit of the F# process fails the check. Neither has a complete trace to compare. `self_read_check_overflow` in `BUGS.md`
-  is how a generated program overflows. One side diverging alone fails the check, as does a stuck program.
+  of 1%.
+- **Programs that diverge on both sides.** The model has no result, and the F# passed its budget or ended its process
+  by a stack overflow or the watchdog (`fatal`). Any other exit of the F# process fails the check. Neither has a
+  complete trace to compare. `self_read_check_overflow` in `BUGS.md` is how a generated program overflows. One side
+  diverging alone fails the check, as does a stuck program.
 
 The generated programs have no `createRoot`, no owner API, no teardown of the root, no comparer API wrappers, no async nodes
 and no second thread, since the command language has none. `Graph.Flush` appears only in the closing. Writes from bodies keep

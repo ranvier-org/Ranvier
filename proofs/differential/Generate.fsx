@@ -911,6 +911,36 @@ type Generator(rng: Random) =
                 )
             )
 
+    /// A write sets a memo's divisor to zero, once. Its readers see the failure of one raise, through a try read and through
+    /// a read that fails an effect, and a later write recovers the memo.
+    member private this.ZeroDivisor(tail: Random) : Cmd -> Cmd =
+        let s, m, e, g = this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+
+        let x, y, ok, z, a, b =
+            this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+
+        let start = tail.Next (1, 5)
+
+        let recovery k =
+            if tail.Next 2 = 0 then CWrite (V s, K start, k) else k
+
+        fun k ->
+            CSignal (
+                s,
+                K start,
+                CMemo (
+                    m,
+                    false,
+                    CmpEq,
+                    CRead (x, V s, CRet (Div (K 12, V x))),
+                    CEffect (
+                        e,
+                        CTryRead (y, ok, V m, CLog (Add (V y, Mul (V ok, K 100)), this.Nop)),
+                        CEffect (g, CRead (z, V m, CLog (V z, this.Nop)), CWrite (V s, K 0, CTryRead (a, b, V m, recovery k)))
+                    )
+                )
+            )
+
     /// One top-level operation over the nodes in scope.
     member private this.TopOp(sc: Scope) : (Cmd -> Cmd) =
         let writable = sc.Signals |> List.map fst
@@ -991,6 +1021,9 @@ type Generator(rng: Random) =
 
         if tail.Next 100 < 30 then
             steps.Add (this.PullWakesEffect ())
+
+        if tail.Next 100 < 15 then
+            steps.Add (this.ZeroDivisor tail)
 
         Seq.foldBack (fun step k -> step k) steps (CRet (K 0))
 
@@ -1458,32 +1491,32 @@ let runProgram (coverage: Dictionary<string, int>) (program: Cmd) : string list 
                 closed.Value
             ]
 
-/// Each shape a run has to reach in the programs it compares, with the count required of 2000 programs. Each floor is
-/// about half the lowest count measured over seeds 1, 2, 3, 77 and 4242.
+/// Each shape a run has to reach in the programs it compares, with the count required of 2000 programs. Each floor is at
+/// most half the lowest count measured over seeds 20001 to 20030.
 let required =
     [
         "batch", 2000
         "cleanup run", 2000
-        "comparer never consulted", 40
-        "comparer throws consulted", 30
+        "comparer never consulted", 39
+        "comparer throws consulted", 33
         "conditional read", 1200
         "dispose", 500
-        "failing body", 500
-        "failure caught by a try read", 700
-        "late child attached", 200
-        "memo left stale by its own run", 35
-        "memo recomputed to its previous value", 1000
-        "owning memo run", 2700
-        "pure memo run", 6000
-        "single zero divisor", 3
-        "write from an effect", 800
-        "template diamond", 350
-        "template check walk stops at a moved source", 290
-        "template effect cleanup writes its own source", 290
-        "template owning memo cleanup writes, reads and writes", 140
-        "template owning memo cleanup writes through a memo", 140
-        "template host pull wakes an effect", 280
-        "template self-marking cleanup", 290
+        "failing body", 470
+        "failure caught by a try read", 1080
+        "late child attached", 180
+        "memo left stale by its own run", 32
+        "memo recomputed to its previous value", 1120
+        "owning memo run", 2750
+        "pure memo run", 7100
+        "single zero divisor", 140
+        "write from an effect", 770
+        "template diamond", 370
+        "template check walk stops at a moved source", 285
+        "template effect cleanup writes its own source", 285
+        "template owning memo cleanup writes, reads and writes", 135
+        "template owning memo cleanup writes through a memo", 135
+        "template host pull wakes an effect", 275
+        "template self-marking cleanup", 260
     ]
 
 /// Runs the programs from `first` on, on a thread the watchdog can outlive.

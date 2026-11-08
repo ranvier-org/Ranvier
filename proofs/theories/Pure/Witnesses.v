@@ -275,7 +275,8 @@ Example self_read_check_resolves_itself :
   trace_of 2000 current_flags (self_read_check (CRead 22 (V 3) Nop)) = None.
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
-(** The walk reaches a later self-slot when the sources before it hold their values. *)
+(** The walk reaches a later self-slot when the sources before it hold their values. The program returns
+    without its final read, and with that read has no result at the fuel tried. *)
 Definition self_read_second (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (ELt (V 10) (K 100%Z)))) (
@@ -285,11 +286,12 @@ Definition self_read_second (k : cmd) : cmd :=
 Example self_read_second_resolves_itself :
   sslots (src_of (g_edges (final (self_read_second Nop))) 3) !! 1 = Some (3, Some 0) /\
   n_fresh <$> g_nodes (final (self_read_second Nop)) !! 3 = Some Check /\
+  is_Some (trace_of 2000 current_flags (self_read_second Nop)) /\
   trace_of 2000 current_flags (self_read_second (CRead 22 (V 3) Nop)) = None.
-Proof. split_and!; vm_compute; reflexivity. Qed.
+Proof. split_and!; try (vm_compute; reflexivity). vm_compute. eexists. reflexivity. Qed.
 
 (** Two memos read each other, by constant id, since a memo's body runs after the later memo exists. The
-    write leaves both in [Check], and a read walks round the cycle. *)
+    write leaves both in [Check], and a read walks round the cycle, with no result at any fuel tried. *)
 Definition mutual_read_check (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
