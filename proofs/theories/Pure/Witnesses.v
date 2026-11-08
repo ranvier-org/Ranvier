@@ -424,7 +424,7 @@ Proof.
 Qed.
 
 (** The same skip through a second read of the source: [x] reads [a], writes [a]'s source, reads [a] again,
-    and answers the first read. Its latest read of [a] holds the current view, and its first does not. *)
+    and answers the first read. Its latest read of [a] holds what [a] now stores, and its first does not. *)
 Definition check_two_reads (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (

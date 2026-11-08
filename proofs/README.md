@@ -87,8 +87,8 @@ copy, so it needs no Rocq.
 | Theorem | File | Claim |
 |---|---|---|
 | `reference_trace_deterministic` | `Reference/Properties.v` | Agreeing orders and any two sufficient fuels give one trace. |
-| `memo_value_extensional` | `Reference/Properties.v` | A memo's value depends only on the signals its evaluation discovers. |
-| `glitch_free_by_definition` | `Reference/Properties.v` | Each `EvLog` belongs to one run. A run that writes no signal has its reads and events computed from one signal snapshot and its cleanups' captured environments, which can hold values from an earlier snapshot. |
+| `memo_value_extensional` | `Reference/Properties.v` | With the same disposed memos, a memo's value depends only on the signals its evaluation discovers. |
+| `glitch_free_by_definition` | `Reference/Properties.v` | The run holding an `EvLog`, when it writes no signal, has its reads and events computed from one signal snapshot and its cleanups' captured environments, which can hold values from an earlier snapshot. |
 | `reference_run_redundant` | `Reference/Properties.v` | Witness: the reference tier has a redundant run when an effect restores a value mid-round. |
 | `untracked_value_not_redundant` | `Reference/Properties.v` | A run whose untracked read moved is not redundant. |
 | `untracked_branch_not_redundant` | `Reference/Properties.v` | A run whose reads are a subset of the previous run's, selected by an untracked read, is not redundant. |
@@ -175,7 +175,7 @@ copy, so it needs no Rocq.
 | `mark_dirty_ends_dirty` | `Pure/Marking.v` | `mark_dirty` leaves a memo or an effect in `takes_marks` `Dirty`, an already-queued effect included. |
 | `notify_dirty_ends_dirty` | `Pure/Marking.v` | `notify_dirty` and `notify_dirty_except` leave each observer in `takes_marks` `Dirty`, apart from the skipped computation. |
 | `mark_check_keeps_check` | `Pure/Marking.v` | `mark_check` and `notify_check` raise no node to `Dirty`. |
-| `memo_mark_dirty_tells_check` | `Pure/Marking.v` | `mark_dirty` of a memo raises no other node to `Dirty`. |
+| `memo_mark_dirty_keeps_others_short` | `Pure/Marking.v` | `mark_dirty` of a memo raises no other node to `Dirty`. |
 | `clean_memo_keeps_unannounced` | `Pure/Marking.v` | The `Clean` transition starts its walk with `n_unannounced` unchanged. |
 | `in_cleanup_observer_stays_clean` | `Pure/Witnesses.v` | A memo's in-cleanup observer, with a coherent edge, stays clean, which `takes_marks` excepts. Closed in `BUGS.md`. |
 | `disposed_running_observer_stays_clean` | `Pure/Witnesses.v` | An effect disposed mid-body holds an edge while running, and ignores the mark. Awaiting ruling in `BUGS.md`. |

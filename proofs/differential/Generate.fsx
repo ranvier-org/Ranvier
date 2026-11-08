@@ -1466,7 +1466,7 @@ let runProgram (coverage: Dictionary<string, int>) (program: Cmd) : string list 
                     if usable () then
                         closed.Value <- interpreter.View ()))
 
-    // A freshness failure identity moves a memo on every run where the model's one identity does not, so a self-reading memo
+    // A fresh failure identity moves a memo on every run where the model's one identity does not, so a self-reading memo
     // with a zero divisor runs away on the F# side alone. The exclusion comes before the budget.
     match escaped, c.Failures with
     | Some reason, _ -> [ "harness"; reason; ""; "" ]

@@ -155,10 +155,27 @@
       spy();
     }
 
-    if (location.hash) {
+    // A link to a declaration lands on its comment. Comments render at load, which moves the target.
+    var reveal = function () {
+      if (!location.hash) return;
       var t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-      if (t) t.scrollIntoView();
+      if (t) (commentOf(t) || t).scrollIntoView();
+    };
+    reveal();
+    window.addEventListener('load', reveal);
+    window.addEventListener('hashchange', reveal);
+  }
+
+  // The Markdown comment directly above the declaration holding a name.
+  function commentOf(name) {
+    var n = name;
+    while ((n = n.previousElementSibling)) {
+      if (n.classList.contains('vernacular')) {
+        var above = n.previousElementSibling;
+        return above && above.matches('div.doc.md') ? above : null;
+      }
     }
+    return null;
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

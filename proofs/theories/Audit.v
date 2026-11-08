@@ -86,7 +86,7 @@ Print Assumptions in_cleanup_ignores_marks.
 Print Assumptions mark_dirty_ends_dirty.
 Print Assumptions notify_dirty_ends_dirty.
 Print Assumptions mark_check_keeps_check.
-Print Assumptions memo_mark_dirty_tells_check.
+Print Assumptions memo_mark_dirty_keeps_others_short.
 Print Assumptions clean_memo_keeps_unannounced.
 Print Assumptions in_cleanup_observer_stays_clean.
 Print Assumptions disposed_running_observer_stays_clean.

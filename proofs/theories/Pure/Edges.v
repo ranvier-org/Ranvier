@@ -104,7 +104,9 @@ Qed.
 (**md
 **A removal without blanking the removed slot breaks coherence.**
 
-From a coherent world, removing the slot's observer entry and leaving the slot's handle in place gives a world that is not coherent. This marks a step the engine has to pair with another, and is no guarantee about the engine.
+*Check, not a guarantee.*
+
+From a coherent world, removing the slot's observer entry and leaving the slot's handle in place gives a world that is not coherent. This marks a step the engine has to pair with another.
 *)
 Theorem remove_edge_alone_breaks_coherent self i s h w w1 :
   coherent w ->
@@ -133,7 +135,9 @@ Qed.
 (**md
 **A move to a different handle without a removal breaks coherence.**
 
-From a coherent world, giving a slot a different handle and leaving the observer set in place gives a world that is not coherent. This marks a step the engine has to pair with another, and is no guarantee about the engine.
+*Check, not a guarantee.*
+
+From a coherent world, giving a slot a different handle and leaving the observer set in place gives a world that is not coherent. This marks a step the engine has to pair with another.
 *)
 Theorem moved_alone_breaks_coherent c slot s h h' w :
   coherent w ->
@@ -172,7 +176,7 @@ Qed.
 (**md
 **In a well-formed world, a computation observes exactly the sources in its slots.**
 
-Every source in a slot has an edge, whichever slot holds the handle.
+A world is well formed when the two ends of every edge agree and a slot holds an edge exactly when no earlier slot of the computation names its source. Every source in a slot has an edge, whichever slot holds the handle.
 *)
 Theorem edge_iff_read s src c :
   world_well_formed (g_edges s) ->

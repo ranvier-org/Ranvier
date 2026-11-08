@@ -894,6 +894,8 @@ Qed.
 **Marks keep each effect's queue entries in step with its `queued` flag.**
 
 Each marking operation preserves `queue_once`: at most one pending entry for the node, and none while its flag is unset. An effect marked along several paths has at most one pending entry.
+
+Premise: `queue_once` holds beforehand.
 *)
 Theorem mark_keeps_queue_once fuel n r s s' m :
   any_mark fuel n r s s' -> queue_once s m -> queue_once s' m.
@@ -1086,11 +1088,11 @@ Proof.
 Qed.
 
 (**md
-**A `Dirty` mark on a memo tells its observers `Check`.**
+**A `Dirty` mark on a memo makes no other node `Dirty`.**
 
 `mark_dirty` of a memo leaves every other node that was short of `Dirty` still short of it.
 *)
-Theorem memo_mark_dirty_tells_check fuel n d s s' m d0 :
+Theorem memo_mark_dirty_keeps_others_short fuel n d s s' m d0 :
   g_nodes s !! n = Some d ->
   n_kind d = KMemo ->
   mark_dirty fuel n s = Some s' ->

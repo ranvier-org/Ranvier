@@ -877,7 +877,7 @@ Proof. intros [_ Hf] c s i j hi hj. by apply first_owns_unique. Qed.
 
 The observer that a removal moves into the hole is a different computation from the one being removed.
 
-Premises: the two ends of every edge agree (`edge_match`), the computation holds at most one edge per source (`slots_unique`), and the removal uses the handle stored in the computation's slot.
+Premises: the two ends of every edge agree (`edge_match`), every computation holds at most one edge per source (`slots_unique`), and the removal uses the handle stored in the computation's slot.
 *)
 Theorem trim_moves_only_others w self i s h o' m ms h' :
   edge_match w -> slots_unique w ->
@@ -962,7 +962,7 @@ Proof. intros Hr. exists 0, 0, 0, w. done. Qed.
 (**md
 **An observer in a set occupies exactly one position.**
 
-Holds in every reachable world and in every world between the removals of a trim that starts from one. It supplies `walk_covers` with its premise at a single point of a walk.
+Holds in every reachable world and in every world between the removals of a trim that starts from one.
 *)
 Theorem observer_held_once w s c :
   world_point w -> c ∈ observer_view (observers_of w s) -> held_once c (observers_of w s).

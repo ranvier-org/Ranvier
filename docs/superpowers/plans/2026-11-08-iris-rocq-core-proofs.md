@@ -31,8 +31,8 @@ Most likely to bite first. Each line's scenario is added to the task named at it
 1. A failure partway through a flush: an effect body's failure is recorded in its status and later effects still run, and a failure that escapes `Execute`, such as from a cleanup during `Discharge`, runs the `finally` paths and leaves the queue resumable (Task 7, scenarios `S09a`, `S09b`).
 2. A memo cleanup writes a source and reads the memo, so a nested run happens inside `RecomputeScoped` and resets the `SourceList` cursor of an outer run (Task 7, `S11`).
 3. A body disposes its own computation mid-run: edges are cleared at the end of the run, and later marks do nothing (Task 7, `S10`).
-4. A body reads A, B, A, and a later trim swap-removes so that an edge later in the same list moves while being trimmed (Task 4, `sl_trim_moves_own_edge`).
-5. `TryAdd` on a list longer than `ScanLimit` with a stale `latest` answers `Unknown`, and the source list must fall back to `holds` without adding a second edge (Task 4, `sl_add_unknown_no_duplicate`).
+4. A body reads A, B, A, and a later trim swap-removes so that an edge later in the same list moves while being trimmed (Task 4, `sources_trim_moves_own_edge`).
+5. `TryAdd` on a list longer than `ScanLimit` with a stale `latest` answers `Unknown`, and the source list must fall back to `holds` without adding a second edge (Task 4, `sources_add_unknown_no_duplicate`).
 
 ## How every task runs
 

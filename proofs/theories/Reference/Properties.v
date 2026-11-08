@@ -174,9 +174,9 @@ Proof.
 Qed.
 
 (**md
-**A memo's value depends only on the signals its evaluation reached.**
+**With the same disposed memos, a memo's value depends only on the signals its evaluation reached.**
 
-A memo's value over one set of signals is also its value over any other set that agrees on the signals in `memo_deps` of the first evaluation.
+A memo's value over one set of signals is also its value over any other set that agrees on the signals in `memo_deps` of the first evaluation, with the same disposed memos' answers.
 
 Premise: the program is well formed.
 *)
@@ -492,9 +492,9 @@ Proof.
 Qed.
 
 (**md
-**Each log belongs to one run, and a run that writes no signal computes from one snapshot.**
+**The run holding a log, when it writes no signal, computes from one snapshot.**
 
-A trace is the concatenation of its records' events, and each `EvLog` lies in a record for its node. A record that writes no signal has its reads and events reproduced by replaying it with every read answered from one snapshot of the signals and the disposed memos' values. The guarantee is silent on a record that writes. A cleanup's environment, and so a value it logs, can date from the run that registered it. This describes the reference, not the engine.
+A trace is the concatenation of its records' events, and a given `EvLog` lies in some record for its node. When that record writes no signal, its reads and events are reproduced by replaying it with every read answered from one snapshot of the signals and the disposed memos' values. The guarantee is silent on a record that writes, and on every other record. A cleanup's environment, and so a value it logs, can date from the run that registered it. This describes the reference, not the engine.
 *)
 Theorem glitch_free_by_definition fuel order p h evs n v :
   reference_trace fuel order p h = Some evs ->
@@ -585,7 +585,7 @@ Qed.
 (**md
 **The reference refines itself on the full trace.**
 
-Holds under each valid order and any fuel, at every batch prefix of a well-formed program.
+Holds under each valid order and any fuel, at every batch prefix of a well-formed program. `refines` only constrains histories the reference answers at that fuel.
 *)
 Theorem reference_refines_itself fuel ord :
   is_effect_order ord -> refines observe_full (reference_trace fuel ord).
@@ -608,7 +608,9 @@ Qed.
 (**md
 **An engine with no traces passes `refines` for every observation.**
 
-`refines` constrains only the answers an engine gives, so this is a caution about the definition, not a guarantee. An engine proof also owes `engine_answers`, which rejects this engine: see [`none_engine_not_answers`](#none_engine_not_answers).
+*Check, not a guarantee.*
+
+`refines` constrains only the answers an engine gives, so this is a caution about the definition. An engine proof also owes `engine_answers`, which rejects this engine: see [`none_engine_not_answers`](#none_engine_not_answers).
 *)
 Theorem none_engine_refines O : refines O (fun _ _ => None).
 Proof. intros p h t _ Hn. discriminate Hn. Qed.
@@ -1330,6 +1332,8 @@ Definition resetting_failing_cleanup_runs :=
 (**md
 **Dropping a redundant run can change what a reader sees, when its cleanup fails.**
 
+*Check, not a guarantee.*
+
 This is a counterexample on one program, `resetting_failing_cleanup`, under the reversed order: effect 8's second run counts as redundant and discharges a failing cleanup, and the trace without that run has a different `observe_settled`. The failure is the one the removal loses.
 *)
 Theorem redundant_failing_cleanup_changes_settled :
@@ -1453,7 +1457,9 @@ Proof. vm_compute. reflexivity. Qed.
 (**md
 **`refines` rejects an engine that answers only the full history.**
 
-An engine matching the reference's settled view on a two-batch history fails at the empty prefix, where it gives no answer. This is a check on the definition of `refines`, not a guarantee about Ranvier.
+*Check, not a guarantee.*
+
+An engine matching the reference's settled view on a two-batch history fails at the empty prefix, where it gives no answer. This tests the definition of `refines`.
 *)
 Theorem final_batch_engine_not_refines : ~ refines observe_settled final_batch_engine.
 Proof.
@@ -1485,7 +1491,9 @@ Definition last_run_engine (_ : program) (h : history) : option (list event) :=
 (**md
 **`refines` rejects traces that match at each prefix but don't extend each other.**
 
-An engine answering each prefix of `two_writes` with only its last run has the reference's settled view at each prefix, and fails the requirement that a prefix's trace is a prefix of the whole trace. This is a check on the definition of `refines`, not a guarantee about Ranvier.
+*Check, not a guarantee.*
+
+An engine answering each prefix of `two_writes` with only its last run has the reference's settled view at each prefix, and fails the requirement that a prefix's trace is a prefix of the whole trace. This tests the definition of `refines`.
 *)
 Theorem last_run_engine_not_refines : ~ refines observe_settled last_run_engine.
 Proof.
@@ -1502,7 +1510,9 @@ Proof. vm_compute. reflexivity. Qed.
 (**md
 **`refines` rejects an engine that emits nothing.**
 
-A valid order runs every effect in the initial round, so an empty trace misses a run's value under `observe_settled`. This is a check on the definition of `refines`, not a guarantee about Ranvier.
+*Check, not a guarantee.*
+
+A valid order runs every effect in the initial round, so an empty trace misses a run's value under `observe_settled`. This tests the definition of `refines`.
 *)
 Theorem silent_engine_not_refines : ~ refines observe_settled (fun _ _ => Some []).
 Proof.
@@ -1516,7 +1526,9 @@ Qed.
 (**md
 **`engine_answers` rejects an engine with no traces.**
 
-The counterpart of [`none_engine_refines`](#none_engine_refines). This is a check on the definition of `engine_answers`, not a guarantee about Ranvier.
+*Check, not a guarantee.*
+
+The counterpart of [`none_engine_refines`](#none_engine_refines). This tests the definition of `engine_answers`.
 *)
 Theorem none_engine_not_answers : ~ engine_answers (fun _ _ _ => None).
 Proof.

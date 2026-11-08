@@ -13,6 +13,7 @@ from pathlib import Path
 DECLARATION = re.compile(r"^\s*(?:Theorem|Corollary)\s+([A-Za-z0-9_']+)")
 HEADING = re.compile(r"^\(\*\* \*+ (.+?) \*\)\s*$")
 TITLE = re.compile(r"^\*\*(.+)\*\*\s*$")
+CHECK_MARKER = "*Check, not a guarantee.*"
 
 
 def source_files():
@@ -24,22 +25,23 @@ def page_of(path):
     return "Ranvier." + ".".join(path.relative_to("theories").with_suffix("").parts) + ".html"
 
 
-def title_above(lines, i):
-    """The title of the (**md comment ending on the line above line i, or None."""
-    k = i - 1
+def comment_above(lines, i):
+    """(title or None, whether it holds the check marker) of the (**md comment ending on the line above line i."""
+    end = k = i - 1
     if k < 0 or not lines[k].rstrip().endswith("*)"):
-        return None
+        return None, False
     while k >= 0 and not lines[k].lstrip().startswith("(*"):
         k -= 1
     if k < 0 or not lines[k].lstrip().startswith("(**md"):
-        return None
+        return None, False
     first = lines[k].lstrip()[len("(**md"):].strip() or lines[k + 1].strip()
     match = TITLE.match(first)
-    return match.group(1) if match else None
+    is_check = any(line.strip() == CHECK_MARKER for line in lines[k:end + 1])
+    return (match.group(1) if match else None), is_check
 
 
 def theorems(path):
-    """(name, heading, title or None) of each theorem in the file, in order."""
+    """(name, heading, title or None, is_check) of each theorem in the file, in order."""
     lines = path.read_text(encoding="utf-8").split("\n")
     heading, found = "", []
     for i, line in enumerate(lines):
@@ -48,12 +50,12 @@ def theorems(path):
             heading = match.group(1)
         match = DECLARATION.match(line)
         if match:
-            found.append((match.group(1), heading, title_above(lines, i)))
+            found.append((match.group(1), heading, *comment_above(lines, i)))
     return found
 
 
 def check_comments():
-    bad = [f"{path}: {name}" for path in source_files() for name, _, title in theorems(path) if title is None]
+    bad = [f"{path}: {name}" for path in source_files() for name, _, title, _ in theorems(path) if title is None]
     for entry in bad:
         print(f"docs.sh: no (**md comment with a bold title directly above {entry}", file=sys.stderr)
     return not bad
@@ -64,7 +66,7 @@ def check_outline(out):
     ok = True
     entry = re.compile(r'vernacular">(?:Theorem|Corollary)</span>(?:<span class="id">\s*</span>)*<span id="([^"]+)"')
     for path in source_files():
-        names = [name for name, _, _ in theorems(path)]
+        names = [name for name, *_ in theorems(path)]
         if not names:
             continue
         text = (out / page_of(path)).read_text(encoding="utf-8")
@@ -95,7 +97,7 @@ def inline(text):
 
 def overview_body():
     opened = open_theorems()
-    parts, total, falsified, open_count = [], 0, 0, 0
+    parts, total, falsified, open_count, checks = [], 0, 0, 0, 0
     for path in source_files():
         found = theorems(path)
         if not found:
@@ -103,7 +105,7 @@ def overview_body():
         page = page_of(path)
         parts.append(f'<h2><a href="{page}">{path.relative_to("theories").as_posix()}</a></h2>')
         current = None
-        for name, heading, title in found:
+        for name, heading, title, is_check in found:
             if heading != current:
                 if current is not None:
                     parts.append("</ul>")
@@ -117,14 +119,18 @@ def overview_body():
             if name in opened:
                 labels += ' <span class="label open">open</span>'
                 open_count += 1
+            if is_check:
+                labels += ' <span class="label check">check</span>'
+                checks += 1
             total += 1
             parts.append(f'<li><a href="{page}#{name}">{inline(title.rstrip("."))}</a>{labels}'
                          f' <code class="name">{name}</code></li>')
         parts.append("</ul>")
-    intro = (f'<p class="overview-intro">{total} theorems and what each guarantees, generated from the comments in '
+    intro = (f'<p class="overview-intro">{total} theorems and what each states, generated from the comments in '
              f'the source. {falsified} marked <span class="label falsified">falsified</span> prove a counterexample. '
              f'{open_count} marked <span class="label open">open</span> are false on the present engine and state '
-             f"what the fix owes.</p>")
+             f'what the fix owes. {checks} marked <span class="label check">check</span> test a definition or a '
+             f"single step, and are not guarantees.</p>")
     return '<h1 class="title">Guarantees</h1>\n' + intro + "\n" + "\n".join(parts) + "\n"
 
 

@@ -341,7 +341,7 @@ Qed.
 
 The set can change between visits. An observer in exactly one position at the start, and after every mutation of the walk, appears among the visits at least once. The walk starts from the full observer count.
 
-The premise matters: an observer held twice can be missed, as [`walk_covers_duplicate_observer`](Ranvier.Pure.Witnesses.html#walk_covers_duplicate_observer) shows. A moved observer can be visited twice, as [`walk_visits_moved_twice`](Ranvier.Pure.Witnesses.html#walk_visits_moved_twice) shows.
+An observer held twice can be missed, as [`walk_covers_duplicate_observer`](Ranvier.Pure.Witnesses.html#walk_covers_duplicate_observer) shows. A moved observer can be visited twice, as [`walk_visits_moved_twice`](Ranvier.Pure.Witnesses.html#walk_visits_moved_twice) shows.
 *)
 Theorem walk_covers o muts vis o' c :
   walk (length (observer_items o)) o muts vis o' ->

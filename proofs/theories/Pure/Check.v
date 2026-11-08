@@ -223,6 +223,15 @@ Record check_invariant_except (x e : option node_id) (s : state) : Prop := {
 
 Notation check_invariant_unpublished x := (check_invariant_except x None).
 
+(**md
+**What the check invariant says.**
+
+The invariant relates a memo's reads to what its sources last told their observers. It says nothing of whether a stored value is up to date.
+
+- **Reads.** A signal or memo outside any run has told its observers its stored value, status and failure. Each source a memo has read in its latest run has a recorded read. Each recorded read equals what the source last told its observers, unless the memo is `Dirty` or listed in `gh_unnoticed`.
+- **The announcement flag.** A live `Clean` memo holds `n_unannounced` only when it has not run since `RecomputeScoped` last cleared its `Dirty`.
+- **Bookkeeping.** The edges are ones the source-list operations can build from empty. Cursors lie within their lists, and a memo outside any run has its cursor at the end. Slots name existing computations and hold only signals and memos. Running nodes exist, the current computation is running, and the queue holds only effects.
+*)
 Definition check_invariant : state -> Prop := check_invariant_unpublished None.
 
 (** The parts of a state [memo_frame] reads. *)
@@ -1847,7 +1856,7 @@ End Step.
 (**md
 **Every engine function keeps the check invariant, at every fuel.**
 
-When a function returns, `check_invariant` still holds, `g_running` and `g_current` are back to their starting values, each node keeps its kind, and each memo's run count and disposal only go forward (`frame`). After `run_memo` or `recompute` of a memo, its latest window has closed or it is disposed.
+When a function returns, the [check invariant](#check_invariant) still holds, `g_running` and `g_current` are back to their starting values, each node keeps its kind, and each memo's run count and disposal only go forward (`frame`). After `run_memo` or `recompute` of a memo, the memo is disposed, or it has run since `RecomputeScoped` last cleared its `Dirty`.
 
 Premises: the invariant holds at the start. Functions over a memo or an effect require a node of that kind, and `run_effect_body` requires that effect's run to be in progress.
 *)
@@ -1895,7 +1904,7 @@ Proof. unfold slot_view, sources_of. simpl. rewrite lookup_empty. done. Qed.
 (**md
 **A new graph satisfies the check invariant.**
 
-Holds under any flags.
+The [check invariant](#check_invariant) holds under any flags.
 *)
 Theorem check_invariant_init fl : check_invariant (init fl).
 Proof.
@@ -1920,16 +1929,16 @@ Qed.
 (**md
 **A whole program keeps the check invariant.**
 
-If the invariant holds at the start and `run_top` returns, the invariant holds in the final state. A program that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
+If the [check invariant](#check_invariant) holds at the start and `run_top` returns, the invariant holds in the final state. A program that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
 *)
 Theorem check_invariant_run_top f c s s' r :
   check_invariant s -> run_top f c s = Some (s', r) -> check_invariant s'.
 Proof. intros Hi Hm. exact (proj1 (Eexec _ (engine_ok_all f) [] c _ _ _ Hi I Hm)). Qed.
 
 (**md
-**Bringing a node current keeps the check invariant.**
+**`update_if_necessary` keeps the check invariant.**
 
-If the invariant holds at the start and `update_if_necessary` returns, the invariant holds afterwards.
+If the [check invariant](#check_invariant) holds at the start and `update_if_necessary` returns, the invariant holds afterwards.
 *)
 Theorem check_invariant_update f n s s' :
   check_invariant s -> update_if_necessary f n s = Some (s', tt) -> check_invariant s'.
@@ -1938,11 +1947,11 @@ Proof. intros Hi Hm. exact (proj1 (Eupdate _ (engine_ok_all f) n _ _ _ Hi I Hm))
 (** ** What check resolution guarantees *)
 
 (**md
-**A memo short of `Dirty` with settled reads holds current reads.**
+**A memo short of `Dirty` with settled reads has read what each source now stores.**
 
-Each source in the memo's slots has a recorded read, and each recorded read equals the source's current view.
+Each source in the memo's slots has a recorded read, and each recorded read equals the source's stored value, status and failure, which can themselves be stale.
 
-Premises: the check invariant holds, and `reads_settled`: the memo has no unnoticed difference in its reads, and neither it nor any of its sources is running.
+Premises: the [check invariant](#check_invariant) holds, and `reads_settled`: the memo has no unnoticed difference in its reads, and neither it nor any of its sources is running.
 *)
 Theorem unmoved_short_of_dirty s n d :
   check_invariant s -> g_nodes s !! n = Some d -> n_kind d = KMemo -> n_freshness d <> Dirty ->
@@ -1963,11 +1972,11 @@ Proof.
 Qed.
 
 (**md
-**A memo resolved `Clean` with settled reads holds current reads.**
+**A memo resolved `Clean` with settled reads has read what each source now stores.**
 
-Each source in the memo's slots has a recorded read, and each recorded read equals the source's current view.
+Each source in the memo's slots has a recorded read, and each recorded read equals the source's stored value, status and failure, which can themselves be stale: [`self_marking_through_memo_unmoved`](Ranvier.Pure.Witnesses.html#self_marking_through_memo_unmoved) has the source `Dirty` and the reader `Clean`.
 
-Premises: the check invariant holds, the memo starts in `Check`, `update_if_necessary` returns with the memo `Clean`, and `reads_settled` holds at the end. `reads_settled` says the memo has no unnoticed difference in its reads, and neither it nor any of its sources is running. The guarantee comes from the invariant and that premise, not from the walk. The unqualified claim is false: see `resolve_clean_no_move_statement`.
+Premises: the [check invariant](#check_invariant) holds, the memo starts in `Check`, `update_if_necessary` returns with the memo `Clean`, and `reads_settled` holds at the end. `reads_settled` says the memo has no unnoticed difference in its reads, and neither it nor any of its sources is running. The guarantee comes from the invariant and that premise, not from the walk. The unqualified claim is false: see `resolve_clean_no_move_statement`.
 *)
 Theorem resolve_clean_unmoved f n s s' d d' :
   check_invariant s ->
@@ -1994,7 +2003,7 @@ Definition resolve_clean_no_move_statement : Prop :=
     ~ moved_since_last_run s' n.
 
 (**md
-**Open, and false on the present engine: a memo resolved `Clean` holds current reads, without the `reads_settled` premise.**
+**Open, and false on the present engine: a memo resolved `Clean` has read what each source now stores, without the `reads_settled` premise.**
 
 This states the behaviour the fix phase owes, as `resolve_clean_no_move_statement`. The Confirmed bug [`check_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#check_resolves_over_moved_source) falsifies it, and [`resolve_clean_no_move_falsified`](Ranvier.Pure.Witnesses.html#resolve_clean_no_move_falsified) proves that. Until the fix, later layers use [`resolve_clean_unmoved`](#resolve_clean_unmoved).
 *)
@@ -2035,7 +2044,7 @@ Proof.
 Qed.
 
 (**md
-**The check walk brings one source current, then moves to the next slot.**
+**The check walk updates one source, then moves to the next slot.**
 
 With the node in `Check` and a source in this slot, the walk runs `update_if_necessary` on that source and continues from the next slot, given any positive fuel.
 *)
@@ -2053,7 +2062,7 @@ Qed.
 
 Holds on every path of `update_if_necessary`: the walk ending in `Check`, or a run after it.
 
-Premises: the check invariant holds, the memo starts in `Check` and ends `Clean`, and the memo is not disposed at the end. The last premise matters: a memo disposed during `RecomputeScoped` can keep the flag, as [`disposed_window_keeps_unannounced`](Ranvier.Pure.Witnesses.html#disposed_window_keeps_unannounced) shows.
+Premises: the [check invariant](#check_invariant) holds, the memo starts in `Check` and ends `Clean`, and the memo is not disposed at the end. A memo disposed during `RecomputeScoped` can keep the flag, as [`disposed_window_keeps_unannounced`](Ranvier.Pure.Witnesses.html#disposed_window_keeps_unannounced) shows.
 *)
 Theorem resolve_clears_unannounced f n s s' d d' :
   check_invariant s ->
@@ -2073,9 +2082,9 @@ Proof.
 Qed.
 
 (**md
-**A check walk that ends in `Check` makes the node `Clean` with no run.**
+**A check walk that ends in `Check` makes the node `Clean` with no run after the walk.**
 
-For a node that starts in `Check`, `refresh` succeeds with the node as the walk left it, except `Clean` with `n_unannounced` false. Its run count is the one the walk left.
+For a node that starts in `Check`, `refresh` succeeds with the node as the walk left it, except `Clean` with `n_unannounced` false. Its run count is the one the walk left, which says nothing of runs during the walk.
 *)
 Theorem resolve_walk_check_clears f n s s1 d d1 :
   g_nodes s !! n = Some d -> n_freshness d = Check ->
@@ -2101,7 +2110,7 @@ Proof.
 Qed.
 
 (**md
-**A signal has nothing to bring current.**
+**Updating a signal does nothing.**
 
 `update_if_necessary` on a signal returns the state unchanged, given any positive fuel.
 *)
@@ -2142,7 +2151,7 @@ Qed.
 (**md
 **Reading a disposed memo keeps every node as it was and answers what it stored.**
 
-The read returns the stored failure when the memo's status is `StError`, otherwise the stored value. This covers nodes only: a tracked read can still add an edge.
+The read returns a failure when the memo's status is `StError`, otherwise the stored value. The failure is `n_failure`, or 0 when `n_failure` is `None`. This covers nodes only: a tracked read can still add an edge.
 *)
 Theorem disposed_memo_no_refresh f n b s s' d o :
   g_nodes s !! n = Some d -> n_kind d = KMemo -> n_disposed d = true ->
