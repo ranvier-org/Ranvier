@@ -556,14 +556,14 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 
 - [ ] **Step 1: Run every ledger item in Suspected or Modelled through the procedure** until each is Confirmed, closed, or awaiting a ruling.
 - [ ] **Step 2: Write the report**, with the theorem index, the ledger and differential results. Add a ranked list of candidate optimisations for the milestone, each with the observation it needs and whether its obligations fall in the pure or heap tier. Draw candidates from the ledger, from what the proofs show is unnecessary, and from Ranvier's own direction.
-- [ ] **Step 3: Commit** as `docs(proofs): report pure-tier results`.
-- [ ] **Step 4: Stop and ask the owner** to choose the milestone optimisation, unless they've already chosen it, and to rule on anything Awaiting ruling that bears on it.
+- [ ] **Step 3: Measure the top candidates' cost** with the repository's benchmarks, and choose one: it must have a measured cost worth removing, be nontrivial to prove, and be checkable by the differential test. The owner delegated this choice. Record the reasons in the report. A candidate that relies on a ruling still Awaiting ruling can't be chosen. An optimisation that changes `obs_full` needs `obs_settled` as its observation, and the report says so plainly, because that changes run counts.
+- [ ] **Step 4: Commit** as `docs(proofs): report pure-tier results`.
 
 ---
 
 ### Task 13a: The worked optimisation (layer 11)
 
-Written in detail once the owner has chosen the optimisation. Its fixed shape:
+Written in detail once Task 13 has chosen the optimisation. Its fixed shape:
 
 **Files:** Create `proofs/theories/Pure/Optimised.v`. Implementation goes in `src/Ranvier` on its own branch, cut from this one, with a normal PR.
 

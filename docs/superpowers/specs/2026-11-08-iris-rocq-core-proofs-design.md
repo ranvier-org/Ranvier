@@ -60,7 +60,7 @@ with its link to the executable F#, and proving the current engine alone does no
    the same statement rather than a new one.
 8. **An implementation link that can fail.** The interpreter is extracted and run against the F# on generated
    programs, in CI, so a Core.fs change that alters behaviour fails a check. This is strong testing, not proof.
-9. **One worked optimisation**: a real optimisation of Ranvier, chosen by the owner, proved to refine the reference
+9. **One worked optimisation**: a real optimisation of Ranvier, chosen by the builder (the owner delegated the choice), proved to refine the reference
    semantics and connected to its F# implementation by the differential check, with benchmark results reported beside it.
 
 ## Non-goals (first version)
@@ -169,7 +169,7 @@ Each layer has a pure part, a heap part, or both, and imports only lower layers.
 | 9 | Whole graph | all | **Glitch-free reads**: outside the self-dirtying case, a read returns the value its body would compute from current signals. **Convergence**, for well-behaved programs: at quiescence, every effect has run against the latest values it reads. Regression witnesses for #290 and #302. Iris adequacy turns specs into statements about closed programs with no Iris in them |
 | R | Reference semantics | none | Written first, alongside layer 0, and imported only by layer 10. Determinism for a fixed history; glitch freedom as a property of the definition |
 | 10 | Refinement | all | **Engine order characterised**: the exact effect order in a flush, as a function of history, including swap-removal's effect on it. **Weak refinement**: `refines obs_settled`: for a well-behaved program, every effect runs when a value it read changed, and its last run sees final values. **Exact refinement**: `refines obs_full`: the engine's trace, run counts included, equals the reference tier's under the characterised order, or a checked counterexample shows where it does not |
-| 11 | Worked optimisation | the chosen optimisation | The optimised engine satisfies `refines` under the observation the owner chooses for it, and passes the differential check against its F# implementation |
+| 11 | Worked optimisation | the chosen optimisation | The optimised engine satisfies `refines` under the observation chosen for it, and passes the differential check against its F# implementation |
 
 Layer 6 is the centre of the project. Layers 9 and 10 rest on it.
 
@@ -271,7 +271,7 @@ distinguish passes, so the check narrows drift and does not eliminate it. The mo
 ## Open
 
 - **Redundant runs:** the formal definition, and the owner's ruling on each case found.
-- **The optimisation for the milestone:** chosen by the owner, no later than the pure-tier report.
+- **The optimisation for the milestone:** chosen by the builder at the pure-tier report. It must have a measured cost worth removing in Ranvier today, be nontrivial to prove, and be checkable by the differential test. The reasons go in the report.
 
 ## Depth and order of work (author's call; the owner stated no preference)
 
