@@ -48,6 +48,7 @@ Print Assumptions sl_no_duplicate_edge.
 Print Assumptions sl_trim_moves_own_edge.
 Print Assumptions sl_add_unknown_no_duplicate.
 Print Assumptions observer_held_once.
+Print Assumptions trim_every_removal.
 Print Assumptions trim_moves_only_others.
 Print Assumptions unknown_held.
 Print Assumptions unknown_unheld.

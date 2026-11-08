@@ -33,7 +33,7 @@ Definition sl_moved_in (c : nid) (slot h : nat) (w : EdgeWorld) : EdgeWorld :=
   set_handle c slot (Some h) w.
 
 (** [RemoveObserverAt], with the [MovedIn] of the observer it moves. *)
-Definition remove_edge (self s h : nid) (w : EdgeWorld) : option EdgeWorld :=
+Definition remove_edge (self s : nid) (h : nat) (w : EdgeWorld) : option EdgeWorld :=
   match obs_remove_at self h (obs_of w s) with
   | Some (o', n) =>
     let w1 := set_obs s o' w in
@@ -111,6 +111,17 @@ Definition first_owns (w : EdgeWorld) (c : nid) : Prop :=
     (is_Some mh <-> forall j, j < i -> fst <$> slot_at w c j <> Some s).
 
 Definition ew_wf (w : EdgeWorld) : Prop := edge_match w /\ forall c, first_owns w c.
+
+(** A source has at most one slot holding an edge, per computation. Unlike [first_owns], this holds
+    between the removals of a trim. *)
+Definition slots_unique (w : EdgeWorld) : Prop :=
+  forall c s i j hi hj,
+    slot_at w c i = Some (s, Some hi) -> slot_at w c j = Some (s, Some hj) -> i = j.
+
+(** An observer occupies at most one position of each source's observers. *)
+Definition observers_once (w : EdgeWorld) : Prop :=
+  forall s c i j,
+    obs_view (obs_of w s) !! i = Some c -> obs_view (obs_of w s) !! j = Some c -> i = j.
 
 (** Every world the source-list operations build from nothing, in any interleaving per node. *)
 Inductive ew_reachable : EdgeWorld -> Prop :=
@@ -837,37 +848,101 @@ Proof.
   - intros c. apply Hf.
 Qed.
 
-(** An observer occupies at most one position of a source's observers. *)
-Theorem observer_held_once w s c i j :
-  ew_reachable w ->
-  obs_view (obs_of w s) !! i = Some c -> obs_view (obs_of w s) !! j = Some c -> i = j.
-Proof.
-  intros Hr Hi Hj. pose proof (reachable_wf w Hr) as Hw.
-  assert (Hin : c ∈ obs_view (obs_of w s)) by (by eapply list_elem_of_lookup_2).
-  apply (held_iff_slot _ _ _ Hw) in Hin.
-  by apply (proj2 (wf_held_once w c s Hw Hin)).
-Qed.
+(** ** Every removal of a trim *)
+
+Lemma wf_slots_unique w : ew_wf w -> slots_unique w.
+Proof. intros [_ Hf] c s i j hi hj. by apply first_owns_unique. Qed.
 
 (** With one edge per source, a removal moves only another computation's edge. *)
 Theorem trim_moves_only_others w self i s h o' m ms h' :
-  ew_wf w ->
+  edge_match w -> slots_unique w ->
   slot_at w self i = Some (s, Some h) ->
   obs_remove_at self h (obs_of w s) = Some (o', Some (m, ms, h')) ->
   m <> self.
 Proof.
-  intros [Hm Hf] Hs Hr ->.
+  intros Hm Hu Hs Hr ->.
   destruct (obs_remove_at_spec _ _ _ _ _ Hr) as (_ & _ & _ & [[_ ?]|(m' & ms' & Hhl & Hl & Hn & _)]);
     [done|].
   simplify_eq.
   apply Hm in Hl.
-  assert (ms' = i) as -> by (eapply first_owns_unique; [apply Hf|exact Hl|exact Hs]).
+  assert (ms' = i) as -> by (eapply Hu; [exact Hl|exact Hs]).
   rewrite Hs in Hl. simplify_eq. lia.
 Qed.
 
-(** Review Focus 4. A list reading A, B, A with an edge in each A slot, and the later A edge last in
-    A's observers. The first removal moves it, and the later slot reads the moved handle. A clear then
-    removes every edge. [trim_moves_only_others] puts this list outside [ew_reachable], and
-    [aba_reachable_trim] is the corresponding run. *)
+Lemma slots_unique_observers_once w :
+  edge_match w -> slots_unique w -> observers_once w.
+Proof.
+  intros Hm Hu s c i j Hi Hj.
+  apply view_lookup in Hi as [a Ha]. apply view_lookup in Hj as [b Hb].
+  apply Hm in Ha. apply Hm in Hb.
+  assert (a = b) as -> by (eapply Hu; [exact Ha|exact Hb]).
+  rewrite Ha in Hb. by simplify_eq.
+Qed.
+
+Lemma trim_rel_owns_back self from upto w w' c j :
+  trim_rel self from upto w w' -> owns w' c j -> owns w c j.
+Proof.
+  intros (_ & Hown & Hno & _) Ho.
+  destruct (decide (c = self)) as [->|Hne]; [|by apply (Hown c j); [left|]].
+  destruct (decide (from <= j < upto)) as [Hj|Hj].
+  - exfalso. by eapply Hno.
+  - apply (Hown self j); [|done]. right. lia.
+Qed.
+
+Lemma slots_unique_trim_rel self from upto w w' :
+  trim_rel self from upto w w' -> slots_unique w -> slots_unique w'.
+Proof.
+  intros Hr Hu c s i j hi hj Hi Hj. pose proof Hr as [Hfst _].
+  assert (Hback : forall k h, slot_at w' c k = Some (s, Some h) ->
+                  exists h0, slot_at w c k = Some (s, Some h0)).
+  { intros k h Hk. destruct (trim_rel_owns_back _ _ _ _ _ c k Hr ltac:(eexists _, _; exact Hk))
+      as (s0 & h0 & Hk0).
+    specialize (Hfst c k). rewrite Hk, Hk0 in Hfst. simpl in Hfst. simplify_eq. eauto. }
+  destruct (Hback _ _ Hi) as [h0 Hi0]. destruct (Hback _ _ Hj) as [h1 Hj1].
+  by eapply Hu.
+Qed.
+
+(** Each [w'] is the world between two removals of a trim. It keeps both invariants, each observer set
+    holds an observer at most once, and the next removal moves only another computation's edge. *)
+Theorem trim_every_removal self from k w w' :
+  edge_match w -> slots_unique w ->
+  trim_loop self from k w = Some w' ->
+  edge_match w' /\ slots_unique w' /\ observers_once w' /\
+  forall s h o' m ms h',
+    slot_at w' self (from + k) = Some (s, Some h) ->
+    obs_remove_at self h (obs_of w' s) = Some (o', Some (m, ms, h')) ->
+    m <> self.
+Proof.
+  intros Hm Hu Ht.
+  destruct (trim_loop_ok self k from w Hm) as (w1 & Ht1 & Hm1 & Hr).
+  assert (w1 = w') as -> by congruence.
+  pose proof (slots_unique_trim_rel _ _ _ _ _ Hr Hu) as Hu'.
+  split_and!; [done|done|by apply slots_unique_observers_once|].
+  intros s h o' m ms h' Hs Hrm. by eapply trim_moves_only_others.
+Qed.
+
+(** A reachable world, or one between two removals of a trim of a reachable world: the worlds a walk's
+    mutations can pass through. *)
+Definition ew_point (w : EdgeWorld) : Prop :=
+  exists self from k w0, ew_reachable w0 /\ trim_loop self from k w0 = Some w.
+
+Lemma reachable_point w : ew_reachable w -> ew_point w.
+Proof. intros Hr. exists 0, 0, 0, w. done. Qed.
+
+(** The premise of [walk_covers], for an observer present in the set. *)
+Theorem observer_held_once w s c :
+  ew_point w -> c ∈ obs_view (obs_of w s) -> held_once c (obs_of w s).
+Proof.
+  intros (self & from & k & w0 & Hr & Ht) Hin.
+  pose proof (reachable_wf w0 Hr) as Hw.
+  destruct (trim_every_removal self from k w0 w (proj1 Hw) (wf_slots_unique _ Hw) Ht)
+    as (_ & _ & Honce & _).
+  split; [done|]. apply Honce.
+Qed.
+
+(** Review Focus 4: A, B, A with an edge in each A slot, the later edge last in A's observers. The
+    first removal moves it, the later slot reads the moved handle, and a clear removes every edge.
+    [sl_no_duplicate_edge] excludes this list from reachable worlds: see [aba_reachable_trim]. *)
 Theorem sl_trim_moves_own_edge w self A B ha hb ha' :
   edge_match w ->
   sslots (src_of w self) = [(A, Some ha); (B, Some hb); (A, Some ha')] ->

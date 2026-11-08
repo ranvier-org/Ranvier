@@ -9,10 +9,8 @@ Local Ltac walk_steps :=
     [ eapply walk_visit; [reflexivity|reflexivity|reflexivity|]
     | apply walk_end; reflexivity ].
 
-(** An observer held twice can be missed though present throughout. Observer 1 sits below the cursor
-    and gains a second position above it. Removing the lower position moves observer 3 into it, so the
-    walk visits 3 where 1 was. [BUGS.md] closes this as spec corrected: [ObserverSet] documents each
-    observer as held at most once, and [observer_held_once] proves that of every reachable world. *)
+(** Observer 1 holds two positions from the first visit on, and the walk misses it: removing position
+    0 moves observer 3 there, and position 2 sits above the cursor. *)
 Example walk_covers_duplicate_observer :
   let o := {| oitems := [(1, 0); (2, 0)]; olatest := 1 |} in
   let muts := [[WAdd 1 1; WAdd 3 0; WRemove 1 0]; []] in

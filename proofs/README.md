@@ -67,17 +67,18 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `sl_add_repeat` | `Pure/SourceList.v` | A read of the source just matched leaves the world unchanged. |
 | `sl_add_truncates` | `Pure/SourceList.v` | A miss drops every slot from the cursor and the edges they held, then appends. |
 | `sl_no_duplicate_edge` | `Pure/SourceList.v` | In a reachable world, a slot holds an edge exactly when it is its source's first slot. |
-| `observer_held_once` | `Pure/SourceList.v` | In a reachable world, an observer occupies at most one position of a source's observers. |
-| `trim_moves_only_others` | `Pure/SourceList.v` | With one edge per source, a removal moves only another computation's edge. |
+| `trim_moves_only_others` | `Pure/SourceList.v` | Over `edge_match` and `slots_unique`, a removal moves only another computation's edge. |
+| `trim_every_removal` | `Pure/SourceList.v` | `trim_loop` keeps both invariants at every removal, with each observer held at most once and only others' edges moved. |
+| `observer_held_once` | `Pure/SourceList.v` | In a reachable world or between two removals of its trim, a present observer is `held_once`: the premise of `walk_covers`. |
 | `sl_trim_moves_own_edge` | `Pure/SourceList.v` | Review Focus 4: for A, B, A with two A edges, the later handle is read after the move, and a clear removes every edge. |
 | `sl_add_unknown_no_duplicate` | `Pure/SourceList.v` | Review Focus 5: above the limit with a stale `olatest`, the answer is `TUnknown` and the source ends with one edge. |
 | `unknown_held`, `unknown_unheld` | `Pure/SourceList.v` | Runs reaching that case, with and without an earlier slot. |
 | `aba_reachable_trim` | `Pure/SourceList.v` | A, B, A from a run: a trim moves another observer's edge, and its slot follows. |
 | `aba_world_premises` | `Pure/SourceList.v` | A concrete world meets the premises of `sl_trim_moves_own_edge`. |
 | `snapshot_trim_fails` | `Pure/SourceList.v` | Handles read before the removals fail on that world. |
-| `walk_covers_duplicate_observer` | `Pure/Witnesses.v` | An observer held twice can be missed though present throughout. |
+| `walk_covers_duplicate_observer` | `Pure/Witnesses.v` | An observer held twice can be missed though present throughout. Modelled in `BUGS.md`. |
 | `walk_visits_moved_twice` | `Pure/Witnesses.v` | A moved observer is visited twice. |
-| `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. |
+| `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. Modelled in `BUGS.md`. |
 
 ## Literature
 

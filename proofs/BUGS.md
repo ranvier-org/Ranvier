@@ -20,6 +20,23 @@ intended, the entry closes as "spec corrected".
 
 ## Modelled
 
+- `walk_covers_duplicate_observer` (`theories/Pure/Witnesses.v`): an observer held at two positions can be
+  missed by a walk though present at every point. `walk_covers` takes `held_once` at every point as its
+  named premise. `ISource.AddObserver` documents "an observer the caller holds no edge for" (Core.fs 65),
+  and `ObserverSet` documents each observer as held at most once (Core.fs 190). The callers that have to
+  keep this are `SourceList.Append` (Core.fs 744, 769), `Bindings.fs:51`, `Combinators.fs:686`,
+  `Combinators.fs:944`, `Projections.fs:676` and `ValueReaders.fs:100`. For `SourceList`,
+  `observer_held_once` proves the premise. The other five are argued in `CORRESPONDENCE.md`. Task 7 runs
+  the witness on the F#, as a `Ranvier.Tests` case with a stub `IComputation` whose `MarkDirty` mutates the
+  set (`Types.fs:654` makes both visible).
+- `walk_visits_added_observer` (`theories/Pure/Witnesses.v`): an observer added during a walk is visited
+  when a later removal moves it below the cursor. The doc at Core.fs 360-362 says "Observers added during
+  the loop are not notified". This needs a mark to add and remove observers during a walk, and whether one
+  can is open. Task 6's `mark_preserves_edges` closes this entry if it holds for every mark, since a walk
+  then has no mutations. `touchSummary` (`Projections.fs:447`) was read: it runs two `NotifyCheck` walks.
+  The mark callbacks of `FoldReads` and `FoldRow` (`changed`, `touched` in `Combinators.fs`) are outside
+  Task 6's model and unread here.
+
 ## Confirmed
 
 ## Awaiting ruling
@@ -43,13 +60,6 @@ intended, the entry closes as "spec corrected".
 
 ## Closed
 
-- `walk_covers_duplicate_observer` (`theories/Pure/Witnesses.v`), spec corrected. The first statement of
-  `walk_covers` asked only that the observer be present at every point. That is false for an observer
-  held at two positions: the walk can miss it. `ObserverSet` documents each observer as held at most once
-  (Core.fs 190), and `SourceList` is the only caller of `AddObserver` (744, 769). `observer_held_once`
-  proves that of every reachable world, so `walk_covers` now takes `held_once` at every point. Not run
-  against the F#: a duplicate has no route through `SourceList`, so no `Scenarios.fsx` scenario can build
-  one.
 
 ## Definition changes
 
