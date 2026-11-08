@@ -17,6 +17,8 @@ intended, the entry closes as "spec corrected".
   owner: does the reference keep this engine-independent value, or does it model demand as Core.fs has
   it? Modelling demand would put one engine's laziness in the tier every engine proves against. Task 13
   runs it against the F#.
+  `disposed_memo_answers` (Task 10) states the behaviour of the doc at 4372: a read answers what the memo stored, with no run. `disposed_unread_answers_default` has `unread_memo`'s
+  shape in the model, answering 0. That doc's "the last value it computed" does not describe a memo that never computed one.
 - `batch_restored_value_reruns` (scenario `S07`): a batch writes 0, 1, 0 under an effect that reads the signal
   directly. The first write marks the effect `Dirty`, a `Dirty` effect runs with no comparison of its reads, and
   it logs the value of its previous run. F# trace: `[EvRun 2; EvLog 2 0; EvRun 2; EvLog 2 0]`. A redundant run
@@ -220,6 +222,12 @@ intended, the entry closes as "spec corrected".
 - `logging_cleanup_drop_unobserved` (`theories/Reference/Properties.v`): `observe_settled` admits an engine
   that drops a non-failing logging cleanup of a re-run: `[R9;C9;L100;C9;L0;R9]` and `[R9;R9]` have equal
   views. Task 13a's `optimised_cleanups` covers this for the worked optimisation.
+
+- `failed_batch_leaves_queue` (scenario `failed_batch`; `theories/Pure/Witnesses.v`, same name): a batch whose body fails applies its write and
+  skips `RequestFlush` (Core.fs 3303-3310), so the effect it woke stays `Dirty` and queued with `flushOwed` false, until something else flushes. The harness asserts the queue holds
+  1, `flushOwed` false, one run and `Dirty`, and an explicit `Flush` runs it. F# trace: `[EvRun 2; EvLog 2 0; EvRun 2; EvLog 2 1]`. The doc at 3289-3290, "Defers the flush until
+  `body` returns", says nothing of a body that raises. Nothing is lost: the entry stays live, and the next flush runs it. `owed_settled` holds here, since it says no flush is owed and
+  nothing of the queue. The question for the owner: should a failed batch request its flush? `read_move_leaves_effect_queued` is the same end state by another route.
 
 ## Closed
 

@@ -1,7 +1,7 @@
 From stdpp Require Import prelude.
 From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Runs Witnesses.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Runs Witnesses Scheduler Ownership.
 From Ranvier.Conformance Require Import Expected.
 
 Open Scope Z_scope.
@@ -368,3 +368,23 @@ Proof.
   split_and!; [done|done|done|].
   apply covered_of_nothing_passed; [vm_compute; reflexivity|done|done|done|done].
 Qed.
+
+(** ** Scheduler and ownership *)
+
+Example check_teardown_order : trace_of 100000%nat current_flags teardown_order = Some exp_teardown_order.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_late_registrations : trace_of 100000%nat current_flags late_registrations = Some exp_late_registrations.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_flush_child_release : trace_of 100000%nat current_flags flush_child_release = Some exp_flush_child_release.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_flush_memo_failure : trace_of 100000%nat current_flags flush_memo_failure = Some exp_flush_memo_failure.
+Proof. vm_compute. reflexivity. Qed.
+
+(** The program ends at the failed batch, and the F# scenario's explicit flush is the [run_flush] here. *)
+Example check_failed_batch :
+  (r ← run_top 100000%nat failed_batch (init current_flags); r' ← run_flush 1000%nat r.1; Some (g_trace r'.1)) =
+  Some exp_failed_batch.
+Proof. vm_compute. reflexivity. Qed.

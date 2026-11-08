@@ -772,7 +772,8 @@ type state = { g_flags : flags; g_edges : edgeWorld;
                g_pull_depth : nat; g_current : node_id option;
                g_untracked : bool; g_current_owner : owner_id option;
                g_next_id : nat; g_trace : event list;
-               g_running : node_id list; g_ghost : ghost }
+               g_running : node_id list; g_ghost : ghost;
+               g_registered : (node_id, nat) gmap }
 
 val node_marked : freshness -> bool -> bool -> node -> node
 
@@ -848,6 +849,8 @@ val with_running : node_id list -> state -> state
 
 val with_ghost : ghost -> state -> state
 
+val with_registered : (node_id, nat) gmap -> state -> state
+
 val node_with_value : val0 -> node -> node
 
 val node_with_failure : val0 option -> node -> node
@@ -916,6 +919,8 @@ val slot_holds : (node -> bool) -> state -> node_id -> bool
 val add_if : bool -> node_id -> node_id gset -> node_id gset
 
 val ghost_resolved : node_id -> state -> state
+
+val ghost_registered : node_id -> state -> state
 
 val root_owner_id : owner_id
 

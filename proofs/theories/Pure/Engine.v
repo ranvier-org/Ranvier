@@ -33,101 +33,123 @@ Definition with_edges (v : EdgeWorld) (s : state) : state :=
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_owners (v : gmap owner_id owner_state) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := v;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_queue (v : list node_id) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := v; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_queue_head (v : nat) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := v; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_flushing (v : bool) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := v; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_flush_owed (v : bool) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := v;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_batch_depth (v : nat) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := v; g_pull_depth := g_pull_depth s; g_current := g_current s; g_untracked := g_untracked s;
-     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_pull_depth (v : nat) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := v; g_current := g_current s; g_untracked := g_untracked s;
-     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_current (v : option node_id) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := v; g_untracked := g_untracked s;
-     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_untracked (v : bool) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s; g_untracked := v;
-     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_current_owner (v : option owner_id) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := v; g_next_id := g_next_id s; g_trace := g_trace s;
-     g_running := g_running s; g_ghost := g_ghost s |}.
+     g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_next_id (v : nat) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := v; g_trace := g_trace s;
-     g_running := g_running s; g_ghost := g_ghost s |}.
+     g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_trace (v : list event) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s; g_trace := v;
-     g_running := g_running s; g_ghost := g_ghost s |}.
+     g_running := g_running s; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_running (v : list node_id) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := v; g_ghost := g_ghost s |}.
+     g_trace := g_trace s; g_running := v; g_ghost := g_ghost s;
+     g_registered := g_registered s |}.
 
 Definition with_ghost (v : ghost) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := v |}.
+     g_trace := g_trace s; g_running := g_running s; g_ghost := v;
+     g_registered := g_registered s |}.
+
+Definition with_registered (v : gmap node_id nat) (s : state) : state :=
+  {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s; g_owners := g_owners s;
+     g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
+     g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
+     g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
+     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s; g_registered := v |}.
 
 Definition node_with_value (v : val) (d : node) : node :=
   {| n_kind := n_kind d; n_value := v; n_failure := n_failure d; n_status := n_status d;
@@ -352,6 +374,10 @@ Definition ghost_resolved (n : node_id) (s : state) : state :=
                 gh_passed := add_if (slot_holds (fun e => stale_live e && negb (n_unannounced e)) s n) n (gh_passed g);
                 gh_over := add_if (slot_holds stale_live s n) n (gh_over g);
                 gh_run_reads := gh_run_reads g; gh_nested := gh_nested g |} s.
+
+(** A cleanup registered with an owner of host [h]. *)
+Definition ghost_registered (h : node_id) (s : state) : state :=
+  with_registered (<[h := S (default 0 (g_registered s !! h))]> (g_registered s)) s.
 
 (** ** Owners *)
 
@@ -667,6 +693,7 @@ Fixpoint exec (fuel : nat) (e : env) (c : cmd) {struct fuel} : M outcome :=
       | None => m_return (Fail pure_scope_failure)
       | Some o =>
         let* x := get_owner o in
+        let* _ := m_modify (ghost_registered (o_host x)) in
         let* _ :=
           if o_disposed x then
             let* _ := detached o (run_cleanup f o b e) in
@@ -1134,7 +1161,7 @@ Definition init (fl : flags) : state :=
      g_owners := <[root_owner_id := new_owner 0 None false]> ∅; g_queue := []; g_queue_head := 0;
      g_flushing := false; g_flush_owed := false; g_batch_depth := 0; g_pull_depth := 0; g_current := None;
      g_untracked := false; g_current_owner := Some root_owner_id; g_next_id := 0; g_trace := []; g_running := [];
-     g_ghost := empty_ghost |}.
+     g_ghost := empty_ghost; g_registered := ∅ |}.
 
 Definition run_top (fuel : nat) (c : cmd) : M outcome := exec fuel [] c.
 

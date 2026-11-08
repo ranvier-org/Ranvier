@@ -72,7 +72,8 @@ Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id n
                   g_current : option node_id; g_untracked : bool; g_current_owner : option owner_id;
                   g_next_id : nat; g_trace : list event;
                   g_running : list node_id (* ghost: between a run's start and EndRun *);
-                  g_ghost : ghost }.
+                  g_ghost : ghost;
+                  g_registered : gmap node_id nat (* ghost: the cleanups registered per host *) }.
 
 (** [c] observes [src]: a slot of [c] and a position of [src]'s observers each hold the other. *)
 Definition edge (s : state) (src c : node_id) : Prop :=

@@ -13,6 +13,8 @@ theories/Pure/Marking.v
 theories/Pure/Engine.v
 theories/Pure/Check.v
 theories/Pure/Runs.v
+theories/Pure/Scheduler.v
+theories/Pure/Ownership.v
 theories/Conformance/Expected.v
 theories/Conformance/Check.v
 theories/Audit.v

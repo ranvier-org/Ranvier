@@ -2320,7 +2320,8 @@ type state = { g_flags : flags; g_edges : edgeWorld;
                g_pull_depth : nat; g_current : node_id option;
                g_untracked : bool; g_current_owner : owner_id option;
                g_next_id : nat; g_trace : event list;
-               g_running : node_id list; g_ghost : ghost }
+               g_running : node_id list; g_ghost : ghost;
+               g_registered : (node_id, nat) gmap }
 
 (** val node_marked : freshness -> bool -> bool -> node -> node **)
 
@@ -2343,7 +2344,8 @@ let set_node n0 d s =
     g_batch_depth = s.g_batch_depth; g_pull_depth = s.g_pull_depth;
     g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
     s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
-    g_running = s.g_running; g_ghost = s.g_ghost }
+    g_running = s.g_running; g_ghost = s.g_ghost; g_registered =
+    s.g_registered }
 
 (** val enqueue : node_id -> state -> state **)
 
@@ -2354,7 +2356,8 @@ let enqueue n0 s =
     g_batch_depth = s.g_batch_depth; g_pull_depth = s.g_pull_depth;
     g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
     s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
-    g_running = s.g_running; g_ghost = s.g_ghost }
+    g_running = s.g_running; g_ghost = s.g_ghost; g_registered =
+    s.g_registered }
 
 (** val walk_marks :
     (node_id -> state -> state option) -> node_id -> nat -> state -> state
@@ -2536,7 +2539,7 @@ let with_edges v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    g_ghost = s.g_ghost; g_registered = s.g_registered }
 
 (** val with_owners : (owner_id, owner_state) gmap -> state -> state **)
 
@@ -2547,7 +2550,7 @@ let with_owners v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    g_ghost = s.g_ghost; g_registered = s.g_registered }
 
 (** val with_queue : node_id list -> state -> state **)
 
@@ -2558,7 +2561,7 @@ let with_queue v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    g_ghost = s.g_ghost; g_registered = s.g_registered }
 
 (** val with_queue_head : nat -> state -> state **)
 
@@ -2569,7 +2572,7 @@ let with_queue_head v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    g_ghost = s.g_ghost; g_registered = s.g_registered }
 
 (** val with_flushing : bool -> state -> state **)
 
@@ -2580,7 +2583,7 @@ let with_flushing v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    g_ghost = s.g_ghost; g_registered = s.g_registered }
 
 (** val with_flush_owed : bool -> state -> state **)
 
@@ -2591,7 +2594,7 @@ let with_flush_owed v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    g_ghost = s.g_ghost; g_registered = s.g_registered }
 
 (** val with_batch_depth : nat -> state -> state **)
 
@@ -2602,7 +2605,7 @@ let with_batch_depth v s =
     v; g_pull_depth = s.g_pull_depth; g_current = s.g_current; g_untracked =
     s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_ghost; g_registered = s.g_registered }
 
 (** val with_pull_depth : nat -> state -> state **)
 
@@ -2613,7 +2616,7 @@ let with_pull_depth v s =
     s.g_batch_depth; g_pull_depth = v; g_current = s.g_current; g_untracked =
     s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_ghost; g_registered = s.g_registered }
 
 (** val with_current : node_id option -> state -> state **)
 
@@ -2624,7 +2627,7 @@ let with_current v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = v;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    g_ghost = s.g_ghost; g_registered = s.g_registered }
 
 (** val with_untracked : bool -> state -> state **)
 
@@ -2635,7 +2638,7 @@ let with_untracked v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = v; g_current_owner = s.g_current_owner; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_ghost; g_registered = s.g_registered }
 
 (** val with_current_owner : owner_id option -> state -> state **)
 
@@ -2646,7 +2649,7 @@ let with_current_owner v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = v; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_ghost; g_registered = s.g_registered }
 
 (** val with_next_id : nat -> state -> state **)
 
@@ -2657,7 +2660,7 @@ let with_next_id v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = v; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_ghost; g_registered = s.g_registered }
 
 (** val with_trace : event list -> state -> state **)
 
@@ -2668,7 +2671,7 @@ let with_trace v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = v; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_ghost; g_registered = s.g_registered }
 
 (** val with_running : node_id list -> state -> state **)
 
@@ -2679,7 +2682,7 @@ let with_running v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = v; g_ghost =
-    s.g_ghost }
+    s.g_ghost; g_registered = s.g_registered }
 
 (** val with_ghost : ghost -> state -> state **)
 
@@ -2690,7 +2693,18 @@ let with_ghost v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = v }
+    g_ghost = v; g_registered = s.g_registered }
+
+(** val with_registered : (node_id, nat) gmap -> state -> state **)
+
+let with_registered v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost; g_registered = v }
 
 (** val node_with_value : val0 -> node -> node **)
 
@@ -3133,6 +3147,17 @@ let ghost_resolved n0 s =
       n0 g.gh_passed);
     gh_over = (add_if (slot_holds stale_live s n0) n0 g.gh_over);
     gh_run_reads = g.gh_run_reads; gh_nested = g.gh_nested } s
+
+(** val ghost_registered : node_id -> state -> state **)
+
+let ghost_registered h s =
+  with_registered
+    (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable)) h
+      (S
+      (from_option (Obj.magic id) O
+        (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) h s.g_registered)))
+      s.g_registered)
+    s
 
 (** val root_owner_id : owner_id **)
 
@@ -3751,13 +3776,14 @@ let rec exec fuel e c =
          match owner with
          | Some o ->
            m_bind (get_owner o) (fun x ->
-             m_bind
-               (match x.o_disposed with
-                | True ->
-                  m_bind (detached o (run_cleanup f o b e)) (fun _ ->
-                    request_flush f)
-                | False -> put_owner o (owner_with_cleanup b e x))
-               (fun _ -> exec f e k))
+             m_bind (m_modify (ghost_registered x.o_host)) (fun _ ->
+               m_bind
+                 (match x.o_disposed with
+                  | True ->
+                    m_bind (detached o (run_cleanup f o b e)) (fun _ ->
+                      request_flush f)
+                  | False -> put_owner o (owner_with_cleanup b e x))
+                 (fun _ -> exec f e k)))
          | None -> m_return (Fail pure_scope_failure))
      | CDispose (n0, k) ->
        on_node e n0 (fun t ->
@@ -4356,7 +4382,8 @@ let init fl =
     g_queue = Nil; g_queue_head = O; g_flushing = False; g_flush_owed =
     False; g_batch_depth = O; g_pull_depth = O; g_current = None;
     g_untracked = False; g_current_owner = (Some root_owner_id); g_next_id =
-    O; g_trace = Nil; g_running = Nil; g_ghost = empty_ghost }
+    O; g_trace = Nil; g_running = Nil; g_ghost = empty_ghost; g_registered =
+    (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
 
 (** val run_top : nat -> cmd -> outcome m **)
 

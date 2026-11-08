@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership.
 From Ranvier.Conformance Require Check.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -157,3 +157,35 @@ Print Assumptions effect_resolves_over_moved_source.
 Print Assumptions diamond_ends_memo_stale.
 Print Assumptions reader_mark_off_fires.
 Print Assumptions unannounced_off_fires.
+Print Assumptions sched_ok_all.
+Print Assumptions sched_inv_init.
+Print Assumptions sched_inv_run_top.
+Print Assumptions queued_at_most_once.
+Print Assumptions queued_at_most_once_new_graph.
+Print Assumptions flush_no_nest.
+Print Assumptions owed_settled.
+Print Assumptions flush_returns_clean.
+Print Assumptions body_failure_contained.
+Print Assumptions drain_continues.
+Print Assumptions drain_no_escape.
+Print Assumptions flush_survives_body.
+Print Assumptions flush_survives_cleanup.
+Print Assumptions flush_survives_child_release.
+Print Assumptions flush_survives_memo_run.
+Print Assumptions flush_survives_comparer.
+Print Assumptions dispose_reverse_order.
+Print Assumptions owners_in_order.
+Print Assumptions cleanup_once.
+Print Assumptions cleanup_once_new_graph.
+Print Assumptions disposed_no_edges.
+Print Assumptions disposed_no_edges_new_graph.
+Print Assumptions disposed_effect_never_runs.
+Print Assumptions disposed_memo_answers.
+Print Assumptions late_registration_immediate.
+Print Assumptions late_attach_disposed.
+Print Assumptions stale_link_detach_noop.
+Print Assumptions teardown_runs_in_reverse.
+Print Assumptions late_registrations_run_at_once.
+Print Assumptions disposed_unread_answers_default.
+Print Assumptions stale_link_reached.
+Print Assumptions failed_batch_leaves_queue.

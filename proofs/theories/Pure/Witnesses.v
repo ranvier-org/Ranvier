@@ -54,7 +54,7 @@ Local Definition mark_state (w : EdgeWorld) (nodes : gmap node_id node) (q : lis
   {| g_flags := current_flags; g_edges := w; g_nodes := nodes; g_owners := ∅; g_queue := q;
      g_queue_head := h; g_flushing := false; g_flush_owed := false; g_batch_depth := 0; g_pull_depth := 0; g_current := None;
      g_untracked := false; g_current_owner := None; g_next_id := 3; g_trace := []; g_running := running;
-     g_ghost := empty_ghost |}.
+     g_ghost := empty_ghost; g_registered := ∅ |}.
 
 (** Computation 2, in a run, has read source 1. *)
 Local Definition linked_world : EdgeWorld :=
@@ -858,3 +858,19 @@ Proof.
     + exists e. split; [exact He|vm_compute; reflexivity].
   - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
 Qed.
+
+(** ** Flushes *)
+
+(** A batch whose body fails applies its write and skips [RequestFlush], as [RunBatch] does. The effect stays queued
+    and [Dirty] with no flush owed, and runs at the next flush. Awaiting ruling in [BUGS.md]. *)
+Definition failed_batch : cmd :=
+  CSignal 1 (K 0%Z) (
+  CEffect 2 (CRead 10 (V 1) (CLog (V 10) Nop)) (
+  CBatch (CWrite (V 1) (K 1%Z) (CThrow 5%Z)) Nop)).
+
+Example failed_batch_leaves_queue :
+  let s := final failed_batch in
+  node_view s 2 = Some (Dirty, false, true, StNone, 0%Z) /\
+  pending s = [2] /\ g_flush_owed s = false /\ n_runs <$> g_nodes s !! 2 = Some 1 /\
+  (r ← run_flush 1000 s; Some (g_trace r.1)) = Some (g_trace s ++ [EvRun 2; EvLog 2 1%Z]).
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.

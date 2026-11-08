@@ -770,6 +770,98 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             s.Value <- 2
             c.Check (e.Runs = 3) $"the next write leaves {e.Runs} runs"
+
+        // A teardown in reverse acquisition order: the later cleanup, the child's cleanup, the earlier cleanup.
+        "teardown_order",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let e =
+                c.Effect 2 (fun () ->
+                    s.Value |> ignore
+                    c.Cleanup 2 (fun () -> c.Log 2 1)
+
+                    c.Effect 3 (fun () -> c.Cleanup 3 (fun () -> c.Log 3 2))
+                    |> ignore
+
+                    c.Cleanup 2 (fun () -> c.Log 2 3))
+
+            c.Dispose 2 (fun () -> e.Dispose ()) (box e)
+
+        // A cleanup registered on a disposed scope runs before the body goes on, and a child created there never runs.
+        "late_registrations",
+        fun c ->
+            let self: Effect ref = ref Unchecked.defaultof<Effect>
+            let child: Effect ref = ref Unchecked.defaultof<Effect>
+
+            c.Batch (fun () ->
+                self.Value <-
+                    c.Effect 1 (fun () ->
+                        c.Dispose 1 (fun () -> self.Value.Dispose ()) (box self.Value)
+                        c.Cleanup 1 (fun () -> c.Log 1 100)
+                        child.Value <- c.Effect 2 (fun () -> c.Log 2 5)
+                        c.Log 1 7))
+
+            c.Check ((privateField child.Value "disposed" :?> bool)) "the late child is disposed"
+            c.Check (child.Value.Runs = 0) $"the late child has {child.Value.Runs} runs"
+
+        // A child's release fails through its cleanup, during its parent's re-run. The effect behind it runs.
+        "flush_child_release",
+        fun c ->
+            let s = c.Signal 1 0
+            c.Effect 2 (fun () -> c.Log 2 s.Value) |> ignore
+            let next = ref 4
+
+            c.Effect 3 (fun () ->
+                s.Value |> ignore
+                let label = next.Value
+                next.Value <- label + 1
+
+                c.Effect label (fun () -> c.Cleanup label (fun () -> c.Throw 8))
+                |> ignore)
+            |> ignore
+
+            s.Value <- 1
+            c.Check (c.Graph.Root.ErrorCount = 1) $"Root.Errors after the write: {c.Graph.Root.ErrorCount}"
+            c.Check (c.QueueLength = 0) $"the queue holds {c.QueueLength}"
+
+        // A memo's run fails under its reader's run. The effect behind the reader runs.
+        "flush_memo_failure",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m =
+                c.Memo 2 (fun () ->
+                    let v = s.Value
+
+                    if v <> 0 then c.Throw 9 else v)
+
+            c.Effect 3 (fun () -> c.Log 3 s.Value) |> ignore
+            let e = c.Effect 4 (fun () -> c.Log 4 m.Value)
+            s.Value <- 1
+            c.Check (statusOf e = "Error") $"the reader holds the failure: {statusOf e}"
+            c.Check (c.QueueLength = 0) $"the queue holds {c.QueueLength}"
+
+        // A batch whose body fails applies its write and requests no flush. The effect stays queued, nothing is owed,
+        // and the next flush runs it.
+        "failed_batch",
+        fun c ->
+            let s = c.Signal 1 0
+            let e = c.Effect 2 (fun () -> c.Log 2 s.Value)
+
+            try
+                c.Batch (fun () ->
+                    s.Value <- 1
+                    c.Throw 5)
+            with Boom 5 ->
+                ()
+
+            c.Check (c.QueueLength = 1) $"the queue holds {c.QueueLength}"
+            c.Check (not (privateField c.Graph "flushOwed" :?> bool)) "a flush is owed"
+            c.Check (e.Runs = 1) $"the effect has {e.Runs} runs"
+            c.Check ((privateField e "freshness").ToString() = "Dirty") "the effect is not Dirty"
+            c.Graph.Flush ()
+            c.Check (e.Runs = 2) $"the flush leaves {e.Runs} runs"
     ]
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,

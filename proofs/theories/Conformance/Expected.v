@@ -150,3 +150,26 @@ Definition exp_effect_resolves_over_moved_source : list event := [
   EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 2%Z; EvRun 4;
   EvLog 4 1%Z
 ].
+
+Definition exp_teardown_order : list event := [
+  EvRun 2; EvRun 3; EvCleanup 2; EvLog 2 3%Z; EvCleanup 3; EvLog 3 2%Z;
+  EvCleanup 2; EvLog 2 1%Z; EvDispose 2
+].
+
+Definition exp_late_registrations : list event := [
+  EvRun 1; EvDispose 1; EvCleanup 1; EvLog 1 100%Z; EvLog 1 7%Z
+].
+
+Definition exp_flush_child_release : list event := [
+  EvRun 2; EvLog 2 0%Z; EvRun 3; EvRun 4; EvCleanup 4; EvFail 4 8%Z;
+  EvRun 3; EvRun 2; EvLog 2 1%Z; EvRun 5
+].
+
+Definition exp_flush_memo_failure : list event := [
+  EvRun 3; EvLog 3 0%Z; EvRun 4; EvLog 4 0%Z; EvRun 4; EvFail 4 9%Z;
+  EvRun 3; EvLog 3 1%Z
+].
+
+Definition exp_failed_batch : list event := [
+  EvRun 2; EvLog 2 0%Z; EvRun 2; EvLog 2 1%Z
+].
