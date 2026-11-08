@@ -361,7 +361,7 @@ This task proves no theorems. It builds the executable model and tests it agains
 
 **Interfaces:**
 - Consumes: Tasks 2, 4, 5, 6.
-- Produces: `node` gains `n_link : option link`, which `Dispose` needs (Core.fs 4081, 4385, 4648, 4896-4898). `o_cleanups`, `o_cleanup_envs` and `o_cleanup_order` have one writer and one reader helper. Owner ids come from `fresh (dom g_owners)` and a fixed root id, not `g_next`, so conformance's node ids stay aligned. Then:
+- Produces: `node` gains `n_link : option link`, which `Dispose` needs (Core.fs 4081, 4385, 4648, 4896-4898). `o_cleanups`, `o_cleanup_envs` and `o_cleanup_order` have one writer and one reader helper. Owner ids come from `fresh (dom g_owners)` and a fixed root id, not `g_next`, so conformance's node ids stay aligned. `Effect.Run` adds the effect to `g_running` before its `Discharge` (Core.fs 4823), so `wake_ok`'s running disjunct covers the cleanup window. Then:
 
 ```rocq
 Definition M A := state -> option (state * A).   (* None: out of fuel *)
@@ -402,7 +402,7 @@ Theorems later quantify over `fuel`, so a `Some` result means "this operation re
 | S14 | Candidate from the spec: self-writing memo, read by an effect |
 | S15 | Candidate: `e` reads `[h,x,y]`, `x` reads `[h,y]`, batch writes `h` and `y`'s source |
 
-- [ ] **Step 2: Run it.** Run: `rtk dotnet build src/Ranvier -c Release`, then `rtk dotnet fsi proofs/conformance/Scenarios.fsx`. Expected: `Expected.v` holds 16 definitions. `src/Ranvier` shows no diff. Separately, take `walk_covers_duplicate_observer` to the F#: `ObserverSet` is internal, so run it as a `Ranvier.Tests` case with a stub `IComputation` whose `MarkDirty` mutates the set, then settle its `BUGS.md` entry.
+- [ ] **Step 2: Run it.** Run: `rtk dotnet build src/Ranvier -c Release`, then `rtk dotnet fsi proofs/conformance/Scenarios.fsx`. Expected: `Expected.v` holds the 16 definitions, plus one for each ledger scenario added before this task: `in_cleanup_observer_stays_clean` and an effect that disposes itself mid-body, then reads. `src/Ranvier` shows no diff. Separately, take `walk_covers_duplicate_observer` to the F#: `ObserverSet` is internal, so run it as a `Ranvier.Tests` case with a stub `IComputation` whose `MarkDirty` mutates the set, then settle its `BUGS.md` entry.
 - [ ] **Step 3: Write `Conformance/Check.v`:** one `Example check_Snn : trace_of 100000 current_flags prog_Snn = Some exp_Snn. Proof. vm_compute. reflexivity. Qed.` per scenario. Run the build; expected: fails, `Engine` undefined.
 - [ ] **Step 4: Implement `Engine.v`** line by line from Core.fs, including `finally` paths and `moved` with `CmpThrows`. `f_reader_mark = false` drops the `MarkReaderCheck` in `TrackCurrent`.
 - [ ] **Step 5: Run the build.** Expected: all 16 pass. A mismatch is first a model error; fix `Engine.v`. Only after confirming from Core.fs that the model is faithful, and that the F# behaviour is what the scenario records, is the mismatch a correspondence question to report.
@@ -474,7 +474,7 @@ Definition observer_covered (s : state) (src c : nid) : Prop :=
   stale_or_queued s c \/ In c (g_running s) \/ n_unann_of s src = true.
 Definition wake_ok (s : state) : Prop :=
   forall src c, edge s src c -> stale_of s src -> observer_covered s src c.
-Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s), wake_ok, stack discipline, id bounds, owner cleanup lists of equal length *)
+Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s), wake_ok, stack discipline, id bounds, owner cleanup lists of equal length, n_in_cleanup c -> In c (g_running s) *)
 ```
 
 - [ ] **Step 1: Theorems.**
