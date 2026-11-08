@@ -7,7 +7,9 @@
 #   3. `Admitted`, `admit`, `give_up`, `Admit Obligations` and top-level `Axiom`, `Parameter` and
 #      `Conjecture` occur only in declarations named under `## Open theorems` in BUGS.md.
 #      A failure of the scan itself fails the check.
-# Conformance regeneration is added with the conformance layer.
+#   4. regenerating theories/Conformance/Expected.v from the F# leaves it unchanged. Under WSL this runs
+#      the Windows `dotnet.exe` through interop, with a relative path resolved from the Windows view of
+#      this directory. RANVIER_DOTNET names another dotnet. A missing dotnet fails the check.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -121,6 +123,29 @@ while IFS=$'\t' read -r loc name; do
   fi
 done <<<"$scan_hits"
 
+# 4. Conformance. The regenerated file sits beside the script, inside the checkout dotnet.exe can see.
+find_dotnet() {
+  if [ -n "${RANVIER_DOTNET:-}" ]; then echo "$RANVIER_DOTNET"; return 0; fi
+  if command -v dotnet >/dev/null 2>&1; then command -v dotnet; return 0; fi
+  if command -v dotnet.exe >/dev/null 2>&1; then command -v dotnet.exe; return 0; fi
+  if [ -x "/mnt/c/Program Files/dotnet/dotnet.exe" ]; then echo "/mnt/c/Program Files/dotnet/dotnet.exe"; return 0; fi
+  return 1
+}
+if dotnet_cmd="$(find_dotnet)"; then
+  regen="$(mktemp -p conformance .Expected.XXXXXX)"
+  trap 'rm -f "$out" "$regen"' EXIT
+  if ! "$dotnet_cmd" build ../src/Ranvier -c Release -f net10.0 --nologo -v q >"$out" 2>&1; then
+    cat "$out" >&2
+    note "dotnet build of src/Ranvier failed"
+  elif ! "$dotnet_cmd" fsi conformance/Scenarios.fsx "$regen" >"$out" 2>&1; then
+    cat "$out" >&2
+    note "conformance/Scenarios.fsx failed"
+  elif ! diff -u theories/Conformance/Expected.v "$regen" >&2; then
+    note "regenerating theories/Conformance/Expected.v changed it"
+  fi
+else
+  note "no dotnet found, so theories/Conformance/Expected.v could not be regenerated"
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo "check.sh: FAILED" >&2

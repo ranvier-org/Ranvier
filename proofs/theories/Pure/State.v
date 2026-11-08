@@ -16,7 +16,8 @@ Record link := { l_child : nid; l_owner : oid; l_gen : option nat; l_acquired : 
 
 (** [Owner]. [o_children] is stored head to tail. [o_cleanups], [o_cleanup_envs] and [o_cleanup_order]
     are parallel and stored earliest first, and [o_cleanup_envs] holds each cleanup's captured
-    environment. Teardown runs both from the end. *)
+    environment. Teardown runs both from the end. [o_host] is the node whose scope this is, and labels
+    the events of the owner's cleanups. *)
 Record ownerS := {
   o_children : list link;
   o_cleanups : list cmd;
@@ -26,13 +27,15 @@ Record ownerS := {
   o_gen : nat;
   o_disposed : bool;
   o_sink : option oid;
-  o_errors : list val
+  o_errors : list val;
+  o_host : nid
 }.
 
 Record node := { n_kind : kind; n_value : val; n_failure : option val; n_status : status;
                  n_fresh : fresh; n_unann : bool; n_runs : nat; n_published : bool;
                  n_disposed : bool; n_queued : bool; n_in_cleanup : bool; n_scope : option oid;
-                 n_violated : bool; n_body : cmd; n_env : env; n_mode : scope_mode; n_cmp : cmp }.
+                 n_violated : bool; n_body : cmd; n_env : env; n_mode : scope_mode; n_cmp : cmp;
+                 n_link : option link }.
 
 (** [f_unannounced] enables the [elif unannounced] branches of marking, and [f_reader_mark] the
     [MarkReaderCheck] of a read. Clearing one gives the engine before that fix. *)

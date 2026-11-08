@@ -47,7 +47,7 @@ Local Definition clean_node (k : kind) (cleanup disposed : bool) : node :=
      n_unann := false; n_runs := 0; n_published := false; n_disposed := disposed; n_queued := false;
      n_in_cleanup := cleanup; n_scope := None; n_violated := false;
      n_body := Syntax.CRet (Syntax.EConst 0%Z); n_env := []; n_mode := Syntax.Pure;
-     n_cmp := Syntax.CmpEq |}.
+     n_cmp := Syntax.CmpEq; n_link := None |}.
 
 Local Definition mark_state (w : EdgeWorld) (nodes : gmap nid node) (q : list nid) (h : nat)
     (running : list nid) : state :=
@@ -70,7 +70,7 @@ Proof.
 Qed.
 
 (** Memo 1 goes stale, and its observer, effect 2 in its cleanups, stays clean. [takes_marks] excepts
-    this observer from [mark_forwards_on_clean]. Modelled in [BUGS.md]. *)
+    this observer from [mark_forwards_on_clean]. Closed in [BUGS.md]. *)
 Example in_cleanup_observer_stays_clean :
   let s := mark_state linked_world
              (<[1 := clean_node KMemo false false]> (<[2 := clean_node KEffect true false]> ∅)) [] 0 [2] in
@@ -88,7 +88,7 @@ Qed.
 
 (** Effect 2 disposes itself mid-body and then reads memo 1: [Track] and [AddSource] link the edge with
     no disposed test, and the [finally] of [RunBody] clears it. The effect ignores the mark, and it is
-    running. Modelled in [BUGS.md]. *)
+    running. Closed in [BUGS.md]. *)
 Example disposed_running_observer_stays_clean :
   let s := mark_state linked_world
              (<[1 := clean_node KMemo false false]> (<[2 := clean_node KEffect false true]> ∅)) [] 0 [2] in

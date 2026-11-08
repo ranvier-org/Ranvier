@@ -10,4 +10,7 @@ theories/Pure/Witnesses.v
 theories/Pure/State.v
 theories/Pure/Edges.v
 theories/Pure/Marking.v
+theories/Pure/Engine.v
+theories/Conformance/Expected.v
+theories/Conformance/Check.v
 theories/Audit.v

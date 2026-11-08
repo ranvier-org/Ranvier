@@ -10,7 +10,7 @@ Definition node_marked (f : fresh) (u q : bool) (d : node) : node :=
      n_fresh := f; n_unann := u; n_runs := n_runs d; n_published := n_published d;
      n_disposed := n_disposed d; n_queued := q; n_in_cleanup := n_in_cleanup d;
      n_scope := n_scope d; n_violated := n_violated d; n_body := n_body d; n_env := n_env d;
-     n_mode := n_mode d; n_cmp := n_cmp d |}.
+     n_mode := n_mode d; n_cmp := n_cmp d; n_link := n_link d |}.
 
 Definition set_node (n : nid) (d : node) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := <[n := d]> (g_nodes s);
