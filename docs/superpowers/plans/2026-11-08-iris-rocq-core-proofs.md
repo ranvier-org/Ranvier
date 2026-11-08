@@ -239,6 +239,7 @@ Definition refines (O : observation)
 
 A failing effect emits `EvFail`. A disposed effect emits its cleanups and `EvDispose`, then never runs. A disposed memo answers reads with its last value, as Core.fs documents. `refines` imports nothing from `Pure/`, so any engine can use it.
 
+- [ ] **Step 0: Check the literature.** Read the from-scratch consistency result in the Adapton papers, and compare it with the reference semantics, `obs_settled` and `refines`. Record each difference in `README.md`, and adopt a stronger or better-factored statement where one exists. Literature never justifies weakening a statement here.
 - [ ] **Step 1: Theorems and `Example`s.** Task 3's theorems still hold on the extended types. `obs_settled_coarser`: `obs_full` equality implies `obs_settled` equality. `refines_full_implies_settled`. `Example`s: an effect that fails in one round emits `EvFail`, and later rounds still run; disposing an effect runs its cleanups once and ends its runs; two traces differing only by a redundant run have equal `obs_settled` and unequal `obs_full`.
 - [ ] **Step 2: Prove them, then audit.** Expected: exit 0.
 - [ ] **Step 3: Commit** as `feat(proofs): add observations and the refinement relation`.
@@ -539,7 +540,7 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 - Consumes: `Reference/*`, Tasks 7-11.
 - Produces: `erase : rprog -> rhistory -> cmd` (the engine program for a reference program), `engine_order : state -> effect_order` (the exact order, computed from observer positions and marking walks, swap-removal included), `engine_of : flags -> rprog -> rhistory -> option (list event)`, for `refines`.
 
-- [ ] **Step 0: Check the literature.** Read the from-scratch consistency result in the Adapton papers, and compare it with `convergence` and `refines obs_settled`. Record any difference in `README.md`, and adopt a stronger or better-factored statement where one exists. Literature never justifies weakening a statement here.
+- [ ] **Step 0: Check the literature notes.** Compare `convergence` and `refines obs_settled` with the Adapton notes from Task 3a in `README.md`. Record any difference there, and adopt a stronger or better-factored statement where one exists. Literature never justifies weakening a statement here.
 - [ ] **Step 1: Theorems.**
   - `engine_order_exact`: the order of `EvRun`s in a flush equals `engine_order`, for all well-behaved programs.
   - `weak_refinement : refines obs_settled (engine_of current_flags)`, using `convergence`.
