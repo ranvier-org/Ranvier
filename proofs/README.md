@@ -83,9 +83,13 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. Modelled in `BUGS.md`. |
 | `coherent_begin` | `Pure/Edges.v` | `sl_begin` preserves `coherent`. |
 | `coherent_add`, `coherent_end`, `coherent_clear` | `Pure/Edges.v` | From a coherent world, each returns `Some`, and the result is coherent. |
-| `coherent_moved` | `Pure/Edges.v` | Removing a slot's edge returns a coherent world. A move in that removal is paired with it, and the moved slot holds its new handle. |
+| `coherent_empty` | `Pure/Edges.v` | The empty world is coherent. |
+| `coherent_moved` | `Pure/Edges.v` | Removing a slot's edge returns a coherent world, of a stated shape with and without a move. A moved observer takes the removed handle, and its slot holds it. |
 | `moved_alone_breaks_coherent` | `Pure/Edges.v` | A move to a different handle with no removal breaks coherence. |
+| `remove_edge_alone_breaks_coherent` | `Pure/Edges.v` | A removal with no blanking of the removed slot breaks coherence. |
 | `edge_iff_both_sides` | `Pure/Edges.v` | In a coherent world, an edge holds exactly when `c` is in `src`'s observers, and exactly when a slot of `c` holds `src` with a handle. |
+| `edge_iff_read` | `Pure/Edges.v` | In a well-formed world, an edge holds exactly when `src` is in `c`'s slots. |
+| `read_without_edge` | `Pure/Edges.v` | A coherent world where a computation read a source and has no edge to it, so `first_owns` fails. |
 
 ## Literature
 

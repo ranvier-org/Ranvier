@@ -4,18 +4,15 @@ From Ranvier.Pure Require Import ObserverSet SourceList.
 
 Inductive kind := KSignal | KMemo | KEffect.
 
-(** A node's stored [Status]. [Status.Stale] is computed from [n_fresh], so it has no constructor. *)
+(** A node's stored [Status]. [n_fresh] determines [Status.Stale]. *)
 Inductive status := StNone | StPending | StError | StUninitialized.
 
 Global Instance status_eq_dec : EqDecision status.
 Proof. solve_decision. Defined.
 
-(** [IOwned]: what an owner disposes. *)
-Inductive owned := OwnedNode (n : nid) | OwnedOwner (o : oid).
-
 (** [OwnerLink]. [l_gen] is the generation the link joined, and [None] once the link has left the
     list, the F# [-1]. *)
-Record link := { l_child : owned; l_owner : oid; l_gen : option nat; l_acquired : nat }.
+Record link := { l_child : nid; l_owner : oid; l_gen : option nat; l_acquired : nat }.
 
 (** [Owner]. [o_children] runs head to tail. [o_cleanups], [o_cleanup_envs] and [o_cleanup_order] are
     parallel, earliest first, and [o_cleanup_envs] holds each cleanup's captured environment. *)
@@ -27,10 +24,8 @@ Record ownerS := {
   o_acquisitions : nat;
   o_gen : nat;
   o_disposed : bool;
-  o_parent : option link;
   o_sink : option oid;
-  o_errors : list val;
-  o_root_scope : bool
+  o_errors : list val
 }.
 
 Record node := { n_kind : kind; n_value : val; n_failure : option val; n_status : status;
