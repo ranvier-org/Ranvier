@@ -4,3 +4,6 @@ docs/research/2026-10-21-dom-twin/*.diff text eol=lf whitespace=-blank-at-eol
 docs/.ai/benchmarks/tracing/** -whitespace
 tests/Ranvier.Tests/fixtures/trace/* text eol=lf
 docs/.ai/public-api-baseline.txt -whitespace
+
+# Rocq proofs: the scripts run in WSL, so every file keeps LF endings
+proofs/** text eol=lf

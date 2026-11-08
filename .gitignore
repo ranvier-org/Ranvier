@@ -39,3 +39,12 @@ node_modules/
 
 # Releases
 artifacts/
+
+# Rocq proofs
+*.vo
+*.vok
+*.vos
+*.glob
+.*.aux
+Makefile.rocq*
+.Makefile.rocq*
