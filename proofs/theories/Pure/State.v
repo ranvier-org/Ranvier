@@ -14,8 +14,9 @@ Proof. solve_decision. Defined.
     list, the F# [-1]. *)
 Record link := { l_child : nid; l_owner : oid; l_gen : option nat; l_acquired : nat }.
 
-(** [Owner]. [o_children] runs head to tail. [o_cleanups], [o_cleanup_envs] and [o_cleanup_order] are
-    parallel, earliest first, and [o_cleanup_envs] holds each cleanup's captured environment. *)
+(** [Owner]. [o_children] is stored head to tail. [o_cleanups], [o_cleanup_envs] and [o_cleanup_order]
+    are parallel and stored earliest first, and [o_cleanup_envs] holds each cleanup's captured
+    environment. Teardown runs both from the end. *)
 Record ownerS := {
   o_children : list link;
   o_cleanups : list cmd;
