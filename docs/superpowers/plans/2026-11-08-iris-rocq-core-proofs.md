@@ -231,14 +231,15 @@ Definition rhistory := list (list rinput).   (* replaces Task 3's *)
 Record observation := { obs_ty : Type; obs_of : list event -> obs_ty }.
 Definition obs_full : observation.      (* the whole trace, run counts included *)
 Definition obs_settled : observation.   (* per effect: values of its last run, failures, disposal; all host reads *)
-(* One order per history, compared at every batch prefix, so an engine cannot look ahead or drop an earlier batch. *)
+(* One order per history. Each batch prefix is compared, and its engine trace is a prefix of the whole trace,
+   so an engine cannot look ahead or drop an earlier batch. *)
 Definition refines (O : observation)
     (engine : rprog -> rhistory -> option (list event)) : Prop :=
   forall p h t, rwf p -> engine p h = Some t ->
     exists ord, is_effect_order ord /\
       forall h', prefix h' h ->
-        exists te fuel tr, engine p h' = Some te /\ rtrace fuel ord p h' = Some tr /\
-          obs_of O te = obs_of O tr.
+        exists te fuel tr, engine p h' = Some te /\ prefix te t /\
+          rtrace fuel ord p h' = Some tr /\ obs_of O te = obs_of O tr.
 (* refines holds for an engine with no traces, so an engine proof also owes this, for a fuel-indexed engine. *)
 Definition engine_answers
     (engine : nat -> rprog -> rhistory -> option (list event)) : Prop :=
