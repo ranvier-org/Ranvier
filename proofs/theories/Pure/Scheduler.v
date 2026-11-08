@@ -74,13 +74,15 @@ Definition clean_le (w : node_id -> nat) (s s' : state) : Prop :=
 Definition link_before (a b : link) : Prop := l_acquired a < l_acquired b.
 
 (** An owner's children and cleanups in acquisition order: strictly increasing, each below the next count, and no
-    acquisition shared between the two lists. *)
+    acquisition shared between the two lists. The three cleanup lists have one length. *)
 Record acq_ok (y : owner_state) : Prop := {
   ac_children : StronglySorted link_before (o_children y);
   ac_order : StronglySorted lt (o_cleanup_order y);
   ac_children_lt : Forall (fun l => l_acquired l < o_acquisitions y) (o_children y);
   ac_order_lt : Forall (fun a => a < o_acquisitions y) (o_cleanup_order y);
-  ac_disjoint : Forall (fun l => l_acquired l ∉ o_cleanup_order y) (o_children y)
+  ac_disjoint : Forall (fun l => l_acquired l ∉ o_cleanup_order y) (o_children y);
+  ac_envs : length (o_cleanup_envs y) = length (o_cleanups y);
+  ac_lengths : length (o_cleanup_order y) = length (o_cleanups y)
 }.
 
 Lemma ss_snoc {A} (R : A -> A -> Prop) l a :
@@ -112,10 +114,10 @@ Lemma forall_lt_S (l : list nat) k : Forall (fun a => a < k) l -> Forall (fun a 
 Proof. intros Hl. eapply Forall_impl; [exact Hl|]. intros. simpl in *. lia. Qed.
 
 Lemma acq_new h sink disposed : acq_ok (new_owner h sink disposed).
-Proof. split; simpl; first [apply SSorted_nil|apply Forall_nil_2]. Qed.
+Proof. split; simpl; first [apply SSorted_nil|apply Forall_nil_2|done]. Qed.
 
 Lemma acq_detached y : acq_ok (owner_detached y).
-Proof. split; simpl; first [apply SSorted_nil|apply Forall_nil_2]. Qed.
+Proof. split; simpl; first [apply SSorted_nil|apply Forall_nil_2|done]. Qed.
 
 Lemma acq_retired y : acq_ok y -> acq_ok (owner_retired y).
 Proof. intros []. by split. Qed.
@@ -133,9 +135,8 @@ Qed.
 
 Lemma acq_child l y : acq_ok y -> l_acquired l = o_acquisitions y -> acq_ok (owner_with_child l y).
 Proof.
-  intros [H1 H2 H3 H4 H5] Hl. split; simpl.
+  intros [H1 H2 H3 H4 H5 H6 H7] Hl. split; simpl; try done.
   - apply ss_snoc; [done|]. eapply Forall_impl; [exact H3|]. intros a Ha. unfold link_before. simpl in *. lia.
-  - done.
   - apply Forall_app_2; [by eapply Forall_impl; [exact H3|]; intros; simpl in *; lia|]. apply Forall_singleton. lia.
   - by apply forall_lt_S.
   - apply Forall_app_2; [done|]. apply Forall_singleton. rewrite Hl. intros Hin.
@@ -144,14 +145,15 @@ Qed.
 
 Lemma acq_cleanup b e y : acq_ok y -> acq_ok (owner_with_cleanup b e y).
 Proof.
-  intros [H1 H2 H3 H4 H5]. split; simpl.
-  - done.
+  intros [H1 H2 H3 H4 H5 H6 H7]. split; simpl; try done.
   - by apply ss_snoc.
   - by eapply Forall_impl; [exact H3|]; intros; simpl in *; lia.
   - apply Forall_app_2; [by apply forall_lt_S|]. apply Forall_singleton. lia.
   - apply Forall_forall. intros l Hl Hin. apply elem_of_app in Hin as [Hin|Hin].
     + by eapply Forall_forall in H5; [|exact Hl].
     + apply list_elem_of_singleton in Hin. eapply Forall_forall in H3; [|exact Hl]. lia.
+  - rewrite !length_app. simpl. lia.
+  - rewrite !length_app. simpl. lia.
 Qed.
 
 (** ** The scheduler's invariant *)
@@ -171,7 +173,9 @@ Record sched_data (x : option node_id) (s : state) : Prop := {
   sd_x : forall n, x = Some n -> is_Some (g_nodes s !! n) /\ n ∉ pending s;
   sd_stale : forall n d, g_nodes s !! n = Some d -> n_kind d = KEffect -> n_disposed d = false ->
     stale (n_freshness d) = true -> n_queued d = true;
-  sd_acq : forall o y, g_owners s !! o = Some y -> acq_ok y
+  sd_acq : forall o y, g_owners s !! o = Some y -> acq_ok y;
+  sd_sink : forall o y p, g_owners s !! o = Some y -> o_sink y = Some p -> is_Some (g_owners s !! p);
+  sd_root : is_Some (g_owners s !! root_owner_id)
 }.
 
 Record sched_ctx (x : option node_id) (s : state) : Prop := {
@@ -186,7 +190,7 @@ Record sched_ctx (x : option node_id) (s : state) : Prop := {
 - **The queue.** The head lies within the queue, and each pending entry names an effect. Each node has at most one pending entry, and its `queued` flag is set exactly when it has one or it is the effect `x`, between its dequeue and `queued <- false`. `x` has no pending entry, and a flush is running.
 - **Effects.** A live, stale effect has its `queued` flag set.
 - **Flushes.** A flush that is owed is not running, and nothing but an open stale read, batch or body leaves one owed. A body or an untracked read in progress has a stale read open or a flush running.
-- **Owners.** Each owner's children and cleanups are in acquisition order.
+- **Owners.** Each owner's children and cleanups are in acquisition order. Each owner's sink exists, and so does the root.
 - **Ids.** Every node id is at most `g_next_id`.
 
 This says nothing of whether a value is up to date.
@@ -513,7 +517,7 @@ Lemma data_set x n d d' s :
      n_queued d = true \/ (n_disposed d = false /\ stale (n_freshness d) = true)) ->
   sched_data x (set_node n d' s).
 Proof.
-  intros H Hd Hk Hq Hs. destruct H as [A1 A2 A3 A4 A5 A6 A7].
+  intros H Hd Hk Hq Hs. destruct H as [A1 A2 A3 A4 A5 A6 A7 A8 A9].
   assert (Hn : forall m, is_Some (g_nodes (set_node n d' s) !! m) -> is_Some (g_nodes s !! m)).
   { intros m. simpl. destruct (decide (m = n)) as [->|Hne]; [rewrite Hd; eauto|by rewrite lookup_insert_ne]. }
   assert (Hp : pending (set_node n d' s) = pending s) by done.
@@ -587,7 +591,7 @@ Proof.
   remember (S (g_next_id s) : node_id) as n eqn:Hnn.
   assert (Hnat : (n : nat) = S (g_next_id s)) by exact Hnn.
   set (s1 := ghost_publish n (set_node n (D n) (with_next_id n s))) in HM.
-  destruct Hi as (Ha&[B1 B2 B3]&Hc). destruct Ha as [A1 A2 A3 A4 A5 A6 A7].
+  destruct Hi as (Ha&[B1 B2 B3]&Hc). destruct Ha as [A1 A2 A3 A4 A5 A6 A7 A8 A9].
   assert (Hfresh : g_nodes s !! n = None).
   { destruct (g_nodes s !! n) eqn:E; [|done]. pose proof (A2 n (mk_is_Some _ _ E)). lia. }
   assert (Hs1 : g_nodes s1 = <[n := D n]> (g_nodes s)).
@@ -619,7 +623,9 @@ Proof.
     - intros m e. rewrite Hs1. destruct (decide (m = n)) as [->|Hmn].
       + rewrite lookup_insert_eq. intros [=<-] Hek _ Hst'. by destruct (Hst n Hst').
       + rewrite lookup_insert_ne by done. apply A6.
-    - rewrite Hg. exact A7. }
+    - rewrite Hg. exact A7.
+    - rewrite Hg. exact A8.
+    - rewrite Hg. exact A9. }
   assert (Hpost : post s s1).
   { split_and!.
     - rewrite Hg. split; auto.
@@ -650,7 +656,7 @@ Proof.
     + exact Hc.
     + by apply (post_set n d).
   - set (s1 := enqueue n (set_node n (node_marked f (n_unannounced d) true d) s)).
-    destruct Ha as [A1 A2 A3 A4 A5 A6 A7].
+    destruct Ha as [A1 A2 A3 A4 A5 A6 A7 A8 A9].
     destruct (A4 n d Hd) as [_ Hiff].
     assert (Hnp : n ∉ pending s) by (intros Hin; rewrite Hq in Hiff; destruct Hiff as [_ G]; by discriminate G; left).
     assert (Hxn : x <> Some n) by (intros Hx; rewrite Hq in Hiff; destruct Hiff as [_ G]; by discriminate G; right).
@@ -680,6 +686,8 @@ Proof.
       * intros m e. destruct (decide (m = n)) as [->|Hne].
         -- rewrite lookup_insert_eq. intros [=<-]. done.
         -- rewrite lookup_insert_ne by done. apply A6.
+      * done.
+      * done.
       * done.
     + by split.
     + exact Hc.
@@ -719,15 +727,33 @@ Qed.
 
 (** ** Owners *)
 
+Lemma is_Some_insert_owner (m : gmap owner_id owner_state) o y p : is_Some (m !! p) -> is_Some (<[o := y]> m !! p).
+Proof.
+  intros H. destruct (decide (p = o)) as [->|Hne]; [rewrite lookup_insert_eq; by eexists|by rewrite lookup_insert_ne].
+Qed.
+
+Lemma sink_insert (m : gmap owner_id owner_state) o y :
+  (forall o' z p, m !! o' = Some z -> o_sink z = Some p -> is_Some (m !! p)) ->
+  (forall p, o_sink y = Some p -> is_Some (m !! p)) ->
+  forall o' z p, <[o := y]> m !! o' = Some z -> o_sink z = Some p -> is_Some (<[o := y]> m !! p).
+Proof.
+  intros H Hy o' z p Hz Hs. apply is_Some_insert_owner. destruct (decide (o' = o)) as [->|Hne].
+  - rewrite lookup_insert_eq in Hz. injection Hz as <-. eauto.
+  - rewrite lookup_insert_ne in Hz by done. eauto.
+Qed.
+
 Lemma step_put x o y0 y s :
-  sched_inv x s -> g_owners s !! o = Some y0 -> o_host y = o_host y0 -> o_cleanups y = o_cleanups y0 -> acq_ok y ->
+  sched_inv x s -> g_owners s !! o = Some y0 -> o_host y = o_host y0 -> o_cleanups y = o_cleanups y0 ->
+  o_sink y = o_sink y0 -> acq_ok y ->
   sched_inv x (with_owners (<[o := y]> (g_owners s)) s) /\ post s (with_owners (<[o := y]> (g_owners s)) s).
 Proof.
-  intros (Ha&[B1 B2 B3]&Hc) Hy Hh Hl Ha'. unfold sched_inv, post. split_and!.
+  intros (Ha&[B1 B2 B3]&Hc) Hy Hh Hl Hsk Ha'. unfold sched_inv, post. split_and!.
   - destruct Ha. split; unfold pending, has_kind in *; simpl; try done.
-    intros o' z. destruct (decide (o' = o)) as [->|Hne].
-    + rewrite lookup_insert_eq. by intros [=<-].
-    + rewrite lookup_insert_ne by done. eauto.
+    + intros o' z. destruct (decide (o' = o)) as [->|Hne].
+      * rewrite lookup_insert_eq. by intros [=<-].
+      * rewrite lookup_insert_ne by done. eauto.
+    + apply sink_insert; [done|]. intros p. rewrite Hsk. eauto.
+    + by apply is_Some_insert_owner.
   - by split.
   - exact Hc.
   - split; auto.
@@ -745,13 +771,16 @@ Qed.
 
 Lemma step_owner_fresh x o y s :
   sched_inv x s -> g_owners s !! o = None -> o_cleanups y = [] -> acq_ok y ->
+  (forall p, o_sink y = Some p -> is_Some (g_owners s !! p)) ->
   sched_inv x (with_owners (<[o := y]> (g_owners s)) s) /\ post s (with_owners (<[o := y]> (g_owners s)) s).
 Proof.
-  intros (Ha&[B1 B2 B3]&Hc) Hy Hl Ha'. unfold sched_inv, post. split_and!.
+  intros (Ha&[B1 B2 B3]&Hc) Hy Hl Ha' Hsk. unfold sched_inv, post. split_and!.
   - destruct Ha. split; unfold pending, has_kind in *; simpl; try done.
-    intros o' z. destruct (decide (o' = o)) as [->|Hne].
-    + rewrite lookup_insert_eq. by intros [=<-].
-    + rewrite lookup_insert_ne by done. eauto.
+    + intros o' z. destruct (decide (o' = o)) as [->|Hne].
+      * rewrite lookup_insert_eq. by intros [=<-].
+      * rewrite lookup_insert_ne by done. eauto.
+    + by apply sink_insert.
+    + by apply is_Some_insert_owner.
   - by split.
   - exact Hc.
   - split; auto.
@@ -782,7 +811,9 @@ Proof.
   set (o := stdpp.base.fresh (dom (g_owners s))) in *.
   assert (Hf : g_owners s !! o = None).
   { apply not_elem_of_dom. apply is_fresh. }
-  destruct (step_owner_fresh x o (new_owner h (Some root_owner_id) (n_disposed d)) s Hi Hf eq_refl (acq_new _ _ _)) as [H1 F1].
+  assert (Hroot : forall p, o_sink (new_owner h (Some root_owner_id) (n_disposed d)) = Some p -> is_Some (g_owners s !! p)).
+  { intros p Hp. simpl in Hp. injection Hp as <-. pose proof Hi as (Ha0&_&_). exact (sd_root _ _ Ha0). }
+  destruct (step_owner_fresh x o (new_owner h (Some root_owner_id) (n_disposed d)) s Hi Hf eq_refl (acq_new _ _ _) Hroot) as [H1 F1].
   set (s1 := with_owners _ s) in H1, F1 |- *.
   assert (Hd1 : g_nodes s1 !! h = Some d) by exact Hd.
   destruct (step_node x h (node_with_scope (Some o)) d s1 ltac:(unfold nstep; cbn; split_and!; intros; try split; done) Hd1 H1) as [H2 F2].
@@ -996,7 +1027,7 @@ Lemma data_pop n s :
   sched_data None s -> g_queue s !! g_queue_head s = Some n ->
   sched_data (Some n) (with_queue_head (S (g_queue_head s)) s).
 Proof.
-  intros [A1 A2 A3 A4 A5 A6 A7] Hq.
+  intros [A1 A2 A3 A4 A5 A6 A7 A8 A9] Hq.
   assert (Hp : pending s = n :: drop (S (g_queue_head s)) (g_queue s)).
   { unfold pending. apply drop_S. done. }
   assert (Hp' : pending (with_queue_head (S (g_queue_head s)) s) = drop (S (g_queue_head s)) (g_queue s)) by done.
@@ -1037,7 +1068,7 @@ Lemma step_reset s :
   sched_inv None s -> g_queue s !! g_queue_head s = None ->
   sched_inv None (with_queue [] (with_queue_head 0 s)) /\ post s (with_queue [] (with_queue_head 0 s)).
 Proof.
-  intros (Ha&[B1 B2 B3]&Hc) Hq. destruct Ha as [A1 A2 A3 A4 A5 A6 A7].
+  intros (Ha&[B1 B2 B3]&Hc) Hq. destruct Ha as [A1 A2 A3 A4 A5 A6 A7 A8 A9].
   assert (Hp : pending s = []).
   { unfold pending. apply drop_ge. by apply lookup_ge_None_1. }
   unfold sched_inv, post. split_and!.
@@ -1065,7 +1096,7 @@ Lemma sok_unflag_at P n u d :
   sok (Some n) None (fun s => P s /\ g_nodes s !! n = Some d) (modify_node n u).
 Proof.
   intros H1 H2 H3 H4 H5 s s' a (Ha&[B1 B2 B3]&Hc) [_ Hd] Hm. unfold modify_node in Hm. rewrite Hd in Hm. simplify_eq.
-  destruct Ha as [A1 A2 A3 A4 A5 A6 A7]. destruct (A5 n eq_refl) as [_ Hnp].
+  destruct Ha as [A1 A2 A3 A4 A5 A6 A7 A8 A9]. destruct (A5 n eq_refl) as [_ Hnp].
   unfold sched_inv. split_and!; [| |exact Hc|].
   - split; simpl; try done.
     + intros m Hm. destruct (decide (m = n)) as [->|Hne]; [exact (A2 n (mk_is_Some _ _ Hd))|].
@@ -1136,9 +1167,11 @@ Proof.
   intros Hi Hz. pose proof (step_ghost x (o_host z) s Hi) as Hi1. pose proof Hi as (Ha&[B1 B2 B3]&Hc).
   unfold sched_inv, post. split_and!.
   - destruct Ha. unfold ghost_registered. split; unfold pending, has_kind in *; simpl; try done.
-    intros o' y. destruct (decide (o' = o)) as [->|Hne].
-    + rewrite lookup_insert_eq. intros [=<-]. apply acq_cleanup. eauto.
-    + rewrite lookup_insert_ne by done. eauto.
+    + intros o' y. destruct (decide (o' = o)) as [->|Hne].
+      * rewrite lookup_insert_eq. intros [=<-]. apply acq_cleanup. eauto.
+      * rewrite lookup_insert_ne by done. eauto.
+    + apply sink_insert; [done|]. intros p Hp. eauto.
+    + by apply is_Some_insert_owner.
   - by split.
   - exact Hc.
   - split; auto.
@@ -1226,12 +1259,12 @@ Proof.
 Qed.
 
 Lemma sok_put_then {B} x o y0 y (k : M B) :
-  o_host y = o_host y0 -> o_cleanups y = o_cleanups y0 -> (acq_ok y0 -> acq_ok y) ->
+  o_host y = o_host y0 -> o_cleanups y = o_cleanups y0 -> o_sink y = o_sink y0 -> (acq_ok y0 -> acq_ok y) ->
   sok x x T k -> sok x x (fun s => T s /\ g_owners s !! o = Some y0) (m_bind (put_owner o y) (fun _ => k)).
 Proof.
-  intros Hh Hl Ha Hk s s' a Hi [_ Hy] Hm. unfold m_bind, put_owner, m_modify in Hm.
+  intros Hh Hl Hsk Ha Hk s s' a Hi [_ Hy] Hm. unfold m_bind, put_owner, m_modify in Hm.
   pose proof Hi as (Ha0&_&_).
-  destruct (step_put x o y0 y s Hi Hy Hh Hl (Ha (sd_acq _ _ Ha0 o y0 Hy))) as [H1 F1].
+  destruct (step_put x o y0 y s Hi Hy Hh Hl Hsk (Ha (sd_acq _ _ Ha0 o y0 Hy))) as [H1 F1].
   destruct (Hk _ _ _ H1 I Hm) as [H2 F2]. split; [done|]. by eapply post_trans.
 Qed.
 
@@ -1241,7 +1274,7 @@ Proof.
   destruct (decide _); [|apply sok_return].
   intros s s' a Hi [_ Hy] Hm. unfold put_owner, m_modify in Hm. simplify_eq.
   pose proof Hi as (Ha0&_&_).
-  apply (step_put x (l_owner l) z); [done|done|done|done|].
+  apply (step_put x (l_owner l) z); [done|done|done|done|done|].
   apply acq_without. exact (sd_acq _ _ Ha0 _ z Hy).
 Qed.
 
@@ -1252,11 +1285,11 @@ Proof.
   - apply sok_weaken with (P := T); [done|]. apply sok_get_owner_at. intros w.
     intros s s' a Hi [_ Hy] Hm. unfold put_owner, m_modify in Hm. simplify_eq.
     pose proof Hi as (Ha0&_&_).
-    apply (step_put x p w); [done|done|done|done|].
+    apply (step_put x p w); [done|done|done|done|done|].
     apply acq_error. exact (sd_acq _ _ Ha0 _ w Hy).
   - intros s s' a Hi [_ Hy] Hm. unfold put_owner, m_modify in Hm. simplify_eq.
     pose proof Hi as (Ha0&_&_).
-    apply (step_put x o z); [done|done|done|done|].
+    apply (step_put x o z); [done|done|done|done|done|].
     apply acq_error. exact (sd_acq _ _ Ha0 _ z Hy).
 Qed.
 
@@ -1301,6 +1334,60 @@ Proof.
   - done.
   - done.
   - intros o y Hy. by exists y.
+Qed.
+
+(** The node at the start of an effect's body, from [Effect.RunBody]. *)
+Definition body_node (d : node) : node :=
+  node_with_runs (S (n_runs d)) (node_with_failure None (node_with_status StNone d)).
+
+(** The state at the start of an effect's body. *)
+Definition body_start (n : node_id) (d : node) (s : state) : state :=
+  with_trace (g_trace s ++ [EvRun n]) (set_node n (body_node d) s).
+
+(** [run_effect_body] after the body's start. *)
+Definition body_rest (f : nat) (n : node_id) (d : node) : M unit :=
+  let* r := hosted n (exec f (n_env d) (n_body d)) in
+  let* d' := get_node n in
+  let* _ := edges_opt (if n_disposed d' then sources_clear n else sources_end_run n) in
+  match r with
+  | Ok _ => m_return tt
+  | Fail y =>
+    let* _ := modify_node n (fun x => node_with_status StError (node_with_failure (Some y) x)) in
+    emit (EvFail n y)
+  end.
+
+Lemma body_unfold f n d s :
+  g_nodes s !! n = Some d -> run_effect_body (S f) n s = body_rest f n d (body_start n d s).
+Proof.
+  intros Hd. cbn [run_effect_body]. rewrite (bind_get_node _ _ _ _ Hd), (bind_modify_node _ _ _ _ _ Hd).
+  unfold emit. rewrite bind_m_modify. reflexivity.
+Qed.
+
+Lemma step_body_start n d s :
+  sched_inv None s -> g_nodes s !! n = Some d -> n_disposed d = false ->
+  sched_inv None (body_start n d s) /\ post s (body_start n d s).
+Proof.
+  intros Hi Hd Hl.
+  assert (Hu : nstep body_node d).
+  { unfold nstep, body_node; cbn; split_and!; intros; cbn in *; try split; try done; congruence. }
+  destruct (step_node None n body_node d s Hu Hd Hi) as [H1 F1].
+  set (s1 := set_node n (body_node d) s) in H1, F1.
+  assert (Hd1 : g_nodes s1 !! n = Some (body_node d)) by (simpl; apply lookup_insert_eq).
+  assert (H2 : sched_inv None (with_trace (g_trace s1 ++ [EvRun n]) s1) /\ post s1 (with_trace (g_trace s1 ++ [EvRun n]) s1)).
+  { destruct H1 as (Ha&[B1 B2 B3]&Hc0). unfold sched_inv, post. split_and!.
+    - destruct Ha. split; unfold pending, has_kind in *; simpl; done.
+    - by split.
+    - exact Hc0.
+    - split; auto.
+    - split; simpl.
+      + intros m e He. by exists e.
+      + intros m e He Hk Hz. rewrite count_runs_app. simpl.
+        destruct (decide (n = m)) as [->|Hne]; [|lia].
+        exfalso. rewrite lookup_insert_eq in He. injection He as <-. unfold body_node in Hz. simpl in Hz. congruence.
+      + by eexists.
+      + intros o y Hy. by exists y.
+    - intros h. unfold cleanup_score, registered, zero. simpl. rewrite count_cleanups_app. simpl. lia. }
+  destruct H2 as [H2 F2]. split; [exact H2|]. eapply post_trans; [exact F1|exact F2].
 Qed.
 
 Local Ltac csm := intros ?; unfold ghost_publish, ghost_run_end, ghost_run_start, ghost_effect_start,
@@ -1508,48 +1595,15 @@ Section Step.
     eapply (Sbody _ IH); [done|split; [done|exists d'; auto]|exact Hm].
   Qed.
 
+  Lemma sok_body_rest n d : sok None None (eff_ctx n) (body_rest f n d).
+  Proof. unfold body_rest. sgo IH. Qed.
+
   Lemma sok_body_S n : sok None None (fun s => eff_ctx n s /\ live_of s n) (run_effect_body (S f) n).
   Proof.
-    cbn [run_effect_body]. intros s s' a Hi [Hc (d0&Hd0&Hl)] Hm.
-    rewrite (bind_get_node _ _ _ _ Hd0) in Hm.
-    rewrite (bind_modify_node _ _ _ _ _ Hd0) in Hm.
-    set (u := fun x => node_with_runs (S (n_runs x)) (node_with_failure None (node_with_status StNone x))) in Hm.
-    assert (Hu : nstep u d0).
-    { unfold nstep, u; cbn; split_and!; intros; cbn in *; try split; try done; congruence. }
-    destruct (step_node None n u d0 s Hu Hd0 Hi) as [H1 F1].
-    set (s1 := set_node n (u d0) s) in H1, F1, Hm.
-    unfold emit in Hm. rewrite bind_m_modify in Hm.
-    set (s2 := with_trace (g_trace s1 ++ [EvRun n]) s1) in Hm.
-    assert (Hd1 : g_nodes s1 !! n = Some (u d0)) by (simpl; apply lookup_insert_eq).
-    assert (H2 : sched_inv None s2 /\ post s1 s2).
-    { destruct H1 as (Ha&[B1 B2 B3]&Hc0). unfold sched_inv, post. split_and!.
-      - destruct Ha. split; unfold pending, has_kind in *; simpl; done.
-      - by split.
-      - exact Hc0.
-      - split; auto.
-      - split; simpl.
-        + intros m e He. by exists e.
-        + intros m e He Hk Hz. rewrite count_runs_app. simpl.
-          destruct (decide (n = m)) as [->|Hne]; [|lia].
-          exfalso. rewrite lookup_insert_eq in He. injection He as <-. unfold u in Hz. simpl in Hz. congruence.
-        + by eexists.
-        + intros o y Hy. by exists y.
-      - intros h. unfold cleanup_score, registered, zero. simpl. rewrite count_cleanups_app. simpl. lia. }
-    destruct H2 as [H2 F2].
-    assert (Hc2 : eff_ctx n s2) by (eapply sstable; [eapply post_trans; [exact F1|exact F2]|exact Hc]).
-    assert (Hrest : sok None None (eff_ctx n)
-       (let* r := hosted n (exec f (n_env d0) (n_body d0)) in
-        let* d' := get_node n in
-        let* _ := edges_opt (if n_disposed d' then sources_clear n else sources_end_run n) in
-        match r with
-        | Ok _ => m_return tt
-        | Fail y =>
-          let* _ := modify_node n (fun x => node_with_status StError (node_with_failure (Some y) x)) in
-          emit (EvFail n y)
-        end)).
-    { sgo IH. }
-    destruct (Hrest _ _ _ H2 Hc2 Hm) as [H3 F3].
-    split; [done|]. eapply post_trans; [exact F1|]. by eapply post_trans.
+    intros s s' a Hi [Hc (d0&Hd0&Hl)] Hm. rewrite (body_unfold _ _ _ _ Hd0) in Hm.
+    destruct (step_body_start n d0 s Hi Hd0 Hl) as [H2 F2].
+    destruct (sok_body_rest n d0 _ _ _ H2 (sstable _ _ F2 Hc) Hm) as [H3 F3].
+    split; [done|]. by eapply post_trans.
   Qed.
 
   Lemma sok_discharge_S x o : sok x x run_ctx (discharge (S f) o).
@@ -1562,7 +1616,7 @@ Section Step.
     cbn [retire]. apply sok_bind0; [apply _| |intros _].
     - apply sok_detached. apply sok_get_owner_at. intros z. destruct (o_disposed z).
       + apply sok_return.
-      + apply sok_put_then; [done|done|apply acq_retired|]. sih IH.
+      + apply sok_put_then; [done|done|done|apply acq_retired|]. sih IH.
     - sgo IH.
   Qed.
 
@@ -1577,9 +1631,11 @@ Section Step.
     assert (Hi1 : sched_inv x s1).
     { unfold sched_inv. split_and!; [|by split|exact Hc].
       destruct Ha. split; unfold pending, has_kind in *; simpl; try done.
-      intros o' y. destruct (decide (o' = o)) as [->|Hne].
-      - rewrite lookup_insert_eq. intros [=<-]. apply acq_detached.
-      - rewrite lookup_insert_ne by done. eauto. }
+      - intros o' y. destruct (decide (o' = o)) as [->|Hne].
+        + rewrite lookup_insert_eq. intros [=<-]. apply acq_detached.
+        + rewrite lookup_insert_ne by done. eauto.
+      - apply sink_insert; [done|]. intros p Hp. simpl in Hp. eauto.
+      - by apply is_Some_insert_owner. }
     destruct (Steardown _ IH x o _ _ _ _ _ Hi1 (mk_is_Some _ _ Hz1) Hm) as [H2 (A1&A2&A3)].
     split; [done|]. unfold post. split_and!.
     - destruct A1. split; simpl in *; try done.
@@ -1679,7 +1735,7 @@ Section Step.
   Proof.
     cbn [attach]. apply sok_get_owner_at. intros z. destruct (o_disposed z).
     - apply (sok_weaken _ _ T); [done|]. sgo IH.
-    - apply sok_put_then; [done|done|intros Ha; by apply acq_child|]. sgo IH.
+    - apply sok_put_then; [done|done|done|intros Ha; by apply acq_child|]. sgo IH.
   Qed.
 
   Lemma sok_write_S x n v : sok x x T (write_signal (S f) n v).
@@ -1823,6 +1879,18 @@ Proof.
     + apply sok_drain_S, IH.
 Qed.
 
+(** The state at the start of a cleanup's body. *)
+Definition cleanup_start (z : owner_state) (s : state) : state :=
+  with_trace (g_trace s ++ [EvCleanup (o_host z)]) s.
+
+Lemma step_cleanup_start x z s : sched_inv x s -> sched_inv x (cleanup_start z s).
+Proof.
+  intros (Ha&[B1 B2 B3]&Hc). unfold sched_inv. split_and!.
+  - destruct Ha. split; unfold pending, has_kind in *; simpl; done.
+  - by split.
+  - exact Hc.
+Qed.
+
 (** The first event of a cleanup's run. *)
 Lemma cleanup_emits f x o b e y s s' a :
   sched_inv x s -> g_owners s !! o = Some y -> run_cleanup (S f) o b e s = Some (s', a) ->
@@ -1830,12 +1898,7 @@ Lemma cleanup_emits f x o b e y s s' a :
 Proof.
   intros Hi Hz Hm. cbn [run_cleanup] in Hm. rewrite (bind_get_owner _ _ _ _ Hz) in Hm.
   unfold emit in Hm. rewrite bind_m_modify in Hm.
-  set (s1 := with_trace (g_trace s ++ [EvCleanup (o_host y)]) s) in Hm.
-  assert (H1 : sched_inv x s1).
-  { destruct Hi as (Ha&[B1 B2 B3]&Hc). unfold sched_inv. split_and!.
-    - destruct Ha. split; unfold pending, has_kind in *; simpl; done.
-    - by split.
-    - exact Hc. }
+  pose proof (step_cleanup_start x y s Hi) as H1.
   pose proof (sched_ok_all f) as IH.
   assert (Hrest : sok x x T
      (let* r := exec f e b in
@@ -1891,6 +1954,9 @@ Proof.
     + intros n Hn. by apply not_elem_of_nil in Hn.
     + intros o y. destruct (decide (o = root_owner_id)) as [->|Hne].
       * rewrite lookup_insert_eq. intros [=<-]. apply acq_new.
+      * rewrite lookup_insert_ne by done. rewrite lookup_empty. done.
+    + intros o y p. destruct (decide (o = root_owner_id)) as [->|Hne].
+      * rewrite lookup_insert_eq. intros [=<-] Hp. done.
       * rewrite lookup_insert_ne by done. rewrite lookup_empty. done.
   - split; simpl; try done.
     + intros [H|H]; [by destruct H|done].
@@ -1986,12 +2052,21 @@ Qed.
 Lemma stale_false_clean f : stale f = false -> f = Clean.
 Proof. by destruct f. Qed.
 
+Lemma drain_resets f s s1 a : drain f s = Some (s1, a) -> g_queue s1 = [] /\ g_queue_head s1 = 0.
+Proof.
+  revert s s1 a. induction f as [|f IH]; intros s s1 a Hd; [done|].
+  cbn [drain] in Hd. rewrite bind_get in Hd. destruct (g_queue s !! g_queue_head s) as [n|].
+  - rewrite bind_m_modify in Hd. unfold m_bind in Hd.
+    destruct (execute_effect f n _) as [[s2 []]|]; [|done]. by eapply IH.
+  - unfold m_modify in Hd. by simplify_eq.
+Qed.
+
 (**md
 **A flush that returns leaves an empty queue and every live effect `Clean` and unqueued.**
 
 When `run_flush` starts outside a flush and returns, `g_queue` is empty and its head is 0, and each effect that is not disposed is `Clean` with `queued` unset. This needs no premise on whether a body failed.
 
-`Clean` says the effect has no mark to act on. It does not say the effect read up-to-date values: [`self_marking_cleanup_left_behind`](Ranvier.Pure.Witnesses.html#self_marking_cleanup_left_behind) ends with a `Clean` effect over a stale memo. A disposed effect can stay stale. A flush that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
+`Clean` is a mark: the effect has none left to act on. It does not say the effect read up-to-date values, and this conclusion holds on three Confirmed lost wake-ups: `self_marking_wake_lost` ([`self_marking_cleanup_left_behind`](Ranvier.Pure.Witnesses.html#self_marking_cleanup_left_behind)), [`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) and [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source). It does not say a marked effect ran either: [`flush_reruns_dirty`](#flush_reruns_dirty) holds the rerun. A disposed effect can stay stale. A flush that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
 
 Premise: [the scheduler's invariant](#sched_inv) holds at the start, with no effect in progress.
 *)
@@ -2005,13 +2080,7 @@ Proof.
   destruct f as [|f]; [done|]. cbn [run_flush] in Hm. rewrite bind_get, Hf in Hm. rewrite bind_m_modify in Hm.
   unfold m_bind in Hm. destruct (drain f _) as [[s1 []]|] eqn:E; [|done].
   unfold m_modify in Hm. simplify_eq.
-  assert (Hdrain : forall f s s1 a, drain f s = Some (s1, a) -> g_queue s1 = [] /\ g_queue_head s1 = 0).
-  { clear. intros f. induction f as [|f IH]; intros s s1 a Hd; [done|].
-    cbn [drain] in Hd. rewrite bind_get in Hd. destruct (g_queue s !! g_queue_head s) as [n|].
-    - rewrite bind_m_modify in Hd. unfold m_bind in Hd.
-      destruct (execute_effect f n _) as [[s2 []]|]; [|done]. by eapply IH.
-    - unfold m_modify in Hd. by simplify_eq. }
-  destruct (Hdrain _ _ _ _ E) as [Hq Hh].
+  destruct (drain_resets _ _ _ _ E) as [Hq Hh].
   destruct (Sflush _ (sched_ok_all (S f)) None s (with_flushing false s1) tt Hi I) as [(Ha&_) _].
   { cbn [run_flush]. rewrite bind_get, Hf, bind_m_modify. unfold m_bind. rewrite E. done. }
   split_and!; [done|done|].
@@ -2026,41 +2095,129 @@ Proof.
   pose proof (sd_stale _ _ Ha n d Hd Hk Hl Es). congruence.
 Qed.
 
-(** The state at the start of an effect's body, from [Effect.RunBody]. *)
-Definition body_start (n : node_id) (d : node) (s : state) : state :=
-  let d' := node_with_runs (S (n_runs d)) (node_with_failure None (node_with_status StNone d)) in
-  with_trace (g_trace s ++ [EvRun n]) (set_node n d' s).
+Lemma count_runs_prefix n a b : a `prefix_of` b -> count_runs n a <= count_runs n b.
+Proof. intros [k ->]. rewrite count_runs_app. lia. Qed.
 
-(**md
-**A failing effect body records its failure in the effect's status.**
-
-When an effect's body ends in `Fail y`, and `run_effect_body` returns, the effect's status is `StError` and its failure is `y`, and the only event after the body's is `EvFail n y`. The queue and its head are as the body left them. `drain_continues` is what happens next.
-
-Premise: the body's result is `Fail y`, from the state `run_effect_body` starts it in.
-*)
-Theorem body_failure_contained f n s s' s2 d y :
-  g_nodes s !! n = Some d ->
-  hosted n (exec f (n_env d) (n_body d)) (body_start n d s) = Some (s2, Fail y) ->
-  run_effect_body (S f) n s = Some (s', tt) ->
-  (exists d', g_nodes s' !! n = Some d' /\ n_status d' = StError /\ n_failure d' = Some y) /\
-  g_trace s' = g_trace s2 ++ [EvFail n y] /\ g_queue s' = g_queue s2 /\ g_queue_head s' = g_queue_head s2.
+Lemma body_runs f n s s' a :
+  sched_inv None s -> eff_ctx n s -> live_of s n -> run_effect_body f n s = Some (s', a) ->
+  S (count_runs n (g_trace s)) <= count_runs n (g_trace s').
 Proof.
-  intros Hd Hb Hm. cbn [run_effect_body] in Hm.
-  rewrite (bind_get_node _ _ _ _ Hd), (bind_modify_node _ _ _ _ _ Hd) in Hm.
-  unfold emit in Hm. rewrite bind_m_modify in Hm.
-  rewrite (bind_some _ _ _ _ _ Hb) in Hm.
-  unfold m_bind, get_node in Hm.
-  destruct (g_nodes s2 !! n) as [d2|] eqn:Hd2; [|done].
-  unfold edges_opt in Hm. destruct (_ (g_edges s2)) as [w|]; [|done].
-  unfold modify_node in Hm. simpl in Hm. rewrite Hd2 in Hm. simpl in Hm.
-  unfold m_modify in Hm. simplify_eq. simpl. split_and!; try done.
-  rewrite lookup_insert_eq. eexists. by split_and!.
+  intros Hi Hc (d&Hd&Hl) Hm. destruct f as [|f]; [done|]. rewrite (body_unfold _ _ _ _ Hd) in Hm.
+  destruct (step_body_start n d s Hi Hd Hl) as [H2 F2].
+  destruct (sok_body_rest f (sched_ok_all f) n d _ _ _ H2 (sstable _ _ F2 Hc) Hm) as [_ (_&R&_)].
+  pose proof (count_runs_prefix n _ _ (r_trace _ _ R)) as Hp.
+  unfold body_start in Hp. cbn [g_trace with_trace] in Hp. rewrite count_runs_app in Hp. simpl in Hp.
+  destruct (decide (n = n)); [lia|done].
+Qed.
+
+Lemma run_effect_runs f n s s' a :
+  sched_inv None s -> eff_ctx n s -> run_effect f n s = Some (s', a) ->
+  S (count_runs n (g_trace s)) <= count_runs n (g_trace s') \/
+  exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true.
+Proof.
+  intros Hi Hc Hm. destruct f as [|f]; [done|]. cbn [run_effect] in Hm.
+  unfold push_running, edges in Hm. rewrite !bind_m_modify in Hm.
+  pose proof (sched_ok_all f) as IH.
+  set (s2 := ghost_effect_start n (with_edges (sources_begin_run n (g_edges (with_running (n :: g_running s) s))) (with_running (n :: g_running s) s))) in Hm.
+  assert (Hc2 : core_same s s2) by (unfold s2, ghost_effect_start; repeat split).
+  destruct (sched_same None s s2 Hc2 Hi) as [H2 F2].
+  pose proof (sstable _ _ F2 Hc) as Hc2'.
+  destruct (proj1 Hc2') as (d&Hd&_).
+  rewrite (bind_get_node _ _ _ _ Hd) in Hm.
+  apply bind_inv in Hm as (s3&[]&Ep&Hm).
+  assert (Hscope : sok None None (eff_ctx n)
+    (match n_scope d with
+     | Some o =>
+       let* _ := modify_node n (node_with_in_cleanup true) in
+       let* _ := discharge f o in
+       modify_node n (node_with_in_cleanup false)
+     | None => m_return tt
+     end)).
+  { sgo IH. }
+  destruct (Hscope _ _ _ H2 Hc2' Ep) as [H3 F3].
+  pose proof (sstable _ _ F3 Hc2') as Hc3.
+  destruct (proj1 Hc3) as (d3&Hd3&_).
+  rewrite (bind_get_node _ _ _ _ Hd3) in Hm.
+  apply bind_inv in Hm as (s4&[]&Eb&Hm).
+  unfold pop_running, m_modify in Hm. simplify_eq. cbn [g_trace g_nodes with_running].
+  assert (Hle : count_runs n (g_trace s) <= count_runs n (g_trace s3)).
+  { apply count_runs_prefix. etrans; [exact (r_trace _ _ (proj1 (proj2 F2)))|exact (r_trace _ _ (proj1 (proj2 F3)))]. }
+  destruct (n_disposed d3) eqn:Ez.
+  - unfold m_return in Eb. simplify_eq. right. exists d3. done.
+  - left. pose proof (body_runs _ n _ _ _ H3 Hc3 (ex_intro _ d3 (conj Hd3 Ez)) Eb). lia.
 Qed.
 
 (**md
-**The flush goes on after an effect, whatever its body did.**
+**A live effect that is `Dirty` when dequeued runs again, unless its discharge disposes it first.**
 
-When the entry at the head of the queue is `n`, `drain` consumes it, and once `execute_effect` of `n` returns, the rest of `drain` is the same call on the state it returned. `execute_effect` returns no outcome, so a body's failure has no way to change this.
+When `execute_effect` of a live, `Dirty` effect returns, its `EvRun` count has risen by at least one, or the effect is disposed. The second case is a cleanup of its discharge disposing it: `run_effect` tests for that ahead of the body. This is the rerun guarantee beside [`flush_returns_clean`](#flush_returns_clean), which holds of an engine that clears marks and never runs.
+
+This covers an effect `Dirty` at its dequeue. An effect in `Check` runs only if its walk raises it to `Dirty`, and [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) resolves `Clean` with no run over a source that moved.
+
+Premises: [the scheduler's invariant](#sched_inv) holds with `n` in progress, `n` is an effect, and a flush is running.
+*)
+Theorem flush_reruns_dirty f n d s s' a :
+  sched_inv (Some n) s -> has_kind n KEffect s -> g_flushing s = true ->
+  g_nodes s !! n = Some d -> n_disposed d = false -> n_freshness d = Dirty ->
+  execute_effect f n s = Some (s', a) ->
+  S (count_runs n (g_trace s)) <= count_runs n (g_trace s') \/
+  exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true.
+Proof.
+  intros Hi Hk Hf Hd Hz HD Hm. destruct f as [|f]; [done|]. cbn [execute_effect] in Hm.
+  rewrite (bind_get_node _ _ _ _ Hd), Hz in Hm.
+  destruct (decide (n_freshness d = Check)) as [E|_]; [congruence|].
+  rewrite bind_m_return, (bind_get_node _ _ _ _ Hd) in Hm.
+  set (u := fun x => node_with_freshness Clean (node_with_queued false x)) in Hm.
+  destruct (sok_unflag_at (eff_ctx n) n u d eq_refl eq_refl (fun H => H) (fun _ _ => eq_refl) (fun _ _ => eq_refl)
+     s (set_node n (u d) s) tt Hi (conj (conj Hk Hf) Hd)) as [H1 F1].
+  { unfold modify_node. by rewrite Hd. }
+  rewrite (bind_modify_node _ _ _ _ _ Hd) in Hm.
+  destruct (decide (n_freshness d = Dirty)) as [_|E]; [|done].
+  pose proof (sstable _ _ F1 (conj Hk Hf)) as Hc1.
+  assert (Hcount : count_runs n (g_trace (set_node n (u d) s)) = count_runs n (g_trace s)) by done.
+  rewrite <- Hcount. exact (run_effect_runs _ n _ _ _ H1 Hc1 Hm).
+Qed.
+
+Lemma edges_total (b : bool) n w :
+  coherent w -> exists w', (if b then sources_clear n else sources_end_run n) w = Some w'.
+Proof.
+  intros Hc. destruct b.
+  - destruct (coherent_clear n w Hc) as (w'&H&_). eauto.
+  - destruct (coherent_end n w Hc) as (w'&H&_). eauto.
+Qed.
+
+Lemma bind_edges_ok {B} u (k : unit -> M B) s w :
+  u (g_edges s) = Some w -> m_bind (edges_opt u) k s = k tt (with_edges w s).
+Proof. intros H. unfold m_bind, edges_opt. by rewrite H. Qed.
+
+(**md
+**A failing effect body returns, with its failure in the effect's status.**
+
+When an effect's body ends in `Fail y`, `run_effect_body` returns, the effect's status is `StError` and its failure is `y`, and the only event after the body's is `EvFail n y`. The queue and its head are as the body left them. This answers `Effect.RunBody`'s handler (Core.fs 4866). [`drain_continues`](#drain_continues) is what happens next.
+
+Premises: the body's result is `Fail y`, from the state `run_effect_body` starts it in, the effect exists at the body's end, and the edges there are coherent, which `engine_settled` holds.
+*)
+Theorem body_failure_contained f n s s2 d d2 y :
+  g_nodes s !! n = Some d ->
+  hosted n (exec f (n_env d) (n_body d)) (body_start n d s) = Some (s2, Fail y) ->
+  g_nodes s2 !! n = Some d2 -> coherent (g_edges s2) ->
+  exists s' d', run_effect_body (S f) n s = Some (s', tt) /\
+    g_nodes s' !! n = Some d' /\ n_status d' = StError /\ n_failure d' = Some y /\
+    g_trace s' = g_trace s2 ++ [EvFail n y] /\ g_queue s' = g_queue s2 /\ g_queue_head s' = g_queue_head s2.
+Proof.
+  intros Hd Hb Hd2 Hco. rewrite (body_unfold _ _ _ _ Hd). unfold body_rest.
+  rewrite (bind_some _ _ _ _ _ Hb), (bind_get_node _ _ _ _ Hd2).
+  destruct (edges_total (n_disposed d2) n _ Hco) as (w&Hw).
+  rewrite (bind_edges_ok _ _ _ _ Hw).
+  assert (Hd3 : g_nodes (with_edges w s2) !! n = Some d2) by exact Hd2.
+  rewrite (bind_modify_node _ _ _ _ _ Hd3). unfold emit, m_modify.
+  do 2 eexists. split_and!; [reflexivity|simpl; apply lookup_insert_eq|reflexivity..].
+Qed.
+
+(**md
+**The flush goes on after an effect.**
+
+When the entry at the head of the queue is `n`, `drain` consumes it, and once `execute_effect` of `n` returns, the rest of `drain` is the same call on the state it returned. This holds of every result `execute_effect` returns, whatever the effect's body did: [`body_failure_contained`](#body_failure_contained) gives the return for a failing body.
 *)
 Theorem drain_continues f n s s1 :
   g_queue s !! g_queue_head s = Some n ->
@@ -2072,11 +2229,231 @@ Proof.
 Qed.
 
 (**md
+**A failing cleanup returns, with its failure recorded on the owner's sink.**
+
+When a cleanup's body ends in `Fail y`, `run_cleanup` returns, the failure is appended to the errors of the owner's sink, or of the owner when it has none, and the only event after the body's is `EvFail` of the host. This answers `Owner.DisposeScope`'s handler (Core.fs 1171-1184). [`teardown_continues`](#teardown_continues) is what happens next.
+
+Premises: [the scheduler's invariant](#sched_inv) holds, the owner exists, and the body's result is `Fail y`, from the state `run_cleanup` starts it in.
+*)
+Theorem cleanup_failure_contained f x o b e z y s s2 :
+  sched_inv x s -> g_owners s !! o = Some z ->
+  exec f e b (cleanup_start z s) = Some (s2, Fail y) ->
+  exists s' t w0 w, run_cleanup (S f) o b e s = Some (s', tt) /\
+    g_owners s2 !! t = Some w0 /\ g_owners s' !! t = Some w /\ o_errors w = o_errors w0 ++ [y] /\
+    g_trace s' = g_trace s2 ++ [EvFail (o_host z) y].
+Proof.
+  intros Hi Hz Hb.
+  pose proof (step_cleanup_start x z s Hi) as H1.
+  destruct (Sexec _ (sched_ok_all f) x e b _ _ _ H1 I Hb) as [(Ha2&_) (_&R&_)].
+  destruct (r_hosts _ _ R o z Hz) as (z2&Hz2&_).
+  cbn [run_cleanup]. rewrite (bind_get_owner _ _ _ _ Hz). unfold emit. rewrite bind_m_modify.
+  unfold cleanup_start in Hb. rewrite (bind_some _ _ _ _ _ Hb). unfold record_error.
+  rewrite bind_bind, (bind_get_owner _ _ _ _ Hz2).
+  destruct (o_sink z2) as [p|] eqn:Es.
+  - destruct (sd_sink _ _ Ha2 o z2 p Hz2 Es) as [w0 Hw0].
+    rewrite bind_bind, (bind_get_owner _ _ _ _ Hw0). unfold put_owner, m_modify, m_bind.
+    eexists. exists p, w0, (owner_with_error y w0).
+    split_and!; [reflexivity|exact Hw0|simpl; apply lookup_insert_eq|reflexivity|reflexivity].
+  - unfold put_owner, m_modify, m_bind.
+    eexists. exists o, z2, (owner_with_error y z2).
+    split_and!; [reflexivity|exact Hz2|simpl; apply lookup_insert_eq|reflexivity|reflexivity].
+Qed.
+
+(**md
+**A teardown goes on after each step.**
+
+Once a cleanup or a child's release returns, the rest of `teardown` is the same call on the state it returned, with that step gone. Together with [`cleanup_failure_contained`](#cleanup_failure_contained), a failing cleanup leaves the steps behind it to run. A child's release has no outcome of its own: its failure is a cleanup of the child's scope, which the same theorem covers. The scenario `flush_child_release` runs that on the F#.
+*)
+Theorem teardown_continues f o :
+  (forall b e t cs s s1, run_cleanup f o b e s = Some (s1, tt) ->
+     teardown (S f) o [] ((b, e, t) :: cs) s = teardown f o [] cs s1) /\
+  (forall l ls b e t cs s s1, ~ t < l_acquired l -> run_cleanup f o b e s = Some (s1, tt) ->
+     teardown (S f) o (l :: ls) ((b, e, t) :: cs) s = teardown f o (l :: ls) cs s1) /\
+  (forall l ls cs s s1, release f (l_child l) s = Some (s1, tt) -> (cs = [] \/ exists b e t r, cs = (b, e, t) :: r /\ t < l_acquired l) ->
+     teardown (S f) o (l :: ls) cs s = teardown f o ls cs s1).
+Proof.
+  split_and!.
+  - intros b e t cs s s1 Hr. cbn [teardown]. by rewrite (bind_some _ _ _ _ _ Hr).
+  - intros l ls b e t cs s s1 Ht Hr. cbn [teardown].
+    destruct (decide (t < l_acquired l)); [done|]. by rewrite (bind_some _ _ _ _ _ Hr).
+  - intros l ls cs s s1 Hr [->|(b&e&t&r&->&Ht)]; cbn [teardown].
+    + by rewrite (bind_some _ _ _ _ _ Hr).
+    + destruct (decide (t < l_acquired l)); [|done]. by rewrite (bind_some _ _ _ _ _ Hr).
+Qed.
+
+(**md
+**A failing late cleanup returns, with its failure recorded.**
+
+A cleanup registered on a disposed scope runs under `detached`. When its body ends in `Fail y`, the `detached` call returns with the failure appended to the errors of the owner's sink, or of the owner when it has none. This answers `Owner.RunLate` (Core.fs 1025-1033). `exec` then goes on with the command after `CCleanup`, by [`late_registration_immediate`](Ranvier.Pure.Ownership.html#late_registration_immediate).
+
+Premises: as for [`cleanup_failure_contained`](#cleanup_failure_contained), from the state `detached` starts the cleanup in.
+*)
+Theorem late_cleanup_contained f x o b e z y s s2 :
+  sched_inv x s -> g_owners s !! o = Some z ->
+  exec f e b (cleanup_start z (detached_state o s)) = Some (s2, Fail y) ->
+  exists s' t w0 w, detached o (run_cleanup (S f) o b e) s = Some (s', tt) /\
+    g_owners s2 !! t = Some w0 /\ g_owners s' !! t = Some w /\ o_errors w = o_errors w0 ++ [y].
+Proof.
+  intros Hi Hz Hb.
+  destruct (cleanup_failure_contained f x o b e z y _ s2 (detached_in x o s Hi) Hz Hb) as (s3&t&w0&w&Hr&H0&H1&H2&_).
+  rewrite detached_unfold, Hr. do 4 eexists. split_and!; [reflexivity|exact H0|exact H1|exact H2].
+Qed.
+
+Lemma measure_set n u d s :
+  g_nodes s !! n = Some d -> mark_score u = mark_score d -> mark_measure (set_node n u s) = mark_measure s.
+Proof.
+  intros Hd Hs. unfold mark_measure. simpl. pose proof (nodes_score_insert _ n d u Hd). lia.
+Qed.
+
+Lemma run_finish_tail n s d :
+  g_nodes s !! n = Some d ->
+  exists s' d', (let* d3 := get_node n in if decide (n_freshness d3 = Clean) then m_return tt else announce n) s = Some (s', tt) /\
+    g_nodes s' !! n = Some d' /\ read_view_of d' = read_view_of d.
+Proof.
+  intros Hd. rewrite (bind_get_node _ _ _ _ Hd). destruct (decide _).
+  - do 2 eexists. split_and!; [reflexivity|exact Hd|done].
+  - unfold announce. destruct (f_unannounced _).
+    + unfold modify_node. rewrite Hd. eexists. exists (node_with_unannounced true d). split_and!; [reflexivity|simpl; apply lookup_insert_eq|reflexivity].
+    + do 2 eexists. split_and!; [reflexivity|exact Hd|done].
+Qed.
+
+Lemma run_finish_some f n mv s d :
+  g_nodes s !! n = Some d -> mark_measure s < f ->
+  exists s' d', run_finish f n mv s = Some (s', tt) /\ g_nodes s' !! n = Some d' /\ read_view_of d' = read_view_of d.
+Proof.
+  intros Hd Hb. unfold run_finish. rewrite bind_get, bind_m_modify.
+  set (s1 := ghost_run_end n (g_current s) mv s).
+  assert (Hs1 : g_nodes s1 = g_nodes s) by (unfold s1, ghost_run_end; by destruct (g_nodes s !! n)).
+  assert (Hd1 : g_nodes s1 !! n = Some d) by (by rewrite Hs1).
+  destruct mv.
+  - assert (Hb1 : mark_measure s1 < f) by (unfold mark_measure; by rewrite Hs1).
+    destruct (notify_terminates f n (g_current s) s1 Hb1) as (_&_&[s2 Hn]).
+    assert (Hrt : rtc mark_prim s1 s2).
+    { apply (any_mark_rtc f n (g_current s)). unfold any_mark. tauto. }
+    destruct (mf_forward _ _ (marks_fixed _ _ Hrt) n d Hd1) as (d2&Hd2&_&_&_&Hv).
+    unfold m_bind at 1, m_step. rewrite Hn.
+    destruct (run_finish_tail n s2 d2 Hd2) as (s'&d'&H1&H2&H3).
+    exists s', d'. split_and!; [exact H1|exact H2|congruence].
+  - rewrite bind_m_return. destruct (run_finish_tail n s1 d Hd1) as (s'&d'&H1&H2&H3). eauto.
+Qed.
+
+(**md
+**A failing memo run returns, with its failure in the memo's status.**
+
+When a memo's body ends in `Fail y`, `run_memo` returns, and the memo's status is `StError` and its failure is `y`. It returns `unit`, so a reader takes the failure from the status. This answers `Memo.Run`'s handler (Core.fs 4247-4261).
+
+Premises: the body's result is `Fail y`, from the state `run_memo` starts it in. The memo exists at the body's end with no scope violation, the edges there are coherent, and the fuel exceeds `mark_measure` there, so its notice has a result. Either `Fail y` differs from the memo's previous status or failure, or its comparer does not throw. A throwing comparer consulted over an unchanged failure replaces it, as Core.fs 4275-4279 does.
+*)
+Theorem memo_failure_contained f n s s2 d d1 y :
+  g_nodes s !! n = Some d ->
+  hosted n (exec f (run_env d) (n_body d)) (run_start n d s) = Some (s2, Fail y) ->
+  g_nodes s2 !! n = Some d1 -> n_violated d1 = false -> coherent (g_edges s2) -> mark_measure s2 < f ->
+  (n_status d <> StError \/ n_failure d <> Some y \/ forall z, n_comparer d1 <> CmpThrows z) ->
+  exists s' d', run_memo (S f) n s = Some (s', tt) /\
+    g_nodes s' !! n = Some d' /\ n_status d' = StError /\ n_failure d' = Some y.
+Proof.
+  intros Hd Hb Hd1 Hv Hco Hfu Hcmp.
+  destruct (edges_total (n_disposed d1) n _ Hco) as (w&Hw).
+  set (u := fun x => node_with_violated false (node_with_status StError (node_with_failure (Some y) x))).
+  set (s9 := set_node n (u d1) (with_running (tail (g_running s2)) (with_edges w s2))).
+  assert (Hd9 : g_nodes s9 !! n = Some (u d1)) by (simpl; apply lookup_insert_eq).
+  assert (Hshape : exists mv, run_memo (S f) n s = run_finish f n mv s9).
+  { cbn [run_memo]. rewrite (bind_get_node _ _ _ _ Hd), (bind_modify_node _ _ _ _ _ Hd).
+    unfold edges, push_running. rewrite !bind_m_modify.
+    erewrite bind_some; [|exact Hb]. cbv beta.
+    rewrite (bind_get_node _ _ _ _ Hd1), Hv. cbn iota.
+    rewrite bind_m_return. rewrite (bind_edges_ok _ _ _ _ Hw).
+    unfold pop_running. rewrite bind_m_modify.
+    assert (Hd8 : g_nodes (with_running (tail (g_running (with_edges w s2))) (with_edges w s2)) !! n = Some d1) by exact Hd1.
+    rewrite (bind_modify_node _ _ _ _ _ Hd8).
+    change (set_node n _ (with_running (tail (g_running (with_edges w s2))) (with_edges w s2))) with s9.
+    rewrite (bind_get_node _ _ _ _ Hd9).
+    destruct (decide _) as [Hne|Hsame].
+    - rewrite bind_m_return. by exists true.
+    - destruct (n_comparer (u d1)) as [| |z] eqn:Ec.
+      + rewrite bind_m_return. eexists. reflexivity.
+      + rewrite bind_m_return. by exists true.
+      + exfalso. destruct Hcmp as [G|[G|G]].
+        * apply Hsame. left. unfold u. simpl. intros E. apply G. done.
+        * apply Hsame. right. unfold u. simpl. intros E. apply G. done.
+        * apply (G z). exact Ec. }
+  destruct Hshape as [mv ->].
+  assert (Hb9 : mark_measure s9 < f).
+  { assert (Hd7 : g_nodes (with_running (tail (g_running s2)) (with_edges w s2)) !! n = Some d1) by exact Hd1.
+    unfold s9. rewrite (measure_set n (u d1) d1 _ Hd7 eq_refl). exact Hfu. }
+  destruct (run_finish_some f n mv s9 (u d1) Hd9 Hb9) as (s'&d'&H1&H2&H3).
+  exists s', d'. split_and!; [exact H1|exact H2| |].
+  - unfold read_view_of in H3. injection H3 as _ G _. exact G.
+  - unfold read_view_of in H3. injection H3 as _ _ G. exact G.
+Qed.
+
+(**md
+**A throwing comparer returns, with its failure in the memo's status.**
+
+When a memo's comparer is consulted and throws `z`, `run_memo` returns, the memo's status is `StError`, its failure is `z`, and its value is the one from before the run. It returns `unit`, so a reader takes the failure from the status. This answers `Memo.Run`'s handler of the comparison (Core.fs 4275-4279).
+
+Premises: the body's result is `Ok v`, from the state `run_memo` starts it in. The memo exists at the body's end with no scope violation, and with the status and failure it had before the run, since otherwise the comparer is not consulted. The edges there are coherent, and the fuel exceeds `mark_measure` there.
+*)
+Theorem comparer_throw_contained f n s s2 d d1 v z :
+  g_nodes s !! n = Some d ->
+  hosted n (exec f (run_env d) (n_body d)) (run_start n d s) = Some (s2, Ok v) ->
+  g_nodes s2 !! n = Some d1 -> n_violated d1 = false -> n_comparer d1 = CmpThrows z ->
+  n_status d1 = n_status d -> n_failure d1 = n_failure d ->
+  coherent (g_edges s2) -> mark_measure s2 < f ->
+  exists s' d', run_memo (S f) n s = Some (s', tt) /\
+    g_nodes s' !! n = Some d' /\ n_status d' = StError /\ n_failure d' = Some z /\ n_value d' = n_value d.
+Proof.
+  intros Hd Hb Hd1 Hv Hq Hst Hfa Hco Hfu.
+  destruct (edges_total (n_disposed d1) n _ Hco) as (w&Hw).
+  set (u := fun x => node_with_published true (node_with_value v x)).
+  set (s6 := set_node n (u d1) s2).
+  assert (Hw6 : (if n_disposed d1 then sources_clear n else sources_end_run n) (g_edges s6) = Some w) by exact Hw.
+  set (s8 := with_running (tail (g_running s6)) (with_edges w s6)).
+  assert (Hd8 : g_nodes s8 !! n = Some (u d1)) by (simpl; apply lookup_insert_eq).
+  set (t := fun x => node_with_status StError (node_with_failure (Some z) (node_with_value (n_value d) x))).
+  set (s10 := set_node n (t (u d1)) s8).
+  assert (Hd10 : g_nodes s10 !! n = Some (t (u d1))) by (simpl; apply lookup_insert_eq).
+  assert (Hshape : run_memo (S f) n s = run_finish f n true s10).
+  { cbn [run_memo]. rewrite (bind_get_node _ _ _ _ Hd), (bind_modify_node _ _ _ _ _ Hd).
+    unfold edges, push_running. rewrite !bind_m_modify.
+    erewrite bind_some; [|exact Hb]. cbv beta.
+    rewrite (bind_get_node _ _ _ _ Hd1), Hv. cbn iota.
+    rewrite (bind_modify_node _ _ _ _ _ Hd1). fold s6.
+    rewrite (bind_edges_ok _ _ _ _ Hw6).
+    unfold pop_running. rewrite bind_m_modify. fold s8.
+    rewrite bind_m_return, (bind_get_node _ _ _ _ Hd8).
+    destruct (decide _) as [Hne|_].
+    { exfalso. unfold u in Hne. simpl in Hne. rewrite Hst, Hfa in Hne. destruct Hne as [G|G]; by apply G. }
+    assert (Hq' : n_comparer (u d1) = CmpThrows z) by exact Hq.
+    rewrite Hq'. rewrite bind_bind, (bind_modify_node _ _ _ _ _ Hd8), bind_m_return. reflexivity. }
+  rewrite Hshape.
+  assert (Hb10 : mark_measure s10 < f).
+  { unfold s10. rewrite (measure_set n (t (u d1)) (u d1) _ Hd8 eq_refl).
+    assert (Hm8 : mark_measure s8 = mark_measure s6) by done. rewrite Hm8.
+    unfold s6. rewrite (measure_set n (u d1) d1 _ Hd1 eq_refl). exact Hfu. }
+  destruct (run_finish_some f n true s10 (t (u d1)) Hd10 Hb10) as (s'&d'&H1&H2&H3).
+  exists s', d'. split_and!; [exact H1|exact H2| | |].
+  - unfold read_view_of in H3. injection H3 as _ G _. exact G.
+  - unfold read_view_of in H3. injection H3 as _ _ G. exact G.
+  - unfold read_view_of in H3. injection H3 as G _ _. exact G.
+Qed.
+
+(**md
 **A flush that returns ends with `g_flushing` false and an empty live queue.**
 
-When `run_flush` starts outside a flush and returns, `g_flushing` is false, `pending` is empty and the head is 0. The type carries the rest. `execute_effect`, `drain` and `run_flush` return `unit`, and in this model a result of `None` means exhausted fuel or a stuck body, so a `Fail` has no way out of them: by reading `Engine.v`, it stops at `run_effect_body`, `run_memo` and `run_cleanup`. [`flush_survives_body`](#flush_survives_body) and the four examples after it run a failing body, cleanup, child release, memo run and comparer, each with an effect behind it that still runs.
+When `run_flush` starts outside a flush and returns, `g_flushing` is false, `pending` is empty and the head is 0. This statement has a returned flush as its premise, so it alone would hold of an engine turning a `Fail` into no result. These theorems close that: each takes a sub-body ending in `Fail`, and concludes that the enclosing function returns, with the failure recorded where the F# records it.
 
-This covers `Effect`. Other `IScheduled` items, such as a pass, are outside the model. The comment at Core.fs 3140-3142 describes an effect that throws, and `Effect.Execute` has no such path from the command language.
+| Core.fs | Site | Theorem |
+|---|---|---|
+| 1025-1033 | `Owner.RunLate` | [`late_cleanup_contained`](#late_cleanup_contained) |
+| 1171-1184 | `Owner.DisposeScope` | [`cleanup_failure_contained`](#cleanup_failure_contained), [`teardown_continues`](#teardown_continues) |
+| 4247-4261 | `Memo.Run`, a body | [`memo_failure_contained`](#memo_failure_contained) |
+| 4275-4279 | `Memo.Run`, a comparer | [`comparer_throw_contained`](#comparer_throw_contained) |
+| 4866 | `Effect.RunBody` | [`body_failure_contained`](#body_failure_contained) |
+
+[`drain_continues`](#drain_continues) takes the drain on from there, and [`flush_survives_body`](#flush_survives_body) and the four examples after it run each failure with an effect behind it.
+
+`returns` excludes the fatal path: [`self_read_check_overflow`](Ranvier.Pure.Witnesses.html#self_read_check_resolves_itself) is a read with no result in the model, and a stack overflow that ends the process in the F#. This covers `Effect`. Other `IScheduled` items, such as a pass, are outside the model. `Effect.Execute` contains each of the command language's failures, so the comment at Core.fs 3140-3142, on an effect that throws, does not apply to `Effect` here.
 *)
 Theorem drain_no_escape f s s' a :
   g_flushing s = false -> run_flush f s = Some (s', a) ->
@@ -2086,13 +2463,7 @@ Proof.
   cbn [run_flush] in Hm. rewrite bind_get, Hf, bind_m_modify in Hm.
   unfold m_bind in Hm. destruct (drain f _) as [[s1 []]|] eqn:E; [|done].
   unfold m_modify in Hm. simplify_eq.
-  assert (Hdrain : forall f s s1 a, drain f s = Some (s1, a) -> g_queue s1 = [] /\ g_queue_head s1 = 0).
-  { clear. intros f. induction f as [|f IH]; intros s s1 a Hd; [done|].
-    cbn [drain] in Hd. rewrite bind_get in Hd. destruct (g_queue s !! g_queue_head s) as [n|].
-    - rewrite bind_m_modify in Hd. unfold m_bind in Hd.
-      destruct (execute_effect f n _) as [[s2 []]|]; [|done]. by eapply IH.
-    - unfold m_modify in Hd. by simplify_eq. }
-  destruct (Hdrain _ _ _ _ E) as [Hq Hh]. split_and!; simpl; try done.
+  destruct (drain_resets _ _ _ _ E) as [Hq Hh]. split_and!; simpl; try done.
   unfold pending. simpl. rewrite Hq. apply drop_nil.
 Qed.
 
@@ -2148,8 +2519,8 @@ Example flush_survives_memo_run :
     Some [EvRun 3; EvLog 3 0%Z; EvRun 4; EvLog 4 0%Z; EvRun 4; EvFail 4 9%Z; EvRun 3; EvLog 3 1%Z].
 Proof. vm_compute. reflexivity. Qed.
 
-(** A comparer throws, the memo's reader fails, and the effect behind it runs. The differential check runs
-    throwing comparers on the F#. *)
+(** A comparer throws, the memo's reader fails, and the effect behind it runs. This program does not run on the F#.
+    The differential check runs throwing comparers in generated programs. *)
 Example flush_survives_comparer :
   trace_of 100000 current_flags (memo_case (CmpThrows 9%Z) (CRead 10 (V 1) (CRet (K 0%Z)))) =
     Some [EvRun 3; EvLog 3 0%Z; EvRun 4; EvLog 4 0%Z; EvRun 4; EvFail 4 9%Z; EvRun 3; EvLog 3 1%Z].

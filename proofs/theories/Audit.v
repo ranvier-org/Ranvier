@@ -189,3 +189,11 @@ Print Assumptions late_registrations_run_at_once.
 Print Assumptions disposed_unread_answers_default.
 Print Assumptions stale_link_reached.
 Print Assumptions failed_batch_leaves_queue.
+Print Assumptions flush_reruns_dirty.
+Print Assumptions cleanup_failure_contained.
+Print Assumptions teardown_continues.
+Print Assumptions late_cleanup_contained.
+Print Assumptions memo_failure_contained.
+Print Assumptions comparer_throw_contained.
+Print Assumptions queued_effect_disposed_skipped.
+Print Assumptions late_cleanup_failure_recorded.

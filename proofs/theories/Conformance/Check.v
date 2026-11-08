@@ -383,6 +383,12 @@ Proof. vm_compute. reflexivity. Qed.
 Example check_flush_memo_failure : trace_of 100000%nat current_flags flush_memo_failure = Some exp_flush_memo_failure.
 Proof. vm_compute. reflexivity. Qed.
 
+Example check_queued_effect_disposed : trace_of 100000%nat current_flags queued_effect_disposed = Some exp_queued_effect_disposed.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_late_cleanup_failure : trace_of 100000%nat current_flags late_cleanup_failure = Some exp_late_cleanup_failure.
+Proof. vm_compute. reflexivity. Qed.
+
 (** The program ends at the failed batch, and the F# scenario's explicit flush is the [run_flush] here. *)
 Example check_failed_batch :
   (r ← run_top 100000%nat failed_batch (init current_flags); r' ← run_flush 1000%nat r.1; Some (g_trace r'.1)) =

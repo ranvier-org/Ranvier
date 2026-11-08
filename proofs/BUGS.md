@@ -225,9 +225,12 @@ intended, the entry closes as "spec corrected".
 
 - `failed_batch_leaves_queue` (scenario `failed_batch`; `theories/Pure/Witnesses.v`, same name): a batch whose body fails applies its write and
   skips `RequestFlush` (Core.fs 3303-3310), so the effect it woke stays `Dirty` and queued with `flushOwed` false, until something else flushes. The harness asserts the queue holds
-  1, `flushOwed` false, one run and `Dirty`, and an explicit `Flush` runs it. F# trace: `[EvRun 2; EvLog 2 0; EvRun 2; EvLog 2 1]`. The doc at 3289-3290, "Defers the flush until
-  `body` returns", says nothing of a body that raises. Nothing is lost: the entry stays live, and the next flush runs it. `owed_settled` holds here, since it says no flush is owed and
-  nothing of the queue. The question for the owner: should a failed batch request its flush? `read_move_leaves_effect_queued` is the same end state by another route.
+  1, `flushOwed` false, one run and `Dirty`, and an explicit `Flush` runs it. F# trace: `[EvRun 2; EvLog 2 0; EvRun 2; EvLog 2 1]`.
+  **The documents.** `docs/content/guide/batch.md:83-84` documents this behaviour: effects queued by the failed batch's writes run at the next flush. Other sources read differently.
+  `tests/Ranvier.Tests/Reentrancy.fs:176` has the title "a batch that throws still flushes the writes it made", and its body asserts the write happened and that a later write runs effects.
+  `tests/Ranvier.Tests/Batching.fs:203`, "a batch that throws is not left open", asserts a later write flushes. Core.fs 3159 says effects inside a batch "run when the batch ends".
+  `owed_settled` holds here: it says no flush is owed, and leaves the queue open.
+  **The question for the owner:** the guide documents this; does the owner accept it as the contract? `read_move_leaves_effect_queued` is Confirmed with the same end state and has no such documentation, so the two can be ruled differently.
 
 ## Closed
 

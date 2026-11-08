@@ -69,6 +69,24 @@ Proof.
       apply Permutation_middle.
 Qed.
 
+(** The cleanups of a list of steps, in order. *)
+Fixpoint cleanups_of (items : list teardown_item) : list (cmd * env * nat) :=
+  match items with
+  | [] => []
+  | ItemChild _ :: r => cleanups_of r
+  | ItemCleanup c :: r => c :: cleanups_of r
+  end.
+
+Lemma schedule_cleanups : forall ls cs, cleanups_of (schedule ls cs) = cs.
+Proof.
+  induction ls as [|l ls IHl].
+  - induction cs as [|c cs IHc]; [done|]. change (c :: cleanups_of (schedule [] cs) = c :: cs). by rewrite IHc.
+  - induction cs as [|c cs IHc]; [apply (IHl [])|]. rewrite schedule_cons.
+    destruct (decide (c.2 < l_acquired l)).
+    + exact (IHl (c :: cs)).
+    + change (c :: cleanups_of (schedule (l :: ls) cs) = c :: cs). by rewrite IHc.
+Qed.
+
 Local Notation desc := (StronglySorted gt).
 
 Lemma schedule_sorted : forall ls cs,
@@ -161,7 +179,7 @@ Theorem dispose_reverse_order f o y s :
   StronglySorted gt (item_acquired <$> items) /\
   items ≡ₚ (ItemChild <$> rev (o_children y)) ++ (ItemCleanup <$> owner_cleanups y).
 Proof.
-  intros Hy [H1 H2 H3 H4 H5] items. split_and!.
+  intros Hy [H1 H2 H3 H4 H5 _ _] items. split_and!.
   - cbn [dispose_scope]. unfold m_bind, get_owner. rewrite Hy. unfold put_owner, m_modify. apply teardown_items.
   - apply schedule_sorted.
     + rewrite fmap_rev. by apply ss_rev_gt, ss_links_map.
@@ -188,34 +206,93 @@ Qed.
 
 (** ** Each cleanup once *)
 
-(**md
-**A host's cleanup events never exceed its registrations.**
-
-After a program, `EvCleanup h` events plus the cleanups still held by owners of host `h` are at most the cleanups registered with owners of host `h`, late ones included.
-
-This counts per host, not per cleanup: two registrations of one host could not be told apart by this statement alone. [`dispose_reverse_order`](#dispose_reverse_order) holds each entry of a detached list to one step.
-
-Premises: [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) and the bound hold at the start. `g_registered` is ghost state written at `CCleanup`. `cleanup_once_new_graph` discharges both for a program on a new graph.
-*)
-Theorem cleanup_once f c s s' r h :
-  sched_inv None s -> cleanup_score h s <= registered h s ->
-  run_top f c s = Some (s', r) -> cleanup_score h s' <= registered h s'.
+Lemma late_equation f e b k o y s :
+  g_current_owner s = Some o -> g_owners s !! o = Some y -> o_disposed y = true ->
+  exec (S f) e (CCleanup b k) s =
+    (let* _ := detached o (run_cleanup f o b e) in
+     let* _ := request_flush f in
+     exec f e k) (ghost_registered (o_host y) s).
 Proof.
-  intros Hi Hb Hm. destruct (Sexec _ (sched_ok_all f) None [] c _ _ _ Hi I Hm) as [_ (_&_&Hc)].
+  intros Hc Hy Hd. cbn [exec]. unfold m_bind at 1, current_owner. rewrite Hc.
+  rewrite (bind_get_owner _ _ _ _ Hy), bind_m_modify, Hd. unfold m_bind. simpl.
+  destruct (detached o (run_cleanup f o b e) _) as [[s2 []]|]; [|done]. done.
+Qed.
+
+Lemma zip_length bs es os :
+  length es = length bs -> length os = length bs -> length (zip_cleanups bs es os) = length bs.
+Proof.
+  revert es os. induction bs as [|b bs IH]; intros [|e es] [|o os]; simpl; try done; try lia.
+  intros H1 H2. rewrite IH; lia.
+Qed.
+
+(** What the engine does with each entry of an owner's cleanup list. *)
+Definition cleanup_entries (f : nat) : Prop :=
+  (forall ls cs, cleanups_of (schedule ls cs) = cs) /\
+  (forall o ls cs s, teardown f o ls cs s = run_items f o (schedule ls cs) s) /\
+  (forall o b e t r s, run_items (S f) o (ItemCleanup (b, e, t) :: r) s =
+     (let* _ := run_cleanup f o b e in run_items f o r) s) /\
+  (forall y, o_children (owner_detached y) = [] /\ o_cleanups (owner_detached y) = [] /\
+     o_cleanup_envs (owner_detached y) = [] /\ o_cleanup_order (owner_detached y) = []) /\
+  (forall o y s, g_owners s !! o = Some y ->
+     dispose_scope (S f) o s =
+       teardown f o (rev (o_children y)) (owner_cleanups y) (with_owners (<[o := owner_detached y]> (g_owners s)) s)) /\
+  (forall y, acq_ok y -> length (owner_cleanups y) = length (o_cleanups y)) /\
+  (forall e b k o y s, g_current_owner s = Some o -> g_owners s !! o = Some y -> o_disposed y = true ->
+     exec (S f) e (CCleanup b k) s =
+       (let* _ := detached o (run_cleanup f o b e) in
+        let* _ := request_flush f in
+        exec f e k) (ghost_registered (o_host y) s) /\
+     g_owners (ghost_registered (o_host y) s) = g_owners s).
+
+Lemma cleanup_entries_all f : cleanup_entries f.
+Proof.
+  split_and!.
+  - apply schedule_cleanups.
+  - intros. apply teardown_items.
+  - reflexivity.
+  - done.
+  - intros o y s Hy. cbn [dispose_scope]. unfold m_bind, get_owner. by rewrite Hy.
+  - intros y [_ _ _ _ _ H6 H7]. unfold owner_cleanups. rewrite length_rev. by apply zip_length.
+  - intros e b k o y s Hc Hy Hd. split; [by apply late_equation|done].
+Qed.
+
+(**md
+**Each cleanup entry runs once, and a host's cleanup events never exceed its registrations.**
+
+The count is structural, per list entry, because a registration carries no id. These hold together:
+
+- **The bound.** After a program, `EvCleanup h` events plus the cleanups still held by owners of host `h` are at most the cleanups registered with owners of host `h`, late ones included. `g_registered` is ghost state written at `CCleanup`. This is a sum per host, so it alone would hold of a teardown running one cleanup twice and dropping the next.
+- **The list.** The cleanups of `schedule ls cs`, in order, are exactly `cs`. `owner_cleanups` has one entry per entry of `o_cleanups`, for an owner in `acq_ok`.
+- **The teardown.** `teardown` is `run_items` over that schedule, and `run_items` runs `run_cleanup` once for each cleanup step and goes on with the rest. `dispose_scope` hands it the owner's detached entries, and `owner_detached` leaves all the lists empty, so a later teardown holds none of them.
+- **The late path.** On a disposed current owner, `CCleanup` runs `run_cleanup` once under `detached`, with no write to the owners.
+
+Premises of the bound: [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) and the bound hold at the start. `cleanup_once_new_graph` discharges both for a program on a new graph. An entry's body can itself register or dispose, and those are further registrations and further steps.
+*)
+Theorem cleanup_once f :
+  (forall c s s' r h, sched_inv None s -> cleanup_score h s <= registered h s ->
+     run_top f c s = Some (s', r) -> cleanup_score h s' <= registered h s') /\
+  cleanup_entries f.
+Proof.
+  split; [|apply cleanup_entries_all].
+  intros c s s' r h Hi Hb Hm. destruct (Sexec _ (sched_ok_all f) None [] c _ _ _ Hi I Hm) as [_ (_&_&Hc)].
   specialize (Hc h). unfold zero in Hc. lia.
 Qed.
 
 (**md
-**On a new graph, a host's cleanup events never exceed its registrations.**
+**On a new graph, each cleanup entry runs once, and a host's cleanup events never exceed its registrations.**
+
+The count is structural, per list entry, because a registration carries no id. The second part is `cleanup_entries`, as [`cleanup_once`](#cleanup_once) describes it.
 *)
-Corollary cleanup_once_new_graph f fl c s' r h :
-  run_top f c (init fl) = Some (s', r) -> count_cleanups h (g_trace s') <= registered h s'.
+Corollary cleanup_once_new_graph f fl :
+  (forall c s' r h, run_top f c (init fl) = Some (s', r) -> count_cleanups h (g_trace s') <= registered h s') /\
+  cleanup_entries f.
 Proof.
-  intros Hm. assert (Hb : cleanup_score h (init fl) <= registered h (init fl)).
+  split; [|apply cleanup_entries_all].
+  intros c s' r h Hm. assert (Hb : cleanup_score h (init fl) <= registered h (init fl)).
   { unfold cleanup_score, registered, owners_pending, owner_pending. simpl.
     rewrite map_to_list_insert, map_to_list_empty by apply lookup_empty. simpl.
     destruct (decide _); simpl; lia. }
-  pose proof (cleanup_once f c _ s' r h (sched_inv_init fl) Hb Hm) as H.
+  pose proof (proj1 (cleanup_once f) c _ s' r h (sched_inv_init fl) Hb Hm) as H.
   unfold cleanup_score in H. lia.
 Qed.
 
@@ -262,29 +339,39 @@ Proof. apply disposed_no_edges. apply engine_settled_init. Qed.
 (**md
 **A disposed effect never runs again.**
 
-From a state where the effect is disposed, a whole program or a flush that returns leaves it disposed, with `n_runs` unchanged and no new `EvRun n` in the trace. A body in progress at its disposal keeps running to its end: this is about later runs.
+From a state where the effect is disposed, a whole program, a flush or a `drain` that returns leaves it disposed, with `n_runs` unchanged and no new `EvRun n` in the trace. The `drain` clause covers a disposal mid-flush: from the loop head after the effect that disposed it, its own entry is dequeued with no run, as [`queued_effect_disposed_skipped`](#queued_effect_disposed_skipped) has it. The `execute_effect` clause is that dequeue. A body in progress at its disposal keeps running to its end: this is about later runs.
 
-Premise: [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) holds at the start, with no effect in progress.
+Premises: [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) holds at the start, with no effect in progress, or for `execute_effect` with this effect in progress. A `drain` starts during a flush.
 *)
-Theorem disposed_effect_never_runs f n d s :
-  sched_inv None s -> g_nodes s !! n = Some d -> n_kind d = KEffect -> n_disposed d = true ->
-  (forall c s' r, run_top f c s = Some (s', r) ->
+Theorem disposed_effect_never_runs f n d :
+  n_kind d = KEffect -> n_disposed d = true ->
+  (forall s c s' r, sched_inv None s -> g_nodes s !! n = Some d -> run_top f c s = Some (s', r) ->
      (exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true /\ n_runs d' = n_runs d) /\
      count_runs n (g_trace s') = count_runs n (g_trace s)) /\
-  (forall s' a, run_flush f s = Some (s', a) ->
+  (forall s s' a, sched_inv None s -> g_nodes s !! n = Some d -> run_flush f s = Some (s', a) ->
+     (exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true /\ n_runs d' = n_runs d) /\
+     count_runs n (g_trace s') = count_runs n (g_trace s)) /\
+  (forall s s' a, sched_inv None s -> g_nodes s !! n = Some d -> g_flushing s = true -> drain f s = Some (s', a) ->
+     (exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true /\ n_runs d' = n_runs d) /\
+     count_runs n (g_trace s') = count_runs n (g_trace s)) /\
+  (forall s s' a, sched_inv (Some n) s -> g_nodes s !! n = Some d -> g_flushing s = true -> execute_effect f n s = Some (s', a) ->
      (exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true /\ n_runs d' = n_runs d) /\
      count_runs n (g_trace s') = count_runs n (g_trace s)).
 Proof.
-  intros Hi Hd Hk Hz.
-  assert (Hrel : forall s', data_rel s s' ->
+  intros Hk Hz.
+  assert (Hrel : forall s s', g_nodes s !! n = Some d -> data_rel s s' ->
      (exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true /\ n_runs d' = n_runs d) /\
      count_runs n (g_trace s') = count_runs n (g_trace s)).
-  { intros s' R. destruct (r_nodes _ _ R n d Hd) as (d'&Hd'&_&Hi'&Hr'). split.
+  { intros s s' Hd R. destruct (r_nodes _ _ R n d Hd) as (d'&Hd'&_&Hi'&Hr'). split.
     - exists d'. auto.
     - exact (r_runs _ _ R n d Hd Hk Hz). }
-  split.
-  - intros c s' r Hm. destruct (Sexec _ (sched_ok_all f) None [] c _ _ _ Hi I Hm) as [_ (_&R&_)]. by apply Hrel.
-  - intros s' a Hm. destruct (Sflush _ (sched_ok_all f) None _ _ _ Hi I Hm) as [_ (_&R&_)]. by apply Hrel.
+  split_and!.
+  - intros s c s' r Hi Hd Hm. destruct (Sexec _ (sched_ok_all f) None [] c _ _ _ Hi I Hm) as [_ (_&R&_)]. by apply Hrel.
+  - intros s s' a Hi Hd Hm. destruct (Sflush _ (sched_ok_all f) None _ _ _ Hi I Hm) as [_ (_&R&_)]. by apply Hrel.
+  - intros s s' a Hi Hd Hf Hm. destruct (Sdrain _ (sched_ok_all f) _ _ _ Hi Hf Hm) as [_ (_&R&_)]. by apply Hrel.
+  - intros s s' a Hi Hd Hf Hm.
+    assert (Hc : eff_ctx n s) by (split; [by exists d|exact Hf]).
+    destruct (Sexecute _ (sched_ok_all f) n _ _ _ Hi Hc Hm) as [_ (_&R&_)]. by apply Hrel.
 Qed.
 
 Lemma track_keeps n s s' :
@@ -347,13 +434,7 @@ Theorem late_registration_immediate f x e b k o y s :
      (g_trace s ++ [EvCleanup (o_host y)]) `prefix_of` g_trace s').
 Proof.
   intros Hc Hy Hd.
-  assert (Heq : exec (S f) e (CCleanup b k) s =
-    (let* _ := detached o (run_cleanup f o b e) in
-     let* _ := request_flush f in
-     exec f e k) (ghost_registered (o_host y) s)).
-  { cbn [exec]. unfold m_bind at 1, current_owner. rewrite Hc.
-    rewrite (bind_get_owner _ _ _ _ Hy), bind_m_modify, Hd. unfold m_bind. simpl.
-    destruct (detached o (run_cleanup f o b e) _) as [[s2 []]|]; [|done]. done. }
+  pose proof (late_equation f e b k o y s Hc Hy Hd) as Heq.
   split; [exact Heq|]. intros Hi f' s' r -> Hm.
   rewrite Heq in Hm. pose proof (step_ghost x (o_host y) s Hi) as H1.
   unfold m_bind in Hm at 1.
@@ -398,9 +479,9 @@ Qed.
 (**md
 **Detaching a stale link changes nothing.**
 
-`unlink` of a link whose generation is not the owner's current one returns the state it was given. A teardown bumps the generation before its first step, so a child released or disposed during that teardown takes this path.
+`unlink` of a link whose generation is not the owner's current one returns the state it was given. A teardown bumps the generation before its first step, so a child disposed during that teardown takes this path.
 
-The generation check is the only thing this states. In the model `owner_without` matches on child and acquisition, so a later generation holds no such link anyway; in F# the check also keeps `Prev` and `Next` of a detached list intact (Core.fs 1053-1072), and the list pointers are absent from the model.
+This pins the model's check and no reachable behaviour. On reachable states `owner_without` matches on child and acquisition, and a later generation holds no such link, so the check is redundant there. The F#'s check guards `Prev` and `Next` of a detached list (Core.fs 1053-1072), which the model does not have.
 
 Premise: the owner exists.
 *)
@@ -447,6 +528,27 @@ Definition late_registrations : cmd :=
 Example late_registrations_run_at_once :
   trace_of 100000 current_flags late_registrations =
     Some [EvRun 1; EvDispose 1; EvCleanup 1; EvLog 1 100%Z; EvLog 1 7%Z].
+Proof. vm_compute. reflexivity. Qed.
+
+(** An effect ahead in the queue disposes the effect behind it, and the entry is dequeued with no run. *)
+Definition queued_effect_disposed : cmd :=
+  CSignal 1 (K 0%Z) (
+  CEffect 2 (CRead 10 (V 1) (CLog (V 10) Nop)) (
+  CEffect 3 (CRead 10 (V 1) (CIf (V 10) (CDispose (K 2%Z) Nop) Nop)) (
+  CWrite (V 1) (K 1%Z) Nop))).
+
+Example queued_effect_disposed_skipped :
+  trace_of 100000 current_flags queued_effect_disposed =
+    Some [EvRun 2; EvLog 2 0%Z; EvRun 3; EvRun 3; EvDispose 2].
+Proof. vm_compute. reflexivity. Qed.
+
+(** A late cleanup fails, and the body goes on. *)
+Definition late_cleanup_failure : cmd :=
+  CBatch (CEffect 1 (CDispose (V 1) (CCleanup (CThrow 8%Z) (CLog (K 7%Z) Nop))) Nop) Nop.
+
+Example late_cleanup_failure_recorded :
+  trace_of 100000 current_flags late_cleanup_failure =
+    Some [EvRun 1; EvDispose 1; EvCleanup 1; EvFail 1 8%Z; EvLog 1 7%Z].
 Proof. vm_compute. reflexivity. Qed.
 
 (** A memo disposed with no read answers the default, with no run. *)

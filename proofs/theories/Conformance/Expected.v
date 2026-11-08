@@ -170,6 +170,14 @@ Definition exp_flush_memo_failure : list event := [
   EvRun 3; EvLog 3 1%Z
 ].
 
+Definition exp_queued_effect_disposed : list event := [
+  EvRun 2; EvLog 2 0%Z; EvRun 3; EvRun 3; EvDispose 2
+].
+
+Definition exp_late_cleanup_failure : list event := [
+  EvRun 1; EvDispose 1; EvCleanup 1; EvFail 1 8%Z; EvLog 1 7%Z
+].
+
 Definition exp_failed_batch : list event := [
   EvRun 2; EvLog 2 0%Z; EvRun 2; EvLog 2 1%Z
 ].

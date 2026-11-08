@@ -842,6 +842,36 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (statusOf e = "Error") $"the reader holds the failure: {statusOf e}"
             c.Check (c.QueueLength = 0) $"the queue holds {c.QueueLength}"
 
+        // An effect ahead in the queue disposes the effect behind it. The entry is dequeued with no run.
+        "queued_effect_disposed",
+        fun c ->
+            let s = c.Signal 1 0
+            let behind = c.Effect 2 (fun () -> c.Log 2 s.Value)
+
+            c.Effect 3 (fun () ->
+                if s.Value <> 0 then
+                    c.Dispose 2 (fun () -> behind.Dispose ()) (box behind))
+            |> ignore
+
+            s.Value <- 1
+            c.Check (behind.Runs = 1) $"the disposed effect has {behind.Runs} runs"
+            c.Check (not (privateField behind "queued" :?> bool)) "the disposed effect is still queued"
+            c.Check (c.QueueLength = 0) $"the queue holds {c.QueueLength}"
+
+        // A cleanup registered on a disposed scope fails. The failure is recorded, and the body goes on.
+        "late_cleanup_failure",
+        fun c ->
+            let self: Effect ref = ref Unchecked.defaultof<Effect>
+
+            c.Batch (fun () ->
+                self.Value <-
+                    c.Effect 1 (fun () ->
+                        c.Dispose 1 (fun () -> self.Value.Dispose ()) (box self.Value)
+                        c.Cleanup 1 (fun () -> c.Throw 8)
+                        c.Log 1 7))
+
+            c.Check (c.Graph.Root.ErrorCount = 1) $"Root.Errors: {c.Graph.Root.ErrorCount}"
+
         // A batch whose body fails applies its write and requests no flush. The effect stays queued, nothing is owed,
         // and the next flush runs it.
         "failed_batch",
