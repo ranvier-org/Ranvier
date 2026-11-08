@@ -503,7 +503,7 @@ Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s
   - `owed_settled`: at top level with no batch, pull or current computation, `run_top` returning leaves `g_owed = false` or an empty live queue.
   - `flush_returns_clean`: a flush that returns with no failing effect has an empty queue, and every non-disposed effect is clean or was re-marked and rerun.
   - `body_failure_contained`: a failing effect body records the failure in its status, and the flush continues.
-  - `drain_no_escape`: from the command language, `execute_effect` has no failure path out of the drain: bodies, cleanups, child releases, memo runs and throwing comparers are caught (Core.fs 1171-1184, 4247-4261, 4275-4279, 4866). A flush that returns therefore leaves `g_flushing = false` and an empty live queue. This replaces `escape_leaves_resumable`, which has no form in the model; a throwing signal comparer from host code (Core.fs 3813) stays outside it, and the comment at Core.fs 3140-3142 is stale for `Effect`.
+  - `drain_no_escape`: from the command language, `execute_effect` has no failure path out of the drain: bodies, cleanups, child releases, memo runs and throwing comparers are caught (Core.fs 1171-1184, 4247-4261, 4275-4279, 4866). A flush that returns therefore leaves `g_flushing = false` and an empty live queue. This replaces `escape_leaves_resumable`, which has no form in the model; other `IScheduled` items, such as a pass (Core.fs 3082), stay outside it, and the comment at Core.fs 3140-3142 is stale for `Effect`.
 - [ ] **Step 2: Ownership theorems.**
   - `dispose_reverse_order`: children and cleanups run in reverse acquisition order.
   - `cleanup_once`: each cleanup's `EvCleanup` occurs at most once per registration.
