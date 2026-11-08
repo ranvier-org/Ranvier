@@ -361,7 +361,7 @@ This task proves no theorems. It builds the executable model and tests it agains
 
 **Interfaces:**
 - Consumes: Tasks 2, 4, 5, 6.
-- Produces:
+- Produces: `node` gains `n_link : option link`, which `Dispose` needs (Core.fs 4081, 4385, 4648, 4896-4898). `o_cleanups`, `o_cleanup_envs` and `o_cleanup_order` have one writer and one reader helper. Owner ids come from `fresh (dom g_owners)` and a fixed root id, not `g_next`, so conformance's node ids stay aligned. Then:
 
 ```rocq
 Definition M A := state -> option (state * A).   (* None: out of fuel *)
@@ -442,7 +442,7 @@ The generator must cover: conditional reads, cutoff comparers, diamonds, batches
 **Files:** Create `proofs/theories/Pure/Check.v`.
 
 **Interfaces:**
-- Consumes: `Engine`, `coherent`.
+- Consumes: `Engine`, `coherent`, `ew_reachable`. `coherent` alone admits a computation that read a source with no edge to it, so resolution theorems take `ew_reachable (g_edges s)` and the bridge from slots to edges in `Edges.v`.
 - Produces: `moved_since_last_run : state -> nid -> Prop`, which holds when a source of `n` has a value or status different from the one `n`'s last run saw. A ghost per-source version in `state` is acceptable if needed.
 
 - [ ] **Step 1: Theorems.**
@@ -474,7 +474,7 @@ Definition observer_covered (s : state) (src c : nid) : Prop :=
   stale_or_queued s c \/ In c (g_running s) \/ n_unann_of s src = true.
 Definition wake_ok (s : state) : Prop :=
   forall src c, edge s src c -> stale_of s src -> observer_covered s src c.
-Definition engine_inv (s : state) : Prop.   (* coherent, wake_ok, stack discipline, id bounds *)
+Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s), wake_ok, stack discipline, id bounds, owner cleanup lists of equal length *)
 ```
 
 - [ ] **Step 1: Theorems.**
