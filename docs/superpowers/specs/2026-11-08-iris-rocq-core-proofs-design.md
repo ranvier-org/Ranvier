@@ -274,7 +274,7 @@ distinguish passes, so the check narrows drift and does not eliminate it. The mo
 
 ## Open
 
-- **Redundant runs:** the formal definition, and the owner's ruling on each case found.
+- **Redundant runs:** the formal definition, and the owner's ruling on each case found. A redundant run whose re-run discharges a failing cleanup does not preserve `obs_settled`, so the statement above is checked only for cleanup-free runs until the owner rules.
 - **The optimisation for the milestone:** chosen by the builder at the pure-tier report. It must have a measured cost worth removing in Ranvier today, be nontrivial to prove, and be checkable by the differential test. The reasons go in the report.
 
 ## Depth and order of work (author's call; the owner stated no preference)

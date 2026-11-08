@@ -225,17 +225,29 @@ An effect runs in a round exactly when a value it read in its last run now diffe
 - Produces:
 
 ```rocq
-(* added to event *)  | EvFail (n : nid) (f : val) | EvDispose (n : nid)
-Inductive rinput := RWrite (n : nid) (v : val) | RDispose (n : nid).
+(* added to event *)  | EvFail (n : nid) (f : val) | EvDispose (n : nid) | EvHostRead (n : nid) (o : outcome)
+Inductive rinput := RWrite (n : nid) (v : val) | RDispose (n : nid) | RRead (n : nid).
 Definition rhistory := list (list rinput).   (* replaces Task 3's *)
 Record observation := { obs_ty : Type; obs_of : list event -> obs_ty }.
 Definition obs_full : observation.      (* the whole trace, run counts included *)
-Definition obs_settled : observation.   (* per effect: values of its last run, failures, disposal *)
+Definition obs_settled : observation.   (* per effect: values of its last run, failures, disposal; all host reads *)
+(* One order per history, compared at every batch prefix, so an engine cannot look ahead or drop an earlier batch. *)
 Definition refines (O : observation)
     (engine : rprog -> rhistory -> option (list event)) : Prop :=
   forall p h t, rwf p -> engine p h = Some t ->
-    exists ord fuel t', rtrace fuel ord p h = Some t' /\ obs_of O t = obs_of O t'.
+    exists ord, is_effect_order ord /\
+      forall h', prefix h' h ->
+        exists te fuel tr, engine p h' = Some te /\ rtrace fuel ord p h' = Some tr /\
+          obs_of O te = obs_of O tr.
+(* refines holds for an engine with no traces, so an engine proof also owes this, for a fuel-indexed engine. *)
+Definition engine_answers
+    (engine : nat -> rprog -> rhistory -> option (list event)) : Prop :=
+  forall p h, rwf p ->
+    (forall ord, is_effect_order ord -> exists fuel t, rtrace fuel ord p h = Some t) ->
+    exists k t, engine k p h = Some t.
 ```
+
+`RRead` is a host read, evaluated at its position in the batch, so a dropped write to a signal no effect logs is observable.
 
 A failing effect emits `EvFail`. A disposed effect emits its cleanups and `EvDispose`, then never runs. A disposed memo answers reads with its last value, as Core.fs documents. `refines` imports nothing from `Pure/`, so any engine can use it.
 
@@ -538,13 +550,14 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 
 **Interfaces:**
 - Consumes: `Reference/*`, Tasks 7-11.
-- Produces: `erase : rprog -> rhistory -> cmd` (the engine program for a reference program), `engine_order : state -> effect_order` (the exact order, computed from observer positions and marking walks, swap-removal included), `engine_of : flags -> rprog -> rhistory -> option (list event)`, for `refines`.
+- Produces: `erase : rprog -> rhistory -> cmd` (the engine program for a reference program), `engine_order : state -> effect_order` (the exact order, computed from observer positions and marking walks, swap-removal included), `engine_of : flags -> nat -> rprog -> rhistory -> option (list event)`, fuel-indexed, for `refines` and `engine_answers`.
 
 - [ ] **Step 0: Check the literature notes.** Compare `convergence` and `refines obs_settled` with the Adapton notes from Task 3a in `README.md`. Record any difference there, and adopt a stronger or better-factored statement where one exists. Literature never justifies weakening a statement here.
 - [ ] **Step 1: Theorems.**
   - `engine_order_exact`: the order of `EvRun`s in a flush equals `engine_order`, for all well-behaved programs.
-  - `weak_refinement : refines obs_settled (engine_of current_flags)`, using `convergence`.
-  - `exact_refinement : refines obs_full (engine_of current_flags)`, with `ord` instantiated by `engine_order`, or a checked counterexample in `Witnesses.v` for each divergence.
+  - `weak_refinement : forall k, refines obs_settled (engine_of current_flags k)`, using `convergence`.
+  - `exact_refinement : forall k, refines obs_full (engine_of current_flags k)`, with `ord` instantiated by `engine_order`, or a checked counterexample in `Witnesses.v` for each divergence.
+  - `engine_of_answers : engine_answers (engine_of current_flags)`.
 - [ ] **Step 2: Attempt `exact_refinement` directly.** Expected divergences are S07 and S15. Each goes in as a checked `Example` showing the differing traces, a `redundant` run in the reference tier's terms, and ledger status Awaiting ruling. Then state the strongest theorem that holds as `exact_refinement_except`, with the divergence classes as an explicit premise; the unconditional statement stays in `BUGS.md`.
 - [ ] **Step 3: Audit.** Expected: exit 0.
 - [ ] **Step 4: Commit** as `feat(proofs): prove refinement to the reference semantics`.
@@ -570,7 +583,7 @@ Written in detail once Task 13 has chosen the optimisation. Its fixed shape:
 
 - [ ] **Step 1: Write this task's detailed plan** into this file: optimised transitions, observation, simulation relation, benchmark, and the heap obligations it implies.
 - [ ] **Step 2: Model the optimised engine** as `engine_of_optimised`, by flag or as its own transitions, sharing `Engine.v` wherever behaviour is unchanged.
-- [ ] **Step 3: Prove `optimised_refines : refines <chosen observation> engine_of_optimised`.** A counterexample here is the gate working: record it, and revise or reject the optimisation.
+- [ ] **Step 3: Prove `optimised_refines : forall k, refines <chosen observation> (engine_of_optimised k)`, `engine_answers engine_of_optimised`, and `optimised_cleanups`: each registered cleanup runs exactly once, before its replacement or disposal.** `obs_settled` alone admits an engine that drops a logging cleanup. A counterexample here is the gate working: record it, and revise or reject the optimisation.
 - [ ] **Step 4: Only then implement it in F#.** Test-first, against the differential check with the extracted optimised engine.
 - [ ] **Step 5: Benchmark.** Report measured results beside the proof. A proof says nothing about speed, and an optimisation that doesn't help is dropped, however well proved.
 - [ ] **Step 6: Report to the owner**, and ask them to review the heap scope in Tasks 14-16 in light of it.
