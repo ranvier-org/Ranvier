@@ -17,6 +17,15 @@ intended, the entry closes as "spec corrected".
   8 on the value of its previous run. The definition follows the ruling for Task 3. The question for
   the owner: does a run set stay fixed at the round's start, or does a run re-compare when its turn
   comes? Not a Core.fs defect.
+- `disposed_unread_memo_value` (`theories/Reference/Properties.v`): which value a disposed memo keeps.
+  The reference keeps the memo's value over the signals at the start of the disposal's batch, a value
+  that depends on no engine's demand. By reading Core.fs, not by running it: `EnsureCurrent` does not
+  refresh a disposed memo, so F# keeps the value last computed. In `unread_memo` the memo has never run
+  when it is disposed, its status is `Uninitialized`, and F# answers the type's default where the
+  reference answers 5. The two also differ when a cleanup earlier in the batch pulls the memo. The
+  question for the owner: does the reference keep this engine-independent value, or does it model demand
+  as Core.fs has it? Modelling demand would put one engine's laziness in the tier every engine proves
+  against. Not yet checked against the F#.
 
 ## Closed
 
@@ -38,6 +47,7 @@ Changes to `redundant` from its first statement in the plan.
   untracked read that moved from 0 to 42. `untracked_branch` selects its branch by an untracked read
   and logs for the first time with no tracked reads. Both are now checked as not redundant. The run
   set still depends on tracked reads only.
+- `runs_of` keeps effect runs only: `rruns` now also holds disposal records, which are not runs.
 - `redundant` compares reads, not events. A rerun runs the cleanups its previous run registered, so
   its events can differ from the previous run's on equal reads: `redundant_run_with_cleanup`.
 

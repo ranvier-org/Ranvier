@@ -89,7 +89,12 @@ Fixpoint eval_expr (g : env) (p : option val) (e : expr) : option outcome :=
   | EEq a b => bin (fun u v => Ok (bool_val (Z.eqb u v))) a b
   end.
 
-Inductive event := EvRun (n : nid) | EvLog (n : nid) (v : val) | EvCleanup (n : nid).
+Inductive event :=
+  | EvRun (n : nid)
+  | EvLog (n : nid) (v : val)
+  | EvCleanup (n : nid)
+  | EvFail (n : nid) (f : val)
+  | EvDispose (n : nid).
 
 Fixpoint expr_no_prev (e : expr) : bool :=
   match e with
