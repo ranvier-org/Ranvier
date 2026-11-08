@@ -29,6 +29,19 @@ This project proves nothing about a parallel engine. It builds what those proofs
 | Safe concurrent modification | Abstract specifications for the edge structures, which versioned snapshots could implement; monotone ghost state |
 | Progress of non-blocking subsystems | Nothing beyond HeapLang's atomics being available. Out of scope |
 
+### Verification as the gate on optimisation
+
+The owner's direction, decided after the plan was first written: verification is the mechanism that makes
+aggressive optimisation safe, so it is not a separate activity from optimising. An optimised engine `O` is a candidate only once it
+refines the reference semantics under a chosen observation:
+
+    for all programs and histories in the fragment: Obs(O) = Obs(reference)
+
+Performance is then minimised subject to that constraint. Benchmarks supply the performance evidence and refinement the
+correctness evidence, and neither stands in for the other. A failed proof obligation alone does not show a defect;
+a checked counterexample does. This project therefore has to demonstrate the whole loop on one real optimisation,
+with its link to the executable F#, and proving the current engine alone does not complete it.
+
 ## Goals
 
 1. A Rocq project in the repository whose layers each build only on the layers below.
@@ -43,6 +56,12 @@ This project proves nothing about a parallel engine. It builds what those proofs
 5. A **bug ledger** collecting every defect found. Fixes follow once the proof project is complete.
 6. A **reference semantics**: what a reactive graph means for a fixed ordered input history, with no
    mention of freshness, marks, queues or threads. The sequential engine is proved to refine it.
+7. **A single refinement relation**, `refines Obs engine`, over a chosen observation, so the next engine proves
+   the same statement rather than a new one.
+8. **An implementation link that can fail.** The interpreter is extracted and run against the F# on generated
+   programs, in CI, so a Core.fs change that alters behaviour fails a check. This is strong testing, not proof.
+9. **One worked optimisation**: a real optimisation of Ranvier, chosen by the owner, proved to refine the reference
+   semantics and connected to its F# implementation by the differential check, with benchmark results reported beside it.
 
 ## Non-goals (first version)
 
@@ -56,7 +75,9 @@ This project proves nothing about a parallel engine. It builds what those proofs
 - Performance, and machine-checked links between the model and the F# or its IL.
 - Modelling or proving a parallel engine, epochs, atomics, weak memory or progress. Later work may use
   this project; it does not build any of that speculatively.
-- Changing `src/Ranvier` during the proof phases.
+- A verified-transformation framework or a formal intermediate representation. They wait for the worked
+  optimisation, whose proof should shape them.
+- Changing `src/Ranvier` during the proof phases, apart from the worked optimisation, which lands on its own branch.
 
 ## Anti-goals
 
@@ -72,16 +93,24 @@ Any of these makes the project a failure even if everything compiles:
 
 Rocq cannot read F#. The proofs cover a hand-written model of the algorithm, so they establish the
 model's correctness, and Core.fs's only as far as the model matches it. Every theorem's claim about
-Ranvier passes through the correspondence table.
+Ranvier passes through the correspondence table, and the differential check is the evidence for that table: agreement on
+generated programs, which is not a proof of equivalence.
 
 ## Architecture: three tiers
 
 **Reference tier.** The specification any engine must meet, sequential or parallel. For a well-behaved
 program, meaning deterministic memo bodies that do not write signals, it defines the
 observable outcome of an ordered input history. A memo's value is its body evaluated over current
-signal values, with dependencies discovered by that evaluation. Effects and cleanups are the observable events,
-and the number of runs is observable. The tier takes the order of effects within a flush as a parameter, so it
+signal values, with dependencies discovered by that evaluation. Effect runs, logged values, cleanups, failures and
+disposal are the observable events. The tier takes the order of effects within a flush as a parameter, so it
 mentions no observer position. Today's exact order is a separate result below.
+
+An **observation** selects what must be preserved from a trace. The tier defines at least `obs_full`, the whole trace
+including run counts, and `obs_settled`, the values each effect last saw plus failures and disposal. Refinement is
+one relation, `refines Obs engine`. The choice of observation decides what counts as an optimisation: removing a
+redundant run violates `obs_full` and preserves `obs_settled`.
+
+The host can dispose nodes in a history. Node creation, and disposal from inside an effect, stay outside this tier.
 Programs outside the well-behaved fragment still get the general safety theorems of the lower tiers,
 such as no lost wake-ups, but no reference-tier meaning and no convergence theorem.
 
@@ -139,7 +168,8 @@ Each layer has a pure part, a heap part, or both, and imports only lower layers.
 | 8 | Ownership | `Owner`, `OwnerLink`, `Discharge`, `Retire`, node `Dispose` | Reverse acquisition teardown; each cleanup runs once; a disposed computation holds no source edges once its run has ended; a disposed effect ignores marks; a disposed memo still answers reads, as Core.fs documents; late registration runs immediately |
 | 9 | Whole graph | all | **Glitch-free reads**: outside the self-dirtying case, a read returns the value its body would compute from current signals. **Convergence**, for well-behaved programs: at quiescence, every effect has run against the latest values it reads. Regression witnesses for #290 and #302. Iris adequacy turns specs into statements about closed programs with no Iris in them |
 | R | Reference semantics | none | Written first, alongside layer 0, and imported only by layer 10. Determinism for a fixed history; glitch freedom as a property of the definition |
-| 10 | Refinement | all | **Engine order characterised**: the exact effect order in a flush, as a function of history, including swap-removal's effect on it. **Weak refinement**: for a well-behaved program, every effect runs when a value it read changed, and its last run sees final values. **Exact refinement**: the engine's trace, run counts included, equals the reference tier's under the characterised order, or a checked counterexample shows where it does not |
+| 10 | Refinement | all | **Engine order characterised**: the exact effect order in a flush, as a function of history, including swap-removal's effect on it. **Weak refinement**: `refines obs_settled`: for a well-behaved program, every effect runs when a value it read changed, and its last run sees final values. **Exact refinement**: `refines obs_full`: the engine's trace, run counts included, equals the reference tier's under the characterised order, or a checked counterexample shows where it does not |
+| 11 | Worked optimisation | the chosen optimisation | The optimised engine satisfies `refines` under the observation the owner chooses for it, and passes the differential check against its F# implementation |
 
 Layer 6 is the centre of the project. Layers 9 and 10 rest on it.
 
@@ -184,6 +214,7 @@ Proposed by the author of this document; the table's reasons are open to challen
 - `proofs/CORRESPONDENCE.md`: model element → Core.fs symbol, with the pinned commit, and every
   simplification.
 - `proofs/BUGS.md`: the bug ledger.
+- `proofs/differential/`: the extracted interpreter, program generator and comparison.
 - Dependency pins and a build entry point, chosen once the toolchain is settled.
 
 The model pins Core.fs at commit `d701e6c5`. Comments in Rocq files follow `.claude/rules/comments.md`.
@@ -227,18 +258,28 @@ its theorem closed.
 - Both regression witnesses check.
 - Exact refinement is proved, or each divergence from it has a checked counterexample in the ledger.
 - The correspondence table covers every modelled symbol.
-- `src/Ranvier` is unchanged until the fix phase.
+- `src/Ranvier` is unchanged until the fix phase, apart from the worked optimisation on its own branch.
+- The differential check passes on the generated program set, and runs in CI.
+- The worked optimisation is proved and connected, with its benchmark results reported.
+
+## Drift (decided)
+
+A CI job runs the differential check when `src/Ranvier/Core.fs` or `proofs/` changes. A Core.fs change that
+alters behaviour fails it, and is resolved by updating the model and its proofs. A change the generated programs do not
+distinguish passes, so the check narrows drift and does not eliminate it. The model's pin moves with each update.
 
 ## Open
 
-- **Drift:** what happens on the proof side when Core.fs changes. The owner left this undecided, so no
-  CI gate or drift check is built. The pinned commit and correspondence table leave any choice open.
 - **Redundant runs:** the formal definition, and the owner's ruling on each case found.
+- **The optimisation for the milestone:** chosen by the owner, no later than the pure-tier report.
 
 ## Depth and order of work (author's call; the owner stated no preference)
 
-Reference and pure tiers first, then heap proofs bottom-up through layer 8. Adequacy covers bodies written in
-the command language, not arbitrary HeapLang closures. A theorem that fails is not a stall. If heap work
+Reference and pure tiers first, with the differential check once the interpreter exists. Then the worked optimisation
+in the pure tier. Heap proofs follow, bottom-up through layer 8, and start with what the chosen optimisation needs:
+an optimisation about representation or concurrency has its proof obligations in the heap tier, and one about the
+algorithm may not. The owner reviews the heap scope after the milestone. Adequacy covers bodies written in
+the command language, not arbitrary HeapLang closures. A theorem that fails is not a stall. If work
 stalls, meaning a proof remains neither finished nor refuted, stop and report to the owner;
 the proposed cut order is heap layers 8, then 7, then 6, with the pure-tier results standing. Fixes wait
 until the proof project is complete, as the owner instructed.

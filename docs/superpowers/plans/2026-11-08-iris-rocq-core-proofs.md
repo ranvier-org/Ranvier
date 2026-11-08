@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - The model pins `src/Ranvier/Core.fs` at commit `d701e6c5`. Read Core.fs at that commit: `git show d701e6c5:src/Ranvier/Core.fs`.
-- `src/Ranvier` is unchanged until the fix phase.
+- `src/Ranvier` is unchanged until the fix phase, apart from the worked optimisation on its own branch.
 - The reference tier imports nothing from `Pure/` or `Heap/`. Layers import only lower layers.
 - No `Admitted`, `admit` or added `Axiom` outside theorems named in `proofs/BUGS.md`.
 - A failing theorem is a result. Theorems state intended behaviour and are never weakened only so they pass.
@@ -22,7 +22,7 @@
 - Every simplification appears in `proofs/CORRESPONDENCE.md` with its reason.
 - Comments in `.v` files follow `.claude/rules/comments.md`.
 - Shell commands are prefixed with `rtk`. Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- No CI gate or drift check is built. The owner left drift undecided.
+- Drift: the differential check runs in CI when `src/Ranvier/Core.fs` or `proofs/` changes. A behaviour change fails it. Its agreement is evidence, never a proof.
 
 ## Review Focus
 
@@ -217,6 +217,34 @@ An effect runs in a round exactly when a value it read in its last run now diffe
 
 ---
 
+### Task 3a: Observations and the refinement relation
+
+**Files:** Modify `proofs/theories/Base/Syntax.v`, `Reference/Semantics.v`, `Reference/Properties.v`. Later tasks' traces use the extended `event`.
+
+**Interfaces:**
+- Produces:
+
+```rocq
+(* added to event *)  | EvFail (n : nid) (f : val) | EvDispose (n : nid)
+Inductive rinput := RWrite (n : nid) (v : val) | RDispose (n : nid).
+Definition rhistory := list (list rinput).   (* replaces Task 3's *)
+Record observation := { obs_ty : Type; obs_of : list event -> obs_ty }.
+Definition obs_full : observation.      (* the whole trace, run counts included *)
+Definition obs_settled : observation.   (* per effect: values of its last run, failures, disposal *)
+Definition refines (O : observation)
+    (engine : rprog -> rhistory -> option (list event)) : Prop :=
+  forall p h t, rwf p -> engine p h = Some t ->
+    exists ord fuel t', rtrace fuel ord p h = Some t' /\ obs_of O t = obs_of O t'.
+```
+
+A failing effect emits `EvFail`. A disposed effect emits its cleanups and `EvDispose`, then never runs. A disposed memo answers reads with its last value, as Core.fs documents. `refines` imports nothing from `Pure/`, so any engine can use it.
+
+- [ ] **Step 1: Theorems and `Example`s.** Task 3's theorems still hold on the extended types. `obs_settled_coarser`: `obs_full` equality implies `obs_settled` equality. `refines_full_implies_settled`. `Example`s: an effect that fails in one round emits `EvFail`, and later rounds still run; disposing an effect runs its cleanups once and ends its runs; two traces differing only by a redundant run have equal `obs_settled` and unequal `obs_full`.
+- [ ] **Step 2: Prove them, then audit.** Expected: exit 0.
+- [ ] **Step 3: Commit** as `feat(proofs): add observations and the refinement relation`.
+
+---
+
 ### Task 4: `ObserverSet` and `SourceList` (pure)
 
 **Files:** Create `proofs/theories/Pure/ObserverSet.v`, `Pure/SourceList.v`. Model: Core.fs lines 195-428 and 540-814.
@@ -369,6 +397,31 @@ Theorems later quantify over `fuel`, so a `Some` result means "this operation re
 
 ---
 
+### Task 7a: Extraction, differential testing and the CI gate
+
+The implementation link: a Core.fs change that alters behaviour must fail a check. It's evidence, not proof, and every report says so.
+
+**Files:**
+- Create: `proofs/theories/Extract.v`, `proofs/differential/engine.ml` and `engine.mli` (generated, committed), `proofs/differential/driver.ml`, `proofs/differential/Generate.fsx`, `proofs/differential/run.sh`, `.github/workflows/proofs-differential.yml`
+- Modify: `proofs/check.sh`, `proofs/README.md`, `proofs/VERSIONS.md`
+
+**Interfaces:**
+- Consumes: `trace_of`, `cmd`, `event`, `current_flags`.
+- Produces: `bash proofs/differential/run.sh [count] [seed]`, exit 0 when the F# and the extracted interpreter agree on every generated program. Generated programs are written to a text form both sides read: one S-expression per program.
+
+`Generate.fsx` holds three things: a seeded generator of `cmd` programs, a printer to the text form, and an interpreter of `cmd` over real `Signal`/`Memo`/`Effect` objects that writes the event trace. `driver.ml` parses the text form, runs extracted `trace_of` and writes the same trace format.
+
+The generator must cover: conditional reads, cutoff comparers, diamonds, batches, writes from effects, cleanups, owning memos, disposal, failing bodies and self-marking memos. It bounds writes from effects so runs terminate: each write-capable effect writes only signals of a higher creation index, or under a guard that stops changing the value. A program that runs out of fuel on the OCaml side is counted and skipped, and the count is reported.
+
+- [ ] **Step 1: Check the harness can detect a difference.** Write `run.sh`, generator and driver. Run against a deliberately altered copy of the extracted engine, with `n_unann` handling removed. Expected: nonzero, printing the first differing program with both traces. Restore the file.
+- [ ] **Step 2: Run the real comparison.** Run: `rtk bash proofs/differential/run.sh 2000 1`. Expected: exit 0, reporting programs compared and skipped. Skipped must be under 5%, or the generator's bounds are too loose.
+- [ ] **Step 3: Handle each difference.** Shrink by hand to a small program, add it as a named scenario in `Scenarios.fsx`, and take it through the resist procedure: a model error fixes `Engine.v`; behaviour the theorems would reject goes in the ledger.
+- [ ] **Step 4: Extend `check.sh`.** Regenerate `engine.ml` from `Extract.v` and fail on a diff. Run `run.sh 200 1`.
+- [ ] **Step 5: Add the CI job.** Triggered on changes to `src/Ranvier/Core.fs` and `proofs/**`. It installs the .NET SDK and OCaml, builds `src/Ranvier`, and runs `run.sh 2000 <run number>`, so each run tries new seeds, and prints the seed on failure. It uses the committed `engine.ml`, so CI needs no Rocq install. Validate the YAML locally with `rtk gh workflow view` where possible; the workflow's first real run happens when the branch is pushed, which this task doesn't do. Say so in the report.
+- [ ] **Step 6: Commit** as `feat(proofs): check the extracted model against the F# on generated programs`.
+
+---
+
 ### Task 8: Check resolution (layer 5)
 
 **Files:** Create `proofs/theories/Pure/Check.v`.
@@ -484,12 +537,13 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 
 **Interfaces:**
 - Consumes: `Reference/*`, Tasks 7-11.
-- Produces: `erase : rprog -> rhistory -> cmd` (the engine program for a reference program), `engine_order : state -> effect_order` (the exact order, computed from observer positions and marking walks, swap-removal included).
+- Produces: `erase : rprog -> rhistory -> cmd` (the engine program for a reference program), `engine_order : state -> effect_order` (the exact order, computed from observer positions and marking walks, swap-removal included), `engine_of : flags -> rprog -> rhistory -> option (list event)`, for `refines`.
 
+- [ ] **Step 0: Check the literature.** Read the from-scratch consistency result in the Adapton papers, and compare it with `convergence` and `refines obs_settled`. Record any difference in `README.md`, and adopt a stronger or better-factored statement where one exists. Literature never justifies weakening a statement here.
 - [ ] **Step 1: Theorems.**
   - `engine_order_exact`: the order of `EvRun`s in a flush equals `engine_order`, for all well-behaved programs.
-  - `weak_refinement`: every effect runs when a value it read changed, and its last run sees final values, using `convergence`.
-  - `exact_refinement`: `trace_of` of `erase p h` equals `rtrace` of `p h` under `engine_order`, or a checked counterexample in `Witnesses.v` for each divergence.
+  - `weak_refinement : refines obs_settled (engine_of current_flags)`, using `convergence`.
+  - `exact_refinement : refines obs_full (engine_of current_flags)`, with `ord` instantiated by `engine_order`, or a checked counterexample in `Witnesses.v` for each divergence.
 - [ ] **Step 2: Attempt `exact_refinement` directly.** Expected divergences are S07 and S15. Each goes in as a checked `Example` showing the differing traces, a `redundant` run in the reference tier's terms, and ledger status Awaiting ruling. Then state the strongest theorem that holds as `exact_refinement_except`, with the divergence classes as an explicit premise; the unconditional statement stays in `BUGS.md`.
 - [ ] **Step 3: Audit.** Expected: exit 0.
 - [ ] **Step 4: Commit** as `feat(proofs): prove refinement to the reference semantics`.
@@ -501,8 +555,24 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 **Files:** Modify `proofs/BUGS.md`, `proofs/README.md`.
 
 - [ ] **Step 1: Run every ledger item in Suspected or Modelled through the procedure** until each is Confirmed, closed, or awaiting a ruling.
-- [ ] **Step 2: Report to the owner**, with the theorem index, the ledger and any stalls. Heap work continues without waiting for an answer, unless a stall was reported. Heap specs are stated for the model as it stands.
+- [ ] **Step 2: Write the report**, with the theorem index, the ledger and differential results. Add a ranked list of candidate optimisations for the milestone, each with the observation it needs and whether its obligations fall in the pure or heap tier. Draw candidates from the ledger, from what the proofs show is unnecessary, and from Ranvier's own direction.
 - [ ] **Step 3: Commit** as `docs(proofs): report pure-tier results`.
+- [ ] **Step 4: Stop and ask the owner** to choose the milestone optimisation, unless they've already chosen it, and to rule on anything Awaiting ruling that bears on it.
+
+---
+
+### Task 13a: The worked optimisation (layer 11)
+
+Written in detail once the owner has chosen the optimisation. Its fixed shape:
+
+**Files:** Create `proofs/theories/Pure/Optimised.v`. Implementation goes in `src/Ranvier` on its own branch, cut from this one, with a normal PR.
+
+- [ ] **Step 1: Write this task's detailed plan** into this file: optimised transitions, observation, simulation relation, benchmark, and the heap obligations it implies.
+- [ ] **Step 2: Model the optimised engine** as `engine_of_optimised`, by flag or as its own transitions, sharing `Engine.v` wherever behaviour is unchanged.
+- [ ] **Step 3: Prove `optimised_refines : refines <chosen observation> engine_of_optimised`.** A counterexample here is the gate working: record it, and revise or reject the optimisation.
+- [ ] **Step 4: Only then implement it in F#.** Test-first, against the differential check with the extracted optimised engine.
+- [ ] **Step 5: Benchmark.** Report measured results beside the proof. A proof says nothing about speed, and an optimisation that doesn't help is dropped, however well proved.
+- [ ] **Step 6: Report to the owner**, and ask them to review the heap scope in Tasks 14-16 in light of it.
 
 ---
 
@@ -590,6 +660,6 @@ A closed-program statement with no Iris in it, via `heap_adequacy`, for command-
 **Files:** Modify `proofs/README.md`, `proofs/CORRESPONDENCE.md`, `proofs/BUGS.md`.
 
 - [ ] **Step 1: Clean build.** `git clean -xfd proofs` (after checking the listing with `-n`), then `rtk bash proofs/check.sh`. Expected: exit 0.
-- [ ] **Step 2: Walk the spec's Done list**, pointing at evidence for each item: audit output, `witness_302`, `witness_290`, `exact_refinement` or its counterexamples, a correspondence row per modelled symbol, and `rtk git diff d701e6c5 --stat -- src/Ranvier` empty.
+- [ ] **Step 2: Walk the spec's Done list**, pointing at evidence for each item: audit output, `witness_302`, `witness_290`, `exact_refinement` or its counterexamples, a correspondence row per modelled symbol, the differential check's output, `optimised_refines` and its benchmark, and `rtk git diff d701e6c5 --stat -- src/Ranvier` empty on this branch.
 - [ ] **Step 3: Report to the owner:** theorem index, ledger by stage, each item Awaiting ruling. The fix phase gets its own plan from the Confirmed list and rulings, test-first in `src/Ranvier`, in the normal PR flow, with the model updated and each Open theorem closed.
 - [ ] **Step 4: Commit** as `docs(proofs): complete the proof project report`.
