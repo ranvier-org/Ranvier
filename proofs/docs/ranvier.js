@@ -131,12 +131,15 @@
     });
 
     var scroller = document.querySelector('div.coq');
+    // The outline item of the latest link, highlighted until the page scrolls away from where the link landed.
+    var jumped = null;
     if (scroller && links.length) {
       var active = null;
       var spy = function () {
         var top = scroller.getBoundingClientRect().top + 80;
         var best = null;
-        links.forEach(function (l) {
+        if (jumped && scroller.scrollTop === jumped.at) best = jumped.link;
+        else links.forEach(function (l) {
           if (l.node.getBoundingClientRect().top <= top) best = l;
         });
         if (best === active) return;
@@ -159,7 +162,13 @@
     var reveal = function () {
       if (!location.hash) return;
       var t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-      if (t) (commentOf(t) || t).scrollIntoView();
+      if (!t) return;
+      (commentOf(t) || t).scrollIntoView();
+      var link = links.filter(function (l) { return l.node === t; })[0];
+      if (link && spy) {
+        jumped = { link: link, at: scroller.scrollTop };
+        spy();
+      }
     };
     reveal();
     window.addEventListener('load', reveal);
@@ -170,6 +179,7 @@
   function commentOf(name) {
     var n = name;
     while ((n = n.previousElementSibling)) {
+      if (n.tagName !== 'SPAN') return null;
       if (n.classList.contains('vernacular')) {
         var above = n.previousElementSibling;
         return above && above.matches('div.doc.md') ? above : null;

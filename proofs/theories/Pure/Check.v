@@ -1856,7 +1856,7 @@ End Step.
 (**md
 **Every engine function keeps the check invariant, at every fuel.**
 
-When a function returns, the [check invariant](#check_invariant) still holds, `g_running` and `g_current` are back to their starting values, each node keeps its kind, and each memo's run count and disposal only go forward (`frame`). After `run_memo` or `recompute` of a memo, the memo is disposed, or it has run since `RecomputeScoped` last cleared its `Dirty`.
+When a function returns, the [check invariant](#check_invariant) still holds, `g_running` and `g_current` are back to their starting values, each node keeps its kind, and each memo's run count and disposal only go forward (`frame`). After `run_memo` or `recompute` of a memo, the memo is disposed, or `RecomputeScoped` has never cleared its `Dirty`, or the memo has run since `RecomputeScoped` last did.
 
 Premises: the invariant holds at the start. Functions over a memo or an effect require a node of that kind, and `run_effect_body` requires that effect's run to be in progress.
 *)
