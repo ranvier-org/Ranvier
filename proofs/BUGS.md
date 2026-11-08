@@ -64,7 +64,8 @@ intended, the entry closes as "spec corrected".
   current signals. A form over each source's stored value passes on these witnesses, since the effect read the stored 0.
   These programs are outside the well-behaved fragment, since `well_behaved_memo` rejects `CWrite` and `CCleanup`, so the
   fragment's convergence theorem and refinement are not falsified. Task 11 owns the statement of that property over all
-  programs, so no open theorem is named here. `resolve_clean_no_stale_source` (Task 8) is the Open theorem this entry falsifies, through `stale_source_reader`.
+  programs. `resolve_clean_no_stale_source` (Task 8) is the Open form at a single resolution, falsified through `stale_source_reader`: the
+  reader answers 0 with the signal at 2 and its source `Dirty`, and the source's next run answers 2. The harness asserts each of these.
   **Contrary evidence, by shape.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the
   contract" and "The same shape arises legitimately from a source that settles inline". `self_marking_body` and
   `self_marking_through_memo` are memos that write, so that comment puts them outside the contract. `self_marking_cleanup` is
@@ -150,18 +151,16 @@ intended, the entry closes as "spec corrected".
   starts from `Dirty`, and its lost read has no slot, so `moved_since_last_run` does not see it. `self_read_check_overflow` has no
   result to conclude from, and the theorem's premise is conditional on one: `self_read_check_resolves_itself` has the read at no result.
 
-- `disposed_window_keeps_unannounced` (scenario `disposed_self_window`; `theories/Pure/Witnesses.v`, same name): `RecomputeScoped` sets
-  `Clean` before `Discharge` (Core.fs 4191-4192) and does not clear `unannounced`. A nested run ends stale, so the flag is set, and
-  registers a cleanup that disposes the memo. An untracked self-read then enters the window, and the cleanup disposes the memo: it
-  ends `Clean`, disposed, with the flag set, from a read that started in `Check`. F# trace:
-  `[EvHostRead 4 (Ok 0); EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0)]`, and the harness asserts `Clean`, the flag and the disposal
-  from the private fields. No document covers the flag on a disposed memo, and no consequence was found: a later mark on the memo
-  forwards a `Check` its observers can resolve. This is the only path found where the flag survives: `resolve_clears_unannounced`
-  takes `n_disposed d' = false` for this witness, and proves every path of a live memo. A write and an owning body put the program
-  outside the well-behaved fragment.
-
 ## Awaiting ruling
 
+- `disposed_window_keeps_unannounced` (scenario `disposed_self_window`; `theories/Pure/Witnesses.v`, same name): `RecomputeScoped`
+  sets `Clean` before `Discharge` (Core.fs 4191-4192) and does not clear `unannounced`. A nested run ends stale, so the flag is set,
+  and registers a cleanup that disposes the memo. An untracked self-read then enters the window, and the cleanup disposes the memo:
+  it ends `Clean`, disposed, with the flag set, from a read that started in `Check`. F# trace:
+  `[EvHostRead 4 (Ok 0); EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0)]`, and the harness asserts `Clean`, the flag and the disposal
+  from the private fields. Only private fields differ, Core.fs 4071-4073 is honoured, and no document covers the flag on a disposed
+  memo. `resolve_clears_unannounced` takes `n_disposed d' = false` for this witness, and proves every path of a live memo. The question
+  for the owner: should disposal or the window clear the flag?
 - `disposed_running_observer_stays_clean` (`theories/Pure/Witnesses.v`, scenario of the same name): an effect that disposes
   itself mid-body keeps running, a later read links an edge, its write leaves it clean and unqueued, and the `finally` at
   Core.fs 4854-4855 clears the edge. The harness asserts each step inside the body: the memo has 0 observers after the
@@ -243,7 +242,8 @@ Names of theorems that may contain `Admitted`, `admit` or an `Axiom`, one per li
 `check.sh` compares its findings against this section.
 
 - `resolve_clean_no_move` (`theories/Pure/Check.v`): `check_resolves_over_moved_source` falsifies it on the present engine, and
-  `resolve_clean_no_move_falsified` proves that. It states what the fix owes, and `check.sh` fails any other theorem in `Audit.v`
-  that rests on it. Use `resolve_clean_unmoved` until the fix.
+  `resolve_clean_no_move_falsified` proves that. It states what the fix owes, and `check.sh` fails any other reference to it under
+  `theories/` and any other theorem in `Audit.v` resting on it. Use `resolve_clean_unmoved` until the fix.
 - `resolve_clean_no_stale_source` (`theories/Pure/Check.v`): `self_marking_wake_lost` falsifies it on the present engine, and
-  `resolve_clean_no_stale_source_falsified` proves that. `check.sh` holds it to the same rule.
+  `resolve_clean_no_stale_source_falsified` proves that. It covers live sources, since a disposed source stays stale without this
+  bug: `resolve_over_disposed_dirty_source`. `check.sh` holds it to the same rule.

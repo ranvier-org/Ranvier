@@ -149,7 +149,7 @@ copy, so it needs no Rocq.
 | `unmoved_short_of_dirty` | `Pure/Check.v` | Under `check_inv` and `reads_settled`, a memo in `Clean` or `Check` has `moved_since_last_run` false. |
 | `resolve_clean_unmoved` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` leaves no moved source, under `reads_settled`. It follows from `check_inv`'s preservation and `unmoved_short_of_dirty`, without using the walk. |
 | `resolve_clean_no_move` | `Pure/Check.v` | **Open.** The unqualified statement, false on the present engine: `resolve_clean_no_move_falsified`. |
-| `resolve_clean_no_stale_source` | `Pure/Check.v` | **Open.** A memo resolved `Clean` has no stale source, false on the present engine: `resolve_clean_no_stale_source_falsified`. |
+| `resolve_clean_no_stale_source` | `Pure/Check.v` | **Open.** A memo resolved `Clean` has no live stale source, false on the present engine: `resolve_clean_no_stale_source_falsified`. A disposed source stays stale: `resolve_over_disposed_dirty_source`. |
 | `resolve_dirty_stops_walk`, `resolve_walk_step` | `Pure/Check.v` | A node out of `Check` ends the walk with the state unchanged. In `Check`, the walk updates the slot's source and moves to the next slot. |
 | `resolve_clears_unannounced` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` ends a live memo's `n_unann`, on every path. A disposed memo can keep it: `disposed_window_keeps_unannounced`. |
 | `resolve_walk_check_clears` | `Pure/Check.v` | A walk ending in `Check` makes `refresh` return the node `Clean` with `n_unann` false and no run. |

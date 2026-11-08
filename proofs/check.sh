@@ -3,8 +3,9 @@
 #
 # Exits 0 when
 #   1. the build is clean;
-#   2. every `Print Assumptions` in theories/Audit.v lists only allowlisted assumptions, and an Open theorem
-#      only on its own line;
+#   2. every `Print Assumptions` in theories/Audit.v lists only allowlisted assumptions, an Open theorem
+#      appears only on its own line, and no file under theories/ names an Open theorem apart from its
+#      declaration and that line;
 #   3. `Admitted`, `admit`, `give_up`, `Admit Obligations` and top-level `Axiom`, `Parameter` and
 #      `Conjecture` occur only in declarations named under `## Open theorems` in BUGS.md.
 #      A failure of the scan itself fails the check.
@@ -83,6 +84,17 @@ while read -r k name; do
   owner="$(sed -n "${k}p" <<<"$audit_names")"
   [ "${owner##*.}" = "${name##*.}" ] || note "$owner rests on the Open theorem $name"
 done <<<"$assumption_owners"
+
+# A theorem that uses an Open theorem has to name it, so a text scan also covers theorems Audit.v does not list.
+# `-w` leaves the `_statement` and `_falsified` forms unmatched. A comment has to name the statement form.
+while IFS= read -r name; do
+  [ -n "$name" ] || continue
+  rc=0
+  refs="$(grep -rnw --include='*.v' -- "$name" theories)" || rc=$?
+  [ "$rc" -le 1 ] || { echo "check.sh: the scan for $name failed" >&2; exit 1; }
+  hits="$(grep -vE "Audit\.v:[0-9]+:Print Assumptions $name\.\$|:Theorem $name " <<<"$refs" || true)"
+  [ -z "$hits" ] || note "Open theorem $name is referenced: $hits"
+done <<<"$(open_theorems)"
 
 # 3. Admitted / admit / give_up / Admit Obligations / Axiom / Parameter / Conjecture.
 # Section `Variable` and `Hypothesis` are not scanned: they are named premises, not assumptions of the

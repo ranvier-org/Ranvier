@@ -471,13 +471,35 @@ Proof.
   destruct (g_nodes stale_end !! 2) as [e|] eqn:He; [|vm_compute in He; discriminate He].
   assert (Hin : 2 ∈ fst <$> sslots (src_of (g_edges stale_end) 3)) by (vm_compute; left).
   assert (Hst : stale (n_fresh e) = false).
-  { refine (H 1000 3 stale_start stale_end d d' (check_inv_final _) Hd _ _ Hu Hd' _ 2 e Hin He).
+  { assert (Hlive : n_disposed e = false) by (vm_compute in He; injection He as <-; reflexivity).
+    refine (H 1000 3 stale_start stale_end d d' (check_inv_final _) Hd _ _ Hu Hd' _ 2 e Hin He Hlive).
     all: vm_compute in Hd; vm_compute in Hd'; injection Hd as <-; injection Hd' as <-; reflexivity. }
   vm_compute in He. injection He as <-. discriminate Hst.
 Qed.
 
+(** A reader's source is disposed while [Dirty]. The walk leaves it stale, since a disposed memo has nothing to
+    bring current, and the reader goes [Clean] over it. *)
+Definition over_disposed_source (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq (CRead 11 (V 2) (CRet (V 11))) (
+  CRead 20 (V 3) (CWrite (V 1) (K 1%Z) (CDispose (V 2) k))))).
+
+Local Definition disposed_source_start : state := final (over_disposed_source Nop).
+
+Local Definition disposed_source_end : state :=
+  default disposed_source_start (fst <$> update_if_necessary 1000 3 disposed_source_start).
+
+Example resolve_over_disposed_dirty_source :
+  node_view disposed_source_start 3 = Some (Check, false, false, StNone, 0%Z) /\
+  update_if_necessary 1000 3 disposed_source_start = Some (disposed_source_end, tt) /\
+  node_view disposed_source_end 3 = Some (Clean, false, false, StNone, 0%Z) /\
+  n_fresh <$> g_nodes disposed_source_end !! 2 = Some Dirty /\
+  n_disposed <$> g_nodes disposed_source_end !! 2 = Some true.
+Proof. split_and!; vm_compute; reflexivity. Qed.
+
 (** A cleanup of a memo's nested run disposes the memo in [RecomputeScoped]'s window, with the flag of that
-    nested run. The memo goes from [Check] to [Clean] holding [n_unann]. Confirmed in [BUGS.md]. *)
+    nested run. The memo goes from [Check] to [Clean] holding [n_unann]. Awaiting ruling in [BUGS.md]. *)
 Definition disposed_window (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
   CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (

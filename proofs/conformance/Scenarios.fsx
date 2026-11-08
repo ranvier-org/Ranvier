@@ -597,6 +597,9 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.HostRead 3 (fun () -> r.Value) |> ignore
             c.Check (freshnessOf r = "Clean") $"after its read the reader is {freshnessOf r}"
             c.Check (freshnessOf m = "Dirty") $"the source is {freshnessOf m}"
+            c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
+            c.Check (c.HostRead 3 (fun () -> r.Value) = 0) "the clean reader answers the value of its old read"
+            c.Check (c.HostRead 2 (fun () -> m.Value) = 2) "the source's next run moves its value"
 
         // BUGS.md, disposed_window_keeps_unannounced. A nested run ends stale and registers a cleanup that disposes the
         // memo. The next untracked self-read discharges it in RecomputeScoped's window, with the nested run's flag set.

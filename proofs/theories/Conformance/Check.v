@@ -158,7 +158,7 @@ Definition prog_self_marking_through_memo : cmd := self_marking_through_memo (R 
 Definition prog_nested_self_run : cmd := nested_self_run (R 20 (V 4) Nop).
 Definition prog_check_over_moved : cmd := check_over_moved (R 22 (V 4) Nop).
 Definition prog_check_two_reads : cmd := check_two_reads (R 22 (V 3) Nop).
-Definition prog_stale_source_reader : cmd := stale_source_reader (R 22 (V 3) Nop).
+Definition prog_stale_source_reader : cmd := stale_source_reader (R 22 (V 3) (R 23 (V 3) (R 24 (V 2) Nop))).
 Definition prog_disposed_self_window : cmd := disposed_window (R 22 (V 4) Nop).
 
 Definition prog_previous_value : cmd :=

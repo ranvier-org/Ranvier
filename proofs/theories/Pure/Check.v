@@ -1963,8 +1963,9 @@ Definition resolve_clean_no_move_statement : Prop :=
 Theorem resolve_clean_no_move : resolve_clean_no_move_statement.
 Admitted.
 
-(** A memo that [update_if_necessary] resolves [Clean] has no stale source, which the fix phase owes.
-    [self_marking_wake_lost] in [BUGS.md] is its counterexample on the present engine. *)
+(** A memo that [update_if_necessary] resolves [Clean] has no live stale source, which the fix phase owes.
+    [self_marking_wake_lost] in [BUGS.md] is its counterexample on the present engine. A disposed source stays
+    stale: [resolve_over_disposed_dirty_source]. *)
 Definition resolve_clean_no_stale_source_statement : Prop :=
   forall f n s s' d d',
     check_inv s ->
@@ -1972,7 +1973,7 @@ Definition resolve_clean_no_stale_source_statement : Prop :=
     update_if_necessary f n s = Some (s', tt) ->
     g_nodes s' !! n = Some d' -> n_fresh d' = Clean ->
     forall src e, src ∈ fst <$> sslots (src_of (g_edges s') n) -> g_nodes s' !! src = Some e ->
-      stale (n_fresh e) = false.
+      n_disposed e = false -> stale (n_fresh e) = false.
 
 Theorem resolve_clean_no_stale_source : resolve_clean_no_stale_source_statement.
 Admitted.

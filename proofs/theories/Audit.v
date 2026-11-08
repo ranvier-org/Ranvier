@@ -101,6 +101,7 @@ Print Assumptions self_read_second_resolves_itself.
 Print Assumptions mutual_read_check_resolves_itself.
 Print Assumptions check_inv_init.
 Print Assumptions check_inv_final.
+Print Assumptions resolve_over_disposed_dirty_source.
 Print Assumptions resolve_walk_check_clears.
 Print Assumptions resolve_clean_no_stale_source.
 Print Assumptions resolve_clean_no_stale_source_falsified.

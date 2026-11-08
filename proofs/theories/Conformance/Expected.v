@@ -122,7 +122,8 @@ Definition exp_check_two_reads : list event := [
 ].
 
 Definition exp_stale_source_reader : list event := [
-  EvLog 2 0%Z; EvHostRead 3 (Ok 0%Z); EvLog 2 1%Z; EvHostRead 3 (Ok 0%Z)
+  EvLog 2 0%Z; EvHostRead 3 (Ok 0%Z); EvLog 2 1%Z; EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvLog 2 2%Z;
+  EvHostRead 2 (Ok 2%Z)
 ].
 
 Definition exp_disposed_self_window : list event := [
