@@ -426,7 +426,7 @@ The implementation link: a Core.fs change that alters behaviour must fail a chec
 
 `Generate.fsx` holds three things: a seeded generator of `cmd` programs, a printer to the text form, and an interpreter of `cmd` over real `Signal`/`Memo`/`Effect` objects that writes the event trace. `driver.ml` parses the text form, runs extracted `trace_of` and writes the same trace format.
 
-The generator must cover: conditional reads, cutoff comparers, diamonds, batches, writes from effects, cleanups, owning memos, disposal, failing bodies and self-marking memos. It bounds writes from effects so runs terminate: each write-capable effect writes only signals of a higher creation index, or under a guard that stops changing the value. A program that runs out of fuel on the OCaml side is counted and skipped, and the count is reported.
+The generator must cover: conditional reads, cutoff comparers, diamonds, batches, writes from effects, cleanups, owning memos, disposal, failing bodies and self-marking memos. It bounds writes from effects so runs terminate: each write-capable effect writes only signals of a higher creation index, or under a guard that stops changing the value. It must also reach `CmpNever`, `CmpThrows`, `CTryRead` and late child attachment. It excludes pure-scope violations and repeated zero divisors, because the F# throws a fresh failure identity each time and the model has one; each exclusion is reported. A program that runs out of fuel on the OCaml side is counted and skipped, and the count is reported.
 
 - [ ] **Step 1: Check the harness can detect a difference.** Write `run.sh`, generator and driver. Run against a deliberately altered copy of the extracted engine, with `n_unann` handling removed. Expected: nonzero, printing the first differing program with both traces. Restore the file.
 - [ ] **Step 2: Run the real comparison.** Run: `rtk bash proofs/differential/run.sh 2000 1`. Expected: exit 0, reporting programs compared and skipped. Skipped must be under 5%, or the generator's bounds are too loose.
@@ -503,7 +503,7 @@ Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s
   - `owed_settled`: at top level with no batch, pull or current computation, `run_top` returning leaves `g_owed = false` or an empty live queue.
   - `flush_returns_clean`: a flush that returns with no failing effect has an empty queue, and every non-disposed effect is clean or was re-marked and rerun.
   - `body_failure_contained`: a failing effect body records the failure in its status, and the flush continues.
-  - `escape_leaves_resumable`: a failure escaping `execute_effect` leaves `g_flushing = false` and the unrun effects in the live queue.
+  - `drain_no_escape`: from the command language, `execute_effect` has no failure path out of the drain: bodies, cleanups, child releases, memo runs and throwing comparers are caught (Core.fs 1171-1184, 4247-4261, 4275-4279, 4866). A flush that returns therefore leaves `g_flushing = false` and an empty live queue. This replaces `escape_leaves_resumable`, which has no form in the model; a throwing signal comparer from host code (Core.fs 3813) stays outside it, and the comment at Core.fs 3140-3142 is stale for `Effect`.
 - [ ] **Step 2: Ownership theorems.**
   - `dispose_reverse_order`: children and cleanups run in reverse acquisition order.
   - `cleanup_once`: each cleanup's `EvCleanup` occurs at most once per registration.
