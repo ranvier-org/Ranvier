@@ -61,24 +61,32 @@ Fixpoint env_lookup (g : env) (x : var) : option val :=
 
 Definition bool_val (b : bool) : val := if b then 1 else 0.
 
-(** Integer division truncates toward zero. [None] marks an unbound variable, an absent
-    previous value, or a zero divisor. *)
-Fixpoint eval_expr (g : env) (p : option val) (e : expr) : option val :=
+(** The failure of a zero divisor. *)
+Definition div_zero_failure : val := -1.
+
+(** Operands evaluate left to right, and the first failure is the result. Integer division truncates
+    toward zero. [None] marks an unbound variable or an absent previous value. *)
+Fixpoint eval_expr (g : env) (p : option val) (e : expr) : option outcome :=
   let bin f a b :=
-    match eval_expr g p a, eval_expr g p b with
-    | Some u, Some v => f u v
-    | _, _ => None
+    match eval_expr g p a with
+    | Some (Ok u) =>
+        match eval_expr g p b with
+        | Some (Ok v) => Some (f u v)
+        | r => r
+        end
+    | r => r
     end in
   match e with
-  | EConst z => Some z
-  | EVar x => env_lookup g x
-  | EPrev => p
-  | EAdd a b => bin (fun u v => Some (u + v)) a b
-  | ESub a b => bin (fun u v => Some (u - v)) a b
-  | EMul a b => bin (fun u v => Some (u * v)) a b
-  | EDiv a b => bin (fun u v => if decide (v = 0) then None else Some (Z.quot u v)) a b
-  | ELt a b => bin (fun u v => Some (bool_val (Z.ltb u v))) a b
-  | EEq a b => bin (fun u v => Some (bool_val (Z.eqb u v))) a b
+  | EConst z => Some (Ok z)
+  | EVar x => Ok <$> env_lookup g x
+  | EPrev => Ok <$> p
+  | EAdd a b => bin (fun u v => Ok (u + v)) a b
+  | ESub a b => bin (fun u v => Ok (u - v)) a b
+  | EMul a b => bin (fun u v => Ok (u * v)) a b
+  | EDiv a b =>
+      bin (fun u v => if decide (v = 0) then Fail div_zero_failure else Ok (Z.quot u v)) a b
+  | ELt a b => bin (fun u v => Ok (bool_val (Z.ltb u v))) a b
+  | EEq a b => bin (fun u v => Ok (bool_val (Z.eqb u v))) a b
   end.
 
 Inductive event := EvRun (n : nid) | EvLog (n : nid) (v : val) | EvCleanup (n : nid).
@@ -108,32 +116,41 @@ Fixpoint well_behaved_memo (c : cmd) : bool :=
 
 Local Notation g0 := [(0%nat, 7); (1%nat, 0)].
 
-Example eval_const : eval_expr [] None (EConst 5) = Some 5.
+Example eval_const : eval_expr [] None (EConst 5) = Some (Ok 5).
 Proof. reflexivity. Qed.
 Example eval_arith :
-  eval_expr g0 None (EAdd (EMul (EConst 3) (EVar 0)) (ESub (EConst 1) (EConst 4))) = Some 18.
+  eval_expr g0 None (EAdd (EMul (EConst 3) (EVar 0)) (ESub (EConst 1) (EConst 4))) = Some (Ok 18).
 Proof. reflexivity. Qed.
 Example eval_unbound : eval_expr g0 None (EVar 9) = None.
 Proof. reflexivity. Qed.
 Example eval_unbound_nested : eval_expr g0 None (EAdd (EConst 1) (EVar 9)) = None.
 Proof. reflexivity. Qed.
-Example eval_div : eval_expr g0 None (EDiv (EVar 0) (EConst 2)) = Some 3.
+Example eval_div : eval_expr g0 None (EDiv (EVar 0) (EConst 2)) = Some (Ok 3).
 Proof. reflexivity. Qed.
-Example eval_div_truncates : eval_expr [] None (EDiv (EConst (-7)) (EConst 2)) = Some (-3).
+Example eval_div_truncates : eval_expr [] None (EDiv (EConst (-7)) (EConst 2)) = Some (Ok (-3)).
 Proof. reflexivity. Qed.
-Example eval_div_zero : eval_expr g0 None (EDiv (EVar 0) (EVar 1)) = None.
+Example eval_div_zero : eval_expr g0 None (EDiv (EVar 0) (EVar 1)) = Some (Fail div_zero_failure).
+Proof. reflexivity. Qed.
+Example eval_div_zero_nested :
+  eval_expr g0 None (EAdd (EConst 1) (EDiv (EVar 0) (EVar 1))) = Some (Fail div_zero_failure).
+Proof. reflexivity. Qed.
+Example eval_div_zero_before_unbound :
+  eval_expr g0 None (EAdd (EDiv (EVar 0) (EVar 1)) (EVar 9)) = Some (Fail div_zero_failure).
+Proof. reflexivity. Qed.
+Example eval_unbound_before_div_zero :
+  eval_expr g0 None (EAdd (EVar 9) (EDiv (EVar 0) (EVar 1))) = None.
 Proof. reflexivity. Qed.
 Example eval_prev_none : eval_expr [] None EPrev = None.
 Proof. reflexivity. Qed.
-Example eval_prev_some : eval_expr [] (Some 4) (EAdd EPrev (EConst 1)) = Some 5.
+Example eval_prev_some : eval_expr [] (Some 4) (EAdd EPrev (EConst 1)) = Some (Ok 5).
 Proof. reflexivity. Qed.
-Example eval_lt : eval_expr [] None (ELt (EConst 1) (EConst 2)) = Some 1.
+Example eval_lt : eval_expr [] None (ELt (EConst 1) (EConst 2)) = Some (Ok 1).
 Proof. reflexivity. Qed.
-Example eval_lt_false : eval_expr [] None (ELt (EConst 2) (EConst 2)) = Some 0.
+Example eval_lt_false : eval_expr [] None (ELt (EConst 2) (EConst 2)) = Some (Ok 0).
 Proof. reflexivity. Qed.
-Example eval_eq : eval_expr [] None (EEq (EConst 2) (EConst 2)) = Some 1.
+Example eval_eq : eval_expr [] None (EEq (EConst 2) (EConst 2)) = Some (Ok 1).
 Proof. reflexivity. Qed.
-Example eval_eq_false : eval_expr [] None (EEq (EConst 2) (EConst 3)) = Some 0.
+Example eval_eq_false : eval_expr [] None (EEq (EConst 2) (EConst 3)) = Some (Ok 0).
 Proof. reflexivity. Qed.
 
 Local Notation ret := (CRet (EConst 0)).

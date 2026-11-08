@@ -24,83 +24,96 @@ Definition is_effect_order (order : effect_order) : Prop := forall l, order l �
 (** The state of one body's evaluation. *)
 Record bstate := {
   bsigs : gmap nid val;
-  breads : list (nid * outcome);  (* tracked reads, oldest first *)
-  bclean : list (cmd * env);      (* registered cleanups and their environments, newest first *)
+  breads : list (nid * outcome);     (* tracked reads, oldest first *)
+  breads_all : list (nid * outcome); (* every read of the run, oldest first *)
+  bclean : list (cmd * env);         (* registered cleanups and their environments, newest first *)
   bevs : list event;
   bwrites : list (nid * val);
 }.
 
 Definition bs_start (sigs : gmap nid val) : bstate :=
-  {| bsigs := sigs; breads := []; bclean := []; bevs := []; bwrites := [] |}.
+  {| bsigs := sigs; breads := []; breads_all := []; bclean := []; bevs := []; bwrites := [] |}.
 
 Definition bs_track (t : nid) (o : outcome) (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := breads st ++ [(t, o)]; bclean := bclean st; bevs := bevs st;
-     bwrites := bwrites st |}.
+  {| bsigs := bsigs st; breads := breads st ++ [(t, o)]; breads_all := breads_all st ++ [(t, o)];
+     bclean := bclean st; bevs := bevs st; bwrites := bwrites st |}.
+
+Definition bs_read_untracked (t : nid) (o : outcome) (st : bstate) : bstate :=
+  {| bsigs := bsigs st; breads := breads st; breads_all := breads_all st ++ [(t, o)];
+     bclean := bclean st; bevs := bevs st; bwrites := bwrites st |}.
 
 Definition bs_write (t : nid) (v : val) (st : bstate) : bstate :=
-  {| bsigs := <[t := v]> (bsigs st); breads := breads st; bclean := bclean st; bevs := bevs st;
-     bwrites := bwrites st ++ [(t, v)] |}.
+  {| bsigs := <[t := v]> (bsigs st); breads := breads st; breads_all := breads_all st;
+     bclean := bclean st; bevs := bevs st; bwrites := bwrites st ++ [(t, v)] |}.
 
 Definition bs_cleanup (b : cmd) (g : env) (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := breads st; bclean := (b, g) :: bclean st; bevs := bevs st;
-     bwrites := bwrites st |}.
+  {| bsigs := bsigs st; breads := breads st; breads_all := breads_all st;
+     bclean := (b, g) :: bclean st; bevs := bevs st; bwrites := bwrites st |}.
 
 Definition bs_emit (e : event) (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := breads st; bclean := bclean st; bevs := bevs st ++ [e];
-     bwrites := bwrites st |}.
+  {| bsigs := bsigs st; breads := breads st; breads_all := breads_all st; bclean := bclean st;
+     bevs := bevs st ++ [e]; bwrites := bwrites st |}.
 
+(** Clears the tracked reads, so that a cleanup's reads wake nothing. *)
 Definition bs_untracked (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := []; bclean := bclean st; bevs := bevs st;
-     bwrites := bwrites st |}.
+  {| bsigs := bsigs st; breads := []; breads_all := breads_all st; bclean := bclean st;
+     bevs := bevs st; bwrites := bwrites st |}.
 
 (** The answer to a read of a node, given the signals current at the read. *)
 Definition reader := gmap nid val -> nid -> option outcome.
 
-Definition node_of (g : env) (e : expr) : option nid :=
-  z ← eval_expr g None e;
+Definition node_of (z : val) : option nid :=
   if decide (0 <= z)%Z then Some (Z.to_nat z) else None.
+
+(** Continues with the value of an expression, or ends the body with its failure. *)
+Local Notation with_ok r st k :=
+  (mbind (fun o => match o with Ok v => k v | Fail f => Some (Fail f, st) end) r).
 
 (** Evaluates a body on behalf of node [n]. [None] marks a stuck body: an undefined expression, a
     read [rd] leaves unanswered, a write to a non-signal, or a command outside the fragment.
-    A zero condition selects the else branch. A failed read binds the failure to [x] for
-    [CTryRead], and ends the body for [CRead] and [CReadU]. [CBatch] sequences its parts, and a
-    failure ends the body and keeps the state reached. *)
+    A zero condition selects the else branch. A failed expression ends the body. A failed read binds
+    the failure to [x] for [CTryRead], and ends the body for [CRead] and [CReadU]. [CBatch] sequences
+    its parts, and a failure ends the body and keeps the state reached. *)
 Fixpoint exec (p : rprog) (rd : reader) (n : nid) (g : env) (c : cmd) (st : bstate)
     : option (outcome * bstate) :=
   match c with
-  | CRet e => v ← eval_expr g None e; Some (Ok v, st)
+  | CRet e => o ← eval_expr g None e; Some (o, st)
   | CThrow f => Some (Fail f, st)
-  | CLet x e k => v ← eval_expr g None e; exec p rd n ((x, v) :: g) k st
+  | CLet x e k => with_ok (eval_expr g None e) st (fun v => exec p rd n ((x, v) :: g) k st)
   | CIf e a b =>
-      v ← eval_expr g None e;
-      if decide (v = 0%Z) then exec p rd n g b st else exec p rd n g a st
+      with_ok (eval_expr g None e) st (fun v =>
+        if decide (v = 0%Z) then exec p rd n g b st else exec p rd n g a st)
   | CRead x m k =>
-      t ← node_of g m;
-      o ← rd (bsigs st) t;
-      match o with
-      | Ok v => exec p rd n ((x, v) :: g) k (bs_track t o st)
-      | Fail f => Some (Fail f, bs_track t o st)
-      end
+      with_ok (eval_expr g None m) st (fun z =>
+        t ← node_of z;
+        o ← rd (bsigs st) t;
+        match o with
+        | Ok v => exec p rd n ((x, v) :: g) k (bs_track t o st)
+        | Fail f => Some (Fail f, bs_track t o st)
+        end)
   | CTryRead x ok m k =>
-      t ← node_of g m;
-      o ← rd (bsigs st) t;
-      match o with
-      | Ok v => exec p rd n ((ok, 1%Z) :: (x, v) :: g) k (bs_track t o st)
-      | Fail f => exec p rd n ((ok, 0%Z) :: (x, f) :: g) k (bs_track t o st)
-      end
+      with_ok (eval_expr g None m) st (fun z =>
+        t ← node_of z;
+        o ← rd (bsigs st) t;
+        match o with
+        | Ok v => exec p rd n ((ok, 1%Z) :: (x, v) :: g) k (bs_track t o st)
+        | Fail f => exec p rd n ((ok, 0%Z) :: (x, f) :: g) k (bs_track t o st)
+        end)
   | CReadU x m k =>
-      t ← node_of g m;
-      o ← rd (bsigs st) t;
-      match o with
-      | Ok v => exec p rd n ((x, v) :: g) k st
-      | Fail f => Some (Fail f, st)
-      end
+      with_ok (eval_expr g None m) st (fun z =>
+        t ← node_of z;
+        o ← rd (bsigs st) t;
+        match o with
+        | Ok v => exec p rd n ((x, v) :: g) k (bs_read_untracked t o st)
+        | Fail f => Some (Fail f, bs_read_untracked t o st)
+        end)
   | CWrite m e k =>
-      t ← node_of g m;
-      v ← eval_expr g None e;
-      if decide (is_Some (rsignals p !! t))
-      then exec p rd n g k (bs_write t v st)
-      else None
+      with_ok (eval_expr g None m) st (fun z =>
+        t ← node_of z;
+        with_ok (eval_expr g None e) st (fun v =>
+          if decide (is_Some (rsignals p !! t))
+          then exec p rd n g k (bs_write t v st)
+          else None))
   | CCleanup b k => exec p rd n g k (bs_cleanup b g st)
   | CBatch b k =>
       r ← exec p rd n g b st;
@@ -108,7 +121,8 @@ Fixpoint exec (p : rprog) (rd : reader) (n : nid) (g : env) (c : cmd) (st : bsta
       | Ok _ => exec p rd n g k r.2
       | Fail _ => Some r
       end
-  | CLog e k => v ← eval_expr g None e; exec p rd n g k (bs_emit (EvLog n v) st)
+  | CLog e k =>
+      with_ok (eval_expr g None e) st (fun v => exec p rd n g k (bs_emit (EvLog n v) st))
   | CSignal _ _ _ | CMemo _ _ _ _ _ | CEffect _ _ _ | CDispose _ _ => None
   end.
 
@@ -174,12 +188,14 @@ Definition run_effect (p : rprog) (rd : reader) (n : nid) (body : cmd) (cs : lis
   Some r.2.
 
 (** The record of one effect run: the signals at its start, the cleanups it ran, its tracked reads,
-    its events and its signal writes. *)
+    all its reads, its events and its signal writes. [run_all_reads] holds the tracked and untracked
+    reads of its cleanups and body in order. *)
 Record run := {
   run_node : nid;
   run_snapshot : gmap nid val;
   run_ran_cleanups : list (cmd * env);
   run_reads : list (nid * outcome);
+  run_all_reads : list (nid * outcome);
   run_events : list event;
   run_writes : list (nid * val);
 }.
@@ -204,8 +220,8 @@ Fixpoint run_round (p : rprog) (ns : list nid) (st : rstate) : option (rstate * 
                     rs_effects := <[n := (breads bs, bclean bs)]> (rs_effects st) |} in
       '(st'', rs) ← run_round p ns' st';
       Some (st'', {| run_node := n; run_snapshot := rs_sigs st; run_ran_cleanups := cs;
-                     run_reads := breads bs; run_events := bevs bs;
-                     run_writes := bwrites bs |} :: rs)
+                     run_reads := breads bs; run_all_reads := breads_all bs;
+                     run_events := bevs bs; run_writes := bwrites bs |} :: rs)
   end.
 
 (** Whether some read differs from the current graph, evaluating reads oldest first and stopping at
@@ -318,12 +334,13 @@ Definition rwf (p : rprog) : Prop :=
 Definition runs_of (rs : list run) (n : nid) : list run :=
   filter (fun r => run_node r = n) rs.
 
-(** Run [S j] of effect [n] in [rs] is redundant when each value it read is the value of the same
-    node in run [j]. The initial run has no previous run. *)
+(** Run [S j] of effect [n] in [rs] is redundant when it and run [j] made the same reads, tracked and
+    untracked, cleanups included, in the same order and with the same outcomes. The initial run has
+    no previous run. *)
 Definition redundant (p : rprog) (rs : list run) (n : nid) (k : nat) : Prop :=
   is_Some (reffects p !! n) /\
   exists j prev cur,
     k = S j /\
     runs_of rs n !! j = Some prev /\
     runs_of rs n !! k = Some cur /\
-    forall t o, (t, o) ∈ run_reads cur -> (t, o) ∈ run_reads prev.
+    run_all_reads cur = run_all_reads prev.

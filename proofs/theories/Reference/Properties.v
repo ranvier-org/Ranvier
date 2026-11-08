@@ -78,6 +78,15 @@ Qed.
   repeat match type of H with
   | context [?x ≫= _] =>
       let E := fresh "E" in destruct x eqn:E; simpl in H; [|discriminate H]
+  | context [match ?o with Ok _ => _ | Fail _ => _ end] =>
+      is_var o; destruct o; simpl in H
+  end.
+
+(** Rewrites the goal with the expression and node results [bind_in] found under binders. *)
+#[local] Ltac rw_binds :=
+  repeat match goal with
+  | E : node_of _ = Some _ |- _ => rewrite E; clear E; simpl
+  | E : eval_expr _ _ _ = Some _ |- _ => first [rewrite E; clear E; simpl | clear E]
   end.
 
 Lemma exec_reads_mono p rd n c :
@@ -103,29 +112,23 @@ Lemma exec_ext p (rd1 rd2 : nid -> option outcome) n c :
     exec p (fun _ => rd2) n g c st = Some (o, st').
 Proof.
   induction c; intros g st o' st' Hwb Hex Hag; simpl in Hwb, Hex |- *;
-    rewrite ?andb_true_iff in Hwb; try discriminate Hwb; bind_in Hex; simplify_eq/=.
-  - done.
-  - done.
-  - simpl. destruct Hwb. eauto.
-  - simpl. destruct Hwb as [[_ ?] ?]. repeat case_match; eauto.
-  - simpl. destruct Hwb. rewrite (Hag n1 o).
-    + simpl. destruct o; simplify_eq/=; [eauto|].
-      set_solver.
-    + destruct o; simplify_eq/=.
-      * eapply exec_reads_mono; [exact Hex|]. simpl. set_solver.
-      * set_solver.
-    + done.
-  - simpl. destruct Hwb. rewrite (Hag n1 o).
-    + simpl. destruct o; simplify_eq/=; eauto.
-    + destruct o; (eapply exec_reads_mono; [exact Hex|]); simpl; set_solver.
-    + done.
-  - destruct Hwb. rewrite (IHc1 g st p0.1 p0.2); [|done| |].
-    + simpl. destruct p0 as [o1 st1]; simpl in *. destruct o1; simplify_eq/=; eauto.
-    + destruct p0; exact E.
-    + intros t u Ht. apply Hag. destruct p0 as [o1 st1]; simpl in *. destruct o1; simplify_eq/=.
-      * eapply exec_reads_mono; [exact Hex|done].
-      * done.
-  - simpl. destruct Hwb. eauto.
+    rewrite ?andb_true_iff in Hwb; try discriminate Hwb; bind_in Hex; simplify_eq/=; try done.
+  all: rw_binds.
+  all: repeat match goal with H : _ /\ _ |- _ => destruct H end.
+  all: try match goal with
+    | E : ?r ?t = Some ?u |- _ =>
+        rewrite (Hag t u);
+        [ simpl
+        | first [ simpl; set_solver
+                | eapply exec_reads_mono; [exact Hex|]; simpl; set_solver ]
+        | exact E ]
+    end.
+  all: try done.
+  all: try by repeat case_match; eauto.
+  destruct p0 as [o1 st1]; simpl in *. rewrite (IHc1 g st o1 st1); [|done|done|].
+  - simpl. destruct o1; simplify_eq/=; eauto.
+  - intros t u Ht. apply Hag. destruct o1; simplify_eq/=; [|done].
+    eapply exec_reads_mono; [exact Hex|done].
 Qed.
 
 Lemma node_value_ext p s1 s2 :
@@ -169,6 +172,7 @@ Definition computed_from_snapshot (p : rprog) (r : run) : Prop :=
     run_effect p (frozen_read p (run_snapshot r)) (run_node r) body
       (run_ran_cleanups r) (run_snapshot r) = Some bs /\
     run_reads r = breads bs /\
+    run_all_reads r = breads_all bs /\
     run_events r = bevs bs.
 
 Lemma exec_writes_len p rd n c :
@@ -195,25 +199,22 @@ Lemma exec_frozen p n c :
     length (bwrites st') = length (bwrites st) ->
     exec p (frozen_read p (bsigs st)) n g c st = Some (o, st') /\ bsigs st' = bsigs st.
 Proof.
-  induction c; intros g st o' st' Hex Hlen; simpl in Hex |- *; bind_in Hex; simplify_eq/=.
-  - done.
-  - done.
-  - eauto.
-  - repeat case_match; eauto.
-  - unfold frozen_read, live_read in *. rewrite E0. simpl.
-    destruct o; simplify_eq/=; [|done].
-    apply (IHc _ (bs_track _ _ st)); done.
-  - unfold frozen_read, live_read in *. rewrite E0. simpl.
-    destruct o; simplify_eq/=.
-    + apply (IHc _ (bs_track _ _ st)); done.
-    + apply (IHc _ (bs_track _ _ st)); done.
-  - unfold frozen_read, live_read in *. rewrite E0. simpl.
-    destruct o; simplify_eq/=; [|done].
-    apply IHc; done.
+  induction c; intros g st o' st' Hex Hlen; simpl in Hex |- *; bind_in Hex; simplify_eq/=;
+    try done.
+  all: rw_binds.
+  all: unfold frozen_read, live_read in *.
+  all: repeat match goal with E : memo_value _ _ _ = Some _ |- _ => rewrite E; clear E; simpl end.
+  all: try done.
+  all: try (apply IHc; done).
+  all: try (apply (IHc _ (bs_track _ _ st)); done).
+  all: try (apply (IHc _ (bs_read_untracked _ _ st)); done).
+  all: try (apply (IHc _ (bs_cleanup _ _ st)); done).
+  all: try (apply (IHc2 _ (bs_cleanup _ _ st)); done).
+  all: try (apply (IHc _ (bs_emit _ st)); done).
+  - repeat case_match; [apply IHc2|apply IHc1]; done.
   - exfalso. destruct (decide _); [|discriminate Hex].
     apply exec_writes_len in Hex. unfold bs_write in Hex. simpl in Hex.
     rewrite length_app in Hex. simpl in Hex. lia.
-  - apply (IHc2 _ (bs_cleanup _ _ st)); done.
   - destruct p0 as [o1 st1]; simpl in *.
     pose proof (exec_writes_len _ _ _ _ _ _ _ _ E) as Hl1.
     destruct o1; simplify_eq/=.
@@ -222,7 +223,6 @@ Proof.
       destruct (IHc2 _ _ _ _ Hex ltac:(lia)) as [Hf' Hs']. rewrite Hs in Hf'.
       split; [done|congruence].
     + destruct (IHc1 _ _ _ _ E ltac:(lia)) as [Hf Hs]. rewrite Hf. simpl. done.
-  - apply (IHc _ (bs_emit (EvLog n v) st)); done.
 Qed.
 
 Lemma run_cleanups_writes_len p rd n cs :
@@ -272,6 +272,7 @@ Definition run_of (p : rprog) (r : run) : Prop :=
     reffects p !! run_node r = Some body /\
     run_effect p (live_read p) (run_node r) body (run_ran_cleanups r) (run_snapshot r) = Some bs /\
     run_reads r = breads bs /\
+    run_all_reads r = breads_all bs /\
     run_events r = bevs bs /\
     run_writes r = bwrites bs.
 
@@ -324,7 +325,7 @@ Qed.
 Lemma run_of_snapshot p r :
   run_of p r -> run_writes r = [] -> computed_from_snapshot p r.
 Proof.
-  intros (body & bs & Hb & Hr & Hreads & Hev & Hw) Hnone.
+  intros (body & bs & Hb & Hr & Hreads & Hall & Hev & Hw) Hnone.
   exists body, bs. split_and!; try done.
   apply run_effect_frozen; [done|congruence].
 Qed.
@@ -363,7 +364,7 @@ Qed.
 Lemma run_of_log_tag p r m v :
   run_of p r -> EvLog m v ∈ run_events r -> m = run_node r.
 Proof.
-  intros (body & bs & _ & Hr & _ & -> & _). unfold run_effect in Hr. bind_in Hr.
+  intros (body & bs & _ & Hr & _ & _ & -> & _). unfold run_effect in Hr. bind_in Hr.
   destruct p0 as [o1 st1]; simplify_eq/=.
   eapply exec_log_tag; [exact E0|].
   intros m' v'. simpl. rewrite elem_of_app, list_elem_of_singleton.
@@ -373,7 +374,7 @@ Proof.
 Qed.
 
 (** Each [EvLog] of a trace belongs to one effect run. A run that writes no signal has its reads and
-    events computed from one snapshot of the signals. *)
+    events computed from one snapshot of the signals and the environments of its cleanups. *)
 Theorem glitch_free_by_definition fuel order p h evs n v :
   rtrace fuel order p h = Some evs ->
   EvLog n v ∈ evs ->
@@ -460,11 +461,29 @@ Example diamond_one_run_per_batch :
     Some [EvRun 9; EvLog 9 1; EvRun 9; EvLog 9 4; EvRun 9; EvLog 9 7].
 Proof. vm_compute. reflexivity. Qed.
 
-Example diamond_any_order :
-  rtrace 5 t_rev diamond [[(0%nat, 1)]] = rtrace 5 t_id diamond [[(0%nat, 1)]].
+Example diamond_value : memo_value diamond {[ 0%nat := 1 ]} 3 = Some (Ok 4).
 Proof. vm_compute. reflexivity. Qed.
 
-Example diamond_value : memo_value diamond {[ 0%nat := 1 ]} 3 = Some (Ok 4).
+(** A diamond with two effects over its last memo. Each effect runs once per batch, in either
+    order. *)
+Definition diamond_two_effects : rprog := {|
+  rsignals := rsignals diamond;
+  rmemos := rmemos diamond;
+  reffects := {[ 8%nat := CRead 0 (EConst 3) (CLog (EVar 0) ret);
+                 9%nat := CRead 0 (EConst 3) (CLog (EVar 0) ret) ]};
+|}.
+
+Lemma diamond_two_effects_rwf : rwf diamond_two_effects.
+Proof. solve_rwf. Qed.
+
+Example diamond_one_run_per_batch_in_order :
+  rtrace 5 t_id diamond_two_effects [[(0%nat, 1)]] =
+    Some [EvRun 8; EvLog 8 1; EvRun 9; EvLog 9 1; EvRun 8; EvLog 8 4; EvRun 9; EvLog 9 4].
+Proof. vm_compute. reflexivity. Qed.
+
+Example diamond_one_run_per_batch_reversed :
+  rtrace 5 t_rev diamond_two_effects [[(0%nat, 1)]] =
+    Some [EvRun 9; EvLog 9 1; EvRun 8; EvLog 8 1; EvRun 9; EvLog 9 4; EvRun 8; EvLog 8 4].
 Proof. vm_compute. reflexivity. Qed.
 
 (** A memo's logs are discarded, and an effect's are events. *)
@@ -557,6 +576,31 @@ Example failed_effect_later_effects_run :
     Some [EvRun 8; EvRun 9; EvLog 9 0; EvRun 8; EvRun 9; EvLog 9 1].
 Proof. vm_compute. reflexivity. Qed.
 
+(** A zero divisor fails the effect and leaves later effects running. *)
+Definition dividing : rprog := {|
+  rsignals := {[ 0%nat := 1 ]};
+  rmemos := ∅;
+  reffects := {[ 8%nat := CRead 0 s0 (CLog (EDiv (EConst 10) (EVar 0)) ret);
+                 9%nat := CRead 0 s0 (CLog (EVar 0) ret) ]};
+|}.
+
+Example zero_divisor_later_effects_run :
+  rtrace 5 t_id dividing [[(0%nat, 0)]] =
+    Some [EvRun 8; EvLog 8 10; EvRun 9; EvLog 9 1; EvRun 8; EvRun 9; EvLog 9 0].
+Proof. vm_compute. reflexivity. Qed.
+
+(** A zero divisor in a memo is the memo's failure. *)
+Definition dividing_memo : rprog := {|
+  rsignals := {[ 0%nat := 1 ]};
+  rmemos := {[ 1%nat := CRead 0 s0 (CRet (EDiv (EConst 10) (EVar 0))) ]};
+  reffects := {[ 9%nat := CTryRead 0 1 s1 (CLog (EVar 0) (CLog (EVar 1) ret)) ]};
+|}.
+
+Example zero_divisor_memo_failure :
+  rtrace 5 t_id dividing_memo [[(0%nat, 0)]] =
+    Some [EvRun 9; EvLog 9 10; EvLog 9 1; EvRun 9; EvLog 9 div_zero_failure; EvLog 9 0].
+Proof. vm_compute. reflexivity. Qed.
+
 (** A failure is a value: an unmoved failure wakes nothing, and [CTryRead] observes it. *)
 Definition failing_memo : rprog := {|
   rsignals := {[ 0%nat := 0 ]};
@@ -603,7 +647,8 @@ Proof.
     | exists (fun n => n); simpl; apply map_Forall_empty ].
 Qed.
 
-(** A later effect of a round reads the writes of an earlier one, and has nothing left to do. *)
+(** A later effect of a round reads the writes of an earlier one, and the next round's run set is
+    empty. *)
 Example write_read_later_in_round :
   rtrace 5 t_id writer [[(0%nat, 1)]] =
     Some [EvRun 8; EvRun 9; EvLog 9 0; EvRun 8; EvRun 9; EvLog 9 2].
@@ -635,8 +680,7 @@ Definition diverging : rprog := {|
 Example self_write_exhausts_fuel : rtrace 50 t_id diverging [] = None.
 Proof. vm_compute. reflexivity. Qed.
 
-(** The [run_writes r = []] premise of [glitch_free_by_definition] is needed: a run that writes
-    between two reads logs values from two snapshots. *)
+(** A run that writes between two reads logs values from two snapshots. *)
 Definition two_snapshots : rprog := {|
   rsignals := {[ 0%nat := 0 ]};
   rmemos := ∅;
@@ -654,7 +698,7 @@ Lemma write_between_reads_not_from_snapshot :
     ~ computed_from_snapshot two_snapshots r.
 Proof.
   eexists _, _. split; [vm_compute; reflexivity|]. split; [left|].
-  intros (body & bs & Hb & Hr & _ & Hev).
+  intros (body & bs & Hb & Hr & _ & _ & Hev).
   vm_compute in Hb. injection Hb as <-. vm_compute in Hr. injection Hr as <-.
   vm_compute in Hev. discriminate Hev.
 Qed.
@@ -722,14 +766,16 @@ Proof. reflexivity. Qed.
 
 Definition diamond_runs := default [] (rruns 5 t_id diamond [[(0%nat, 1)]]).
 
+#[local] Ltac solve_not_redundant :=
+  let Hp := fresh "Hp" in
+  let Hc := fresh "Hc" in
+  let Heq := fresh "Heq" in
+  intros (_ & ? & ? & ? & ? & Hp & Hc & Heq); simplify_eq;
+  vm_compute in Hp, Hc; injection Hp as <-; injection Hc as <-;
+  vm_compute in Heq; discriminate Heq.
+
 Lemma diamond_run_not_redundant : ~ redundant diamond diamond_runs 9 1.
-Proof.
-  intros (_ & j & prev & cur & Hk & Hp & Hc & Hsub). simplify_eq.
-  vm_compute in Hp, Hc. simplify_eq.
-  specialize (Hsub 3%nat (Ok 4)). simpl in Hsub.
-  assert ((3%nat, Ok 4) ∈ [(3%nat, Ok 1)]) as Hin by (apply Hsub; left).
-  apply list_elem_of_singleton in Hin. discriminate Hin.
-Qed.
+Proof. solve_not_redundant. Qed.
 
 Lemma initial_run_not_redundant : ~ redundant diamond diamond_runs 9 0.
 Proof. intros (_ & j & prev & cur & Hk & _). discriminate Hk. Qed.
@@ -756,5 +802,88 @@ Proof.
   split; [vm_compute; eauto|].
   eexists 0%nat, _, _. split; [reflexivity|].
   split; [vm_compute; reflexivity|]. split; [vm_compute; reflexivity|].
-  intros t o Hin. exact Hin.
+  vm_compute. reflexivity.
 Qed.
+
+(** Effect 8 reads signal 0 tracked and signal 2 untracked, and logs the untracked value. Effect 9
+    reads signal 1 and resets signal 0. *)
+Definition untracked_value : rprog := {|
+  rsignals := {[ 0%nat := 0; 1%nat := 0; 2%nat := 0 ]};
+  rmemos := ∅;
+  reffects := {[ 8%nat := CRead 0 s0 (CReadU 1 (EConst 2) (CLog (EVar 1) ret));
+                 9%nat := CRead 0 s1 (CWrite s0 (EConst 0) ret) ]};
+|}.
+
+Definition untracked_value_history : rhistory := [[(0%nat, 1); (1%nat, 1); (2%nat, 42)]].
+
+Definition untracked_value_runs :=
+  default [] (rruns 5 t_rev untracked_value untracked_value_history).
+
+Example untracked_value_trace :
+  rtrace 5 t_rev untracked_value untracked_value_history =
+    Some [EvRun 9; EvRun 8; EvLog 8 0; EvRun 9; EvRun 8; EvLog 8 42].
+Proof. vm_compute. reflexivity. Qed.
+
+Example untracked_value_not_redundant : ~ redundant untracked_value untracked_value_runs 8 1.
+Proof. solve_not_redundant. Qed.
+
+(** An untracked read selects the branch: the first run makes two tracked reads, and the second makes
+    none and logs. *)
+Definition untracked_branch : rprog := {|
+  rsignals := {[ 0%nat := 0; 1%nat := 0; 2%nat := 0 ]};
+  rmemos := ∅;
+  reffects := {[ 9%nat :=
+    CReadU 0 (EConst 2) (CIf (EVar 0) (CLog (EConst 100) ret) (CRead 1 s0 (CRead 2 s1 ret))) ]};
+|}.
+
+Definition untracked_branch_history : rhistory := [[(1%nat, 1); (2%nat, 1)]].
+
+Definition untracked_branch_runs :=
+  default [] (rruns 5 t_id untracked_branch untracked_branch_history).
+
+Example untracked_branch_trace :
+  rtrace 5 t_id untracked_branch untracked_branch_history =
+    Some [EvRun 9; EvRun 9; EvLog 9 100].
+Proof. vm_compute. reflexivity. Qed.
+
+Example untracked_branch_not_redundant : ~ redundant untracked_branch untracked_branch_runs 9 1.
+Proof. solve_not_redundant. Qed.
+
+(** A redundant run's events can differ from its previous run's: its cleanups come from the previous
+    run's registrations. *)
+Definition resetting_cleanup : rprog := {|
+  rsignals := {[ 0%nat := 0; 1%nat := 0 ]};
+  rmemos := ∅;
+  reffects := {[ 8%nat := CRead 0 s0 (CCleanup (CLog (EConst 100) ret) ret);
+                 9%nat := CRead 0 s1 (CWrite s0 (EConst 0) ret) ]};
+|}.
+
+Definition resetting_cleanup_runs :=
+  default [] (rruns 5 t_rev resetting_cleanup [[(0%nat, 1); (1%nat, 1)]]).
+
+Example resetting_cleanup_trace :
+  rtrace 5 t_rev resetting_cleanup [[(0%nat, 1); (1%nat, 1)]] =
+    Some [EvRun 9; EvRun 8; EvRun 9; EvCleanup 8; EvLog 8 100; EvRun 8].
+Proof. vm_compute. reflexivity. Qed.
+
+Example redundant_run_with_cleanup : redundant resetting_cleanup resetting_cleanup_runs 8 1.
+Proof.
+  split; [vm_compute; eauto|].
+  eexists 0%nat, _, _. split; [reflexivity|].
+  split; [vm_compute; reflexivity|]. split; [vm_compute; reflexivity|].
+  vm_compute. reflexivity.
+Qed.
+
+(** A run with a cleanup read has different reads from a previous run without one. *)
+Definition cleanup_read : rprog := {|
+  rsignals := {[ 0%nat := 0; 1%nat := 0 ]};
+  rmemos := ∅;
+  reffects := {[ 8%nat := CRead 0 s0 (CCleanup (CReadU 1 s1 (CLog (EVar 1) ret)) ret);
+                 9%nat := CRead 0 s1 (CWrite s0 (EConst 0) ret) ]};
+|}.
+
+Definition cleanup_read_runs :=
+  default [] (rruns 5 t_rev cleanup_read [[(0%nat, 1); (1%nat, 1)]]).
+
+Example cleanup_read_not_redundant : ~ redundant cleanup_read cleanup_read_runs 8 1.
+Proof. solve_not_redundant. Qed.

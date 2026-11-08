@@ -29,9 +29,17 @@ Changes to `redundant` from its first statement in the plan.
   neither does `rprog`, since the values depend on the history. The prose definition, "every value
   it read is equal to its previous run's", needs them. A `run` holds the reads and the events of one
   run, and `rtrace` is the concatenation of `run_events` over `rruns`.
-- "Equal to its previous run's" reads as: each `(node, outcome)` the run read also occurs in the
-  previous run's reads. A run with no tracked reads is redundant. The initial run has no previous run
-  and is not redundant.
+- "Equal to its previous run's" reads as: `run_all_reads` of the run equals `run_all_reads` of the
+  previous run, as lists. `run_all_reads` holds every read of the run, tracked and untracked,
+  cleanups included, in order. The initial run has no previous run and is not redundant. A run with
+  no reads is redundant when its previous run also had none.
+- Replaced at the first review: inclusion of the tracked `run_reads` in the previous run's. That form
+  held for runs that read different values and produced different output. `untracked_value` logs an
+  untracked read that moved from 0 to 42. `untracked_branch` selects its branch by an untracked read
+  and logs for the first time with no tracked reads. Both are now checked as not redundant. The run
+  set still depends on tracked reads only.
+- `redundant` compares reads, not events. A rerun runs the cleanups its previous run registered, so
+  its events can differ from the previous run's on equal reads: `redundant_run_with_cleanup`.
 
 ## Open theorems
 

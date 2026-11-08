@@ -8,3 +8,6 @@ Print Assumptions rtrace_deterministic.
 Print Assumptions memo_value_extensional.
 Print Assumptions glitch_free_by_definition.
 Print Assumptions reference_run_redundant.
+Print Assumptions untracked_value_not_redundant.
+Print Assumptions untracked_branch_not_redundant.
+Print Assumptions zero_divisor_later_effects_run.

@@ -25,5 +25,8 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 |---|---|---|
 | `rtrace_deterministic` | `Reference/Properties.v` | Agreeing orders and any two sufficient fuels give one trace. |
 | `memo_value_extensional` | `Reference/Properties.v` | A memo's value depends only on the signals its evaluation discovers. |
-| `glitch_free_by_definition` | `Reference/Properties.v` | Each `EvLog` belongs to one run, and a run that writes no signal is computed from one snapshot. |
+| `glitch_free_by_definition` | `Reference/Properties.v` | Each `EvLog` belongs to one run. A run that writes no signal has its reads and events computed from one signal snapshot and its cleanups' captured environments, which can hold values from an earlier snapshot. |
 | `reference_run_redundant` | `Reference/Properties.v` | Witness: the reference tier has a redundant run when an effect restores a value mid-round. |
+| `untracked_value_not_redundant` | `Reference/Properties.v` | A run whose untracked read moved is not redundant. |
+| `untracked_branch_not_redundant` | `Reference/Properties.v` | A run whose reads are a subset of the previous run's, selected by an untracked read, is not redundant. |
+| `zero_divisor_later_effects_run` | `Reference/Properties.v` | A zero divisor fails its effect, and later effects run. |
