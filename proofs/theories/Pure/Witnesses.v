@@ -256,8 +256,8 @@ Proof.
   - vm_compute. repeat (first [left | right]; try done).
 Qed.
 
-(** A memo reads itself, then a memo over a signal. The write leaves it in [Check] with its first slot
-    naming itself, so the next read's walk asks the memo to resolve itself. Each round of the walk spends
+(** A memo reads itself, then a memo over a signal. The write leaves it in [Check] with a slot naming
+    itself, so the next read's walk asks the memo to resolve itself. Each round of the walk spends
     fuel and changes nothing, so the read has no result at any fuel tried, and the F# overflows its stack.
     Confirmed in [BUGS.md]. *)
 Definition self_read_check (k : cmd) : cmd :=
@@ -274,3 +274,34 @@ Example self_read_check_resolves_itself :
   trace_of 500 current_flags (self_read_check (CRead 22 (V 3) Nop)) = None /\
   trace_of 2000 current_flags (self_read_check (CRead 22 (V 3) Nop)) = None.
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
+
+(** The walk reaches a later self-slot when the sources before it hold their values. *)
+Definition self_read_second (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (ELt (V 10) (K 100%Z)))) (
+  CMemo 3 Pure CmpEq (CRead 11 (V 2) (CRead 12 (V 3) (CRet (V 11)))) (
+  CRead 20 (V 3) (CRead 21 (V 3) (CWrite (V 1) (K 1%Z) k))))).
+
+Example self_read_second_resolves_itself :
+  sslots (src_of (g_edges (final (self_read_second Nop))) 3) !! 1 = Some (3, Some 0) /\
+  n_fresh <$> g_nodes (final (self_read_second Nop)) !! 3 = Some Check /\
+  trace_of 2000 current_flags (self_read_second (CRead 22 (V 3) Nop)) = None.
+Proof. split_and!; vm_compute; reflexivity. Qed.
+
+(** Two memos read each other, by constant id, since a memo's body runs after the later memo exists. The
+    write leaves both in [Check], and a read walks round the cycle. *)
+Definition mutual_read_check (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq (CRead 11 (K 4%Z) (CRead 12 (V 2) (CRet (V 12)))) (
+  CMemo 4 Pure CmpEq (CRead 13 (K 3%Z) (CRet (V 13))) (
+  CTryRead 20 21 (K 3%Z) (CTryRead 22 23 (K 4%Z) (CTryRead 24 25 (K 3%Z) (CTryRead 26 27 (K 4%Z) (
+  CWrite (V 1) (K 1%Z) k)))))))).
+
+Example mutual_read_check_resolves_itself :
+  n_fresh <$> g_nodes (final (mutual_read_check Nop)) !! 3 = Some Check /\
+  n_fresh <$> g_nodes (final (mutual_read_check Nop)) !! 4 = Some Check /\
+  is_Some (trace_of 2000 current_flags (mutual_read_check Nop)) /\
+  trace_of 500 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop)) = None /\
+  trace_of 2000 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop)) = None.
+Proof. split_and!; try (vm_compute; reflexivity). vm_compute. eexists. reflexivity. Qed.

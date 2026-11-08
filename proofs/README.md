@@ -29,8 +29,9 @@ failure, freshness, `unannounced`, runs, disposal, queued flag, and source and o
 root's error count. They are compared at the program's end and again after a closing that reads every memo and flushes. The
 first keeps a stale node visible, and the second shows what it was hiding. **The view reads private fields by name, so
 refactoring one of these fields in `Core.fs` means updating the view.** `.github/workflows/proofs-differential.yml`
-runs it when `src/Ranvier/Core.fs` or `proofs/` changes, with the run number as the seed, so a run tries new programs. A
-change the generated programs do not distinguish passes, so the check narrows drift and does not eliminate it.
+runs it when `proofs/`, `src/Ranvier/Core.fs` or the files compiled before it change, with the run number as the seed, so a
+run tries new programs. A change the generated programs do not distinguish passes, so the check narrows drift and does not
+eliminate it. The watchdog covers the F# side only: the workflow's `timeout-minutes` bounds the model driver.
 
 What the comparison leaves out, each reported by `run.sh`:
 
@@ -38,8 +39,8 @@ What the comparison leaves out, each reported by `run.sh`:
   each time, and the model has one failure identity. `run.sh` prints how many draws this drops.
 - **Repeated zero divisors.** The same reason applies: a program raising more than one is excluded when it runs, up to a cap
   of 0.5%.
-- **Programs that diverge on both sides.** The model ran out of fuel, and the F# passed its budget or ended its process by a
-  stack overflow or the watchdog (`fatal`). Neither has a complete trace to compare. `self_read_check_overflow` in `BUGS.md`
+- **Programs that diverge on both sides.** The model has no result, and the F# passed its budget or ended its process by a
+  stack overflow or the watchdog (`fatal`). Any other exit of the F# process fails the check. Neither has a complete trace to compare. `self_read_check_overflow` in `BUGS.md`
   is how a generated program overflows. One side diverging alone fails the check, as does a stuck program.
 
 The generated programs have no `createRoot`, no owner API, no teardown of the root, no comparer API wrappers, no async nodes
@@ -71,7 +72,7 @@ copy, so it needs no Rocq.
 - `theories/Conformance/Check.v`: the scenarios as programs, each checked against its trace.
 - `theories/Extract.v`: the end-state view and the closing, and the extraction of `trace_of`, `observed` and `current_flags` to OCaml.
 - `differential/engine.ml`, `differential/engine.mli`: the committed extraction.
-- `differential/driver.ml`: reads programs and runs the extracted `trace_of`.
+- `differential/driver.ml`: reads programs and runs the extracted `observed`.
 - `differential/Generate.fsx`: the program generator, the text form, and the interpreter over real objects.
 - `differential/run.sh`: the comparison.
 - `theories/Audit.v`: one `Print Assumptions` per theorem; `check.sh` reads it.
@@ -166,6 +167,8 @@ copy, so it needs no Rocq.
 | `read_move_leaves_effect_queued` | `Pure/Witnesses.v` | A read of the left-behind memo queues its effect and owes no flush. Confirmed in `BUGS.md`. |
 | `nested_self_run_ends_clean_and_wrong` | `Pure/Witnesses.v` | A nested self-run trims an edge the outer run read, and the memo ends clean with the outer value. Confirmed in `BUGS.md`. |
 | `self_read_check_resolves_itself` | `Pure/Witnesses.v` | A self-reading memo in `Check` has itself as its first slot, and a read of it has no result at fuel 500 or 2000. Confirmed in `BUGS.md`. |
+| `self_read_second_resolves_itself` | `Pure/Witnesses.v` | The same with the self-read second, behind a source that holds its value. |
+| `mutual_read_check_resolves_itself` | `Pure/Witnesses.v` | The same through two memos reading each other by constant id. |
 | `requeue_holds_two_entries` | `Pure/Witnesses.v` | A re-queued effect has two entries in `g_queue` and one in `pending`. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` and removing `MarkReaderCheck` fall to Tasks 7, 9 and 11, and `wake_ok` arrives at Task 9.

@@ -571,7 +571,7 @@ let scenarios: (string * (Ctx -> unit)) list =
 let fatalScenarios: (string * (Ctx -> unit)) list =
     [
         // BUGS.md, self_read_check_overflow. A memo reads itself, then a memo over a signal. The write leaves it in `Check`
-        // with its first slot naming itself, and the next read's ResolveCheck walks into itself with no body running.
+        // with a slot naming itself, and the next read's ResolveCheck walks into itself with no body running.
         "self_read_check_overflow",
         fun c ->
             let s = c.Signal 1 0
@@ -597,8 +597,8 @@ let fatalScenarios: (string * (Ctx -> unit)) list =
 
             m.Value |> ignore
 
-        // The same walk through a cycle of two memos. The command language binds a memo's variable after its body, so
-        // this shape has no program and no model witness.
+        // The same walk through a cycle of two memos. `mutual_read_check_resolves_itself` in Witnesses.v is the model's
+        // witness, whose program refers forward by constant id.
         "mutual_read_check_overflow",
         fun c ->
             let s = c.Signal 1 0

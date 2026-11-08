@@ -249,6 +249,9 @@ let SentinelCleanupOwnSource = 9002
 let SentinelRewritingCleanup = 9003
 
 [<Literal>]
+let SentinelRewritingThroughMemo = 9006
+
+[<Literal>]
 let SentinelPullWakesEffect = 9004
 
 [<Literal>]
@@ -261,6 +264,7 @@ let sentinelNames =
             SentinelStoppedWalk, "template check walk stops at a moved source"
             SentinelCleanupOwnSource, "template effect cleanup writes its own source"
             SentinelRewritingCleanup, "template owning memo cleanup writes, reads and writes"
+            SentinelRewritingThroughMemo, "template owning memo cleanup writes through a memo"
             SentinelPullWakesEffect, "template host pull wakes an effect"
             SentinelSelfMarking, "template self-marking cleanup"
         ]
@@ -819,7 +823,8 @@ type Generator(rng: Random) =
     /// body reads the written value.
     member private this.CleanupWritesOwnSource(tail: Random) : Cmd -> Cmd =
         let s, e, x = this.Fresh (), this.Fresh (), this.Fresh ()
-        let moved = tail.Next (1, 4)
+        // Above 1, so that `x + 1` from the first run differs from the written value and the guard has a mark to suppress.
+        let moved = tail.Next (2, 5)
 
         let written = if tail.Next 2 = 0 then Add (V x, K 1) else K 20
 
@@ -834,31 +839,48 @@ type Generator(rng: Random) =
                 )
             )
 
-    /// An owning memo's cleanup writes a source, reads the memo and writes again, so the nested run leaves the memo dirty
-    /// and `RecomputeScoped` goes round again. The guard ends it at the next discharge.
-    member private this.RewritingCleanup() : Cmd -> Cmd =
-        let s, m = this.Fresh (), this.Fresh ()
-        let x, y, a, b = this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+    /// An owning memo's cleanup writes a source, reads the memo and writes again. The nested run leaves the memo dirty and
+    /// `RecomputeScoped` goes round again, and the guard ends it at the next discharge. Through a memo over the source, the
+    /// last write leaves the memo in `Check` instead, and `RecomputeScoped` stops there with the nested run's value.
+    member private this.RewritingCleanup(tail: Random) : Cmd -> Cmd =
+        let s, m, over = this.Fresh (), this.Fresh (), this.Fresh ()
+
+        let x, y, z, a, b =
+            this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+
         let c, d, f, g = this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
         let h, j = this.Fresh (), this.Fresh ()
+        let throughMemo = tail.Next 2 = 0
+
+        let sentinel =
+            if throughMemo then
+                SentinelRewritingThroughMemo
+            else
+                SentinelRewritingCleanup
 
         let rewrite =
-            CLog (K SentinelRewritingCleanup, CWrite (V s, K 2, CRead (y, V m, CLog (V y, CWrite (V s, K 3, this.Nop)))))
+            CLog (K sentinel, CWrite (V s, K 2, CRead (y, V m, CLog (V y, CWrite (V s, K 3, this.Nop)))))
 
         let body =
-            CRead (x, V s, CLog (V x, CCleanup (CIf (Eq (V x, K 1), rewrite, this.Nop), CRet (V x))))
+            CRead (x, V (if throughMemo then over else s), CLog (V x, CCleanup (CIf (Eq (V x, K 1), rewrite, this.Nop), CRet (V x))))
+
+        let reads k =
+            CMemo (
+                m,
+                true,
+                CmpEq,
+                body,
+                CTryRead (a, b, V m, CWrite (V s, K 1, CTryRead (c, d, V m, CWrite (V s, K 4, CTryRead (h, j, V m, CTryRead (f, g, V s, k))))))
+            )
 
         fun k ->
             CSignal (
                 s,
                 K 0,
-                CMemo (
-                    m,
-                    true,
-                    CmpEq,
-                    body,
-                    CTryRead (a, b, V m, CWrite (V s, K 1, CTryRead (c, d, V m, CWrite (V s, K 4, CTryRead (h, j, V m, CTryRead (f, g, V s, k))))))
-                )
+                if throughMemo then
+                    CMemo (over, false, CmpEq, CRead (z, V s, CRet (V z)), reads k)
+                else
+                    reads k
             )
 
     /// A host read pulls an owning memo, whose discharge wakes an effect. The pull's end owes the flush, so the effect runs
@@ -965,7 +987,7 @@ type Generator(rng: Random) =
             steps.Add (this.CleanupWritesOwnSource tail)
 
         if tail.Next 100 < 30 then
-            steps.Add (this.RewritingCleanup ())
+            steps.Add (this.RewritingCleanup tail)
 
         if tail.Next 100 < 30 then
             steps.Add (this.PullWakesEffect ())
@@ -1458,7 +1480,8 @@ let required =
         "template diamond", 350
         "template check walk stops at a moved source", 290
         "template effect cleanup writes its own source", 290
-        "template owning memo cleanup writes, reads and writes", 290
+        "template owning memo cleanup writes, reads and writes", 140
+        "template owning memo cleanup writes through a memo", 140
         "template host pull wakes an effect", 280
         "template self-marking cleanup", 290
     ]

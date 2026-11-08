@@ -7,8 +7,9 @@
 # stay under 5%, when excluded programs stay within 0.5%, and when a run of 200 or more reaches each floor Generate.fsx
 # requires. Otherwise prints the first offending program, both sides, and the seed.
 #
-# A program that ends the F# process, by a stack overflow or the watchdog, is `fatal`: this script records it and resumes
-# at the next index. It diverged on both sides only when the model has no result either.
+# A program that ends the F# process by a stack overflow, identified from the runtime's message, or by the watchdog, is
+# `fatal`: this script records it with its cause and resumes at the next index. It diverged on both sides only when the
+# model has no result either. Any other nonzero exit fails the check.
 #
 # Needs dotnet and ocamlopt. Under WSL it runs the Windows dotnet.exe through interop, as check.sh does, and takes OCaml
 # from the opam switch of VERSIONS.md. RANVIER_DOTNET names another dotnet. A missing tool fails the check.
@@ -84,17 +85,23 @@ while :; do
     exit 1
   fi
   i="$(tr -d '\r\n' <"$work/current.txt")"
-  reason="$(grep -m1 -E 'watchdog:|Stack overflow' "$work/fsi.log" | tr -d '\r' || true)"
-  printf '%s\tfatal\t\t\t\t\n' "$i" >>"$work/fsharp.txt"
+  reason="$(grep -m1 -E '^(watchdog:|Stack overflow)' "$work/fsi.log" | tr -d '\r' || true)"
   program="$(sed -n "$((i + 1))p" "$work/programs.txt")"
+  if [ -z "$reason" ]; then
+    tail -20 "$work/fsi.log" | tr -d '\r' | cut -c1-300 >&2
+    printf 'run.sh: Generate.fsx exited with %s, neither a stack overflow nor the watchdog, at seed %s, program %s\nprogram: %s\n' \
+      "$rc" "$seed" "$i" "$program" >&2
+    exit 1
+  fi
+  printf '%s\tfatal\t\t\t\t\n' "$i" >>"$work/fsharp.txt"
   run_model
   model="$(sed -n "$((i + 1))p" "$work/ocaml.txt" | cut -f2)"
   if [ "$model" != "none" ]; then
     printf 'run.sh: the F# process died with the model finishing, at seed %s, program %s (%s)\nprogram: %s\nmodel:   %s\n' \
-      "$seed" "$i" "${reason:-exit $rc}" "$program" "$(sed -n "$((i + 1))p" "$work/ocaml.txt" | cut -f3)" >&2
+      "$seed" "$i" "$reason" "$program" "$(sed -n "$((i + 1))p" "$work/ocaml.txt" | cut -f3)" >&2
     exit 1
   fi
-  printf 'fatal on both sides: seed %s, program %s (%s)\nprogram: %s\n' "$seed" "$i" "${reason:-exit $rc}" "$program"
+  printf 'fatal on both sides: seed %s, program %s (%s)\nprogram: %s\n' "$seed" "$i" "$reason" "$program"
   fatal=$((fatal + 1))
   if [ $((fatal * 20)) -ge "$count" ]; then
     echo "run.sh: $fatal of $count programs fatal, 5% or more, at seed $seed" >&2
