@@ -94,7 +94,8 @@ Inductive event :=
   | EvLog (n : nid) (v : val)
   | EvCleanup (n : nid)
   | EvFail (n : nid) (f : val)
-  | EvDispose (n : nid).
+  | EvDispose (n : nid)
+  | EvHostRead (n : nid) (o : outcome).
 
 Fixpoint expr_no_prev (e : expr) : bool :=
   match e with

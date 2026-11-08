@@ -5,6 +5,18 @@ intended, the entry closes as "spec corrected".
 
 ## Suspected
 
+- `disposed_unread_memo_value` (`theories/Reference/Properties.v`): which value a disposed memo keeps.
+  The reference keeps the memo's value over the signals at the start of the disposal's batch, a value
+  that depends on no engine's demand. From reading Core.fs, not from running it: a memo starts `Dirty` and
+  `Uninitialized` with a default value (4063-4065), `Create` does not compute it (4144-4147), the read
+  paths do not refresh a disposed memo (4323, 4335), and `Value` then answers the stored value
+  (4539-4548), as the doc at 4372 states. So in `unread_memo` F# would answer the type's default where
+  the reference answers 5. The two also differ when something pulls the memo earlier in the batch: a
+  cleanup, or a host read (`host_read_then_dispose_memo`, where the reference answers 6 and then 1, and F#
+  would answer 6 both times). The question for the owner: does the reference keep this engine-independent
+  value, or does it model demand as Core.fs has it? Modelling demand would put one engine's laziness in
+  the tier every engine proves against. Task 13 runs it against the F#.
+
 ## Modelled
 
 ## Confirmed
@@ -17,15 +29,23 @@ intended, the entry closes as "spec corrected".
   8 on the value of its previous run. The definition follows the ruling for Task 3. The question for
   the owner: does a run set stay fixed at the round's start, or does a run re-compare when its turn
   comes? Not a Core.fs defect.
-- `disposed_unread_memo_value` (`theories/Reference/Properties.v`): which value a disposed memo keeps.
-  The reference keeps the memo's value over the signals at the start of the disposal's batch, a value
-  that depends on no engine's demand. By reading Core.fs, not by running it: `EnsureCurrent` does not
-  refresh a disposed memo, so F# keeps the value last computed. In `unread_memo` the memo has never run
-  when it is disposed, its status is `Uninitialized`, and F# answers the type's default where the
-  reference answers 5. The two also differ when a cleanup earlier in the batch pulls the memo. The
-  question for the owner: does the reference keep this engine-independent value, or does it model demand
-  as Core.fs has it? Modelling demand would put one engine's laziness in the tier every engine proves
-  against. Not yet checked against the F#.
+- `redundant_failing_cleanup_changes_settled` (`theories/Reference/Properties.v`): removing a redundant
+  run can change `obs_settled`. In `resetting_failing_cleanup` under `t_rev` and history
+  `[[RWrite 0 1; RWrite 1 1]]`, run 1 of effect 8 is redundant, and the only `EvFail 8 7` of the trace
+  comes from the cleanup it discharges. `sv_failures` holds the distinct failures of the history, so a
+  removed run takes out a failure that occurs only in its cleanups. The design's claim that removing a
+  redundant run preserves `obs_settled` holds on the cleanup-free example `redundant_run_settled_equal`
+  and is false here. `obs_settled` and `redundant` are unchanged, pending the owner's ruling.
+- `logging_cleanup_drop_unobserved` (`theories/Reference/Properties.v`): `obs_settled` admits an engine
+  that drops a non-failing logging cleanup of a re-run: `[R9;C9;L100;C9;L0;R9]` and `[R9;R9]` have equal
+  views. Task 13a's `optimised_cleanups` covers this for the worked optimisation.
+- `last_run_traces_match_every_prefix` (`theories/Reference/Properties.v`): `refines` compares each batch
+  prefix with the reference and relates no two prefixes' engine traces. For `one_read` and
+  `[[RWrite 0 1]; [RWrite 0 2]]`, the traces `[R9;L0]`, `[R9;L1]`, `[R9;L2]` match `obs_settled` at each
+  prefix, though no trace extends another. It rejects an engine that is silent at a prefix
+  (`final_batch_engine_not_refines`), and not one that recomputes a shortened trace for each prefix. The
+  question for the owner: does `refines` also require each prefix's engine trace to extend the previous
+  one? Only this one history is checked; no such engine is proved to refine in general.
 
 ## Closed
 

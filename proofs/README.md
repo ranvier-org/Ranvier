@@ -33,7 +33,16 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `zero_divisor_later_effects_run` | `Reference/Properties.v` | A zero divisor fails its effect, and later effects run. |
 | `obs_settled_coarser` | `Reference/Properties.v` | `obs_full` equality implies `obs_settled` equality. |
 | `refines_full_implies_settled` | `Reference/Properties.v` | An engine refining `obs_full` refines `obs_settled`. |
-| `reference_refines_itself` | `Reference/Properties.v` | The reference under a valid order and any fuel refines `obs_full`. |
+| `reference_refines_itself` | `Reference/Properties.v` | The reference under a valid order and any fuel refines `obs_full`, at every batch prefix. |
+| `rtrace_answers` | `Reference/Properties.v` | The reference indexed by its fuel satisfies `engine_answers` under a valid order. |
+| `final_batch_engine_not_refines` | `Reference/Properties.v` | An engine answering only a full history does not refine `obs_settled`, though its full-history view matches. |
+| `last_run_traces_match_every_prefix` | `Reference/Properties.v` | Witness: traces keeping only each prefix's last run match `obs_settled` at every prefix. `refines` relates no two prefixes' traces. |
+| `redundant_failing_cleanup_changes_settled` | `Reference/Properties.v` | Witness: removing a redundant run whose cleanup fails changes `obs_settled`. |
+| `logging_cleanup_drop_unobserved` | `Reference/Properties.v` | Witness: `obs_settled` admits dropping a re-run's non-failing logging cleanup. |
+| `host_read_sees_earlier_write` | `Reference/Properties.v` | A host read answers at its position in the batch. |
+| `host_read_then_dispose_memo` | `Reference/Properties.v` | Witness: a memo read and then disposed in one batch answers the batch-start value afterwards. |
+| `dropped_write_unobserved_before_read` | `Reference/Properties.v` | Dropping a write to a signal no effect logs leaves `obs_settled` unchanged. |
+| `dropped_write_observed_by_host_read` | `Reference/Properties.v` | A later host read makes that dropped write observable under `obs_settled`. |
 | `silent_engine_not_refines` | `Reference/Properties.v` | An engine that emits nothing does not refine `obs_settled`. |
 | `none_engine_refines` | `Reference/Properties.v` | An engine with no traces refines every observation. |
 | `none_engine_not_answers` | `Reference/Properties.v` | That engine fails `engine_answers`. |
@@ -41,25 +50,38 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `dispose_runs_cleanups_once` | `Reference/Properties.v` | Disposing an effect runs its cleanups once and ends its runs. |
 | `disposed_memo_answers_last_value` | `Reference/Properties.v` | A disposed memo answers reads with its last value. |
 | `order_varies_by_round` | `Reference/Properties.v` | The effect order can differ between rounds of a history. |
-| `redundant_run_settled_equal` | `Reference/Properties.v` | Traces differing by a redundant run have equal `obs_settled`. |
+| `redundant_run_settled_equal` | `Reference/Properties.v` | On the cleanup-free `resetting` program, traces differing by a redundant run have equal `obs_settled`. |
 | `redundant_run_full_differs` | `Reference/Properties.v` | The same traces have unequal `obs_full`. |
 
 ## Literature
 
-The from-scratch consistency results of the Adapton papers, compared with the reference tier.
+The from-scratch consistency results of the Adapton papers, compared with the reference tier. Each
+claim below is scoped to the parts listed here.
 
 **Sources read.**
 
-- Hammer, Khoo Yit Phang, Hicks, Foster, *Adapton: Composable, Demand-Driven Incremental Computation*, technical
-  report CS-TR-5027, University of Maryland, July 2013 ([hdl.handle.net/1903/14708](http://hdl.handle.net/1903/14708)).
-  It has the title and authors of the PLDI 2014 paper. The PLDI text itself was not accessible, so
-  nothing here is claimed about its theorem numbering or wording.
+- Hammer, Khoo Yit Phang, Hicks, Foster, *Adapton: Composable, Demand-Driven Incremental Computation*,
+  technical report CS-TR-5027, University of Maryland, July 2013
+  ([hdl.handle.net/1903/14708](http://hdl.handle.net/1903/14708)). Read: the abstract, the
+  introduction's summary of the formalism, the meta-theory statements of Section 3 (Theorems 3.1 to
+  3.3), the rule prose at the end of Section 4.1, Section 4.2's statements (Theorems 4.1 to 4.3), the
+  opening of Section 5 and the statement of Theorem 5.2, and the conclusion's consistency sentence. Not
+  read: the rule figures in detail, and any proofs.
 - Hammer, Dunfield, Headley, Labich, Foster, Hicks, Van Horn, *Incremental Computation with Names*,
-  OOPSLA 2015, extended version ([arXiv:1503.07792](https://arxiv.org/abs/1503.07792)), Section 4.3
-  and Theorem B.13. The theorem's statement was read. Its case-by-case proof was not checked.
-- Hammer, Dunfield, *Typed Adapton* ([arXiv:1610.00097](https://arxiv.org/abs/1610.00097)), abstract
-  only. It enforces the side conditions of the 2015 paper by types and claims no stronger consistency
-  statement.
+  OOPSLA 2015, extended version ([arXiv:1503.07792](https://arxiv.org/abs/1503.07792)). Read from the PDF
+  text: the introduction's statement of the property, Section 4.2's description of the reference system,
+  Section 4.3, Appendix B's account of the invariant, and the statement of Theorem B.13. Read only
+  through a summarising fetch of the ar5iv rendering: Section 2.1 on the inner layer, Section 4.2.3 on
+  legal modifications and the name check, and Definitions B.9 and B.10. Not checked: the proof of
+  Theorem B.13.
+- Hammer, Dunfield, Economou, Narasimhamurthy, *Refinement types for precisely named cache locations*
+  ([arXiv:1610.00097](https://arxiv.org/abs/1610.00097), title and authors as on the arXiv page; version 1
+  was titled *Typed Adapton* and listed Hammer and Dunfield). Read: the abstract of version 1 only, so
+  nothing here is claimed about its results.
+
+**Not accessed.** The PLDI 2014 paper. The ACM page returned 403, and the copy at
+`people.mpi-sws.org/~hammer/adapton-pldi2014.pdf` returned 404. CS-TR-5027 has the same title and authors.
+Nothing here is claimed about the PLDI text's theorem numbering or wording.
 
 **Statements.**
 
@@ -75,18 +97,18 @@ The from-scratch consistency results of the Adapton papers, compared with the re
 
 **Differences, and what was adopted.**
 
-| Difference | Reference tier | Decision |
-|---|---|---|
-| The soundness theorem is an equivalence: each direction gives a reduction. | `refines` has one direction, with the engine's trace as a premise, so an engine with no traces refines everything: `none_engine_refines`. | Adopted as `engine_answers`, stated separately so that `refines` keeps the brief's form. An engine proof owes both. |
-| Both results relate one evaluation to its from-scratch evaluation: a result and a store. | A trace over a history, compared per effect by `obs_settled` or whole by `obs_full`. | Kept. `obs_settled` is the analogue of comparing terminal results. `obs_full` has no analogue, since these papers leave trace structure free. A redundant run is outside what they can state. |
-| The final store is compared. | Final signals are compared only through logged reads. Signal writes are not events. | Kept, as the brief defines the observations. Recorded as a concern: an unlogged final signal value is unobserved, and the history has no host-read input. |
-| The inner layer cannot write. Writes come from the outer layer between evaluations. | Memos match this (`well_behaved_memo`). Effects write during a flush, and they read those writes. | Kept. The papers give effects no meaning: the outer layer is their closest counterpart, and it has no consistency claim of its own. They do not justify any weaker statement about effects. |
-| Demand drives evaluation, and an unread thunk need not be repaired. | A memo's value is defined over current signals, whether or not it is demanded. Only effects are observers. | Kept: the from-scratch value is what `memo_value` already defines. |
-| Consistency holds for any prior knowledge `K`, and Theorem B.13 carries a whole-graph invariant through the induction. | `refines` compares traces and names no engine state. | Not applied in this tier: engine state lives below it. The factoring is the suggested shape of the engine invariant: every cached memo value equals `memo_value` over current signals. Disposed memos are the exception below. |
-| No disposal. | A disposed memo answers its last value, so it is deliberately not from-scratch consistent. | Kept, as `Core.fs` documents. `rs_frozen` makes `memo_value` the from-scratch value relative to the disposed memos' answers. |
-| Name-precision conditions and allocation (`P1`, `W`). | A static node set with fixed identities. | No counterpart. |
-| Evaluation order is a source of nondeterminism in patching, and the result is independent of it. | The order of effects is observable. `refines` quantifies over valid round-indexed orders. | Kept: `obs_full` is order-sensitive, and an effect's writes can make the settled values depend on the order. |
-| No failures in the calculi. | A failure is an outcome, compared by identity. | No counterpart. |
-| Theorem B.13 has a written proof, and the sources read mention no mechanisation. | Proofs are checked by Rocq. | Kept. |
+| Source | Difference | Reference tier | Decision |
+|---|---|---|---|
+| CS-TR-5027 Thm 4.3 | The soundness theorem is an equivalence: each direction gives a reduction. | `refines` has one direction, so an engine with no traces refines everything: `none_engine_refines`. | Adopted as `engine_answers`, stated separately so that `refines` keeps its form. **An engine proof owes both `refines` and `engine_answers`.** |
+| Thm 4.3, Thm B.13 | Both relate one evaluation to its from-scratch evaluation: a result and a store. | A trace over a history, compared per effect by `obs_settled` or whole by `obs_full`, at every batch prefix. | Kept. `obs_settled` is the analogue of comparing terminal results. `obs_full` has no analogue in the statements read, which leave trace structure free. |
+| Thm 4.3 | The final store is compared. | Signal writes are not events, so a signal's value is compared only through logged reads and host reads. | Partly adopted: `RRead` makes a signal's value observable at any batch position, in both observations. A value the history never reads stays unobserved. |
+| Thm 3.2, Section 2.1 | The inner layer cannot write. Writes come from the outer layer between evaluations. | Memos match this (`well_behaved_memo`). Effects write during a flush, and they read those writes. | Kept. The statements read give effects no meaning, and they do not justify any weaker statement about effects. |
+| CS-TR-5027 abstract, Section 5 | Demand drives evaluation, and patching skips what is not relevant. | A memo's value is defined over current signals, whether or not it is demanded. Observers are effects and host reads. | Kept: the from-scratch value is what `memo_value` already defines. |
+| Thm 4.3, Thm B.13 | Consistency holds for any well-formed prior knowledge `K`, and Theorem B.13 carries a whole-graph invariant through its induction. | `refines` compares traces and names no engine state. | Not applied in this tier: engine state lives below it. The factoring is a suggested shape for the engine invariant: every cached memo value equals `memo_value` over current signals, with disposed memos as the exception below. |
+| Statements read | No disposal in them. | A disposed memo answers its last value, so it is deliberately not from-scratch consistent. | Kept, as `Core.fs` documents. `rs_frozen` makes `memo_value` the from-scratch value relative to the disposed memos' answers. |
+| Thm B.13, Section 4.2.3 | Name checks and allocation (`P1`, `W`). | A static node set with fixed identities. | No counterpart. |
+| CS-TR-5027 Section 5 | The order of patching steps is a source of nondeterminism in the declarative semantics. | The order of effects is observable. `refines` takes one valid round-indexed order per history. | Kept: `obs_full` is order-sensitive, and an effect's writes can make settled values depend on the order. |
+| Statements read | No failures in them. | A failure is an outcome, compared by identity. | No counterpart. |
+| Thm B.13 | A written proof, and the parts read mention no mechanisation. | Proofs are checked by Rocq. | Kept. |
 
 No literature result here is used to weaken a statement.

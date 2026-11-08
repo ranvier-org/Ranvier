@@ -13,11 +13,12 @@ Record rprog := {
   reffects : gmap nid cmd;
 }.
 
-(** A host input: a signal write, or the disposal of an effect or memo. *)
-Inductive rinput := RWrite (n : nid) (v : val) | RDispose (n : nid).
+(** A host input: a signal write, the disposal of an effect or memo, or a read of a signal or memo. *)
+Inductive rinput := RWrite (n : nid) (v : val) | RDispose (n : nid) | RRead (n : nid).
 
 Arguments RWrite _%_nat _%_Z.
 Arguments RDispose _%_nat.
+Arguments RRead _%_nat.
 
 (** Each inner list is one batch of inputs, applied in order. *)
 Definition rhistory := list (list rinput).
@@ -236,12 +237,22 @@ Definition dispose_node (p : rprog) (rd : reader) (n : nid) (cs : list (cmd * en
   st ← run_cleanups p rd n cs (bs_start_retired sigs);
   Some (bs_emit (EvDispose n) st).
 
-(** The record of one effect run or one disposal: the signals at its start, the disposed memos' values,
+(** A host read of [n] over [sigs]. A failed memo's failure is the read's answer. *)
+Definition host_read (p : rprog) (rd : reader) (n : nid) (sigs : gmap nid val) : option bstate :=
+  o ← rd sigs n;
+  Some (bs_emit (EvHostRead n o) (bs_start sigs)).
+
+Inductive rkind := RkEffect | RkDispose | RkHostRead.
+
+Global Instance rkind_eq_dec : EqDecision rkind.
+Proof. solve_decision. Defined.
+
+(** The record of one effect run, disposal or host read: the signals at its start, the disposed memos' values,
     the cleanups it ran, its tracked reads, all its reads, its events and its signal writes.
     [run_all_reads] holds the tracked and untracked reads of its cleanups and body in order. *)
 Record run := {
   run_node : nid;
-  run_disposal : bool;
+  run_kind : rkind;
   run_snapshot : gmap nid val;
   run_frozen : gmap nid outcome;
   run_ran_cleanups : list (cmd * env);
@@ -264,9 +275,9 @@ Record rstate := {
 Definition effect_entry (st : rstate) (n : nid) : list (nid * outcome) * list (cmd * env) :=
   default ([], []) (rs_effects st !! n).
 
-Definition record_of (n : nid) (disposal : bool) (st : rstate) (cs : list (cmd * env)) (bs : bstate)
+Definition record_of (n : nid) (kind : rkind) (st : rstate) (cs : list (cmd * env)) (bs : bstate)
     : run :=
-  {| run_node := n; run_disposal := disposal; run_snapshot := rs_sigs st;
+  {| run_node := n; run_kind := kind; run_snapshot := rs_sigs st;
      run_frozen := rs_frozen st; run_ran_cleanups := cs; run_reads := breads bs;
      run_all_reads := breads_all bs; run_events := bevs bs; run_writes := bwrites bs |}.
 
@@ -283,7 +294,7 @@ Fixpoint run_round (p : rprog) (ns : list nid) (st : rstate) : option (rstate * 
                     rs_disposed := rs_disposed st;
                     rs_round := rs_round st |} in
       '(st'', rs) ← run_round p ns' st';
-      Some (st'', record_of n false st cs bs :: rs)
+      Some (st'', record_of n RkEffect st cs bs :: rs)
   end.
 
 (** Whether some read differs from the current graph, evaluating reads oldest first and stopping at
@@ -347,7 +358,7 @@ Definition apply_dispose (p : rprog) (base : gmap nid val) (n : nid) (st : rstat
                  rs_frozen := rs_frozen st;
                  rs_disposed := {[ n ]} ∪ rs_disposed st;
                  rs_round := rs_round st |},
-              [record_of n true st cs bs])
+              [record_of n RkDispose st cs bs])
     | None, Some _ =>
         o ← memo_value p (rs_frozen st) base n;
         bs ← dispose_node p (live_read p (rs_frozen st)) n [] (rs_sigs st);
@@ -356,7 +367,7 @@ Definition apply_dispose (p : rprog) (base : gmap nid val) (n : nid) (st : rstat
                  rs_frozen := <[n := o]> (rs_frozen st);
                  rs_disposed := {[ n ]} ∪ rs_disposed st;
                  rs_round := rs_round st |},
-              [record_of n true st [] bs])
+              [record_of n RkDispose st [] bs])
     | None, None => None
     end.
 
@@ -372,6 +383,9 @@ Definition apply_input (p : rprog) (base : gmap nid val) (i : rinput) (st : rsta
                     rs_round := rs_round st |}, [])
       else None
   | RDispose n => apply_dispose p base n st
+  | RRead n =>
+      bs ← host_read p (live_read p (rs_frozen st)) n (rs_sigs st);
+      Some (st, [record_of n RkHostRead st [] bs])
   end.
 
 Fixpoint apply_batch (p : rprog) (base : gmap nid val) (b : list rinput) (st : rstate)
@@ -398,7 +412,7 @@ Fixpoint run_history (fuel : nat) (order : effect_order) (p : rprog) (h : rhisto
 Definition rstate_start (p : rprog) : rstate :=
   {| rs_sigs := rsignals p; rs_effects := ∅; rs_frozen := ∅; rs_disposed := ∅; rs_round := 0%nat |}.
 
-(** Every effect run and disposal of the history: an initial round of all effects, then settling, then
+(** Every effect run, disposal and host read of the history: an initial round of all effects, then settling, then
     each batch followed by settling. [fuel] bounds the rounds of each settling. *)
 Definition rruns (fuel : nat) (order : effect_order) (p : rprog) (h : rhistory)
     : option (list run) :=
@@ -443,9 +457,9 @@ Definition rwf (p : rprog) : Prop :=
   map_Forall (fun _ c => well_behaved_effect c = true) (reffects p) /\
   memos_acyclic p.
 
-(** The effect runs of [n] in [rs], without its disposal. *)
+(** The effect runs of [n] in [rs], without its disposal or host reads. *)
 Definition runs_of (rs : list run) (n : nid) : list run :=
-  filter (fun r => run_node r = n /\ run_disposal r = false) rs.
+  filter (fun r => run_node r = n /\ run_kind r = RkEffect) rs.
 
 (** Run [S j] of effect [n] in [rs] is redundant when it and run [j] made the same reads, tracked and
     untracked, cleanups included, in the same order and with the same outcomes. The initial run has
@@ -465,7 +479,8 @@ Record observation := { obs_ty : Type; obs_of : list event -> obs_ty }.
 Definition obs_full : observation := {| obs_ty := list event; obs_of := fun t => t |}.
 
 (** A node's settled view: the logs and failures since its last [EvRun], the distinct failures of its
-    whole history in order of first occurrence, and whether it is disposed. *)
+    whole history in order of first occurrence, and whether it is disposed. A repeated failure adds
+    nothing to [sv_failures]. *)
 Record settled_view := {
   sv_last : list event;
   sv_failures : list val;
@@ -490,22 +505,33 @@ Definition settled_step (s : gmap nid settled_view) (e : event) : gmap nid settl
   | EvDispose n =>
       <[n := {| sv_last := sv_last (cur n); sv_failures := sv_failures (cur n);
                 sv_disposed := true |}]> s
+  | EvHostRead _ _ => s
   end.
 
-(** Per node: the values of its last run, its failures and its disposal. *)
-Definition obs_settled : observation :=
-  {| obs_ty := gmap nid settled_view; obs_of := foldl settled_step ∅ |}.
+(** The host reads of a trace, in order. *)
+Definition host_reads : list event -> list (nid * outcome) :=
+  omap (fun e => match e with EvHostRead n o => Some (n, o) | _ => None end).
 
-(** Every trace of [engine] matches, under [O], a reference trace of a valid order chosen for the
-    program and history. *)
+(** Per node: the values of its last run, its failures and its disposal. For the whole trace: every
+    host read, in order. *)
+Definition obs_settled : observation :=
+  {| obs_ty := gmap nid settled_view * list (nid * outcome);
+     obs_of := fun t => (foldl settled_step ∅ t, host_reads t) |}.
+
+(** One valid order for the history, compared at every batch prefix. The engine answers at each prefix
+    of a history it answers. An engine with no traces satisfies this, so an engine proof also owes
+    [engine_answers]. *)
 Definition refines (O : observation)
     (engine : rprog -> rhistory -> option (list event)) : Prop :=
   forall p h t, rwf p -> engine p h = Some t ->
-    exists ord fuel t', is_effect_order ord /\ rtrace fuel ord p h = Some t' /\
-      obs_of O t = obs_of O t'.
+    exists ord, is_effect_order ord /\
+      forall h', prefix h' h ->
+        exists te fuel tr, engine p h' = Some te /\ rtrace fuel ord p h' = Some tr /\
+          obs_of O te = obs_of O tr.
 
-(** [engine] gives a trace whenever the reference settles under every valid order. *)
-Definition engine_answers (engine : rprog -> rhistory -> option (list event)) : Prop :=
+(** Some fuel of [engine] gives a trace whenever the reference settles under every valid order. *)
+Definition engine_answers
+    (engine : nat -> rprog -> rhistory -> option (list event)) : Prop :=
   forall p h, rwf p ->
     (forall ord, is_effect_order ord -> exists fuel t, rtrace fuel ord p h = Some t) ->
-    is_Some (engine p h).
+    exists k t, engine k p h = Some t.

@@ -185,11 +185,13 @@ Qed.
 
 (** Re-executes the record [r] with the reader [rd]. *)
 Definition replay_run (p : rprog) (rd : reader) (r : run) : option bstate :=
-  if run_disposal r then
-    dispose_node p rd (run_node r) (run_ran_cleanups r) (run_snapshot r)
-  else
-    body ← reffects p !! run_node r;
-    run_effect p rd (run_node r) body (run_ran_cleanups r) (run_snapshot r).
+  match run_kind r with
+  | RkEffect =>
+      body ← reffects p !! run_node r;
+      run_effect p rd (run_node r) body (run_ran_cleanups r) (run_snapshot r)
+  | RkDispose => dispose_node p rd (run_node r) (run_ran_cleanups r) (run_snapshot r)
+  | RkHostRead => host_read p rd (run_node r) (run_snapshot r)
+  end.
 
 (** The run's reads and events are those of a replay with every read answered from [run_snapshot r]
     and [run_frozen r]. A cleanup's environment, and so a value it logs, can date from the run that
@@ -315,7 +317,11 @@ Proof.
   simpl in Hc. rewrite Hc. done.
 Qed.
 
-(** The record [r] comes from a run or disposal of its node. *)
+Lemma host_read_frozen p frz n sigs :
+  host_read p (frozen_read p frz sigs) n sigs = host_read p (live_read p frz) n sigs.
+Proof. reflexivity. Qed.
+
+(** The record [r] comes from a run, disposal or host read of its node. *)
 Definition run_of (p : rprog) (r : run) : Prop :=
   exists bs,
     replay_run p (live_read p (run_frozen r)) r = Some bs /\
@@ -351,12 +357,14 @@ Lemma apply_input_runs p base i st st' rs :
   apply_input p base i st = Some (st', rs) ->
   Forall (run_of p) rs.
 Proof.
-  destruct i as [t v|n]; simpl.
+  destruct i as [t v|n|n]; simpl.
   - destruct (decide _); intros; simplify_eq/=; done.
   - unfold apply_dispose. destruct (decide _); [intros; simplify_eq/=; done|].
     destruct (reffects p !! n) as [c|]; [|destruct (rmemos p !! n) as [c|]]; intros Hr;
       [| |discriminate Hr]; bind_in Hr; simplify_eq/=;
       apply Forall_singleton; eexists; split_and!; [unfold replay_run; simpl; eassumption|done..].
+  - intros Hr. bind_in Hr. simplify_eq/=.
+    apply Forall_singleton; eexists; split_and!; [unfold replay_run; simpl; eassumption|done..].
 Qed.
 
 Lemma apply_batch_runs p base b :
@@ -400,10 +408,11 @@ Lemma run_of_snapshot p r :
 Proof.
   intros (bs & Hr & Hreads & Hall & Hev & Hw) Hnone.
   exists bs. split_and!; try done.
-  unfold replay_run in *. destruct (run_disposal r).
-  - apply dispose_node_frozen; [done|congruence].
+  unfold replay_run in *. destruct (run_kind r).
   - destruct (reffects p !! run_node r) as [body|]; simpl in *; [|discriminate].
     apply run_effect_frozen; [done|congruence].
+  - apply dispose_node_frozen; [done|congruence].
+  - by rewrite host_read_frozen.
 Qed.
 
 Lemma note_fail_log_tag n o st :
@@ -459,20 +468,22 @@ Qed.
 Lemma run_of_log_tag p r m v :
   run_of p r -> EvLog m v ∈ run_events r -> m = run_node r.
 Proof.
-  intros (bs & Hr & _ & _ & -> & _). unfold replay_run in Hr. destruct (run_disposal r).
-  - unfold dispose_node in Hr. bind_in Hr. simplify_eq/=.
-    apply emit_other_log_tag; [discriminate|].
-    eapply run_cleanups_log_tag; [exact E|].
-    intros ? ? Hin'. simpl in Hin'. by apply not_elem_of_nil in Hin'.
+  intros (bs & Hr & _ & _ & -> & _). unfold replay_run in Hr. destruct (run_kind r).
   - bind_in Hr. unfold run_effect in Hr. bind_in Hr.
     destruct p0 as [o1 st1]; simplify_eq/=.
     apply note_fail_log_tag. eapply exec_log_tag; [exact E1|].
     apply emit_other_log_tag; [discriminate|]. simpl.
     eapply run_cleanups_log_tag; [exact E0|].
     intros ? ? Hin'. simpl in Hin'. by apply not_elem_of_nil in Hin'.
+  - unfold dispose_node in Hr. bind_in Hr. simplify_eq/=.
+    apply emit_other_log_tag; [discriminate|].
+    eapply run_cleanups_log_tag; [exact E|].
+    intros ? ? Hin'. simpl in Hin'. by apply not_elem_of_nil in Hin'.
+  - unfold host_read in Hr. bind_in Hr. simplify_eq/=.
+    intros Hin. apply list_elem_of_singleton in Hin. discriminate Hin.
 Qed.
 
-(** Each [EvLog] of a trace belongs to one effect run or disposal. A record that writes no signal has
+(** Each [EvLog] of a trace belongs to one effect run or disposal record. A record that writes no signal has
     its reads and events computed from one snapshot of the signals, the disposed memos' values and the
     environments of its cleanups. *)
 Theorem glitch_free_by_definition fuel order p h evs n v :
@@ -508,17 +519,54 @@ Theorem refines_full_implies_settled engine :
   refines obs_full engine -> refines obs_settled engine.
 Proof.
   intros Hr p h t Hwf He.
-  destruct (Hr p h t Hwf He) as (ord & fuel & t' & Hord & Ht & Heq).
-  exists ord, fuel, t'. split_and!; [done|done|by apply obs_settled_coarser].
+  destruct (Hr p h t Hwf He) as (ord & Hord & Hall).
+  exists ord. split; [done|]. intros h' Hp.
+  destruct (Hall h' Hp) as (te & fuel & tr & Hte & Htr & Heq).
+  exists te, fuel, tr. split_and!; [done|done|by apply obs_settled_coarser].
+Qed.
+
+Lemma run_history_prefix fuel o p h k :
+  forall st r,
+    run_history fuel o p (h ++ k) st = Some r ->
+    is_Some (run_history fuel o p h st).
+Proof.
+  induction h as [|b h IH]; intros st r Hr; simpl in *; [by eexists|].
+  destruct (apply_batch p (rs_sigs st) b st) as [[st0 r0]|]; simpl in *; [|discriminate].
+  destruct (settle fuel o p st0) as [[st1 r1]|]; simpl in *; [|discriminate].
+  destruct (run_history fuel o p (h ++ k) st1) as [[st2 r2]|] eqn:E; simpl in *; [|discriminate].
+  destruct (IH _ _ E) as [[st3 r3] ->]. simpl. by eexists.
+Qed.
+
+(** A history with a trace has a trace at each of its prefixes, under the same order and fuel. *)
+Lemma rtrace_prefix fuel o p h h' t :
+  prefix h' h ->
+  rtrace fuel o p h = Some t ->
+  exists t', rtrace fuel o p h' = Some t'.
+Proof.
+  intros [k ->]. unfold rtrace, rruns.
+  destruct (run_round _ _ _) as [[st1 r1]|]; simpl; [|discriminate].
+  destruct (settle fuel o p (next_round st1)) as [[st2 r2]|]; simpl; [|discriminate].
+  destruct (run_history fuel o p (h' ++ k) st2) as [[st3 r3]|] eqn:E; simpl; [|discriminate].
+  destruct (run_history_prefix _ _ _ _ _ _ _ E) as [[st4 r4] ->]. simpl. intros _. by eexists.
 Qed.
 
 (** The reference tier refines itself, under each valid order and fuel. *)
 Theorem reference_refines_itself fuel ord :
   is_effect_order ord -> refines obs_full (rtrace fuel ord).
-Proof. intros Hord p h t _ Ht. by exists ord, fuel, t. Qed.
+Proof.
+  intros Hord p h t _ Ht. exists ord. split; [done|]. intros h' Hp.
+  destruct (rtrace_prefix _ _ _ _ _ _ Hp Ht) as [t' Ht'].
+  by exists t', fuel, t'.
+Qed.
 
-(** An engine with no traces refines every observation, so [engine_answers] is a separate
-    obligation. *)
+(** The reference tier, indexed by its fuel, answers under each valid order. *)
+Theorem rtrace_answers ord : is_effect_order ord -> engine_answers (fun k => rtrace k ord).
+Proof.
+  intros Hord p h _ Hs. destruct (Hs ord Hord) as (fuel & t & Ht). by exists fuel, t.
+Qed.
+
+(** An engine with no traces refines every observation, so an engine proof owes [engine_answers]
+    as well. *)
 Theorem none_engine_refines O : refines O (fun _ _ => None).
 Proof. intros p h t _ Hn. discriminate Hn. Qed.
 
@@ -548,6 +596,7 @@ Local Notation s1 := (EConst 1).
 #[local] Arguments EvCleanup _%_nat.
 #[local] Arguments EvFail _%_nat _.
 #[local] Arguments EvDispose _%_nat.
+#[local] Arguments EvHostRead _%_nat _.
 #[local] Arguments memo_value _ _ _ _%_nat.
 #[local] Arguments memo_deps _ _ _ _%_nat.
 #[local] Arguments redundant _ _ _%_nat _%_nat.
@@ -1184,6 +1233,8 @@ Definition resetting_trace_without_redundant : list event :=
 Definition resetting_full_trace : list event :=
   [EvRun 9; EvRun 8; EvLog 8 0; EvRun 9; EvRun 8; EvLog 8 0].
 
+(** On a program with no cleanups, removing this redundant run preserves [obs_settled]. With a failing
+    cleanup it need not: [redundant_failing_cleanup_changes_settled]. *)
 Example redundant_run_settled_equal :
   obs_of obs_settled resetting_full_trace = obs_of obs_settled resetting_trace_without_redundant.
 Proof. vm_compute. reflexivity. Qed.
@@ -1216,6 +1267,99 @@ Example settled_sees_disposal :
   obs_of obs_settled [EvRun 9; EvDispose 9] <> obs_of obs_settled [EvRun 9].
 Proof. vm_compute. discriminate. Qed.
 
+Example settled_sees_host_read :
+  obs_of obs_settled [EvRun 9; EvHostRead 0 (Ok 1)] <> obs_of obs_settled [EvRun 9; EvHostRead 0 (Ok 0)].
+Proof. vm_compute. discriminate. Qed.
+
+(** A redundant run whose discharged cleanup holds the history's only failure: removing the run
+    changes [obs_settled]. *)
+Definition resetting_failing_cleanup : rprog := {|
+  rsignals := {[ 0%nat := 0; 1%nat := 0 ]};
+  rmemos := ∅;
+  reffects := {[ 8%nat := CRead 0 s0 (CCleanup (CThrow 7) ret);
+                 9%nat := CRead 0 s1 (CWrite s0 (EConst 0) ret) ]};
+|}.
+
+Definition resetting_failing_cleanup_runs :=
+  default [] (rruns 5 t_rev resetting_failing_cleanup [[RWrite 0 1; RWrite 1 1]]).
+
+Theorem redundant_failing_cleanup_changes_settled :
+  rtrace 5 t_rev resetting_failing_cleanup [[RWrite 0 1; RWrite 1 1]] =
+    Some [EvRun 9; EvRun 8; EvRun 9; EvCleanup 8; EvFail 8 7; EvRun 8] /\
+  redundant resetting_failing_cleanup resetting_failing_cleanup_runs 8 1 /\
+  obs_of obs_settled [EvRun 9; EvRun 8; EvRun 9; EvCleanup 8; EvFail 8 7; EvRun 8] <>
+    obs_of obs_settled [EvRun 9; EvRun 8; EvRun 9].
+Proof.
+  split_and!.
+  - vm_compute. reflexivity.
+  - split; [vm_compute; eauto|].
+    eexists 0%nat, _, _. split; [reflexivity|].
+    split; [vm_compute; reflexivity|]. split; [vm_compute; reflexivity|].
+    vm_compute. reflexivity.
+  - vm_compute. discriminate.
+Qed.
+
+(** [obs_settled] admits an engine that drops a non-failing logging cleanup of a re-run. *)
+Example logging_cleanup_drop_unobserved :
+  rtrace 5 t_id cleanups [[RWrite 0 1]] =
+    Some [EvRun 9; EvCleanup 9; EvLog 9 100; EvCleanup 9; EvLog 9 0; EvRun 9] /\
+  obs_of obs_settled [EvRun 9; EvCleanup 9; EvLog 9 100; EvCleanup 9; EvLog 9 0; EvRun 9] =
+    obs_of obs_settled [EvRun 9; EvRun 9].
+Proof. split; vm_compute; reflexivity. Qed.
+
+(** ** Host reads *)
+
+Example host_read_sees_earlier_write :
+  rtrace 5 t_id one_read [[RRead 0; RWrite 0 1; RRead 0]] =
+    Some [EvRun 9; EvLog 9 0; EvHostRead 0 (Ok 0); EvHostRead 0 (Ok 1); EvRun 9; EvLog 9 1].
+Proof. vm_compute. reflexivity. Qed.
+
+Example host_read_memo_over_current_signals :
+  rtrace 5 t_id memo_and_signal [[RWrite 0 5; RRead 1]] =
+    Some [EvRun 9; EvLog 9 1; EvHostRead 1 (Ok 6); EvRun 9; EvLog 9 6].
+Proof. vm_compute. reflexivity. Qed.
+
+Example host_read_disposed_memo :
+  rtrace 5 t_id memo_and_signal [[RDispose 1]; [RWrite 0 5; RRead 1]] =
+    Some [EvRun 9; EvLog 9 1; EvDispose 1; EvHostRead 1 (Ok 1)].
+Proof. vm_compute. reflexivity. Qed.
+
+Example host_read_failed_memo :
+  rtrace 5 t_id reads_failed_memo [[RRead 1]] =
+    Some [EvRun 9; EvFail 9 7; EvHostRead 1 (Fail 7)].
+Proof. vm_compute. reflexivity. Qed.
+
+Example host_read_effect_is_stuck : rtrace 5 t_id one_read [[RRead 9]] = None.
+Proof. vm_compute. reflexivity. Qed.
+
+(** A host read before a disposal in one batch can answer a value the disposed memo no longer answers,
+    since the last value comes from the batch's start. *)
+Example host_read_then_dispose_memo :
+  rtrace 5 t_id memo_and_signal [[RWrite 0 5; RRead 1; RDispose 1]; [RRead 1]] =
+    Some [EvRun 9; EvLog 9 1; EvHostRead 1 (Ok 6); EvDispose 1; EvHostRead 1 (Ok 1)].
+Proof. vm_compute. reflexivity. Qed.
+
+(** No effect reads signal 0. *)
+Definition unlogged_signal : rprog := {|
+  rsignals := {[ 0%nat := 0 ]};
+  rmemos := ∅;
+  reffects := {[ 9%nat := ret ]};
+|}.
+
+Definition with_write : rhistory := [[RWrite 0 1]; [RRead 0]].
+Definition write_dropped : rhistory := [[]; [RRead 0]].
+
+(** Dropping the write leaves [obs_settled] unchanged until the host reads the signal. *)
+Example dropped_write_unobserved_before_read :
+  obs_of obs_settled <$> rtrace 5 t_id unlogged_signal [[RWrite 0 1]] =
+    obs_of obs_settled <$> rtrace 5 t_id unlogged_signal [[]].
+Proof. vm_compute. reflexivity. Qed.
+
+Example dropped_write_observed_by_host_read :
+  obs_of obs_settled <$> rtrace 5 t_id unlogged_signal with_write <>
+    obs_of obs_settled <$> rtrace 5 t_id unlogged_signal write_dropped.
+Proof. vm_compute. discriminate. Qed.
+
 (** ** Refinement *)
 
 Lemma one_read_rwf : rwf one_read.
@@ -1245,6 +1389,38 @@ Proof.
   destruct fuel; vm_compute; congruence.
 Qed.
 
+(** Answers only a history of two batches, with the trace of the last batch's run. On the two-batch
+    [one_read] history it has the reference's [obs_settled], and [refines] rejects it at a prefix. *)
+Definition final_batch_engine (_ : rprog) (h : rhistory) : option (list event) :=
+  if Nat.eqb (length h) 2 then Some [EvRun 9; EvLog 9 2] else None.
+
+Definition two_writes : rhistory := [[RWrite 0 1]; [RWrite 0 2]].
+
+Example final_batch_engine_settled_at_full_history :
+  obs_of obs_settled <$> final_batch_engine one_read two_writes =
+    obs_of obs_settled <$> rtrace 5 t_id one_read two_writes.
+Proof. vm_compute. reflexivity. Qed.
+
+Theorem final_batch_engine_not_refines : ~ refines obs_settled final_batch_engine.
+Proof.
+  intros Hr.
+  destruct (Hr one_read two_writes _ one_read_rwf eq_refl) as (ord & _ & Hall).
+  destruct (Hall [] (prefix_nil _)) as (te & _ & _ & Hte & _).
+  discriminate Hte.
+Qed.
+
+(** [refines] relates no two prefixes' engine traces. An engine that keeps only each prefix's last run
+    has the reference's [obs_settled] at each prefix of [two_writes], though its traces do not extend
+    each other. *)
+Example last_run_traces_match_every_prefix :
+  Some (obs_of obs_settled [EvRun 9; EvLog 9 0]) =
+    obs_of obs_settled <$> rtrace 5 t_id one_read [] /\
+  Some (obs_of obs_settled [EvRun 9; EvLog 9 1]) =
+    obs_of obs_settled <$> rtrace 5 t_id one_read [[RWrite 0 1]] /\
+  Some (obs_of obs_settled [EvRun 9; EvLog 9 2]) =
+    obs_of obs_settled <$> rtrace 5 t_id one_read two_writes.
+Proof. vm_compute. auto. Qed.
+
 (** An order that drops its effects gives the empty trace, so [refines] requires a valid order. *)
 Example invalid_order_runs_nothing : rtrace 0 (fun _ _ => []) one_read [] = Some [].
 Proof. vm_compute. reflexivity. Qed.
@@ -1254,14 +1430,17 @@ Proof. vm_compute. reflexivity. Qed.
 Theorem silent_engine_not_refines : ~ refines obs_settled (fun _ _ => Some []).
 Proof.
   intros Hr.
-  destruct (Hr one_read [] [] one_read_rwf eq_refl) as (ord & fuel & t' & Hord & Ht & Heq).
+  destruct (Hr one_read [] [] one_read_rwf eq_refl) as (ord & Hord & Hall).
+  destruct (Hall [] (prefix_nil _)) as (te & fuel & t' & Hte & Ht & Heq).
+  injection Hte as <-.
   rewrite (one_read_first_run _ _ _ Hord Ht) in Heq. vm_compute in Heq. discriminate Heq.
 Qed.
 
-Theorem none_engine_not_answers : ~ engine_answers (fun _ _ => None).
+Theorem none_engine_not_answers : ~ engine_answers (fun _ _ _ => None).
 Proof.
   intros Ha.
-  assert (is_Some (@None (list event))) as [? Hn]; [|discriminate Hn].
+  assert (exists (k : nat) (t : list event), @None (list event) = Some t) as (? & ? & Hn);
+    [|discriminate Hn].
   apply (Ha one_read []); [apply one_read_rwf|].
   intros ord Hord. exists 0%nat, [EvRun 9; EvLog 9 0]. unfold rtrace, rruns.
   assert (effect_ids one_read = [9%nat]) as Hids by (vm_compute; reflexivity).

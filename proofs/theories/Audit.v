@@ -23,3 +23,12 @@ Print Assumptions redundant_run_settled_equal.
 Print Assumptions redundant_run_full_differs.
 Print Assumptions disposed_memo_answers_last_value.
 Print Assumptions order_varies_by_round.
+Print Assumptions rtrace_answers.
+Print Assumptions final_batch_engine_not_refines.
+Print Assumptions last_run_traces_match_every_prefix.
+Print Assumptions redundant_failing_cleanup_changes_settled.
+Print Assumptions logging_cleanup_drop_unobserved.
+Print Assumptions host_read_sees_earlier_write.
+Print Assumptions host_read_then_dispose_memo.
+Print Assumptions dropped_write_unobserved_before_read.
+Print Assumptions dropped_write_observed_by_host_read.
