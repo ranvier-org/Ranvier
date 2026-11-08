@@ -467,23 +467,23 @@ The centre of the project. Layers 9 and 10 rest on it.
 - Produces:
 
 ```rocq
-Definition stale_of (s : state) (n : nid) : Prop.         (* n_fresh is Check or Dirty *)
-Definition stale_or_queued (s : state) (n : nid) : Prop.  (* stale_of, or n_queued *)
-Definition n_unann_of (s : state) (n : nid) : bool.
-Definition observer_covered (s : state) (src c : nid) : Prop :=
-  stale_or_queued s c \/ In c (g_running s) \/ n_unann_of s src = true.
+Definition stale_of (s : state) (n : node_id) : Prop.         (* n_freshness is Check or Dirty *)
+Definition stale_or_queued (s : state) (n : node_id) : Prop.  (* stale_of, or n_queued *)
+Definition n_unannounced_of (s : state) (n : node_id) : bool.
+Definition observer_covered (s : state) (src c : node_id) : Prop :=
+  stale_or_queued s c \/ In c (g_running s) \/ n_unannounced_of s src = true.
 Definition wake_ok (s : state) : Prop :=
   forall src c, edge s src c -> stale_of s src -> observer_covered s src c.
-Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s), wake_ok, stack discipline, id bounds, owner cleanup lists of equal length, n_in_cleanup c -> In c (g_running s) *)
+Definition engine_inv (s : state) : Prop.   (* coherent, world_reachable (g_edges s), wake_ok, stack discipline, id bounds, owner cleanup lists of equal length, n_in_cleanup c -> In c (g_running s) *)
 ```
 
 - [ ] **Step 1: Theorems.**
   - `engine_inv_preserved`: `engine_inv` is preserved by each of the mutual functions, for all fuel, by induction on fuel. **The headline no lost wake-ups result** is `no_lost_wakeups : engine_inv s -> run_top fuel c s = Some (s', r) -> wake_ok s'`.
   - `later_mark_forwarded`: from `wake_ok`, a later `mark_check` or `mark_dirty` of `src` leaves every observer of `src` stale, queued or running.
-  - `marks_survive_run`: a mark received during a run leaves the node stale at run's end, with `n_unann = true`.
+  - `marks_survive_run`: a mark received during a run leaves the node stale at run's end, with `n_unannounced = true`.
   - `cutoff`: a run whose value, status and failure are unchanged marks no observer.
   - `moved_marks_except_running`: a moved run marks every observer dirty except the current computation.
-  - `run_end_edges_are_reads`: after a non-disposed run, the source list equals the reads of the run, with repeats per `sl_add`.
+  - `run_end_edges_are_reads`: after a non-disposed run, the source list equals the reads of the run, with repeats per `sources_add`.
 - [ ] **Step 2: Prove them.** The invariant is likely to need strengthening for mid-run states; strengthen it rather than weaken the conclusion. Candidate from reading: `RecomputeScoped`.
 - [ ] **Step 3: Audit.** Expected: exit 0, with `no_lost_wakeups` closed or a ledgered counterexample and the theorem as premise above.
 - [ ] **Step 4: Commit** as `feat(proofs): prove no lost wake-ups`.
@@ -500,7 +500,7 @@ Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s
 - [ ] **Step 1: Scheduler theorems.**
   - `queued_at_most_once`: an effect occurs at most once in the live part of `g_queue`, and `n_queued` holds exactly when it occurs or is mid-`Execute`.
   - `flush_no_nest`: `run_flush` entered with `g_flushing = true` changes nothing.
-  - `owed_settled`: at top level with no batch, pull or current computation, `run_top` returning leaves `g_owed = false` or an empty live queue.
+  - `owed_settled`: at top level with no batch, pull or current computation, `run_top` returning leaves `g_flush_owed = false` or an empty live queue.
   - `flush_returns_clean`: a flush that returns with no failing effect has an empty queue, and every non-disposed effect is clean or was re-marked and rerun.
   - `body_failure_contained`: a failing effect body records the failure in its status, and the flush continues.
   - `drain_no_escape`: from the command language, `execute_effect` has no failure path out of the drain: bodies, cleanups, child releases, memo runs and throwing comparers are caught (Core.fs 1171-1184, 4247-4261, 4275-4279, 4866). A flush that returns therefore leaves `g_flushing = false` and an empty live queue. This replaces `escape_leaves_resumable`, which has no form in the model; other `IScheduled` items, such as a pass (Core.fs 3082), stay outside it, and the comment at Core.fs 3140-3142 is stale for `Effect`.
@@ -523,7 +523,7 @@ Definition engine_inv (s : state) : Prop.   (* coherent, ew_reachable (g_edges s
 
 **Interfaces:**
 - Consumes: Tasks 7-10, `well_behaved_memo`.
-- Produces: `well_behaved_program : state -> Prop`, `self_dirtying : state -> nid -> Prop`, `quiescent : state -> Prop`, `effect_ran_for_last_write : state -> Prop` (the scenario's effect has an `EvLog` of the value from the last write).
+- Produces: `well_behaved_program : state -> Prop`, `self_dirtying : state -> node_id -> Prop`, `quiescent : state -> Prop`, `effect_ran_for_last_write : state -> Prop` (the scenario's effect has an `EvLog` of the value from the last write).
 
 - [ ] **Step 1: Witnesses, first.** They validate the theorem statements, so they precede the proofs that depend on those statements.
 
@@ -553,13 +553,13 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 
 **Interfaces:**
 - Consumes: `Reference/*`, Tasks 7-11.
-- Produces: `erase : rprog -> rhistory -> cmd` (the engine program for a reference program), `engine_order : state -> effect_order` (the exact order, computed from observer positions and marking walks, swap-removal included), `engine_of : flags -> nat -> rprog -> rhistory -> option (list event)`, fuel-indexed, for `refines` and `engine_answers`.
+- Produces: `erase : program -> history -> cmd` (the engine program for a reference program), `engine_order : state -> effect_order` (the exact order, computed from observer positions and marking walks, swap-removal included), `engine_of : flags -> nat -> program -> history -> option (list event)`, fuel-indexed, for `refines` and `engine_answers`.
 
-- [ ] **Step 0: Check the literature notes.** Compare `convergence` and `refines obs_settled` with the Adapton notes from Task 3a in `README.md`. Record any difference there, and adopt a stronger or better-factored statement where one exists. Literature never justifies weakening a statement here.
+- [ ] **Step 0: Check the literature notes.** Compare `convergence` and `refines observe_settled` with the Adapton notes from Task 3a in `README.md`. Record any difference there, and adopt a stronger or better-factored statement where one exists. Literature never justifies weakening a statement here.
 - [ ] **Step 1: Theorems.**
   - `engine_order_exact`: the order of `EvRun`s in a flush equals `engine_order`, for all well-behaved programs.
-  - `weak_refinement : forall k, refines obs_settled (engine_of current_flags k)`, using `convergence`.
-  - `exact_refinement : forall k, refines obs_full (engine_of current_flags k)`, with `ord` instantiated by `engine_order`, or a checked counterexample in `Witnesses.v` for each divergence.
+  - `weak_refinement : forall k, refines observe_settled (engine_of current_flags k)`, using `convergence`.
+  - `exact_refinement : forall k, refines observe_full (engine_of current_flags k)`, with `ord` instantiated by `engine_order`, or a checked counterexample in `Witnesses.v` for each divergence.
   - `engine_of_answers : engine_answers (engine_of current_flags)`.
 - [ ] **Step 2: Attempt `exact_refinement` directly.** Expected divergences are S07 and S15, and for `weak_refinement` too, the disposed-memo cases `disposed_unread_memo_value` and `write_then_dispose_memo_current_value`, which `Core.fs` is expected not to pull at disposal. Run those two against the F# first, and take any that reproduces as a named premise until the owner rules. Each goes in as a checked `Example` showing the differing traces, a `redundant` run in the reference tier's terms, and ledger status Awaiting ruling. Then state the strongest theorem that holds as `exact_refinement_except`, with the divergence classes as an explicit premise; the unconditional statement stays in `BUGS.md`.
 - [ ] **Step 3: Audit.** Expected: exit 0.
@@ -573,7 +573,7 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 
 - [ ] **Step 1: Run every ledger item in Suspected or Modelled through the procedure** until each is Confirmed, closed, or awaiting a ruling.
 - [ ] **Step 2: Write the report**, with the theorem index, the ledger and differential results. Add a ranked list of candidate optimisations for the milestone, each with the observation it needs and whether its obligations fall in the pure or heap tier. Draw candidates from the ledger, from what the proofs show is unnecessary, and from Ranvier's own direction.
-- [ ] **Step 3: Measure the top candidates' cost** with the repository's benchmarks, and choose one: it must have a measured cost worth removing, be nontrivial to prove, and be checkable by the differential test. The owner delegated this choice. Record the reasons in the report. A candidate that relies on a ruling still Awaiting ruling can't be chosen. An optimisation that changes `obs_full` needs `obs_settled` as its observation, and the report says so plainly, because that changes run counts.
+- [ ] **Step 3: Measure the top candidates' cost** with the repository's benchmarks, and choose one: it must have a measured cost worth removing, be nontrivial to prove, and be checkable by the differential test. The owner delegated this choice. Record the reasons in the report. A candidate that relies on a ruling still Awaiting ruling can't be chosen. An optimisation that changes `observe_full` needs `observe_settled` as its observation, and the report says so plainly, because that changes run counts.
 - [ ] **Step 4: Commit** as `docs(proofs): report pure-tier results`.
 
 ---
@@ -586,7 +586,7 @@ Written in detail once Task 13 has chosen the optimisation. Its fixed shape:
 
 - [ ] **Step 1: Write this task's detailed plan** into this file: optimised transitions, observation, simulation relation, benchmark, and the heap obligations it implies.
 - [ ] **Step 2: Model the optimised engine** as `engine_of_optimised`, by flag or as its own transitions, sharing `Engine.v` wherever behaviour is unchanged.
-- [ ] **Step 3: Prove `optimised_refines : forall k, refines <chosen observation> (engine_of_optimised k)`, `engine_answers engine_of_optimised`, and `optimised_cleanups`: each registered cleanup runs exactly once, before its replacement or disposal.** `obs_settled` alone admits an engine that drops a logging cleanup. A counterexample here is the gate working: record it, and revise or reject the optimisation.
+- [ ] **Step 3: Prove `optimised_refines : forall k, refines <chosen observation> (engine_of_optimised k)`, `engine_answers engine_of_optimised`, and `optimised_cleanups`: each registered cleanup runs exactly once, before its replacement or disposal.** `observe_settled` alone admits an engine that drops a logging cleanup. A counterexample here is the gate working: record it, and revise or reject the optimisation.
 - [ ] **Step 4: Only then implement it in F#.** Test-first, against the differential check with the extracted optimised engine.
 - [ ] **Step 5: Benchmark.** Report measured results beside the proof. A proof says nothing about speed, and an optimisation that doesn't help is dropped, however well proved.
 - [ ] **Step 6: Report to the owner**, and ask them to review the heap scope in Tasks 14-16 in light of it.
@@ -604,18 +604,18 @@ Written in detail once Task 13 has chosen the optimisation. Its fixed shape:
 ```rocq
 Class graphG Σ.    (* authoritative edge map; monotone freshness; pure state agreement *)
 Definition is_graph `{!heapGS Σ, !graphG Σ} (γ : gname) (g : val) (s : state) : iProp Σ.
-Definition is_obs (l : loc) (o : obs) : iProp Σ.
-Definition is_src (l : loc) (sl : src) (held : gset nid) : iProp Σ.
-Definition obs_add_code obs_try_add_code obs_remove_at_code : val.
-Definition sl_add_code sl_end_code sl_clear_code : val.
+Definition is_observers (l : loc) (o : observer_set) : iProp Σ.
+Definition is_source_list (l : loc) (sl : source_list) (held : gset node_id) : iProp Σ.
+Definition observers_add_code observers_try_add_code observers_remove_at_code : val.
+Definition sources_add_code sources_end_run_code sources_clear_code : val.
 ```
 
 Specs relate code to the Task 4 functions, e.g.:
 
 ```rocq
-Lemma obs_remove_at_spec l o c h o' m :
-  obs_remove_at c h o = Some (o', m) ->
-  {{{ is_obs l o }}} obs_remove_at_code #l #c #h {{{ RET (moved_val m); is_obs l o' }}}.
+Lemma observers_remove_at_spec l o c h o' m :
+  observers_remove_at c h o = Some (o', m) ->
+  {{{ is_observers l o }}} observers_remove_at_code #l #c #h {{{ RET (moved_val m); is_observers l o' }}}.
 ```
 
 Arrays with grow and blanking per Core.fs; `first`/`rest` is kept in `SourceList`, `latest` and `scan_limit` in `ObserverSet`, `held` abstracted to the `gset` the spec names.

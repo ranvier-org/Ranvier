@@ -570,20 +570,20 @@ val gset_elements :
 val gset_dom :
   ('a1, 'a1) relDecision -> 'a1 countable -> (('a1, 'a2) gmap, 'a1 gset) dom
 
-type nid = nat
+type node_id = nat
 
-type oid = nat
+type owner_id = nat
 
 type val0 = z
 
-type fresh1 =
+type freshness =
 | Clean
 | Check
 | Dirty
 
-val stale : fresh1 -> bool
+val stale : freshness -> bool
 
-val fresh_eq_dec : (fresh1, fresh1) relDecision
+val freshness_eq_dec : (freshness, freshness) relDecision
 
 type var = nat
 
@@ -602,7 +602,7 @@ type outcome =
 | Ok of val0
 | Fail of val0
 
-type cmp =
+type comparer =
 | CmpEq
 | CmpNever
 | CmpThrows of val0
@@ -618,10 +618,10 @@ type cmd =
 | CIf of expr * cmd * cmd
 | CRead of var * expr * cmd
 | CTryRead of var * var * expr * cmd
-| CReadU of var * expr * cmd
+| CReadUntracked of var * expr * cmd
 | CWrite of expr * expr * cmd
 | CSignal of var * expr * cmd
-| CMemo of var * scope_mode * cmp * cmd * cmd
+| CMemo of var * scope_mode * comparer * cmd * cmd
 | CEffect of var * cmd * cmd
 | CCleanup of cmd * cmd
 | CDispose of expr * cmd
@@ -639,74 +639,80 @@ val div_zero_failure : val0
 val eval_expr : env -> val0 option -> expr -> outcome option
 
 type event =
-| EvRun of nid
-| EvLog of nid * val0
-| EvCleanup of nid
-| EvFail of nid * val0
-| EvDispose of nid
-| EvHostRead of nid * outcome
+| EvRun of node_id
+| EvLog of node_id * val0
+| EvCleanup of node_id
+| EvFail of node_id * val0
+| EvDispose of node_id
+| EvHostRead of node_id * outcome
 
 val scan_limit : nat
 
-type obs = { oitems : (nid, nat) prod list; olatest : nat }
+type observer_set = { observer_items : (node_id, nat) prod list;
+                      observer_latest : nat }
 
-val empty_obs : obs
+val empty_observer_set : observer_set
 
 type tried =
 | TAdded of nat
 | TUnlinked
 | TUnknown
 
-val obs_view : obs -> nid list
+val observer_view : observer_set -> node_id list
 
-val obs_add : nid -> nat -> obs -> (obs, nat) prod
+val observers_add : node_id -> nat -> observer_set -> (observer_set, nat) prod
 
-val obs_try_add : nid -> nat -> obs -> (obs, tried) prod
+val observers_try_add :
+  node_id -> nat -> observer_set -> (observer_set, tried) prod
 
-val obs_remove_at :
-  nid -> nat -> obs -> (obs, ((nid, nat) prod, nat) prod option) prod option
+val observers_remove_at :
+  node_id -> nat -> observer_set -> (observer_set, ((node_id, nat) prod, nat)
+  prod option) prod option
 
-type src = { sslots : (nid, nat option) prod list; scursor : nat }
+type source_list = { source_slots : (node_id, nat option) prod list;
+                     source_cursor : nat }
 
-type edgeWorld = { ew_obs : (nid, obs) gmap; ew_src : (nid, src) gmap }
+type edgeWorld = { world_observers : (node_id, observer_set) gmap;
+                   world_sources : (node_id, source_list) gmap }
 
-val empty_src : src
+val empty_source_list : source_list
 
 val empty_world : edgeWorld
 
-val obs_of : edgeWorld -> nid -> obs
+val observers_of : edgeWorld -> node_id -> observer_set
 
-val src_of : edgeWorld -> nid -> src
+val sources_of : edgeWorld -> node_id -> source_list
 
-val slot_at : edgeWorld -> nid -> nat -> (nid, nat option) prod option
+val slot_at : edgeWorld -> node_id -> nat -> (node_id, nat option) prod option
 
-val set_obs : nid -> obs -> edgeWorld -> edgeWorld
+val set_observers : node_id -> observer_set -> edgeWorld -> edgeWorld
 
-val set_src : nid -> src -> edgeWorld -> edgeWorld
+val set_sources : node_id -> source_list -> edgeWorld -> edgeWorld
 
-val sl_begin : nid -> edgeWorld -> edgeWorld
+val sources_begin_run : node_id -> edgeWorld -> edgeWorld
 
-val set_handle : nid -> nat -> nat option -> edgeWorld -> edgeWorld
+val set_handle : node_id -> nat -> nat option -> edgeWorld -> edgeWorld
 
-val sl_moved_in : nid -> nat -> nat -> edgeWorld -> edgeWorld
+val sources_moved_in : node_id -> nat -> nat -> edgeWorld -> edgeWorld
 
-val remove_edge : nid -> nid -> nat -> edgeWorld -> edgeWorld option
+val remove_edge : node_id -> node_id -> nat -> edgeWorld -> edgeWorld option
 
-val sl_remove_slot : nid -> nat -> edgeWorld -> edgeWorld option
+val sources_remove_slot : node_id -> nat -> edgeWorld -> edgeWorld option
 
-val trim_loop : nid -> nat -> nat -> edgeWorld -> edgeWorld option
+val trim_loop : node_id -> nat -> nat -> edgeWorld -> edgeWorld option
 
-val sl_trim : nid -> nat -> edgeWorld -> edgeWorld option
+val sources_trim_from : node_id -> nat -> edgeWorld -> edgeWorld option
 
-val sl_end : nid -> edgeWorld -> edgeWorld option
+val sources_end_run : node_id -> edgeWorld -> edgeWorld option
 
-val sl_clear : nid -> edgeWorld -> edgeWorld option
+val sources_clear : node_id -> edgeWorld -> edgeWorld option
 
-val sl_append : nid -> nid -> nat option -> obs -> edgeWorld -> edgeWorld
+val sources_append :
+  node_id -> node_id -> nat option -> observer_set -> edgeWorld -> edgeWorld
 
-val sl_link : nid -> nid -> edgeWorld -> edgeWorld
+val sources_link : node_id -> node_id -> edgeWorld -> edgeWorld
 
-val sl_add : nid -> nid -> edgeWorld -> edgeWorld option
+val sources_add : node_id -> node_id -> edgeWorld -> edgeWorld option
 
 type kind =
 | KSignal
@@ -721,74 +727,80 @@ type status =
 
 val status_eq_dec : (status, status) relDecision
 
-type link = { l_child : nid; l_owner : oid; l_gen : nat option;
-              l_acquired : nat }
+type link = { l_child : node_id; l_owner : owner_id;
+              l_generation : nat option; l_acquired : nat }
 
-type ownerS = { o_children : link list; o_cleanups : cmd list;
-                o_cleanup_envs : env list; o_cleanup_order : nat list;
-                o_acquisitions : nat; o_gen : nat; o_disposed : bool;
-                o_sink : oid option; o_errors : val0 list; o_host : nid }
+type owner_state = { o_children : link list; o_cleanups : cmd list;
+                     o_cleanup_envs : env list; o_cleanup_order : nat list;
+                     o_acquisitions : nat; o_generation : nat;
+                     o_disposed : bool; o_sink : owner_id option;
+                     o_errors : val0 list; o_host : node_id }
 
 type node = { n_kind : kind; n_value : val0; n_failure : val0 option;
-              n_status : status; n_fresh : fresh1; n_unann : bool;
-              n_runs : nat; n_published : bool; n_disposed : bool;
-              n_queued : bool; n_in_cleanup : bool; n_scope : oid option;
-              n_violated : bool; n_body : cmd; n_env : env;
-              n_mode : scope_mode; n_cmp : cmp; n_link : link option }
+              n_status : status; n_freshness : freshness;
+              n_unannounced : bool; n_runs : nat; n_published : bool;
+              n_disposed : bool; n_queued : bool; n_in_cleanup : bool;
+              n_scope : owner_id option; n_violated : bool; n_body : 
+              cmd; n_env : env; n_mode : scope_mode; n_comparer : comparer;
+              n_link : link option }
 
 type flags = { f_unannounced : bool; f_reader_mark : bool }
 
 val current_flags : flags
 
-type nview = ((val0, status) prod, val0 option) prod
+type read_view = ((val0, status) prod, val0 option) prod
 
-val nview_of : node -> nview
+val read_view_of : node -> read_view
 
-type ghost = { gh_pub : (nid, nview) gmap;
-               gh_seen : ((nid, nid) prod, nview list) gmap;
-               gh_unnoticed : nid gset; gh_window : (nid, nat) gmap }
+type ghost = { gh_published : (node_id, read_view) gmap;
+               gh_seen : ((node_id, node_id) prod, read_view list) gmap;
+               gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap }
 
 val empty_ghost : ghost
 
 type state = { g_flags : flags; g_edges : edgeWorld;
-               g_nodes : (nid, node) gmap; g_owners : (oid, ownerS) gmap;
-               g_queue : nid list; g_head : nat; g_flushing : bool;
-               g_owed : bool; g_batch : nat; g_pull : nat;
-               g_current : nid option; g_untracked : bool;
-               g_owner : oid option; g_next : nat; g_trace : event list;
-               g_running : nid list; g_ghost : ghost }
+               g_nodes : (node_id, node) gmap;
+               g_owners : (owner_id, owner_state) gmap;
+               g_queue : node_id list; g_queue_head : nat; g_flushing : 
+               bool; g_flush_owed : bool; g_batch_depth : nat;
+               g_pull_depth : nat; g_current : node_id option;
+               g_untracked : bool; g_current_owner : owner_id option;
+               g_next_id : nat; g_trace : event list;
+               g_running : node_id list; g_ghost : ghost }
 
-val node_marked : fresh1 -> bool -> bool -> node -> node
+val node_marked : freshness -> bool -> bool -> node -> node
 
-val set_node : nid -> node -> state -> state
+val set_node : node_id -> node -> state -> state
 
-val enqueue : nid -> state -> state
+val enqueue : node_id -> state -> state
 
 val walk_marks :
-  (nid -> state -> state option) -> nid -> nat -> state -> state option
+  (node_id -> state -> state option) -> node_id -> nat -> state -> state
+  option
 
 val notify_with :
-  (nid -> state -> state option) -> nid -> state -> state option
+  (node_id -> state -> state option) -> node_id -> state -> state option
 
 val announce_due : state -> node -> bool
 
-val effect_marked : fresh1 -> nid -> node -> state -> state
+val effect_marked : freshness -> node_id -> node -> state -> state
 
-val mark_check : nat -> nid -> state -> state option
+val mark_check : nat -> node_id -> state -> state option
 
-val mark_dirty : nat -> nid -> state -> state option
+val mark_dirty : nat -> node_id -> state -> state option
 
-val notify_dirty : nat -> nid -> state -> state option
+val notify_dirty : nat -> node_id -> state -> state option
 
-val mark_except : nat -> nid option -> nid -> state -> state option
+val mark_except : nat -> node_id option -> node_id -> state -> state option
 
-val notify_dirty_except : nat -> nid -> nid option -> state -> state option
+val notify_dirty_except :
+  nat -> node_id -> node_id option -> state -> state option
 
-val pending : state -> nid list
+val pending : state -> node_id list
 
 type 'a m = state -> (state, 'a) prod option
 
-val m_ret : 'a1 -> 'a1 m
+val m_return : 'a1 -> 'a1 m
 
 val m_bind : 'a1 m -> ('a1 -> 'a2 m) -> 'a2 m
 
@@ -796,124 +808,125 @@ val stuck : 'a1 m
 
 val m_get : state m
 
-val m_mod : (state -> state) -> unit0 m
+val m_modify : (state -> state) -> unit0 m
 
 val m_step : (state -> state option) -> unit0 m
 
 val with_edges : edgeWorld -> state -> state
 
-val with_owners : (oid, ownerS) gmap -> state -> state
+val with_owners : (owner_id, owner_state) gmap -> state -> state
 
-val with_queue : nid list -> state -> state
+val with_queue : node_id list -> state -> state
 
-val with_head : nat -> state -> state
+val with_queue_head : nat -> state -> state
 
 val with_flushing : bool -> state -> state
 
-val with_owed : bool -> state -> state
+val with_flush_owed : bool -> state -> state
 
-val with_batch : nat -> state -> state
+val with_batch_depth : nat -> state -> state
 
-val with_pull : nat -> state -> state
+val with_pull_depth : nat -> state -> state
 
-val with_current : nid option -> state -> state
+val with_current : node_id option -> state -> state
 
 val with_untracked : bool -> state -> state
 
-val with_owner : oid option -> state -> state
+val with_current_owner : owner_id option -> state -> state
 
-val with_next : nat -> state -> state
+val with_next_id : nat -> state -> state
 
 val with_trace : event list -> state -> state
 
-val with_running : nid list -> state -> state
+val with_running : node_id list -> state -> state
 
 val with_ghost : ghost -> state -> state
 
-val nset_value : val0 -> node -> node
+val node_with_value : val0 -> node -> node
 
-val nset_failure : val0 option -> node -> node
+val node_with_failure : val0 option -> node -> node
 
-val nset_status : status -> node -> node
+val node_with_status : status -> node -> node
 
-val nset_fresh : fresh1 -> node -> node
+val node_with_freshness : freshness -> node -> node
 
-val nset_unann : bool -> node -> node
+val node_with_unannounced : bool -> node -> node
 
-val nset_runs : nat -> node -> node
+val node_with_runs : nat -> node -> node
 
-val nset_published : bool -> node -> node
+val node_with_published : bool -> node -> node
 
-val nset_disposed : bool -> node -> node
+val node_with_disposed : bool -> node -> node
 
-val nset_queued : bool -> node -> node
+val node_with_queued : bool -> node -> node
 
-val nset_in_cleanup : bool -> node -> node
+val node_with_in_cleanup : bool -> node -> node
 
-val nset_scope : oid option -> node -> node
+val node_with_scope : owner_id option -> node -> node
 
-val nset_violated : bool -> node -> node
+val node_with_violated : bool -> node -> node
 
-val nset_link : link option -> node -> node
+val node_with_link : link option -> node -> node
 
 val emit : event -> unit0 m
 
-val get_node : nid -> node m
+val get_node : node_id -> node m
 
-val mod_node : nid -> (node -> node) -> unit0 m
+val modify_node : node_id -> (node -> node) -> unit0 m
 
-val get_owner : oid -> ownerS m
+val get_owner : owner_id -> owner_state m
 
-val put_owner : oid -> ownerS -> unit0 m
+val put_owner : owner_id -> owner_state -> unit0 m
 
 val edges : (edgeWorld -> edgeWorld) -> unit0 m
 
 val edges_opt : (edgeWorld -> edgeWorld option) -> unit0 m
 
-val push_running : nid -> unit0 m
+val push_running : node_id -> unit0 m
 
 val pop_running : unit0 m
 
-val read_prefix : edgeWorld -> nid -> nid list
+val read_prefix : edgeWorld -> node_id -> node_id list
 
-val ghost_read : nid -> nid -> nid list -> state -> state
+val ghost_read : node_id -> node_id -> node_id list -> state -> state
 
-val ghost_run_start : nid -> state -> state
+val ghost_run_start : node_id -> state -> state
 
-val ghost_publish : nid -> state -> state
+val ghost_publish : node_id -> state -> state
 
-val run_end_unnoticed : nid -> nid option -> bool -> node -> state -> nid gset
+val run_end_unnoticed :
+  node_id -> node_id option -> bool -> node -> state -> node_id gset
 
-val ghost_run_end : nid -> nid option -> bool -> state -> state
+val ghost_run_end : node_id -> node_id option -> bool -> state -> state
 
-val ghost_dirty_cleared : nid -> nat -> state -> state
+val ghost_dirty_cleared : node_id -> nat -> state -> state
 
-val root_oid : oid
+val root_owner_id : owner_id
 
-val new_owner : nid -> oid option -> bool -> ownerS
+val new_owner : node_id -> owner_id option -> bool -> owner_state
 
-val owner_with_child : link -> ownerS -> ownerS
+val owner_with_child : link -> owner_state -> owner_state
 
-val owner_with_cleanup : cmd -> env -> ownerS -> ownerS
+val owner_with_cleanup : cmd -> env -> owner_state -> owner_state
 
 val zip_cleanups :
   cmd list -> env list -> nat list -> ((cmd, env) prod, nat) prod list
 
-val owner_cleanups : ownerS -> ((cmd, env) prod, nat) prod list
+val owner_cleanups : owner_state -> ((cmd, env) prod, nat) prod list
 
-val owner_detached : ownerS -> ownerS
+val owner_detached : owner_state -> owner_state
 
-val owner_retired : ownerS -> ownerS
+val owner_retired : owner_state -> owner_state
 
-val owner_with_error : val0 -> ownerS -> ownerS
+val owner_with_error : val0 -> owner_state -> owner_state
 
-val owner_without : link -> ownerS -> ownerS
+val owner_without : link -> owner_state -> owner_state
 
 val unlink : link -> unit0 m
 
-val record_error : oid -> val0 -> unit0 m
+val record_error : owner_id -> val0 -> unit0 m
 
-val log_label : nid m
+val log_label : node_id m
 
 val pure_scope_failure : val0
 
@@ -921,9 +934,9 @@ val prev_var : var
 
 val without_prev : env -> env
 
-val detached : oid -> unit0 m -> unit0 m
+val detached : owner_id -> unit0 m -> unit0 m
 
-val hosted : nid -> 'a1 m -> 'a1 m
+val hosted : node_id -> 'a1 m -> 'a1 m
 
 val untracked : 'a1 m -> 'a1 m
 
@@ -935,72 +948,72 @@ val outside_bodies : state -> bool
 
 val stale_live : node -> bool
 
-val track : nid -> unit0 m
+val track : node_id -> unit0 m
 
 val mark_reader : nat -> unit0 m
 
 val on_value : env -> expr -> (val0 -> outcome m) -> outcome m
 
-val on_node : env -> expr -> (nid -> outcome m) -> outcome m
+val on_node : env -> expr -> (node_id -> outcome m) -> outcome m
 
-val note_host_read : nid -> outcome -> unit0 m
+val note_host_read : node_id -> outcome -> unit0 m
 
-val next_id : nid m
+val next_id : node_id m
 
 val signal_node : val0 -> node
 
-val memo_node : scope_mode -> cmp -> cmd -> env -> node
+val memo_node : scope_mode -> comparer -> cmd -> env -> node
 
 val effect_node : cmd -> env -> node
 
-val add_node : nid -> node -> unit0 m
+val add_node : node_id -> node -> unit0 m
 
-val current_owner : oid option m
+val current_owner : owner_id option m
 
 val exec : nat -> env -> cmd -> outcome m
 
-val read : nat -> nid -> bool -> outcome m
+val read : nat -> node_id -> bool -> outcome m
 
-val read_node : nat -> nid -> outcome m
+val read_node : nat -> node_id -> outcome m
 
-val update_if_necessary : nat -> nid -> unit0 m
+val update_if_necessary : nat -> node_id -> unit0 m
 
-val refresh_or_pull : nat -> nid -> unit0 m
+val refresh_or_pull : nat -> node_id -> unit0 m
 
-val pull : nat -> nid -> unit0 m
+val pull : nat -> node_id -> unit0 m
 
-val refresh : nat -> nid -> unit0 m
+val refresh : nat -> node_id -> unit0 m
 
-val resolve_walk : nat -> nid -> nat -> unit0 m
+val resolve_walk : nat -> node_id -> nat -> unit0 m
 
-val recompute : nat -> nid -> unit0 m
+val recompute : nat -> node_id -> unit0 m
 
-val run_memo : nat -> nid -> unit0 m
+val run_memo : nat -> node_id -> unit0 m
 
-val execute_effect : nat -> nid -> unit0 m
+val execute_effect : nat -> node_id -> unit0 m
 
-val run_effect : nat -> nid -> unit0 m
+val run_effect : nat -> node_id -> unit0 m
 
-val run_effect_body : nat -> nid -> unit0 m
+val run_effect_body : nat -> node_id -> unit0 m
 
-val discharge : nat -> oid -> unit0 m
+val discharge : nat -> owner_id -> unit0 m
 
-val retire : nat -> oid -> unit0 m
+val retire : nat -> owner_id -> unit0 m
 
-val dispose_scope : nat -> oid -> unit0 m
+val dispose_scope : nat -> owner_id -> unit0 m
 
 val teardown :
-  nat -> oid -> link list -> ((cmd, env) prod, nat) prod list -> unit0 m
+  nat -> owner_id -> link list -> ((cmd, env) prod, nat) prod list -> unit0 m
 
-val run_cleanup : nat -> oid -> cmd -> env -> unit0 m
+val run_cleanup : nat -> owner_id -> cmd -> env -> unit0 m
 
-val release : nat -> nid -> unit0 m
+val release : nat -> node_id -> unit0 m
 
-val dispose_node : nat -> nid -> unit0 m
+val dispose_node : nat -> node_id -> unit0 m
 
-val attach : nat -> nid -> oid -> unit0 m
+val attach : nat -> node_id -> owner_id -> unit0 m
 
-val write_signal : nat -> nid -> val0 -> unit0 m
+val write_signal : nat -> node_id -> val0 -> unit0 m
 
 val request_flush : nat -> unit0 m
 
@@ -1016,21 +1029,21 @@ val run_top : nat -> cmd -> outcome m
 
 val trace_of : nat -> flags -> cmd -> event list option
 
-type node_view = { v_id : nid; v_kind : kind; v_value : val0;
+type node_view = { v_id : node_id; v_kind : kind; v_value : val0;
                    v_status : status; v_failure : val0 option;
-                   v_fresh : fresh1; v_unann : bool; v_runs : nat;
-                   v_disposed : bool; v_queued : bool; v_sources : nat;
-                   v_observers : nat }
+                   v_freshness : freshness; v_unannounced : bool;
+                   v_runs : nat; v_disposed : bool; v_queued : bool;
+                   v_sources : nat; v_observers : nat }
 
 type state_view = { v_nodes : node_view list; v_queue : nat; v_errors : nat }
 
-val view_node : state -> nid -> node -> node_view
+val view_node : state -> node_id -> node -> node_view
 
-val node_ids : state -> nid list
+val node_ids : state -> node_id list
 
 val view_of : state -> state_view
 
-val memo_ids : state -> nid list
+val memo_ids : state -> node_id list
 
 val closing : nat -> unit0 m
 

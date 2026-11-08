@@ -7,85 +7,85 @@ From Ranvier.Base Require Import Prelude Syntax.
 Global Instance outcome_eq_dec : EqDecision outcome.
 Proof. solve_decision. Defined.
 
-Record rprog := {
-  rsignals : gmap nid val;
-  rmemos : gmap nid cmd;
-  reffects : gmap nid cmd;
+Record program := {
+  program_signals : gmap node_id val;
+  program_memos : gmap node_id cmd;
+  program_effects : gmap node_id cmd;
 }.
 
 (** A host input: a signal write, the disposal of an effect or memo, or a read of a signal or memo. *)
-Inductive rinput := RWrite (n : nid) (v : val) | RDispose (n : nid) | RRead (n : nid).
+Inductive host_input := RWrite (n : node_id) (v : val) | RDispose (n : node_id) | RRead (n : node_id).
 
 Arguments RWrite _%_nat _%_Z.
 Arguments RDispose _%_nat.
 Arguments RRead _%_nat.
 
 (** Each inner list is one batch of inputs, applied in order. *)
-Definition rhistory := list (list rinput).
+Definition history := list (list host_input).
 
 (** The order of the effects in a round, by the round's index in the history and its effects. The
     initial round has index 0. *)
-Definition effect_order := nat -> list nid -> list nid.
+Definition effect_order := nat -> list node_id -> list node_id.
 
 Definition is_effect_order (order : effect_order) : Prop := forall i l, order i l ≡ₚ l.
 
 (** The state of one body's evaluation. *)
-Record bstate := {
-  bsigs : gmap nid val;
-  breads : list (nid * outcome);     (* tracked reads, oldest first *)
-  breads_all : list (nid * outcome); (* every read of the run, oldest first *)
-  bclean : list (cmd * env);         (* registered cleanups and their environments, newest first *)
-  bevs : list event;
-  bwrites : list (nid * val);
-  bretired : bool;                   (* the scope is disposed: a registered cleanup runs at once *)
+Record body_state := {
+  body_signals : gmap node_id val;
+  body_reads : list (node_id * outcome);     (* tracked reads, oldest first *)
+  body_all_reads : list (node_id * outcome); (* every read of the run, oldest first *)
+  body_cleanups : list (cmd * env);         (* registered cleanups and their environments, newest first *)
+  body_events : list event;
+  body_writes : list (node_id * val);
+  body_retired : bool;                   (* the scope is disposed: a registered cleanup runs at once *)
 }.
 
-Definition bs_start (sigs : gmap nid val) : bstate :=
-  {| bsigs := sigs; breads := []; breads_all := []; bclean := []; bevs := []; bwrites := [];
-     bretired := false |}.
+Definition body_start (sigs : gmap node_id val) : body_state :=
+  {| body_signals := sigs; body_reads := []; body_all_reads := []; body_cleanups := []; body_events := []; body_writes := [];
+     body_retired := false |}.
 
-Definition bs_start_retired (sigs : gmap nid val) : bstate :=
-  {| bsigs := sigs; breads := []; breads_all := []; bclean := []; bevs := []; bwrites := [];
-     bretired := true |}.
+Definition body_start_retired (sigs : gmap node_id val) : body_state :=
+  {| body_signals := sigs; body_reads := []; body_all_reads := []; body_cleanups := []; body_events := []; body_writes := [];
+     body_retired := true |}.
 
-Definition bs_track (t : nid) (o : outcome) (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := breads st ++ [(t, o)]; breads_all := breads_all st ++ [(t, o)];
-     bclean := bclean st; bevs := bevs st; bwrites := bwrites st; bretired := bretired st |}.
+Definition body_track (t : node_id) (o : outcome) (st : body_state) : body_state :=
+  {| body_signals := body_signals st; body_reads := body_reads st ++ [(t, o)]; body_all_reads := body_all_reads st ++ [(t, o)];
+     body_cleanups := body_cleanups st; body_events := body_events st; body_writes := body_writes st; body_retired := body_retired st |}.
 
-Definition bs_read_untracked (t : nid) (o : outcome) (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := breads st; breads_all := breads_all st ++ [(t, o)];
-     bclean := bclean st; bevs := bevs st; bwrites := bwrites st; bretired := bretired st |}.
+Definition body_read_untracked (t : node_id) (o : outcome) (st : body_state) : body_state :=
+  {| body_signals := body_signals st; body_reads := body_reads st; body_all_reads := body_all_reads st ++ [(t, o)];
+     body_cleanups := body_cleanups st; body_events := body_events st; body_writes := body_writes st; body_retired := body_retired st |}.
 
-Definition bs_write (t : nid) (v : val) (st : bstate) : bstate :=
-  {| bsigs := <[t := v]> (bsigs st); breads := breads st; breads_all := breads_all st;
-     bclean := bclean st; bevs := bevs st; bwrites := bwrites st ++ [(t, v)];
-     bretired := bretired st |}.
+Definition body_write (t : node_id) (v : val) (st : body_state) : body_state :=
+  {| body_signals := <[t := v]> (body_signals st); body_reads := body_reads st; body_all_reads := body_all_reads st;
+     body_cleanups := body_cleanups st; body_events := body_events st; body_writes := body_writes st ++ [(t, v)];
+     body_retired := body_retired st |}.
 
-Definition bs_cleanup (b : cmd) (g : env) (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := breads st; breads_all := breads_all st;
-     bclean := (b, g) :: bclean st; bevs := bevs st; bwrites := bwrites st;
-     bretired := bretired st |}.
+Definition body_add_cleanup (b : cmd) (g : env) (st : body_state) : body_state :=
+  {| body_signals := body_signals st; body_reads := body_reads st; body_all_reads := body_all_reads st;
+     body_cleanups := (b, g) :: body_cleanups st; body_events := body_events st; body_writes := body_writes st;
+     body_retired := body_retired st |}.
 
-Definition bs_emit (e : event) (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := breads st; breads_all := breads_all st; bclean := bclean st;
-     bevs := bevs st ++ [e]; bwrites := bwrites st; bretired := bretired st |}.
+Definition body_emit (e : event) (st : body_state) : body_state :=
+  {| body_signals := body_signals st; body_reads := body_reads st; body_all_reads := body_all_reads st; body_cleanups := body_cleanups st;
+     body_events := body_events st ++ [e]; body_writes := body_writes st; body_retired := body_retired st |}.
 
 (** Clears the tracked reads, so that a cleanup's reads wake nothing. *)
-Definition bs_untracked (st : bstate) : bstate :=
-  {| bsigs := bsigs st; breads := []; breads_all := breads_all st; bclean := bclean st;
-     bevs := bevs st; bwrites := bwrites st; bretired := bretired st |}.
+Definition body_untracked (st : body_state) : body_state :=
+  {| body_signals := body_signals st; body_reads := []; body_all_reads := body_all_reads st; body_cleanups := body_cleanups st;
+     body_events := body_events st; body_writes := body_writes st; body_retired := body_retired st |}.
 
 (** Emits the failure of an outcome. *)
-Definition note_fail (n : nid) (o : outcome) (st : bstate) : bstate :=
+Definition note_fail (n : node_id) (o : outcome) (st : body_state) : body_state :=
   match o with
   | Ok _ => st
-  | Fail f => bs_emit (EvFail n f) st
+  | Fail f => body_emit (EvFail n f) st
   end.
 
 (** The answer to a read of a node, given the signals current at the read. *)
-Definition reader := gmap nid val -> nid -> option outcome.
+Definition reader := gmap node_id val -> node_id -> option outcome.
 
-Definition node_of (z : val) : option nid :=
+Definition node_of (z : val) : option node_id :=
   if decide (0 <= z)%Z then Some (Z.to_nat z) else None.
 
 (** Continues with the value of an expression, or ends the body with its failure. *)
@@ -95,11 +95,11 @@ Local Notation with_ok r st k :=
 (** Evaluates a body on behalf of node [n]. [None] marks a stuck body: an undefined expression, a
     read [rd] leaves unanswered, a write to a non-signal, or a command outside the fragment.
     A zero condition selects the else branch. A failed expression ends the body. A failed read binds
-    the failure to [x] for [CTryRead], and ends the body for [CRead] and [CReadU]. [CBatch] sequences
+    the failure to [x] for [CTryRead], and ends the body for [CRead] and [CReadUntracked]. [CBatch] sequences
     its parts, and a failure ends the body and keeps the state reached. [CCleanup] registers its
     cleanup, or on a retired scope runs it at once, where a failure ends only the cleanup. *)
-Fixpoint exec (p : rprog) (rd : reader) (n : nid) (g : env) (c : cmd) (st : bstate)
-    : option (outcome * bstate) :=
+Fixpoint exec (p : program) (rd : reader) (n : node_id) (g : env) (c : cmd) (st : body_state)
+    : option (outcome * body_state) :=
   match c with
   | CRet e => o ← eval_expr g None e; Some (o, st)
   | CThrow f => Some (Fail f, st)
@@ -110,39 +110,39 @@ Fixpoint exec (p : rprog) (rd : reader) (n : nid) (g : env) (c : cmd) (st : bsta
   | CRead x m k =>
       with_ok (eval_expr g None m) st (fun z =>
         t ← node_of z;
-        o ← rd (bsigs st) t;
+        o ← rd (body_signals st) t;
         match o with
-        | Ok v => exec p rd n ((x, v) :: g) k (bs_track t o st)
-        | Fail f => Some (Fail f, bs_track t o st)
+        | Ok v => exec p rd n ((x, v) :: g) k (body_track t o st)
+        | Fail f => Some (Fail f, body_track t o st)
         end)
   | CTryRead x ok m k =>
       with_ok (eval_expr g None m) st (fun z =>
         t ← node_of z;
-        o ← rd (bsigs st) t;
+        o ← rd (body_signals st) t;
         match o with
-        | Ok v => exec p rd n ((ok, 1%Z) :: (x, v) :: g) k (bs_track t o st)
-        | Fail f => exec p rd n ((ok, 0%Z) :: (x, f) :: g) k (bs_track t o st)
+        | Ok v => exec p rd n ((ok, 1%Z) :: (x, v) :: g) k (body_track t o st)
+        | Fail f => exec p rd n ((ok, 0%Z) :: (x, f) :: g) k (body_track t o st)
         end)
-  | CReadU x m k =>
+  | CReadUntracked x m k =>
       with_ok (eval_expr g None m) st (fun z =>
         t ← node_of z;
-        o ← rd (bsigs st) t;
+        o ← rd (body_signals st) t;
         match o with
-        | Ok v => exec p rd n ((x, v) :: g) k (bs_read_untracked t o st)
-        | Fail f => Some (Fail f, bs_read_untracked t o st)
+        | Ok v => exec p rd n ((x, v) :: g) k (body_read_untracked t o st)
+        | Fail f => Some (Fail f, body_read_untracked t o st)
         end)
   | CWrite m e k =>
       with_ok (eval_expr g None m) st (fun z =>
         t ← node_of z;
         with_ok (eval_expr g None e) st (fun v =>
-          if decide (is_Some (rsignals p !! t))
-          then exec p rd n g k (bs_write t v st)
+          if decide (is_Some (program_signals p !! t))
+          then exec p rd n g k (body_write t v st)
           else None))
   | CCleanup b k =>
-      if bretired st then
-        r ← exec p rd n g b (bs_emit (EvCleanup n) st);
+      if body_retired st then
+        r ← exec p rd n g b (body_emit (EvCleanup n) st);
         exec p rd n g k (note_fail n r.1 r.2)
-      else exec p rd n g k (bs_cleanup b g st)
+      else exec p rd n g k (body_add_cleanup b g st)
   | CBatch b k =>
       r ← exec p rd n g b st;
       match r.1 with
@@ -150,13 +150,13 @@ Fixpoint exec (p : rprog) (rd : reader) (n : nid) (g : env) (c : cmd) (st : bsta
       | Fail _ => Some r
       end
   | CLog e k =>
-      with_ok (eval_expr g None e) st (fun v => exec p rd n g k (bs_emit (EvLog n v) st))
+      with_ok (eval_expr g None e) st (fun v => exec p rd n g k (body_emit (EvLog n v) st))
   | CSignal _ _ _ | CMemo _ _ _ _ _ | CEffect _ _ _ | CDispose _ _ => None
   end.
 
 (** A node's value over [sigs], with at most [k] nested memo evaluations. A disposed memo answers
     from [frz]. A memo's logs are discarded. *)
-Fixpoint node_value (k : nat) (p : rprog) (frz : gmap nid outcome) (sigs : gmap nid val) (n : nid)
+Fixpoint node_value (k : nat) (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val) (n : node_id)
     : option outcome :=
   match k with
   | O => None
@@ -164,9 +164,9 @@ Fixpoint node_value (k : nat) (p : rprog) (frz : gmap nid outcome) (sigs : gmap 
       match frz !! n with
       | Some o => Some o
       | None =>
-          match rsignals p !! n, rmemos p !! n with
+          match program_signals p !! n, program_memos p !! n with
           | Some _, _ => Ok <$> sigs !! n
-          | None, Some c => fst <$> exec p (fun _ => node_value k' p frz sigs) n [] c (bs_start ∅)
+          | None, Some c => fst <$> exec p (fun _ => node_value k' p frz sigs) n [] c (body_start ∅)
           | None, None => None
           end
       end
@@ -174,19 +174,19 @@ Fixpoint node_value (k : nat) (p : rprog) (frz : gmap nid outcome) (sigs : gmap 
 
 (** The signals reached through the tracked reads of [n]'s evaluation over [sigs]. A disposed memo
     reaches none. *)
-Fixpoint node_deps (k : nat) (p : rprog) (frz : gmap nid outcome) (sigs : gmap nid val) (n : nid)
-    : list nid :=
+Fixpoint node_deps (k : nat) (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val) (n : node_id)
+    : list node_id :=
   match k with
   | O => []
   | S k' =>
       match frz !! n with
       | Some _ => []
       | None =>
-          match rsignals p !! n, rmemos p !! n with
+          match program_signals p !! n, program_memos p !! n with
           | Some _, _ => [n]
           | None, Some c =>
-              match exec p (fun _ => node_value k' p frz sigs) n [] c (bs_start ∅) with
-              | Some (_, st) => flat_map (fun r => node_deps k' p frz sigs r.1) (breads st)
+              match exec p (fun _ => node_value k' p frz sigs) n [] c (body_start ∅) with
+              | Some (_, st) => flat_map (fun r => node_deps k' p frz sigs r.1) (body_reads st)
               | None => []
               end
           | None, None => []
@@ -196,100 +196,100 @@ Fixpoint node_deps (k : nat) (p : rprog) (frz : gmap nid outcome) (sigs : gmap n
 
 (** The current value of a signal or memo. The fuel covers every memo chain of an acyclic
     program. *)
-Definition memo_value (p : rprog) (frz : gmap nid outcome) (sigs : gmap nid val) (n : nid)
+Definition memo_value (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val) (n : node_id)
     : option outcome :=
-  node_value (S (size (rmemos p))) p frz sigs n.
+  node_value (S (size (program_memos p))) p frz sigs n.
 
-Definition memo_deps (p : rprog) (frz : gmap nid outcome) (sigs : gmap nid val) (n : nid)
-    : list nid :=
-  node_deps (S (size (rmemos p))) p frz sigs n.
+Definition memo_deps (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val) (n : node_id)
+    : list node_id :=
+  node_deps (S (size (program_memos p))) p frz sigs n.
 
 (** Every read answered from the signals current at the read. *)
-Definition live_read (p : rprog) (frz : gmap nid outcome) : reader :=
+Definition live_read (p : program) (frz : gmap node_id outcome) : reader :=
   fun sigs t => memo_value p frz sigs t.
 
 (** Every read answered from the one snapshot [snap]. *)
-Definition frozen_read (p : rprog) (frz : gmap nid outcome) (snap : gmap nid val) : reader :=
+Definition frozen_read (p : program) (frz : gmap node_id outcome) (snap : gmap node_id val) : reader :=
   fun _ t => memo_value p frz snap t.
 
 (** Runs cleanups in list order. A failed cleanup ends only itself and emits its failure. Its reads
     are untracked. *)
-Fixpoint run_cleanups (p : rprog) (rd : reader) (n : nid) (cs : list (cmd * env)) (st : bstate)
-    : option bstate :=
+Fixpoint run_cleanups (p : program) (rd : reader) (n : node_id) (cs : list (cmd * env)) (st : body_state)
+    : option body_state :=
   match cs with
   | [] => Some st
   | (b, g) :: cs' =>
-      r ← exec p rd n g b (bs_emit (EvCleanup n) st);
+      r ← exec p rd n g b (body_emit (EvCleanup n) st);
       run_cleanups p rd n cs' (note_fail n r.1 r.2)
   end.
 
 (** One run of effect [n]: the previous run's cleanups, then the body. A failed body emits its
     failure and keeps the reads and cleanups reached. *)
-Definition run_effect (p : rprog) (rd : reader) (n : nid) (body : cmd) (cs : list (cmd * env))
-    (sigs : gmap nid val) : option bstate :=
-  st ← run_cleanups p rd n cs (bs_start sigs);
-  r ← exec p rd n [] body (bs_emit (EvRun n) (bs_untracked st));
+Definition run_effect (p : program) (rd : reader) (n : node_id) (body : cmd) (cs : list (cmd * env))
+    (sigs : gmap node_id val) : option body_state :=
+  st ← run_cleanups p rd n cs (body_start sigs);
+  r ← exec p rd n [] body (body_emit (EvRun n) (body_untracked st));
   Some (note_fail n r.1 r.2).
 
 (** The disposal of node [n]: its cleanups on the retired scope, then [EvDispose]. *)
-Definition dispose_node (p : rprog) (rd : reader) (n : nid) (cs : list (cmd * env))
-    (sigs : gmap nid val) : option bstate :=
-  st ← run_cleanups p rd n cs (bs_start_retired sigs);
-  Some (bs_emit (EvDispose n) st).
+Definition dispose_node (p : program) (rd : reader) (n : node_id) (cs : list (cmd * env))
+    (sigs : gmap node_id val) : option body_state :=
+  st ← run_cleanups p rd n cs (body_start_retired sigs);
+  Some (body_emit (EvDispose n) st).
 
 (** A host read of [n] over [sigs]. A failed memo's failure is the read's answer. *)
-Definition host_read (p : rprog) (rd : reader) (n : nid) (sigs : gmap nid val) : option bstate :=
+Definition host_read (p : program) (rd : reader) (n : node_id) (sigs : gmap node_id val) : option body_state :=
   o ← rd sigs n;
-  Some (bs_emit (EvHostRead n o) (bs_start sigs)).
+  Some (body_emit (EvHostRead n o) (body_start sigs)).
 
-Inductive rkind := RkEffect | RkDispose | RkHostRead.
+Inductive record_kind := RkEffect | RkDispose | RkHostRead.
 
-Global Instance rkind_eq_dec : EqDecision rkind.
+Global Instance record_kind_eq_dec : EqDecision record_kind.
 Proof. solve_decision. Defined.
 
 (** The record of one effect run, disposal or host read: the signals at its start, the disposed memos' values,
     the cleanups it ran, its tracked reads, all its reads, its events and its signal writes.
     [run_all_reads] holds the tracked and untracked reads of its cleanups and body in order. *)
 Record run := {
-  run_node : nid;
-  run_kind : rkind;
-  run_snapshot : gmap nid val;
-  run_frozen : gmap nid outcome;
+  run_node : node_id;
+  run_kind : record_kind;
+  run_snapshot : gmap node_id val;
+  run_frozen : gmap node_id outcome;
   run_ran_cleanups : list (cmd * env);
-  run_reads : list (nid * outcome);
-  run_all_reads : list (nid * outcome);
+  run_reads : list (node_id * outcome);
+  run_all_reads : list (node_id * outcome);
   run_events : list event;
-  run_writes : list (nid * val);
+  run_writes : list (node_id * val);
 }.
 
 (** Signals, each effect's last-run reads and pending cleanups, each disposed memo's answer, the
     disposed nodes, and the index of the next round. *)
-Record rstate := {
-  rs_sigs : gmap nid val;
-  rs_effects : gmap nid (list (nid * outcome) * list (cmd * env));
-  rs_frozen : gmap nid outcome;
-  rs_disposed : gset nid;
+Record reference_state := {
+  rs_signals : gmap node_id val;
+  rs_effects : gmap node_id (list (node_id * outcome) * list (cmd * env));
+  rs_frozen : gmap node_id outcome;
+  rs_disposed : gset node_id;
   rs_round : nat;
 }.
 
-Definition effect_entry (st : rstate) (n : nid) : list (nid * outcome) * list (cmd * env) :=
+Definition effect_entry (st : reference_state) (n : node_id) : list (node_id * outcome) * list (cmd * env) :=
   default ([], []) (rs_effects st !! n).
 
-Definition record_of (n : nid) (kind : rkind) (st : rstate) (cs : list (cmd * env)) (bs : bstate)
+Definition record_of (n : node_id) (kind : record_kind) (st : reference_state) (cs : list (cmd * env)) (bs : body_state)
     : run :=
-  {| run_node := n; run_kind := kind; run_snapshot := rs_sigs st;
-     run_frozen := rs_frozen st; run_ran_cleanups := cs; run_reads := breads bs;
-     run_all_reads := breads_all bs; run_events := bevs bs; run_writes := bwrites bs |}.
+  {| run_node := n; run_kind := kind; run_snapshot := rs_signals st;
+     run_frozen := rs_frozen st; run_ran_cleanups := cs; run_reads := body_reads bs;
+     run_all_reads := body_all_reads bs; run_events := body_events bs; run_writes := body_writes bs |}.
 
-Fixpoint run_round (p : rprog) (ns : list nid) (st : rstate) : option (rstate * list run) :=
+Fixpoint run_round (p : program) (ns : list node_id) (st : reference_state) : option (reference_state * list run) :=
   match ns with
   | [] => Some (st, [])
   | n :: ns' =>
-      body ← reffects p !! n;
+      body ← program_effects p !! n;
       let cs := (effect_entry st n).2 in
-      bs ← run_effect p (live_read p (rs_frozen st)) n body cs (rs_sigs st);
-      let st' := {| rs_sigs := bsigs bs;
-                    rs_effects := <[n := (breads bs, bclean bs)]> (rs_effects st);
+      bs ← run_effect p (live_read p (rs_frozen st)) n body cs (rs_signals st);
+      let st' := {| rs_signals := body_signals bs;
+                    rs_effects := <[n := (body_reads bs, body_cleanups bs)]> (rs_effects st);
                     rs_frozen := rs_frozen st;
                     rs_disposed := rs_disposed st;
                     rs_round := rs_round st |} in
@@ -299,8 +299,8 @@ Fixpoint run_round (p : rprog) (ns : list nid) (st : rstate) : option (rstate * 
 
 (** Whether some read differs from the current graph, evaluating reads oldest first and stopping at
     the first difference. *)
-Fixpoint reads_moved (p : rprog) (frz : gmap nid outcome) (sigs : gmap nid val)
-    (reads : list (nid * outcome)) : option bool :=
+Fixpoint reads_moved (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val)
+    (reads : list (node_id * outcome)) : option bool :=
   match reads with
   | [] => Some false
   | (t, o) :: reads' =>
@@ -308,27 +308,27 @@ Fixpoint reads_moved (p : rprog) (frz : gmap nid outcome) (sigs : gmap nid val)
       if decide (cur = o) then reads_moved p frz sigs reads' else Some true
   end.
 
-Definition effect_ids (p : rprog) : list nid := (map_to_list (reffects p)).*1.
+Definition effect_ids (p : program) : list node_id := (map_to_list (program_effects p)).*1.
 
 (** The effects a round runs: those whose last-run reads differ from the graph at the round's
     start. A disposed effect has no entry, and so no reads to differ. *)
-Fixpoint run_set (p : rprog) (st : rstate) (ns : list nid) : option (list nid) :=
+Fixpoint run_set (p : program) (st : reference_state) (ns : list node_id) : option (list node_id) :=
   match ns with
   | [] => Some []
   | n :: ns' =>
-      moved ← reads_moved p (rs_frozen st) (rs_sigs st) (effect_entry st n).1;
+      moved ← reads_moved p (rs_frozen st) (rs_signals st) (effect_entry st n).1;
       rest ← run_set p st ns';
       Some (if (moved : bool) then n :: rest else rest)
   end.
 
-Definition next_round (st : rstate) : rstate :=
-  {| rs_sigs := rs_sigs st; rs_effects := rs_effects st; rs_frozen := rs_frozen st;
+Definition next_round (st : reference_state) : reference_state :=
+  {| rs_signals := rs_signals st; rs_effects := rs_effects st; rs_frozen := rs_frozen st;
      rs_disposed := rs_disposed st; rs_round := S (rs_round st) |}.
 
 (** Runs rounds until a round's run set is empty. [None] when [fuel] rounds do not reach that. An
     empty run set takes no round index. *)
-Fixpoint settle (fuel : nat) (order : effect_order) (p : rprog) (st : rstate)
-    : option (rstate * list run) :=
+Fixpoint settle (fuel : nat) (order : effect_order) (p : program) (st : reference_state)
+    : option (reference_state * list run) :=
   ns ← run_set p st (effect_ids p);
   match ns with
   | [] => Some (st, [])
@@ -345,24 +345,24 @@ Fixpoint settle (fuel : nat) (order : effect_order) (p : rprog) (st : rstate)
 (** Disposes [n]. A second disposal of a node does nothing, and a signal or an unknown node is stuck.
     An effect runs its cleanups over the current signals. A memo's last value is its value over the
     current signals. *)
-Definition apply_dispose (p : rprog) (n : nid) (st : rstate)
-    : option (rstate * list run) :=
+Definition apply_dispose (p : program) (n : node_id) (st : reference_state)
+    : option (reference_state * list run) :=
   if decide (n ∈ rs_disposed st) then Some (st, [])
   else
-    match reffects p !! n, rmemos p !! n with
+    match program_effects p !! n, program_memos p !! n with
     | Some _, _ =>
         let cs := (effect_entry st n).2 in
-        bs ← dispose_node p (live_read p (rs_frozen st)) n cs (rs_sigs st);
-        Some ({| rs_sigs := bsigs bs;
+        bs ← dispose_node p (live_read p (rs_frozen st)) n cs (rs_signals st);
+        Some ({| rs_signals := body_signals bs;
                  rs_effects := delete n (rs_effects st);
                  rs_frozen := rs_frozen st;
                  rs_disposed := {[ n ]} ∪ rs_disposed st;
                  rs_round := rs_round st |},
               [record_of n RkDispose st cs bs])
     | None, Some _ =>
-        o ← memo_value p (rs_frozen st) (rs_sigs st) n;
-        bs ← dispose_node p (live_read p (rs_frozen st)) n [] (rs_sigs st);
-        Some ({| rs_sigs := bsigs bs;
+        o ← memo_value p (rs_frozen st) (rs_signals st) n;
+        bs ← dispose_node p (live_read p (rs_frozen st)) n [] (rs_signals st);
+        Some ({| rs_signals := body_signals bs;
                  rs_effects := rs_effects st;
                  rs_frozen := <[n := o]> (rs_frozen st);
                  rs_disposed := {[ n ]} ∪ rs_disposed st;
@@ -371,12 +371,12 @@ Definition apply_dispose (p : rprog) (n : nid) (st : rstate)
     | None, None => None
     end.
 
-Definition apply_input (p : rprog) (i : rinput) (st : rstate)
-    : option (rstate * list run) :=
+Definition apply_input (p : program) (i : host_input) (st : reference_state)
+    : option (reference_state * list run) :=
   match i with
   | RWrite t v =>
-      if decide (is_Some (rsignals p !! t))
-      then Some ({| rs_sigs := <[t := v]> (rs_sigs st);
+      if decide (is_Some (program_signals p !! t))
+      then Some ({| rs_signals := <[t := v]> (rs_signals st);
                     rs_effects := rs_effects st;
                     rs_frozen := rs_frozen st;
                     rs_disposed := rs_disposed st;
@@ -384,12 +384,12 @@ Definition apply_input (p : rprog) (i : rinput) (st : rstate)
       else None
   | RDispose n => apply_dispose p n st
   | RRead n =>
-      bs ← host_read p (live_read p (rs_frozen st)) n (rs_sigs st);
+      bs ← host_read p (live_read p (rs_frozen st)) n (rs_signals st);
       Some (st, [record_of n RkHostRead st [] bs])
   end.
 
-Fixpoint apply_batch (p : rprog) (b : list rinput) (st : rstate)
-    : option (rstate * list run) :=
+Fixpoint apply_batch (p : program) (b : list host_input) (st : reference_state)
+    : option (reference_state * list run) :=
   match b with
   | [] => Some (st, [])
   | i :: b' =>
@@ -398,8 +398,8 @@ Fixpoint apply_batch (p : rprog) (b : list rinput) (st : rstate)
       Some (st2, r1 ++ r2)
   end.
 
-Fixpoint run_history (fuel : nat) (order : effect_order) (p : rprog) (h : rhistory) (st : rstate)
-    : option (rstate * list run) :=
+Fixpoint run_history (fuel : nat) (order : effect_order) (p : program) (h : history) (st : reference_state)
+    : option (reference_state * list run) :=
   match h with
   | [] => Some (st, [])
   | b :: h' =>
@@ -409,21 +409,21 @@ Fixpoint run_history (fuel : nat) (order : effect_order) (p : rprog) (h : rhisto
       Some (st2, r0 ++ r1 ++ r2)
   end.
 
-Definition rstate_start (p : rprog) : rstate :=
-  {| rs_sigs := rsignals p; rs_effects := ∅; rs_frozen := ∅; rs_disposed := ∅; rs_round := 0%nat |}.
+Definition reference_start (p : program) : reference_state :=
+  {| rs_signals := program_signals p; rs_effects := ∅; rs_frozen := ∅; rs_disposed := ∅; rs_round := 0%nat |}.
 
 (** Every effect run, disposal and host read of the history: an initial round of all effects, then settling, then
     each batch followed by settling. [fuel] bounds the rounds of each settling. *)
-Definition rruns (fuel : nat) (order : effect_order) (p : rprog) (h : rhistory)
+Definition reference_runs (fuel : nat) (order : effect_order) (p : program) (h : history)
     : option (list run) :=
-  '(st1, r1) ← run_round p (order 0%nat (effect_ids p)) (rstate_start p);
+  '(st1, r1) ← run_round p (order 0%nat (effect_ids p)) (reference_start p);
   '(st2, r2) ← settle fuel order p (next_round st1);
   '(_, r3) ← run_history fuel order p h st2;
   Some (r1 ++ r2 ++ r3).
 
-Definition rtrace (fuel : nat) (order : effect_order) (p : rprog) (h : rhistory)
+Definition reference_trace (fuel : nat) (order : effect_order) (p : program) (h : history)
     : option (list event) :=
-  rs ← rruns fuel order p h;
+  rs ← reference_runs fuel order p h;
   Some (concat (run_events <$> rs)).
 
 Fixpoint well_behaved_effect (c : cmd) : bool :=
@@ -432,40 +432,40 @@ Fixpoint well_behaved_effect (c : cmd) : bool :=
   | CThrow _ => true
   | CLet _ e k | CLog e k => expr_no_prev e && well_behaved_effect k
   | CIf e a b => expr_no_prev e && well_behaved_effect a && well_behaved_effect b
-  | CRead _ n k | CTryRead _ _ n k | CReadU _ n k => expr_no_prev n && well_behaved_effect k
+  | CRead _ n k | CTryRead _ _ n k | CReadUntracked _ n k => expr_no_prev n && well_behaved_effect k
   | CWrite n e k => expr_no_prev n && expr_no_prev e && well_behaved_effect k
   | CCleanup b k | CBatch b k => well_behaved_effect b && well_behaved_effect k
   | CSignal _ _ _ | CMemo _ _ _ _ _ | CEffect _ _ _ | CDispose _ _ => false
   end.
 
 (** Whatever its reads answer, a memo body reads only memos of lower rank. *)
-Definition memo_reads_below (p : rprog) (rank : nid -> nat) (m : nid) (c : cmd) : Prop :=
-  forall (rd : nid -> option outcome) o st t v,
-    exec p (fun _ => rd) m [] c (bs_start ∅) = Some (o, st) ->
-    (t, v) ∈ breads st ->
-    is_Some (rmemos p !! t) ->
+Definition memo_reads_below (p : program) (rank : node_id -> nat) (m : node_id) (c : cmd) : Prop :=
+  forall (rd : node_id -> option outcome) o st t v,
+    exec p (fun _ => rd) m [] c (body_start ∅) = Some (o, st) ->
+    (t, v) ∈ body_reads st ->
+    is_Some (program_memos p !! t) ->
     (rank t < rank m)%nat.
 
-Definition memos_acyclic (p : rprog) : Prop :=
-  exists rank, map_Forall (memo_reads_below p rank) (rmemos p).
+Definition memos_acyclic (p : program) : Prop :=
+  exists rank, map_Forall (memo_reads_below p rank) (program_memos p).
 
-Definition rwf (p : rprog) : Prop :=
-  dom (rsignals p) ## dom (rmemos p) /\
-  dom (rsignals p) ## dom (reffects p) /\
-  dom (rmemos p) ## dom (reffects p) /\
-  map_Forall (fun _ c => well_behaved_memo c = true) (rmemos p) /\
-  map_Forall (fun _ c => well_behaved_effect c = true) (reffects p) /\
+Definition well_formed_program (p : program) : Prop :=
+  dom (program_signals p) ## dom (program_memos p) /\
+  dom (program_signals p) ## dom (program_effects p) /\
+  dom (program_memos p) ## dom (program_effects p) /\
+  map_Forall (fun _ c => well_behaved_memo c = true) (program_memos p) /\
+  map_Forall (fun _ c => well_behaved_effect c = true) (program_effects p) /\
   memos_acyclic p.
 
 (** The effect runs of [n] in [rs], without its disposal or host reads. *)
-Definition runs_of (rs : list run) (n : nid) : list run :=
+Definition runs_of (rs : list run) (n : node_id) : list run :=
   filter (fun r => run_node r = n /\ run_kind r = RkEffect) rs.
 
 (** Run [S j] of effect [n] in [rs] is redundant when it and run [j] made the same reads, tracked and
     untracked, cleanups included, in the same order and with the same outcomes. The initial run has
     no previous run. *)
-Definition redundant (p : rprog) (rs : list run) (n : nid) (k : nat) : Prop :=
-  is_Some (reffects p !! n) /\
+Definition redundant (p : program) (rs : list run) (n : node_id) (k : nat) : Prop :=
+  is_Some (program_effects p !! n) /\
   exists j prev cur,
     k = S j /\
     runs_of rs n !! j = Some prev /\
@@ -473,10 +473,10 @@ Definition redundant (p : rprog) (rs : list run) (n : nid) (k : nat) : Prop :=
     run_all_reads cur = run_all_reads prev.
 
 (** What must be preserved from a trace. *)
-Record observation := { obs_ty : Type; obs_of : list event -> obs_ty }.
+Record observation := { observed_type : Type; observe : list event -> observed_type }.
 
 (** The whole trace, run counts included. *)
-Definition obs_full : observation := {| obs_ty := list event; obs_of := fun t => t |}.
+Definition observe_full : observation := {| observed_type := list event; observe := fun t => t |}.
 
 (** A node's settled view: the logs and failures since its last [EvRun], the distinct failures of its
     whole history in order of first occurrence, and whether it is disposed. A repeated failure adds
@@ -487,7 +487,7 @@ Record settled_view := {
   sv_disposed : bool;
 }.
 
-Definition settled_step (s : gmap nid settled_view) (e : event) : gmap nid settled_view :=
+Definition settled_step (s : gmap node_id settled_view) (e : event) : gmap node_id settled_view :=
   let cur n := default {| sv_last := []; sv_failures := []; sv_disposed := false |} (s !! n) in
   match e with
   | EvRun n =>
@@ -509,29 +509,29 @@ Definition settled_step (s : gmap nid settled_view) (e : event) : gmap nid settl
   end.
 
 (** The host reads of a trace, in order. *)
-Definition host_reads : list event -> list (nid * outcome) :=
+Definition host_reads : list event -> list (node_id * outcome) :=
   omap (fun e => match e with EvHostRead n o => Some (n, o) | _ => None end).
 
 (** Per node: the values of its last run, its failures and its disposal. For the whole trace: every
     host read, in order. *)
-Definition obs_settled : observation :=
-  {| obs_ty := gmap nid settled_view * list (nid * outcome);
-     obs_of := fun t => (foldl settled_step ∅ t, host_reads t) |}.
+Definition observe_settled : observation :=
+  {| observed_type := gmap node_id settled_view * list (node_id * outcome);
+     observe := fun t => (foldl settled_step ∅ t, host_reads t) |}.
 
 (** One valid order for the history, compared at every batch prefix. At each prefix of a history it
     answers, the engine answers with a prefix of the whole trace. An engine with no traces satisfies
     this, so an engine proof also owes [engine_answers]. *)
 Definition refines (O : observation)
-    (engine : rprog -> rhistory -> option (list event)) : Prop :=
-  forall p h t, rwf p -> engine p h = Some t ->
+    (engine : program -> history -> option (list event)) : Prop :=
+  forall p h t, well_formed_program p -> engine p h = Some t ->
     exists ord, is_effect_order ord /\
       forall h', prefix h' h ->
         exists te fuel tr, engine p h' = Some te /\ prefix te t /\
-          rtrace fuel ord p h' = Some tr /\ obs_of O te = obs_of O tr.
+          reference_trace fuel ord p h' = Some tr /\ observe O te = observe O tr.
 
 (** Some fuel of [engine] gives a trace whenever the reference settles under every valid order. *)
 Definition engine_answers
-    (engine : nat -> rprog -> rhistory -> option (list event)) : Prop :=
-  forall p h, rwf p ->
-    (forall ord, is_effect_order ord -> exists fuel t, rtrace fuel ord p h = Some t) ->
+    (engine : nat -> program -> history -> option (list event)) : Prop :=
+  forall p h, well_formed_program p ->
+    (forall ord, is_effect_order ord -> exists fuel t, reference_trace fuel ord p h = Some t) ->
     exists k t, engine k p h = Some t.

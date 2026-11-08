@@ -109,10 +109,10 @@ signal values, with dependencies discovered by that evaluation. Effect runs, log
 disposal are the observable events. The tier takes the order of effects within a flush as a parameter, so it
 mentions no observer position. Today's exact order is a separate result below.
 
-An **observation** selects what must be preserved from a trace. The tier defines at least `obs_full`, the whole trace
-including run counts, and `obs_settled`, the values each effect last saw plus failures and disposal. Refinement is
+An **observation** selects what must be preserved from a trace. The tier defines at least `observe_full`, the whole trace
+including run counts, and `observe_settled`, the values each effect last saw plus failures and disposal. Refinement is
 one relation, `refines Obs engine`. The choice of observation decides what counts as an optimisation: removing a
-redundant run violates `obs_full` and preserves `obs_settled`.
+redundant run violates `observe_full` and preserves `observe_settled`.
 
 The host can dispose nodes in a history. Node creation, and disposal from inside an effect, stay outside this tier.
 Programs outside the well-behaved fragment still get the general safety theorems of the lower tiers,
@@ -172,7 +172,7 @@ Each layer has a pure part, a heap part, or both, and imports only lower layers.
 | 8 | Ownership | `Owner`, `OwnerLink`, `Discharge`, `Retire`, node `Dispose` | Reverse acquisition teardown; each cleanup runs once; a disposed computation holds no source edges once its run has ended; a disposed effect ignores marks; a disposed memo still answers reads, as Core.fs documents; late registration runs immediately |
 | 9 | Whole graph | all | **Glitch-free reads**: outside the self-dirtying case, a read returns the value its body would compute from current signals. **Convergence**, for well-behaved programs: at quiescence, every effect has run against the latest values it reads. Regression witnesses for #290 and #302. Iris adequacy turns specs into statements about closed programs with no Iris in them |
 | R | Reference semantics | none | Written first, alongside layer 0, and imported only by layer 10. Determinism for a fixed history; glitch freedom as a property of the definition |
-| 10 | Refinement | all | **Engine order characterised**: the exact effect order in a flush, as a function of history, including swap-removal's effect on it. **Weak refinement**: `refines obs_settled`: for a well-behaved program, at every batch each effect's last logged values, failures and disposal, and all host reads, match the reference; `convergence` carries that every effect has run against the latest values it reads. **Exact refinement**: `refines obs_full`: the engine's trace, run counts included, equals the reference tier's under the characterised order, or a checked counterexample shows where it does not |
+| 10 | Refinement | all | **Engine order characterised**: the exact effect order in a flush, as a function of history, including swap-removal's effect on it. **Weak refinement**: `refines observe_settled`: for a well-behaved program, at every batch each effect's last logged values, failures and disposal, and all host reads, match the reference; `convergence` carries that every effect has run against the latest values it reads. **Exact refinement**: `refines observe_full`: the engine's trace, run counts included, equals the reference tier's under the characterised order, or a checked counterexample shows where it does not |
 | 11 | Worked optimisation | the chosen optimisation | The optimised engine satisfies `refines` under the observation chosen for it, and passes the differential check against its F# implementation |
 
 Layer 6 is the centre of the project. Layers 9 and 10 rest on it.
@@ -274,7 +274,7 @@ distinguish passes, so the check narrows drift and does not eliminate it. The mo
 
 ## Open
 
-- **Redundant runs:** the formal definition, and the owner's ruling on each case found. A redundant run whose re-run discharges a failing cleanup does not preserve `obs_settled`, so the statement above is checked only for cleanup-free runs until the owner rules.
+- **Redundant runs:** the formal definition, and the owner's ruling on each case found. A redundant run whose re-run discharges a failing cleanup does not preserve `observe_settled`, so the statement above is checked only for cleanup-free runs until the owner rules.
 - **The optimisation for the milestone:** chosen by the builder at the pure-tier report. It must have a measured cost worth removing in Ranvier today, be nontrivial to prove, and be checkable by the differential test. The reasons go in the report.
 
 ## Depth and order of work (author's call; the owner stated no preference)

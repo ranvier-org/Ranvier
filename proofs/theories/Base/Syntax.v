@@ -21,7 +21,7 @@ Inductive expr :=
 Inductive outcome := Ok (v : val) | Fail (f : val).
 
 (** Comparer behaviours of a memo. *)
-Inductive cmp := CmpEq | CmpNever | CmpThrows (f : val).
+Inductive comparer := CmpEq | CmpNever | CmpThrows (f : val).
 
 Inductive scope_mode := Pure | Owning.
 
@@ -32,10 +32,10 @@ Inductive cmd :=
   | CIf (e : expr) (t f : cmd)
   | CRead (x : var) (n : expr) (k : cmd)
   | CTryRead (x ok : var) (n : expr) (k : cmd)
-  | CReadU (x : var) (n : expr) (k : cmd)
+  | CReadUntracked (x : var) (n : expr) (k : cmd)
   | CWrite (n e : expr) (k : cmd)
   | CSignal (x : var) (e : expr) (k : cmd)
-  | CMemo (x : var) (m : scope_mode) (c : cmp) (b : cmd) (k : cmd)
+  | CMemo (x : var) (m : scope_mode) (c : comparer) (b : cmd) (k : cmd)
   | CEffect (x : var) (b : cmd) (k : cmd)
   | CCleanup (b : cmd) (k : cmd)
   | CDispose (n : expr) (k : cmd)
@@ -46,7 +46,7 @@ Arguments EVar _%_nat.
 Arguments CLet _%_nat _ _.
 Arguments CRead _%_nat _ _.
 Arguments CTryRead _%_nat _%_nat _ _.
-Arguments CReadU _%_nat _ _.
+Arguments CReadUntracked _%_nat _ _.
 Arguments CSignal _%_nat _ _.
 Arguments CMemo _%_nat _ _ _ _.
 Arguments CEffect _%_nat _ _.
@@ -90,12 +90,12 @@ Fixpoint eval_expr (g : env) (p : option val) (e : expr) : option outcome :=
   end.
 
 Inductive event :=
-  | EvRun (n : nid)
-  | EvLog (n : nid) (v : val)
-  | EvCleanup (n : nid)
-  | EvFail (n : nid) (f : val)
-  | EvDispose (n : nid)
-  | EvHostRead (n : nid) (o : outcome).
+  | EvRun (n : node_id)
+  | EvLog (n : node_id) (v : val)
+  | EvCleanup (n : node_id)
+  | EvFail (n : node_id) (f : val)
+  | EvDispose (n : node_id)
+  | EvHostRead (n : node_id) (o : outcome).
 
 Fixpoint expr_no_prev (e : expr) : bool :=
   match e with
@@ -116,7 +116,7 @@ Fixpoint well_behaved_memo (c : cmd) : bool :=
   | CTryRead _ _ n k => expr_no_prev n && well_behaved_memo k
   | CBatch b k => well_behaved_memo b && well_behaved_memo k
   | CLog e k => expr_no_prev e && well_behaved_memo k
-  | CReadU _ _ _ | CWrite _ _ _ | CSignal _ _ _ | CMemo _ _ _ _ _
+  | CReadUntracked _ _ _ | CWrite _ _ _ | CSignal _ _ _ | CMemo _ _ _ _ _
   | CEffect _ _ _ | CCleanup _ _ | CDispose _ _ => false
   end.
 
@@ -161,28 +161,28 @@ Proof. reflexivity. Qed.
 
 Local Notation ret := (CRet (EConst 0)).
 
-Example wb_accepts :
+Example well_behaved_memo_accepts :
   well_behaved_memo
     (CLet 0 (EConst 1) (CRead 1 (EVar 0) (CTryRead 2 3 (EVar 0)
       (CIf (EVar 3) (CBatch ret (CLog (EVar 1) ret)) (CThrow 1))))) = true.
 Proof. reflexivity. Qed.
-Example wb_rejects_prev : well_behaved_memo (CRet EPrev) = false.
+Example well_behaved_memo_rejects_prev : well_behaved_memo (CRet EPrev) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_prev_nested : well_behaved_memo (CIf (EAdd (EConst 1) EPrev) ret ret) = false.
+Example well_behaved_memo_rejects_prev_nested : well_behaved_memo (CIf (EAdd (EConst 1) EPrev) ret ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_reading_untracked : well_behaved_memo (CReadU 0 (EConst 0) ret) = false.
+Example well_behaved_memo_rejects_reading_untracked : well_behaved_memo (CReadUntracked 0 (EConst 0) ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_write : well_behaved_memo (CWrite (EConst 0) (EConst 1) ret) = false.
+Example well_behaved_memo_rejects_write : well_behaved_memo (CWrite (EConst 0) (EConst 1) ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_signal : well_behaved_memo (CSignal 0 (EConst 1) ret) = false.
+Example well_behaved_memo_rejects_signal : well_behaved_memo (CSignal 0 (EConst 1) ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_memo : well_behaved_memo (CMemo 0 Pure CmpEq ret ret) = false.
+Example well_behaved_memo_rejects_memo : well_behaved_memo (CMemo 0 Pure CmpEq ret ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_effect : well_behaved_memo (CEffect 0 ret ret) = false.
+Example well_behaved_memo_rejects_effect : well_behaved_memo (CEffect 0 ret ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_cleanup : well_behaved_memo (CCleanup ret ret) = false.
+Example well_behaved_memo_rejects_cleanup : well_behaved_memo (CCleanup ret ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_dispose : well_behaved_memo (CDispose (EConst 0) ret) = false.
+Example well_behaved_memo_rejects_dispose : well_behaved_memo (CDispose (EConst 0) ret) = false.
 Proof. reflexivity. Qed.
-Example wb_rejects_deep : well_behaved_memo (CLet 0 (EConst 1) (CBatch ret (CDispose (EConst 0) ret))) = false.
+Example well_behaved_memo_rejects_deep : well_behaved_memo (CLet 0 (EConst 1) (CBatch ret (CDispose (EConst 0) ret))) = false.
 Proof. reflexivity. Qed.

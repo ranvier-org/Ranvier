@@ -79,7 +79,7 @@ let rec read_expr (s : sexp) : expr =
   | Node [ Atom "eq"; a; b ] -> EEq (read_expr a, read_expr b)
   | _ -> failwith "not an expression"
 
-let read_cmp (s : sexp) : cmp =
+let read_cmp (s : sexp) : comparer =
   match s with
   | Atom "eq" -> CmpEq
   | Atom "never" -> CmpNever
@@ -94,7 +94,7 @@ let rec read_cmd (s : sexp) : cmd =
   | Node [ Atom "if"; e; a; b ] -> CIf (read_expr e, read_cmd a, read_cmd b)
   | Node [ Atom "read"; x; n; k ] -> CRead (var x, read_expr n, read_cmd k)
   | Node [ Atom "tryread"; x; ok; n; k ] -> CTryRead (var x, var ok, read_expr n, read_cmd k)
-  | Node [ Atom "readu"; x; n; k ] -> CReadU (var x, read_expr n, read_cmd k)
+  | Node [ Atom "readu"; x; n; k ] -> CReadUntracked (var x, read_expr n, read_cmd k)
   | Node [ Atom "write"; n; e; k ] -> CWrite (read_expr n, read_expr e, read_cmd k)
   | Node [ Atom "signal"; x; e; k ] -> CSignal (var x, read_expr e, read_cmd k)
   | Node [ Atom "memo"; x; Atom mode; q; b; k ] ->
@@ -147,11 +147,11 @@ let render_node (v : node_view) : string =
   | KSignal -> Printf.sprintf "S%d v=%d o=%d" id (int_of_z v.v_value) (int_of_nat v.v_observers)
   | KMemo ->
     Printf.sprintf "M%d v=%d st=%s fail=%s fr=%s u=%d r=%d d=%d s=%d o=%d" id (int_of_z v.v_value)
-      (render_status v.v_status) (render_failure v.v_failure) (render_fresh v.v_fresh) (flag v.v_unann)
+      (render_status v.v_status) (render_failure v.v_failure) (render_fresh v.v_freshness) (flag v.v_unannounced)
       (int_of_nat v.v_runs) (flag v.v_disposed) (int_of_nat v.v_sources) (int_of_nat v.v_observers)
   | KEffect ->
     Printf.sprintf "E%d st=%s fail=%s fr=%s r=%d d=%d q=%d s=%d" id (render_status v.v_status)
-      (render_failure v.v_failure) (render_fresh v.v_fresh) (int_of_nat v.v_runs) (flag v.v_disposed)
+      (render_failure v.v_failure) (render_fresh v.v_freshness) (int_of_nat v.v_runs) (flag v.v_disposed)
       (flag v.v_queued) (int_of_nat v.v_sources)
 
 let render_view (v : state_view) : string =

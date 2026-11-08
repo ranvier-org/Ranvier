@@ -9,13 +9,13 @@ From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine.
 (** The fields of a node the differential check compares. A kind's irrelevant fields hold their
     construction values, and the driver leaves them out. *)
 Record node_view := {
-  v_id : nid;
+  v_id : node_id;
   v_kind : kind;
   v_value : val;
   v_status : status;
   v_failure : option val;
-  v_fresh : fresh;
-  v_unann : bool;
+  v_freshness : freshness;
+  v_unannounced : bool;
   v_runs : nat;
   v_disposed : bool;
   v_queued : bool;
@@ -26,22 +26,22 @@ Record node_view := {
 (** The live queue length and the root owner's error count, beside each node in id order. *)
 Record state_view := { v_nodes : list node_view; v_queue : nat; v_errors : nat }.
 
-Definition view_node (s : state) (n : nid) (d : node) : node_view :=
+Definition view_node (s : state) (n : node_id) (d : node) : node_view :=
   {| v_id := n; v_kind := n_kind d; v_value := n_value d; v_status := n_status d;
-     v_failure := n_failure d; v_fresh := n_fresh d; v_unann := n_unann d; v_runs := n_runs d;
+     v_failure := n_failure d; v_freshness := n_freshness d; v_unannounced := n_unannounced d; v_runs := n_runs d;
      v_disposed := n_disposed d; v_queued := n_queued d;
-     v_sources := length (sslots (src_of (g_edges s) n));
-     v_observers := length (oitems (obs_of (g_edges s) n)) |}.
+     v_sources := length (source_slots (sources_of (g_edges s) n));
+     v_observers := length (observer_items (observers_of (g_edges s) n)) |}.
 
-(** Node ids run from 1 to [g_next]. *)
-Definition node_ids (s : state) : list nid := seq 1 (g_next s).
+(** Node ids run from 1 to [g_next_id]. *)
+Definition node_ids (s : state) : list node_id := seq 1 (g_next_id s).
 
 Definition view_of (s : state) : state_view :=
   {| v_nodes := omap (fun n => view_node s n <$> g_nodes s !! n) (node_ids s);
      v_queue := length (pending s);
-     v_errors := default 0 (length ∘ o_errors <$> g_owners s !! root_oid) |}.
+     v_errors := default 0 (length ∘ o_errors <$> g_owners s !! root_owner_id) |}.
 
-Definition memo_ids (s : state) : list nid :=
+Definition memo_ids (s : state) : list node_id :=
   omap (fun n => match n_kind <$> g_nodes s !! n with Some KMemo => Some n | _ => None end) (node_ids s).
 
 (** A host read of each memo existing at the start, in id order, then [Graph.Flush]. *)
@@ -51,8 +51,8 @@ Definition closing (fuel : nat) : M unit :=
        (fun (m : M unit) n =>
           let* _ := m in
           let* _ := exec fuel [] (CTryRead 0 1 (EConst (Z.of_nat n)) (CRet (EConst 0%Z))) in
-          m_ret tt)
-       (memo_ids s) (m_ret tt)
+          m_return tt)
+       (memo_ids s) (m_return tt)
       s with
     | Some (s', _) => run_flush fuel s'
     | None => None

@@ -59,7 +59,7 @@ Definition prog_S06 : cmd :=
     (R 10 (V 1) (
      CIf (EEq (V 10) (K 0))
        (R 11 (V 2) (R 12 (V 1) (L (EAdd (EAdd (V 10) (V 11)) (V 12)) Nop)))
-       (CReadU 11 (V 2) (L (EAdd (V 10) (V 11)) Nop)))) (
+       (CReadUntracked 11 (V 2) (L (EAdd (V 10) (V 11)) Nop)))) (
   W (V 1) (K 1) (W (V 2) (K 5) (W (V 1) (K 2) Nop))))).
 
 Definition prog_S07 : cmd :=
@@ -230,17 +230,17 @@ Proof. vm_compute. reflexivity. Qed.
 
 (** [S09b]: each cleanup failure stays out of the flush and lands in the root's errors. *)
 Example check_S09b_errors :
-  (s ← final prog_S09b; x ← g_owners s !! root_oid; Some (o_errors x)) = Some [8; 8].
+  (s ← final prog_S09b; x ← g_owners s !! root_owner_id; Some (o_errors x)) = Some [8; 8].
 Proof. vm_compute. reflexivity. Qed.
 
 (** [S10]: only the live effect observes the signal. *)
 Example check_S10_edges :
-  (s ← final prog_S10; Some (oitems (obs_of (g_edges s) 1%nat))) = Some [(3%nat, 0%nat)].
+  (s ← final prog_S10; Some (observer_items (observers_of (g_edges s) 1%nat))) = Some [(3%nat, 0%nat)].
 Proof. vm_compute. reflexivity. Qed.
 
 (** The disposed effect's edge to the memo ends with its run. *)
 Example check_disposed_running_edges :
-  (s ← final prog_disposed_running_observer_stays_clean; Some (oitems (obs_of (g_edges s) 2%nat))) = Some [].
+  (s ← final prog_disposed_running_observer_stays_clean; Some (observer_items (observers_of (g_edges s) 2%nat))) = Some [].
 Proof. vm_compute. reflexivity. Qed.
 
 (** The scenario ends with [Graph.Flush], which has no command. *)
@@ -299,7 +299,7 @@ Example check_disposed_window :
     r ← run_top 100000%nat setup (init current_flags);
     r' ← hosted 3%nat (exec 100000%nat e (CDispose (V 3) b)) r.1;
     Some r'.1 in
-  (s ← run (R 10 (V 2) Nop); Some (oitems (obs_of (g_edges s) 2%nat))) = Some [(3%nat, 0%nat)] /\
+  (s ← run (R 10 (V 2) Nop); Some (observer_items (observers_of (g_edges s) 2%nat))) = Some [(3%nat, 0%nat)] /\
   (s ← run (R 10 (V 2) (W (V 1) (K 1) Nop)); d ← g_nodes s !! 3%nat;
-   Some (n_fresh d, n_queued d, length (pending s))) = Some (Clean, false, 0%nat).
+   Some (n_freshness d, n_queued d, length (pending s))) = Some (Clean, false, 0%nat).
 Proof. split; vm_compute; reflexivity. Qed.

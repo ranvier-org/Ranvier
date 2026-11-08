@@ -4,60 +4,60 @@ From Ranvier.Pure Require Import ObserverSet SourceList State.
 
 (** ** Marks *)
 
-(** A copy of [d] with new values of [n_fresh], [n_unann] and [n_queued]. *)
-Definition node_marked (f : fresh) (u q : bool) (d : node) : node :=
+(** A copy of [d] with new values of [n_freshness], [n_unannounced] and [n_queued]. *)
+Definition node_marked (f : freshness) (u q : bool) (d : node) : node :=
   {| n_kind := n_kind d; n_value := n_value d; n_failure := n_failure d; n_status := n_status d;
-     n_fresh := f; n_unann := u; n_runs := n_runs d; n_published := n_published d;
+     n_freshness := f; n_unannounced := u; n_runs := n_runs d; n_published := n_published d;
      n_disposed := n_disposed d; n_queued := q; n_in_cleanup := n_in_cleanup d;
      n_scope := n_scope d; n_violated := n_violated d; n_body := n_body d; n_env := n_env d;
-     n_mode := n_mode d; n_cmp := n_cmp d; n_link := n_link d |}.
+     n_mode := n_mode d; n_comparer := n_comparer d; n_link := n_link d |}.
 
-Definition set_node (n : nid) (d : node) (s : state) : state :=
+Definition set_node (n : node_id) (d : node) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := <[n := d]> (g_nodes s);
-     g_owners := g_owners s; g_queue := g_queue s; g_head := g_head s;
-     g_flushing := g_flushing s; g_owed := g_owed s; g_batch := g_batch s; g_pull := g_pull s;
-     g_current := g_current s; g_untracked := g_untracked s; g_owner := g_owner s;
-     g_next := g_next s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_owners := g_owners s; g_queue := g_queue s; g_queue_head := g_queue_head s;
+     g_flushing := g_flushing s; g_flush_owed := g_flush_owed s; g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s;
+     g_current := g_current s; g_untracked := g_untracked s; g_current_owner := g_current_owner s;
+     g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
 
 (** [Graph.Schedule]. *)
-Definition enqueue (n : nid) (s : state) : state :=
+Definition enqueue (n : node_id) (s : state) : state :=
   {| g_flags := g_flags s; g_edges := g_edges s; g_nodes := g_nodes s;
-     g_owners := g_owners s; g_queue := g_queue s ++ [n]; g_head := g_head s;
-     g_flushing := g_flushing s; g_owed := g_owed s; g_batch := g_batch s; g_pull := g_pull s;
-     g_current := g_current s; g_untracked := g_untracked s; g_owner := g_owner s;
-     g_next := g_next s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
+     g_owners := g_owners s; g_queue := g_queue s ++ [n]; g_queue_head := g_queue_head s;
+     g_flushing := g_flushing s; g_flush_owed := g_flush_owed s; g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s;
+     g_current := g_current s; g_untracked := g_untracked s; g_current_owner := g_current_owner s;
+     g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
 
 (** The backward walk of [NotifyDirty], [NotifyDirtyExcept] and [NotifyCheck]. The natural is the
     cursor plus one, and each step reads the observer set of the current state. A cursor at or past the
     count descends one position at a time, which reaches the position [i <- count - 1] selects. *)
-Fixpoint walk_marks (mark : nid -> state -> option state) (src : nid) (n : nat) (s : state)
+Fixpoint walk_marks (mark : node_id -> state -> option state) (src : node_id) (n : nat) (s : state)
     : option state :=
   match n with
   | 0 => Some s
   | S i =>
-    if decide (length (oitems (obs_of (g_edges s) src)) <= i) then walk_marks mark src i s
-    else match oitems (obs_of (g_edges s) src) !! i with
+    if decide (length (observer_items (observers_of (g_edges s) src)) <= i) then walk_marks mark src i s
+    else match observer_items (observers_of (g_edges s) src) !! i with
          | Some (c, _) => mark c s ≫= walk_marks mark src i
          | None => None
          end
   end.
 
-Definition notify_with (mark : nid -> state -> option state) (src : nid) (s : state) : option state :=
-  walk_marks mark src (length (oitems (obs_of (g_edges s) src))) s.
+Definition notify_with (mark : node_id -> state -> option state) (src : node_id) (s : state) : option state :=
+  walk_marks mark src (length (observer_items (observers_of (g_edges s) src))) s.
 
 (** The [elif unannounced] test. *)
 Definition announce_due (s : state) (d : node) : bool :=
-  f_unannounced (g_flags s) && n_unann d.
+  f_unannounced (g_flags s) && n_unannounced d.
 
 (** [Effect.MarkDirty] and [Effect.MarkCheck], writing freshness [f]. *)
-Definition effect_marked (f : fresh) (n : nid) (d : node) (s : state) : state :=
+Definition effect_marked (f : freshness) (n : node_id) (d : node) (s : state) : state :=
   if n_disposed d || n_in_cleanup d then s
-  else if n_queued d then set_node n (node_marked f (n_unann d) true d) s
-  else enqueue n (set_node n (node_marked f (n_unann d) true d) s).
+  else if n_queued d then set_node n (node_marked f (n_unannounced d) true d) s
+  else enqueue n (set_node n (node_marked f (n_unannounced d) true d) s).
 
 (** [MarkCheck]. A signal and an absent node take no mark: every F# observer is a computation.
     [None] is exhausted fuel. *)
-Fixpoint mark_check (fuel : nat) (n : nid) (s : state) {struct fuel} : option state :=
+Fixpoint mark_check (fuel : nat) (n : node_id) (s : state) {struct fuel} : option state :=
   match fuel with
   | 0 => None
   | S f =>
@@ -65,24 +65,24 @@ Fixpoint mark_check (fuel : nat) (n : nid) (s : state) {struct fuel} : option st
     | Some d =>
       match n_kind d with
       | KMemo =>
-        if decide (n_fresh d = Clean) then
-          notify_with (mark_check f) n (set_node n (node_marked Check (n_unann d) (n_queued d) d) s)
+        if decide (n_freshness d = Clean) then
+          notify_with (mark_check f) n (set_node n (node_marked Check (n_unannounced d) (n_queued d) d) s)
         else if announce_due s d then
-          notify_with (mark_check f) n (set_node n (node_marked (n_fresh d) false (n_queued d) d) s)
+          notify_with (mark_check f) n (set_node n (node_marked (n_freshness d) false (n_queued d) d) s)
         else Some s
       | KEffect =>
-        Some (effect_marked (if decide (n_fresh d = Clean) then Check else n_fresh d) n d s)
+        Some (effect_marked (if decide (n_freshness d = Clean) then Check else n_freshness d) n d s)
       | KSignal => Some s
       end
     | None => Some s
     end
   end.
 
-Definition notify_check (fuel : nat) (src : nid) (s : state) : option state :=
+Definition notify_check (fuel : nat) (src : node_id) (s : state) : option state :=
   notify_with (mark_check fuel) src s.
 
 (** [MarkDirty]. A memo tells its observers [Check], so the recursion runs through [mark_check]. *)
-Definition mark_dirty (fuel : nat) (n : nid) (s : state) : option state :=
+Definition mark_dirty (fuel : nat) (n : node_id) (s : state) : option state :=
   match fuel with
   | 0 => None
   | S f =>
@@ -90,12 +90,12 @@ Definition mark_dirty (fuel : nat) (n : nid) (s : state) : option state :=
     | Some d =>
       match n_kind d with
       | KMemo =>
-        if decide (n_fresh d = Clean) then
-          notify_with (mark_check f) n (set_node n (node_marked Dirty (n_unann d) (n_queued d) d) s)
+        if decide (n_freshness d = Clean) then
+          notify_with (mark_check f) n (set_node n (node_marked Dirty (n_unannounced d) (n_queued d) d) s)
         else if announce_due s d then
           notify_with (mark_check f) n (set_node n (node_marked Dirty false (n_queued d) d) s)
-        else if decide (n_fresh d = Dirty) then Some s
-        else Some (set_node n (node_marked Dirty (n_unann d) (n_queued d) d) s)
+        else if decide (n_freshness d = Dirty) then Some s
+        else Some (set_node n (node_marked Dirty (n_unannounced d) (n_queued d) d) s)
       | KEffect => Some (effect_marked Dirty n d s)
       | KSignal => Some s
       end
@@ -103,18 +103,18 @@ Definition mark_dirty (fuel : nat) (n : nid) (s : state) : option state :=
     end
   end.
 
-Definition notify_dirty (fuel : nat) (src : nid) (s : state) : option state :=
+Definition notify_dirty (fuel : nat) (src : node_id) (s : state) : option state :=
   notify_with (mark_dirty fuel) src s.
 
 (** The visit of [NotifyDirtyExcept]. [r] is [CurrentComputation], and [None] is null. *)
-Definition mark_except (fuel : nat) (r : option nid) (c : nid) (s : state) : option state :=
+Definition mark_except (fuel : nat) (r : option node_id) (c : node_id) (s : state) : option state :=
   if decide (r = Some c) then Some s else mark_dirty fuel c s.
 
-Definition notify_dirty_except (fuel : nat) (src : nid) (r : option nid) (s : state) : option state :=
+Definition notify_dirty_except (fuel : nat) (src : node_id) (r : option node_id) (s : state) : option state :=
   notify_with (mark_except fuel r) src s.
 
 (** Any of the five marking operations, from [s] to [s']. *)
-Definition any_mark (fuel : nat) (n : nid) (r : option nid) (s s' : state) : Prop :=
+Definition any_mark (fuel : nat) (n : node_id) (r : option node_id) (s s' : state) : Prop :=
   mark_check fuel n s = Some s' \/ mark_dirty fuel n s = Some s' \/
   notify_check fuel n s = Some s' \/ notify_dirty fuel n s = Some s' \/
   notify_dirty_except fuel n r s = Some s'.
@@ -123,11 +123,11 @@ Definition any_mark (fuel : nat) (n : nid) (r : option nid) (s s' : state) : Pro
     memo forwards a mark. *)
 Definition mark_score (d : node) : nat :=
   match n_kind d with
-  | KMemo => (if decide (n_fresh d = Clean) then 1 else 0) + (if n_unann d then 1 else 0)
+  | KMemo => (if decide (n_freshness d = Clean) then 1 else 0) + (if n_unannounced d then 1 else 0)
   | _ => 0
   end.
 
-Definition nodes_score (m : gmap nid node) : nat :=
+Definition nodes_score (m : gmap node_id node) : nat :=
   sum_list (mark_score ∘ snd <$> map_to_list m).
 
 (** Bound on the walks started by later marks: one per memo in [Clean], one per memo holding an
@@ -140,40 +140,40 @@ Inductive mark_prim : state -> state -> Prop :=
   | prim_memo s n d f u :
       g_nodes s !! n = Some d ->
       n_kind d = KMemo ->
-      fresh_le (n_fresh d) f ->
-      (u = n_unann d \/ u = false) ->
+      freshness_le (n_freshness d) f ->
+      (u = n_unannounced d \/ u = false) ->
       mark_prim s (set_node n (node_marked f u (n_queued d) d) s)
   | prim_effect s n d f :
       g_nodes s !! n = Some d ->
       n_kind d = KEffect ->
       n_queued d = true ->
-      fresh_le (n_fresh d) f ->
-      mark_prim s (set_node n (node_marked f (n_unann d) true d) s)
+      freshness_le (n_freshness d) f ->
+      mark_prim s (set_node n (node_marked f (n_unannounced d) true d) s)
   | prim_enqueue s n d f :
       g_nodes s !! n = Some d ->
       n_kind d = KEffect ->
       n_queued d = false ->
-      fresh_le (n_fresh d) f ->
-      mark_prim s (enqueue n (set_node n (node_marked f (n_unann d) true d) s)).
+      freshness_le (n_freshness d) f ->
+      mark_prim s (enqueue n (set_node n (node_marked f (n_unannounced d) true d) s)).
 
 Local Notation marks := (rtc mark_prim).
 
 Lemma marks_trans s1 s2 s3 : marks s1 s2 -> marks s2 s3 -> marks s1 s3.
 Proof. intros H1 H2. by trans s2. Qed.
 
-Lemma fresh_le_refl f : fresh_le f f.
-Proof. unfold fresh_le. lia. Qed.
+Lemma freshness_le_refl f : freshness_le f f.
+Proof. unfold freshness_le. lia. Qed.
 
-Lemma fresh_le_trans f g h : fresh_le f g -> fresh_le g h -> fresh_le f h.
-Proof. unfold fresh_le. lia. Qed.
+Lemma freshness_le_trans f g h : freshness_le f g -> freshness_le g h -> freshness_le f h.
+Proof. unfold freshness_le. lia. Qed.
 
-Lemma fresh_le_clean f : fresh_le Clean f.
-Proof. unfold fresh_le. simpl. lia. Qed.
+Lemma freshness_le_clean f : freshness_le Clean f.
+Proof. unfold freshness_le. simpl. lia. Qed.
 
-Lemma fresh_le_dirty f : fresh_le f Dirty.
-Proof. destruct f; unfold fresh_le; simpl; lia. Qed.
+Lemma freshness_le_dirty f : freshness_le f Dirty.
+Proof. destruct f; unfold freshness_le; simpl; lia. Qed.
 
-Lemma walk_marks_rtc (mark : nid -> state -> option state) src n s s' :
+Lemma walk_marks_rtc (mark : node_id -> state -> option state) src n s s' :
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
   walk_marks mark src n s = Some s' ->
   marks s s'.
@@ -181,7 +181,7 @@ Proof.
   intros Hm. revert s. induction n as [|i IH]; intros s Hw; simpl in Hw.
   - simplify_eq. apply rtc_refl.
   - destruct (decide _) as [_|_]; [by apply IH|].
-    destruct (oitems (obs_of (g_edges s) src) !! i) as [[c ?]|]; [|done].
+    destruct (observer_items (observers_of (g_edges s) src) !! i) as [[c ?]|]; [|done].
     destruct (mark c s) as [s1|] eqn:Ec; simpl in Hw; [|done].
     eapply marks_trans; [by eapply Hm|by apply IH].
 Qed.
@@ -195,7 +195,7 @@ Proof. intros Hm. by apply walk_marks_rtc. Qed.
 Lemma effect_marked_rtc f n d s :
   g_nodes s !! n = Some d ->
   n_kind d = KEffect ->
-  fresh_le (n_fresh d) f ->
+  freshness_le (n_freshness d) f ->
   marks s (effect_marked f n d s).
 Proof.
   intros Hd Hk Hf. unfold effect_marked.
@@ -209,17 +209,17 @@ Proof.
   destruct (g_nodes s !! n) as [d|] eqn:Hd; [|simplify_eq; apply rtc_refl].
   destruct (n_kind d) eqn:Hk.
   - simplify_eq. apply rtc_refl.
-  - destruct (decide (n_fresh d = Clean)) as [Hc|Hc].
+  - destruct (decide (n_freshness d = Clean)) as [Hc|Hc].
     + eapply rtc_l.
-      * eapply prim_memo; [done|done| |by left]. rewrite Hc. apply fresh_le_clean.
+      * eapply prim_memo; [done|done| |by left]. rewrite Hc. apply freshness_le_clean.
       * eapply notify_with_rtc; [|done]. intros ???. apply IH.
     + destruct (announce_due s d).
       * eapply rtc_l.
-        -- eapply prim_memo; [done|done|apply fresh_le_refl|by right].
+        -- eapply prim_memo; [done|done|apply freshness_le_refl|by right].
         -- eapply notify_with_rtc; [|done]. intros ???. apply IH.
       * simplify_eq. apply rtc_refl.
   - simplify_eq. apply effect_marked_rtc; [done|done|].
-    destruct (decide (n_fresh d = Clean)) as [->|_]; [apply fresh_le_clean|apply fresh_le_refl].
+    destruct (decide (n_freshness d = Clean)) as [->|_]; [apply freshness_le_clean|apply freshness_le_refl].
 Qed.
 
 Lemma mark_dirty_rtc f n s s' : mark_dirty f n s = Some s' -> marks s s'.
@@ -228,17 +228,17 @@ Proof.
   destruct (g_nodes s !! n) as [d|] eqn:Hd; [|simplify_eq; apply rtc_refl].
   destruct (n_kind d) eqn:Hk.
   - simplify_eq. apply rtc_refl.
-  - destruct (decide (n_fresh d = Clean)) as [Hc|Hc].
+  - destruct (decide (n_freshness d = Clean)) as [Hc|Hc].
     + eapply rtc_l.
-      * eapply prim_memo; [done|done|apply fresh_le_dirty|by left].
+      * eapply prim_memo; [done|done|apply freshness_le_dirty|by left].
       * eapply notify_with_rtc; [|done]. intros ???. apply mark_check_rtc.
     + destruct (announce_due s d).
       * eapply rtc_l.
-        -- eapply prim_memo; [done|done|apply fresh_le_dirty|by right].
+        -- eapply prim_memo; [done|done|apply freshness_le_dirty|by right].
         -- eapply notify_with_rtc; [|done]. intros ???. apply mark_check_rtc.
-      * destruct (decide (n_fresh d = Dirty)); simplify_eq; [apply rtc_refl|].
-        apply rtc_once. eapply prim_memo; [done|done|apply fresh_le_dirty|by left].
-  - simplify_eq. apply effect_marked_rtc; [done|done|apply fresh_le_dirty].
+      * destruct (decide (n_freshness d = Dirty)); simplify_eq; [apply rtc_refl|].
+        apply rtc_once. eapply prim_memo; [done|done|apply freshness_le_dirty|by left].
+  - simplify_eq. apply effect_marked_rtc; [done|done|apply freshness_le_dirty].
 Qed.
 
 Lemma mark_except_rtc f r c s s' : mark_except f r c s = Some s' -> marks s s'.
@@ -269,15 +269,15 @@ Qed.
 (** [d'] is a later copy of [d] under marks. *)
 Definition node_rises (d d' : node) : Prop :=
   n_kind d' = n_kind d /\ n_disposed d' = n_disposed d /\ n_in_cleanup d' = n_in_cleanup d /\
-  fresh_le (n_fresh d) (n_fresh d') /\ (n_unann d = false -> n_unann d' = false).
+  freshness_le (n_freshness d) (n_freshness d') /\ (n_unannounced d = false -> n_unannounced d' = false).
 
 Lemma node_rises_refl d : node_rises d d.
-Proof. split_and!; try done. apply fresh_le_refl. Qed.
+Proof. split_and!; try done. apply freshness_le_refl. Qed.
 
 Lemma node_rises_trans d1 d2 d3 : node_rises d1 d2 -> node_rises d2 d3 -> node_rises d1 d3.
 Proof.
   intros (H1 & H2 & H3 & H4 & H5) (H1' & H2' & H3' & H4' & H5').
-  split_and!; try congruence; [|auto]. by eapply fresh_le_trans.
+  split_and!; try congruence; [|auto]. by eapply freshness_le_trans.
 Qed.
 
 Lemma prim_rises s s' m d :
@@ -325,15 +325,15 @@ Proof.
 Qed.
 
 Lemma score_marked_le d f u q :
-  fresh_le (n_fresh d) f -> (u = n_unann d \/ u = false) ->
+  freshness_le (n_freshness d) f -> (u = n_unannounced d \/ u = false) ->
   mark_score (node_marked f u q d) <= mark_score d.
 Proof.
   intros Hf Hu. unfold mark_score. simpl. destruct (n_kind d); [lia| |lia].
-  destruct (decide (n_fresh d = Clean)) as [Hc|Hc]; destruct (decide (f = Clean)) as [->|Hf'].
-  - destruct Hu as [-> | ->]; [lia|destruct (n_unann d); lia].
-  - destruct Hu as [-> | ->]; [lia|destruct (n_unann d); lia].
-  - destruct (n_fresh d); [done|unfold fresh_le in Hf; simpl in Hf; lia..].
-  - destruct Hu as [-> | ->]; [lia|destruct (n_unann d); lia].
+  destruct (decide (n_freshness d = Clean)) as [Hc|Hc]; destruct (decide (f = Clean)) as [->|Hf'].
+  - destruct Hu as [-> | ->]; [lia|destruct (n_unannounced d); lia].
+  - destruct Hu as [-> | ->]; [lia|destruct (n_unannounced d); lia].
+  - destruct (n_freshness d); [done|unfold freshness_le in Hf; simpl in Hf; lia..].
+  - destruct Hu as [-> | ->]; [lia|destruct (n_unannounced d); lia].
 Qed.
 
 
@@ -346,10 +346,10 @@ Proof.
     unfold mark_measure; simpl.
   - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f u (n_queued d) d) Hd).
     pose proof (score_marked_le d f u (n_queued d) Hf Hu). lia.
-  - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unann d) true d) Hd).
-    rewrite (score_effect (node_marked f (n_unann d) true d)), (score_effect d) in * by done. lia.
-  - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unann d) true d) Hd).
-    rewrite (score_effect (node_marked f (n_unann d) true d)), (score_effect d) in * by done. lia.
+  - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unannounced d) true d) Hd).
+    rewrite (score_effect (node_marked f (n_unannounced d) true d)), (score_effect d) in * by done. lia.
+  - pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unannounced d) true d) Hd).
+    rewrite (score_effect (node_marked f (n_unannounced d) true d)), (score_effect d) in * by done. lia.
 Qed.
 
 Lemma marks_measure s s' : marks s s' -> mark_measure s' <= mark_measure s.
@@ -359,17 +359,17 @@ Qed.
 
 (** A walk's start uses up a clean transition or an announcement. *)
 Lemma measure_memo_clean s n d f q :
-  g_nodes s !! n = Some d -> n_kind d = KMemo -> n_fresh d = Clean -> f <> Clean ->
-  S (mark_measure (set_node n (node_marked f (n_unann d) q d) s)) <= mark_measure s.
+  g_nodes s !! n = Some d -> n_kind d = KMemo -> n_freshness d = Clean -> f <> Clean ->
+  S (mark_measure (set_node n (node_marked f (n_unannounced d) q d) s)) <= mark_measure s.
 Proof.
   intros Hd Hk Hc Hf. unfold mark_measure. simpl.
-  pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unann d) q d) Hd) as Hi.
+  pose proof (nodes_score_insert (g_nodes s) n d (node_marked f (n_unannounced d) q d) Hd) as Hi.
   unfold mark_score in Hi. simpl in Hi. rewrite Hk, Hc in Hi.
   rewrite decide_True in Hi by done. rewrite decide_False in Hi by done. lia.
 Qed.
 
 Lemma measure_memo_announce s n d f q :
-  g_nodes s !! n = Some d -> n_kind d = KMemo -> n_fresh d <> Clean -> f <> Clean -> n_unann d = true ->
+  g_nodes s !! n = Some d -> n_kind d = KMemo -> n_freshness d <> Clean -> f <> Clean -> n_unannounced d = true ->
   S (mark_measure (set_node n (node_marked f false q d) s)) <= mark_measure s.
 Proof.
   intros Hd Hk Hc Hf Hu. unfold mark_measure. simpl.
@@ -378,12 +378,12 @@ Proof.
   rewrite !decide_False in Hi by done. lia.
 Qed.
 
-Lemma announce_due_unann s d : announce_due s d = true -> n_unann d = true.
-Proof. unfold announce_due. destruct (f_unannounced _), (n_unann d); done. Qed.
+Lemma announce_due_unannounced s d : announce_due s d = true -> n_unannounced d = true.
+Proof. unfold announce_due. destruct (f_unannounced _), (n_unannounced d); done. Qed.
 
 (** ** Termination *)
 
-Lemma walk_marks_some (mark : nid -> state -> option state) src n s bound :
+Lemma walk_marks_some (mark : node_id -> state -> option state) src n s bound :
   (forall c s0, mark_measure s0 < bound -> is_Some (mark c s0)) ->
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
   mark_measure s < bound ->
@@ -391,7 +391,7 @@ Lemma walk_marks_some (mark : nid -> state -> option state) src n s bound :
 Proof.
   intros Hs Hr. revert s. induction n as [|i IH]; intros s Hb; simpl; [by eexists|].
   destruct (decide _) as [_|Hlt]; [by apply IH|].
-  destruct (lookup_lt_is_Some_2 (oitems (obs_of (g_edges s) src)) i) as [[c slot] Hc]; [lia|].
+  destruct (lookup_lt_is_Some_2 (observer_items (observers_of (g_edges s) src)) i) as [[c slot] Hc]; [lia|].
   rewrite Hc. destruct (Hs c s Hb) as [s1 Hs1]. rewrite Hs1. simpl.
   apply IH. pose proof (marks_measure _ _ (Hr _ _ _ Hs1)). lia.
 Qed.
@@ -401,13 +401,13 @@ Proof.
   revert n s. induction f as [|f IH]; intros n s Hb; [lia|]. simpl.
   destruct (g_nodes s !! n) as [d|] eqn:Hd; [|by eexists].
   destruct (n_kind d) eqn:Hk; [by eexists| |by eexists].
-  destruct (decide (n_fresh d = Clean)) as [Hc|Hc].
+  destruct (decide (n_freshness d = Clean)) as [Hc|Hc].
   - apply (walk_marks_some _ _ _ _ f); [intros; by apply IH|intros ???; apply mark_check_rtc|].
     pose proof (measure_memo_clean s n d Check (n_queued d) Hd Hk Hc ltac:(done)). lia.
   - destruct (announce_due s d) eqn:Hu; [|by eexists].
     apply (walk_marks_some _ _ _ _ f); [intros; by apply IH|intros ???; apply mark_check_rtc|].
-    pose proof (measure_memo_announce s n d (n_fresh d) (n_queued d) Hd Hk Hc Hc
-                  (announce_due_unann _ _ Hu)). lia.
+    pose proof (measure_memo_announce s n d (n_freshness d) (n_queued d) Hd Hk Hc Hc
+                  (announce_due_unannounced _ _ Hu)). lia.
 Qed.
 
 Lemma mark_dirty_some f n s : mark_measure s < f -> is_Some (mark_dirty f n s).
@@ -415,7 +415,7 @@ Proof.
   destruct f as [|f]; intros Hb; [lia|]. simpl.
   destruct (g_nodes s !! n) as [d|] eqn:Hd; [|by eexists].
   destruct (n_kind d) eqn:Hk; [by eexists| |by eexists].
-  destruct (decide (n_fresh d = Clean)) as [Hc|Hc].
+  destruct (decide (n_freshness d = Clean)) as [Hc|Hc].
   - apply (walk_marks_some _ _ _ _ f);
       [intros; by apply mark_check_some|intros ???; apply mark_check_rtc|].
     pose proof (measure_memo_clean s n d Dirty (n_queued d) Hd Hk Hc ltac:(done)). lia.
@@ -423,8 +423,8 @@ Proof.
     + apply (walk_marks_some _ _ _ _ f);
         [intros; by apply mark_check_some|intros ???; apply mark_check_rtc|].
       pose proof (measure_memo_announce s n d Dirty (n_queued d) Hd Hk Hc ltac:(done)
-                    (announce_due_unann _ _ Hu)). lia.
-    + destruct (decide (n_fresh d = Dirty)); by eexists.
+                    (announce_due_unannounced _ _ Hu)). lia.
+    + destruct (decide (n_freshness d = Dirty)); by eexists.
 Qed.
 
 (** Fuel above [mark_measure] suffices for a mark, on any graph, cycles included. *)
@@ -452,7 +452,7 @@ Qed.
 Theorem mark_monotone fuel n r s s' m d :
   any_mark fuel n r s s' ->
   g_nodes s !! m = Some d ->
-  exists d', g_nodes s' !! m = Some d' /\ fresh_le (n_fresh d) (n_fresh d').
+  exists d', g_nodes s' !! m = Some d' /\ freshness_le (n_freshness d) (n_freshness d').
 Proof.
   intros Ha Hm. destruct (marks_rises _ _ _ _ (any_mark_rtc _ _ _ _ _ Ha) Hm) as (d' & Hd' & _ & _ & _ & Hf & _).
   eauto.
@@ -461,13 +461,13 @@ Qed.
 Theorem dirty_not_lost fuel n s s' m d :
   mark_check fuel n s = Some s' ->
   g_nodes s !! m = Some d ->
-  n_fresh d = Dirty ->
-  exists d', g_nodes s' !! m = Some d' /\ n_fresh d' = Dirty.
+  n_freshness d = Dirty ->
+  exists d', g_nodes s' !! m = Some d' /\ n_freshness d' = Dirty.
 Proof.
   intros Hc Hm Hf. destruct (marks_rises _ _ _ _ (mark_check_rtc _ _ _ _ Hc) Hm)
     as (d' & Hd' & _ & _ & _ & Hle & _).
-  exists d'. split; [done|]. rewrite Hf in Hle. destruct (n_fresh d'); [| |done];
-    unfold fresh_le in Hle; simpl in Hle; lia.
+  exists d'. split; [done|]. rewrite Hf in Hle. destruct (n_freshness d'); [| |done];
+    unfold freshness_le in Hle; simpl in Hle; lia.
 Qed.
 
 (** Every marking operation leaves both ends of every edge unchanged. *)
@@ -477,17 +477,17 @@ Proof. intros Ha. by eapply marks_edges, any_mark_rtc. Qed.
 
 (** ** The walk's visits *)
 
-Fixpoint mark_list (mark : nid -> state -> option state) (vis : list nid) (s : state) : option state :=
+Fixpoint mark_list (mark : node_id -> state -> option state) (vis : list node_id) (s : state) : option state :=
   match vis with
   | [] => Some s
   | c :: r => mark c s ≫= mark_list mark r
   end.
 
-Lemma length_view o : length (obs_view o) = length (oitems o).
-Proof. unfold obs_view. by rewrite length_fmap. Qed.
+Lemma length_view o : length (observer_view o) = length (observer_items o).
+Proof. unfold observer_view. by rewrite length_fmap. Qed.
 
 Lemma walk_clamp i o muts vis o' :
-  length (oitems o) <= i -> walk i o muts vis o' -> walk (S i) o muts vis o'.
+  length (observer_items o) <= i -> walk i o muts vis o' -> walk (S i) o muts vis o'.
 Proof.
   intros Hle Hw. inversion Hw as [|n' j o2 c slot ms o1 rest vis2 o3 Hmin Hj Ha Hr]; subst.
   - apply walk_end. lia.
@@ -495,36 +495,36 @@ Proof.
 Qed.
 
 Lemma walk_static n o :
-  walk n o ((fun _ => []) <$> rev (take n (obs_view o))) (rev (take n (obs_view o))) o.
+  walk n o ((fun _ => []) <$> rev (take n (observer_view o))) (rev (take n (observer_view o))) o.
 Proof.
   induction n as [|i IH].
   - rewrite take_0. simpl. apply walk_end. lia.
-  - destruct (decide (length (oitems o) <= i)) as [Hle|Hlt].
+  - destruct (decide (length (observer_items o) <= i)) as [Hle|Hlt].
     + rewrite !take_ge in * by (rewrite length_view; lia). by apply walk_clamp.
-    + destruct (lookup_lt_is_Some_2 (oitems o) i) as [[c slot] Hc]; [lia|].
-      assert (Hv : obs_view o !! i = Some c) by (apply view_lookup; eauto).
+    + destruct (lookup_lt_is_Some_2 (observer_items o) i) as [[c slot] Hc]; [lia|].
+      assert (Hv : observer_view o !! i = Some c) by (apply view_lookup; eauto).
       rewrite (take_S_r _ _ _ Hv), rev_app_distr. simpl.
       eapply walk_visit with (i := i); [lia|done|reflexivity|done].
 Qed.
 
-Lemma walk_marks_list (mark : nid -> state -> option state) src n s :
+Lemma walk_marks_list (mark : node_id -> state -> option state) src n s :
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
-  walk_marks mark src n s = mark_list mark (rev (take n (obs_view (obs_of (g_edges s) src)))) s.
+  walk_marks mark src n s = mark_list mark (rev (take n (observer_view (observers_of (g_edges s) src)))) s.
 Proof.
   intros Hm. revert s. induction n as [|i IH]; intros s; simpl.
   - done.
   - destruct (decide _) as [Hle|Hlt].
     + rewrite IH. rewrite !take_ge by (rewrite length_view; lia). done.
-    + destruct (lookup_lt_is_Some_2 (oitems (obs_of (g_edges s) src)) i) as [[c slot] Hc]; [lia|].
-      assert (Hv : obs_view (obs_of (g_edges s) src) !! i = Some c) by (apply view_lookup; eauto).
+    + destruct (lookup_lt_is_Some_2 (observer_items (observers_of (g_edges s) src)) i) as [[c slot] Hc]; [lia|].
+      assert (Hv : observer_view (observers_of (g_edges s) src) !! i = Some c) by (apply view_lookup; eauto).
       rewrite Hc, (take_S_r _ _ _ Hv), rev_app_distr. simpl.
       destruct (mark c s) as [s1|] eqn:E; simpl; [|done].
       rewrite IH. rewrite (marks_edges _ _ (Hm _ _ _ E)). done.
 Qed.
 
-Lemma notify_with_list (mark : nid -> state -> option state) src s :
+Lemma notify_with_list (mark : node_id -> state -> option state) src s :
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
-  notify_with mark src s = mark_list mark (rev (obs_view (obs_of (g_edges s) src))) s.
+  notify_with mark src s = mark_list mark (rev (observer_view (observers_of (g_edges s) src))) s.
 Proof.
   intros Hm. unfold notify_with. rewrite walk_marks_list by done.
   rewrite take_ge by (rewrite length_view; lia). done.
@@ -533,21 +533,21 @@ Qed.
 (** A marking walk is a [walk] with empty mutations at every visit: it visits the observers at the
     start, highest position first, and folds its mark over them. [walk_visits_added_observer] has a
     mutation at its first visit. *)
-Theorem notify_walk_unmutated fuel src r s (o := obs_of (g_edges s) src) (vis := rev (obs_view o)) :
-  walk (length (oitems o)) o ((fun _ => []) <$> vis) vis o /\
+Theorem notify_walk_unmutated fuel src r s (o := observers_of (g_edges s) src) (vis := rev (observer_view o)) :
+  walk (length (observer_items o)) o ((fun _ => []) <$> vis) vis o /\
   notify_check fuel src s = mark_list (mark_check fuel) vis s /\
   notify_dirty fuel src s = mark_list (mark_dirty fuel) vis s /\
   notify_dirty_except fuel src r s = mark_list (mark_except fuel r) vis s.
 Proof.
   split_and!.
-  - pose proof (walk_static (length (oitems o)) o) as Hw.
+  - pose proof (walk_static (length (observer_items o)) o) as Hw.
     rewrite take_ge in Hw by (rewrite length_view; lia). exact Hw.
   - apply notify_with_list. intros ???. apply mark_check_rtc.
   - apply notify_with_list. intros ???. apply mark_dirty_rtc.
   - apply notify_with_list. intros ???. apply mark_except_rtc.
 Qed.
 
-Lemma mark_list_visit (mark : nid -> state -> option state) vis s s' c :
+Lemma mark_list_visit (mark : node_id -> state -> option state) vis s s' c :
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
   mark_list mark vis s = Some s' ->
   c ∈ vis ->
@@ -566,7 +566,7 @@ Proof.
     eapply marks_trans; [by eapply Hm|done].
 Qed.
 
-Lemma elem_rev (c : nid) l : c ∈ l -> c ∈ rev l.
+Lemma elem_rev (c : node_id) l : c ∈ l -> c ∈ rev l.
 Proof. rewrite !list_elem_of_In. apply in_rev. Qed.
 
 (** ** Forwarding *)
@@ -574,15 +574,15 @@ Proof. rewrite !list_elem_of_In. apply in_rev. Qed.
 (** The computations affected by a mark: a memo, or an effect outside its disposal and its cleanups.
     [in_cleanup_observer_stays_clean] and [disposed_running_observer_stays_clean] show observers
     outside this set. *)
-Definition takes_marks (s : state) (m : nid) : Prop :=
+Definition takes_marks (s : state) (m : node_id) : Prop :=
   exists d, g_nodes s !! m = Some d /\
     (n_kind d = KMemo \/ (n_kind d = KEffect /\ n_disposed d = false /\ n_in_cleanup d = false)).
 
-Definition ends_stale (s : state) (m : nid) : Prop :=
-  exists d, g_nodes s !! m = Some d /\ stale (n_fresh d) = true.
+Definition ends_stale (s : state) (m : node_id) : Prop :=
+  exists d, g_nodes s !! m = Some d /\ stale (n_freshness d) = true.
 
-Lemma stale_rises f g : fresh_le f g -> stale f = true -> stale g = true.
-Proof. destruct f, g; unfold fresh_le; simpl; try done; lia. Qed.
+Lemma stale_rises f g : freshness_le f g -> stale f = true -> stale g = true.
+Proof. destruct f, g; unfold freshness_le; simpl; try done; lia. Qed.
 
 Lemma marks_stale s s' m : marks s s' -> ends_stale s m -> ends_stale s' m.
 Proof.
@@ -596,7 +596,7 @@ Proof.
   exists d'. split; [done|]. rewrite H1, H2, H3. done.
 Qed.
 
-Lemma set_node_stale s n d : stale (n_fresh d) = true -> ends_stale (set_node n d s) n.
+Lemma set_node_stale s n d : stale (n_freshness d) = true -> ends_stale (set_node n d s) n.
 Proof. intros Hst. exists d. split; [apply lookup_insert_eq|done]. Qed.
 
 Lemma effect_marked_stale f n d s :
@@ -618,7 +618,7 @@ Lemma mark_check_stale f m s s' :
   takes_marks s m -> mark_check f m s = Some s' -> ends_stale s' m.
 Proof.
   intros Ht Hc. destruct Ht as (d & Hd & Hk).
-  destruct (decide (n_fresh d = Clean)) as [Hf|Hf]; last first.
+  destruct (decide (n_freshness d = Clean)) as [Hf|Hf]; last first.
   { eapply marks_stale; [by eapply mark_check_rtc|]. exists d. split; [done|].
     by apply stale_of_not_clean. }
   destruct f as [|f]; simpl in Hc; [done|]. rewrite Hd in Hc.
@@ -632,7 +632,7 @@ Lemma mark_dirty_stale f m s s' :
   takes_marks s m -> mark_dirty f m s = Some s' -> ends_stale s' m.
 Proof.
   intros Ht Hc. destruct Ht as (d & Hd & Hk).
-  destruct (decide (n_fresh d = Clean)) as [Hf|Hf]; last first.
+  destruct (decide (n_freshness d = Clean)) as [Hf|Hf]; last first.
   { eapply marks_stale; [by eapply mark_dirty_rtc|]. exists d. split; [done|].
     by apply stale_of_not_clean. }
   destruct f as [|f]; simpl in Hc; [done|]. rewrite Hd in Hc.
@@ -642,12 +642,12 @@ Proof.
   - simplify_eq. by apply effect_marked_stale.
 Qed.
 
-Lemma notify_with_reaches (P : state -> Prop) (mark : nid -> state -> option state) src s s' m :
+Lemma notify_with_reaches (P : state -> Prop) (mark : node_id -> state -> option state) src s s' m :
   (forall s0 s1, marks s0 s1 -> P s0 -> P s1) ->
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
   (forall s0 s1, takes_marks s0 m -> mark m s0 = Some s1 -> P s1) ->
   notify_with mark src s = Some s' ->
-  m ∈ obs_view (obs_of (g_edges s) src) ->
+  m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
   P s'.
 Proof.
@@ -657,11 +657,11 @@ Proof.
   eapply Hp; [done|]. eapply Hst; [|done]. by eapply marks_takes.
 Qed.
 
-Lemma notify_with_stale (mark : nid -> state -> option state) src s s' m :
+Lemma notify_with_stale (mark : node_id -> state -> option state) src s s' m :
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
   (forall s0 s1, takes_marks s0 m -> mark m s0 = Some s1 -> ends_stale s1 m) ->
   notify_with mark src s = Some s' ->
-  m ∈ obs_view (obs_of (g_edges s) src) ->
+  m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
   ends_stale s' m.
 Proof.
@@ -671,7 +671,7 @@ Qed.
 (** Each walk leaves each observer that takes marks stale, with the running computation excepted from
     [notify_dirty_except]. *)
 Theorem notify_stales fuel src r s s' m :
-  m ∈ obs_view (obs_of (g_edges s) src) ->
+  m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
   (notify_check fuel src s = Some s' \/ notify_dirty fuel src s = Some s' \/
    (notify_dirty_except fuel src r s = Some s' /\ r <> Some m)) ->
@@ -691,7 +691,7 @@ Proof. done. Qed.
 
 Lemma set_node_takes s n f u d m :
   g_nodes s !! n = Some d -> n_kind d = KMemo ->
-  (u = n_unann d \/ u = false) -> fresh_le (n_fresh d) f ->
+  (u = n_unannounced d \/ u = false) -> freshness_le (n_freshness d) f ->
   takes_marks s m -> takes_marks (set_node n (node_marked f u (n_queued d) d) s) m.
 Proof.
   intros Hd Hk Hu Hf. apply marks_takes. apply rtc_once. by eapply prim_memo.
@@ -700,7 +700,7 @@ Qed.
 (** The walk a memo's transition starts, from the state after its write. *)
 Lemma forward_members f n s1 s' m :
   notify_with (mark_check f) n s1 = Some s' ->
-  m ∈ obs_view (obs_of (g_edges s1) n) ->
+  m ∈ observer_view (observers_of (g_edges s1) n) ->
   takes_marks s1 m ->
   ends_stale s' m.
 Proof. intros Hn Hin Ht. eapply (notify_stales f n None s1 s' m); [done|done|by left]. Qed.
@@ -710,8 +710,8 @@ Proof. intros Hn Hin Ht. eapply (notify_stales f n None s1 s' m); [done|done|by 
 Theorem mark_forwards_on_clean fuel n d os s s' :
   g_nodes s !! n = Some d ->
   n_kind d = KMemo ->
-  n_fresh d = Clean ->
-  obs_view (obs_of (g_edges s) n) = os ->
+  n_freshness d = Clean ->
+  observer_view (observers_of (g_edges s) n) = os ->
   (mark_check fuel n s = Some s' \/ mark_dirty fuel n s = Some s') ->
   ends_stale s' n /\ forall m, m ∈ os -> takes_marks s m -> ends_stale s' m.
 Proof.
@@ -720,7 +720,7 @@ Proof.
   destruct Hm as [Hm|Hm]; simpl in Hm; rewrite Hd, Hk in Hm; rewrite decide_True in Hm by done.
   all: split; [eapply marks_stale; [by eapply notify_with_rtc_check|by apply set_node_stale]|].
   all: intros m Hin Ht; eapply forward_members; [done|by rewrite set_node_edges|].
-  all: eapply set_node_takes; [done|done|by left| |done]; rewrite Hc; apply fresh_le_clean.
+  all: eapply set_node_takes; [done|done|by left| |done]; rewrite Hc; apply freshness_le_clean.
 Qed.
 
 (** A stale memo holding an announcement forwards as a clean one does, and ends with the announcement
@@ -729,45 +729,45 @@ Theorem mark_forwards_on_unannounced fuel n d os s s' :
   f_unannounced (g_flags s) = true ->
   g_nodes s !! n = Some d ->
   n_kind d = KMemo ->
-  stale (n_fresh d) = true ->
-  n_unann d = true ->
-  obs_view (obs_of (g_edges s) n) = os ->
+  stale (n_freshness d) = true ->
+  n_unannounced d = true ->
+  observer_view (observers_of (g_edges s) n) = os ->
   (mark_check fuel n s = Some s' \/ mark_dirty fuel n s = Some s') ->
-  (exists d', g_nodes s' !! n = Some d' /\ stale (n_fresh d') = true /\ n_unann d' = false) /\
+  (exists d', g_nodes s' !! n = Some d' /\ stale (n_freshness d') = true /\ n_unannounced d' = false) /\
   forall m, m ∈ os -> takes_marks s m -> ends_stale s' m.
 Proof.
   intros Hflag Hd Hk Hst Hu <- Hm.
-  assert (Hc : n_fresh d <> Clean) by (intros Hc; rewrite Hc in Hst; done).
+  assert (Hc : n_freshness d <> Clean) by (intros Hc; rewrite Hc in Hst; done).
   assert (Hdue : announce_due s d = true) by (unfold announce_due; by rewrite Hflag, Hu).
   destruct fuel as [|f]; [by destruct Hm|].
   destruct Hm as [Hm|Hm]; simpl in Hm; rewrite Hd, Hk in Hm; rewrite decide_False in Hm by done;
     rewrite Hdue in Hm.
   - split.
-    + destruct (marks_rises _ _ n (node_marked (n_fresh d) false (n_queued d) d)
+    + destruct (marks_rises _ _ n (node_marked (n_freshness d) false (n_queued d) d)
                   (notify_with_rtc_check _ _ _ _ Hm) ltac:(apply lookup_insert_eq))
         as (d' & Hd' & _ & _ & _ & Hf & Hfalse).
       exists d'. split_and!; [done| |by apply Hfalse]. by eapply stale_rises.
     + intros m Hin Ht. eapply forward_members; [done|by rewrite set_node_edges|].
-      eapply set_node_takes; [done|done|by right|apply fresh_le_refl|done].
+      eapply set_node_takes; [done|done|by right|apply freshness_le_refl|done].
   - split.
     + destruct (marks_rises _ _ n (node_marked Dirty false (n_queued d) d)
                   (notify_with_rtc_check _ _ _ _ Hm) ltac:(apply lookup_insert_eq))
         as (d' & Hd' & _ & _ & _ & Hf & Hfalse).
       exists d'. split_and!; [done| |by apply Hfalse]. by eapply stale_rises.
     + intros m Hin Ht. eapply forward_members; [done|by rewrite set_node_edges|].
-      eapply set_node_takes; [done|done|by right|apply fresh_le_dirty|done].
+      eapply set_node_takes; [done|done|by right|apply freshness_le_dirty|done].
 Qed.
 
 (** ** Effects and the queue *)
 
 (** [queue[queueHead..queueCount-1]]. F# releases a slot as it is consumed. *)
-Definition pending (s : state) : list nid := drop (g_head s) (g_queue s).
+Definition pending (s : state) : list node_id := drop (g_queue_head s) (g_queue s).
 
-Definition entries_of (n : nid) (l : list nid) : nat := length (filter (fun x => x = n) l).
+Definition entries_of (n : node_id) (l : list node_id) : nat := length (filter (fun x => x = n) l).
 
 (** The queue's agreement with [queued] for [n]: at most one pending entry, and none while unset. The
     flag can be set with no entry, between a dequeue and [queued <- false] in [Execute]. *)
-Definition queue_once (s : state) (n : nid) : Prop :=
+Definition queue_once (s : state) (n : node_id) : Prop :=
   forall d, g_nodes s !! n = Some d ->
     entries_of n (pending s) <= 1 /\ (n_queued d = false -> n ∉ pending s).
 
@@ -780,7 +780,7 @@ Proof.
 Qed.
 
 Lemma pending_enqueue n s :
-  pending (enqueue n s) = drop (g_head s) (g_queue s ++ [n]).
+  pending (enqueue n s) = drop (g_queue_head s) (g_queue s ++ [n]).
 Proof. done. Qed.
 
 Lemma entries_after_enqueue n h q :
@@ -793,12 +793,12 @@ Proof.
   - rewrite drop_ge by (rewrite length_app; simpl; lia). simpl. unfold entries_of. simpl. lia.
 Qed.
 
-Lemma elem_after_enqueue (n : nid) h (q : list nid) : h <= length q -> n ∈ drop h (q ++ [n]).
+Lemma elem_after_enqueue (n : node_id) h (q : list node_id) : h <= length q -> n ∈ drop h (q ++ [n]).
 Proof.
   intros Hle. rewrite drop_app_le by done. set_solver.
 Qed.
 
-Lemma elem_of_enqueued (x n : nid) h (q : list nid) :
+Lemma elem_of_enqueued (x n : node_id) h (q : list node_id) :
   x ∈ drop h (q ++ [n]) -> x ∈ drop h q \/ x = n.
 Proof.
   destruct (decide (h <= length q)) as [Hle|Hgt].
@@ -806,7 +806,7 @@ Proof.
   - rewrite drop_ge by (rewrite length_app; simpl; lia). set_solver.
 Qed.
 
-Lemma entries_other (m n : nid) h (q : list nid) :
+Lemma entries_other (m n : node_id) h (q : list node_id) :
   m <> n -> entries_of m (drop h (q ++ [n])) = entries_of m (drop h q).
 Proof.
   intros Hne. destruct (decide (h <= length q)) as [Hle|Hgt].
@@ -838,7 +838,7 @@ Lemma effect_marked_queues f n d s :
   queue_once s n ->
   let s' := effect_marked f n d s in
   (exists d', g_nodes s' !! n = Some d' /\ n_queued d' = true) /\ queue_once s' n /\
-  (g_head s <= length (g_queue s) -> n_queued d = false -> n ∈ pending s').
+  (g_queue_head s <= length (g_queue s) -> n_queued d = false -> n ∈ pending s').
 Proof.
   intros Hd Hdi Hcl Hq s'. subst s'. unfold effect_marked. rewrite Hdi, Hcl. simpl.
   destruct (Hq d Hd) as [Hle Hun].
@@ -873,7 +873,7 @@ Theorem effect_mark_queues fuel n d s s' :
   queue_once s n ->
   (mark_check fuel n s = Some s' \/ mark_dirty fuel n s = Some s') ->
   (exists d', g_nodes s' !! n = Some d' /\ n_queued d' = true) /\ queue_once s' n /\
-  (g_head s <= length (g_queue s) -> n_queued d = false -> n ∈ pending s').
+  (g_queue_head s <= length (g_queue s) -> n_queued d = false -> n ∈ pending s').
 Proof.
   intros Hd Hk Hdi Hcl Hq Hm.
   destruct fuel as [|f]; [by destruct Hm|].
@@ -902,17 +902,17 @@ Qed.
 
 (** ** What separates [mark_dirty] from [mark_check] *)
 
-Definition ends_dirty (s : state) (m : nid) : Prop :=
-  exists d, g_nodes s !! m = Some d /\ n_fresh d = Dirty.
+Definition ends_dirty (s : state) (m : node_id) : Prop :=
+  exists d, g_nodes s !! m = Some d /\ n_freshness d = Dirty.
 
 Lemma marks_dirty s s' m : marks s s' -> ends_dirty s m -> ends_dirty s' m.
 Proof.
   intros Hr (d & Hd & Hf). destruct (marks_rises _ _ _ _ Hr Hd) as (d' & Hd' & _ & _ & _ & Hle & _).
-  exists d'. split; [done|]. rewrite Hf in Hle. destruct (n_fresh d'); [| |done];
-    unfold fresh_le in Hle; simpl in Hle; lia.
+  exists d'. split; [done|]. rewrite Hf in Hle. destruct (n_freshness d'); [| |done];
+    unfold freshness_le in Hle; simpl in Hle; lia.
 Qed.
 
-Lemma set_node_dirty s n d : n_fresh d = Dirty -> ends_dirty (set_node n d s) n.
+Lemma set_node_dirty s n d : n_freshness d = Dirty -> ends_dirty (set_node n d s) n.
 Proof. intros Hf. exists d. split; [apply lookup_insert_eq|done]. Qed.
 
 (** A memo, or an effect outside its disposal and cleanups, ends [Dirty]. An effect already queued on
@@ -923,11 +923,11 @@ Proof.
   intros (d & Hd & Hk) Hc.
   destruct fuel as [|f]; simpl in Hc; [done|]. rewrite Hd in Hc.
   destruct Hk as [Hk|(Hk & Hdi & Hcl)]; rewrite Hk in Hc.
-  - destruct (decide (n_fresh d = Clean)).
+  - destruct (decide (n_freshness d = Clean)).
     { eapply marks_dirty; [by eapply notify_with_rtc_check|]. by apply set_node_dirty. }
     destruct (announce_due s d).
     { eapply marks_dirty; [by eapply notify_with_rtc_check|]. by apply set_node_dirty. }
-    destruct (decide (n_fresh d = Dirty)); simplify_eq; [by exists d|]. by apply set_node_dirty.
+    destruct (decide (n_freshness d = Dirty)); simplify_eq; [by exists d|]. by apply set_node_dirty.
   - simplify_eq. unfold effect_marked. rewrite Hdi, Hcl. simpl.
     destruct (n_queued d); by apply set_node_dirty.
 Qed.
@@ -935,7 +935,7 @@ Qed.
 (** Each dirty walk leaves each observer that takes marks [Dirty], with the running computation excepted
     from [notify_dirty_except]. *)
 Theorem notify_dirty_ends_dirty fuel src r s s' m :
-  m ∈ obs_view (obs_of (g_edges s) src) ->
+  m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
   (notify_dirty fuel src s = Some s' \/
    (notify_dirty_except fuel src r s = Some s' /\ r <> Some m)) ->
@@ -953,7 +953,7 @@ Qed.
 (** Every node of [s] is present in [s'], and is [Dirty] in [s'] only if it was in [s]. *)
 Definition keeps_undirty (s s' : state) : Prop :=
   forall m d, g_nodes s !! m = Some d ->
-    exists d', g_nodes s' !! m = Some d' /\ (n_fresh d' = Dirty -> n_fresh d = Dirty).
+    exists d', g_nodes s' !! m = Some d' /\ (n_freshness d' = Dirty -> n_freshness d = Dirty).
 
 Lemma keeps_undirty_refl s : keeps_undirty s s.
 Proof. intros m d Hd. eauto. Qed.
@@ -966,7 +966,7 @@ Proof.
 Qed.
 
 Lemma set_node_undirty s n d f u q :
-  g_nodes s !! n = Some d -> (f = Dirty -> n_fresh d = Dirty) ->
+  g_nodes s !! n = Some d -> (f = Dirty -> n_freshness d = Dirty) ->
   keeps_undirty s (set_node n (node_marked f u q d) s).
 Proof.
   intros Hd Hf m d0 Hm. simpl. destruct (decide (m = n)) as [->|Hne].
@@ -974,7 +974,7 @@ Proof.
   - rewrite lookup_insert_ne by done. eauto.
 Qed.
 
-Lemma walk_undirty (mark : nid -> state -> option state) src n s s' :
+Lemma walk_undirty (mark : node_id -> state -> option state) src n s s' :
   (forall c s0 s1, mark c s0 = Some s1 -> keeps_undirty s0 s1) ->
   walk_marks mark src n s = Some s' ->
   keeps_undirty s s'.
@@ -982,7 +982,7 @@ Proof.
   intros Hm. revert s. induction n as [|i IH]; intros s Hw; simpl in Hw.
   - simplify_eq. apply keeps_undirty_refl.
   - destruct (decide _) as [_|_]; [by apply IH|].
-    destruct (oitems (obs_of (g_edges s) src) !! i) as [[c ?]|]; [|done].
+    destruct (observer_items (observers_of (g_edges s) src) !! i) as [[c ?]|]; [|done].
     destruct (mark c s) as [s1|] eqn:Ec; simpl in Hw; [|done].
     eapply keeps_undirty_trans; [by eapply Hm|by apply IH].
 Qed.
@@ -993,7 +993,7 @@ Proof.
   destruct (g_nodes s !! n) as [d|] eqn:Hd; [|simplify_eq; apply keeps_undirty_refl].
   destruct (n_kind d).
   - simplify_eq. apply keeps_undirty_refl.
-  - destruct (decide (n_fresh d = Clean)).
+  - destruct (decide (n_freshness d = Clean)).
     { eapply keeps_undirty_trans;
         [|eapply (walk_undirty (mark_check f)); [intros ???; apply IH|exact Hm]].
       apply set_node_undirty; [done|by intros]. }
@@ -1003,7 +1003,7 @@ Proof.
     apply set_node_undirty; [done|by intros].
   - simplify_eq. unfold effect_marked.
     assert (Hup : keeps_undirty s (set_node n (node_marked
-                    (if decide (n_fresh d = Clean) then Check else n_fresh d) (n_unann d) true d) s)).
+                    (if decide (n_freshness d = Clean) then Check else n_freshness d) (n_unannounced d) true d) s)).
     { apply set_node_undirty; [done|]. destruct (decide _); by intros. }
     destruct (_ || _); [apply keeps_undirty_refl|].
     destruct (n_queued d); exact Hup.
@@ -1014,8 +1014,8 @@ Qed.
 Theorem mark_check_keeps_check fuel n s s' m d :
   (mark_check fuel n s = Some s' \/ notify_check fuel n s = Some s') ->
   g_nodes s !! m = Some d ->
-  n_fresh d <> Dirty ->
-  exists d', g_nodes s' !! m = Some d' /\ n_fresh d' <> Dirty.
+  n_freshness d <> Dirty ->
+  exists d', g_nodes s' !! m = Some d' /\ n_freshness d' <> Dirty.
 Proof.
   intros Hc Hm Hf.
   assert (Hk : keeps_undirty s s').
@@ -1031,33 +1031,33 @@ Theorem memo_mark_dirty_tells_check fuel n d s s' m d0 :
   mark_dirty fuel n s = Some s' ->
   m <> n ->
   g_nodes s !! m = Some d0 ->
-  n_fresh d0 <> Dirty ->
-  exists d', g_nodes s' !! m = Some d' /\ n_fresh d' <> Dirty.
+  n_freshness d0 <> Dirty ->
+  exists d', g_nodes s' !! m = Some d' /\ n_freshness d' <> Dirty.
 Proof.
   intros Hd Hk Hc Hne Hm Hf.
   assert (Hset : forall f u q, g_nodes (set_node n (node_marked f u q d) s) !! m = Some d0).
   { intros. simpl. by rewrite lookup_insert_ne. }
   assert (Hwalk : forall f g u,
             notify_with (mark_check f) n (set_node n (node_marked g u (n_queued d) d) s) = Some s' ->
-            exists d', g_nodes s' !! m = Some d' /\ n_fresh d' <> Dirty).
+            exists d', g_nodes s' !! m = Some d' /\ n_freshness d' <> Dirty).
   { intros f g u Hn. eapply (mark_check_keeps_check f n); [right; exact Hn|apply Hset|done]. }
   destruct fuel as [|f]; simpl in Hc; [done|]. rewrite Hd, Hk in Hc.
-  destruct (decide (n_fresh d = Clean)); [by eapply Hwalk|].
+  destruct (decide (n_freshness d = Clean)); [by eapply Hwalk|].
   destruct (announce_due s d); [by eapply Hwalk|].
-  destruct (decide (n_fresh d = Dirty)); simplify_eq; [by exists d0|].
+  destruct (decide (n_freshness d = Dirty)); simplify_eq; [by exists d0|].
   exists d0. split; [apply Hset|done].
 Qed.
 
-(** The [Clean] transition starts its walk with [n_unann] unchanged. A walk that reaches the memo again
+(** The [Clean] transition starts its walk with [n_unannounced] unchanged. A walk that reaches the memo again
     spends the announcement. *)
-Theorem clean_memo_keeps_unann fuel n d s :
+Theorem clean_memo_keeps_unannounced fuel n d s :
   g_nodes s !! n = Some d ->
   n_kind d = KMemo ->
-  n_fresh d = Clean ->
+  n_freshness d = Clean ->
   mark_check (S fuel) n s =
-    notify_with (mark_check fuel) n (set_node n (node_marked Check (n_unann d) (n_queued d) d) s) /\
+    notify_with (mark_check fuel) n (set_node n (node_marked Check (n_unannounced d) (n_queued d) d) s) /\
   mark_dirty (S fuel) n s =
-    notify_with (mark_check fuel) n (set_node n (node_marked Dirty (n_unann d) (n_queued d) d) s).
+    notify_with (mark_check fuel) n (set_node n (node_marked Dirty (n_unannounced d) (n_queued d) d) s).
 Proof.
   intros Hd Hk Hc. split.
   - simpl. rewrite Hd, Hk, decide_True by done. reflexivity.

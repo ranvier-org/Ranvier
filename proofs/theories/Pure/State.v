@@ -4,37 +4,37 @@ From Ranvier.Pure Require Import ObserverSet SourceList.
 
 Inductive kind := KSignal | KMemo | KEffect.
 
-(** A node's stored [Status]. [n_fresh] determines [Status.Stale]. *)
+(** A node's stored [Status]. [n_freshness] determines [Status.Stale]. *)
 Inductive status := StNone | StPending | StError | StUninitialized.
 
 Global Instance status_eq_dec : EqDecision status.
 Proof. solve_decision. Defined.
 
-(** [OwnerLink]. [l_gen] is the generation the link joined, and [None] once the link has left the
+(** [OwnerLink]. [l_generation] is the generation the link joined, and [None] once the link has left the
     list, the F# [-1]. *)
-Record link := { l_child : nid; l_owner : oid; l_gen : option nat; l_acquired : nat }.
+Record link := { l_child : node_id; l_owner : owner_id; l_generation : option nat; l_acquired : nat }.
 
 (** [Owner]. [o_children] is stored head to tail. [o_cleanups], [o_cleanup_envs] and [o_cleanup_order]
     are parallel and stored earliest first, and [o_cleanup_envs] holds each cleanup's captured
     environment. Teardown runs both from the end. [o_host] is the node whose scope this is, and labels
     the events of the owner's cleanups. *)
-Record ownerS := {
+Record owner_state := {
   o_children : list link;
   o_cleanups : list cmd;
   o_cleanup_envs : list env;
   o_cleanup_order : list nat;
   o_acquisitions : nat;
-  o_gen : nat;
+  o_generation : nat;
   o_disposed : bool;
-  o_sink : option oid;
+  o_sink : option owner_id;
   o_errors : list val;
-  o_host : nid
+  o_host : node_id
 }.
 
 Record node := { n_kind : kind; n_value : val; n_failure : option val; n_status : status;
-                 n_fresh : fresh; n_unann : bool; n_runs : nat; n_published : bool;
-                 n_disposed : bool; n_queued : bool; n_in_cleanup : bool; n_scope : option oid;
-                 n_violated : bool; n_body : cmd; n_env : env; n_mode : scope_mode; n_cmp : cmp;
+                 n_freshness : freshness; n_unannounced : bool; n_runs : nat; n_published : bool;
+                 n_disposed : bool; n_queued : bool; n_in_cleanup : bool; n_scope : option owner_id;
+                 n_violated : bool; n_body : cmd; n_env : env; n_mode : scope_mode; n_comparer : comparer;
                  n_link : option link }.
 
 (** [f_unannounced] enables the [elif unannounced] branches of marking, and [f_reader_mark] the
@@ -44,30 +44,30 @@ Record flags := { f_unannounced : bool; f_reader_mark : bool }.
 Definition current_flags : flags := {| f_unannounced := true; f_reader_mark := true |}.
 
 (** What a read of a node answers from: its value, status and failure. *)
-Definition nview : Type := val * status * option val.
+Definition read_view : Type := val * status * option val.
 
-Definition nview_of (d : node) : nview := (n_value d, n_status d, n_failure d).
+Definition read_view_of (d : node) : read_view := (n_value d, n_status d, n_failure d).
 
 (** Ghost state of check resolution. By reading [Engine.v], only its [ghost_] functions touch this field,
     and no engine decision reads it. *)
 Record ghost := {
-  gh_pub : gmap nid nview; (* a node's view as its observers were last told it *)
-  gh_seen : gmap (nid * nid) (list nview); (* a computation's reads of a source, newest first *)
-  gh_unnoticed : gset nid; (* computations whose reads can differ from [gh_pub] with no [Dirty] *)
-  gh_window : gmap nid nat (* [n_runs] at the latest [RecomputeScoped] clearing a memo's [Dirty] *)
+  gh_published : gmap node_id read_view; (* a node's view as its observers were last told it *)
+  gh_seen : gmap (node_id * node_id) (list read_view); (* a computation's reads of a source, newest first *)
+  gh_unnoticed : gset node_id; (* computations whose reads can differ from [gh_published] with no [Dirty] *)
+  gh_window : gmap node_id nat (* [n_runs] at the latest [RecomputeScoped] clearing a memo's [Dirty] *)
 }.
 
-Definition empty_ghost : ghost := {| gh_pub := ∅; gh_seen := ∅; gh_unnoticed := ∅; gh_window := ∅ |}.
+Definition empty_ghost : ghost := {| gh_published := ∅; gh_seen := ∅; gh_unnoticed := ∅; gh_window := ∅ |}.
 
-Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap nid node;
-                  g_owners : gmap oid ownerS; g_queue : list nid; g_head : nat;
-                  g_flushing : bool; g_owed : bool; g_batch : nat; g_pull : nat;
-                  g_current : option nid; g_untracked : bool; g_owner : option oid;
-                  g_next : nat; g_trace : list event;
-                  g_running : list nid (* ghost: between a run's start and EndRun *);
+Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id node;
+                  g_owners : gmap owner_id owner_state; g_queue : list node_id; g_queue_head : nat;
+                  g_flushing : bool; g_flush_owed : bool; g_batch_depth : nat; g_pull_depth : nat;
+                  g_current : option node_id; g_untracked : bool; g_current_owner : option owner_id;
+                  g_next_id : nat; g_trace : list event;
+                  g_running : list node_id (* ghost: between a run's start and EndRun *);
                   g_ghost : ghost }.
 
 (** [c] observes [src]: a slot of [c] and a position of [src]'s observers each hold the other. *)
-Definition edge (s : state) (src c : nid) : Prop :=
+Definition edge (s : state) (src c : node_id) : Prop :=
   exists i h, slot_at (g_edges s) c i = Some (src, Some h) /\
-              oitems (obs_of (g_edges s) src) !! h = Some (c, i).
+              observer_items (observers_of (g_edges s) src) !! h = Some (c, i).

@@ -57,7 +57,7 @@ intended, the entry closes as "spec corrected".
   `self_marking_through_memo` contradicts: the reading memo goes clean over a source whose next run moves. 3438-3441 and the
   doc of `lateLinkConverges` (`AsyncEdges.fs`, 2e8f9690) point the same way: a reader is told when the node ends a run stale.
   The spec names this as its known starting candidate.
-  **`wake_ok` holds.** Every stale node in each end state holds `n_unann` (`stale_all_unann`), so the edge from the stale
+  **`wake_ok` holds.** Every stale node in each end state holds `n_unannounced` (`stale_all_unannounced`), so the edge from the stale
   node to the clean, unqueued, idle observer is covered by the last disjunct alone, and `no_lost_wakeups` is not falsified:
   the theorem does not claim a later mark will arrive. **The property that fails:** when a flush returns with an empty live
   queue and nothing running, every effect's last run read, from each source, the value that source's body computes from the
@@ -117,7 +117,7 @@ intended, the entry closes as "spec corrected".
   **Theorems.** `glitch_free_read` (Task 11) is affected: for a node that is not `self_dirtying`, a read returns what its body
   computes, and this read returns nothing. Task 11's `self_dirtying` or `well_behaved_program` must exclude memo cycles, self-reads
   included, or this program falsifies the theorem. The plan's Task 11 carries that. No proved theorem is falsified, and none is
-  weakened. `rwf` includes `memos_acyclic`, which rejects this program, so Task 12's `engine_of_answers` and `weak_refinement` keep
+  weakened. `well_formed_program` includes `memos_acyclic`, which rejects this program, so Task 12's `engine_of_answers` and `weak_refinement` keep
   their form with that premise. `well_behaved_memo` alone accepts a self-read and is no substitute for it. Any statement that `read`
   or `update_if_necessary` returns needs `memos_acyclic` as a premise, and Task 8's `resolve_clean_no_move` and Task 9's
   `engine_inv_preserved` hold over results, which this read has none of. In the differential check this program is `fatal` on the
@@ -140,7 +140,7 @@ intended, the entry closes as "spec corrected".
   **Contrary evidence.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the contract", and this
   memo writes. From reading, not run: a cleanup that writes under `x`'s run reaches the same skip, which Core.fs 4178-4181 documents
   as a behaviour. **Theorems.** `resolve_clean_no_move` is false on this engine, and is the Open theorem below.
-  `resolve_clean_unmoved` proves it under `reads_settled`, from `check_inv`'s preservation and `unmoved_short_of_dirty`, without using the walk: the memo is not in `gh_unnoticed`, and neither it
+  `resolve_clean_unmoved` proves it under `reads_settled`, from `check_invariant`'s preservation and `unmoved_short_of_dirty`, without using the walk: the memo is not in `gh_unnoticed`, and neither it
   nor a source is running. `gh_unnoticed` records four events: this skip, a read of a running node, the `Dirty` cleared at the start
   of `RecomputeScoped` (Core.fs 4191), and a run with no move ending on a view other than the published one, which takes a nested run.
   `check_cutoff_settled` shows the premise holding on an ordinary resolution. From `Clean` or `Check`, the conclusion holds of any
@@ -171,18 +171,18 @@ intended, the entry closes as "spec corrected".
   The case falls under the running disjunct of `later_mark_forwarded`, not under `takes_marks`.
 - `reference_run_redundant` (`theories/Reference/Properties.v`): the reference tier itself has a
   redundant run. A round's run set comes from its starting snapshot, and an earlier effect of the
-  round can restore the value a later one read. Under `t_rev`, the `resetting` program re-runs effect
+  round can restore the value a later one read. Under `order_reversed`, the `resetting` program re-runs effect
   8 on the value of its previous run. The definition follows the ruling for Task 3. The question for
   the owner: does a run set stay fixed at the round's start, or does a run re-compare when its turn
   comes? Not a Core.fs defect.
 - `redundant_failing_cleanup_changes_settled` (`theories/Reference/Properties.v`): removing a redundant
-  run can change `obs_settled`. In `resetting_failing_cleanup` under `t_rev` and history
+  run can change `observe_settled`. In `resetting_failing_cleanup` under `order_reversed` and history
   `[[RWrite 0 1; RWrite 1 1]]`, run 1 of effect 8 is redundant, and the only `EvFail 8 7` of the trace
   comes from the cleanup it discharges. `sv_failures` holds the distinct failures of the history, so a
   removed run takes out a failure that occurs only in its cleanups. The design's claim that removing a
-  redundant run preserves `obs_settled` holds on the cleanup-free example `redundant_run_settled_equal`
-  and is false here. `obs_settled` and `redundant` are unchanged, pending the owner's ruling.
-- `logging_cleanup_drop_unobserved` (`theories/Reference/Properties.v`): `obs_settled` admits an engine
+  redundant run preserves `observe_settled` holds on the cleanup-free example `redundant_run_settled_equal`
+  and is false here. `observe_settled` and `redundant` are unchanged, pending the owner's ruling.
+- `logging_cleanup_drop_unobserved` (`theories/Reference/Properties.v`): `observe_settled` admits an engine
   that drops a non-failing logging cleanup of a re-run: `[R9;C9;L100;C9;L0;R9]` and `[R9;R9]` have equal
   views. Task 13a's `optimised_cleanups` covers this for the worked optimisation.
 
@@ -218,11 +218,11 @@ intended, the entry closes as "spec corrected".
 
 Changes to `redundant` from its first statement in the plan.
 
-- `redundant : rprog -> list event -> nid -> nat -> Prop` became
-  `redundant : rprog -> list run -> nid -> nat -> Prop`. A `list event` holds no read values, and
-  neither does `rprog`, since the values depend on the history. The prose definition, "every value
+- `redundant : program -> list event -> node_id -> nat -> Prop` became
+  `redundant : program -> list run -> node_id -> nat -> Prop`. A `list event` holds no read values, and
+  neither does `program`, since the values depend on the history. The prose definition, "every value
   it read is equal to its previous run's", needs them. A `run` holds the reads and the events of one
-  run, and `rtrace` is the concatenation of `run_events` over `rruns`.
+  run, and `reference_trace` is the concatenation of `run_events` over `reference_runs`.
 - "Equal to its previous run's" reads as: `run_all_reads` of the run equals `run_all_reads` of the
   previous run, as lists. `run_all_reads` holds every read of the run, tracked and untracked,
   cleanups included, in order. The initial run has no previous run and is not redundant. A run with
@@ -232,7 +232,7 @@ Changes to `redundant` from its first statement in the plan.
   untracked read that moved from 0 to 42. `untracked_branch` selects its branch by an untracked read
   and logs for the first time with no tracked reads. Both are now checked as not redundant. The run
   set still depends on tracked reads only.
-- `runs_of` keeps effect runs only: `rruns` now also holds disposal records, which are not runs.
+- `runs_of` keeps effect runs only: `reference_runs` now also holds disposal records, which are not runs.
 - `redundant` compares reads, not events. A rerun runs the cleanups its previous run registered, so
   its events can differ from the previous run's on equal reads: `redundant_run_with_cleanup`.
 

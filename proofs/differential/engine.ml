@@ -377,8 +377,8 @@ type ('a, 'c) fresh = 'c -> 'a
 
 (** val fresh0 : ('a1, 'a2) fresh -> 'a2 -> 'a1 **)
 
-let fresh0 fresh2 =
-  fresh2
+let fresh0 fresh1 =
+  fresh1
 
 type 'a infinite =
   ('a, 'a list) fresh
@@ -1785,26 +1785,26 @@ let gset_elements eqDecision0 h =
 let gset_dom eqDecision0 h m0 =
   mapset_dom (Obj.magic (fun _ _ -> gmap_fmap eqDecision0 h)) (Obj.magic m0)
 
-type nid = nat
+type node_id = nat
 
-type oid = nat
+type owner_id = nat
 
 type val0 = z
 
-type fresh1 =
+type freshness =
 | Clean
 | Check
 | Dirty
 
-(** val stale : fresh1 -> bool **)
+(** val stale : freshness -> bool **)
 
 let stale = function
 | Clean -> False
 | _ -> True
 
-(** val fresh_eq_dec : (fresh1, fresh1) relDecision **)
+(** val freshness_eq_dec : (freshness, freshness) relDecision **)
 
-let fresh_eq_dec x y =
+let freshness_eq_dec x y =
   match x with
   | Clean -> (match y with
               | Clean -> Left
@@ -1833,7 +1833,7 @@ type outcome =
 | Ok of val0
 | Fail of val0
 
-type cmp =
+type comparer =
 | CmpEq
 | CmpNever
 | CmpThrows of val0
@@ -1849,10 +1849,10 @@ type cmd =
 | CIf of expr * cmd * cmd
 | CRead of var * expr * cmd
 | CTryRead of var * var * expr * cmd
-| CReadU of var * expr * cmd
+| CReadUntracked of var * expr * cmd
 | CWrite of expr * expr * cmd
 | CSignal of var * expr * cmd
-| CMemo of var * scope_mode * cmp * cmd * cmd
+| CMemo of var * scope_mode * comparer * cmd * cmd
 | CEffect of var * cmd * cmd
 | CCleanup of cmd * cmd
 | CDispose of expr * cmd
@@ -1919,178 +1919,197 @@ let rec eval_expr g p e =
    | EEq (a, b) -> bin (fun u v -> Ok (bool_val (Z.eqb u v))) a b)
 
 type event =
-| EvRun of nid
-| EvLog of nid * val0
-| EvCleanup of nid
-| EvFail of nid * val0
-| EvDispose of nid
-| EvHostRead of nid * outcome
+| EvRun of node_id
+| EvLog of node_id * val0
+| EvCleanup of node_id
+| EvFail of node_id * val0
+| EvDispose of node_id
+| EvHostRead of node_id * outcome
 
 (** val scan_limit : nat **)
 
 let scan_limit =
   S (S (S (S (S (S (S (S O)))))))
 
-type obs = { oitems : (nid, nat) prod list; olatest : nat }
+type observer_set = { observer_items : (node_id, nat) prod list;
+                      observer_latest : nat }
 
-(** val empty_obs : obs **)
+(** val empty_observer_set : observer_set **)
 
-let empty_obs =
-  { oitems = Nil; olatest = O }
+let empty_observer_set =
+  { observer_items = Nil; observer_latest = O }
 
 type tried =
 | TAdded of nat
 | TUnlinked
 | TUnknown
 
-(** val obs_view : obs -> nid list **)
+(** val observer_view : observer_set -> node_id list **)
 
-let obs_view o =
-  fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst (Obj.magic o.oitems)
+let observer_view o =
+  fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
+    (Obj.magic o.observer_items)
 
-(** val obs_add : nid -> nat -> obs -> (obs, nat) prod **)
+(** val observers_add :
+    node_id -> nat -> observer_set -> (observer_set, nat) prod **)
 
-let obs_add c slot o =
-  let h = length o.oitems in
-  Pair ({ oitems = (app o.oitems (Cons ((Pair (c, slot)), Nil))); olatest =
+let observers_add c slot o =
+  let h = length o.observer_items in
+  Pair ({ observer_items =
+  (app o.observer_items (Cons ((Pair (c, slot)), Nil))); observer_latest =
   h }, h)
 
-(** val obs_try_add : nid -> nat -> obs -> (obs, tried) prod **)
+(** val observers_try_add :
+    node_id -> nat -> observer_set -> (observer_set, tried) prod **)
 
-let obs_try_add c slot o =
+let observers_try_add c slot o =
   let add0 = fun _ ->
-    let Pair (o', h) = obs_add c slot o in Pair (o', (TAdded h))
+    let Pair (o', h) = observers_add c slot o in Pair (o', (TAdded h))
   in
-  (match decide (decide_rel Coq_Nat.eq_dec (length o.oitems) O) with
+  (match decide (decide_rel Coq_Nat.eq_dec (length o.observer_items) O) with
    | Left -> add0 Tt
    | Right ->
      (match decide
               (decide_rel (Obj.magic option_eq_dec Coq_Nat.eq_dec)
                 (fmap (Obj.magic (fun _ _ -> option_fmap)) fst
-                  (lookup0 Coq_list.list_lookup o.olatest o.oitems))
+                  (lookup0 Coq_list.list_lookup o.observer_latest
+                    o.observer_items))
                 (Some c)) with
       | Left -> Pair (o, TUnlinked)
       | Right ->
-        (match decide (decide_rel Coq_Nat.le_dec (length o.oitems) scan_limit) with
+        (match decide
+                 (decide_rel Coq_Nat.le_dec (length o.observer_items)
+                   scan_limit) with
          | Left ->
            (match decide
                     (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) c
-                      (obs_view o)) with
+                      (observer_view o)) with
             | Left -> Pair (o, TUnlinked)
             | Right -> add0 Tt)
          | Right -> Pair (o, TUnknown))))
 
-(** val obs_remove_at :
-    nid -> nat -> obs -> (obs, ((nid, nat) prod, nat) prod option) prod option **)
+(** val observers_remove_at :
+    node_id -> nat -> observer_set -> (observer_set, ((node_id, nat) prod,
+    nat) prod option) prod option **)
 
-let obs_remove_at c h o =
-  let last = pred (length o.oitems) in
-  (match lookup0 Coq_list.list_lookup h o.oitems with
+let observers_remove_at c h o =
+  let last = pred (length o.observer_items) in
+  (match lookup0 Coq_list.list_lookup h o.observer_items with
    | Some y ->
      let Pair (c', _) = y in
      (match decide (decide_rel Coq_Nat.eq_dec c' c) with
       | Left ->
         (match decide (decide_rel Coq_Nat.eq_dec h last) with
          | Left ->
-           Some (Pair ({ oitems = (firstn last o.oitems); olatest =
-             o.olatest }, None))
+           Some (Pair ({ observer_items = (firstn last o.observer_items);
+             observer_latest = o.observer_latest }, None))
          | Right ->
-           (match lookup0 Coq_list.list_lookup last o.oitems with
+           (match lookup0 Coq_list.list_lookup last o.observer_items with
             | Some y0 ->
-              Some (Pair ({ oitems =
-                (insert0 Coq_list.list_insert h y0 (firstn last o.oitems));
-                olatest =
-                (match decide (decide_rel Coq_Nat.eq_dec o.olatest last) with
+              Some (Pair ({ observer_items =
+                (insert0 Coq_list.list_insert h y0
+                  (firstn last o.observer_items));
+                observer_latest =
+                (match decide
+                         (decide_rel Coq_Nat.eq_dec o.observer_latest last) with
                  | Left -> h
-                 | Right -> o.olatest) },
+                 | Right -> o.observer_latest) },
                 (Some (Pair (y0, h)))))
             | None -> None))
       | Right -> None)
    | None -> None)
 
-type src = { sslots : (nid, nat option) prod list; scursor : nat }
+type source_list = { source_slots : (node_id, nat option) prod list;
+                     source_cursor : nat }
 
-type edgeWorld = { ew_obs : (nid, obs) gmap; ew_src : (nid, src) gmap }
+type edgeWorld = { world_observers : (node_id, observer_set) gmap;
+                   world_sources : (node_id, source_list) gmap }
 
-(** val empty_src : src **)
+(** val empty_source_list : source_list **)
 
-let empty_src =
-  { sslots = Nil; scursor = O }
+let empty_source_list =
+  { source_slots = Nil; source_cursor = O }
 
 (** val empty_world : edgeWorld **)
 
 let empty_world =
-  { ew_obs = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); ew_src =
-    (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
+  { world_observers = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable));
+    world_sources = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
 
-(** val obs_of : edgeWorld -> nid -> obs **)
+(** val observers_of : edgeWorld -> node_id -> observer_set **)
 
-let obs_of w s =
-  from_option (Obj.magic id) empty_obs
-    (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) s w.ew_obs)
+let observers_of w s =
+  from_option (Obj.magic id) empty_observer_set
+    (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) s w.world_observers)
 
-(** val src_of : edgeWorld -> nid -> src **)
+(** val sources_of : edgeWorld -> node_id -> source_list **)
 
-let src_of w c =
-  from_option (Obj.magic id) empty_src
-    (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) c w.ew_src)
+let sources_of w c =
+  from_option (Obj.magic id) empty_source_list
+    (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) c w.world_sources)
 
-(** val slot_at : edgeWorld -> nid -> nat -> (nid, nat option) prod option **)
+(** val slot_at :
+    edgeWorld -> node_id -> nat -> (node_id, nat option) prod option **)
 
 let slot_at w c i =
-  lookup0 Coq_list.list_lookup i (src_of w c).sslots
+  lookup0 Coq_list.list_lookup i (sources_of w c).source_slots
 
-(** val set_obs : nid -> obs -> edgeWorld -> edgeWorld **)
+(** val set_observers : node_id -> observer_set -> edgeWorld -> edgeWorld **)
 
-let set_obs s o w =
-  { ew_obs =
+let set_observers s o w =
+  { world_observers =
     (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable)) s
-      o w.ew_obs);
-    ew_src = w.ew_src }
+      o w.world_observers);
+    world_sources = w.world_sources }
 
-(** val set_src : nid -> src -> edgeWorld -> edgeWorld **)
+(** val set_sources : node_id -> source_list -> edgeWorld -> edgeWorld **)
 
-let set_src c l w =
-  { ew_obs = w.ew_obs; ew_src =
+let set_sources c l w =
+  { world_observers = w.world_observers; world_sources =
     (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable)) c
-      l w.ew_src) }
+      l w.world_sources) }
 
-(** val sl_begin : nid -> edgeWorld -> edgeWorld **)
+(** val sources_begin_run : node_id -> edgeWorld -> edgeWorld **)
 
-let sl_begin c w =
-  set_src c { sslots = (src_of w c).sslots; scursor = O } w
+let sources_begin_run c w =
+  set_sources c { source_slots = (sources_of w c).source_slots;
+    source_cursor = O } w
 
-(** val set_handle : nid -> nat -> nat option -> edgeWorld -> edgeWorld **)
+(** val set_handle :
+    node_id -> nat -> nat option -> edgeWorld -> edgeWorld **)
 
 let set_handle c i mh w =
-  let l = src_of w c in
-  set_src c { sslots =
-    (alter0 Coq_list.list_alter (fun p -> Pair ((fst p), mh)) i l.sslots);
-    scursor = l.scursor } w
+  let l = sources_of w c in
+  set_sources c { source_slots =
+    (alter0 Coq_list.list_alter (fun p -> Pair ((fst p), mh)) i
+      l.source_slots);
+    source_cursor = l.source_cursor } w
 
-(** val sl_moved_in : nid -> nat -> nat -> edgeWorld -> edgeWorld **)
+(** val sources_moved_in : node_id -> nat -> nat -> edgeWorld -> edgeWorld **)
 
-let sl_moved_in c slot h w =
+let sources_moved_in c slot h w =
   set_handle c slot (Some h) w
 
-(** val remove_edge : nid -> nid -> nat -> edgeWorld -> edgeWorld option **)
+(** val remove_edge :
+    node_id -> node_id -> nat -> edgeWorld -> edgeWorld option **)
 
 let remove_edge self s h w =
-  match obs_remove_at self h (obs_of w s) with
+  match observers_remove_at self h (observers_of w s) with
   | Some p ->
     let Pair (o', n0) = p in
-    let w1 = set_obs s o' w in
+    let w1 = set_observers s o' w in
     Some
     (match n0 with
      | Some p0 ->
        let Pair (p1, h') = p0 in
-       let Pair (m0, ms) = p1 in sl_moved_in m0 ms h' w1
+       let Pair (m0, ms) = p1 in sources_moved_in m0 ms h' w1
      | None -> w1)
   | None -> None
 
-(** val sl_remove_slot : nid -> nat -> edgeWorld -> edgeWorld option **)
+(** val sources_remove_slot :
+    node_id -> nat -> edgeWorld -> edgeWorld option **)
 
-let sl_remove_slot self i w =
+let sources_remove_slot self i w =
   match slot_at w self i with
   | Some p ->
     let Pair (s, o) = p in
@@ -2101,97 +2120,105 @@ let sl_remove_slot self i w =
      | None -> Some w)
   | None -> Some w
 
-(** val trim_loop : nid -> nat -> nat -> edgeWorld -> edgeWorld option **)
+(** val trim_loop : node_id -> nat -> nat -> edgeWorld -> edgeWorld option **)
 
 let rec trim_loop self i n0 w =
   match n0 with
   | O -> Some w
   | S n' ->
     mbind (Obj.magic (fun _ _ -> option_bind)) (trim_loop self (S i) n')
-      (sl_remove_slot self i w)
+      (sources_remove_slot self i w)
 
-(** val sl_trim : nid -> nat -> edgeWorld -> edgeWorld option **)
+(** val sources_trim_from :
+    node_id -> nat -> edgeWorld -> edgeWorld option **)
 
-let sl_trim self from w =
+let sources_trim_from self from w =
   mbind (Obj.magic (fun _ _ -> option_bind)) (fun w1 ->
-    let l1 = src_of w1 self in
+    let l1 = sources_of w1 self in
     Some
-    (set_src self { sslots = (firstn from l1.sslots); scursor = l1.scursor }
-      w1))
-    (trim_loop self from (sub (length (src_of w self).sslots) from) w)
+    (set_sources self { source_slots = (firstn from l1.source_slots);
+      source_cursor = l1.source_cursor } w1))
+    (trim_loop self from (sub (length (sources_of w self).source_slots) from)
+      w)
 
-(** val sl_end : nid -> edgeWorld -> edgeWorld option **)
+(** val sources_end_run : node_id -> edgeWorld -> edgeWorld option **)
 
-let sl_end self w =
-  let l = src_of w self in
-  (match decide (decide_rel Coq_Nat.lt_dec l.scursor (length l.sslots)) with
-   | Left -> sl_trim self l.scursor w
+let sources_end_run self w =
+  let l = sources_of w self in
+  (match decide
+           (decide_rel Coq_Nat.lt_dec l.source_cursor (length l.source_slots)) with
+   | Left -> sources_trim_from self l.source_cursor w
    | Right -> Some w)
 
-(** val sl_clear : nid -> edgeWorld -> edgeWorld option **)
+(** val sources_clear : node_id -> edgeWorld -> edgeWorld option **)
 
-let sl_clear self w =
+let sources_clear self w =
   mbind (Obj.magic (fun _ _ -> option_bind)) (fun w1 -> Some
-    (set_src self { sslots = (src_of w1 self).sslots; scursor = O } w1))
-    (sl_trim self O w)
+    (set_sources self { source_slots = (sources_of w1 self).source_slots;
+      source_cursor = O } w1))
+    (sources_trim_from self O w)
 
-(** val sl_append :
-    nid -> nid -> nat option -> obs -> edgeWorld -> edgeWorld **)
+(** val sources_append :
+    node_id -> node_id -> nat option -> observer_set -> edgeWorld -> edgeWorld **)
 
-let sl_append self s mh o w =
-  let l = src_of w self in
-  set_obs s o
-    (set_src self { sslots = (app l.sslots (Cons ((Pair (s, mh)), Nil)));
-      scursor = (S (length l.sslots)) } w)
+let sources_append self s mh o w =
+  let l = sources_of w self in
+  set_observers s o
+    (set_sources self { source_slots =
+      (app l.source_slots (Cons ((Pair (s, mh)), Nil))); source_cursor = (S
+      (length l.source_slots)) } w)
 
-(** val sl_link : nid -> nid -> edgeWorld -> edgeWorld **)
+(** val sources_link : node_id -> node_id -> edgeWorld -> edgeWorld **)
 
-let sl_link self s w =
-  let l = src_of w self in
-  let slot = length l.sslots in
-  let o = obs_of w s in
+let sources_link self s w =
+  let l = sources_of w self in
+  let slot = length l.source_slots in
+  let o = observers_of w s in
   let add0 = fun _ ->
-    sl_append self s (Some (snd (obs_add self slot o)))
-      (fst (obs_add self slot o)) w
+    sources_append self s (Some (snd (observers_add self slot o)))
+      (fst (observers_add self slot o)) w
   in
   (match decide (decide_rel Coq_Nat.eq_dec slot O) with
    | Left -> add0 Tt
    | Right ->
-     let Pair (o', t) = obs_try_add self slot o in
+     let Pair (o', t) = observers_try_add self slot o in
      (match t with
-      | TAdded h -> sl_append self s (Some h) o' w
-      | TUnlinked -> sl_append self s None o' w
+      | TAdded h -> sources_append self s (Some h) o' w
+      | TUnlinked -> sources_append self s None o' w
       | TUnknown ->
         (match decide
                  (decide_rel
                    (Obj.magic Coq_list.list_elem_of_dec Coq_Nat.eq_dec) s
                    (fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
-                     l.sslots)) with
-         | Left -> sl_append self s None o' w
+                     l.source_slots)) with
+         | Left -> sources_append self s None o' w
          | Right -> add0 Tt)))
 
-(** val sl_add : nid -> nid -> edgeWorld -> edgeWorld option **)
+(** val sources_add : node_id -> node_id -> edgeWorld -> edgeWorld option **)
 
-let sl_add self s w =
-  let l = src_of w self in
-  let cur = l.scursor in
+let sources_add self s w =
+  let l = sources_of w self in
+  let cur = l.source_cursor in
   (match decide
            (decide_rel (Obj.magic option_eq_dec Coq_Nat.eq_dec)
              (fmap (Obj.magic (fun _ _ -> option_fmap)) fst
-               (lookup0 Coq_list.list_lookup cur l.sslots))
+               (lookup0 Coq_list.list_lookup cur l.source_slots))
              (Some s)) with
-   | Left -> Some (set_src self { sslots = l.sslots; scursor = (S cur) } w)
+   | Left ->
+     Some
+       (set_sources self { source_slots = l.source_slots; source_cursor = (S
+         cur) } w)
    | Right ->
      (match decide
               (and_dec (decide_rel Coq_Nat.lt_dec O cur)
                 (decide_rel (Obj.magic option_eq_dec Coq_Nat.eq_dec)
                   (fmap (Obj.magic (fun _ _ -> option_fmap)) fst
-                    (lookup0 Coq_list.list_lookup (pred cur) l.sslots))
+                    (lookup0 Coq_list.list_lookup (pred cur) l.source_slots))
                   (Some s))) with
       | Left -> Some w
       | Right ->
         mbind (Obj.magic (fun _ _ -> option_bind)) (fun w1 -> Some
-          (sl_link self s w1)) (sl_end self w)))
+          (sources_link self s w1)) (sources_end_run self w)))
 
 type kind =
 | KSignal
@@ -2221,20 +2248,22 @@ let status_eq_dec x y =
                         | StUninitialized -> Left
                         | _ -> Right)
 
-type link = { l_child : nid; l_owner : oid; l_gen : nat option;
-              l_acquired : nat }
+type link = { l_child : node_id; l_owner : owner_id;
+              l_generation : nat option; l_acquired : nat }
 
-type ownerS = { o_children : link list; o_cleanups : cmd list;
-                o_cleanup_envs : env list; o_cleanup_order : nat list;
-                o_acquisitions : nat; o_gen : nat; o_disposed : bool;
-                o_sink : oid option; o_errors : val0 list; o_host : nid }
+type owner_state = { o_children : link list; o_cleanups : cmd list;
+                     o_cleanup_envs : env list; o_cleanup_order : nat list;
+                     o_acquisitions : nat; o_generation : nat;
+                     o_disposed : bool; o_sink : owner_id option;
+                     o_errors : val0 list; o_host : node_id }
 
 type node = { n_kind : kind; n_value : val0; n_failure : val0 option;
-              n_status : status; n_fresh : fresh1; n_unann : bool;
-              n_runs : nat; n_published : bool; n_disposed : bool;
-              n_queued : bool; n_in_cleanup : bool; n_scope : oid option;
-              n_violated : bool; n_body : cmd; n_env : env;
-              n_mode : scope_mode; n_cmp : cmp; n_link : link option }
+              n_status : status; n_freshness : freshness;
+              n_unannounced : bool; n_runs : nat; n_published : bool;
+              n_disposed : bool; n_queued : bool; n_in_cleanup : bool;
+              n_scope : owner_id option; n_violated : bool; n_body : 
+              cmd; n_env : env; n_mode : scope_mode; n_comparer : comparer;
+              n_link : link option }
 
 type flags = { f_unannounced : bool; f_reader_mark : bool }
 
@@ -2243,21 +2272,22 @@ type flags = { f_unannounced : bool; f_reader_mark : bool }
 let current_flags =
   { f_unannounced = True; f_reader_mark = True }
 
-type nview = ((val0, status) prod, val0 option) prod
+type read_view = ((val0, status) prod, val0 option) prod
 
-(** val nview_of : node -> nview **)
+(** val read_view_of : node -> read_view **)
 
-let nview_of d =
+let read_view_of d =
   Pair ((Pair (d.n_value, d.n_status)), d.n_failure)
 
-type ghost = { gh_pub : (nid, nview) gmap;
-               gh_seen : ((nid, nid) prod, nview list) gmap;
-               gh_unnoticed : nid gset; gh_window : (nid, nat) gmap }
+type ghost = { gh_published : (node_id, read_view) gmap;
+               gh_seen : ((node_id, node_id) prod, read_view list) gmap;
+               gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap }
 
 (** val empty_ghost : ghost **)
 
 let empty_ghost =
-  { gh_pub = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); gh_seen =
+  { gh_published = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable));
+    gh_seen =
     (empty0
       (gmap_empty (prod_eq_dec Coq_Nat.eq_dec Coq_Nat.eq_dec)
         (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
@@ -2266,78 +2296,84 @@ let empty_ghost =
     gh_window = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
 
 type state = { g_flags : flags; g_edges : edgeWorld;
-               g_nodes : (nid, node) gmap; g_owners : (oid, ownerS) gmap;
-               g_queue : nid list; g_head : nat; g_flushing : bool;
-               g_owed : bool; g_batch : nat; g_pull : nat;
-               g_current : nid option; g_untracked : bool;
-               g_owner : oid option; g_next : nat; g_trace : event list;
-               g_running : nid list; g_ghost : ghost }
+               g_nodes : (node_id, node) gmap;
+               g_owners : (owner_id, owner_state) gmap;
+               g_queue : node_id list; g_queue_head : nat; g_flushing : 
+               bool; g_flush_owed : bool; g_batch_depth : nat;
+               g_pull_depth : nat; g_current : node_id option;
+               g_untracked : bool; g_current_owner : owner_id option;
+               g_next_id : nat; g_trace : event list;
+               g_running : node_id list; g_ghost : ghost }
 
-(** val node_marked : fresh1 -> bool -> bool -> node -> node **)
+(** val node_marked : freshness -> bool -> bool -> node -> node **)
 
 let node_marked f u q d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = f; n_unann = u; n_runs = d.n_runs;
-    n_published = d.n_published; n_disposed = d.n_disposed; n_queued = q;
-    n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope; n_violated =
-    d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode = d.n_mode;
-    n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = f; n_unannounced = u; n_runs =
+    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
+    n_queued = q; n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope;
+    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
+    d.n_mode; n_comparer = d.n_comparer; n_link = d.n_link }
 
-(** val set_node : nid -> node -> state -> state **)
+(** val set_node : node_id -> node -> state -> state **)
 
 let set_node n0 d s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes =
     (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
       n0 d s.g_nodes);
-    g_owners = s.g_owners; g_queue = s.g_queue; g_head = s.g_head;
-    g_flushing = s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch;
-    g_pull = s.g_pull; g_current = s.g_current; g_untracked = s.g_untracked;
-    g_owner = s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running; g_ghost = s.g_ghost }
+    g_owners = s.g_owners; g_queue = s.g_queue; g_queue_head =
+    s.g_queue_head; g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed;
+    g_batch_depth = s.g_batch_depth; g_pull_depth = s.g_pull_depth;
+    g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
+    s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
+    g_running = s.g_running; g_ghost = s.g_ghost }
 
-(** val enqueue : nid -> state -> state **)
+(** val enqueue : node_id -> state -> state **)
 
 let enqueue n0 s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = (app s.g_queue (Cons (n0, Nil))); g_head =
-    s.g_head; g_flushing = s.g_flushing; g_owed = s.g_owed; g_batch =
-    s.g_batch; g_pull = s.g_pull; g_current = s.g_current; g_untracked =
-    s.g_untracked; g_owner = s.g_owner; g_next = s.g_next; g_trace =
-    s.g_trace; g_running = s.g_running; g_ghost = s.g_ghost }
+    s.g_owners; g_queue = (app s.g_queue (Cons (n0, Nil))); g_queue_head =
+    s.g_queue_head; g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed;
+    g_batch_depth = s.g_batch_depth; g_pull_depth = s.g_pull_depth;
+    g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
+    s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
+    g_running = s.g_running; g_ghost = s.g_ghost }
 
 (** val walk_marks :
-    (nid -> state -> state option) -> nid -> nat -> state -> state option **)
+    (node_id -> state -> state option) -> node_id -> nat -> state -> state
+    option **)
 
-let rec walk_marks mark src0 n0 s =
+let rec walk_marks mark src n0 s =
   match n0 with
   | O -> Some s
   | S i ->
     (match decide
              (decide_rel Coq_Nat.le_dec
-               (length (obs_of s.g_edges src0).oitems) i) with
-     | Left -> walk_marks mark src0 i s
+               (length (observers_of s.g_edges src).observer_items) i) with
+     | Left -> walk_marks mark src i s
      | Right ->
-       (match lookup0 Coq_list.list_lookup i (obs_of s.g_edges src0).oitems with
+       (match lookup0 Coq_list.list_lookup i
+                (observers_of s.g_edges src).observer_items with
         | Some y ->
           let Pair (c, _) = y in
-          mbind (Obj.magic (fun _ _ -> option_bind)) (walk_marks mark src0 i)
+          mbind (Obj.magic (fun _ _ -> option_bind)) (walk_marks mark src i)
             (mark c s)
         | None -> None))
 
 (** val notify_with :
-    (nid -> state -> state option) -> nid -> state -> state option **)
+    (node_id -> state -> state option) -> node_id -> state -> state option **)
 
-let notify_with mark src0 s =
-  walk_marks mark src0 (length (obs_of s.g_edges src0).oitems) s
+let notify_with mark src s =
+  walk_marks mark src (length (observers_of s.g_edges src).observer_items) s
 
 (** val announce_due : state -> node -> bool **)
 
 let announce_due s d =
   match s.g_flags.f_unannounced with
-  | True -> d.n_unann
+  | True -> d.n_unannounced
   | False -> False
 
-(** val effect_marked : fresh1 -> nid -> node -> state -> state **)
+(** val effect_marked : freshness -> node_id -> node -> state -> state **)
 
 let effect_marked f n0 d s =
   match match d.n_disposed with
@@ -2346,10 +2382,11 @@ let effect_marked f n0 d s =
   | True -> s
   | False ->
     (match d.n_queued with
-     | True -> set_node n0 (node_marked f d.n_unann True d) s
-     | False -> enqueue n0 (set_node n0 (node_marked f d.n_unann True d) s))
+     | True -> set_node n0 (node_marked f d.n_unannounced True d) s
+     | False ->
+       enqueue n0 (set_node n0 (node_marked f d.n_unannounced True d) s))
 
-(** val mark_check : nat -> nid -> state -> state option **)
+(** val mark_check : nat -> node_id -> state -> state option **)
 
 let rec mark_check fuel n0 s =
   match fuel with
@@ -2360,26 +2397,28 @@ let rec mark_check fuel n0 s =
        (match d.n_kind with
         | KSignal -> Some s
         | KMemo ->
-          (match decide (decide_rel fresh_eq_dec d.n_fresh Clean) with
+          (match decide (decide_rel freshness_eq_dec d.n_freshness Clean) with
            | Left ->
              notify_with (mark_check f) n0
-               (set_node n0 (node_marked Check d.n_unann d.n_queued d) s)
+               (set_node n0 (node_marked Check d.n_unannounced d.n_queued d)
+                 s)
            | Right ->
              (match announce_due s d with
               | True ->
                 notify_with (mark_check f) n0
-                  (set_node n0 (node_marked d.n_fresh False d.n_queued d) s)
+                  (set_node n0 (node_marked d.n_freshness False d.n_queued d)
+                    s)
               | False -> Some s))
         | KEffect ->
           Some
             (effect_marked
-              (match decide (decide_rel fresh_eq_dec d.n_fresh Clean) with
+              (match decide (decide_rel freshness_eq_dec d.n_freshness Clean) with
                | Left -> Check
-               | Right -> d.n_fresh)
+               | Right -> d.n_freshness)
               n0 d s))
      | None -> Some s)
 
-(** val mark_dirty : nat -> nid -> state -> state option **)
+(** val mark_dirty : nat -> node_id -> state -> state option **)
 
 let mark_dirty fuel n0 s =
   match fuel with
@@ -2390,31 +2429,34 @@ let mark_dirty fuel n0 s =
        (match d.n_kind with
         | KSignal -> Some s
         | KMemo ->
-          (match decide (decide_rel fresh_eq_dec d.n_fresh Clean) with
+          (match decide (decide_rel freshness_eq_dec d.n_freshness Clean) with
            | Left ->
              notify_with (mark_check f) n0
-               (set_node n0 (node_marked Dirty d.n_unann d.n_queued d) s)
+               (set_node n0 (node_marked Dirty d.n_unannounced d.n_queued d)
+                 s)
            | Right ->
              (match announce_due s d with
               | True ->
                 notify_with (mark_check f) n0
                   (set_node n0 (node_marked Dirty False d.n_queued d) s)
               | False ->
-                (match decide (decide_rel fresh_eq_dec d.n_fresh Dirty) with
+                (match decide
+                         (decide_rel freshness_eq_dec d.n_freshness Dirty) with
                  | Left -> Some s
                  | Right ->
                    Some
-                     (set_node n0 (node_marked Dirty d.n_unann d.n_queued d)
-                       s))))
+                     (set_node n0
+                       (node_marked Dirty d.n_unannounced d.n_queued d) s))))
         | KEffect -> Some (effect_marked Dirty n0 d s))
      | None -> Some s)
 
-(** val notify_dirty : nat -> nid -> state -> state option **)
+(** val notify_dirty : nat -> node_id -> state -> state option **)
 
-let notify_dirty fuel src0 s =
-  notify_with (mark_dirty fuel) src0 s
+let notify_dirty fuel src s =
+  notify_with (mark_dirty fuel) src s
 
-(** val mark_except : nat -> nid option -> nid -> state -> state option **)
+(** val mark_except :
+    nat -> node_id option -> node_id -> state -> state option **)
 
 let mark_except fuel r c s =
   match decide (decide_rel (option_eq_dec Coq_Nat.eq_dec) r (Some c)) with
@@ -2422,21 +2464,21 @@ let mark_except fuel r c s =
   | Right -> mark_dirty fuel c s
 
 (** val notify_dirty_except :
-    nat -> nid -> nid option -> state -> state option **)
+    nat -> node_id -> node_id option -> state -> state option **)
 
-let notify_dirty_except fuel src0 r s =
-  notify_with (mark_except fuel r) src0 s
+let notify_dirty_except fuel src r s =
+  notify_with (mark_except fuel r) src s
 
-(** val pending : state -> nid list **)
+(** val pending : state -> node_id list **)
 
 let pending s =
-  skipn s.g_head s.g_queue
+  skipn s.g_queue_head s.g_queue
 
 type 'a m = state -> (state, 'a) prod option
 
-(** val m_ret : 'a1 -> 'a1 m **)
+(** val m_return : 'a1 -> 'a1 m **)
 
-let m_ret a s =
+let m_return a s =
   Some (Pair (s, a))
 
 (** val m_bind : 'a1 m -> ('a1 -> 'a2 m) -> 'a2 m **)
@@ -2456,9 +2498,9 @@ let stuck _ =
 let m_get s =
   Some (Pair (s, s))
 
-(** val m_mod : (state -> state) -> unit0 m **)
+(** val m_modify : (state -> state) -> unit0 m **)
 
-let m_mod f s =
+let m_modify f s =
   Some (Pair ((f s), Tt))
 
 (** val m_step : (state -> state option) -> unit0 m **)
@@ -2472,312 +2514,340 @@ let m_step f s =
 
 let with_edges v s =
   { g_flags = s.g_flags; g_edges = v; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running; g_ghost = s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
-(** val with_owners : (oid, ownerS) gmap -> state -> state **)
+(** val with_owners : (owner_id, owner_state) gmap -> state -> state **)
 
 let with_owners v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    v; g_queue = s.g_queue; g_head = s.g_head; g_flushing = s.g_flushing;
-    g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
-    s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    v; g_queue = s.g_queue; g_queue_head = s.g_queue_head; g_flushing =
+    s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
-(** val with_queue : nid list -> state -> state **)
+(** val with_queue : node_id list -> state -> state **)
 
 let with_queue v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = v; g_head = s.g_head; g_flushing = s.g_flushing;
-    g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
-    s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_owners; g_queue = v; g_queue_head = s.g_queue_head; g_flushing =
+    s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
-(** val with_head : nat -> state -> state **)
+(** val with_queue_head : nat -> state -> state **)
 
-let with_head v s =
+let with_queue_head v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = v; g_flushing = s.g_flushing;
-    g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
-    s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = v; g_flushing =
+    s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
 (** val with_flushing : bool -> state -> state **)
 
 let with_flushing v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing = v;
-    g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
-    s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = v; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
+
+(** val with_flush_owed : bool -> state -> state **)
+
+let with_flush_owed v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = v; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
+
+(** val with_batch_depth : nat -> state -> state **)
+
+let with_batch_depth v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    v; g_pull_depth = s.g_pull_depth; g_current = s.g_current; g_untracked =
+    s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
     s.g_ghost }
 
-(** val with_owed : bool -> state -> state **)
+(** val with_pull_depth : nat -> state -> state **)
 
-let with_owed v s =
+let with_pull_depth v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = v; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running; g_ghost = s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = v; g_current = s.g_current; g_untracked =
+    s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
-(** val with_batch : nat -> state -> state **)
-
-let with_batch v s =
-  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = v; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running; g_ghost = s.g_ghost }
-
-(** val with_pull : nat -> state -> state **)
-
-let with_pull v s =
-  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = v;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running; g_ghost = s.g_ghost }
-
-(** val with_current : nid option -> state -> state **)
+(** val with_current : node_id option -> state -> state **)
 
 let with_current v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = v; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = v;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
 (** val with_untracked : bool -> state -> state **)
 
 let with_untracked v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = v; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = v; g_current_owner = s.g_current_owner; g_next_id =
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
     s.g_ghost }
 
-(** val with_owner : oid option -> state -> state **)
+(** val with_current_owner : owner_id option -> state -> state **)
 
-let with_owner v s =
+let with_current_owner v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner = v;
-    g_next = s.g_next; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = v; g_next_id =
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
-(** val with_next : nat -> state -> state **)
+(** val with_next_id : nat -> state -> state **)
 
-let with_next v s =
+let with_next_id v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = v; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = v; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
 (** val with_trace : event list -> state -> state **)
 
 let with_trace v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = v; g_running = s.g_running;
-    g_ghost = s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = v; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
-(** val with_running : nid list -> state -> state **)
+(** val with_running : node_id list -> state -> state **)
 
 let with_running v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running = v;
-    g_ghost = s.g_ghost }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = v; g_ghost =
+    s.g_ghost }
 
 (** val with_ghost : ghost -> state -> state **)
 
 let with_ghost v s =
   { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
-    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
-    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
-    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running; g_ghost = v }
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = v }
 
-(** val nset_value : val0 -> node -> node **)
+(** val node_with_value : val0 -> node -> node **)
 
-let nset_value v d =
+let node_with_value v d =
   { n_kind = d.n_kind; n_value = v; n_failure = d.n_failure; n_status =
-    d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs = d.n_runs;
-    n_published = d.n_published; n_disposed = d.n_disposed; n_queued =
-    d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    d.n_status; n_freshness = d.n_freshness; n_unannounced = d.n_unannounced;
+    n_runs = d.n_runs; n_published = d.n_published; n_disposed =
+    d.n_disposed; n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_failure : val0 option -> node -> node **)
+(** val node_with_failure : val0 option -> node -> node **)
 
-let nset_failure v d =
+let node_with_failure v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = v; n_status =
-    d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs = d.n_runs;
-    n_published = d.n_published; n_disposed = d.n_disposed; n_queued =
-    d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    d.n_status; n_freshness = d.n_freshness; n_unannounced = d.n_unannounced;
+    n_runs = d.n_runs; n_published = d.n_published; n_disposed =
+    d.n_disposed; n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_status : status -> node -> node **)
+(** val node_with_status : status -> node -> node **)
 
-let nset_status v d =
+let node_with_status v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = v; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope =
-    d.n_scope; n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env;
-    n_mode = d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = v; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = d.n_published;
+    n_disposed = d.n_disposed; n_queued = d.n_queued; n_in_cleanup =
+    d.n_in_cleanup; n_scope = d.n_scope; n_violated = d.n_violated; n_body =
+    d.n_body; n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer;
+    n_link = d.n_link }
 
-(** val nset_fresh : fresh1 -> node -> node **)
+(** val node_with_freshness : freshness -> node -> node **)
 
-let nset_fresh v d =
+let node_with_freshness v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = v; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope =
-    d.n_scope; n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env;
-    n_mode = d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = v; n_unannounced = d.n_unannounced;
+    n_runs = d.n_runs; n_published = d.n_published; n_disposed =
+    d.n_disposed; n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_unann : bool -> node -> node **)
+(** val node_with_unannounced : bool -> node -> node **)
 
-let nset_unann v d =
+let node_with_unannounced v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = v; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope =
-    d.n_scope; n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env;
-    n_mode = d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced = v;
+    n_runs = d.n_runs; n_published = d.n_published; n_disposed =
+    d.n_disposed; n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_runs : nat -> node -> node **)
+(** val node_with_runs : nat -> node -> node **)
 
-let nset_runs v d =
+let node_with_runs v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    v; n_published = d.n_published; n_disposed = d.n_disposed; n_queued =
-    d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = v; n_published = d.n_published; n_disposed =
+    d.n_disposed; n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_published : bool -> node -> node **)
+(** val node_with_published : bool -> node -> node **)
 
-let nset_published v d =
+let node_with_published v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = v; n_disposed = d.n_disposed; n_queued =
-    d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = v; n_disposed =
+    d.n_disposed; n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_disposed : bool -> node -> node **)
+(** val node_with_disposed : bool -> node -> node **)
 
-let nset_disposed v d =
+let node_with_disposed v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = v; n_queued =
-    d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = d.n_published;
+    n_disposed = v; n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_queued : bool -> node -> node **)
+(** val node_with_queued : bool -> node -> node **)
 
-let nset_queued v d =
+let node_with_queued v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = v; n_in_cleanup = d.n_in_cleanup; n_scope = d.n_scope;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = d.n_published;
+    n_disposed = d.n_disposed; n_queued = v; n_in_cleanup = d.n_in_cleanup;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_in_cleanup : bool -> node -> node **)
+(** val node_with_in_cleanup : bool -> node -> node **)
 
-let nset_in_cleanup v d =
+let node_with_in_cleanup v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = d.n_queued; n_in_cleanup = v; n_scope = d.n_scope;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = d.n_published;
+    n_disposed = d.n_disposed; n_queued = d.n_queued; n_in_cleanup = v;
+    n_scope = d.n_scope; n_violated = d.n_violated; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_scope : oid option -> node -> node **)
+(** val node_with_scope : owner_id option -> node -> node **)
 
-let nset_scope v d =
+let node_with_scope v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope = v;
-    n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = d.n_published;
+    n_disposed = d.n_disposed; n_queued = d.n_queued; n_in_cleanup =
+    d.n_in_cleanup; n_scope = v; n_violated = d.n_violated; n_body =
+    d.n_body; n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer;
+    n_link = d.n_link }
 
-(** val nset_violated : bool -> node -> node **)
+(** val node_with_violated : bool -> node -> node **)
 
-let nset_violated v d =
+let node_with_violated v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope =
-    d.n_scope; n_violated = v; n_body = d.n_body; n_env = d.n_env; n_mode =
-    d.n_mode; n_cmp = d.n_cmp; n_link = d.n_link }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = d.n_published;
+    n_disposed = d.n_disposed; n_queued = d.n_queued; n_in_cleanup =
+    d.n_in_cleanup; n_scope = d.n_scope; n_violated = v; n_body = d.n_body;
+    n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer; n_link =
+    d.n_link }
 
-(** val nset_link : link option -> node -> node **)
+(** val node_with_link : link option -> node -> node **)
 
-let nset_link v d =
+let node_with_link v d =
   { n_kind = d.n_kind; n_value = d.n_value; n_failure = d.n_failure;
-    n_status = d.n_status; n_fresh = d.n_fresh; n_unann = d.n_unann; n_runs =
-    d.n_runs; n_published = d.n_published; n_disposed = d.n_disposed;
-    n_queued = d.n_queued; n_in_cleanup = d.n_in_cleanup; n_scope =
-    d.n_scope; n_violated = d.n_violated; n_body = d.n_body; n_env = d.n_env;
-    n_mode = d.n_mode; n_cmp = d.n_cmp; n_link = v }
+    n_status = d.n_status; n_freshness = d.n_freshness; n_unannounced =
+    d.n_unannounced; n_runs = d.n_runs; n_published = d.n_published;
+    n_disposed = d.n_disposed; n_queued = d.n_queued; n_in_cleanup =
+    d.n_in_cleanup; n_scope = d.n_scope; n_violated = d.n_violated; n_body =
+    d.n_body; n_env = d.n_env; n_mode = d.n_mode; n_comparer = d.n_comparer;
+    n_link = v }
 
 (** val emit : event -> unit0 m **)
 
 let emit e =
-  m_mod (fun s -> with_trace (app s.g_trace (Cons (e, Nil))) s)
+  m_modify (fun s -> with_trace (app s.g_trace (Cons (e, Nil))) s)
 
-(** val get_node : nid -> node m **)
+(** val get_node : node_id -> node m **)
 
 let get_node n0 s =
   match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
   | Some d -> Some (Pair (s, d))
   | None -> None
 
-(** val mod_node : nid -> (node -> node) -> unit0 m **)
+(** val modify_node : node_id -> (node -> node) -> unit0 m **)
 
-let mod_node n0 u s =
+let modify_node n0 u s =
   match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
   | Some d -> Some (Pair ((set_node n0 (u d) s), Tt))
   | None -> None
 
-(** val get_owner : oid -> ownerS m **)
+(** val get_owner : owner_id -> owner_state m **)
 
 let get_owner o s =
   match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) o s.g_owners with
   | Some x -> Some (Pair (s, x))
   | None -> None
 
-(** val put_owner : oid -> ownerS -> unit0 m **)
+(** val put_owner : owner_id -> owner_state -> unit0 m **)
 
 let put_owner o x =
-  m_mod (fun s ->
+  m_modify (fun s ->
     with_owners
       (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
         o x s.g_owners)
@@ -2786,7 +2856,7 @@ let put_owner o x =
 (** val edges : (edgeWorld -> edgeWorld) -> unit0 m **)
 
 let edges u =
-  m_mod (fun s -> with_edges (u s.g_edges) s)
+  m_modify (fun s -> with_edges (u s.g_edges) s)
 
 (** val edges_opt : (edgeWorld -> edgeWorld option) -> unit0 m **)
 
@@ -2795,23 +2865,24 @@ let edges_opt u s =
   | Some w -> Some (Pair ((with_edges w s), Tt))
   | None -> None
 
-(** val push_running : nid -> unit0 m **)
+(** val push_running : node_id -> unit0 m **)
 
 let push_running n0 =
-  m_mod (fun s -> with_running (Cons (n0, s.g_running)) s)
+  m_modify (fun s -> with_running (Cons (n0, s.g_running)) s)
 
 (** val pop_running : unit0 m **)
 
 let pop_running =
-  m_mod (fun s -> with_running (tl s.g_running) s)
+  m_modify (fun s -> with_running (tl s.g_running) s)
 
-(** val read_prefix : edgeWorld -> nid -> nid list **)
+(** val read_prefix : edgeWorld -> node_id -> node_id list **)
 
 let read_prefix w c =
   fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
-    (firstn (src_of w c).scursor (Obj.magic (src_of w c).sslots))
+    (firstn (sources_of w c).source_cursor
+      (Obj.magic (sources_of w c).source_slots))
 
-(** val ghost_read : nid -> nid -> nid list -> state -> state **)
+(** val ghost_read : node_id -> node_id -> node_id list -> state -> state **)
 
 let ghost_read c n0 pre s =
   match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
@@ -2829,13 +2900,13 @@ let ghost_read c n0 pre s =
             (Pair (c, n0)) g.gh_seen)
       | Right -> Nil
     in
-    with_ghost { gh_pub = g.gh_pub; gh_seen =
+    with_ghost { gh_published = g.gh_published; gh_seen =
       (insert0
         (map_insert
           (gmap_partial_alter (prod_eq_dec Coq_Nat.eq_dec Coq_Nat.eq_dec)
             (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
               nat_countable)))
-        (Pair (c, n0)) (Cons ((nview_of d), older)) g.gh_seen);
+        (Pair (c, n0)) (Cons ((read_view_of d), older)) g.gh_seen);
       gh_unnoticed =
       (match decide
                (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
@@ -2848,31 +2919,32 @@ let ghost_read c n0 pre s =
       gh_window = g.gh_window } s
   | None -> s
 
-(** val ghost_run_start : nid -> state -> state **)
+(** val ghost_run_start : node_id -> state -> state **)
 
 let ghost_run_start n0 s =
   let g = s.g_ghost in
-  with_ghost { gh_pub = g.gh_pub; gh_seen = g.gh_seen; gh_unnoticed =
+  with_ghost { gh_published = g.gh_published; gh_seen = g.gh_seen;
+    gh_unnoticed =
     (difference0 (gset_difference Coq_Nat.eq_dec nat_countable)
       g.gh_unnoticed
       (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
     gh_window = g.gh_window } s
 
-(** val ghost_publish : nid -> state -> state **)
+(** val ghost_publish : node_id -> state -> state **)
 
 let ghost_publish n0 s =
   match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
   | Some d ->
     let g = s.g_ghost in
-    with_ghost { gh_pub =
+    with_ghost { gh_published =
       (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
-        n0 (nview_of d) g.gh_pub);
+        n0 (read_view_of d) g.gh_published);
       gh_seen = g.gh_seen; gh_unnoticed = g.gh_unnoticed; gh_window =
       g.gh_window } s
   | None -> s
 
 (** val run_end_unnoticed :
-    nid -> nid option -> bool -> node -> state -> nid gset **)
+    node_id -> node_id option -> bool -> node -> state -> node_id gset **)
 
 let run_end_unnoticed n0 r moved d s =
   match moved with
@@ -2892,35 +2964,37 @@ let run_end_unnoticed n0 r moved d s =
                  (prod_eq_dec (prod_eq_dec Coq_Z.eq_dec status_eq_dec)
                    (option_eq_dec Coq_Z.eq_dec)))
                (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0
-                 s.g_ghost.gh_pub)
-               (Some (nview_of d))) with
+                 s.g_ghost.gh_published)
+               (Some (read_view_of d))) with
      | Left -> empty0 (gset_empty Coq_Nat.eq_dec nat_countable)
      | Right ->
        list_to_set (gset_singleton Coq_Nat.eq_dec nat_countable)
          (gset_empty Coq_Nat.eq_dec nat_countable)
          (gset_union Coq_Nat.eq_dec nat_countable)
-         (obs_view (obs_of s.g_edges n0)))
+         (observer_view (observers_of s.g_edges n0)))
 
-(** val ghost_run_end : nid -> nid option -> bool -> state -> state **)
+(** val ghost_run_end :
+    node_id -> node_id option -> bool -> state -> state **)
 
 let ghost_run_end n0 r moved s =
   match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
   | Some d ->
     let g = s.g_ghost in
-    with_ghost { gh_pub =
+    with_ghost { gh_published =
       (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
-        n0 (nview_of d) g.gh_pub);
+        n0 (read_view_of d) g.gh_published);
       gh_seen = g.gh_seen; gh_unnoticed =
       (union0 (gset_union Coq_Nat.eq_dec nat_countable)
         (run_end_unnoticed n0 r moved d s) g.gh_unnoticed);
       gh_window = g.gh_window } s
   | None -> s
 
-(** val ghost_dirty_cleared : nid -> nat -> state -> state **)
+(** val ghost_dirty_cleared : node_id -> nat -> state -> state **)
 
 let ghost_dirty_cleared n0 runs s =
   let g = s.g_ghost in
-  with_ghost { gh_pub = g.gh_pub; gh_seen = g.gh_seen; gh_unnoticed =
+  with_ghost { gh_published = g.gh_published; gh_seen = g.gh_seen;
+    gh_unnoticed =
     (union0 (gset_union Coq_Nat.eq_dec nat_countable)
       (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)
       g.gh_unnoticed);
@@ -2929,39 +3003,40 @@ let ghost_dirty_cleared n0 runs s =
       n0 runs g.gh_window) }
     s
 
-(** val root_oid : oid **)
+(** val root_owner_id : owner_id **)
 
-let root_oid =
+let root_owner_id =
   O
 
-(** val new_owner : nid -> oid option -> bool -> ownerS **)
+(** val new_owner : node_id -> owner_id option -> bool -> owner_state **)
 
 let new_owner host sink disposed =
   { o_children = Nil; o_cleanups = Nil; o_cleanup_envs = Nil;
-    o_cleanup_order = Nil; o_acquisitions = O; o_gen =
+    o_cleanup_order = Nil; o_acquisitions = O; o_generation =
     (match disposed with
      | True -> S O
      | False -> O);
     o_disposed = disposed; o_sink = sink; o_errors = Nil; o_host = host }
 
-(** val owner_with_child : link -> ownerS -> ownerS **)
+(** val owner_with_child : link -> owner_state -> owner_state **)
 
 let owner_with_child l x =
   { o_children = (app x.o_children (Cons (l, Nil))); o_cleanups =
     x.o_cleanups; o_cleanup_envs = x.o_cleanup_envs; o_cleanup_order =
-    x.o_cleanup_order; o_acquisitions = (S x.o_acquisitions); o_gen =
-    x.o_gen; o_disposed = x.o_disposed; o_sink = x.o_sink; o_errors =
+    x.o_cleanup_order; o_acquisitions = (S x.o_acquisitions); o_generation =
+    x.o_generation; o_disposed = x.o_disposed; o_sink = x.o_sink; o_errors =
     x.o_errors; o_host = x.o_host }
 
-(** val owner_with_cleanup : cmd -> env -> ownerS -> ownerS **)
+(** val owner_with_cleanup : cmd -> env -> owner_state -> owner_state **)
 
 let owner_with_cleanup b e x =
   { o_children = x.o_children; o_cleanups =
     (app x.o_cleanups (Cons (b, Nil))); o_cleanup_envs =
     (app x.o_cleanup_envs (Cons (e, Nil))); o_cleanup_order =
     (app x.o_cleanup_order (Cons (x.o_acquisitions, Nil))); o_acquisitions =
-    (S x.o_acquisitions); o_gen = x.o_gen; o_disposed = x.o_disposed;
-    o_sink = x.o_sink; o_errors = x.o_errors; o_host = x.o_host }
+    (S x.o_acquisitions); o_generation = x.o_generation; o_disposed =
+    x.o_disposed; o_sink = x.o_sink; o_errors = x.o_errors; o_host =
+    x.o_host }
 
 (** val zip_cleanups :
     cmd list -> env list -> nat list -> ((cmd, env) prod, nat) prod list **)
@@ -2978,36 +3053,37 @@ let rec zip_cleanups bs es os =
         | Cons (o, os') ->
           Cons ((Pair ((Pair (b, e)), o)), (zip_cleanups bs' es' os'))))
 
-(** val owner_cleanups : ownerS -> ((cmd, env) prod, nat) prod list **)
+(** val owner_cleanups : owner_state -> ((cmd, env) prod, nat) prod list **)
 
 let owner_cleanups x =
   rev (zip_cleanups x.o_cleanups x.o_cleanup_envs x.o_cleanup_order)
 
-(** val owner_detached : ownerS -> ownerS **)
+(** val owner_detached : owner_state -> owner_state **)
 
 let owner_detached x =
   { o_children = Nil; o_cleanups = Nil; o_cleanup_envs = Nil;
-    o_cleanup_order = Nil; o_acquisitions = O; o_gen = (S x.o_gen);
-    o_disposed = x.o_disposed; o_sink = x.o_sink; o_errors = x.o_errors;
-    o_host = x.o_host }
+    o_cleanup_order = Nil; o_acquisitions = O; o_generation = (S
+    x.o_generation); o_disposed = x.o_disposed; o_sink = x.o_sink; o_errors =
+    x.o_errors; o_host = x.o_host }
 
-(** val owner_retired : ownerS -> ownerS **)
+(** val owner_retired : owner_state -> owner_state **)
 
 let owner_retired x =
   { o_children = x.o_children; o_cleanups = x.o_cleanups; o_cleanup_envs =
     x.o_cleanup_envs; o_cleanup_order = x.o_cleanup_order; o_acquisitions =
-    x.o_acquisitions; o_gen = x.o_gen; o_disposed = True; o_sink = x.o_sink;
-    o_errors = x.o_errors; o_host = x.o_host }
+    x.o_acquisitions; o_generation = x.o_generation; o_disposed = True;
+    o_sink = x.o_sink; o_errors = x.o_errors; o_host = x.o_host }
 
-(** val owner_with_error : val0 -> ownerS -> ownerS **)
+(** val owner_with_error : val0 -> owner_state -> owner_state **)
 
 let owner_with_error f x =
   { o_children = x.o_children; o_cleanups = x.o_cleanups; o_cleanup_envs =
     x.o_cleanup_envs; o_cleanup_order = x.o_cleanup_order; o_acquisitions =
-    x.o_acquisitions; o_gen = x.o_gen; o_disposed = x.o_disposed; o_sink =
-    x.o_sink; o_errors = (app x.o_errors (Cons (f, Nil))); o_host = x.o_host }
+    x.o_acquisitions; o_generation = x.o_generation; o_disposed =
+    x.o_disposed; o_sink = x.o_sink; o_errors =
+    (app x.o_errors (Cons (f, Nil))); o_host = x.o_host }
 
-(** val owner_without : link -> ownerS -> ownerS **)
+(** val owner_without : link -> owner_state -> owner_state **)
 
 let owner_without l x =
   { o_children =
@@ -3018,19 +3094,20 @@ let owner_without l x =
       x.o_children);
     o_cleanups = x.o_cleanups; o_cleanup_envs = x.o_cleanup_envs;
     o_cleanup_order = x.o_cleanup_order; o_acquisitions = x.o_acquisitions;
-    o_gen = x.o_gen; o_disposed = x.o_disposed; o_sink = x.o_sink; o_errors =
-    x.o_errors; o_host = x.o_host }
+    o_generation = x.o_generation; o_disposed = x.o_disposed; o_sink =
+    x.o_sink; o_errors = x.o_errors; o_host = x.o_host }
 
 (** val unlink : link -> unit0 m **)
 
 let unlink l =
   m_bind (get_owner l.l_owner) (fun x ->
     match decide
-            (decide_rel (option_eq_dec Coq_Nat.eq_dec) l.l_gen (Some x.o_gen)) with
+            (decide_rel (option_eq_dec Coq_Nat.eq_dec) l.l_generation (Some
+              x.o_generation)) with
     | Left -> put_owner l.l_owner (owner_without l x)
-    | Right -> m_ret Tt)
+    | Right -> m_return Tt)
 
-(** val record_error : oid -> val0 -> unit0 m **)
+(** val record_error : owner_id -> val0 -> unit0 m **)
 
 let record_error o f =
   m_bind (get_owner o) (fun x ->
@@ -3039,13 +3116,13 @@ let record_error o f =
       m_bind (get_owner p) (fun y -> put_owner p (owner_with_error f y))
     | None -> put_owner o (owner_with_error f x))
 
-(** val log_label : nid m **)
+(** val log_label : node_id m **)
 
 let log_label s =
   match s.g_current with
   | Some n0 -> Some (Pair (s, n0))
   | None ->
-    (match s.g_owner with
+    (match s.g_current_owner with
      | Some o ->
        Some (Pair (s,
          (from_option (Obj.magic id) O
@@ -3240,28 +3317,32 @@ let without_prev e =
   filter0 (fun _ -> Coq_list.list_filter) (fun x ->
     not_dec (decide_rel Coq_Nat.eq_dec (fst x) prev_var)) e
 
-(** val detached : oid -> unit0 m -> unit0 m **)
+(** val detached : owner_id -> unit0 m -> unit0 m **)
 
 let detached o body s0 =
   m_bind
-    (m_mod (fun s ->
-      with_batch (S s.g_batch) (with_owner (Some o) (with_current None s))))
+    (m_modify (fun s ->
+      with_batch_depth (S s.g_batch_depth)
+        (with_current_owner (Some o) (with_current None s))))
     (fun _ ->
     m_bind body (fun _ ->
-      m_mod (fun s ->
-        with_batch (pred s.g_batch)
-          (with_owner s0.g_owner (with_current s0.g_current s)))))
+      m_modify (fun s ->
+        with_batch_depth (pred s.g_batch_depth)
+          (with_current_owner s0.g_current_owner
+            (with_current s0.g_current s)))))
     s0
 
-(** val hosted : nid -> 'a1 m -> 'a1 m **)
+(** val hosted : node_id -> 'a1 m -> 'a1 m **)
 
 let hosted n0 body s0 =
-  m_bind (m_mod (fun s -> with_owner None (with_current (Some n0) s)))
+  m_bind
+    (m_modify (fun s -> with_current_owner None (with_current (Some n0) s)))
     (fun _ ->
     m_bind body (fun r ->
       m_bind
-        (m_mod (fun s -> with_owner s0.g_owner (with_current s0.g_current s)))
-        (fun _ -> m_ret r)))
+        (m_modify (fun s ->
+          with_current_owner s0.g_current_owner (with_current s0.g_current s)))
+        (fun _ -> m_return r)))
     s0
 
 (** val untracked : 'a1 m -> 'a1 m **)
@@ -3271,13 +3352,13 @@ let untracked body s0 =
              | Some _ -> True
              | None -> s0.g_untracked
   in
-  m_bind (m_mod (fun s -> with_untracked flag (with_current None s)))
+  m_bind (m_modify (fun s -> with_untracked flag (with_current None s)))
     (fun _ ->
     m_bind body (fun r ->
       m_bind
-        (m_mod (fun s ->
+        (m_modify (fun s ->
           with_untracked s0.g_untracked (with_current s0.g_current s)))
-        (fun _ -> m_ret r)))
+        (fun _ -> m_return r)))
     s0
 
 (** val deferring : state -> bool **)
@@ -3285,17 +3366,17 @@ let untracked body s0 =
 let deferring s =
   match s.g_current with
   | Some _ -> True
-  | None -> bool_decide (decide_rel Coq_Nat.lt_dec O s.g_pull)
+  | None -> bool_decide (decide_rel Coq_Nat.lt_dec O s.g_pull_depth)
 
 (** val live_queue : state -> bool **)
 
 let live_queue s =
-  bool_decide (decide_rel Coq_Nat.lt_dec s.g_head (length s.g_queue))
+  bool_decide (decide_rel Coq_Nat.lt_dec s.g_queue_head (length s.g_queue))
 
 (** val outside_bodies : state -> bool **)
 
 let outside_bodies s =
-  match bool_decide (decide_rel Coq_Nat.eq_dec s.g_pull O) with
+  match bool_decide (decide_rel Coq_Nat.eq_dec s.g_pull_depth O) with
   | True ->
     (match s.g_current with
      | Some _ -> False
@@ -3305,16 +3386,16 @@ let outside_bodies s =
 (** val stale_live : node -> bool **)
 
 let stale_live d =
-  match stale d.n_fresh with
+  match stale d.n_freshness with
   | True -> negb d.n_disposed
   | False -> False
 
-(** val track : nid -> unit0 m **)
+(** val track : node_id -> unit0 m **)
 
 let track n0 s =
   match s.g_current with
   | Some c ->
-    (match sl_add c n0 s.g_edges with
+    (match sources_add c n0 s.g_edges with
      | Some w ->
        Some (Pair
          ((ghost_read c n0 (read_prefix s.g_edges c) (with_edges w s)), Tt))
@@ -3344,7 +3425,7 @@ let on_value e x k s =
      | Fail f -> Some (Pair (s, (Fail f))))
   | None -> None
 
-(** val on_node : env -> expr -> (nid -> outcome m) -> outcome m **)
+(** val on_node : env -> expr -> (node_id -> outcome m) -> outcome m **)
 
 let on_node e x k =
   on_value e x (fun z0 ->
@@ -3352,60 +3433,60 @@ let on_node e x k =
     | Left -> k (Z.to_nat z0)
     | Right -> stuck)
 
-(** val note_host_read : nid -> outcome -> unit0 m **)
+(** val note_host_read : node_id -> outcome -> unit0 m **)
 
 let note_host_read n0 o s =
   match s.g_current with
   | Some _ -> Some (Pair (s, Tt))
   | None ->
-    (match s.g_owner with
+    (match s.g_current_owner with
      | Some r ->
-       (match decide (decide_rel Coq_Nat.eq_dec r root_oid) with
+       (match decide (decide_rel Coq_Nat.eq_dec r root_owner_id) with
         | Left -> emit (EvHostRead (n0, o)) s
         | Right -> Some (Pair (s, Tt)))
      | None -> Some (Pair (s, Tt)))
 
-(** val next_id : nid m **)
+(** val next_id : node_id m **)
 
 let next_id s =
-  Some (Pair ((with_next (S s.g_next) s), (S s.g_next)))
+  Some (Pair ((with_next_id (S s.g_next_id) s), (S s.g_next_id)))
 
 (** val signal_node : val0 -> node **)
 
 let signal_node v =
   { n_kind = KSignal; n_value = v; n_failure = None; n_status = StNone;
-    n_fresh = Clean; n_unann = False; n_runs = O; n_published = False;
-    n_disposed = False; n_queued = False; n_in_cleanup = False; n_scope =
-    None; n_violated = False; n_body = (CRet (EConst Z0)); n_env = Nil;
-    n_mode = Pure; n_cmp = CmpEq; n_link = None }
+    n_freshness = Clean; n_unannounced = False; n_runs = O; n_published =
+    False; n_disposed = False; n_queued = False; n_in_cleanup = False;
+    n_scope = None; n_violated = False; n_body = (CRet (EConst Z0)); n_env =
+    Nil; n_mode = Pure; n_comparer = CmpEq; n_link = None }
 
-(** val memo_node : scope_mode -> cmp -> cmd -> env -> node **)
+(** val memo_node : scope_mode -> comparer -> cmd -> env -> node **)
 
 let memo_node m0 c b e =
   { n_kind = KMemo; n_value = Z0; n_failure = None; n_status =
-    StUninitialized; n_fresh = Dirty; n_unann = False; n_runs = O;
+    StUninitialized; n_freshness = Dirty; n_unannounced = False; n_runs = O;
     n_published = False; n_disposed = False; n_queued = False; n_in_cleanup =
     False; n_scope = None; n_violated = False; n_body = b; n_env = e;
-    n_mode = m0; n_cmp = c; n_link = None }
+    n_mode = m0; n_comparer = c; n_link = None }
 
 (** val effect_node : cmd -> env -> node **)
 
 let effect_node b e =
   { n_kind = KEffect; n_value = Z0; n_failure = None; n_status =
-    StUninitialized; n_fresh = Clean; n_unann = False; n_runs = O;
+    StUninitialized; n_freshness = Clean; n_unannounced = False; n_runs = O;
     n_published = False; n_disposed = False; n_queued = False; n_in_cleanup =
     False; n_scope = None; n_violated = False; n_body = b; n_env = e;
-    n_mode = Owning; n_cmp = CmpEq; n_link = None }
+    n_mode = Owning; n_comparer = CmpEq; n_link = None }
 
-(** val add_node : nid -> node -> unit0 m **)
+(** val add_node : node_id -> node -> unit0 m **)
 
 let add_node n0 d =
-  m_mod (fun s -> ghost_publish n0 (set_node n0 d s))
+  m_modify (fun s -> ghost_publish n0 (set_node n0 d s))
 
-(** val current_owner : oid option m **)
+(** val current_owner : owner_id option m **)
 
 let current_owner s =
-  match s.g_owner with
+  match s.g_current_owner with
   | Some o -> Some (Pair (s, (Some o)))
   | None ->
     (match s.g_current with
@@ -3413,13 +3494,14 @@ let current_owner s =
        (match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) h s.g_nodes with
         | Some d ->
           (match d.n_scope with
-           | Some o -> Some (Pair ((with_owner (Some o) s), (Some o)))
+           | Some o -> Some (Pair ((with_current_owner (Some o) s), (Some o)))
            | None ->
              (match d.n_kind with
               | KMemo ->
                 (match d.n_mode with
                  | Pure ->
-                   Some (Pair ((set_node h (nset_violated True d) s), None))
+                   Some (Pair ((set_node h (node_with_violated True d) s),
+                     None))
                  | Owning ->
                    let o =
                      fresh0
@@ -3434,13 +3516,13 @@ let current_owner s =
                        (insert0
                          (map_insert
                            (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
-                         o (new_owner h (Some root_oid) d.n_disposed)
+                         o (new_owner h (Some root_owner_id) d.n_disposed)
                          s.g_owners)
                        s
                    in
                    Some (Pair
-                   ((with_owner (Some o)
-                      (set_node h (nset_scope (Some o) d) s1)),
+                   ((with_current_owner (Some o)
+                      (set_node h (node_with_scope (Some o) d) s1)),
                    (Some o))))
               | _ ->
                 let o =
@@ -3454,11 +3536,13 @@ let current_owner s =
                     (insert0
                       (map_insert
                         (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
-                      o (new_owner h (Some root_oid) d.n_disposed) s.g_owners)
+                      o (new_owner h (Some root_owner_id) d.n_disposed)
+                      s.g_owners)
                     s
                 in
                 Some (Pair
-                ((with_owner (Some o) (set_node h (nset_scope (Some o) d) s1)),
+                ((with_current_owner (Some o)
+                   (set_node h (node_with_scope (Some o) d) s1)),
                 (Some o)))))
         | None -> None)
      | None -> None)
@@ -3470,8 +3554,8 @@ let rec exec fuel e c =
   | O -> stuck
   | S f ->
     (match c with
-     | CRet x -> on_value e x (fun v -> m_ret (Ok v))
-     | CThrow y -> m_ret (Fail y)
+     | CRet x -> on_value e x (fun v -> m_return (Ok v))
+     | CThrow y -> m_return (Fail y)
      | CLet (x, v, k) ->
        on_value e v (fun z0 -> exec f (Cons ((Pair (x, z0)), e)) k)
      | CIf (v, a, b) ->
@@ -3485,7 +3569,7 @@ let rec exec fuel e c =
            m_bind (note_host_read t o) (fun _ ->
              match o with
              | Ok v -> exec f (Cons ((Pair (x, v)), e)) k
-             | Fail y -> m_ret (Fail y))))
+             | Fail y -> m_return (Fail y))))
      | CTryRead (x, ok, n0, k) ->
        on_node e n0 (fun t ->
          m_bind (read f t True) (fun o ->
@@ -3496,13 +3580,13 @@ let rec exec fuel e c =
                  e)))) k
              | Fail y ->
                exec f (Cons ((Pair (ok, Z0)), (Cons ((Pair (x, y)), e)))) k)))
-     | CReadU (x, n0, k) ->
+     | CReadUntracked (x, n0, k) ->
        on_node e n0 (fun t ->
          m_bind (read f t False) (fun o ->
            m_bind (note_host_read t o) (fun _ ->
              match o with
              | Ok v -> exec f (Cons ((Pair (x, v)), e)) k
-             | Fail y -> m_ret (Fail y))))
+             | Fail y -> m_return (Fail y))))
      | CWrite (n0, v, k) ->
        on_node e n0 (fun t ->
          on_value e v (fun z0 ->
@@ -3519,7 +3603,7 @@ let rec exec fuel e c =
            m_bind current_owner (fun owner ->
              match owner with
              | Some o -> m_bind (attach f n0 o) (fun _ -> exec f e' k)
-             | None -> m_ret (Fail pure_scope_failure))))
+             | None -> m_return (Fail pure_scope_failure))))
      | CEffect (x, b, k) ->
        m_bind next_id (fun n0 ->
          let e' = Cons ((Pair (x, (Z.of_nat n0))), e) in
@@ -3530,7 +3614,7 @@ let rec exec fuel e c =
                m_bind (attach f n0 o) (fun _ ->
                  m_bind (m_step (mark_dirty f n0)) (fun _ ->
                    m_bind (request_flush f) (fun _ -> exec f e' k)))
-             | None -> m_ret (Fail pure_scope_failure))))
+             | None -> m_return (Fail pure_scope_failure))))
      | CCleanup (b, k) ->
        m_bind current_owner (fun owner ->
          match owner with
@@ -3543,7 +3627,7 @@ let rec exec fuel e c =
                     request_flush f)
                 | False -> put_owner o (owner_with_cleanup b e x))
                (fun _ -> exec f e k))
-         | None -> m_ret (Fail pure_scope_failure))
+         | None -> m_return (Fail pure_scope_failure))
      | CDispose (n0, k) ->
        on_node e n0 (fun t ->
          m_bind (get_node t) (fun d ->
@@ -3553,22 +3637,25 @@ let rec exec fuel e c =
              m_bind (dispose_node f t) (fun _ ->
                m_bind
                  (match d.n_disposed with
-                  | True -> m_ret Tt
+                  | True -> m_return Tt
                   | False -> emit (EvDispose t))
                  (fun _ -> exec f e k))))
      | CBatch (b, k) ->
-       m_bind (m_mod (fun s -> with_batch (S s.g_batch) s)) (fun _ ->
+       m_bind (m_modify (fun s -> with_batch_depth (S s.g_batch_depth) s))
+         (fun _ ->
          m_bind (exec f e b) (fun r ->
-           m_bind (m_mod (fun s -> with_batch (pred s.g_batch) s)) (fun _ ->
+           m_bind
+             (m_modify (fun s -> with_batch_depth (pred s.g_batch_depth) s))
+             (fun _ ->
              match r with
              | Ok _ -> m_bind (request_flush f) (fun _ -> exec f e k)
-             | Fail y -> m_ret (Fail y))))
+             | Fail y -> m_return (Fail y))))
      | CLog (v, k) ->
        on_value e v (fun z0 ->
          m_bind log_label (fun l ->
            m_bind (emit (EvLog (l, z0))) (fun _ -> exec f e k))))
 
-(** val read : nat -> nid -> bool -> outcome m **)
+(** val read : nat -> node_id -> bool -> outcome m **)
 
 and read fuel n0 tracked =
   match fuel with
@@ -3578,7 +3665,7 @@ and read fuel n0 tracked =
      | True -> read_node f n0
      | False -> untracked (read_node f n0))
 
-(** val read_node : nat -> nid -> outcome m **)
+(** val read_node : nat -> node_id -> outcome m **)
 
 and read_node fuel n0 =
   match fuel with
@@ -3586,7 +3673,7 @@ and read_node fuel n0 =
   | S f ->
     m_bind (get_node n0) (fun d ->
       match d.n_kind with
-      | KSignal -> m_bind (track n0) (fun _ -> m_ret (Ok d.n_value))
+      | KSignal -> m_bind (track n0) (fun _ -> m_return (Ok d.n_value))
       | KMemo ->
         m_bind
           (match stale_live d with
@@ -3596,17 +3683,17 @@ and read_node fuel n0 =
                  m_bind (get_node n0) (fun d' ->
                    match stale_live d' with
                    | True -> mark_reader f
-                   | False -> m_ret Tt)))
+                   | False -> m_return Tt)))
            | False -> track n0)
           (fun _ ->
           m_bind (get_node n0) (fun d' ->
             match d'.n_status with
             | StError ->
-              m_ret (Fail (from_option (Obj.magic id) Z0 d'.n_failure))
-            | _ -> m_ret (Ok d'.n_value)))
+              m_return (Fail (from_option (Obj.magic id) Z0 d'.n_failure))
+            | _ -> m_return (Ok d'.n_value)))
       | KEffect -> stuck)
 
-(** val update_if_necessary : nat -> nid -> unit0 m **)
+(** val update_if_necessary : nat -> node_id -> unit0 m **)
 
 and update_if_necessary fuel n0 =
   match fuel with
@@ -3617,10 +3704,10 @@ and update_if_necessary fuel n0 =
       | KMemo ->
         (match stale_live d with
          | True -> refresh_or_pull f n0
-         | False -> m_ret Tt)
-      | _ -> m_ret Tt)
+         | False -> m_return Tt)
+      | _ -> m_return Tt)
 
-(** val refresh_or_pull : nat -> nid -> unit0 m **)
+(** val refresh_or_pull : nat -> node_id -> unit0 m **)
 
 and refresh_or_pull fuel n0 =
   match fuel with
@@ -3631,23 +3718,26 @@ and refresh_or_pull fuel n0 =
       | True -> refresh f n0
       | False -> pull f n0)
 
-(** val pull : nat -> nid -> unit0 m **)
+(** val pull : nat -> node_id -> unit0 m **)
 
 and pull fuel n0 =
   match fuel with
   | O -> stuck
   | S f ->
-    m_bind (m_mod (fun s -> with_pull (S s.g_pull) s)) (fun _ ->
+    m_bind (m_modify (fun s -> with_pull_depth (S s.g_pull_depth) s))
+      (fun _ ->
       m_bind (refresh f n0) (fun _ ->
-        m_bind (m_mod (fun s -> with_pull (pred s.g_pull) s)) (fun _ ->
+        m_bind (m_modify (fun s -> with_pull_depth (pred s.g_pull_depth) s))
+          (fun _ ->
           m_bind m_get (fun s ->
-            match match bool_decide (decide_rel Coq_Nat.eq_dec s.g_pull O) with
-                  | True -> s.g_owed
+            match match bool_decide
+                          (decide_rel Coq_Nat.eq_dec s.g_pull_depth O) with
+                  | True -> s.g_flush_owed
                   | False -> False with
             | True -> settle_flush f
-            | False -> m_ret Tt))))
+            | False -> m_return Tt))))
 
-(** val refresh : nat -> nid -> unit0 m **)
+(** val refresh : nat -> node_id -> unit0 m **)
 
 and refresh fuel n0 =
   match fuel with
@@ -3655,22 +3745,23 @@ and refresh fuel n0 =
   | S f ->
     m_bind (get_node n0) (fun d ->
       m_bind
-        (match decide (decide_rel fresh_eq_dec d.n_fresh Check) with
+        (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
          | Left ->
            m_bind (resolve_walk f n0 O) (fun _ ->
              m_bind (get_node n0) (fun d' ->
-               match decide (decide_rel fresh_eq_dec d'.n_fresh Check) with
+               match decide (decide_rel freshness_eq_dec d'.n_freshness Check) with
                | Left ->
-                 mod_node n0 (fun x -> nset_unann False (nset_fresh Clean x))
-               | Right -> m_ret Tt))
-         | Right -> m_ret Tt)
+                 modify_node n0 (fun x ->
+                   node_with_unannounced False (node_with_freshness Clean x))
+               | Right -> m_return Tt))
+         | Right -> m_return Tt)
         (fun _ ->
         m_bind (get_node n0) (fun d' ->
-          match decide (decide_rel fresh_eq_dec d'.n_fresh Dirty) with
+          match decide (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
           | Left -> recompute f n0
-          | Right -> m_ret Tt)))
+          | Right -> m_return Tt)))
 
-(** val resolve_walk : nat -> nid -> nat -> unit0 m **)
+(** val resolve_walk : nat -> node_id -> nat -> unit0 m **)
 
 and resolve_walk fuel n0 i =
   match fuel with
@@ -3678,17 +3769,18 @@ and resolve_walk fuel n0 i =
   | S f ->
     m_bind (get_node n0) (fun d ->
       m_bind m_get (fun s ->
-        match decide (decide_rel fresh_eq_dec d.n_fresh Check) with
+        match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
         | Left ->
-          (match lookup0 Coq_list.list_lookup i (src_of s.g_edges n0).sslots with
+          (match lookup0 Coq_list.list_lookup i
+                   (sources_of s.g_edges n0).source_slots with
            | Some y ->
-             let Pair (src0, _) = y in
-             m_bind (update_if_necessary f src0) (fun _ ->
+             let Pair (src, _) = y in
+             m_bind (update_if_necessary f src) (fun _ ->
                resolve_walk f n0 (S i))
-           | None -> m_ret Tt)
-        | Right -> m_ret Tt))
+           | None -> m_return Tt)
+        | Right -> m_return Tt))
 
-(** val recompute : nat -> nid -> unit0 m **)
+(** val recompute : nat -> node_id -> unit0 m **)
 
 and recompute fuel n0 =
   match fuel with
@@ -3697,22 +3789,24 @@ and recompute fuel n0 =
     m_bind (get_node n0) (fun d ->
       match d.n_scope with
       | Some o ->
-        m_bind (mod_node n0 (nset_fresh Clean)) (fun _ ->
-          m_bind (m_mod (ghost_dirty_cleared n0 d.n_runs)) (fun _ ->
+        m_bind (modify_node n0 (node_with_freshness Clean)) (fun _ ->
+          m_bind (m_modify (ghost_dirty_cleared n0 d.n_runs)) (fun _ ->
             m_bind (discharge f o) (fun _ ->
               m_bind (get_node n0) (fun d' ->
                 match d'.n_disposed with
-                | True -> m_ret Tt
+                | True -> m_return Tt
                 | False ->
                   (match decide (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
                    | Left -> run_memo f n0
                    | Right ->
-                     (match decide (decide_rel fresh_eq_dec d'.n_fresh Dirty) with
+                     (match decide
+                              (decide_rel freshness_eq_dec d'.n_freshness
+                                Dirty) with
                       | Left -> recompute f n0
-                      | Right -> m_ret Tt))))))
+                      | Right -> m_return Tt))))))
       | None -> run_memo f n0)
 
-(** val run_memo : nat -> nid -> unit0 m **)
+(** val run_memo : nat -> node_id -> unit0 m **)
 
 and run_memo fuel n0 =
   match fuel with
@@ -3723,13 +3817,14 @@ and run_memo fuel n0 =
       let previous_status = d.n_status in
       let previous_failure = d.n_failure in
       m_bind
-        (mod_node n0 (fun x ->
-          nset_runs (S x.n_runs)
-            (nset_failure None
-              (nset_status StNone (nset_unann False (nset_fresh Clean x))))))
+        (modify_node n0 (fun x ->
+          node_with_runs (S x.n_runs)
+            (node_with_failure None
+              (node_with_status StNone
+                (node_with_unannounced False (node_with_freshness Clean x))))))
         (fun _ ->
-        m_bind (edges (sl_begin n0)) (fun _ ->
-          m_bind (m_mod (ghost_run_start n0)) (fun _ ->
+        m_bind (edges (sources_begin_run n0)) (fun _ ->
+          m_bind (m_modify (ghost_run_start n0)) (fun _ ->
             m_bind (push_running n0) (fun _ ->
               let body_env =
                 match d.n_published with
@@ -3746,25 +3841,25 @@ and run_memo fuel n0 =
                   m_bind
                     (match result with
                      | Ok v ->
-                       mod_node n0 (fun x ->
-                         nset_published True (nset_value v x))
-                     | Fail _ -> m_ret Tt)
+                       modify_node n0 (fun x ->
+                         node_with_published True (node_with_value v x))
+                     | Fail _ -> m_return Tt)
                     (fun _ ->
                     m_bind
                       (edges_opt
                         (match d1.n_disposed with
-                         | True -> sl_clear n0
-                         | False -> sl_end n0))
+                         | True -> sources_clear n0
+                         | False -> sources_end_run n0))
                       (fun _ ->
                       m_bind pop_running (fun _ ->
                         m_bind
                           (match result with
-                           | Ok _ -> m_ret Tt
+                           | Ok _ -> m_return Tt
                            | Fail y ->
-                             mod_node n0 (fun x ->
-                               nset_violated False
-                                 (nset_status StError
-                                   (nset_failure (Some y) x))))
+                             modify_node n0 (fun x ->
+                               node_with_violated False
+                                 (node_with_status StError
+                                   (node_with_failure (Some y) x))))
                           (fun _ ->
                           m_bind (get_node n0) (fun d2 ->
                             m_bind
@@ -3777,27 +3872,28 @@ and run_memo fuel n0 =
                                            (decide_rel
                                              (option_eq_dec Coq_Z.eq_dec)
                                              d2.n_failure previous_failure))) with
-                               | Left -> m_ret True
+                               | Left -> m_return True
                                | Right ->
-                                 (match d2.n_cmp with
+                                 (match d2.n_comparer with
                                   | CmpEq ->
-                                    m_ret
+                                    m_return
                                       (bool_decide
                                         (not_dec
                                           (decide_rel Coq_Z.eq_dec d2.n_value
                                             previous)))
-                                  | CmpNever -> m_ret True
+                                  | CmpNever -> m_return True
                                   | CmpThrows y ->
                                     m_bind
-                                      (mod_node n0 (fun x ->
-                                        nset_status StError
-                                          (nset_failure (Some y)
-                                            (nset_value previous x))))
-                                      (fun _ -> m_ret True)))
+                                      (modify_node n0 (fun x ->
+                                        node_with_status StError
+                                          (node_with_failure (Some y)
+                                            (node_with_value previous x))))
+                                      (fun _ -> m_return True)))
                               (fun moved ->
                               m_bind m_get (fun s ->
                                 m_bind
-                                  (m_mod (ghost_run_end n0 s.g_current moved))
+                                  (m_modify
+                                    (ghost_run_end n0 s.g_current moved))
                                   (fun _ ->
                                   m_bind
                                     (match moved with
@@ -3805,16 +3901,18 @@ and run_memo fuel n0 =
                                        m_step
                                          (notify_dirty_except f n0
                                            s.g_current)
-                                     | False -> m_ret Tt)
+                                     | False -> m_return Tt)
                                     (fun _ ->
                                     m_bind (get_node n0) (fun d3 ->
                                       match decide
-                                              (decide_rel fresh_eq_dec
-                                                d3.n_fresh Clean) with
-                                      | Left -> m_ret Tt
-                                      | Right -> mod_node n0 (nset_unann True))))))))))))))))))
+                                              (decide_rel freshness_eq_dec
+                                                d3.n_freshness Clean) with
+                                      | Left -> m_return Tt
+                                      | Right ->
+                                        modify_node n0
+                                          (node_with_unannounced True))))))))))))))))))
 
-(** val execute_effect : nat -> nid -> unit0 m **)
+(** val execute_effect : nat -> node_id -> unit0 m **)
 
 and execute_effect fuel n0 =
   match fuel with
@@ -3822,51 +3920,53 @@ and execute_effect fuel n0 =
   | S f ->
     m_bind (get_node n0) (fun d ->
       match d.n_disposed with
-      | True -> mod_node n0 (nset_queued False)
+      | True -> modify_node n0 (node_with_queued False)
       | False ->
         m_bind
-          (match decide (decide_rel fresh_eq_dec d.n_fresh Check) with
+          (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
            | Left ->
              m_bind (resolve_walk f n0 O) (fun _ ->
                m_bind (get_node n0) (fun d' ->
-                 match decide (decide_rel fresh_eq_dec d'.n_fresh Check) with
-                 | Left -> mod_node n0 (nset_fresh Clean)
-                 | Right -> m_ret Tt))
-           | Right -> m_ret Tt)
+                 match decide
+                         (decide_rel freshness_eq_dec d'.n_freshness Check) with
+                 | Left -> modify_node n0 (node_with_freshness Clean)
+                 | Right -> m_return Tt))
+           | Right -> m_return Tt)
           (fun _ ->
           m_bind (get_node n0) (fun d' ->
             m_bind
-              (mod_node n0 (fun x -> nset_fresh Clean (nset_queued False x)))
+              (modify_node n0 (fun x ->
+                node_with_freshness Clean (node_with_queued False x)))
               (fun _ ->
-              match decide (decide_rel fresh_eq_dec d'.n_fresh Dirty) with
+              match decide (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
               | Left -> run_effect f n0
-              | Right -> m_ret Tt))))
+              | Right -> m_return Tt))))
 
-(** val run_effect : nat -> nid -> unit0 m **)
+(** val run_effect : nat -> node_id -> unit0 m **)
 
 and run_effect fuel n0 =
   match fuel with
   | O -> stuck
   | S f ->
     m_bind (push_running n0) (fun _ ->
-      m_bind (edges (sl_begin n0)) (fun _ ->
+      m_bind (edges (sources_begin_run n0)) (fun _ ->
         m_bind (get_node n0) (fun d ->
           m_bind
             (match d.n_scope with
              | Some o ->
-               m_bind (mod_node n0 (nset_in_cleanup True)) (fun _ ->
+               m_bind (modify_node n0 (node_with_in_cleanup True)) (fun _ ->
                  m_bind (discharge f o) (fun _ ->
-                   mod_node n0 (nset_in_cleanup False)))
-             | None -> m_ret Tt)
+                   modify_node n0 (node_with_in_cleanup False)))
+             | None -> m_return Tt)
             (fun _ ->
             m_bind (get_node n0) (fun d' ->
               m_bind
                 (match d'.n_disposed with
-                 | True -> m_ret Tt
+                 | True -> m_return Tt
                  | False -> run_effect_body f n0)
                 (fun _ -> pop_running))))))
 
-(** val run_effect_body : nat -> nid -> unit0 m **)
+(** val run_effect_body : nat -> node_id -> unit0 m **)
 
 and run_effect_body fuel n0 =
   match fuel with
@@ -3874,8 +3974,9 @@ and run_effect_body fuel n0 =
   | S f ->
     m_bind (get_node n0) (fun d ->
       m_bind
-        (mod_node n0 (fun x ->
-          nset_runs (S x.n_runs) (nset_failure None (nset_status StNone x))))
+        (modify_node n0 (fun x ->
+          node_with_runs (S x.n_runs)
+            (node_with_failure None (node_with_status StNone x))))
         (fun _ ->
         m_bind (emit (EvRun n0)) (fun _ ->
           m_bind (hosted n0 (exec f d.n_env d.n_body)) (fun r ->
@@ -3883,18 +3984,18 @@ and run_effect_body fuel n0 =
               m_bind
                 (edges_opt
                   (match d'.n_disposed with
-                   | True -> sl_clear n0
-                   | False -> sl_end n0))
+                   | True -> sources_clear n0
+                   | False -> sources_end_run n0))
                 (fun _ ->
                 match r with
-                | Ok _ -> m_ret Tt
+                | Ok _ -> m_return Tt
                 | Fail y ->
                   m_bind
-                    (mod_node n0 (fun x ->
-                      nset_status StError (nset_failure (Some y) x)))
+                    (modify_node n0 (fun x ->
+                      node_with_status StError (node_with_failure (Some y) x)))
                     (fun _ -> emit (EvFail (n0, y)))))))))
 
-(** val discharge : nat -> oid -> unit0 m **)
+(** val discharge : nat -> owner_id -> unit0 m **)
 
 and discharge fuel o =
   match fuel with
@@ -3902,15 +4003,16 @@ and discharge fuel o =
   | S f ->
     m_bind (detached o (dispose_scope f o)) (fun _ ->
       m_bind m_get (fun s ->
-        match match match bool_decide (decide_rel Coq_Nat.eq_dec s.g_batch O) with
+        match match match bool_decide
+                            (decide_rel Coq_Nat.eq_dec s.g_batch_depth O) with
                     | True -> negb s.g_flushing
                     | False -> False with
               | True -> live_queue s
               | False -> False with
-        | True -> m_mod (with_owed True)
-        | False -> m_ret Tt))
+        | True -> m_modify (with_flush_owed True)
+        | False -> m_return Tt))
 
-(** val retire : nat -> oid -> unit0 m **)
+(** val retire : nat -> owner_id -> unit0 m **)
 
 and retire fuel o =
   match fuel with
@@ -3920,7 +4022,7 @@ and retire fuel o =
       (detached o
         (m_bind (get_owner o) (fun x ->
           match x.o_disposed with
-          | True -> m_ret Tt
+          | True -> m_return Tt
           | False ->
             m_bind (put_owner o (owner_retired x)) (fun _ ->
               dispose_scope f o))))
@@ -3928,9 +4030,9 @@ and retire fuel o =
       m_bind m_get (fun s ->
         match live_queue s with
         | True -> request_flush f
-        | False -> m_ret Tt))
+        | False -> m_return Tt))
 
-(** val dispose_scope : nat -> oid -> unit0 m **)
+(** val dispose_scope : nat -> owner_id -> unit0 m **)
 
 and dispose_scope fuel o =
   match fuel with
@@ -3941,7 +4043,8 @@ and dispose_scope fuel o =
         teardown f o (rev x.o_children) (owner_cleanups x)))
 
 (** val teardown :
-    nat -> oid -> link list -> ((cmd, env) prod, nat) prod list -> unit0 m **)
+    nat -> owner_id -> link list -> ((cmd, env) prod, nat) prod list -> unit0
+    m **)
 
 and teardown fuel o ls cs =
   match fuel with
@@ -3950,7 +4053,7 @@ and teardown fuel o ls cs =
     (match ls with
      | Nil ->
        (match cs with
-        | Nil -> m_ret Tt
+        | Nil -> m_return Tt
         | Cons (p, cs') ->
           let Pair (p0, _) = p in
           let Pair (b, e) = p0 in
@@ -3967,7 +4070,7 @@ and teardown fuel o ls cs =
            | Right ->
              m_bind (run_cleanup f o b e) (fun _ -> teardown f o ls cs'))))
 
-(** val run_cleanup : nat -> oid -> cmd -> env -> unit0 m **)
+(** val run_cleanup : nat -> owner_id -> cmd -> env -> unit0 m **)
 
 and run_cleanup fuel o b e =
   match fuel with
@@ -3977,18 +4080,19 @@ and run_cleanup fuel o b e =
       m_bind (emit (EvCleanup x.o_host)) (fun _ ->
         m_bind (exec f e b) (fun r ->
           match r with
-          | Ok _ -> m_ret Tt
+          | Ok _ -> m_return Tt
           | Fail y ->
             m_bind (record_error o y) (fun _ -> emit (EvFail (x.o_host, y))))))
 
-(** val release : nat -> nid -> unit0 m **)
+(** val release : nat -> node_id -> unit0 m **)
 
 and release fuel n0 =
   match fuel with
   | O -> stuck
-  | S f -> m_bind (mod_node n0 (nset_link None)) (fun _ -> dispose_node f n0)
+  | S f ->
+    m_bind (modify_node n0 (node_with_link None)) (fun _ -> dispose_node f n0)
 
-(** val dispose_node : nat -> nid -> unit0 m **)
+(** val dispose_node : nat -> node_id -> unit0 m **)
 
 and dispose_node fuel n0 =
   match fuel with
@@ -3996,20 +4100,23 @@ and dispose_node fuel n0 =
   | S f ->
     m_bind (get_node n0) (fun d ->
       match d.n_disposed with
-      | True -> m_ret Tt
+      | True -> m_return Tt
       | False ->
-        m_bind (mod_node n0 (fun x -> nset_link None (nset_disposed True x)))
+        m_bind
+          (modify_node n0 (fun x ->
+            node_with_link None (node_with_disposed True x)))
           (fun _ ->
-          m_bind (match d.n_link with
-                  | Some l -> unlink l
-                  | None -> m_ret Tt)
+          m_bind
+            (match d.n_link with
+             | Some l -> unlink l
+             | None -> m_return Tt)
             (fun _ ->
-            m_bind (edges_opt (sl_clear n0)) (fun _ ->
+            m_bind (edges_opt (sources_clear n0)) (fun _ ->
               match d.n_scope with
               | Some o -> retire f o
-              | None -> m_ret Tt))))
+              | None -> m_return Tt))))
 
-(** val attach : nat -> nid -> oid -> unit0 m **)
+(** val attach : nat -> node_id -> owner_id -> unit0 m **)
 
 and attach fuel n0 o =
   match fuel with
@@ -4019,17 +4126,17 @@ and attach fuel n0 o =
       match x.o_disposed with
       | True ->
         m_bind (release f n0) (fun _ ->
-          mod_node n0
-            (nset_link (Some { l_child = n0; l_owner = o; l_gen = None;
-              l_acquired = O })))
+          modify_node n0
+            (node_with_link (Some { l_child = n0; l_owner = o; l_generation =
+              None; l_acquired = O })))
       | False ->
-        let l = { l_child = n0; l_owner = o; l_gen = (Some x.o_gen);
-          l_acquired = x.o_acquisitions }
+        let l = { l_child = n0; l_owner = o; l_generation = (Some
+          x.o_generation); l_acquired = x.o_acquisitions }
         in
         m_bind (put_owner o (owner_with_child l x)) (fun _ ->
-          mod_node n0 (nset_link (Some l))))
+          modify_node n0 (node_with_link (Some l))))
 
-(** val write_signal : nat -> nid -> val0 -> unit0 m **)
+(** val write_signal : nat -> node_id -> val0 -> unit0 m **)
 
 and write_signal fuel n0 v =
   match fuel with
@@ -4039,10 +4146,10 @@ and write_signal fuel n0 v =
       match d.n_kind with
       | KSignal ->
         (match decide (decide_rel Coq_Z.eq_dec d.n_value v) with
-         | Left -> m_ret Tt
+         | Left -> m_return Tt
          | Right ->
-           m_bind (mod_node n0 (nset_value v)) (fun _ ->
-             m_bind (m_mod (ghost_publish n0)) (fun _ ->
+           m_bind (modify_node n0 (node_with_value v)) (fun _ ->
+             m_bind (m_modify (ghost_publish n0)) (fun _ ->
                m_bind (m_step (notify_dirty f n0)) (fun _ -> request_flush f))))
       | _ -> stuck)
 
@@ -4053,16 +4160,16 @@ and request_flush = function
 | S f ->
   m_bind m_get (fun s ->
     match match live_queue s with
-          | True -> bool_decide (decide_rel Coq_Nat.eq_dec s.g_batch O)
+          | True -> bool_decide (decide_rel Coq_Nat.eq_dec s.g_batch_depth O)
           | False -> False with
     | True ->
       (match outside_bodies s with
        | True -> run_flush f
        | False ->
          (match s.g_flushing with
-          | True -> m_ret Tt
-          | False -> m_mod (with_owed True)))
-    | False -> m_ret Tt)
+          | True -> m_return Tt
+          | False -> m_modify (with_flush_owed True)))
+    | False -> m_return Tt)
 
 (** val settle_flush : nat -> unit0 m **)
 
@@ -4070,13 +4177,14 @@ and settle_flush = function
 | O -> stuck
 | S f ->
   m_bind m_get (fun s ->
-    match match match s.g_owed with
-                | True -> bool_decide (decide_rel Coq_Nat.eq_dec s.g_batch O)
+    match match match s.g_flush_owed with
+                | True ->
+                  bool_decide (decide_rel Coq_Nat.eq_dec s.g_batch_depth O)
                 | False -> False with
           | True -> outside_bodies s
           | False -> False with
     | True -> run_flush f
-    | False -> m_ret Tt)
+    | False -> m_return Tt)
 
 (** val run_flush : nat -> unit0 m **)
 
@@ -4085,10 +4193,11 @@ and run_flush = function
 | S f ->
   m_bind m_get (fun s ->
     match s.g_flushing with
-    | True -> m_ret Tt
+    | True -> m_return Tt
     | False ->
-      m_bind (m_mod (fun s0 -> with_owed False (with_flushing True s0)))
-        (fun _ -> m_bind (drain f) (fun _ -> m_mod (with_flushing False))))
+      m_bind
+        (m_modify (fun s0 -> with_flush_owed False (with_flushing True s0)))
+        (fun _ -> m_bind (drain f) (fun _ -> m_modify (with_flushing False))))
 
 (** val drain : nat -> unit0 m **)
 
@@ -4096,11 +4205,11 @@ and drain = function
 | O -> stuck
 | S f ->
   m_bind m_get (fun s ->
-    match lookup0 Coq_list.list_lookup s.g_head s.g_queue with
+    match lookup0 Coq_list.list_lookup s.g_queue_head s.g_queue with
     | Some n0 ->
-      m_bind (m_mod (with_head (S s.g_head))) (fun _ ->
+      m_bind (m_modify (with_queue_head (S s.g_queue_head))) (fun _ ->
         m_bind (execute_effect f n0) (fun _ -> drain f))
-    | None -> m_mod (fun s0 -> with_queue Nil (with_head O s0)))
+    | None -> m_modify (fun s0 -> with_queue Nil (with_queue_head O s0)))
 
 (** val init : flags -> state **)
 
@@ -4108,12 +4217,12 @@ let init fl =
   { g_flags = fl; g_edges = empty_world; g_nodes =
     (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); g_owners =
     (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
-      root_oid (new_owner O None False)
+      root_owner_id (new_owner O None False)
       (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)));
-    g_queue = Nil; g_head = O; g_flushing = False; g_owed = False; g_batch =
-    O; g_pull = O; g_current = None; g_untracked = False; g_owner = (Some
-    root_oid); g_next = O; g_trace = Nil; g_running = Nil; g_ghost =
-    empty_ghost }
+    g_queue = Nil; g_queue_head = O; g_flushing = False; g_flush_owed =
+    False; g_batch_depth = O; g_pull_depth = O; g_current = None;
+    g_untracked = False; g_current_owner = (Some root_owner_id); g_next_id =
+    O; g_trace = Nil; g_running = Nil; g_ghost = empty_ghost }
 
 (** val run_top : nat -> cmd -> outcome m **)
 
@@ -4127,27 +4236,27 @@ let trace_of fuel fl c =
   | Some p -> let Pair (s, _) = p in Some s.g_trace
   | None -> None
 
-type node_view = { v_id : nid; v_kind : kind; v_value : val0;
+type node_view = { v_id : node_id; v_kind : kind; v_value : val0;
                    v_status : status; v_failure : val0 option;
-                   v_fresh : fresh1; v_unann : bool; v_runs : nat;
-                   v_disposed : bool; v_queued : bool; v_sources : nat;
-                   v_observers : nat }
+                   v_freshness : freshness; v_unannounced : bool;
+                   v_runs : nat; v_disposed : bool; v_queued : bool;
+                   v_sources : nat; v_observers : nat }
 
 type state_view = { v_nodes : node_view list; v_queue : nat; v_errors : nat }
 
-(** val view_node : state -> nid -> node -> node_view **)
+(** val view_node : state -> node_id -> node -> node_view **)
 
 let view_node s n0 d =
   { v_id = n0; v_kind = d.n_kind; v_value = d.n_value; v_status = d.n_status;
-    v_failure = d.n_failure; v_fresh = d.n_fresh; v_unann = d.n_unann;
-    v_runs = d.n_runs; v_disposed = d.n_disposed; v_queued = d.n_queued;
-    v_sources = (length (src_of s.g_edges n0).sslots); v_observers =
-    (length (obs_of s.g_edges n0).oitems) }
+    v_failure = d.n_failure; v_freshness = d.n_freshness; v_unannounced =
+    d.n_unannounced; v_runs = d.n_runs; v_disposed = d.n_disposed; v_queued =
+    d.n_queued; v_sources = (length (sources_of s.g_edges n0).source_slots);
+    v_observers = (length (observers_of s.g_edges n0).observer_items) }
 
-(** val node_ids : state -> nid list **)
+(** val node_ids : state -> node_id list **)
 
 let node_ids s =
-  seq (S O) s.g_next
+  seq (S O) s.g_next_id
 
 (** val view_of : state -> state_view **)
 
@@ -4161,10 +4270,10 @@ let view_of s =
     (from_option (Obj.magic id) O
       (fmap (Obj.magic (fun _ _ -> option_fmap))
         (compose length (fun o -> o.o_errors))
-        (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) root_oid
+        (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) root_owner_id
           s.g_owners))) }
 
-(** val memo_ids : state -> nid list **)
+(** val memo_ids : state -> node_id list **)
 
 let memo_ids s =
   omap (Obj.magic (fun _ _ -> Coq0_list.list_omap)) (fun n0 ->
@@ -4185,8 +4294,8 @@ let closing fuel s =
             m_bind
               (exec fuel Nil (CTryRead (O, (S O), (EConst (Z.of_nat n0)),
                 (CRet (EConst Z0)))))
-              (fun _ -> m_ret Tt)))
-          (memo_ids s) (m_ret Tt) s with
+              (fun _ -> m_return Tt)))
+          (memo_ids s) (m_return Tt) s with
   | Some p -> let Pair (s', _) = p in run_flush fuel s'
   | None -> None
 

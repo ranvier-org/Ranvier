@@ -7,3 +7,6 @@ docs/.ai/public-api-baseline.txt -whitespace
 
 # Rocq proofs: the scripts run in WSL, so every file keeps LF endings
 proofs/** text eol=lf
+# Extraction output, compared byte for byte by check.sh. Its line wrapping can leave trailing spaces.
+proofs/differential/engine.ml -whitespace
+proofs/differential/engine.mli -whitespace

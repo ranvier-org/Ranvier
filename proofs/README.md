@@ -84,59 +84,59 @@ copy, so it needs no Rocq.
 
 | Theorem | File | Claim |
 |---|---|---|
-| `rtrace_deterministic` | `Reference/Properties.v` | Agreeing orders and any two sufficient fuels give one trace. |
+| `reference_trace_deterministic` | `Reference/Properties.v` | Agreeing orders and any two sufficient fuels give one trace. |
 | `memo_value_extensional` | `Reference/Properties.v` | A memo's value depends only on the signals its evaluation discovers. |
 | `glitch_free_by_definition` | `Reference/Properties.v` | Each `EvLog` belongs to one run. A run that writes no signal has its reads and events computed from one signal snapshot and its cleanups' captured environments, which can hold values from an earlier snapshot. |
 | `reference_run_redundant` | `Reference/Properties.v` | Witness: the reference tier has a redundant run when an effect restores a value mid-round. |
 | `untracked_value_not_redundant` | `Reference/Properties.v` | A run whose untracked read moved is not redundant. |
 | `untracked_branch_not_redundant` | `Reference/Properties.v` | A run whose reads are a subset of the previous run's, selected by an untracked read, is not redundant. |
 | `zero_divisor_later_effects_run` | `Reference/Properties.v` | A zero divisor fails its effect, and later effects run. |
-| `obs_settled_coarser` | `Reference/Properties.v` | `obs_full` equality implies `obs_settled` equality. |
-| `refines_full_implies_settled` | `Reference/Properties.v` | An engine refining `obs_full` refines `obs_settled`. |
-| `reference_refines_itself` | `Reference/Properties.v` | The reference under a valid order and any fuel refines `obs_full`, at every batch prefix, with extending traces. |
-| `rtrace_answers` | `Reference/Properties.v` | The reference indexed by its fuel satisfies `engine_answers` under a valid order. |
-| `final_batch_engine_not_refines` | `Reference/Properties.v` | An engine answering only a full history does not refine `obs_settled`, though its full-history view matches. |
-| `last_run_traces_match_every_prefix` | `Reference/Properties.v` | Traces keeping only each prefix's last run match `obs_settled` at every prefix of a history. |
-| `last_run_engine_not_refines` | `Reference/Properties.v` | An engine answering those traces does not refine `obs_settled`: its traces do not extend. |
-| `rtrace_extends` | `Reference/Properties.v` | A history's trace extends each batch prefix's trace, under the same order and fuel. |
-| `redundant_failing_cleanup_changes_settled` | `Reference/Properties.v` | Witness: removing a redundant run whose cleanup fails changes `obs_settled`. |
-| `logging_cleanup_drop_unobserved` | `Reference/Properties.v` | Witness: `obs_settled` admits dropping a re-run's non-failing logging cleanup. |
+| `observe_settled_coarser` | `Reference/Properties.v` | `observe_full` equality implies `observe_settled` equality. |
+| `refines_full_implies_settled` | `Reference/Properties.v` | An engine refining `observe_full` refines `observe_settled`. |
+| `reference_refines_itself` | `Reference/Properties.v` | The reference under a valid order and any fuel refines `observe_full`, at every batch prefix, with extending traces. |
+| `reference_trace_answers` | `Reference/Properties.v` | The reference indexed by its fuel satisfies `engine_answers` under a valid order. |
+| `final_batch_engine_not_refines` | `Reference/Properties.v` | An engine answering only a full history does not refine `observe_settled`, though its full-history view matches. |
+| `last_run_traces_match_every_prefix` | `Reference/Properties.v` | Traces keeping only each prefix's last run match `observe_settled` at every prefix of a history. |
+| `last_run_engine_not_refines` | `Reference/Properties.v` | An engine answering those traces does not refine `observe_settled`: its traces do not extend. |
+| `reference_trace_extends` | `Reference/Properties.v` | A history's trace extends each batch prefix's trace, under the same order and fuel. |
+| `redundant_failing_cleanup_changes_settled` | `Reference/Properties.v` | Witness: removing a redundant run whose cleanup fails changes `observe_settled`. |
+| `logging_cleanup_drop_unobserved` | `Reference/Properties.v` | Witness: `observe_settled` admits dropping a re-run's non-failing logging cleanup. |
 | `host_read_sees_earlier_write` | `Reference/Properties.v` | A host read answers at its position in the batch. |
 | `host_read_then_dispose_memo` | `Reference/Properties.v` | A memo read and then disposed in one batch keeps the value the read answered. |
-| `dropped_write_unobserved_before_read` | `Reference/Properties.v` | Dropping a write to a signal no effect logs leaves `obs_settled` unchanged. |
-| `dropped_write_observed_by_host_read` | `Reference/Properties.v` | A later host read makes that dropped write observable under `obs_settled`. |
-| `silent_engine_not_refines` | `Reference/Properties.v` | An engine that emits nothing does not refine `obs_settled`. |
+| `dropped_write_unobserved_before_read` | `Reference/Properties.v` | Dropping a write to a signal no effect logs leaves `observe_settled` unchanged. |
+| `dropped_write_observed_by_host_read` | `Reference/Properties.v` | A later host read makes that dropped write observable under `observe_settled`. |
+| `silent_engine_not_refines` | `Reference/Properties.v` | An engine that emits nothing does not refine `observe_settled`. |
 | `none_engine_refines` | `Reference/Properties.v` | An engine with no traces refines every observation. |
 | `none_engine_not_answers` | `Reference/Properties.v` | That engine fails `engine_answers`. |
 | `failing_round_later_rounds_run` | `Reference/Properties.v` | A failed run emits `EvFail`, and later rounds run. |
 | `dispose_runs_cleanups_once` | `Reference/Properties.v` | Disposing an effect runs its cleanups once and ends its runs. |
 | `disposed_memo_answers_last_value` | `Reference/Properties.v` | A disposed memo answers reads with its last value. |
 | `order_varies_by_round` | `Reference/Properties.v` | The effect order can differ between rounds of a history. |
-| `redundant_run_settled_equal` | `Reference/Properties.v` | On the cleanup-free `resetting` program, traces differing by a redundant run have equal `obs_settled`. |
-| `redundant_run_full_differs` | `Reference/Properties.v` | The same traces have unequal `obs_full`. |
-| `obs_add_position` | `Pure/ObserverSet.v` | The handle is the position, the view appends, and `olatest` is the handle. |
-| `obs_remove_at_swap` | `Pure/ObserverSet.v` | The last observer moves into the hole and the notice names it. Removing the last gives no notice. |
-| `obs_remove_mismatch` | `Pure/ObserverSet.v` | A handle holding another observer, or none, gives `None`. |
-| `obs_try_add_cases` | `Pure/ObserverSet.v` | At or below `scan_limit`, `TUnknown` is impossible and `TUnlinked` holds exactly when the observer is held. |
+| `redundant_run_settled_equal` | `Reference/Properties.v` | On the cleanup-free `resetting` program, traces differing by a redundant run have equal `observe_settled`. |
+| `redundant_run_full_differs` | `Reference/Properties.v` | The same traces have unequal `observe_full`. |
+| `observers_add_position` | `Pure/ObserverSet.v` | The handle is the position, the view appends, and `observer_latest` is the handle. |
+| `observers_remove_at_swap` | `Pure/ObserverSet.v` | The last observer moves into the hole and the notice names it. Removing the last gives no notice. |
+| `observers_remove_mismatch` | `Pure/ObserverSet.v` | A handle holding another observer, or none, gives `None`. |
+| `observers_try_add_cases` | `Pure/ObserverSet.v` | At or below `scan_limit`, `TUnknown` is impossible and `TUnlinked` holds exactly when the observer is held. |
 | `walk_covers` | `Pure/ObserverSet.v` | An observer held exactly once at every point of a walk is visited, under any mutations. |
 | `walk_visits_only_seen` | `Pure/ObserverSet.v` | Each visited observer was present at its visit. |
-| `sl_add_positional` | `Pure/SourceList.v` | A read matching the cursor's slot advances the cursor and leaves every edge unchanged. |
-| `sl_add_repeat` | `Pure/SourceList.v` | A read of the source just matched leaves the world unchanged. |
-| `sl_add_truncates` | `Pure/SourceList.v` | A miss drops every slot from the cursor and the edges they held, then appends. |
-| `sl_no_duplicate_edge` | `Pure/SourceList.v` | In a reachable world, a slot holds an edge exactly when it is its source's first slot. |
+| `sources_add_positional` | `Pure/SourceList.v` | A read matching the cursor's slot advances the cursor and leaves every edge unchanged. |
+| `sources_add_repeat` | `Pure/SourceList.v` | A read of the source just matched leaves the world unchanged. |
+| `sources_add_truncates` | `Pure/SourceList.v` | A miss drops every slot from the cursor and the edges they held, then appends. |
+| `sources_no_duplicate_edge` | `Pure/SourceList.v` | In a reachable world, a slot holds an edge exactly when it is its source's first slot. |
 | `trim_moves_only_others` | `Pure/SourceList.v` | Over `edge_match` and `slots_unique`, a removal moves only another computation's edge. |
 | `trim_every_removal` | `Pure/SourceList.v` | `trim_loop` keeps both invariants at every removal, with each observer held at most once and only others' edges moved. |
 | `observer_held_once` | `Pure/SourceList.v` | In a reachable world or between two removals of its trim, a present observer is `held_once`: the premise of `walk_covers`. |
-| `sl_trim_moves_own_edge` | `Pure/SourceList.v` | Review Focus 4: for A, B, A with two A edges, the later handle is read after the move, and a clear removes every edge. |
-| `sl_add_unknown_no_duplicate` | `Pure/SourceList.v` | Review Focus 5: above the limit with a stale `olatest`, the answer is `TUnknown` and the source ends with one edge. |
+| `sources_trim_moves_own_edge` | `Pure/SourceList.v` | Review Focus 4: for A, B, A with two A edges, the later handle is read after the move, and a clear removes every edge. |
+| `sources_add_unknown_no_duplicate` | `Pure/SourceList.v` | Review Focus 5: above the limit with a stale `observer_latest`, the answer is `TUnknown` and the source ends with one edge. |
 | `unknown_held`, `unknown_unheld` | `Pure/SourceList.v` | Runs reaching that case, with and without an earlier slot. |
 | `aba_reachable_trim` | `Pure/SourceList.v` | A, B, A from a run: a trim moves another observer's edge, and its slot follows. |
-| `aba_world_premises` | `Pure/SourceList.v` | A concrete world meets the premises of `sl_trim_moves_own_edge`. |
+| `aba_world_premises` | `Pure/SourceList.v` | A concrete world meets the premises of `sources_trim_moves_own_edge`. |
 | `snapshot_trim_fails` | `Pure/SourceList.v` | Handles read before the removals fail on that world. |
 | `walk_covers_duplicate_observer` | `Pure/Witnesses.v` | An observer held twice can be missed though present throughout. Closed in `BUGS.md`. |
 | `walk_visits_moved_twice` | `Pure/Witnesses.v` | A moved observer is visited twice. |
 | `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. Closed in `BUGS.md`. |
-| `coherent_begin` | `Pure/Edges.v` | `sl_begin` preserves `coherent`. |
+| `coherent_begin` | `Pure/Edges.v` | `sources_begin_run` preserves `coherent`. |
 | `coherent_add`, `coherent_end`, `coherent_clear` | `Pure/Edges.v` | From a coherent world, each returns `Some`, and the result is coherent. |
 | `coherent_empty` | `Pure/Edges.v` | The empty world is coherent. |
 | `coherent_moved` | `Pure/Edges.v` | Removing a slot's edge returns a coherent world, of a stated shape with and without a move. A moved observer takes the removed handle, and its slot holds it. |
@@ -145,19 +145,19 @@ copy, so it needs no Rocq.
 | `edge_iff_both_sides` | `Pure/Edges.v` | In a coherent world, an edge holds exactly when `c` is in `src`'s observers, and exactly when a slot of `c` holds `src` with a handle. |
 | `edge_iff_read` | `Pure/Edges.v` | In a well-formed world, an edge holds exactly when `src` is in `c`'s slots. |
 | `read_without_edge` | `Pure/Edges.v` | A coherent world where a computation read a source and has no edge to it, so `first_owns` fails. |
-| `check_inv_init`, `check_inv_run_top`, `check_inv_update` | `Pure/Check.v` | `check_inv` holds of a new graph and after every function of the engine, for all programs and fuel. `engine_ok_all` is the induction. |
-| `unmoved_short_of_dirty` | `Pure/Check.v` | Under `check_inv` and `reads_settled`, a memo in `Clean` or `Check` has `moved_since_last_run` false. |
-| `resolve_clean_unmoved` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` leaves no moved source, under `reads_settled`. It follows from `check_inv`'s preservation and `unmoved_short_of_dirty`, without using the walk. |
+| `check_invariant_init`, `check_invariant_run_top`, `check_invariant_update` | `Pure/Check.v` | `check_invariant` holds of a new graph and after every function of the engine, for all programs and fuel. `engine_ok_all` is the induction. |
+| `unmoved_short_of_dirty` | `Pure/Check.v` | Under `check_invariant` and `reads_settled`, a memo in `Clean` or `Check` has `moved_since_last_run` false. |
+| `resolve_clean_unmoved` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` leaves no moved source, under `reads_settled`. It follows from `check_invariant`'s preservation and `unmoved_short_of_dirty`, without using the walk. |
 | `resolve_clean_no_move` | `Pure/Check.v` | **Open.** The unqualified statement, false on the present engine: `resolve_clean_no_move_falsified`. |
 | `resolve_clean_no_stale_source` | `Pure/Check.v` | **Open.** A memo resolved `Clean` has no live stale source, false on the present engine: `resolve_clean_no_stale_source_falsified`. A disposed source stays stale: `resolve_over_disposed_dirty_source`. |
 | `resolve_dirty_stops_walk`, `resolve_walk_step` | `Pure/Check.v` | A node out of `Check` ends the walk with the state unchanged. In `Check`, the walk updates the slot's source and moves to the next slot. |
-| `resolve_clears_unannounced` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` ends a live memo's `n_unann`, on every path. A disposed memo can keep it: `disposed_window_keeps_unannounced`. |
-| `resolve_walk_check_clears` | `Pure/Check.v` | A walk ending in `Check` makes `refresh` return the node `Clean` with `n_unann` false and no run. |
+| `resolve_clears_unannounced` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` ends a live memo's `n_unannounced`, on every path. A disposed memo can keep it: `disposed_window_keeps_unannounced`. |
+| `resolve_walk_check_clears` | `Pure/Check.v` | A walk ending in `Check` makes `refresh` return the node `Clean` with `n_unannounced` false and no run. |
 | `signal_update_noop` | `Pure/Check.v` | `update_if_necessary` on a signal returns the state unchanged. |
 | `disposed_memo_no_refresh` | `Pure/Check.v` | A read of a disposed memo keeps every node, and answers the stored value or failure. |
 | `check_resolves_over_moved_source`, `resolve_clean_no_move_falsified` | `Pure/Witnesses.v` | A memo resolves to `Clean` over a source that moved after its read. Confirmed. |
 | `check_two_reads_over_moved_source` | `Pure/Witnesses.v` | The same skip through a second read of the source. |
-| `resolve_clean_no_stale_source_falsified`, `disposed_window_keeps_unannounced` | `Pure/Witnesses.v` | A reader resolves `Clean` over a `Dirty` source. A memo disposed in `RecomputeScoped`'s window ends `Clean` with `n_unann`. |
+| `resolve_clean_no_stale_source_falsified`, `disposed_window_keeps_unannounced` | `Pure/Witnesses.v` | A reader resolves `Clean` over a `Dirty` source. A memo disposed in `RecomputeScoped`'s window ends `Clean` with `n_unannounced`. |
 | `check_cutoff_settled`, `self_marking_through_memo_unmoved` | `Pure/Witnesses.v` | `reads_settled` holds on an ordinary resolution, and on the reader of `self_marking_wake_lost`, which goes clean over its source's stored value. |
 | `mark_terminates`, `notify_terminates` | `Pure/Marking.v` | Fuel above `mark_measure` gives a result for every mark and walk, on any graph, cycles included. |
 | `mark_monotone` | `Pure/Marking.v` | Freshness only rises, for every node, under all five marking operations. |
@@ -174,7 +174,7 @@ copy, so it needs no Rocq.
 | `notify_dirty_ends_dirty` | `Pure/Marking.v` | `notify_dirty` and `notify_dirty_except` leave each observer in `takes_marks` `Dirty`, apart from the skipped computation. |
 | `mark_check_keeps_check` | `Pure/Marking.v` | `mark_check` and `notify_check` raise no node to `Dirty`. |
 | `memo_mark_dirty_tells_check` | `Pure/Marking.v` | `mark_dirty` of a memo raises no other node to `Dirty`. |
-| `clean_memo_keeps_unann` | `Pure/Marking.v` | The `Clean` transition starts its walk with `n_unann` unchanged. |
+| `clean_memo_keeps_unannounced` | `Pure/Marking.v` | The `Clean` transition starts its walk with `n_unannounced` unchanged. |
 | `in_cleanup_observer_stays_clean` | `Pure/Witnesses.v` | A memo's in-cleanup observer, with a coherent edge, stays clean, which `takes_marks` excepts. Closed in `BUGS.md`. |
 | `disposed_running_observer_stays_clean` | `Pure/Witnesses.v` | An effect disposed mid-body holds an edge while running, and ignores the mark. Awaiting ruling in `BUGS.md`. |
 | `self_marking_cleanup_left_behind` | `Pure/Witnesses.v` | A memo's cleanup marks its reader during the reader's run: the reader ends stale, its effect clean and idle, and a flush changes nothing. Confirmed in `BUGS.md`. |
@@ -236,14 +236,14 @@ Nothing here is claimed about the PLDI text's theorem numbering or wording.
 | Source | Difference | Reference tier | Decision |
 |---|---|---|---|
 | CS-TR-5027 Thm 4.3 | The soundness theorem is an equivalence: each direction gives a reduction. | `refines` has one direction, so an engine with no traces refines everything: `none_engine_refines`. | Adopted as `engine_answers`, stated separately so that `refines` keeps its form. **An engine proof owes both `refines` and `engine_answers`.** |
-| Thm 4.3, Thm B.13 | Both relate one evaluation to its from-scratch evaluation: a result and a store. | A trace over a history, compared per effect by `obs_settled` or whole by `obs_full`, at every batch prefix, with the engine's traces extending across prefixes. | Kept. `obs_settled` is the analogue of comparing terminal results. `obs_full` has no analogue in the statements read, which leave trace structure free. |
+| Thm 4.3, Thm B.13 | Both relate one evaluation to its from-scratch evaluation: a result and a store. | A trace over a history, compared per effect by `observe_settled` or whole by `observe_full`, at every batch prefix, with the engine's traces extending across prefixes. | Kept. `observe_settled` is the analogue of comparing terminal results. `observe_full` has no analogue in the statements read, which leave trace structure free. |
 | Thm 4.3 | The final store is compared. | Signal writes are not events, so a signal's value is compared only through logged reads and host reads. | Partly adopted: `RRead` makes a signal's value observable at any batch position, in both observations. A value the history never reads stays unobserved. |
 | Thm 3.2, Section 2.1 | The inner layer cannot write. Writes come from the outer layer between evaluations. | Memos match this (`well_behaved_memo`). Effects write during a flush, and they read those writes. | Kept. The statements read give effects no meaning, and they do not justify any weaker statement about effects. |
 | CS-TR-5027 abstract, Section 5 | Demand drives evaluation, and patching skips what is not relevant. | A memo's value is defined over current signals, whether or not it is demanded. Observers are effects and host reads. | Kept: the from-scratch value is what `memo_value` already defines. |
 | Thm 4.3, Thm B.13 | Consistency holds for any well-formed prior knowledge `K`, and Theorem B.13 carries a whole-graph invariant through its induction. | `refines` compares traces and names no engine state. | Not applied in this tier: engine state lives below it. The factoring is a suggested shape for the engine invariant: every cached memo value equals `memo_value` over current signals, with disposed memos as the exception below. |
 | Statements read | No disposal in them. | A disposed memo answers its last value, so it is deliberately not from-scratch consistent. | Kept, as `Core.fs` documents. `rs_frozen` makes `memo_value` the from-scratch value relative to the disposed memos' answers. |
 | Thm B.13, Section 4.2.3 | Name checks and allocation (`P1`, `W`). | A static node set with fixed identities. | No counterpart. |
-| CS-TR-5027 Section 5 | The order of patching steps is a source of nondeterminism in the declarative semantics. | The order of effects is observable. `refines` takes one valid round-indexed order per history. | Kept: `obs_full` is order-sensitive, and an effect's writes can make settled values depend on the order. |
+| CS-TR-5027 Section 5 | The order of patching steps is a source of nondeterminism in the declarative semantics. | The order of effects is observable. `refines` takes one valid round-indexed order per history. | Kept: `observe_full` is order-sensitive, and an effect's writes can make settled values depend on the order. |
 | Statements read | No failures in them. | A failure is an outcome, compared by identity. | No counterpart. |
 | Thm B.13 | A written proof, and the parts read mention no mechanisation. | Proofs are checked by Rocq. | Kept. |
 

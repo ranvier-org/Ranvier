@@ -57,7 +57,7 @@ type Cmd =
     | CIf of Expr * Cmd * Cmd
     | CRead of int * Expr * Cmd
     | CTryRead of int * int * Expr * Cmd
-    | CReadU of int * Expr * Cmd
+    | CReadUntracked of int * Expr * Cmd
     | CWrite of Expr * Expr * Cmd
     | CSignal of int * Expr * Cmd
     | CMemo of int * bool * Comparer * Cmd * Cmd
@@ -101,7 +101,7 @@ let rec printCmd (c: Cmd) =
     | CIf (e, a, b) -> $"(if {printExpr e} {printCmd a} {printCmd b})"
     | CRead (x, n, k) -> $"(read {x} {printExpr n} {printCmd k})"
     | CTryRead (x, ok, n, k) -> $"(tryread {x} {ok} {printExpr n} {printCmd k})"
-    | CReadU (x, n, k) -> $"(readu {x} {printExpr n} {printCmd k})"
+    | CReadUntracked (x, n, k) -> $"(readu {x} {printExpr n} {printCmd k})"
     | CWrite (n, e, k) -> $"(write {printExpr n} {printExpr e} {printCmd k})"
     | CSignal (x, e, k) -> $"(signal {x} {printExpr e} {printCmd k})"
     | CMemo (x, owning, q, b, k) ->
@@ -179,7 +179,7 @@ let rec readCmd (s: Sexp) : Cmd =
     | Node [ Atom "if"; e; a; b ] -> CIf (readExpr e, readCmd a, readCmd b)
     | Node [ Atom "read"; x; n; k ] -> CRead (atomInt x, readExpr n, readCmd k)
     | Node [ Atom "tryread"; x; ok; n; k ] -> CTryRead (atomInt x, atomInt ok, readExpr n, readCmd k)
-    | Node [ Atom "readu"; x; n; k ] -> CReadU (atomInt x, readExpr n, readCmd k)
+    | Node [ Atom "readu"; x; n; k ] -> CReadUntracked (atomInt x, readExpr n, readCmd k)
     | Node [ Atom "write"; n; e; k ] -> CWrite (readExpr n, readExpr e, readCmd k)
     | Node [ Atom "signal"; x; e; k ] -> CSignal (atomInt x, readExpr e, readCmd k)
     | Node [ Atom "memo"; x; Atom mode; q; b; k ] -> CMemo (atomInt x, (mode = "owning"), readComparer q, readCmd b, readCmd k)
@@ -388,7 +388,7 @@ type Generator(rng: Random) =
                 match this.ReadTarget sc with
                 | Some t ->
                     let x = this.Fresh ()
-                    CReadU (x, V t, rest { sc with Locals = x :: sc.Locals })
+                    CReadUntracked (x, V t, rest { sc with Locals = x :: sc.Locals })
                 | None -> rest sc
             | r when r < 56 -> CLog (this.Expr sc, rest sc)
             | r when r < 60 ->
@@ -968,7 +968,7 @@ type Generator(rng: Random) =
         | r when r < 90 && not writable.IsEmpty ->
             let t = this.Pick writable
             let x = this.Fresh ()
-            fun k -> CReadU (x, V t, k)
+            fun k -> CReadUntracked (x, V t, k)
         | r when r < 94 && not sc.Computations.IsEmpty ->
             let t = this.Pick sc.Computations
             fun k -> CDispose (V t, k)
@@ -1196,7 +1196,7 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
             match taken with
             | CRead _
             | CTryRead _
-            | CReadU _ -> bump coverage "conditional read"
+            | CReadUntracked _ -> bump coverage "conditional read"
             | _ -> ()
 
             exec env label top taken
@@ -1227,7 +1227,7 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
                     f, 0
 
             exec (env.Add(x, v).Add(ok, flag)) label top k
-        | CReadU (x, n, k) ->
+        | CReadUntracked (x, n, k) ->
             let t, node = lookup env n
 
             let read () =
@@ -1466,7 +1466,7 @@ let runProgram (coverage: Dictionary<string, int>) (program: Cmd) : string list 
                     if usable () then
                         closed.Value <- interpreter.View ()))
 
-    // A fresh failure identity moves a memo on every run where the model's one identity does not, so a self-reading memo
+    // A freshness failure identity moves a memo on every run where the model's one identity does not, so a self-reading memo
     // with a zero divisor runs away on the F# side alone. The exclusion comes before the budget.
     match escaped, c.Failures with
     | Some reason, _ -> [ "harness"; reason; ""; "" ]
