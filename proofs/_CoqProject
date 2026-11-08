@@ -1,4 +1,5 @@
 -Q theories Ranvier
 
 theories/Base/Prelude.v
+theories/Base/Syntax.v
 theories/Audit.v
