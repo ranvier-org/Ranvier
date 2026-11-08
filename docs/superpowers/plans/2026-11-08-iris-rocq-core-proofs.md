@@ -232,7 +232,8 @@ Record observation := { obs_ty : Type; obs_of : list event -> obs_ty }.
 Definition obs_full : observation.      (* the whole trace, run counts included *)
 Definition obs_settled : observation.   (* per effect: values of its last run, failures, disposal; all host reads *)
 (* One order per history. Each batch prefix is compared, and its engine trace is a prefix of the whole trace,
-   so an engine cannot look ahead or drop an earlier batch. *)
+   so an engine cannot look ahead or drop a batch's observed result. Under obs_settled it may drop a run whose
+   observed result is unchanged. *)
 Definition refines (O : observation)
     (engine : rprog -> rhistory -> option (list event)) : Prop :=
   forall p h t, rwf p -> engine p h = Some t ->
@@ -559,7 +560,7 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
   - `weak_refinement : forall k, refines obs_settled (engine_of current_flags k)`, using `convergence`.
   - `exact_refinement : forall k, refines obs_full (engine_of current_flags k)`, with `ord` instantiated by `engine_order`, or a checked counterexample in `Witnesses.v` for each divergence.
   - `engine_of_answers : engine_answers (engine_of current_flags)`.
-- [ ] **Step 2: Attempt `exact_refinement` directly.** Expected divergences are S07 and S15. Each goes in as a checked `Example` showing the differing traces, a `redundant` run in the reference tier's terms, and ledger status Awaiting ruling. Then state the strongest theorem that holds as `exact_refinement_except`, with the divergence classes as an explicit premise; the unconditional statement stays in `BUGS.md`.
+- [ ] **Step 2: Attempt `exact_refinement` directly.** Expected divergences are S07 and S15, and for `weak_refinement` too, the disposed-memo cases `disposed_unread_memo_value` and `write_then_dispose_memo_current_value`, which `Core.fs` is expected not to pull at disposal. Run those two against the F# first, and take any that reproduces as a named premise until the owner rules. Each goes in as a checked `Example` showing the differing traces, a `redundant` run in the reference tier's terms, and ledger status Awaiting ruling. Then state the strongest theorem that holds as `exact_refinement_except`, with the divergence classes as an explicit premise; the unconditional statement stays in `BUGS.md`.
 - [ ] **Step 3: Audit.** Expected: exit 0.
 - [ ] **Step 4: Commit** as `feat(proofs): prove refinement to the reference semantics`.
 
