@@ -65,11 +65,17 @@ module Nat :
   val eq_dec : nat -> nat -> sumbool
  end
 
+val seq : nat -> nat -> nat list
+
 val firstn : nat -> 'a1 list -> 'a1 list
+
+val skipn : nat -> 'a1 list -> 'a1 list
 
 val tl : 'a1 list -> 'a1 list
 
 val rev : 'a1 list -> 'a1 list
+
+val fold_left : ('a1 -> 'a2 -> 'a1) -> 'a2 list -> 'a1 -> 'a1
 
 val fold_right : ('a2 -> 'a1 -> 'a1) -> 'a1 -> 'a2 list -> 'a1
 
@@ -104,6 +110,10 @@ val mbind : 'a1 mBind -> ('a2 -> 'a1) -> 'a1 -> 'a1
 type 'm fMap = __ -> __ -> (__ -> __) -> 'm -> 'm
 
 val fmap : 'a1 fMap -> ('a2 -> 'a3) -> 'a1 -> 'a1
+
+type 'm oMap = __ -> __ -> (__ -> __ option) -> 'm -> 'm
+
+val omap : 'a1 oMap -> ('a2 -> 'a3 option) -> 'a1 -> 'a1
 
 type ('k, 'a, 'm) lookup = 'k -> 'm -> 'a option
 
@@ -330,6 +340,8 @@ module Coq_list :
 module Coq0_list :
  sig
   val list_fmap : (__ -> __) -> __ list -> __ list
+
+  val list_omap : (__ -> __ option) -> __ list -> __ list
  end
 
 type 'a countable = { encode : ('a -> positive);
@@ -341,82 +353,6 @@ val nat_countable : nat countable
 
 val set_fresh :
   ('a1, 'a2) elements -> ('a1, 'a1 list) fresh -> ('a1, 'a2) fresh
-
-type nid = nat
-
-type oid = nat
-
-type val0 = z
-
-type fresh1 =
-| Clean
-| Check
-| Dirty
-
-val stale : fresh1 -> bool
-
-val fresh_eq_dec : (fresh1, fresh1) relDecision
-
-type var = nat
-
-type expr =
-| EConst of val0
-| EVar of var
-| EPrev
-| EAdd of expr * expr
-| ESub of expr * expr
-| EMul of expr * expr
-| EDiv of expr * expr
-| ELt of expr * expr
-| EEq of expr * expr
-
-type outcome =
-| Ok of val0
-| Fail of val0
-
-type cmp =
-| CmpEq
-| CmpNever
-| CmpThrows of val0
-
-type scope_mode =
-| Pure
-| Owning
-
-type cmd =
-| CRet of expr
-| CThrow of val0
-| CLet of var * expr * cmd
-| CIf of expr * cmd * cmd
-| CRead of var * expr * cmd
-| CTryRead of var * var * expr * cmd
-| CReadU of var * expr * cmd
-| CWrite of expr * expr * cmd
-| CSignal of var * expr * cmd
-| CMemo of var * scope_mode * cmp * cmd * cmd
-| CEffect of var * cmd * cmd
-| CCleanup of cmd * cmd
-| CDispose of expr * cmd
-| CBatch of cmd * cmd
-| CLog of expr * cmd
-
-type env = (var, val0) prod list
-
-val env_lookup : env -> var -> val0 option
-
-val bool_val : bool -> val0
-
-val div_zero_failure : val0
-
-val eval_expr : env -> val0 option -> expr -> outcome option
-
-type event =
-| EvRun of nid
-| EvLog of nid * val0
-| EvCleanup of nid
-| EvFail of nid * val0
-| EvDispose of nid
-| EvHostRead of nid * outcome
 
 val max_infinite : ('a1 -> 'a1 -> 'a1) -> 'a1 -> 'a1 infinite
 
@@ -517,6 +453,82 @@ val gset_elements :
 
 val gset_dom :
   ('a1, 'a1) relDecision -> 'a1 countable -> (('a1, 'a2) gmap, 'a1 gset) dom
+
+type nid = nat
+
+type oid = nat
+
+type val0 = z
+
+type fresh1 =
+| Clean
+| Check
+| Dirty
+
+val stale : fresh1 -> bool
+
+val fresh_eq_dec : (fresh1, fresh1) relDecision
+
+type var = nat
+
+type expr =
+| EConst of val0
+| EVar of var
+| EPrev
+| EAdd of expr * expr
+| ESub of expr * expr
+| EMul of expr * expr
+| EDiv of expr * expr
+| ELt of expr * expr
+| EEq of expr * expr
+
+type outcome =
+| Ok of val0
+| Fail of val0
+
+type cmp =
+| CmpEq
+| CmpNever
+| CmpThrows of val0
+
+type scope_mode =
+| Pure
+| Owning
+
+type cmd =
+| CRet of expr
+| CThrow of val0
+| CLet of var * expr * cmd
+| CIf of expr * cmd * cmd
+| CRead of var * expr * cmd
+| CTryRead of var * var * expr * cmd
+| CReadU of var * expr * cmd
+| CWrite of expr * expr * cmd
+| CSignal of var * expr * cmd
+| CMemo of var * scope_mode * cmp * cmd * cmd
+| CEffect of var * cmd * cmd
+| CCleanup of cmd * cmd
+| CDispose of expr * cmd
+| CBatch of cmd * cmd
+| CLog of expr * cmd
+
+type env = (var, val0) prod list
+
+val env_lookup : env -> var -> val0 option
+
+val bool_val : bool -> val0
+
+val div_zero_failure : val0
+
+val eval_expr : env -> val0 option -> expr -> outcome option
+
+type event =
+| EvRun of nid
+| EvLog of nid * val0
+| EvCleanup of nid
+| EvFail of nid * val0
+| EvDispose of nid
+| EvHostRead of nid * outcome
 
 val scan_limit : nat
 
@@ -645,6 +657,8 @@ val notify_dirty : nat -> nid -> state -> state option
 val mark_except : nat -> nid option -> nid -> state -> state option
 
 val notify_dirty_except : nat -> nid -> nid option -> state -> state option
+
+val pending : state -> nid list
 
 type 'a m = state -> (state, 'a) prod option
 
@@ -859,3 +873,25 @@ val init : flags -> state
 val run_top : nat -> cmd -> outcome m
 
 val trace_of : nat -> flags -> cmd -> event list option
+
+type node_view = { v_id : nid; v_kind : kind; v_value : val0;
+                   v_status : status; v_failure : val0 option;
+                   v_fresh : fresh1; v_unann : bool; v_runs : nat;
+                   v_disposed : bool; v_queued : bool; v_sources : nat;
+                   v_observers : nat }
+
+type state_view = { v_nodes : node_view list; v_queue : nat; v_errors : nat }
+
+val view_node : state -> nid -> node -> node_view
+
+val node_ids : state -> nid list
+
+val view_of : state -> state_view
+
+val memo_ids : state -> nid list
+
+val closing : nat -> unit0 m
+
+val observed :
+  nat -> flags -> cmd -> ((event list, state_view) prod, state_view) prod
+  option

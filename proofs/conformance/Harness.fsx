@@ -24,6 +24,9 @@ type Ev =
 /// An exception whose identity is `f`, as `Fail f` denotes one exception instance.
 exception Boom of int
 
+/// The driver of a run gave it up, and the run's trace is void. `Guarded` records nothing for it.
+exception Abandoned
+
 let privateField (o: obj) (name: string) =
     o.GetType().GetField(name, BindingFlags.Instance ||| BindingFlags.NonPublic).GetValue o
 
@@ -85,7 +88,8 @@ type Ctx() =
         try
             body ()
         with
-        | Boom _ -> reraise ()
+        | Boom _
+        | Abandoned -> reraise ()
         | ex ->
             failures.Add $"a body raised {ex.GetType().Name}: {ex.Message}"
             reraise ()

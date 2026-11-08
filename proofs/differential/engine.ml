@@ -144,6 +144,12 @@ module Nat =
                | S n2 -> eq_dec n1 n2)
  end
 
+(** val seq : nat -> nat -> nat list **)
+
+let rec seq start = function
+| O -> Nil
+| S len0 -> Cons (start, (seq (S start) len0))
+
 (** val firstn : nat -> 'a1 list -> 'a1 list **)
 
 let rec firstn n0 l =
@@ -153,6 +159,15 @@ let rec firstn n0 l =
     (match l with
      | Nil -> Nil
      | Cons (a, l0) -> Cons (a, (firstn n1 l0)))
+
+(** val skipn : nat -> 'a1 list -> 'a1 list **)
+
+let rec skipn n0 l =
+  match n0 with
+  | O -> l
+  | S n1 -> (match l with
+             | Nil -> Nil
+             | Cons (_, l0) -> skipn n1 l0)
 
 (** val tl : 'a1 list -> 'a1 list **)
 
@@ -165,6 +180,13 @@ let tl = function
 let rec rev = function
 | Nil -> Nil
 | Cons (x, l') -> app (rev l') (Cons (x, Nil))
+
+(** val fold_left : ('a1 -> 'a2 -> 'a1) -> 'a2 list -> 'a1 -> 'a1 **)
+
+let rec fold_left f l a0 =
+  match l with
+  | Nil -> a0
+  | Cons (b, l0) -> fold_left f l0 (f a0 b)
 
 (** val fold_right : ('a2 -> 'a1 -> 'a1) -> 'a1 -> 'a2 list -> 'a1 **)
 
@@ -237,6 +259,13 @@ type 'm fMap = __ -> __ -> (__ -> __) -> 'm -> 'm
 
 let fmap fMap0 x x0 =
   Obj.magic fMap0 __ __ x x0
+
+type 'm oMap = __ -> __ -> (__ -> __ option) -> 'm -> 'm
+
+(** val omap : 'a1 oMap -> ('a2 -> 'a3 option) -> 'a1 -> 'a1 **)
+
+let omap oMap0 x x0 =
+  Obj.magic oMap0 __ __ x x0
 
 type ('k, 'a, 'm) lookup = 'k -> 'm -> 'a option
 
@@ -985,6 +1014,15 @@ module Coq0_list =
   let rec list_fmap f = function
   | Nil -> Nil
   | Cons (x, l0) -> Cons ((f x), (list_fmap f l0))
+
+  (** val list_omap : (__ -> __ option) -> __ list -> __ list **)
+
+  let rec list_omap f = function
+  | Nil -> Nil
+  | Cons (x, l0) ->
+    (match f x with
+     | Some y -> Cons (y, (list_omap f l0))
+     | None -> list_omap f l0)
  end
 
 type 'a countable = { encode : ('a -> positive);
@@ -1014,147 +1052,6 @@ let nat_countable =
 
 let set_fresh h h0 =
   compose (fresh0 h0) (elements0 h)
-
-type nid = nat
-
-type oid = nat
-
-type val0 = z
-
-type fresh1 =
-| Clean
-| Check
-| Dirty
-
-(** val stale : fresh1 -> bool **)
-
-let stale = function
-| Clean -> False
-| _ -> True
-
-(** val fresh_eq_dec : (fresh1, fresh1) relDecision **)
-
-let fresh_eq_dec x y =
-  match x with
-  | Clean -> (match y with
-              | Clean -> Left
-              | _ -> Right)
-  | Check -> (match y with
-              | Check -> Left
-              | _ -> Right)
-  | Dirty -> (match y with
-              | Dirty -> Left
-              | _ -> Right)
-
-type var = nat
-
-type expr =
-| EConst of val0
-| EVar of var
-| EPrev
-| EAdd of expr * expr
-| ESub of expr * expr
-| EMul of expr * expr
-| EDiv of expr * expr
-| ELt of expr * expr
-| EEq of expr * expr
-
-type outcome =
-| Ok of val0
-| Fail of val0
-
-type cmp =
-| CmpEq
-| CmpNever
-| CmpThrows of val0
-
-type scope_mode =
-| Pure
-| Owning
-
-type cmd =
-| CRet of expr
-| CThrow of val0
-| CLet of var * expr * cmd
-| CIf of expr * cmd * cmd
-| CRead of var * expr * cmd
-| CTryRead of var * var * expr * cmd
-| CReadU of var * expr * cmd
-| CWrite of expr * expr * cmd
-| CSignal of var * expr * cmd
-| CMemo of var * scope_mode * cmp * cmd * cmd
-| CEffect of var * cmd * cmd
-| CCleanup of cmd * cmd
-| CDispose of expr * cmd
-| CBatch of cmd * cmd
-| CLog of expr * cmd
-
-type env = (var, val0) prod list
-
-(** val env_lookup : env -> var -> val0 option **)
-
-let rec env_lookup g x =
-  match g with
-  | Nil -> None
-  | Cons (p, g') ->
-    let Pair (y, v) = p in
-    (match Nat.eqb x y with
-     | True -> Some v
-     | False -> env_lookup g' x)
-
-(** val bool_val : bool -> val0 **)
-
-let bool_val = function
-| True -> Zpos XH
-| False -> Z0
-
-(** val div_zero_failure : val0 **)
-
-let div_zero_failure =
-  Zneg XH
-
-(** val eval_expr : env -> val0 option -> expr -> outcome option **)
-
-let rec eval_expr g p e =
-  let bin = fun f a b ->
-    match eval_expr g p a with
-    | Some o ->
-      (match o with
-       | Ok u ->
-         (match eval_expr g p b with
-          | Some o0 ->
-            (match o0 with
-             | Ok v -> Some (f u v)
-             | Fail f0 -> Some (Fail f0))
-          | None -> None)
-       | Fail f0 -> Some (Fail f0))
-    | None -> None
-  in
-  (match e with
-   | EConst z0 -> Some (Ok z0)
-   | EVar x ->
-     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x0 -> Ok x0)
-       (Obj.magic env_lookup g x)
-   | EPrev ->
-     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x -> Ok x) (Obj.magic p)
-   | EAdd (a, b) -> bin (fun u v -> Ok (Z.add u v)) a b
-   | ESub (a, b) -> bin (fun u v -> Ok (Z.sub u v)) a b
-   | EMul (a, b) -> bin (fun u v -> Ok (Z.mul u v)) a b
-   | EDiv (a, b) ->
-     bin (fun u v ->
-       match decide (decide_rel Coq_Z.eq_dec v Z0) with
-       | Left -> Fail div_zero_failure
-       | Right -> Ok (Z.quot u v)) a b
-   | ELt (a, b) -> bin (fun u v -> Ok (bool_val (Z.ltb u v))) a b
-   | EEq (a, b) -> bin (fun u v -> Ok (bool_val (Z.eqb u v))) a b)
-
-type event =
-| EvRun of nid
-| EvLog of nid * val0
-| EvCleanup of nid
-| EvFail of nid * val0
-| EvDispose of nid
-| EvHostRead of nid * outcome
 
 (** val max_infinite : ('a1 -> 'a1 -> 'a1) -> 'a1 -> 'a1 infinite **)
 
@@ -1516,6 +1413,147 @@ let gset_elements eqDecision0 h =
 
 let gset_dom eqDecision0 h m0 =
   mapset_dom (Obj.magic (fun _ _ -> gmap_fmap eqDecision0 h)) (Obj.magic m0)
+
+type nid = nat
+
+type oid = nat
+
+type val0 = z
+
+type fresh1 =
+| Clean
+| Check
+| Dirty
+
+(** val stale : fresh1 -> bool **)
+
+let stale = function
+| Clean -> False
+| _ -> True
+
+(** val fresh_eq_dec : (fresh1, fresh1) relDecision **)
+
+let fresh_eq_dec x y =
+  match x with
+  | Clean -> (match y with
+              | Clean -> Left
+              | _ -> Right)
+  | Check -> (match y with
+              | Check -> Left
+              | _ -> Right)
+  | Dirty -> (match y with
+              | Dirty -> Left
+              | _ -> Right)
+
+type var = nat
+
+type expr =
+| EConst of val0
+| EVar of var
+| EPrev
+| EAdd of expr * expr
+| ESub of expr * expr
+| EMul of expr * expr
+| EDiv of expr * expr
+| ELt of expr * expr
+| EEq of expr * expr
+
+type outcome =
+| Ok of val0
+| Fail of val0
+
+type cmp =
+| CmpEq
+| CmpNever
+| CmpThrows of val0
+
+type scope_mode =
+| Pure
+| Owning
+
+type cmd =
+| CRet of expr
+| CThrow of val0
+| CLet of var * expr * cmd
+| CIf of expr * cmd * cmd
+| CRead of var * expr * cmd
+| CTryRead of var * var * expr * cmd
+| CReadU of var * expr * cmd
+| CWrite of expr * expr * cmd
+| CSignal of var * expr * cmd
+| CMemo of var * scope_mode * cmp * cmd * cmd
+| CEffect of var * cmd * cmd
+| CCleanup of cmd * cmd
+| CDispose of expr * cmd
+| CBatch of cmd * cmd
+| CLog of expr * cmd
+
+type env = (var, val0) prod list
+
+(** val env_lookup : env -> var -> val0 option **)
+
+let rec env_lookup g x =
+  match g with
+  | Nil -> None
+  | Cons (p, g') ->
+    let Pair (y, v) = p in
+    (match Nat.eqb x y with
+     | True -> Some v
+     | False -> env_lookup g' x)
+
+(** val bool_val : bool -> val0 **)
+
+let bool_val = function
+| True -> Zpos XH
+| False -> Z0
+
+(** val div_zero_failure : val0 **)
+
+let div_zero_failure =
+  Zneg XH
+
+(** val eval_expr : env -> val0 option -> expr -> outcome option **)
+
+let rec eval_expr g p e =
+  let bin = fun f a b ->
+    match eval_expr g p a with
+    | Some o ->
+      (match o with
+       | Ok u ->
+         (match eval_expr g p b with
+          | Some o0 ->
+            (match o0 with
+             | Ok v -> Some (f u v)
+             | Fail f0 -> Some (Fail f0))
+          | None -> None)
+       | Fail f0 -> Some (Fail f0))
+    | None -> None
+  in
+  (match e with
+   | EConst z0 -> Some (Ok z0)
+   | EVar x ->
+     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x0 -> Ok x0)
+       (Obj.magic env_lookup g x)
+   | EPrev ->
+     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x -> Ok x) (Obj.magic p)
+   | EAdd (a, b) -> bin (fun u v -> Ok (Z.add u v)) a b
+   | ESub (a, b) -> bin (fun u v -> Ok (Z.sub u v)) a b
+   | EMul (a, b) -> bin (fun u v -> Ok (Z.mul u v)) a b
+   | EDiv (a, b) ->
+     bin (fun u v ->
+       match decide (decide_rel Coq_Z.eq_dec v Z0) with
+       | Left -> Fail div_zero_failure
+       | Right -> Ok (Z.quot u v)) a b
+   | ELt (a, b) -> bin (fun u v -> Ok (bool_val (Z.ltb u v))) a b
+   | EEq (a, b) -> bin (fun u v -> Ok (bool_val (Z.eqb u v))) a b)
+
+type event =
+| EvRun of nid
+| EvLog of nid * val0
+| EvCleanup of nid
+| EvFail of nid * val0
+| EvDispose of nid
+| EvHostRead of nid * outcome
 
 (** val scan_limit : nat **)
 
@@ -1995,6 +2033,11 @@ let mark_except fuel r c s =
 
 let notify_dirty_except fuel src0 r s =
   notify_with (mark_except fuel r) src0 s
+
+(** val pending : state -> nid list **)
+
+let pending s =
+  skipn s.g_head s.g_queue
 
 type 'a m = state -> (state, 'a) prod option
 
@@ -3534,4 +3577,82 @@ let run_top fuel c =
 let trace_of fuel fl c =
   match run_top fuel c (init fl) with
   | Some p -> let Pair (s, _) = p in Some s.g_trace
+  | None -> None
+
+type node_view = { v_id : nid; v_kind : kind; v_value : val0;
+                   v_status : status; v_failure : val0 option;
+                   v_fresh : fresh1; v_unann : bool; v_runs : nat;
+                   v_disposed : bool; v_queued : bool; v_sources : nat;
+                   v_observers : nat }
+
+type state_view = { v_nodes : node_view list; v_queue : nat; v_errors : nat }
+
+(** val view_node : state -> nid -> node -> node_view **)
+
+let view_node s n0 d =
+  { v_id = n0; v_kind = d.n_kind; v_value = d.n_value; v_status = d.n_status;
+    v_failure = d.n_failure; v_fresh = d.n_fresh; v_unann = d.n_unann;
+    v_runs = d.n_runs; v_disposed = d.n_disposed; v_queued = d.n_queued;
+    v_sources = (length (src_of s.g_edges n0).sslots); v_observers =
+    (length (obs_of s.g_edges n0).oitems) }
+
+(** val node_ids : state -> nid list **)
+
+let node_ids s =
+  seq (S O) s.g_next
+
+(** val view_of : state -> state_view **)
+
+let view_of s =
+  { v_nodes =
+    (omap (Obj.magic (fun _ _ -> Coq0_list.list_omap)) (fun n0 ->
+      fmap (Obj.magic (fun _ _ -> option_fmap)) (view_node s n0)
+        (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes))
+      (Obj.magic node_ids s));
+    v_queue = (length (pending s)); v_errors =
+    (from_option (Obj.magic id) O
+      (fmap (Obj.magic (fun _ _ -> option_fmap))
+        (compose length (fun o -> o.o_errors))
+        (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) root_oid
+          s.g_owners))) }
+
+(** val memo_ids : state -> nid list **)
+
+let memo_ids s =
+  omap (Obj.magic (fun _ _ -> Coq0_list.list_omap)) (fun n0 ->
+    match fmap (Obj.magic (fun _ _ -> option_fmap)) (fun n1 -> n1.n_kind)
+            (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes) with
+    | Some y ->
+      (match Obj.magic y with
+       | KSignal -> None
+       | KMemo -> Some n0
+       | KEffect -> None)
+    | None -> None) (node_ids s)
+
+(** val closing : nat -> unit0 m **)
+
+let closing fuel s =
+  match fold_left (fun m0 n0 ->
+          m_bind m0 (fun _ ->
+            m_bind
+              (exec fuel Nil (CTryRead (O, (S O), (EConst (Z.of_nat n0)),
+                (CRet (EConst Z0)))))
+              (fun _ -> m_ret Tt)))
+          (memo_ids s) (m_ret Tt) s with
+  | Some p -> let Pair (s', _) = p in run_flush fuel s'
+  | None -> None
+
+(** val observed :
+    nat -> flags -> cmd -> ((event list, state_view) prod, state_view) prod
+    option **)
+
+let observed fuel fl c =
+  match run_top fuel c (init fl) with
+  | Some p ->
+    let Pair (s, _) = p in
+    (match closing fuel s with
+     | Some p0 ->
+       let Pair (s', _) = p0 in
+       Some (Pair ((Pair (s'.g_trace, (view_of s))), (view_of s')))
+     | None -> None)
   | None -> None

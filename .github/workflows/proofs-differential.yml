@@ -6,11 +6,27 @@ on:
   push:
     paths:
       - 'src/Ranvier/Core.fs'
+      - 'src/Ranvier/Types.fs'
+      - 'src/Ranvier/Platform.fs'
+      - 'src/Ranvier/PlatformDispatcher.fs'
+      - 'src/Ranvier/Positional.fs'
+      - 'src/Ranvier/Trace.fs'
+      - 'src/Ranvier/Ranvier.fsproj'
+      - 'global.json'
       - 'proofs/**'
+      - '.github/workflows/proofs-differential.yml'
   pull_request:
     paths:
       - 'src/Ranvier/Core.fs'
+      - 'src/Ranvier/Types.fs'
+      - 'src/Ranvier/Platform.fs'
+      - 'src/Ranvier/PlatformDispatcher.fs'
+      - 'src/Ranvier/Positional.fs'
+      - 'src/Ranvier/Trace.fs'
+      - 'src/Ranvier/Ranvier.fsproj'
+      - 'global.json'
       - 'proofs/**'
+      - '.github/workflows/proofs-differential.yml'
 
 permissions:
   contents: read
@@ -18,6 +34,9 @@ permissions:
 jobs:
   differential:
     runs-on: ubuntu-latest
+    # A run takes under a minute, and setting up OCaml from nothing takes several. Fatal programs restart the process, and
+    # 5% of 2000 of them, each costing a restart and at worst the watchdog, end near this limit.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:

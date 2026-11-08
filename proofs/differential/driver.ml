@@ -1,6 +1,7 @@
 (* The OCaml half of the differential check. Reads programs from stdin, one S-expression per line, runs the extracted
-   [trace_of] under [current_flags], and writes one line per program: index, status and trace, tab-separated. The status
-   is [ok], or [none] when [trace_of] has no result: exhausted fuel or a stuck body.
+   [observed] under [current_flags], and writes one line per program, tab-separated: index, status, trace, end state and
+   closed state. The status
+   is [ok], or [none] when [observed] has no result: exhausted fuel or a stuck body.
 
      driver <fuel> < programs.txt > ocaml.txt *)
 
@@ -126,6 +127,41 @@ let events (l : event list) : string Stdlib.List.t =
   in
   go [] l
 
+let flag (b : bool) = match b with True -> 1 | False -> 0
+
+let render_status = function
+  | StNone -> "None"
+  | StPending -> "Pending"
+  | StError -> "Error"
+  | StUninitialized -> "Uninitialized"
+
+let render_fresh = function Clean -> "Clean" | Check -> "Check" | Dirty -> "Dirty"
+
+let render_failure = function
+  | Some f -> string_of_int (int_of_z f)
+  | None -> "-"
+
+let render_node (v : node_view) : string =
+  let id = int_of_nat v.v_id in
+  match v.v_kind with
+  | KSignal -> Printf.sprintf "S%d v=%d o=%d" id (int_of_z v.v_value) (int_of_nat v.v_observers)
+  | KMemo ->
+    Printf.sprintf "M%d v=%d st=%s fail=%s fr=%s u=%d r=%d d=%d s=%d o=%d" id (int_of_z v.v_value)
+      (render_status v.v_status) (render_failure v.v_failure) (render_fresh v.v_fresh) (flag v.v_unann)
+      (int_of_nat v.v_runs) (flag v.v_disposed) (int_of_nat v.v_sources) (int_of_nat v.v_observers)
+  | KEffect ->
+    Printf.sprintf "E%d st=%s fail=%s fr=%s r=%d d=%d q=%d s=%d" id (render_status v.v_status)
+      (render_failure v.v_failure) (render_fresh v.v_fresh) (int_of_nat v.v_runs) (flag v.v_disposed)
+      (flag v.v_queued) (int_of_nat v.v_sources)
+
+let render_view (v : state_view) : string =
+  let rec nodes acc = function
+    | Nil -> Stdlib.List.rev acc
+    | Cons (n, rest) -> nodes (render_node n :: acc) rest
+  in
+  let tail = Printf.sprintf "queue=%d errors=%d" (int_of_nat v.v_queue) (int_of_nat v.v_errors) in
+  Stdlib.String.concat ", " (nodes [] v.v_nodes @ [ tail ])
+
 let () =
   let fuel = nat_of_int (int_of_string Sys.argv.(1)) in
   let index = ref 0 in
@@ -133,10 +169,13 @@ let () =
     while true do
       let line = input_line stdin in
       let program = read_cmd (parse_sexp line) in
-      (match trace_of fuel current_flags program with
-       | Some trace -> Printf.printf "%d\tok\t%s\n" !index (Stdlib.String.concat "; " (events trace))
-       | None -> Printf.printf "%d\tnone\t\n" !index
-       | exception Stack_overflow -> Printf.printf "%d\tnone\t\n" !index);
+      (match observed fuel current_flags program with
+       | Some (Pair (Pair (trace, ended), closed)) ->
+         Printf.printf "%d\tok\t%s\t%s\t%s\n" !index
+           (Stdlib.String.concat "; " (events trace))
+           (render_view ended) (render_view closed)
+       | None -> Printf.printf "%d\tnone\t\t\t\n" !index
+       | exception Stack_overflow -> Printf.printf "%d\tnone\t\t\t\n" !index);
       incr index
     done
   with End_of_file -> ()

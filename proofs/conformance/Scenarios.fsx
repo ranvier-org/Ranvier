@@ -4,6 +4,7 @@
 //
 //   dotnet build src/Ranvier -c Release
 //   dotnet fsi proofs/conformance/Scenarios.fsx [output path]
+//   dotnet fsi proofs/conformance/Scenarios.fsx --fatal <scenario>
 #load "Harness.fsx"
 
 open System
@@ -564,6 +565,83 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.HostRead 2 (fun () -> counter.Value) |> ignore
             c.HostRead 3 (fun () -> outer.Value) |> ignore
     ]
+
+/// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,
+/// and returning from the fatal step exits with 3.
+let fatalScenarios: (string * (Ctx -> unit)) list =
+    [
+        // BUGS.md, self_read_check_overflow. A memo reads itself, then a memo over a signal. The write leaves it in `Check`
+        // with its first slot naming itself, and the next read's ResolveCheck walks into itself with no body running.
+        "self_read_check_overflow",
+        fun c ->
+            let s = c.Signal 1 0
+            let a = c.Memo 2 (fun () -> s.Value)
+            let self: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
+
+            let m =
+                c.Memo 3 (fun () ->
+                    self.Value.Value |> ignore
+                    a.Value)
+
+            self.Value <- m
+            c.HostRead 3 (fun () -> m.Value) |> ignore
+            c.HostRead 3 (fun () -> m.Value) |> ignore
+            c.Check (freshnessOf m = "Clean") $"two reads leave the memo {freshnessOf m}"
+            s.Value <- 1
+            c.Check (freshnessOf m = "Check") $"the write leaves the memo {freshnessOf m}"
+            c.Check ((internalProp m "ObserverCount" :?> int) = 1) "the memo observes itself"
+
+            if not c.Failures.IsEmpty then
+                eprintfn "%s" (String.concat "; " c.Failures)
+                exit 2
+
+            m.Value |> ignore
+
+        // The same walk through a cycle of two memos. The command language binds a memo's variable after its body, so
+        // this shape has no program and no model witness.
+        "mutual_read_check_overflow",
+        fun c ->
+            let s = c.Signal 1 0
+            let a = c.Memo 2 (fun () -> s.Value)
+            let other: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
+
+            let x =
+                c.Memo 3 (fun () ->
+                    if not (isNull (box other.Value)) then
+                        other.Value.Value |> ignore
+
+                    a.Value)
+
+            let y = c.Memo 4 (fun () -> x.Value)
+            other.Value <- y
+
+            for _ in 1..3 do
+                x.Value |> ignore
+                y.Value |> ignore
+
+            c.Check (freshnessOf x = "Clean") $"the reads leave the first memo {freshnessOf x}"
+            c.Check (freshnessOf y = "Clean") $"the reads leave the second memo {freshnessOf y}"
+            s.Value <- 1
+            c.Check (freshnessOf x = "Check") $"the write leaves the first memo {freshnessOf x}"
+            c.Check (freshnessOf y = "Check") $"the write leaves the second memo {freshnessOf y}"
+
+            if not c.Failures.IsEmpty then
+                eprintfn "%s" (String.concat "; " c.Failures)
+                exit 2
+
+            x.Value |> ignore
+    ]
+
+match fsi.CommandLineArgs |> Array.toList with
+| [ _; "--fatal"; name ] ->
+    let _, run =
+        fatalScenarios
+        |> List.find (fun (n, _) -> n = name)
+
+    run (Ctx ())
+    eprintfn "%s returned" name
+    exit 3
+| _ -> ()
 
 let private renderOutcome =
     function

@@ -93,6 +93,32 @@ intended, the entry closes as "spec corrected".
   glitch-free claim excepts the self-dirtying case, and Task 9's `run_end_edges_are_reads` meets this shape: the outer run
   read `a`, and its source list holds no slot for it.
 
+- `self_read_check_overflow` (scenarios `self_read_check_overflow`, `mutual_read_check_overflow`, run by `--fatal`;
+  `theories/Pure/Witnesses.v`: `self_read_check_resolves_itself`): a memo reads itself, then a memo `a` over a signal. Two reads
+  leave it clean with itself as its first source, and a write to the signal marks `a` dirty, which tells the memo `Check`. The
+  next read overflows the stack, which ends the process: no caller can catch it. Program:
+  `(signal 1 (k 0) (memo 2 pure eq (read 10 (v 1) (ret (v 10))) (memo 3 pure eq (read 10 (v 3) (read 11 (v 2) (ret (v 11)))) (read 20 (v 3) (read 21 (v 3) (write (v 1) (k 1) (read 22 (v 3) (ret (k 0)))))))))`.
+  The harness asserts `Clean`, then `Check`, then that the memo observes itself, before the fatal read.
+  Path: `TrackCurrent` (Core.fs 4334) to `Refresh` (4360) to `ResolveCheck` (4304), whose walk calls `SourceAt(0).UpdateIfNecessary()`
+  (4309) on the memo itself, which is still in `Check`, so `EnsureCurrent` (4319) enters `Refresh` again, and no body runs
+  between the frames. Mark and body guards never see it. `Generate.fsx`'s step and depth budgets count bodies, and do not see it
+  either. The model has the same walk: `resolve_walk` spends fuel and changes nothing, so the read has no result at fuel 500 or
+  2000, where the same program without that read returns.
+  **Against the documents.** Core.fs 4205-4206 says marking clean before the body "turns a memo that reads itself from a stack
+  overflow into a default value". That holds for the path it names, `Run`, and the walk in `ResolveCheck` is a second path with no
+  such guard. The test "a memo that reads itself yields a default rather than overflowing" (`tests/Ranvier.Tests/Invalidation.fs:66`)
+  says of a self-read: "Not a supported thing to write, but a cycle must fail as a value, not as a stack overflow the caller cannot
+  catch." That test reads through `Peek`, so it takes no edge to itself and does not reach this path. The cycle of two memos overflows
+  the same way (`mutual_read_check_overflow`, F# only, since the command language has no forward reference).
+  **The contract is the owner's call.** A self-reading memo may be outside the contract, and the owner decides that. No document
+  found says this outcome is intended, which is why the entry is Confirmed and not closed as spec corrected.
+  **Theorems.** No stated theorem is falsified, and none is weakened. `rwf` includes `memos_acyclic`, which rejects this program, so
+  Task 12's `engine_of_answers` and `weak_refinement` keep their form with that premise. `well_behaved_memo` alone accepts a self-read
+  and is no substitute for it. Any statement that `read` or `update_if_necessary` returns needs `memos_acyclic` as a premise, and
+  Task 8's `resolve_clean_no_move` and Task 9's `engine_inv_preserved` hold over results, which this read has none of. So no open
+  theorem is named here. In the differential check this program is `fatal` on the F# side and has no result in the model, which
+  counts as a both-sides skip and closes nothing.
+
 ## Awaiting ruling
 
 - `disposed_running_observer_stays_clean` (`theories/Pure/Witnesses.v`, scenario of the same name): an effect that disposes

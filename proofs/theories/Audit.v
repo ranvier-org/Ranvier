@@ -96,5 +96,6 @@ Print Assumptions self_marking_body_left_behind.
 Print Assumptions self_marking_through_memo_left_behind.
 Print Assumptions read_move_leaves_effect_queued.
 Print Assumptions nested_self_run_ends_clean_and_wrong.
+Print Assumptions self_read_check_resolves_itself.
 Print Assumptions Ranvier.Conformance.Check.nested_memo_prev_stuck.
 Print Assumptions Ranvier.Conformance.Check.check_disposed_window.

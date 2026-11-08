@@ -255,3 +255,22 @@ Proof.
   - vm_compute. intros Hin. repeat (apply elem_of_cons in Hin as [Hin|Hin]; [discriminate Hin|]). by apply not_elem_of_nil in Hin.
   - vm_compute. repeat (first [left | right]; try done).
 Qed.
+
+(** A memo reads itself, then a memo over a signal. The write leaves it in [Check] with its first slot
+    naming itself, so the next read's walk asks the memo to resolve itself. Each round of the walk spends
+    fuel and changes nothing, so the read has no result at any fuel tried, and the F# overflows its stack.
+    Confirmed in [BUGS.md]. *)
+Definition self_read_check (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 3) (CRead 11 (V 2) (CRet (V 11)))) (
+  CRead 20 (V 3) (CRead 21 (V 3) (CWrite (V 1) (K 1%Z) k))))).
+
+Example self_read_check_resolves_itself :
+  let s := final (self_read_check Nop) in
+  n_fresh <$> g_nodes s !! 3 = Some Check /\ sslots (src_of (g_edges s) 3) !! 0 = Some (3, Some 0) /\
+  trace_of 100000 current_flags (self_read_check Nop) =
+    Some [EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z)] /\
+  trace_of 500 current_flags (self_read_check (CRead 22 (V 3) Nop)) = None /\
+  trace_of 2000 current_flags (self_read_check (CRead 22 (V 3) Nop)) = None.
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.

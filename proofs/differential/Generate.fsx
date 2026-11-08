@@ -1,25 +1,31 @@
 // The F# half of the differential check: a seeded generator of command-language programs, a printer and a parser of
-// their text form, and an interpreter of a program over real Signal, Memo and Effect objects. run.sh compares its traces
-// with those of driver.ml. Agreement is evidence that the model matches the F#, not a proof.
+// their text form, and an interpreter of a program over real Signal, Memo and Effect objects. run.sh compares its output
+// with that of driver.ml. Agreement is evidence that the model matches the F#, not a proof.
 //
 //   dotnet fsi differential/Generate.fsx generate <count> <seed> <directory>
+//   dotnet fsi differential/Generate.fsx run <directory> <first index>
 //   dotnet fsi differential/Generate.fsx replay <programs file> <directory>
 //
-// Writes programs.txt, one S-expression per line, unless replaying. Then writes fsharp.txt, one line per program:
-// index, status and trace, tab-separated. The status is one of
-//   ok         the program returned, or failed at its top level, and the trace is complete
+// `generate` writes programs.txt, one S-expression per line, stats.txt and floors.txt, then acts as `run` from index 0.
+// `replay` copies a file to programs.txt first. `run` appends one line per program to fsharp.txt, tab-separated:
+//   index, status, trace, end state, closed state, coverage
+// The status is one of
+//   ok         the program returned, or failed at its top level, and every column is complete
 //   stuck      the program reached a state with no F# meaning, where `exec` is stuck
 //   budget     the program passed the step or depth budget, and has no complete trace
 //   excluded   the program raised more than one zero divisor
 //   harness    the harness itself failed, with the reason in the trace column
-// and stats.txt, the exclusions and the coverage counters. For a run of at least `CoverageFloor` programs, missing.txt
-// names each required shape the programs did not reach.
+//
+// current.txt holds the index of the running program, and is absent otherwise. A crash leaves it behind, and run.sh
+// records that program as `fatal` and starts `run` at the next index. The watchdog ends the process the same way.
 #load "../conformance/Harness.fsx"
 
 open System
 open System.Collections.Generic
 open System.IO
+open System.Diagnostics
 open System.Reflection
+open System.Text
 open System.Threading
 open Ranvier
 open Harness
@@ -197,8 +203,9 @@ type Site =
 
 /// What a body may refer to. A write-capable body reads signals below `ReadLimit` and writes signals at or above
 /// `WriteFloor`, with `ReadLimit <= WriteFloor`, so every write goes to a signal of a higher creation index than any
-/// signal its body reads, and writes from bodies form no cycle. The templates `selfWritingMemo`, `climbingEffect` and
-/// `nestedSelfRun` are the exception: they write a signal they read, under a guard that stops changing the value.
+/// signal its body reads, and writes from bodies form no cycle. The exceptions write a signal they read: `SelfWritingMemo`,
+/// `ClimbingEffect`, `NestedSelfRun` and `RewritingCleanup` under a guard that stops changing the value, and
+/// `CleanupWritesOwnSource` under the `inCleanup` guard of the core, which suppresses the mark.
 type Scope =
     {
         Signals: (int * int) list
@@ -227,13 +234,43 @@ let private emptyScope =
         Reads = ref -1
     }
 
+// Each template logs its own constant on the path that makes its shape. The coverage gate counts the template by that
+// event, so a template that stops reaching its shape fails the gate.
+[<Literal>]
+let SentinelDiamond = 9000
+
+[<Literal>]
+let SentinelStoppedWalk = 9001
+
+[<Literal>]
+let SentinelCleanupOwnSource = 9002
+
+[<Literal>]
+let SentinelRewritingCleanup = 9003
+
+[<Literal>]
+let SentinelPullWakesEffect = 9004
+
+[<Literal>]
+let SentinelSelfMarking = 9005
+
+let sentinelNames =
+    dict
+        [
+            SentinelDiamond, "template diamond"
+            SentinelStoppedWalk, "template check walk stops at a moved source"
+            SentinelCleanupOwnSource, "template effect cleanup writes its own source"
+            SentinelRewritingCleanup, "template owning memo cleanup writes, reads and writes"
+            SentinelPullWakesEffect, "template host pull wakes an effect"
+            SentinelSelfMarking, "template self-marking cleanup"
+        ]
+
 type Generator(rng: Random) =
     let mutable nextVar = 0
     let mutable nextSignal = 0
 
-    /// Draws of a node or a cleanup in a pure memo's body, which this generator redraws.
+    /// Draws of a node or a cleanup in a pure memo's body, which this generator drops.
     member val PureScopeDraws = 0 with get, set
-    member val Diamonds = 0 with get, set
 
     member private _.Fresh() =
         nextVar <- nextVar + 1
@@ -510,7 +547,6 @@ type Generator(rng: Random) =
 
     /// Two memos over a signal, and an effect reading both.
     member private this.Diamond(sc: Scope) =
-        this.Diamonds <- this.Diamonds + 1
         let addS, sc, s, i = this.NewSignal sc
         let a, b, e = this.Fresh (), this.Fresh (), this.Fresh ()
         let x, y, u, v = this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
@@ -527,7 +563,7 @@ type Generator(rng: Random) =
                         false,
                         CmpEq,
                         CRead (y, V s, CLog (V y, CRet (Mul (V y, K 2)))),
-                        CEffect (e, CRead (u, V a, CRead (v, V b, CLog (Add (V u, V v), this.Nop))), k)
+                        CEffect (e, CRead (u, V a, CRead (v, V b, CLog (K SentinelDiamond, CLog (Add (V u, V v), this.Nop)))), k)
                     )
                 )
             )),
@@ -595,7 +631,7 @@ type Generator(rng: Random) =
                             y,
                             true,
                             CmpEq,
-                            CRead (a, V kk, CCleanup (CWrite (V s, K 50, this.Nop), CRet (Mul (V a, K 0)))),
+                            CRead (a, V kk, CCleanup (CLog (K SentinelSelfMarking, CWrite (V s, K 50, this.Nop)), CRet (Mul (V a, K 0)))),
                             CMemo (
                                 x,
                                 false,
@@ -743,6 +779,116 @@ type Generator(rng: Random) =
             Computations = m :: sc.Computations
         }
 
+    // The templates below add nodes after the program's other operations and take their choices from `tail`, so that a seed
+    // and index that named a program before they existed keep naming the same operations.
+
+    /// A memo's `Check` walk stops at the first source that moves: the second source is read only by the branch the
+    /// re-run leaves behind, and stays unrun.
+    member private this.StoppedWalk(tail: Random) : Cmd -> Cmd =
+        let s, a, b, c, e =
+            this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+
+        let x, y, u, v, w =
+            this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+
+        let moved = tail.Next (1, 4)
+
+        let reader =
+            CRead (u, V a, CIf (Eq (V u, K 0), CRead (v, V b, CRet (V v)), CLog (K SentinelStoppedWalk, CRet (K 9))))
+
+        fun k ->
+            CSignal (
+                s,
+                K 0,
+                CMemo (
+                    a,
+                    false,
+                    CmpEq,
+                    CRead (x, V s, CRet (V x)),
+                    CMemo (
+                        b,
+                        false,
+                        CmpEq,
+                        CRead (y, V s, CLog (V y, CRet (V y))),
+                        CMemo (c, false, CmpEq, reader, CEffect (e, CRead (w, V c, CLog (V w, this.Nop)), CWrite (V s, K moved, k)))
+                    )
+                )
+            )
+
+    /// An effect's cleanup writes the source the effect reads. The core's `inCleanup` guard suppresses the mark, and the
+    /// body reads the written value.
+    member private this.CleanupWritesOwnSource(tail: Random) : Cmd -> Cmd =
+        let s, e, x = this.Fresh (), this.Fresh (), this.Fresh ()
+        let moved = tail.Next (1, 4)
+
+        let written = if tail.Next 2 = 0 then Add (V x, K 1) else K 20
+
+        fun k ->
+            CSignal (
+                s,
+                K 0,
+                CEffect (
+                    e,
+                    CRead (x, V s, CLog (V x, CCleanup (CLog (K SentinelCleanupOwnSource, CWrite (V s, written, this.Nop)), this.Nop))),
+                    CWrite (V s, K moved, k)
+                )
+            )
+
+    /// An owning memo's cleanup writes a source, reads the memo and writes again, so the nested run leaves the memo dirty
+    /// and `RecomputeScoped` goes round again. The guard ends it at the next discharge.
+    member private this.RewritingCleanup() : Cmd -> Cmd =
+        let s, m = this.Fresh (), this.Fresh ()
+        let x, y, a, b = this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+        let c, d, f, g = this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+        let h, j = this.Fresh (), this.Fresh ()
+
+        let rewrite =
+            CLog (K SentinelRewritingCleanup, CWrite (V s, K 2, CRead (y, V m, CLog (V y, CWrite (V s, K 3, this.Nop)))))
+
+        let body =
+            CRead (x, V s, CLog (V x, CCleanup (CIf (Eq (V x, K 1), rewrite, this.Nop), CRet (V x))))
+
+        fun k ->
+            CSignal (
+                s,
+                K 0,
+                CMemo (
+                    m,
+                    true,
+                    CmpEq,
+                    body,
+                    CTryRead (a, b, V m, CWrite (V s, K 1, CTryRead (c, d, V m, CWrite (V s, K 4, CTryRead (h, j, V m, CTryRead (f, g, V s, k))))))
+                )
+            )
+
+    /// A host read pulls an owning memo, whose discharge wakes an effect. The pull's end owes the flush, so the effect runs
+    /// before the read returns.
+    member private this.PullWakesEffect() : Cmd -> Cmd =
+        let s, t, m, e = this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+
+        let x, y, a, b, c, d =
+            this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh (), this.Fresh ()
+
+        let woken =
+            CRead (y, V t, CIf (Lt (K 0, V y), CLog (K SentinelPullWakesEffect, CLog (V y, this.Nop)), CLog (V y, this.Nop)))
+
+        fun k ->
+            CSignal (
+                s,
+                K 0,
+                CSignal (
+                    t,
+                    K 0,
+                    CMemo (
+                        m,
+                        true,
+                        CmpEq,
+                        CRead (x, V s, CCleanup (CWrite (V t, Add (V x, K 1), this.Nop), CRet (V x))),
+                        CEffect (e, woken, CTryRead (a, b, V m, CWrite (V s, K 1, CTryRead (c, d, V m, CLog (K 99, k)))))
+                    )
+                )
+            )
+
     /// One top-level operation over the nodes in scope.
     member private this.TopOp(sc: Scope) : (Cmd -> Cmd) =
         let writable = sc.Signals |> List.map fst
@@ -778,7 +924,7 @@ type Generator(rng: Random) =
             let b = this.Body TopSite sc 3
             fun k -> CBatch (b, k)
 
-    member this.Program() : Cmd =
+    member this.Program(tail: Random) : Cmd =
         let mutable sc = { emptyScope with Reads = ref -1 }
         let steps = ResizeArray<Cmd -> Cmd>()
 
@@ -812,23 +958,39 @@ type Generator(rng: Random) =
             let x, ok = this.Fresh (), this.Fresh ()
             steps.Add (fun k -> CTryRead (x, ok, V (fst t), k))
 
+        if tail.Next 100 < 30 then
+            steps.Add (this.StoppedWalk tail)
+
+        if tail.Next 100 < 30 then
+            steps.Add (this.CleanupWritesOwnSource tail)
+
+        if tail.Next 100 < 30 then
+            steps.Add (this.RewritingCleanup ())
+
+        if tail.Next 100 < 30 then
+            steps.Add (this.PullWakesEffect ())
+
         Seq.foldBack (fun step k -> step k) steps (CRet (K 0))
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The interpreter over real objects
 // ---------------------------------------------------------------------------------------------------------------------
 
-/// The program passed its budget. The body's failure ends in the node's status, so every later step raises it too.
-exception Runaway
-
-/// The program reached a state with no F# meaning, where `exec` is stuck.
-exception Stuck
-
 [<Literal>]
 let StepBudget = 400000
 
 [<Literal>]
-let DepthBudget = 3000
+let DepthBudget = 500
+
+/// The stack of the thread running programs, in bytes. A bound on how long a stack overflow takes to die, and well above
+/// what `DepthBudget` nested bodies need.
+[<Literal>]
+let StackBytes = 67108864
+
+/// The wall-clock limit of a program, in milliseconds. A failed step ends in a node's status and not in the flush
+/// running it, so a flush can loop past the step budget.
+[<Literal>]
+let WatchdogMilliseconds = 20000
 
 let private bump (coverage: Dictionary<string, int>) (name: string) =
     match coverage.TryGetValue name with
@@ -861,21 +1023,18 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
     let mutable zeroDivisors = 0
 
     let tick () =
-        if stuck then
-            raise Stuck
-
-        if runaway then
-            raise Runaway
+        if stuck || runaway then
+            raise Abandoned
 
         steps <- steps + 1
 
         if steps > StepBudget then
             runaway <- true
-            raise Runaway
+            raise Abandoned
 
     let stick () : 'a =
         stuck <- true
-        raise Stuck
+        raise Abandoned
 
     let isDisposed (node: obj) =
         privateField node "disposed" :?> bool
@@ -954,7 +1113,7 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
         try
             if depth > DepthBudget then
                 runaway <- true
-                raise Runaway
+                raise Abandoned
 
             body ()
         finally
@@ -1116,11 +1275,85 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
             c.Batch (fun () -> exec env label top b |> ignore)
             exec env label top k
         | CLog (e, k) ->
+            match e with
+            | K v when sentinelNames.ContainsKey v -> bump coverage sentinelNames[v]
+            | _ -> ()
+
             c.Log label (eval env e)
             exec env label top k
 
     member _.Run(program: Cmd) =
         exec Map.empty 0 true program |> ignore
+
+    /// The closing of `observed` in theories/Extract.v: a host read of each memo existing now, then `Graph.Flush`.
+    member _.Close() =
+        let memos =
+            [
+                for id in 1..lastId do
+                    if nodes[id] :? Memo<int> then
+                        id
+            ]
+
+        for id in memos do
+            exec Map.empty 0 true (CTryRead (0, 1, K id, CRet (K 0)))
+            |> ignore
+
+        g.Flush ()
+
+    /// The state the differential check compares, as `render_view` in driver.ml writes the model's.
+    member _.View() =
+        let bit (b: bool) =
+            if b then 1 else 0
+
+        let boolField (node: obj) (name: string) =
+            privateField node name :?> bool
+
+        let intField (node: obj) (name: string) =
+            privateField node name :?> int
+
+        let sourceCount (node: obj) =
+            internalProp (privateField node "sources") "Count" :?> int
+
+        let failureOf (node: obj) =
+            match privateField node "failure" with
+            | null -> "-"
+            | failure ->
+                match internalProp failure "Error" with
+                | :? exn as e ->
+                    match e with
+                    | Boom f -> string f
+                    | other -> other.GetType().Name
+                | _ -> "?"
+
+        let common (node: obj) =
+            let status = privateField node "status"
+            let freshness = privateField node "freshness"
+            $"st={status} fail={failureOf node} fr={freshness}"
+
+        let observers (node: obj) =
+            internalProp node "ObserverCount"
+
+        let row (id: int) =
+            match nodes[id] with
+            | :? Signal<int> as s -> $"S{id} v={s.Peek} o={observers s}"
+            | :? Memo<int> as m ->
+                let value = privateField m "value"
+                let unannounced = bit (boolField m "unannounced")
+                let runs = intField m "runs"
+                let disposed = bit (boolField m "disposed")
+                $"M{id} v={value} {common m} u={unannounced} r={runs} d={disposed} s={sourceCount m} o={observers m}"
+            | node ->
+                let runs = intField node "runs"
+                let disposed = bit (boolField node "disposed")
+                let queued = bit (boolField node "queued")
+                $"E{id} {common node} r={runs} d={disposed} q={queued} s={sourceCount node}"
+
+        [
+            for id in 1..lastId do
+                row id
+            $"queue={c.QueueLength} errors={g.Root.ErrorCount}"
+        ]
+        |> String.concat ", "
 
     member _.Runaway = runaway
     member _.Stuck = stuck
@@ -1147,130 +1380,167 @@ let private render (e: Ev) =
     | Disposed n -> $"EvDispose {n}"
     | HostRead (n, o) -> $"EvHostRead {n} {renderOutcome o}"
 
-/// The status and trace column of a program.
-let runProgram (coverage: Dictionary<string, int>) (program: Cmd) : string * string =
+/// The columns of a program after its index: status, trace, end state, closed state.
+let runProgram (coverage: Dictionary<string, int>) (program: Cmd) : string list =
     let c = Ctx ()
     let interpreter = Interpreter (c, coverage)
 
-    let escaped =
+    let guarded (step: unit -> unit) =
         try
-            interpreter.Run program
+            step ()
             None
         with
-        | Boom _ -> None
-        | Runaway
-        | Stuck -> None
+        | Boom _
+        | Abandoned -> None
         | ex -> Some $"{ex.GetType().Name}: {ex.Message}"
+
+    let usable () =
+        not interpreter.Stuck && not interpreter.Runaway
+
+    let ended = ref ""
+    let closed = ref ""
+
+    let escaped =
+        guarded (fun () -> interpreter.Run program)
+        |> Option.orElseWith (fun () ->
+            guarded (fun () ->
+                if usable () then
+                    ended.Value <- interpreter.View ()
+                    interpreter.Close ()
+
+                    if usable () then
+                        closed.Value <- interpreter.View ()))
 
     // A fresh failure identity moves a memo on every run where the model's one identity does not, so a self-reading memo
     // with a zero divisor runs away on the F# side alone. The exclusion comes before the budget.
-    if interpreter.Stuck then
-        "stuck", ""
-    elif interpreter.ZeroDivisors > 1 then
-        "excluded", ""
-    elif interpreter.Runaway then
-        "budget", ""
-    elif escaped.IsSome then
-        "harness", escaped.Value
-    elif not c.Failures.IsEmpty then
-        "harness", String.concat " | " c.Failures
-    else
-        interpreter.NoteSelfMarked ()
+    match escaped, c.Failures with
+    | Some reason, _ -> [ "harness"; reason; ""; "" ]
+    | None, (_ :: _ as failures) -> [ "harness"; String.concat " | " failures; ""; "" ]
+    | None, [] ->
+        if interpreter.Stuck then
+            [ "stuck"; ""; ""; "" ]
+        elif interpreter.ZeroDivisors > 1 then
+            [ "excluded"; ""; ""; "" ]
+        elif interpreter.Runaway then
+            [ "budget"; ""; ""; "" ]
+        else
+            interpreter.NoteSelfMarked ()
 
-        if interpreter.ZeroDivisors = 1 then
-            bump coverage "single zero divisor"
+            if interpreter.ZeroDivisors = 1 then
+                bump coverage "single zero divisor"
 
-        "ok", (c.Events |> List.map render |> String.concat "; ")
+            [
+                "ok"
+                c.Events |> List.map render |> String.concat "; "
+                ended.Value
+                closed.Value
+            ]
 
-/// The dynamic coverage a run of at least `coverageFloor` programs has to reach.
+/// Each shape a run has to reach in the programs it compares, with the count required of 2000 programs. Each floor is
+/// about half the lowest count measured over seeds 1, 2, 3, 77 and 4242.
 let required =
     [
-        "batch"
-        "cleanup run"
-        "comparer never consulted"
-        "comparer throws consulted"
-        "conditional read"
-        "dispose"
-        "failing body"
-        "failure caught by a try read"
-        "late child attached"
-        "memo left stale by its own run"
-        "memo recomputed to its previous value"
-        "owning memo run"
-        "pure memo run"
-        "single zero divisor"
-        "write from an effect"
+        "batch", 2000
+        "cleanup run", 2000
+        "comparer never consulted", 40
+        "comparer throws consulted", 30
+        "conditional read", 1200
+        "dispose", 500
+        "failing body", 500
+        "failure caught by a try read", 700
+        "late child attached", 200
+        "memo left stale by its own run", 35
+        "memo recomputed to its previous value", 1000
+        "owning memo run", 2700
+        "pure memo run", 6000
+        "single zero divisor", 3
+        "write from an effect", 800
+        "template diamond", 350
+        "template check walk stops at a moved source", 290
+        "template effect cleanup writes its own source", 290
+        "template owning memo cleanup writes, reads and writes", 290
+        "template host pull wakes an effect", 280
+        "template self-marking cleanup", 290
     ]
 
-[<Literal>]
-let CoverageFloor = 200
+/// Runs the programs from `first` on, on a thread the watchdog can outlive.
+let private runFrom (directory: string) (first: int) =
+    let programs = File.ReadAllLines (Path.Combine (directory, "programs.txt"))
 
-let private runAll (programs: string[]) (directory: string) (pureScopeDraws: int) (diamonds: int) =
-    let coverage = Dictionary<string, int>()
-    let lines = ResizeArray<string>()
+    let currentFile = Path.Combine (directory, "current.txt")
 
-    // A self-reading body nests the core's frames as deep as the depth budget allows.
+    use output =
+        new StreamWriter (Path.Combine (directory, "fsharp.txt"), true, UTF8Encoding false, AutoFlush = true)
+
+    let mutable current = -1
+    let clock = Stopwatch ()
+
     let worker =
         Thread (
             (fun () ->
-                programs
-                |> Array.iteri (fun i text ->
-                    let status, trace = runProgram coverage (readCmd (parseSexp text))
-                    lines.Add $"{i}\t{status}\t{trace}")),
-            1024 * 1024 * 1024
+                for i in first .. programs.Length - 1 do
+                    let program = readCmd (parseSexp programs[i])
+                    File.WriteAllText (currentFile, string i)
+                    current <- i
+                    clock.Restart ()
+                    let coverage = Dictionary<string, int>()
+                    let columns = runProgram coverage program
+
+                    let counted =
+                        coverage
+                        |> Seq.map (fun kv -> $"{kv.Key}={kv.Value}")
+                        |> String.concat ";"
+
+                    output.Write (
+                        String.concat "\t" [ string i; yield! columns; counted ]
+                        + "\n"
+                    )
+
+                File.Delete currentFile),
+            StackBytes
         )
 
+    worker.IsBackground <- true
     worker.Start ()
-    worker.Join ()
-    File.WriteAllText (Path.Combine (directory, "fsharp.txt"), (String.concat "\n" lines) + "\n")
 
-    let stats =
-        [
-            $"excluded by construction: {pureScopeDraws} draws of a node or cleanup in a pure memo's body"
-            $"diamond templates: {diamonds}"
-            for kv in coverage |> Seq.sortBy (fun kv -> kv.Key) do
-                $"coverage: {kv.Key}: {kv.Value}"
-        ]
-
-    File.WriteAllText (Path.Combine (directory, "stats.txt"), (String.concat "\n" stats) + "\n")
-
-    if programs.Length >= CoverageFloor then
-        let missing =
-            required
-            |> List.filter (fun name -> not (coverage.ContainsKey name))
-
-        let missing =
-            if diamonds = 0 then
-                "diamond template" :: missing
-            else
-                missing
-
-        File.WriteAllText (Path.Combine (directory, "missing.txt"), String.concat ", " missing)
+    while not (worker.Join 200) do
+        if clock.ElapsedMilliseconds > int64 WatchdogMilliseconds then
+            eprintfn "watchdog: program %d passed %d ms" current WatchdogMilliseconds
+            Process.GetCurrentProcess().Kill()
 
 match fsi.CommandLineArgs |> Array.toList |> List.tail with
 | [ "generate"; count; seed; directory ] ->
     let count, seed = int count, int seed
-    let mutable pureDraws = 0
-    let mutable diamonds = 0
+    let mutable dropped = 0
 
     let programs =
         [|
             for i in 0 .. count - 1 do
                 let generator = Generator (Random (seed * 100003 + i))
-                let text = printCmd (generator.Program ())
-                pureDraws <- pureDraws + generator.PureScopeDraws
-                diamonds <- diamonds + generator.Diamonds
+                let text = printCmd (generator.Program (Random (seed * 100019 + i)))
+                dropped <- dropped + generator.PureScopeDraws
                 text
         |]
 
     File.WriteAllText (Path.Combine (directory, "programs.txt"), (String.concat "\n" programs) + "\n")
-    runAll programs directory pureDraws diamonds
-| [ "replay"; file; directory ] ->
-    let programs =
-        File.ReadAllLines file
-        |> Array.filter (fun line -> line.Trim () <> "")
 
-    runAll programs directory 0 0
+    File.WriteAllText (
+        Path.Combine (directory, "stats.txt"),
+        $"excluded by construction: {dropped} draws of a node or cleanup in a pure memo's body, dropped\n"
+    )
+
+    File.WriteAllText (
+        Path.Combine (directory, "floors.txt"),
+        required
+        |> List.map (fun (name, floor) -> $"{name}\t{floor}\n")
+        |> String.concat ""
+    )
+
+    runFrom directory 0
+| [ "run"; directory; first ] -> runFrom directory (int first)
+| [ "replay"; file; directory ] ->
+    File.WriteAllText (Path.Combine (directory, "programs.txt"), (File.ReadAllText file).Replace("\r\n", "\n"))
+    runFrom directory 0
 | _ ->
-    eprintfn "usage: Generate.fsx generate <count> <seed> <directory> | replay <file> <directory>"
+    eprintfn "usage: Generate.fsx generate <count> <seed> <directory> | run <directory> <first index> | replay <file> <directory>"
     exit 2

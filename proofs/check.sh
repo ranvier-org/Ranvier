@@ -12,7 +12,8 @@
 #      the Windows `dotnet.exe` through interop, with a relative path resolved from the Windows view of
 #      this directory. RANVIER_DOTNET names another dotnet. A missing dotnet fails the check.
 #   6. regenerating engine.ml and engine.mli from theories/Extract.v matches the copies in differential/;
-#   7. differential/run.sh 200 1 exits 0.
+#   7. differential/run.sh 200 1 exits 0;
+#   8. each scenario under `fatalScenarios` in conformance/Scenarios.fsx still overflows the stack.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -175,6 +176,18 @@ fi
 
 # 7. The differential check. Its agreement is evidence, not a proof.
 bash differential/run.sh 200 1 || note "differential/run.sh 200 1 failed"
+
+# 8. Fatal scenarios. Each runs in its own process, and a scenario that returns has outlived its ledger entry.
+if [ -n "${dotnet_cmd:-}" ]; then
+  for name in self_read_check_overflow mutual_read_check_overflow; do
+    rc=0
+    "$dotnet_cmd" fsi conformance/Scenarios.fsx --fatal "$name" >"$out" 2>&1 || rc=$?
+    if [ "$rc" -eq 0 ] || ! grep -q 'Stack overflow' "$out"; then
+      tail -5 "$out" | tr -d '\r' | cut -c1-300 >&2
+      note "fatal scenario $name did not overflow (exit $rc): update BUGS.md"
+    fi
+  done
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo "check.sh: FAILED" >&2
