@@ -541,6 +541,7 @@ The audit passing here shows the `wake_ok` statement detects both historic bugs.
 - [ ] **Step 2: Theorems.**
   - `glitch_free_read`: for a node that is not `self_dirtying`, a read returns what its body computes from current signals.
   - `convergence`: under `well_behaved_program` and `quiescent`, every effect's last run saw the latest value of each source it reads.
+  - `well_behaved_program` or `self_dirtying` excludes memo cycles, self-reads included. `self_read_check_overflow` in `BUGS.md` falsifies `glitch_free_read` otherwise. `self_dirtying` also covers `nested_self_run`'s Clean memo and `self_marking_through_memo`'s Clean reader.
 - [ ] **Step 3: Prove them, then audit.** Expected: exit 0.
 - [ ] **Step 4: Commit** as `feat(proofs): prove whole-graph behaviour with regression witnesses`.
 
