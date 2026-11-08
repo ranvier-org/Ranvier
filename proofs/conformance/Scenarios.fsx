@@ -714,9 +714,11 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
             c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
             c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
-            c.Check (c.HostRead 3 (fun () -> a.Value) = 1) "the memo's body answers 1"
+            s.Value <- 2
+            c.Check (e.Runs = 1) $"after another write the effect has run {e.Runs} times"
+            c.Check (c.HostRead 3 (fun () -> a.Value) = 2) "the memo's body answers 2"
 
-        // BUGS.md, walk_passed_source_marked. The same through a cleanup, which Core.fs 4178-4181 documents as a behaviour.
+        // BUGS.md, walk_passed_source_marked. The same through a cleanup.
         "walk_passed_source_cleanup",
         fun c ->
             let s = c.Signal 1 0
@@ -742,7 +744,9 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
             c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
             c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
-            c.Check (c.HostRead 3 (fun () -> a.Value) = 1) "the memo's body answers 1"
+            s.Value <- 2
+            c.Check (e.Runs = 1) $"after another write the effect has run {e.Runs} times"
+            c.Check (c.HostRead 3 (fun () -> a.Value) = 2) "the memo's body answers 2"
 
         // BUGS.md, effect_resolves_over_moved_source. An effect reads `a`, writes its source and reads a memo over it. The
         // walk of that read runs `a` with the effect as the current computation, and NotifyDirtyExcept skips the effect.
@@ -764,6 +768,8 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (freshnessOf a = "Clean") $"the source is {freshnessOf a}"
             c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
             c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
+            s.Value <- 2
+            c.Check (e.Runs = 3) $"the next write leaves {e.Runs} runs"
     ]
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,

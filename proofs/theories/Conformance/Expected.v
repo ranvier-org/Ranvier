@@ -139,13 +139,14 @@ Definition exp_disposed_stale_source_read : list event := [
 ].
 
 Definition exp_walk_passed_source_marked : list event := [
-  EvRun 5; EvLog 5 0%Z; EvHostRead 3 (Ok 1%Z)
+  EvRun 5; EvLog 5 0%Z; EvHostRead 3 (Ok 2%Z)
 ].
 
 Definition exp_walk_passed_source_cleanup : list event := [
-  EvRun 5; EvLog 5 0%Z; EvCleanup 4; EvHostRead 3 (Ok 1%Z)
+  EvRun 5; EvLog 5 0%Z; EvCleanup 4; EvHostRead 3 (Ok 2%Z)
 ].
 
 Definition exp_effect_resolves_over_moved_source : list event := [
-  EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z
+  EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 2%Z; EvRun 4;
+  EvLog 4 1%Z
 ].

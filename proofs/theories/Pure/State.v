@@ -57,11 +57,14 @@ Record ghost := {
   gh_window : gmap node_id nat; (* [n_runs] at the latest [RecomputeScoped] clearing a memo's [Dirty] *)
   gh_reads : gmap node_id (list node_id); (* a computation's tracked reads since its latest run start, in order *)
   gh_passed : gset node_id; (* computations a walk ended [Clean] over a live, stale, unannounced source, since their latest run start *)
-  gh_over : gset node_id (* computations a walk ended [Clean] over a live, stale source, since their latest run start *)
+  gh_over : gset node_id; (* computations a walk ended [Clean] over a live, stale source, since their latest run start *)
+  gh_run_reads : gmap node_id (list node_id); (* a computation's tracked reads since its outermost run start, in order *)
+  gh_nested : gset node_id (* computations with a run started inside their own, since their outermost run start *)
 }.
 
 Definition empty_ghost : ghost :=
-  {| gh_published := ∅; gh_seen := ∅; gh_unnoticed := ∅; gh_window := ∅; gh_reads := ∅; gh_passed := ∅; gh_over := ∅ |}.
+  {| gh_published := ∅; gh_seen := ∅; gh_unnoticed := ∅; gh_window := ∅; gh_reads := ∅; gh_passed := ∅; gh_over := ∅;
+     gh_run_reads := ∅; gh_nested := ∅ |}.
 
 Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id node;
                   g_owners : gmap owner_id owner_state; g_queue : list node_id; g_queue_head : nat;

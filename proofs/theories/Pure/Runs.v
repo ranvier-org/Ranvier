@@ -36,7 +36,7 @@ Definition wake_ok_unless_passed (s : state) : Prop :=
 Definition nothing_passed (s : state) : Prop := gh_passed (g_ghost s) = ∅.
 
 (** Every observer of a live, stale source is stale, queued or running, or a walk of its resolved [Clean] over a
-    live, stale source. The source's flag excuses nothing here, so this form sees a reader left unmarked. *)
+    live, stale source. The source's flag is not a disjunct, so a reader left unmarked breaks this statement. *)
 Definition wake_told (s : state) : Prop :=
   forall src c, edge s src c -> stale_of s src -> live_of s src ->
     stale_or_queued s c \/ In c (g_running s) \/ c ∈ gh_over (g_ghost s).
@@ -50,6 +50,9 @@ Definition read_step (acc : list node_id) (x : node_id) : list node_id :=
 Definition read_list (reads : list node_id) : list node_id := foldl read_step [] reads.
 
 Definition reads_of (s : state) (c : node_id) : list node_id := default [] (gh_reads (g_ghost s) !! c).
+
+(** A computation's tracked reads since its outermost run start. *)
+Definition run_reads_of (s : state) (c : node_id) : list node_id := default [] (gh_run_reads (g_ghost s) !! c).
 
 Lemma read_list_snoc l x : read_list (l ++ [x]) = read_step (read_list l) x.
 Proof. unfold read_list. by rewrite foldl_app. Qed.
@@ -410,7 +413,8 @@ Record run_base (s : state) : Prop := {
     length (o_cleanups x) = length (o_cleanup_envs x) /\ length (o_cleanups x) = length (o_cleanup_order x);
   b_window : (forall n r, gh_window (g_ghost s) !! n = Some r -> has_kind n KMemo s) /\
     (forall n l, gh_reads (g_ghost s) !! n = Some l -> is_Some (g_nodes s !! n)) /\
-    (forall n d, g_nodes s !! n = Some d -> n_kind d = KSignal -> n_freshness d = Clean)
+    (forall n d, g_nodes s !! n = Some d -> n_kind d = KSignal -> n_freshness d = Clean) /\
+    (forall c, c ∉ gh_nested (g_ghost s) -> run_reads_of s c = reads_of s c)
 }.
 
 Definition run_extras (s : state) : Prop := run_base s /\ told s.
@@ -445,6 +449,8 @@ Record fields_same (s s' : state) : Prop := {
   fs_reads : gh_reads (g_ghost s') = gh_reads (g_ghost s);
   fs_passed : gh_passed (g_ghost s') = gh_passed (g_ghost s);
   fs_over : gh_over (g_ghost s') = gh_over (g_ghost s);
+  fs_run_reads : gh_run_reads (g_ghost s') = gh_run_reads (g_ghost s);
+  fs_nested : gh_nested (g_ghost s') = gh_nested (g_ghost s);
   fs_running : g_running s' = g_running s;
   fs_current : g_current s' = g_current s;
   fs_flags : g_flags s' = g_flags s;
@@ -460,14 +466,14 @@ Qed.
 
 Lemma base_same s s' : fields_same s s' -> run_base s -> run_base s'.
 Proof.
-  intros [He Hn Hw Hr Hp Hov Hru Hc Hf Ho Hfl] H. destruct H as [B1 B2 B3 B4 B5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16 B17 B18].
+  intros [He Hn Hw Hr Hp Hov Hrr Hne Hru Hc Hf Ho Hfl] H. destruct H as [B1 B2 B3 B4 B5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16 B17 B18].
   assert (B3' := mark_env_nodes_edges _ _ He Hn B3).
-  split; unfold has_kind, reads_of, queued_ok in *; rewrite ?He, ?Hn, ?Hw, ?Hr, ?Hp, ?Hru, ?Hc, ?Hf, ?Ho, ?Hfl; done.
+  split; unfold has_kind, reads_of, run_reads_of, queued_ok in *; rewrite ?He, ?Hn, ?Hw, ?Hr, ?Hrr, ?Hne, ?Hp, ?Hru, ?Hc, ?Hf, ?Ho, ?Hfl; done.
 Qed.
 
 Lemma told_same R s s' : fields_same s s' -> told_on R s -> told_on R s'.
 Proof.
-  intros [He Hn Hw Hr Hp Hov Hru Hc Hf Ho Hfl] H.
+  intros [He Hn Hw Hr Hp Hov Hrr Hne Hru Hc Hf Ho Hfl] H.
   unfold told_on, told_cover, in_window, resolved_set in *. rewrite ?He, ?Hn, ?Hw, ?Hp, ?Hov. done.
 Qed.
 
@@ -476,7 +482,7 @@ Proof. intros Hs [H1 H2]. split; [by eapply base_same|by eapply told_same]. Qed.
 
 Lemma ekept_same s s' : fields_same s s' -> ekept s s'.
 Proof.
-  intros [He Hn Hw Hr Hp Hov Hru Hc Hf Ho Hfl]. split; [done| |].
+  intros [He Hn Hw Hr Hp Hov Hrr Hne Hru Hc Hf Ho Hfl]. split; [done| |].
   - intros c d Hd. exists d. by rewrite Hn.
   - intros m d r. rewrite Hn, Hw. intros. by exists d, r.
 Qed.
@@ -535,7 +541,7 @@ Proof.
   - intros c Hr. destruct (B15 c Hr) as [K|K]; [left|right]; auto.
   - intros c Hke Hr. apply (B16 c); [|done].
     exact (has_kind_set_back n d (u d) c KEffect s Hd Hk Hke).
-  - destruct B18 as [W [W' W'']]. split_and!.
+  - destruct B18 as [W [W' [W'' W4]]]. split_and!; [| | |exact W4].
     + intros m r Hw. apply Hup. eauto.
     + intros m l Hl'. destruct (W' m l Hl') as [e He].
       destruct (decide (m = n)) as [->|Hne]; [rewrite lookup_insert_eq; by eexists|rewrite lookup_insert_ne by done; by exists e].
@@ -625,7 +631,7 @@ Proof.
       * by eapply (me_cleanup _ (b_env _ Hb)).
       * intros H1. by eapply (b_cleanup_disposed _ Hb).
       * intros Hcur. pose proof (b_cleanup_current _ Hb n d Hcur Hd). congruence.
-    + rewrite N2. intros Hk. destruct (b_window _ Hb) as (_&_&W). eauto.
+    + rewrite N2. intros Hk. destruct (b_window _ Hb) as (_&_&W&_). eauto.
   - apply told_set; try done.
     + rewrite N2, N4, N3. intros H1 H2. auto.
     + by rewrite N4.
@@ -666,7 +672,7 @@ Proof.
   - rewrite F3, F7. intros c (d&Hd&Hk) Hc. destruct (F9 c d Hd) as (d0&Hd0&(Hk0&_)).
     apply (B16 c); [exists d0; split; [done|congruence]|done].
   - by rewrite F6.
-  - rewrite F2. destruct B18 as [W1 [W2 W3]]. split_and!.
+  - rewrite F2. destruct B18 as [W1 [W2 [W3 W4]]]. split_and!; [| | |unfold reads_of, run_reads_of in *; rewrite F2; exact W4].
     + intros m r0 Hw. eapply has_kind_fixed; [done|eauto].
     + intros m l Hl'. destruct (W2 m l Hl') as [e0 He0]. destruct (F8 m e0 He0) as (e'&He'&_). by exists e'.
     + intros m e0 He0 Hk. destruct (F9 m e0 He0) as (d0&Hd0&(Hk0&_&_&_&_&_&Hsg&_)).
@@ -767,13 +773,13 @@ Qed.
 
 Local Tactic Notation "gsimp" :=
   cbn [with_ghost with_edges with_running with_next_id with_owners with_current set_node ghost_run_start ghost_effect_start ghost_dirty_cleared g_edges g_nodes g_ghost g_running g_current g_flags
-       g_owners g_flushing gh_published gh_seen gh_unnoticed gh_window gh_reads gh_passed g_queue g_next_id from_option id].
+       g_owners g_flushing gh_published gh_seen gh_unnoticed gh_window gh_reads gh_run_reads gh_nested gh_over gh_passed g_queue g_next_id from_option id].
 Local Tactic Notation "gsimp" "in" "*" :=
   cbn [with_ghost with_edges with_running with_next_id with_owners with_current set_node ghost_run_start ghost_effect_start ghost_dirty_cleared g_edges g_nodes g_ghost g_running g_current g_flags
-       g_owners g_flushing gh_published gh_seen gh_unnoticed gh_window gh_reads gh_passed g_queue g_next_id from_option id] in *.
+       g_owners g_flushing gh_published gh_seen gh_unnoticed gh_window gh_reads gh_run_reads gh_nested gh_over gh_passed g_queue g_next_id from_option id] in *.
 Local Tactic Notation "gsimp" "in" ne_hyp_list(H) :=
   cbn [with_ghost with_edges with_running with_next_id with_owners with_current set_node ghost_run_start ghost_effect_start ghost_dirty_cleared g_edges g_nodes g_ghost g_running g_current g_flags
-       g_owners g_flushing gh_published gh_seen gh_unnoticed gh_window gh_reads gh_passed g_queue g_next_id from_option id] in H.
+       g_owners g_flushing gh_published gh_seen gh_unnoticed gh_window gh_reads gh_run_reads gh_nested gh_over gh_passed g_queue g_next_id from_option id] in H.
 
 Lemma ci_running' s c : c ∈ g_running s -> (forall c, c ∈ g_running s -> has_kind c KMemo s \/ has_kind c KEffect s) -> is_Some (g_nodes s !! c).
 Proof. intros Hc H. destruct (H c Hc) as [(d&Hd&_)|(d&Hd&_)]; by exists d. Qed.
@@ -792,7 +798,9 @@ Proof.
       gh_unnoticed := if decide (n ∈ g_running s) then {[c]} ∪ gh_unnoticed (g_ghost s) else gh_unnoticed (g_ghost s);
       gh_window := gh_window (g_ghost s);
       gh_reads := <[c := default [] (gh_reads (g_ghost s) !! c) ++ [n]]> (gh_reads (g_ghost s));
-      gh_passed := gh_passed (g_ghost s); gh_over := gh_over (g_ghost s) |} (with_edges w s)).
+      gh_passed := gh_passed (g_ghost s); gh_over := gh_over (g_ghost s);
+      gh_run_reads := <[c := default [] (gh_run_reads (g_ghost s) !! c) ++ [n]]> (gh_run_reads (g_ghost s));
+      gh_nested := gh_nested (g_ghost s) |} (with_edges w s)).
   { subst s'. unfold ghost_read. gsimp. by rewrite Hd. }
   destruct Hb as [B1 B2 [E1 E2 E3 E4] B4 B5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16 B17 B18].
   pose proof (B14 c Hc) as Hrun.
@@ -825,7 +833,10 @@ Proof.
     + intros c' e He Hcl Hde. destruct (decide (c' = c)) as [->|Hne].
       * pose proof (B13 c e Hc He). congruence.
       * rewrite Hoth by done. eauto.
-    + destruct B18 as [W1 [W2 W3]]. split_and!; [done| |done].
+    + destruct B18 as [W1 [W2 [W3 W4]]]. split_and!; [done| |done|].
+      2: { intros c' Hc'. unfold run_reads_of, reads_of. gsimp. destruct (decide (c' = c)) as [->|Hne].
+           - rewrite !lookup_insert_eq. gsimp. f_equal. exact (W4 c Hc').
+           - rewrite !lookup_insert_ne by done. exact (W4 c' Hc'). }
       intros m l. gsimp. destruct (decide (m = c)) as [->|Hne]; [intros _; destruct (ci_running' s c Hrun B15) as [e He]; by exists e|].
       rewrite lookup_insert_ne by done. apply W2.
   - intros b c' y dc e Hr Hc' He Hin Hst Hde Hdc. gsimp in Hc' He Hin.
@@ -906,7 +917,12 @@ Proof.
     + exfalso. pose proof (Hdown _ _ Hke) as Hke'. destruct Hke' as (e&He&Hke'). rewrite Hd in He. injection He as <-. congruence.
     + apply (B16 c); [auto|done].
   - done.
-  - destruct B18 as [W1 [W2 W3]]. split_and!.
+  - destruct B18 as [W1 [W2 [W3 W4]]]. split_and!.
+    4: { subst s'. intros c. unfold run_reads_of, reads_of. gsimp. destruct (decide (n ∈ g_running s)) as [Hin|Hin].
+         - intros Hc'. assert (c <> n) by set_solver. rewrite lookup_insert_ne by done.
+           apply W4. set_solver.
+         - intros Hc'. destruct (decide (c = n)) as [->|Hne]; [by rewrite !lookup_insert_eq|].
+           rewrite !lookup_insert_ne by done. apply W4. set_solver. }
     + intros m r Hw. apply Hup. eauto.
     + subst s'. gsimp. intros m l. destruct (decide (m = n)) as [->|Hne]; [intros _; rewrite lookup_insert_eq; by eexists|].
       rewrite !lookup_insert_ne by done. apply W2.
@@ -1099,7 +1115,7 @@ Proof.
       * by eapply (me_cleanup _ (b_env _ Hb)).
       * intros H1. by eapply (b_cleanup_disposed _ Hb).
       * intros Hcur. pose proof (b_cleanup_current _ Hb n d Hcur Hd). congruence.
-    + simpl. intros Hk. destruct (b_window _ Hb) as (_&_&W). eauto.
+    + simpl. intros Hk. destruct (b_window _ Hb) as (_&_&W&_). eauto.
   - apply (told_set _ n (node_with_unannounced true) d); try done.
     left. simpl. lia.
   - apply (ekept_set n (node_with_unannounced true) d); done.
@@ -1117,11 +1133,12 @@ Lemma base_passed s s' :
   g_edges s' = g_edges s -> g_nodes s' = g_nodes s -> g_running s' = g_running s -> g_current s' = g_current s ->
   g_flags s' = g_flags s -> g_owners s' = g_owners s -> g_flushing s' = g_flushing s ->
   gh_window (g_ghost s') = gh_window (g_ghost s) -> gh_reads (g_ghost s') = gh_reads (g_ghost s) ->
+  gh_run_reads (g_ghost s') = gh_run_reads (g_ghost s) -> gh_nested (g_ghost s') = gh_nested (g_ghost s) ->
   run_base s -> run_base s'.
 Proof.
-  intros He Hn Hru Hc Hf Ho Hfl Hw Hr H. destruct H as [B1 B2 B3 B4 B5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16 B17 B18].
+  intros He Hn Hru Hc Hf Ho Hfl Hw Hr Hrr Hne H. destruct H as [B1 B2 B3 B4 B5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16 B17 B18].
   assert (B3' := mark_env_nodes_edges _ _ He Hn B3).
-  split; unfold has_kind, reads_of, queued_ok in *; rewrite ?He, ?Hn, ?Hw, ?Hr, ?Hru, ?Hc, ?Hf, ?Ho, ?Hfl; done.
+  split; unfold has_kind, reads_of, run_reads_of, queued_ok in *; rewrite ?He, ?Hn, ?Hw, ?Hr, ?Hrr, ?Hne, ?Hru, ?Hc, ?Hf, ?Ho, ?Hfl; done.
 Qed.
 
 Lemma slot_holds_in p s n src e :
@@ -1145,7 +1162,7 @@ Lemma extras_resolved n u d s :
 Proof.
   intros [Hb Ht] Hd Hk Hc HD HQ HC HR.
   destruct (ghost_resolved_fields n s) as (F1&F2&F3&F4&F5&F6&F7&F8&F9).
-  assert (Hb1 : run_base (ghost_resolved n s)) by (eapply base_passed; [exact F1|exact F2|exact F3|exact F4|exact F5|exact F6|exact F7|exact F8|exact F9|exact Hb]).
+  assert (Hb1 : run_base (ghost_resolved n s)) by (eapply base_passed; [exact F1|exact F2|exact F3|exact F4|exact F5|exact F6|exact F7|exact F8|exact F9|reflexivity|reflexivity|exact Hb]).
   assert (Hd1 : g_nodes (ghost_resolved n s) !! n = Some d) by (by rewrite F2).
   split; [split|].
   - apply (base_set n u d); try done.
@@ -1223,7 +1240,7 @@ Proof.
   - done.
   - done.
   - done.
-  - destruct B18 as [W1 [W2 W3]]. split_and!; [|done|done].
+  - destruct B18 as [W1 [W2 [W3 W4]]]. split_and!; [|done|done|done].
     intros m r. gsimp. destruct (decide (m = n)) as [->|Hne].
     + intros _. exists (node_with_freshness Clean d). split; [apply lookup_insert_eq|done].
     + rewrite lookup_insert_ne by done. apply W1.
@@ -1280,7 +1297,10 @@ Proof.
     destruct (B15 c Hin) as [K|K]; [left; exact K|right; exact K].
   - done.
   - done.
-  - destruct B18 as [W1 [W2 W3]]. split_and!; [done| |done].
+  - destruct B18 as [W1 [W2 [W3 W4]]]. split_and!; [done| |done|].
+    2: { subst s'. intros c. unfold run_reads_of, reads_of. gsimp. intros Hc'.
+         destruct (decide (c = n)) as [->|Hne]; [by rewrite !lookup_insert_eq|].
+         rewrite !lookup_insert_ne by done. apply W4. set_solver. }
     subst s'. gsimp. intros m l. destruct (decide (m = n)) as [->|Hne].
     + intros _. destruct Hk as (d&Hd&_). by exists d.
     + rewrite lookup_insert_ne by done. apply W2.
@@ -1373,7 +1393,7 @@ Proof.
   - intros c Hc. destruct (B15 c Hc) as [K|K]; [left|right]; auto.
   - intros c Hk Hc. apply (B16 c); [auto|done].
   - done.
-  - destruct B18 as [W1 [W2 W3]]. split_and!.
+  - destruct B18 as [W1 [W2 [W3 W4]]]. split_and!; [| | |exact W4].
     + intros m r Hr. apply Hup. eauto.
     + subst s'. cbn [with_edges with_owners set_node g_ghost g_nodes]. intros m l Hl. destruct (W2 m l Hl) as [e He].
       destruct (decide (m = n)) as [->|Hne]; [rewrite lookup_insert_eq; by eexists|rewrite lookup_insert_ne by done; by exists e].
@@ -1412,13 +1432,15 @@ Proof.
   { intros m k (e & He & _). apply Hne. eauto. }
   assert (Hs' : s' = with_ghost {| gh_published := <[n := read_view_of D]> (gh_published (g_ghost s)); gh_seen := gh_seen (g_ghost s);
                   gh_unnoticed := gh_unnoticed (g_ghost s); gh_window := gh_window (g_ghost s); gh_reads := gh_reads (g_ghost s);
-                  gh_passed := gh_passed (g_ghost s); gh_over := gh_over (g_ghost s) |} (set_node n D (with_next_id n s))).
+                  gh_passed := gh_passed (g_ghost s); gh_over := gh_over (g_ghost s);
+                  gh_run_reads := gh_run_reads (g_ghost s); gh_nested := gh_nested (g_ghost s) |} (set_node n D (with_next_id n s))).
   { subst s'. unfold ghost_publish. simpl. by rewrite lookup_insert_eq. }
   clearbody s'. subst s'.
   destruct Hb as [B1 B2 [E1 E2 E3 E4] B4 B5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16 B17 B18].
   assert (Hup : forall m k, has_kind m k s -> has_kind m k (with_ghost {| gh_published := <[n := read_view_of D]> (gh_published (g_ghost s)); gh_seen := gh_seen (g_ghost s);
                   gh_unnoticed := gh_unnoticed (g_ghost s); gh_window := gh_window (g_ghost s); gh_reads := gh_reads (g_ghost s);
-                  gh_passed := gh_passed (g_ghost s); gh_over := gh_over (g_ghost s) |} (set_node n D (with_next_id n s)))).
+                  gh_passed := gh_passed (g_ghost s); gh_over := gh_over (g_ghost s);
+                  gh_run_reads := gh_run_reads (g_ghost s); gh_nested := gh_nested (g_ghost s) |} (set_node n D (with_next_id n s)))).
   { intros m k Hm. pose proof (Hkind _ _ Hm) as Hmn. destruct Hm as (e & He & Hek).
     exists e. simpl. rewrite lookup_insert_ne by done. auto. }
   assert (Hnoslots : (slot_view (g_edges s) n).1 = []).
@@ -1426,7 +1448,7 @@ Proof.
     destruct (ci_slots _ _ _ Hi n y) as [Hn0 _]; [rewrite E; left|]. by destruct (Hne n Hn0). }
   assert (Hnoprefix : read_prefix (g_edges s) n = []).
   { rewrite read_prefix_view, Hnoslots. apply take_nil. }
-  destruct B18 as [W1 [W2 W3]].
+  destruct B18 as [W1 [W2 [W3 W4]]].
   assert (Hnr : gh_reads (g_ghost s) !! n = None).
   { destruct (gh_reads (g_ghost s) !! n) as [l|] eqn:E; [|done]. destruct (Hne n (W2 n l E)). done. }
   assert (Hnw : gh_window (g_ghost s) !! n = None).
@@ -1470,7 +1492,7 @@ Proof.
   - intros c (e&He&Hk) Hc. gsimp in He Hc. destruct (decide (c = n)) as [->|Hcn]; [done|].
     rewrite lookup_insert_ne in He by done. apply (B16 c); [by exists e|done].
   - done.
-  - split_and!.
+  - split_and!; [| | |exact W4].
     + intros m r Hr. apply Hup. eauto.
     + gsimp. intros m l Hl. destruct (W2 m l Hl) as [e He].
       destruct (decide (m = n)) as [->|Hmn]; [by rewrite lookup_insert_eq; eexists|rewrite lookup_insert_ne by done; by exists e].
@@ -1787,12 +1809,12 @@ Proof.
     - eapply invariant_irrelevant; [exact He1|]. by apply invariant_with_current.
     - eapply extras_same; [exact He2|]. by apply extras_current. }
   destruct (Hb Hc0) as [[Hi1 Hx1] [Fr Ek]].
-  destruct He2 as [_ HN HW _ _ _ HR _ _ _ HF]. cbn [with_current g_edges g_nodes g_ghost g_running g_current g_flags g_owners g_flushing] in *.
+  destruct He2 as [_ HN HW _ _ _ _ _ HR _ _ _ HF]. cbn [with_current g_edges g_nodes g_ghost g_running g_current g_flags g_owners g_flushing] in *.
   assert (Hk0 : ekept s s1).
   { eapply ekept_trans; [|exact Ek]. apply ekept_nodes; done. }
   destruct Fr as (Hr1 & Hc1 & Hk1' & Hf1).
   assert (Hrs : g_running s1 = g_running s) by congruence.
-  destruct Hl2 as [L1 L2 L3 L4 L5 L5' L6 L7 L8 L9 L10]. cbn [with_current g_edges g_nodes g_ghost g_running g_current g_flags g_owners g_flushing] in L1, L2, L3, L4, L5, L5', L6, L7, L8, L9, L10.
+  destruct Hl2 as [L1 L2 L3 L4 L5 L5' La Lb L6 L7 L8 L9 L10]. cbn [with_current g_edges g_nodes g_ghost g_running g_current g_flags g_owners g_flushing] in L1, L2, L3, L4, L5, L5', La, Lb, L6, L7, L8, L9, L10.
   assert (Hres : forall c, g_current s = Some c -> c ∈ g_running s1 /\ forall d, g_nodes s1 !! c = Some d -> n_in_cleanup d = false).
   { intros c Hc. pose proof (proj1 Hx) as Hbb. rewrite Hrs. split; [by apply (b_current _ Hbb)|].
     intros d Hd. destruct (ci_running' s c (b_current _ Hbb c Hc) (b_running_kind _ Hbb)) as [e He].
@@ -1868,9 +1890,6 @@ Lemma ghost_read_window c n pre s : gh_window (g_ghost (ghost_read c n pre s)) =
 Proof. unfold ghost_read. by destruct (g_nodes s !! n). Qed.
 
 Lemma ghost_read_current c n pre s : g_current (ghost_read c n pre s) = g_current s.
-Proof. unfold ghost_read. by destruct (g_nodes s !! n). Qed.
-
-Lemma ghost_read_flags c n pre s : g_flags (ghost_read c n pre s) = g_flags s.
 Proof. unfold ghost_read. by destruct (g_nodes s !! n). Qed.
 
 Lemma ok2_track_quiet n : ok2 (quiet_source n) (track n).
@@ -1953,9 +1972,9 @@ Proof.
   intros Hcheck.
   apply (ok2_of (fun s => g_nodes s !! n = Some d')); [by intros s [_ ?]|..].
   - intros s s' a Hi Hd Hm. rewrite bind_m_modify in Hm.
-    destruct (resolved_reads_only n s) as (R & A & O & Hg). rewrite Hg in Hm. simpl in Hm.
-    assert (Hd1 : g_nodes (with_run_ghost R A O s) !! n = Some d') by exact Hd.
-    assert (Hi1 := invariant_reads_only s R A O Hi).
+    destruct (resolved_reads_only n s) as (R & A & O & L & N & Hg). rewrite Hg in Hm. simpl in Hm.
+    assert (Hd1 : g_nodes (with_run_ghost R A O L N s) !! n = Some d') by exact Hd.
+    assert (Hi1 := invariant_reads_only s R A O L N Hi).
     destruct (ok_modify_at (fun _ => True) n (fun x => node_with_unannounced false (node_with_freshness Clean x)) d'
                ltac:(ns) _ _ _ Hi1 (conj I Hd1) Hm) as [Hi2 F2].
     split; [done|]. eapply frame_trans; [|exact F2]. by apply frame_same.
@@ -2043,7 +2062,7 @@ Local Ltac base_side Hb :=
   simpl; intros; first
     [ done | congruence | contradiction | by eapply (b_queued _ Hb) | by eapply (b_disposed _ Hb)
     | match goal with H : forall _ : n_disposed _ = true, _ |- _ => by apply H end
-    | (destruct (b_window _ Hb) as (_&_&W); by eapply W)
+    | (destruct (b_window _ Hb) as (_&_&W&_); by eapply W)
     | (split_and!; first [done | by eapply (b_cleanup_running _ Hb) | congruence]) ].
 
 Local Ltac name_k K :=
@@ -2066,7 +2085,7 @@ Section Step.
     - apply ok2_seq; [|intros _; apply ok2_return].
       intros s s' a Hc [_ Hd] Hm. refine (ok2_track_quiet n s s' a Hc _ Hm).
       exists d. split_and!; [done|congruence|]. left.
-      destruct (b_window _ (proj1 (proj2 Hc))) as (_&_&W). rewrite (W n d Hd Ek). done.
+      destruct (b_window _ (proj1 (proj2 Hc))) as (_&_&W&_). rewrite (W n d Hd Ek). done.
     - apply ok2_seq; [|intros _; rgo IH].
       destruct (stale_live d) eqn:El.
       + apply (ok2_weaken (has_kind n KMemo)); [intros s [_ Hd]; by exists d|].
@@ -2266,7 +2285,7 @@ Section Step.
     rewrite bind_get in Hm10. rewrite bind_m_modify in Hm10.
     destruct Hk10 as (d3 & Hd3 & Hk3).
     unfold ghost_run_end in Hm10. rewrite Hd3 in Hm10.
-    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _; gh_reads := _; gh_passed := _; gh_over := _ |}) in Hm10.
+    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _; gh_reads := _; gh_passed := _; gh_over := _; gh_run_reads := _; gh_nested := _ |}) in Hm10.
     assert (Hfs : fields_same s10 (with_ghost G s10)) by (split; reflexivity).
     (* the notice *)
     name_k K11.
@@ -2452,7 +2471,7 @@ Section Step.
     destruct (extras_effect_begin n s Hb Ht Hk Hnr Hfl) as [Hx1 E1].
     set (s1 := ghost_effect_start n _) in Hx1, E1, Hm.
     assert (Hi1 : check_invariant s1).
-    { refine (invariant_reads_only _ _ _ _ (invariant_effect_begin n (n :: g_running s) s Hi Hk _ _ _)).
+    { refine (invariant_reads_only _ _ _ _ _ _ (invariant_effect_begin n (n :: g_running s) s Hi Hk _ _ _)).
       - intros c Hc. by right.
       - left.
       - intros c Hc. by apply elem_of_cons in Hc. }
@@ -2648,7 +2667,7 @@ Section Step.
     assert (Hd1 : g_nodes s1 !! n = Some (node_with_value v d)) by (simpl; apply lookup_insert_eq).
     unfold ghost_publish in Hm. rewrite Hd1 in Hm.
     apply bind_step in Hm as (s2 & Hn & Hm2).
-    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _; gh_reads := _; gh_passed := _; gh_over := _ |}) in Hn.
+    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _; gh_reads := _; gh_passed := _; gh_over := _; gh_run_reads := _; gh_nested := _ |}) in Hn.
     assert (Hreach : world_reachable (g_edges s1)) by apply (ci_reachable _ _ _ Hi1).
     destruct (invariant_told n (node_with_value v d) s1 G s2) as [Hi2 F2]; [done|done|done|done|done|simpl; set_solver| | |].
     { apply (any_mark_rtc f n None). right; right; right; left. done. }
@@ -2796,6 +2815,12 @@ Record engine_inv (s : state) : Prop := {
   ei_wake : wake_ok s
 }.
 
+Lemma engine_inv_of_settled s : engine_settled s -> wake_ok s -> engine_inv s.
+Proof.
+  intros Hs Hw. split; [done| |done].
+  exact (proj1 (reachable_well_formed _ (me_reachable _ (b_env _ (proj1 (proj2 (proj1 Hs))))))).
+Qed.
+
 Lemma windows_kept s s' : run_kept s s' -> windows_closed s -> windows_closed s'.
 Proof.
   intros [_ E] H m d r Hd Hw Hl. destruct (decide (r < n_runs d)) as [Hlt|Hge]; [done|exfalso].
@@ -2895,6 +2920,7 @@ Proof.
       * intros n r Hr. simpl in Hr. rewrite lookup_empty in Hr. done.
       * intros n l Hl. simpl in Hl. rewrite lookup_empty in Hl. done.
       * intros n d Hd. simpl in Hd. rewrite lookup_empty in Hd. done.
+      * intros c _. done.
   - intros b c src dc e _ Hd. simpl in Hd. rewrite lookup_empty in Hd. done.
   - intros m d r Hd. simpl in Hd. rewrite lookup_empty in Hd. done.
 Qed.
@@ -2949,11 +2975,13 @@ Qed.
 (**md
 **Every live stale source has its observers covered, apart from the observers a walk resolved over it.**
 
-For any edge from a live, stale source to an observer, after a whole program: the observer is stale or queued, or on the running stack, or the source holds its announcement flag, or the observer is in `gh_passed`. `gh_passed` holds exactly the computations whose check walk ended and went `Clean` while a slot held a live, stale source with no announcement, since their latest run start. Every other path in the engine keeps the observer covered: marks, skipped notices, reader marks, runs ending stale, cleanups and disposals.
+For any edge from a live, stale source to an observer, after a whole program: the observer is stale or queued, or on the running stack, or the source holds its announcement flag, or the observer is in `gh_passed`. `gh_passed` holds exactly the computations whose check walk ended and went `Clean` while a slot held a live, stale source with no announcement, since their latest run start. Membership is per computation, not per source: once an observer has passed over one source, the exception covers every source of that observer until its next run starts, a different lost wake-up on another source included.
+
+This says nothing of whether an observer read a source's latest value. A skipped notice leaves the source `Clean`, so it has no stale edge to cover, and [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) loses a re-run that way with this statement holding.
 
 Premise: `engine_settled` holds at the start. A program that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
 
-This is the strongest form that holds on the present engine. [`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) reaches `gh_passed`, and `no_lost_wakeups_statement` without the exception is false.
+[`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) reaches `gh_passed`, and `no_lost_wakeups_statement` without the exception is false.
 *)
 Theorem no_lost_wakeups_unless_passed f c s s' r :
   engine_settled s -> run_top f c s = Some (s', r) -> wake_ok_unless_passed s'.
@@ -2964,7 +2992,7 @@ Qed.
 (**md
 **A reader of a live stale source has been told, unless a walk of its went `Clean` over a stale source.**
 
-For any edge from a live, stale source to an observer, after a whole program: the observer is stale or queued, or on the running stack, or in `gh_over`, which holds the computations whose check walk ended and went `Clean` while a slot held a live, stale source, since their latest run start. The source's announcement flag excuses nothing here, so a reader that read a memo left stale and took no `MarkReaderCheck` breaks this statement: [`reader_mark_off_fires`](Ranvier.Pure.Witnesses.html#reader_mark_off_fires).
+For any edge from a live, stale source to an observer, after a whole program: the observer is stale or queued, or on the running stack, or in `gh_over`, which holds the computations whose check walk ended and went `Clean` while a slot held a live, stale source, since their latest run start. The source's announcement flag is not a disjunct here, so a reader that read a memo left stale and took no `MarkReaderCheck` breaks this statement: [`reader_mark_off_fires`](Ranvier.Pure.Witnesses.html#reader_mark_off_fires).
 
 Premise: `engine_settled` holds at the start.
 *)
@@ -2979,7 +3007,7 @@ Qed.
 
 After a whole program whose final `gh_passed` is empty, every observer of a live, stale source is stale, queued or running, or the source holds its announcement flag. No theorem yet says which programs keep `gh_passed` empty.
 
-Premises: `engine_settled` holds at the start and `nothing_passed` holds at the end. The premise rules out a lost wake-up by name, so this is a statement about every other path. It does not say a stale node's next run will happen.
+Premises: `engine_settled` holds at the start and `nothing_passed` holds at the end. The premise rules out one route to a lost wake-up by name, so this is a statement about every other route to an uncovered edge. It does not say a stale node's next run will happen.
 *)
 Theorem no_lost_wakeups_when_nothing_passed f c s s' r :
   engine_settled s -> run_top f c s = Some (s', r) -> nothing_passed s' -> wake_ok s'.
@@ -3038,7 +3066,7 @@ Qed.
 
 From `wake_ok`, when `mark_check` or `mark_dirty` of a live memo returns, each computation with an edge from the memo is stale or queued, or on the running stack. An effect in its cleanups, or disposed mid-body, ignores the mark, and is on the running stack: `engine_settled` carries that.
 
-Premises: the [invariant with `wake_ok`](#engine_inv) holds, and the memo is live. A disposed source has no later mark to forward: see `disposed_stale_source_read`.
+Premises: the [invariant with `wake_ok`](#engine_inv) holds, and the memo is live. `wake_ok` says nothing of a disposed source, whose reader can be uncovered: see `disposed_stale_source_read`.
 *)
 Theorem later_mark_forwarded f src d s s' :
   engine_inv s -> g_nodes s !! src = Some d -> n_kind d = KMemo -> n_disposed d = false ->
@@ -3255,14 +3283,48 @@ Qed.
 
 (** ** What a memo's run guarantees *)
 
-(**md
-**A mark left at the end of a run's body survives the run, and the run holds its announcement.**
+(** [p] runs [c] up to a point, then returns. A branch of [p] holds a point in that branch of [c]. *)
+Inductive body_prefix : cmd -> cmd -> Prop :=
+  | prefix_stop c : body_prefix (CRet (EConst 0%Z)) c
+  | prefix_let x e p k : body_prefix p k -> body_prefix (CLet x e p) (CLet x e k)
+  | prefix_if e p1 p2 a b : body_prefix p1 a -> body_prefix p2 b -> body_prefix (CIf e p1 p2) (CIf e a b)
+  | prefix_read x n p k : body_prefix p k -> body_prefix (CRead x n p) (CRead x n k)
+  | prefix_try x ok n p k : body_prefix p k -> body_prefix (CTryRead x ok n p) (CTryRead x ok n k)
+  | prefix_untracked x n p k : body_prefix p k -> body_prefix (CReadUntracked x n p) (CReadUntracked x n k)
+  | prefix_write n e p k : body_prefix p k -> body_prefix (CWrite n e p) (CWrite n e k)
+  | prefix_signal x e p k : body_prefix p k -> body_prefix (CSignal x e p) (CSignal x e k)
+  | prefix_memo x m q b p k : body_prefix p k -> body_prefix (CMemo x m q b p) (CMemo x m q b k)
+  | prefix_effect x b p k : body_prefix p k -> body_prefix (CEffect x b p) (CEffect x b k)
+  | prefix_cleanup b p k : body_prefix p k -> body_prefix (CCleanup b p) (CCleanup b k)
+  | prefix_dispose n p k : body_prefix p k -> body_prefix (CDispose n p) (CDispose n k)
+  | prefix_batch b p k : body_prefix p k -> body_prefix (CBatch b p) (CBatch b k)
+  | prefix_log e p k : body_prefix p k -> body_prefix (CLog e p) (CLog e k).
 
-If the memo is stale when its body returns, the memo is still stale when `run_memo` returns, with `n_unannounced` set, so its next mark tells its observers again. A later self-read inside the body can clear a mark first, with a nested run: `nested_self_run` shows one. So the premise says stale at the end of the body, rather than marked during it.
+(** A memo stale at a point in its run's body is stale at the run's end, holding [n_unannounced]. The fix phase
+    owes this. [nested_self_recompute_resets_cursor] in [BUGS.md] is its counterexample on the present engine. *)
+Definition marks_survive_run_statement : Prop :=
+  forall f n s s' s_p r_p d p,
+    engine_settled s -> g_nodes s !! n = Some d -> n_kind d = KMemo -> body_prefix p (n_body d) ->
+    hosted n (exec f (run_env d) p) (run_start n d s) = Some (s_p, r_p) -> stale_of s_p n ->
+    run_memo (S f) n s = Some (s', tt) ->
+    stale_of s' n /\ n_unannounced_of s' n = true.
+
+(**md
+**Open, and false on the present engine: a mark received during a run leaves the memo stale at the run's end, holding its announcement.**
+
+A point in the run is a point in the body's commands, stated by running a `body_prefix` of the body. This states what the fix phase owes, as `marks_survive_run_statement`. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`marks_survive_run_falsified`](Ranvier.Pure.Witnesses.html#marks_survive_run_falsified) proves that: a later self-read runs the memo again inside its run, and that nested run clears the mark. Until the fix, later layers use [`marks_survive_body_end`](#marks_survive_body_end).
+*)
+Theorem marks_survive_run : marks_survive_run_statement.
+Admitted.
+
+(**md
+**A memo stale when its body returns is stale when its run returns, holding its announcement.**
+
+This covers only the tail of a run, from the body's return to the run's. If the memo is stale at that point, it is still stale when `run_memo` returns, with `n_unannounced` set, so its next mark tells its observers again. A mark received earlier in the body can be cleared before the body returns: see `marks_survive_run_statement`.
 
 Premises: the [settled invariant](#engine_settled) holds at the start, the node is a memo, and `run_memo` returns.
 *)
-Theorem marks_survive_run f n s s' s2 r d :
+Theorem marks_survive_body_end f n s s' s2 r d :
   engine_settled s -> g_nodes s !! n = Some d -> n_kind d = KMemo ->
   hosted n (exec f (run_env d) (n_body d)) (run_start n d s) = Some (s2, r) ->
   run_memo (S f) n s = Some (s', tt) ->
@@ -3382,14 +3444,73 @@ Proof.
   - exists e. split; [simpl; by rewrite lookup_insert_ne|done].
 Qed.
 
+Lemma mark_dirty_other f m c s s' e :
+  m <> c -> mark_dirty f m s = Some s' -> g_nodes s !! c = Some e -> n_freshness e <> Dirty ->
+  exists e', g_nodes s' !! c = Some e' /\ n_freshness e' <> Dirty.
+Proof.
+  intros Hne Hm He Hf. destruct f as [|f]; [done|].
+  destruct (g_nodes s !! m) as [d|] eqn:Hd; [|simpl in Hm; rewrite Hd in Hm; simplify_eq; eauto].
+  destruct (n_kind d) eqn:Hk.
+  - simpl in Hm. rewrite Hd, Hk in Hm. simplify_eq. eauto.
+  - exact (memo_mark_dirty_keeps_others_short (S f) m d s s' c e Hd Hk Hm ltac:(done) He Hf).
+  - simpl in Hm. rewrite Hd, Hk in Hm. injection Hm as <-. unfold effect_marked.
+    destruct (n_disposed d || n_in_cleanup d); [eauto|].
+    destruct (n_queued d); simpl; rewrite lookup_insert_ne by done; eauto.
+Qed.
+
+(**md
+**The notice of a moved run leaves the computation it skips short of `Dirty`.**
+
+`notify_dirty_except` of a source, with a computation to skip, leaves that computation short of `Dirty` if it was short of it. A memo among the other observers can still tell it `Check`. [`skip_removed_fires`](Ranvier.Pure.Witnesses.html#skip_removed_fires) shows this fails when the skip is removed.
+*)
+Theorem notice_skips_current f n c s s' e :
+  notify_dirty_except f n (Some c) s = Some s' -> g_nodes s !! c = Some e -> n_freshness e <> Dirty ->
+  exists e', g_nodes s' !! c = Some e' /\ n_freshness e' <> Dirty.
+Proof.
+  intros Hn He Hf.
+  refine (walk_keeps (mark_except f (Some c)) (fun s0 => exists e', g_nodes s0 !! c = Some e' /\ n_freshness e' <> Dirty) n _ s s' _ _ Hn).
+  - intros m s0 s1 (e0&He0&Hf0) Hm. unfold mark_except in Hm. destruct (decide (Some c = Some m)) as [Heq|Hne].
+    + injection Hm as <-. eauto.
+    + eapply mark_dirty_other; [|exact Hm|exact He0|exact Hf0]. intros ->. done.
+  - eauto.
+Qed.
+
+(**md
+**A moved run's end leaves the computation current at its start short of `Dirty`.**
+
+If the computation current when `run_memo` started is short of `Dirty` when the run's body returns, it is short of `Dirty` when the run returns. This is the skip of `NotifyDirtyExcept`, the half [`moved_marks_except_running`](#moved_marks_except_running) leaves out. A computation that is the memo itself is outside this statement.
+
+Premises: the current computation is another node, and `run_memo` returns.
+*)
+Theorem moved_run_skips_current f n s s' s2 r d c e :
+  g_nodes s !! n = Some d ->
+  hosted n (exec f (run_env d) (n_body d)) (run_start n d s) = Some (s2, r) ->
+  run_memo (S f) n s = Some (s', tt) ->
+  g_current s = Some c -> c <> n ->
+  g_nodes s2 !! c = Some e -> n_freshness e <> Dirty ->
+  exists e', g_nodes s' !! c = Some e' /\ n_freshness e' <> Dirty.
+Proof.
+  intros Hd Eh Hm Hcur Hne He Hf.
+  destruct (run_memo_shape f n s s' d Hd Hm) as (s2' & r' & s10 & mv & Eh' & [R10 _] & Hfin).
+  rewrite Eh in Eh'. injection Eh' as <- <-.
+  destruct (run_finish_shape f n mv s10 s' Hfin) as (sg & s11 & d4 & G1 & G2 & G3 & G4 & G5 & Hn & Hd4 & Hend & _).
+  assert (Hcur10 : g_current s10 = Some c).
+  { rewrite (rs_current _ _ _ R10), (hosted_current _ _ _ _ _ Eh). exact Hcur. }
+  assert (Heg : g_nodes sg !! c = Some e) by (by rewrite G2, (rs_others _ _ _ R10 c Hne)).
+  assert (H11 : exists e', g_nodes s11 !! c = Some e' /\ n_freshness e' <> Dirty).
+  { destruct Hn as [[_ ->]|[_ Hn]]; [eauto|]. rewrite Hcur10 in Hn. exact (notice_skips_current f n c sg s11 e Hn Heg Hf). }
+  destruct H11 as (e'&He'&Hf'). exists e'. split; [|done].
+  destruct Hend as [->|[_ ->]]; [done|]. simpl. by rewrite lookup_insert_ne.
+Qed.
+
 (**md
 **After a run, a live computation's source list is its tracked reads since its latest run start.**
 
-The source list holds those reads in order, with a read of the source just read adding nothing, as `sources_add` stores them. A nested run of the same memo starts over: reads of the outer run ahead of it have no slot, as `nested_self_run_ends_clean_and_wrong` shows. So "the run" here is the latest to start, and the premise asks for a computation outside any run of its own when this one started.
+The source list holds those reads in order, with a read of the source just read adding nothing, as `sources_add` stores them. A nested run of the same memo starts over: reads of the outer run ahead of it have no slot, as `nested_self_run_ends_clean_and_wrong` shows. So "the run" here is the latest to start, which is the reason this is not `run_end_edges_are_reads_statement`.
 
 Premises: the [settled invariant](#engine_settled) holds at the start, the computation is not on the running stack, `run_memo` or `run_effect` returns, and it is not disposed at the end.
 *)
-Theorem run_end_edges_are_reads f n s s' d' :
+Theorem run_end_edges_are_latest_reads f n s s' d' :
   engine_settled s -> n ∉ g_running s ->
   ((has_kind n KMemo s /\ run_memo f n s = Some (s', tt)) \/ (effect_ctx n s /\ run_effect f n s = Some (s', tt))) ->
   g_nodes s' !! n = Some d' -> n_disposed d' = false ->
@@ -3407,3 +3528,43 @@ Proof.
   pose proof (b_reads _ Hb' n d' Hd' Hl) as Hr.
   rewrite read_prefix_view, (b_ended _ Hb' n Hnr'), take_ge in Hr; [exact Hr|lia].
 Qed.
+
+(**md
+**After a run with no nested self-run, a live computation's source list is the reads of that run.**
+
+The source list holds the run's tracked reads in order, with a read of the source just read adding nothing, as `sources_add` stores them. `gh_nested` holds a computation when a run of it started inside its own, so the premise says that did not happen.
+
+Premises: the [settled invariant](#engine_settled) holds at the start, the computation is not on the running stack, `run_memo` or `run_effect` returns, it is not disposed at the end, and it is not in `gh_nested` at the end.
+*)
+Corollary run_end_edges_no_nested_run f n s s' d' :
+  engine_settled s -> n ∉ g_running s ->
+  ((has_kind n KMemo s /\ run_memo f n s = Some (s', tt)) \/ (effect_ctx n s /\ run_effect f n s = Some (s', tt))) ->
+  g_nodes s' !! n = Some d' -> n_disposed d' = false -> n ∉ gh_nested (g_ghost s') ->
+  fst <$> source_slots (sources_of (g_edges s') n) = read_list (run_reads_of s' n).
+Proof.
+  intros Hs Hnr Hrun Hd' Hl Hn.
+  rewrite (run_end_edges_are_latest_reads f n s s' d' Hs Hnr Hrun Hd' Hl).
+  assert (Hset : run_core s').
+  { pose proof (runs_ok_all f) as H. destruct Hs as [Hc Hw]. destruct Hrun as [[Hk Hm]|[Hk Hm]].
+    - exact (proj1 (Rrun_memo _ H n _ _ _ Hc Hk Hm)).
+    - destruct Hc as [Hi [Hb Ht]]. refine (proj1 (Rrun_effect _ H n _ _ _ Hi Hb _ Hk Hm)).
+      intros b c y dc e _. apply (Ht b c y dc e I). }
+  destruct (b_window _ (proj1 (proj2 Hset))) as (_&_&_&W). by rewrite (W n Hn).
+Qed.
+
+(** A live computation's source list after a run is the run's reads, whatever ran inside it. The fix phase owes
+    this. [nested_self_recompute_resets_cursor] in [BUGS.md] is its counterexample on the present engine. *)
+Definition run_end_edges_are_reads_statement : Prop :=
+  forall f n s s' d',
+    engine_settled s -> n ∉ g_running s ->
+    ((has_kind n KMemo s /\ run_memo f n s = Some (s', tt)) \/ (effect_ctx n s /\ run_effect f n s = Some (s', tt))) ->
+    g_nodes s' !! n = Some d' -> n_disposed d' = false ->
+    fst <$> source_slots (sources_of (g_edges s') n) = read_list (run_reads_of s' n).
+
+(**md
+**Open, and false on the present engine: after a run, a live computation's source list is the reads of that run.**
+
+The reads are all the tracked reads since the outermost run start, nested runs included. This states what the fix phase owes, as `run_end_edges_are_reads_statement`. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`run_end_edges_are_reads_falsified`](Ranvier.Pure.Witnesses.html#run_end_edges_are_reads_falsified) proves that. Until the fix, later layers use [`run_end_edges_are_latest_reads`](#run_end_edges_are_latest_reads) or [`run_end_edges_no_nested_run`](#run_end_edges_no_nested_run).
+*)
+Theorem run_end_edges_are_reads : run_end_edges_are_reads_statement.
+Admitted.

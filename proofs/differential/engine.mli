@@ -758,7 +758,9 @@ type ghost = { gh_published : (node_id, read_view) gmap;
                gh_seen : ((node_id, node_id) prod, read_view list) gmap;
                gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap;
                gh_reads : (node_id, node_id list) gmap;
-               gh_passed : node_id gset; gh_over : node_id gset }
+               gh_passed : node_id gset; gh_over : node_id gset;
+               gh_run_reads : (node_id, node_id list) gmap;
+               gh_nested : node_id gset }
 
 val empty_ghost : ghost
 

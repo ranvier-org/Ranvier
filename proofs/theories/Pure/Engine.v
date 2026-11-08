@@ -270,23 +270,29 @@ Definition ghost_read (c n : node_id) (pre : list node_id) (s : state) : state :
                                   else gh_unnoticed g;
                   gh_window := gh_window g;
                   gh_reads := <[c := default [] (gh_reads g !! c) ++ [n]]> (gh_reads g);
-                  gh_passed := gh_passed g; gh_over := gh_over g |} s
+                  gh_passed := gh_passed g; gh_over := gh_over g;
+                  gh_run_reads := <[c := default [] (gh_run_reads g !! c) ++ [n]]> (gh_run_reads g);
+                  gh_nested := gh_nested g |} s
   | None => s
   end.
 
-(** The start of a memo's run, which empties the slots before its cursor. *)
+(** The start of a memo's run, which empties the slots before its cursor. A run started inside a run of the
+    same memo leaves [gh_run_reads] as it was. *)
 Definition ghost_run_start (n : node_id) (s : state) : state :=
   let g := g_ghost s in
   with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g ∖ {[n]};
                 gh_window := gh_window g; gh_reads := <[n := []]> (gh_reads g);
-                gh_passed := gh_passed g ∖ {[n]}; gh_over := gh_over g ∖ {[n]} |} s.
+                gh_passed := gh_passed g ∖ {[n]}; gh_over := gh_over g ∖ {[n]};
+                gh_run_reads := if decide (n ∈ g_running s) then gh_run_reads g else <[n := []]> (gh_run_reads g);
+                gh_nested := if decide (n ∈ g_running s) then {[n]} ∪ gh_nested g else gh_nested g ∖ {[n]} |} s.
 
 (** The start of an effect's run, which empties the slots before its cursor. *)
 Definition ghost_effect_start (n : node_id) (s : state) : state :=
   let g := g_ghost s in
   with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g;
                 gh_window := gh_window g; gh_reads := <[n := []]> (gh_reads g);
-                gh_passed := gh_passed g ∖ {[n]}; gh_over := gh_over g ∖ {[n]} |} s.
+                gh_passed := gh_passed g ∖ {[n]}; gh_over := gh_over g ∖ {[n]};
+                gh_run_reads := <[n := []]> (gh_run_reads g); gh_nested := gh_nested g ∖ {[n]} |} s.
 
 (** A view told to every observer: a creation or a write. *)
 Definition ghost_publish (n : node_id) (s : state) : state :=
@@ -295,7 +301,8 @@ Definition ghost_publish (n : node_id) (s : state) : state :=
     let g := g_ghost s in
     with_ghost {| gh_published := <[n := read_view_of d]> (gh_published g); gh_seen := gh_seen g;
                   gh_unnoticed := gh_unnoticed g; gh_window := gh_window g; gh_reads := gh_reads g;
-                  gh_passed := gh_passed g; gh_over := gh_over g |} s
+                  gh_passed := gh_passed g; gh_over := gh_over g; gh_run_reads := gh_run_reads g;
+                  gh_nested := gh_nested g |} s
   | None => s
   end.
 
@@ -318,7 +325,8 @@ Definition ghost_run_end (n : node_id) (r : option node_id) (moved : bool) (s : 
     let g := g_ghost s in
     with_ghost {| gh_published := <[n := read_view_of d]> (gh_published g); gh_seen := gh_seen g;
                   gh_unnoticed := run_end_unnoticed n r moved d s ∪ gh_unnoticed g;
-                  gh_window := gh_window g; gh_reads := gh_reads g; gh_passed := gh_passed g; gh_over := gh_over g |} s
+                  gh_window := gh_window g; gh_reads := gh_reads g; gh_passed := gh_passed g; gh_over := gh_over g;
+                  gh_run_reads := gh_run_reads g; gh_nested := gh_nested g |} s
   | None => s
   end.
 
@@ -327,7 +335,7 @@ Definition ghost_dirty_cleared (n : node_id) (runs : nat) (s : state) : state :=
   let g := g_ghost s in
   with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := {[n]} ∪ gh_unnoticed g;
                 gh_window := <[n := runs]> (gh_window g); gh_reads := gh_reads g; gh_passed := gh_passed g;
-                gh_over := gh_over g |} s.
+                gh_over := gh_over g; gh_run_reads := gh_run_reads g; gh_nested := gh_nested g |} s.
 
 (** A slot of [n] holds a source satisfying [p]. *)
 Definition slot_holds (p : node -> bool) (s : state) (n : node_id) : bool :=
@@ -342,7 +350,8 @@ Definition ghost_resolved (n : node_id) (s : state) : state :=
   with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g;
                 gh_window := gh_window g; gh_reads := gh_reads g;
                 gh_passed := add_if (slot_holds (fun e => stale_live e && negb (n_unannounced e)) s n) n (gh_passed g);
-                gh_over := add_if (slot_holds stale_live s n) n (gh_over g) |} s.
+                gh_over := add_if (slot_holds stale_live s n) n (gh_over g);
+                gh_run_reads := gh_run_reads g; gh_nested := gh_nested g |} s.
 
 (** ** Owners *)
 

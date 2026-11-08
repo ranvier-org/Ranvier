@@ -586,8 +586,7 @@ Definition walk_passed (k : cmd) : cmd :=
   CEffect 5 (CRead 10 (V 3) (CRead 11 (V 4) (CLog (V 10) Nop))) (
   CWrite (V 2) (K 1%Z) k))))).
 
-(** The same with [b] as an owning memo whose cleanup writes [a]'s source, which Core.fs 4178-4181 documents as a
-    behaviour. *)
+(** The same with [b] as an owning memo whose cleanup writes [a]'s source. *)
 Definition walk_passed_by_cleanup (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
   CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -621,6 +620,14 @@ Proof. set (s := final (walk_passed Nop)). passed_over_proof s. Qed.
 
 Example walk_passed_source_cleanup : passed_over (final (walk_passed_by_cleanup Nop)).
 Proof. set (s := final (walk_passed_by_cleanup Nop)). passed_over_proof s. Qed.
+
+(** After the walk, another write of [a]'s source wakes nothing: [a] is [Dirty] with no announcement, so it tells no
+    observer, and the effect stays at its one run. *)
+Example walk_passed_stays_deaf :
+  let s := final (walk_passed (CWrite (V 1) (K 2%Z) Nop)) in
+  n_value <$> g_nodes s !! (1 : node_id) = Some 2%Z /\ n_runs <$> g_nodes s !! (5 : node_id) = Some 1 /\
+  g_trace s = [EvRun 5; EvLog 5 0%Z] /\ pending s = [].
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (**md
 **Falsified on the present engine: a program can leave an observer of a live stale source uncovered.**
@@ -666,6 +673,94 @@ Example effect_resolves_over_moved_source :
   n_freshness <$> g_nodes s !! (4 : node_id) = Some Clean /\ n_runs <$> g_nodes s !! (4 : node_id) = Some 1 /\
   pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt).
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
+
+(** The notice with its skip removed is [notify_dirty]: [mark_except] with no test is [mark_dirty]. *)
+Local Definition skip_state : state :=
+  with_current (Some 2) (mark_state linked_world
+    (<[1 := clean_node KMemo false false]> (<[2 := clean_node KEffect false false]> ∅)) [] 0 [2]).
+
+(**md
+**Removing the skip of `NotifyDirtyExcept` breaks `notice_skips_current`.**
+
+*Check, not a guarantee.*
+
+Source 1 is observed by effect 2, the current computation, which is `Clean`. The notice leaves the effect short of `Dirty`. The same notice with the skip removed, which is `notify_dirty`, leaves it `Dirty`.
+*)
+Theorem skip_removed_fires :
+  (d ← (s ← notify_dirty_except 3 1 (Some 2) skip_state; g_nodes s !! (2 : node_id)); Some (n_freshness d)) = Some Clean /\
+  (d ← (s ← notify_dirty 3 1 skip_state; g_nodes s !! (2 : node_id)); Some (n_freshness d)) = Some Dirty.
+Proof. split; vm_compute; reflexivity. Qed.
+
+(** ** Runs and nested runs *)
+
+(** The memo of [nested_self_run] over its host read, with no effect. The write leaves it [Dirty]. *)
+Definition nested_host_body : cmd :=
+  CRead 10 (V 1) (
+  CIf (EEq (V 10) (K 1%Z)) (CRead 11 (V 2) (CRet (V 11))) (
+  CIf (EEq (V 10) (K 2%Z))
+    (CRead 11 (V 2) (CWrite (V 1) (K 3%Z) (CRead 12 (V 4) (CRet (V 11)))))
+    (CRead 11 (V 3) (CRet (V 11))))).
+
+Definition nested_host : cmd :=
+  CSignal 1 (K 1%Z) (CSignal 2 (K 10%Z) (CSignal 3 (K 20%Z) (
+  CMemo 4 Pure CmpEq nested_host_body (CRead 20 (V 4) (CWrite (V 1) (K 2%Z) Nop))))).
+
+(** The body up to its write of its own source. *)
+Definition nested_host_point : cmd :=
+  CRead 10 (V 1) (CIf (EEq (V 10) (K 1%Z)) Nop (CIf (EEq (V 10) (K 2%Z)) (CRead 11 (V 2) (CWrite (V 1) (K 3%Z) Nop)) Nop)).
+
+Local Lemma nested_host_prefix : body_prefix nested_host_point nested_host_body.
+Proof. repeat constructor. Qed.
+
+Local Definition nested_start : state := final nested_host.
+Local Definition nested_node : node := default (signal_node 0%Z) (g_nodes nested_start !! (4 : node_id)).
+Local Definition nested_end : state := default nested_start (fst <$> run_memo 1000 4 nested_start).
+Local Definition nested_point : state :=
+  default nested_start (fst <$> hosted 4 (exec 999 (run_env nested_node) nested_host_point) (run_start 4 nested_node nested_start)).
+
+Local Lemma nested_settled : engine_settled nested_start.
+Proof.
+  refine (Pexec _ _ (engine_settled_preserved 100000) [] nested_host (init current_flags) nested_start _ engine_settled_init I _).
+  vm_compute. reflexivity.
+Qed.
+
+Local Lemma nested_lookup : g_nodes nested_start !! (4 : node_id) = Some nested_node.
+Proof. vm_compute. reflexivity. Qed.
+
+(**md
+**Falsified on the present engine: a mark received during a run can be gone at the run's end.**
+
+This is a counterexample, not a guarantee. It proves `marks_survive_run_statement` false, using the Confirmed bug `nested_self_recompute_resets_cursor`: a memo writes its own source, which leaves it `Dirty`, then reads itself. The nested run ends `Clean`, and so does the outer run.
+*)
+Theorem marks_survive_run_falsified : ~ marks_survive_run_statement.
+Proof.
+  intros H.
+  assert (Hb : n_body nested_node = nested_host_body) by (vm_compute; reflexivity).
+  destruct (H 999 4 nested_start nested_end nested_point (Ok 0%Z) nested_node nested_host_point
+             nested_settled nested_lookup) as [(e&He&Hs) _].
+  - vm_compute. reflexivity.
+  - rewrite Hb. apply nested_host_prefix.
+  - vm_compute. reflexivity.
+  - eexists. split; vm_compute; reflexivity.
+  - vm_compute. reflexivity.
+  - vm_compute in He. injection He as <-. vm_compute in Hs. discriminate Hs.
+Qed.
+
+(**md
+**Falsified on the present engine: a live memo's source list can miss a read of its run.**
+
+This is a counterexample, not a guarantee. It proves `run_end_edges_are_reads_statement` false, on the same run as [`marks_survive_run_falsified`](#marks_survive_run_falsified): the outer run's read of signal 2 has no slot, because the nested run trimmed it. A live memo with no nested run has the list `run_end_edges_no_nested_run` states.
+*)
+Theorem run_end_edges_are_reads_falsified : ~ run_end_edges_are_reads_statement.
+Proof.
+  intros H.
+  assert (Hnr : (4 : node_id) ∉ g_running nested_start) by (vm_compute; apply not_elem_of_nil).
+  assert (Hk : has_kind 4 KMemo nested_start) by (exists nested_node; split; [exact nested_lookup|vm_compute; reflexivity]).
+  assert (Hm : run_memo 1000 4 nested_start = Some (nested_end, tt)) by (vm_compute; reflexivity).
+  assert (He : g_nodes nested_end !! (4 : node_id) = Some (default (signal_node 0%Z) (g_nodes nested_end !! (4 : node_id)))) by (vm_compute; reflexivity).
+  pose proof (H 1000 4 nested_start nested_end _ nested_settled Hnr (or_introl (conj Hk Hm)) He ltac:(vm_compute; reflexivity)) as Heq.
+  vm_compute in Heq. discriminate Heq.
+Qed.
 
 (** A diamond with no write in any body: [x] reads [h] and [y], and [m] reads [h], [x] and [y]. [m]'s run reaches [y]'s run
     through [x], whose notice skips [x] and marks [m], so [m] ends [Dirty] holding its flag. Model only: scenario [S15] runs the

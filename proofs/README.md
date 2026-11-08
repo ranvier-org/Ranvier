@@ -197,13 +197,21 @@ copy, so it needs no Rocq.
 | `no_lost_wakeups` | `Pure/Runs.v` | **Open.** The unqualified statement, false on the present engine: `no_lost_wakeups_falsified`. |
 | `engine_inv_preserved` | `Pure/Runs.v` | **Open.** Every engine function keeps the invariant with `wake_ok`, false on the present engine: `engine_inv_preserved_falsified`. |
 | `later_mark_forwarded` | `Pure/Runs.v` | From `wake_ok`, a later `mark_check` or `mark_dirty` of a live memo leaves every observer stale, queued or running. |
-| `marks_survive_run` | `Pure/Runs.v` | A memo stale at the end of its body is stale at the end of its run, holding `n_unannounced`. |
+| `marks_survive_run` | `Pure/Runs.v` | **Open.** A memo stale at a point in its body is stale at its run's end, holding `n_unannounced`, false on the present engine: `marks_survive_run_falsified`. |
+| `marks_survive_body_end` | `Pure/Runs.v` | The tail of a run: a memo stale when its body returns is stale when its run returns, holding `n_unannounced`. |
 | `cutoff` | `Pure/Runs.v` | A `CmpEq` run whose stored view holds still adds no mark to any node and nothing to the queue. |
 | `moved_marks_except_running` | `Pure/Runs.v` | A moved run leaves every observer that takes marks `Dirty`, apart from the computation current at its start. |
-| `run_end_edges_are_reads` | `Pure/Runs.v` | After a run, a live computation's source list is `read_list` of its tracked reads since its latest run start. |
+| `notice_skips_current`, `moved_run_skips_current` | `Pure/Runs.v` | That computation stays short of `Dirty` if it was. |
+| `run_end_edges_are_reads` | `Pure/Runs.v` | **Open.** After a run, a live computation's source list is `read_list` of all its run's reads, false on the present engine: `run_end_edges_are_reads_falsified`. |
+| `run_end_edges_are_latest_reads` | `Pure/Runs.v` | The same over the reads since its latest run start. |
+| `run_end_edges_no_nested_run` | `Pure/Runs.v` | The same over the run's reads, when no nested self-run started. |
 | `disposed_stale_source_read` | `Pure/Witnesses.v` | A disposed stale memo's reader is uncovered, which `wake_ok`'s live premise excepts. Closed in `BUGS.md`. |
 | `walk_passed_source_marked`, `walk_passed_source_cleanup` | `Pure/Witnesses.v` | A walk passes a source, a later source's run marks it, and the effect ends clean and idle over it with no flag. Confirmed in `BUGS.md`. |
 | `no_lost_wakeups_falsified`, `engine_inv_preserved_falsified` | `Pure/Witnesses.v` | Both Open statements above are false, from that program. |
+| `walk_passed_stays_deaf` | `Pure/Witnesses.v` | After the walk, another write of the source wakes nothing. |
+| `marks_survive_run_falsified`, `run_end_edges_are_reads_falsified` | `Pure/Witnesses.v` | Both Open statements are false, from a nested self-run. |
+| `skip_removed_fires` | `Pure/Witnesses.v` | With the skip of `NotifyDirtyExcept` removed, the current computation ends `Dirty`. |
+| `ordinary_programs_nothing_passed`, `ordinary_stale_edge_covered`, `flagged_stale_edge_covered` | `Conformance/Check.v` | `gh_passed` is empty on the ordinary conformance programs, and `no_lost_wakeups_when_nothing_passed` applies across a live stale edge. |
 | `effect_resolves_over_moved_source` | `Pure/Witnesses.v` | An effect reads a source, writes it, reads a memo over it, and never runs again with the new value. Confirmed in `BUGS.md`. |
 | `diamond_ends_memo_stale` | `Pure/Witnesses.v` | With no write in any body, a memo's run ends `Dirty` holding its flag. |
 | `reader_mark_off_fires` | `Pure/Witnesses.v` | With `MarkReaderCheck` off, `wake_told` fails and `wake_ok` still holds. |

@@ -2291,7 +2291,9 @@ type ghost = { gh_published : (node_id, read_view) gmap;
                gh_seen : ((node_id, node_id) prod, read_view list) gmap;
                gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap;
                gh_reads : (node_id, node_id list) gmap;
-               gh_passed : node_id gset; gh_over : node_id gset }
+               gh_passed : node_id gset; gh_over : node_id gset;
+               gh_run_reads : (node_id, node_id list) gmap;
+               gh_nested : node_id gset }
 
 (** val empty_ghost : ghost **)
 
@@ -2306,6 +2308,8 @@ let empty_ghost =
     gh_window = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable));
     gh_reads = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable));
     gh_passed = (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)); gh_over =
+    (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)); gh_run_reads =
+    (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); gh_nested =
     (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)) }
 
 type state = { g_flags : flags; g_edges : edgeWorld;
@@ -2944,7 +2948,16 @@ let ghost_read c n0 pre s =
             (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) c g.gh_reads))
           (Cons (n0, Nil)))
         g.gh_reads);
-      gh_passed = g.gh_passed; gh_over = g.gh_over } s
+      gh_passed = g.gh_passed; gh_over = g.gh_over; gh_run_reads =
+      (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+        c
+        (app
+          (from_option (Obj.magic id) Nil
+            (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) c
+              g.gh_run_reads))
+          (Cons (n0, Nil)))
+        g.gh_run_reads);
+      gh_nested = g.gh_nested } s
   | None -> s
 
 (** val ghost_run_start : node_id -> state -> state **)
@@ -2964,7 +2977,26 @@ let ghost_run_start n0 s =
       (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
     gh_over =
     (difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_over
-      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)) }
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
+    gh_run_reads =
+    (match decide
+             (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+               s.g_running) with
+     | Left -> g.gh_run_reads
+     | Right ->
+       insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+         n0 Nil g.gh_run_reads);
+    gh_nested =
+    (match decide
+             (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+               s.g_running) with
+     | Left ->
+       union0 (gset_union Coq_Nat.eq_dec nat_countable)
+         (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)
+         g.gh_nested
+     | Right ->
+       difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_nested
+         (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)) }
     s
 
 (** val ghost_effect_start : node_id -> state -> state **)
@@ -2980,6 +3012,12 @@ let ghost_effect_start n0 s =
       (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
     gh_over =
     (difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_over
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
+    gh_run_reads =
+    (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+      n0 Nil g.gh_run_reads);
+    gh_nested =
+    (difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_nested
       (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)) }
     s
 
@@ -2994,7 +3032,7 @@ let ghost_publish n0 s =
         n0 (read_view_of d) g.gh_published);
       gh_seen = g.gh_seen; gh_unnoticed = g.gh_unnoticed; gh_window =
       g.gh_window; gh_reads = g.gh_reads; gh_passed = g.gh_passed; gh_over =
-      g.gh_over } s
+      g.gh_over; gh_run_reads = g.gh_run_reads; gh_nested = g.gh_nested } s
   | None -> s
 
 (** val run_end_unnoticed :
@@ -3041,7 +3079,8 @@ let ghost_run_end n0 r moved s =
       (union0 (gset_union Coq_Nat.eq_dec nat_countable)
         (run_end_unnoticed n0 r moved d s) g.gh_unnoticed);
       gh_window = g.gh_window; gh_reads = g.gh_reads; gh_passed =
-      g.gh_passed; gh_over = g.gh_over } s
+      g.gh_passed; gh_over = g.gh_over; gh_run_reads = g.gh_run_reads;
+      gh_nested = g.gh_nested } s
   | None -> s
 
 (** val ghost_dirty_cleared : node_id -> nat -> state -> state **)
@@ -3056,7 +3095,8 @@ let ghost_dirty_cleared n0 runs s =
     gh_window =
     (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
       n0 runs g.gh_window);
-    gh_reads = g.gh_reads; gh_passed = g.gh_passed; gh_over = g.gh_over } s
+    gh_reads = g.gh_reads; gh_passed = g.gh_passed; gh_over = g.gh_over;
+    gh_run_reads = g.gh_run_reads; gh_nested = g.gh_nested } s
 
 (** val slot_holds : (node -> bool) -> state -> node_id -> bool **)
 
@@ -3091,7 +3131,8 @@ let ghost_resolved n0 s =
         | True -> negb e.n_unannounced
         | False -> False) s n0)
       n0 g.gh_passed);
-    gh_over = (add_if (slot_holds stale_live s n0) n0 g.gh_over) } s
+    gh_over = (add_if (slot_holds stale_live s n0) n0 g.gh_over);
+    gh_run_reads = g.gh_run_reads; gh_nested = g.gh_nested } s
 
 (** val root_owner_id : owner_id **)
 

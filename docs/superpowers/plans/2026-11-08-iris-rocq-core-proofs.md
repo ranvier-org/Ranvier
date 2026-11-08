@@ -533,14 +533,16 @@ Theorem witness_302 :
     run_top F prog_S03 (init {| f_unannounced := false; f_reader_mark := true |}) = Some (s_bad, _) /\
     run_top F prog_S03 (init current_flags) = Some (s_good, _) /\
     ~ wake_ok s_bad /\ wake_ok s_good /\ effect_ran_for_last_write s_good /\ ~ effect_ran_for_last_write s_bad.
-Theorem witness_290 : (* the same for prog_S04 with f_reader_mark := false *).
+Theorem witness_290 : (* the same for prog_S04 with f_reader_mark := false, stating ~ wake_told s_bad /\ wake_told s_good: wake_ok holds on s_bad, since the source holds its flag (Task 9, reader_mark_off_fires) *).
 ```
 
-The audit passing here shows the `wake_ok` statement detects both historic bugs. If either witness fails, the definition of `wake_ok` is too weak: go back to Task 9, which is the anti-goal this guards.
+The audit passing here shows `wake_ok` detects #302 and `wake_told` detects #290. `~ wake_ok` on `prog_S03` with `f_unannounced` false was checked at Task 9 with `vm_compute`: the edge from node 6 to node 7. If either witness fails, the definition is too weak: go back to Task 9, which is the anti-goal this guards.
 
 - [ ] **Step 2: Theorems.**
   - `glitch_free_read`: for a node that is not `self_dirtying`, a read returns what its body computes from current signals.
-  - `convergence`: under `well_behaved_program` and `quiescent`, every effect's last run saw the latest value of each source it reads.
+  - `convergence`: under `well_behaved_program` and `quiescent`, every effect's last run saw the latest value of each source it reads. It takes a named premise excluding `effect_resolves_over_moved_source` (an effect that writes, which `well_behaved_memo` does not restrict), pending the owner's ruling.
+  - `wake_ok` and `wake_told` both miss `self_marking_wake_lost`: `wake_ok` through the flag and `wake_told` through `gh_over`. That property stays here.
+  - `well_behaved_program` keeps `gh_passed` empty, as a theorem, or a counterexample. The route through "a run over equal reads answers an equal value" does not cover `CmpNever`. `gh_passed` is per computation, and a per-pair form looks cheap if a statement needs it.
   - `well_behaved_program` or `self_dirtying` excludes memo cycles, self-reads included. `self_read_check_overflow` in `BUGS.md` falsifies `glitch_free_read` otherwise. `self_dirtying` also covers `nested_self_run`'s Clean memo and `self_marking_through_memo`'s Clean reader.
 - [ ] **Step 3: Prove them, then audit.** Expected: exit 0.
 - [ ] **Step 4: Commit** as `feat(proofs): prove whole-graph behaviour with regression witnesses`.

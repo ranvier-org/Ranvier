@@ -1,7 +1,7 @@
 From stdpp Require Import prelude.
 From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Witnesses.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Runs Witnesses.
 From Ranvier.Conformance Require Import Expected.
 
 Open Scope Z_scope.
@@ -161,9 +161,9 @@ Definition prog_check_two_reads : cmd := check_two_reads (R 22 (V 3) Nop).
 Definition prog_stale_source_reader : cmd := stale_source_reader (R 22 (V 3) (R 23 (V 3) (R 24 (V 2) Nop))).
 Definition prog_disposed_self_window : cmd := disposed_window (R 22 (V 4) Nop).
 Definition prog_disposed_stale_source_read : cmd := disposed_stale_read (R 22 (V 2) Nop).
-Definition prog_walk_passed_source_marked : cmd := walk_passed (R 22 (V 3) Nop).
-Definition prog_walk_passed_source_cleanup : cmd := walk_passed_by_cleanup (R 22 (V 3) Nop).
-Definition prog_effect_resolves_over_moved_source : cmd := effect_over_moved Nop.
+Definition prog_walk_passed_source_marked : cmd := walk_passed (W (V 1) (K 2) (R 22 (V 3) Nop)).
+Definition prog_walk_passed_source_cleanup : cmd := walk_passed_by_cleanup (W (V 1) (K 2) (R 22 (V 3) Nop)).
+Definition prog_effect_resolves_over_moved_source : cmd := effect_over_moved (W (V 1) (K 2) Nop).
 
 Definition prog_previous_value : cmd :=
   CSignal 1 (K 0) (
@@ -319,3 +319,52 @@ Example check_disposed_window :
   (s ← run (R 10 (V 2) (W (V 1) (K 1) Nop)); d ← g_nodes s !! 3%nat;
    Some (n_freshness d, n_queued d, length (pending s))) = Some (Clean, false, 0%nat).
 Proof. split; vm_compute; reflexivity. Qed.
+
+(** ** [gh_passed] on the conformance programs *)
+
+Local Definition end_of (p : cmd) : state :=
+  default (init current_flags) (fst <$> run_top 100000 p (init current_flags)).
+
+Example ordinary_programs_nothing_passed :
+  Forall (fun p => nothing_passed (end_of p))
+    [prog_S01; prog_S02; prog_S03; prog_S04; prog_S05; prog_S06; prog_S07; prog_S08; prog_S09a; prog_S09b;
+     prog_S10; prog_S11; prog_S12; prog_S13; prog_S14; prog_S15; prog_previous_value].
+Proof. repeat apply Forall_cons_2; try apply Forall_nil_2; vm_compute; reflexivity. Qed.
+
+Local Lemma covered_of_nothing_passed p src c :
+  run_top 100000 p (init current_flags) = Some (end_of p, Ok 0) ->
+  nothing_passed (end_of p) -> edge (end_of p) src c -> stale_of (end_of p) src -> live_of (end_of p) src ->
+  observer_covered (end_of p) src c.
+Proof.
+  intros Hr Hn He Hs Hl. exact (no_lost_wakeups_when_nothing_passed 100000 p _ _ _ engine_settled_init Hr Hn src c He Hs Hl).
+Qed.
+
+(** A write leaves a memo [Dirty] and its reader in [Check]: a live, stale edge with [gh_passed] empty, whose
+    observer is stale. *)
+Example ordinary_stale_edge_covered :
+  let s := end_of (check_cutoff Nop) in
+  stale_of s 2%nat /\ edge s 2%nat 3%nat /\ nothing_passed s /\ observer_covered s 2%nat 3%nat.
+Proof.
+  intros s.
+  assert (He : edge s 2%nat 3%nat) by (exists 0%nat, 0%nat; split; vm_compute; reflexivity).
+  assert (Hn : nothing_passed s) by (vm_compute; reflexivity).
+  assert (Hs : stale_of s 2%nat) by (eexists; split; vm_compute; reflexivity).
+  assert (Hl : live_of s 2%nat) by (eexists; split; vm_compute; reflexivity).
+  split_and!; [done|done|done|].
+  apply covered_of_nothing_passed; [vm_compute; reflexivity|done|done|done|done].
+Qed.
+
+(** A memo's cleanup leaves it [Dirty] over a clean, idle effect, with [gh_passed] empty: the edge is covered by the
+    memo's flag alone. *)
+Example flagged_stale_edge_covered :
+  let s := end_of (self_marking_cleanup Nop) in
+  stale_of s 5%nat /\ edge s 5%nat 6%nat /\ nothing_passed s /\ observer_covered s 5%nat 6%nat.
+Proof.
+  intros s.
+  assert (He : edge s 5%nat 6%nat) by (exists 0%nat, 0%nat; split; vm_compute; reflexivity).
+  assert (Hn : nothing_passed s) by (vm_compute; reflexivity).
+  assert (Hs : stale_of s 5%nat) by (eexists; split; vm_compute; reflexivity).
+  assert (Hl : live_of s 5%nat) by (eexists; split; vm_compute; reflexivity).
+  split_and!; [done|done|done|].
+  apply covered_of_nothing_passed; [vm_compute; reflexivity|done|done|done|done].
+Qed.
