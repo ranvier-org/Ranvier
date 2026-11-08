@@ -22,6 +22,7 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 - `theories/Pure/Witnesses.v`: checked counterexamples and behaviour witnesses.
 - `theories/Pure/State.v`: the graph state, and `edge`.
 - `theories/Pure/Edges.v`: edge coherence over the source-list operations.
+- `theories/Pure/Marking.v`: freshness marks and the walks that spread them.
 - `theories/Audit.v`: one `Print Assumptions` per theorem; `check.sh` reads it.
 - `BUGS.md`: defect ledger. `CORRESPONDENCE.md`: model-to-F# map.
 
@@ -90,6 +91,19 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `edge_iff_both_sides` | `Pure/Edges.v` | In a coherent world, an edge holds exactly when `c` is in `src`'s observers, and exactly when a slot of `c` holds `src` with a handle. |
 | `edge_iff_read` | `Pure/Edges.v` | In a well-formed world, an edge holds exactly when `src` is in `c`'s slots. |
 | `read_without_edge` | `Pure/Edges.v` | A coherent world where a computation read a source and has no edge to it, so `first_owns` fails. |
+| `mark_terminates`, `notify_terminates` | `Pure/Marking.v` | Fuel above `mark_measure` gives a result for every mark and walk, on any graph, cycles included. |
+| `mark_monotone` | `Pure/Marking.v` | Freshness only rises, for every node, under all five marking operations. |
+| `dirty_not_lost` | `Pure/Marking.v` | A `Dirty` node stays `Dirty` under `mark_check`. |
+| `mark_preserves_edges` | `Pure/Marking.v` | All five marking operations leave `g_edges` unchanged. Covers `Memo` and `Effect` marks. |
+| `notify_walk_unmutated` | `Pure/Marking.v` | Each marking walk is a `walk` with empty mutations, folding its mark over the observers at its start. |
+| `notify_stales` | `Pure/Marking.v` | Each walk leaves each observer in `takes_marks` stale, apart from the skipped computation. |
+| `mark_forwards_on_clean` | `Pure/Marking.v` | A clean memo goes stale, and each observer in `takes_marks` ends stale. |
+| `mark_forwards_on_unannounced` | `Pure/Marking.v` | With the flag set, a stale memo holding an announcement does the same, and spends it. |
+| `effect_mark_queues` | `Pure/Marking.v` | An effect outside disposal and cleanups ends queued, with at most one pending entry. |
+| `mark_keeps_queue_once` | `Pure/Marking.v` | All five marking operations keep `queue_once`, for every node. |
+| `disposed_effect_ignores_marks`, `in_cleanup_ignores_marks` | `Pure/Marking.v` | Such an effect's marks return the state unchanged. |
+| `in_cleanup_observer_stays_clean` | `Pure/Witnesses.v` | A memo's in-cleanup observer stays clean, which `takes_marks` excepts. Modelled in `BUGS.md`. |
+| `requeue_holds_two_entries` | `Pure/Witnesses.v` | A re-queued effect has two entries in `g_queue` and one in `pending`. |
 
 ## Literature
 

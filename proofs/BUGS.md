@@ -29,13 +29,14 @@ intended, the entry closes as "spec corrected".
   `observer_held_once` proves the premise. The other five are argued in `CORRESPONDENCE.md`. Task 7 runs
   the witness on the F#, as a `Ranvier.Tests` case with a stub `IComputation` whose `MarkDirty` mutates the
   set (`Types.fs:654` makes both visible).
-- `walk_visits_added_observer` (`theories/Pure/Witnesses.v`): an observer added during a walk is visited
-  when a later removal moves it below the cursor. The doc at Core.fs 360-362 says "Observers added during
-  the loop are not notified". This needs a mark to add and remove observers during a walk, and whether one
-  can is open. Task 6's `mark_preserves_edges` closes this entry if it holds for every mark, since a walk
-  then has no mutations. `touchSummary` (`Projections.fs:447`) was read: it runs two `NotifyCheck` walks.
-  The mark callbacks of `FoldReads` and `FoldRow` (`changed`, `touched` in `Combinators.fs`) are outside
-  Task 6's model and unread here.
+- `in_cleanup_observer_stays_clean` (`theories/Pure/Witnesses.v`): a clean memo's observer that is an effect
+  in its cleanups stays clean, so "every member of `os` ends stale" as the plan states it is false.
+  `mark_forwards_on_clean` and `mark_forwards_on_unannounced` conclude it for each observer in `takes_marks`.
+  Reachable: `Effect.Run` keeps its edges through `Discharge` (Core.fs 4813-4825). Core.fs 4651-4671 documents
+  the suppression as intended and not lossy, since the body runs next and reads the written value, so the entry
+  is expected to close as "spec corrected". A disposed effect is excepted as well, and `DetachSources` (4900)
+  leaves it with no edge. Task 7 runs the witness against the F# in `Scenarios.fsx`: an effect reads a memo over a
+  signal, and its cleanup writes that signal.
 
 ## Confirmed
 
@@ -60,6 +61,17 @@ intended, the entry closes as "spec corrected".
 
 ## Closed
 
+- `walk_visits_added_observer` (`theories/Pure/Witnesses.v`), closed for `Memo` and `Effect` marks: a walk's
+  mutations are empty, so a mark cannot add the observer the witness visits. `mark_preserves_edges` holds for
+  all five marking operations, and `notify_walk_unmutated` states each walk as `walk` with no mutations, so the
+  doc at Core.fs 360-362 holds for walks whose visits are these two marks. The witness stays as a fact about
+  `walk`, whose mutations over-approximate a mark. No theorem covers the other implementors of `MarkDirty` and
+  `MarkCheck`, and they are outside the core nodes modelled here. From reading only, each writes its own fields,
+  queues, forwards, or notifies, and none adds or removes an edge: `changed`, which is `touch ()`
+  (`Combinators.fs:794, 799`), `touched` (`Combinators.fs:801`, `ValueReaders.fs:64`), `touchSummary`
+  (`Projections.fs:441`), `RowWatch` (`Projections.fs:55`), `Binding` (`Bindings.fs:133`), the projection at
+  `Projections.fs:1229`, `Streams.fs:504`, `Timed.fs:293`, `ForwardingEdge` (462) and the three other computations
+  of `Core.fs` (5160, 5916, 6532). A change to any of these can reopen the entry.
 
 ## Definition changes
 

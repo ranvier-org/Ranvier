@@ -9,4 +9,5 @@ theories/Pure/SourceList.v
 theories/Pure/Witnesses.v
 theories/Pure/State.v
 theories/Pure/Edges.v
+theories/Pure/Marking.v
 theories/Audit.v

@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
 
@@ -69,3 +69,18 @@ Print Assumptions remove_edge_alone_breaks_coherent.
 Print Assumptions edge_iff_both_sides.
 Print Assumptions edge_iff_read.
 Print Assumptions read_without_edge.
+Print Assumptions mark_terminates.
+Print Assumptions notify_terminates.
+Print Assumptions mark_monotone.
+Print Assumptions dirty_not_lost.
+Print Assumptions mark_preserves_edges.
+Print Assumptions notify_walk_unmutated.
+Print Assumptions notify_stales.
+Print Assumptions mark_forwards_on_clean.
+Print Assumptions mark_forwards_on_unannounced.
+Print Assumptions effect_mark_queues.
+Print Assumptions mark_keeps_queue_once.
+Print Assumptions disposed_effect_ignores_marks.
+Print Assumptions in_cleanup_ignores_marks.
+Print Assumptions in_cleanup_observer_stays_clean.
+Print Assumptions requeue_holds_two_entries.
