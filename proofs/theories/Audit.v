@@ -197,3 +197,5 @@ Print Assumptions memo_failure_contained.
 Print Assumptions comparer_throw_contained.
 Print Assumptions queued_effect_disposed_skipped.
 Print Assumptions late_cleanup_failure_recorded.
+Print Assumptions memo_scope_violation_returns.
+Print Assumptions memo_comparer_replaces_failure.

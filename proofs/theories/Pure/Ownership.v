@@ -218,11 +218,12 @@ Proof.
   destruct (detached o (run_cleanup f o b e) _) as [[s2 []]|]; [|done]. done.
 Qed.
 
-Lemma zip_length bs es os :
-  length es = length bs -> length os = length bs -> length (zip_cleanups bs es os) = length bs.
+Lemma zip_bodies bs es os :
+  length es = length bs -> length os = length bs ->
+  (fun p : cmd * env * nat => p.1.1) <$> zip_cleanups bs es os = bs.
 Proof.
   revert es os. induction bs as [|b bs IH]; intros [|e es] [|o os]; simpl; try done; try lia.
-  intros H1 H2. rewrite IH; lia.
+  intros H1 H2. rewrite IH; [done|lia|lia].
 Qed.
 
 (** What the engine does with each entry of an owner's cleanup list. *)
@@ -236,7 +237,7 @@ Definition cleanup_entries (f : nat) : Prop :=
   (forall o y s, g_owners s !! o = Some y ->
      dispose_scope (S f) o s =
        teardown f o (rev (o_children y)) (owner_cleanups y) (with_owners (<[o := owner_detached y]> (g_owners s)) s)) /\
-  (forall y, acq_ok y -> length (owner_cleanups y) = length (o_cleanups y)) /\
+  (forall y, acq_ok y -> (fun p : cmd * env * nat => p.1.1) <$> owner_cleanups y = rev (o_cleanups y)) /\
   (forall e b k o y s, g_current_owner s = Some o -> g_owners s !! o = Some y -> o_disposed y = true ->
      exec (S f) e (CCleanup b k) s =
        (let* _ := detached o (run_cleanup f o b e) in
@@ -252,7 +253,7 @@ Proof.
   - reflexivity.
   - done.
   - intros o y s Hy. cbn [dispose_scope]. unfold m_bind, get_owner. by rewrite Hy.
-  - intros y [_ _ _ _ _ H6 H7]. unfold owner_cleanups. rewrite length_rev. by apply zip_length.
+  - intros y [_ _ _ _ _ H6 H7]. unfold owner_cleanups. rewrite fmap_rev. by rewrite zip_bodies.
   - intros e b k o y s Hc Hy Hd. split; [by apply late_equation|done].
 Qed.
 
@@ -262,7 +263,7 @@ Qed.
 The count is structural, per list entry, because a registration carries no id. These hold together:
 
 - **The bound.** After a program, `EvCleanup h` events plus the cleanups still held by owners of host `h` are at most the cleanups registered with owners of host `h`, late ones included. `g_registered` is ghost state written at `CCleanup`. This is a sum per host, so it alone would hold of a teardown running one cleanup twice and dropping the next.
-- **The list.** The cleanups of `schedule ls cs`, in order, are exactly `cs`. `owner_cleanups` has one entry per entry of `o_cleanups`, for an owner in `acq_ok`.
+- **The list.** The cleanups of `schedule ls cs`, in order, are exactly `cs`. The bodies of `owner_cleanups` are `o_cleanups` reversed, for an owner in `acq_ok`.
 - **The teardown.** `teardown` is `run_items` over that schedule, and `run_items` runs `run_cleanup` once for each cleanup step and goes on with the rest. `dispose_scope` hands it the owner's detached entries, and `owner_detached` leaves all the lists empty, so a later teardown holds none of them.
 - **The late path.** On a disposed current owner, `CCleanup` runs `run_cleanup` once under `detached`, with no write to the owners.
 
@@ -339,7 +340,7 @@ Proof. apply disposed_no_edges. apply engine_settled_init. Qed.
 (**md
 **A disposed effect never runs again.**
 
-From a state where the effect is disposed, a whole program, a flush or a `drain` that returns leaves it disposed, with `n_runs` unchanged and no new `EvRun n` in the trace. The `drain` clause covers a disposal mid-flush: from the loop head after the effect that disposed it, its own entry is dequeued with no run, as [`queued_effect_disposed_skipped`](#queued_effect_disposed_skipped) has it. The `execute_effect` clause is that dequeue. A body in progress at its disposal keeps running to its end: this is about later runs.
+From a state where the effect is disposed, a whole program, a flush or a `drain` that returns leaves it disposed, with `n_runs` unchanged and no new `EvRun n` in the trace. The `drain` clause covers a disposal mid-flush: from the loop head after the effect that disposed it, its own entry is dequeued with no run, as [`queued_effect_disposed_skipped`](#queued_effect_disposed_skipped) has it. The `execute_effect` clauses are that dequeue, which changes only `queued`, as Core.fs 4785 does. A body in progress at its disposal keeps running to its end: this is about later runs.
 
 Premises: [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) holds at the start, with no effect in progress, or for `execute_effect` with this effect in progress. A `drain` starts during a flush.
 *)
@@ -356,7 +357,9 @@ Theorem disposed_effect_never_runs f n d :
      count_runs n (g_trace s') = count_runs n (g_trace s)) /\
   (forall s s' a, sched_inv (Some n) s -> g_nodes s !! n = Some d -> g_flushing s = true -> execute_effect f n s = Some (s', a) ->
      (exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true /\ n_runs d' = n_runs d) /\
-     count_runs n (g_trace s') = count_runs n (g_trace s)).
+     count_runs n (g_trace s') = count_runs n (g_trace s)) /\
+  (forall s, g_nodes s !! n = Some d ->
+     execute_effect (S f) n s = Some (set_node n (node_with_queued false d) s, tt)).
 Proof.
   intros Hk Hz.
   assert (Hrel : forall s s', g_nodes s !! n = Some d -> data_rel s s' ->
@@ -372,6 +375,7 @@ Proof.
   - intros s s' a Hi Hd Hf Hm.
     assert (Hc : eff_ctx n s) by (split; [by exists d|exact Hf]).
     destruct (Sexecute _ (sched_ok_all f) n _ _ _ Hi Hc Hm) as [_ (_&R&_)]. by apply Hrel.
+  - intros s Hd. cbn [execute_effect]. rewrite (bind_get_node _ _ _ _ Hd), Hz. unfold modify_node. by rewrite Hd.
 Qed.
 
 Lemma track_keeps n s s' :

@@ -2147,35 +2147,69 @@ Proof.
   - left. pose proof (body_runs _ n _ _ _ H3 Hc3 (ex_intro _ d3 (conj Hd3 Ez)) Eb). lia.
 Qed.
 
-(**md
-**A live effect that is `Dirty` when dequeued runs again, unless its discharge disposes it first.**
-
-When `execute_effect` of a live, `Dirty` effect returns, its `EvRun` count has risen by at least one, or the effect is disposed. The second case is a cleanup of its discharge disposing it: `run_effect` tests for that ahead of the body. This is the rerun guarantee beside [`flush_returns_clean`](#flush_returns_clean), which holds of an engine that clears marks and never runs.
-
-This covers an effect `Dirty` at its dequeue. An effect in `Check` runs only if its walk raises it to `Dirty`, and [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) resolves `Clean` with no run over a source that moved.
-
-Premises: [the scheduler's invariant](#sched_inv) holds with `n` in progress, `n` is an effect, and a flush is running.
-*)
-Theorem flush_reruns_dirty f n d s s' a :
-  sched_inv (Some n) s -> has_kind n KEffect s -> g_flushing s = true ->
-  g_nodes s !! n = Some d -> n_disposed d = false -> n_freshness d = Dirty ->
-  execute_effect f n s = Some (s', a) ->
+(** The end of [Execute] for an effect that is [Dirty] at this point. *)
+Lemma execute_tail f n d s s' a :
+  sched_inv (Some n) s -> eff_ctx n s -> g_nodes s !! n = Some d -> n_freshness d = Dirty ->
+  (let* d' := get_node n in
+   let* _ := modify_node n (fun x => node_with_freshness Clean (node_with_queued false x)) in
+   if decide (n_freshness d' = Dirty) then run_effect f n else m_return tt) s = Some (s', a) ->
   S (count_runs n (g_trace s)) <= count_runs n (g_trace s') \/
   exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true.
 Proof.
-  intros Hi Hk Hf Hd Hz HD Hm. destruct f as [|f]; [done|]. cbn [execute_effect] in Hm.
-  rewrite (bind_get_node _ _ _ _ Hd), Hz in Hm.
-  destruct (decide (n_freshness d = Check)) as [E|_]; [congruence|].
-  rewrite bind_m_return, (bind_get_node _ _ _ _ Hd) in Hm.
+  intros Hi Hc Hd HD Hm.
+  rewrite (bind_get_node _ _ _ _ Hd) in Hm.
   set (u := fun x => node_with_freshness Clean (node_with_queued false x)) in Hm.
   destruct (sok_unflag_at (eff_ctx n) n u d eq_refl eq_refl (fun H => H) (fun _ _ => eq_refl) (fun _ _ => eq_refl)
-     s (set_node n (u d) s) tt Hi (conj (conj Hk Hf) Hd)) as [H1 F1].
+     s (set_node n (u d) s) tt Hi (conj Hc Hd)) as [H1 F1].
   { unfold modify_node. by rewrite Hd. }
   rewrite (bind_modify_node _ _ _ _ _ Hd) in Hm.
   destruct (decide (n_freshness d = Dirty)) as [_|E]; [|done].
-  pose proof (sstable _ _ F1 (conj Hk Hf)) as Hc1.
+  pose proof (sstable _ _ F1 Hc) as Hc1.
   assert (Hcount : count_runs n (g_trace (set_node n (u d) s)) = count_runs n (g_trace s)) by done.
   rewrite <- Hcount. exact (run_effect_runs _ n _ _ _ H1 Hc1 Hm).
+Qed.
+
+(**md
+**A live effect that is `Dirty` at its dequeue, or raised to `Dirty` by its walk, runs again, unless it is disposed first.**
+
+**`Dirty` at the dequeue.** When `execute_effect` of a live, `Dirty` effect returns, its `EvRun` count has risen by at least one, or the effect is disposed.
+
+**`Check` at the dequeue.** When its `resolve_walk` leaves it `Dirty`, and `execute_effect` returns, its `EvRun` count has risen by at least one from the walk's end, or the effect is disposed.
+
+The disposal is a cleanup of its discharge or of a run in its walk: `run_effect` tests for it ahead of the body. This is the rerun guarantee beside [`flush_returns_clean`](#flush_returns_clean), which holds of an engine that clears marks and never runs. A walk that leaves the effect in `Check` is outside it: [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) resolves `Clean` with no run over a source that moved.
+
+Premises: [the scheduler's invariant](#sched_inv) holds with `n` in progress, `n` is an effect, and a flush is running.
+*)
+Theorem flush_reruns_dirty f n :
+  (forall d s s' a,
+     sched_inv (Some n) s -> has_kind n KEffect s -> g_flushing s = true ->
+     g_nodes s !! n = Some d -> n_disposed d = false -> n_freshness d = Dirty ->
+     execute_effect f n s = Some (s', a) ->
+     S (count_runs n (g_trace s)) <= count_runs n (g_trace s') \/
+     exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true) /\
+  (forall d d1 s s1 s' a,
+     sched_inv (Some n) s -> has_kind n KEffect s -> g_flushing s = true ->
+     g_nodes s !! n = Some d -> n_disposed d = false -> n_freshness d = Check ->
+     resolve_walk f n 0 s = Some (s1, tt) -> g_nodes s1 !! n = Some d1 -> n_freshness d1 = Dirty ->
+     execute_effect (S f) n s = Some (s', a) ->
+     S (count_runs n (g_trace s1)) <= count_runs n (g_trace s') \/
+     exists d', g_nodes s' !! n = Some d' /\ n_disposed d' = true).
+Proof.
+  split.
+  - intros d s s' a Hi Hk Hf Hd Hz HD Hm. destruct f as [|f]; [done|]. cbn [execute_effect] in Hm.
+    rewrite (bind_get_node _ _ _ _ Hd), Hz in Hm.
+    destruct (decide (n_freshness d = Check)) as [E|_]; [congruence|].
+    rewrite bind_m_return in Hm.
+    exact (execute_tail f n d s s' a Hi (conj Hk Hf) Hd HD Hm).
+  - intros d d1 s s1 s' a Hi Hk Hf Hd Hz HC Hw Hd1 HD Hm. cbn [execute_effect] in Hm.
+    rewrite (bind_get_node _ _ _ _ Hd), Hz in Hm.
+    destruct (decide (n_freshness d = Check)) as [_|E]; [|done].
+    rewrite bind_bind, (bind_some _ _ _ _ _ Hw), bind_bind, (bind_get_node _ _ _ _ Hd1) in Hm.
+    destruct (decide (n_freshness d1 = Check)) as [E|_]; [congruence|].
+    rewrite bind_m_return in Hm.
+    destruct (Swalk _ (sched_ok_all f) (Some n) n 0 _ _ _ Hi I Hw) as [H1 F1].
+    assert (Hc1 : eff_ctx n s1) by (eapply sstable; [exact F1|exact (conj Hk Hf)]).
+    exact (execute_tail f n d1 s1 s' a H1 Hc1 Hd1 HD Hm).
 Qed.
 
 Lemma edges_total (b : bool) n w :
@@ -2195,7 +2229,7 @@ Proof. intros H. unfold m_bind, edges_opt. by rewrite H. Qed.
 
 When an effect's body ends in `Fail y`, `run_effect_body` returns, the effect's status is `StError` and its failure is `y`, and the only event after the body's is `EvFail n y`. The queue and its head are as the body left them. This answers `Effect.RunBody`'s handler (Core.fs 4866). [`drain_continues`](#drain_continues) is what happens next.
 
-Premises: the body's result is `Fail y`, from the state `run_effect_body` starts it in, the effect exists at the body's end, and the edges there are coherent, which `engine_settled` holds.
+Premises: the body's result is `Fail y`, from the state `run_effect_body` starts it in, and the effect exists at the body's end. The edges there are coherent, a premise this theorem takes and does not derive: `engine_settled` holds it at a function's return, and no theorem states it at a body's end.
 *)
 Theorem body_failure_contained f n s s2 d d2 y :
   g_nodes s !! n = Some d ->
@@ -2338,30 +2372,39 @@ Proof.
 Qed.
 
 (**md
-**A failing memo run returns, with its failure in the memo's status.**
+**A failing memo run returns, with a failure in the memo's status.**
 
-When a memo's body ends in `Fail y`, `run_memo` returns, and the memo's status is `StError` and its failure is `y`. It returns `unit`, so a reader takes the failure from the status. This answers `Memo.Run`'s handler (Core.fs 4247-4261).
+When a memo's run fails with `y`, `run_memo` returns and the memo's status is `StError`. Its failure is `y`, or `z` when its comparer throws `z`: a comparer consulted over an unchanged status and failure replaces it, as Core.fs 4275-4279 does. A reader takes the failure from the status. This answers `Memo.Run`'s handlers (Core.fs 4247-4261).
 
-Premises: the body's result is `Fail y`, from the state `run_memo` starts it in. The memo exists at the body's end with no scope violation, the edges there are coherent, and the fuel exceeds `mark_measure` there, so its notice has a result. Either `Fail y` differs from the memo's previous status or failure, or its comparer does not throw. A throwing comparer consulted over an unchanged failure replaces it, as Core.fs 4275-4279 does.
+The run fails with `y` in two ways, both in the premise on `r`: the body's result is `Fail y`, or the body breached a pure memo's scope, which sets `n_violated` and makes `y` the fixed `pure_scope_failure` whatever the body returned (Core.fs 4248-4250). [`memo_scope_violation_returns`](#memo_scope_violation_returns) and [`memo_comparer_replaces_failure`](#memo_comparer_replaces_failure) run those two paths.
+
+Premises: `r` is the body's result, from the state `run_memo` starts it in, and the memo exists at the body's end. The edges there are coherent, and the fuel exceeds `mark_measure` there, so the notice has a result. This theorem takes both and does not derive them.
 *)
-Theorem memo_failure_contained f n s s2 d d1 y :
+Theorem memo_failure_contained f n s s2 d d1 r y :
   g_nodes s !! n = Some d ->
-  hosted n (exec f (run_env d) (n_body d)) (run_start n d s) = Some (s2, Fail y) ->
-  g_nodes s2 !! n = Some d1 -> n_violated d1 = false -> coherent (g_edges s2) -> mark_measure s2 < f ->
-  (n_status d <> StError \/ n_failure d <> Some y \/ forall z, n_comparer d1 <> CmpThrows z) ->
+  hosted n (exec f (run_env d) (n_body d)) (run_start n d s) = Some (s2, r) ->
+  g_nodes s2 !! n = Some d1 ->
+  (if n_violated d1 then Fail pure_scope_failure else r) = Fail y ->
+  coherent (g_edges s2) -> mark_measure s2 < f ->
   exists s' d', run_memo (S f) n s = Some (s', tt) /\
-    g_nodes s' !! n = Some d' /\ n_status d' = StError /\ n_failure d' = Some y.
+    g_nodes s' !! n = Some d' /\ n_status d' = StError /\
+    (n_failure d' = Some y \/ exists z, n_comparer d1 = CmpThrows z /\ n_failure d' = Some z).
 Proof.
-  intros Hd Hb Hd1 Hv Hco Hfu Hcmp.
+  intros Hd Hb Hd1 Hres Hco Hfu.
   destruct (edges_total (n_disposed d1) n _ Hco) as (w&Hw).
   set (u := fun x => node_with_violated false (node_with_status StError (node_with_failure (Some y) x))).
   set (s9 := set_node n (u d1) (with_running (tail (g_running s2)) (with_edges w s2))).
   assert (Hd9 : g_nodes s9 !! n = Some (u d1)) by (simpl; apply lookup_insert_eq).
-  assert (Hshape : exists mv, run_memo (S f) n s = run_finish f n mv s9).
+  assert (Hb9 : mark_measure s9 < f).
+  { assert (Hd7 : g_nodes (with_running (tail (g_running s2)) (with_edges w s2)) !! n = Some d1) by exact Hd1.
+    unfold s9. rewrite (measure_set n (u d1) d1 _ Hd7 eq_refl). exact Hfu. }
+  assert (Hshape : exists mv s10 d10, run_memo (S f) n s = run_finish f n mv s10 /\ g_nodes s10 !! n = Some d10 /\
+      mark_measure s10 < f /\ n_status d10 = StError /\
+      (n_failure d10 = Some y \/ exists z, n_comparer d1 = CmpThrows z /\ n_failure d10 = Some z)).
   { cbn [run_memo]. rewrite (bind_get_node _ _ _ _ Hd), (bind_modify_node _ _ _ _ _ Hd).
     unfold edges, push_running. rewrite !bind_m_modify.
     erewrite bind_some; [|exact Hb]. cbv beta.
-    rewrite (bind_get_node _ _ _ _ Hd1), Hv. cbn iota.
+    rewrite (bind_get_node _ _ _ _ Hd1), Hres. cbn iota.
     rewrite bind_m_return. rewrite (bind_edges_ok _ _ _ _ Hw).
     unfold pop_running. rewrite bind_m_modify.
     assert (Hd8 : g_nodes (with_running (tail (g_running (with_edges w s2))) (with_edges w s2)) !! n = Some d1) by exact Hd1.
@@ -2369,28 +2412,28 @@ Proof.
     change (set_node n _ (with_running (tail (g_running (with_edges w s2))) (with_edges w s2))) with s9.
     rewrite (bind_get_node _ _ _ _ Hd9).
     destruct (decide _) as [Hne|Hsame].
-    - rewrite bind_m_return. by exists true.
+    - rewrite bind_m_return. exists true, s9, (u d1). split_and!; [reflexivity|done|done|done|by left].
     - destruct (n_comparer (u d1)) as [| |z] eqn:Ec.
-      + rewrite bind_m_return. eexists. reflexivity.
-      + rewrite bind_m_return. by exists true.
-      + exfalso. destruct Hcmp as [G|[G|G]].
-        * apply Hsame. left. unfold u. simpl. intros E. apply G. done.
-        * apply Hsame. right. unfold u. simpl. intros E. apply G. done.
-        * apply (G z). exact Ec. }
-  destruct Hshape as [mv ->].
-  assert (Hb9 : mark_measure s9 < f).
-  { assert (Hd7 : g_nodes (with_running (tail (g_running s2)) (with_edges w s2)) !! n = Some d1) by exact Hd1.
-    unfold s9. rewrite (measure_set n (u d1) d1 _ Hd7 eq_refl). exact Hfu. }
-  destruct (run_finish_some f n mv s9 (u d1) Hd9 Hb9) as (s'&d'&H1&H2&H3).
-  exists s', d'. split_and!; [exact H1|exact H2| |].
-  - unfold read_view_of in H3. injection H3 as _ G _. exact G.
-  - unfold read_view_of in H3. injection H3 as _ _ G. exact G.
+      + rewrite bind_m_return. eexists. exists s9, (u d1). split_and!; [reflexivity|done|done|done|by left].
+      + rewrite bind_m_return. exists true, s9, (u d1). split_and!; [reflexivity|done|done|done|by left].
+      + rewrite bind_bind, (bind_modify_node _ _ _ _ _ Hd9), bind_m_return.
+        set (t := fun x => node_with_status StError (node_with_failure (Some z) (node_with_value (n_value d) x))).
+        exists true, (set_node n (t (u d1)) s9), (t (u d1)). split_and!.
+        * reflexivity.
+        * simpl. apply lookup_insert_eq.
+        * rewrite (measure_set n (t (u d1)) (u d1) _ Hd9 eq_refl). exact Hb9.
+        * done.
+        * right. exists z. split; [exact Ec|done]. }
+  destruct Hshape as (mv&s10&d10&->&Hd10&Hb10&H4&H5).
+  destruct (run_finish_some f n mv s10 d10 Hd10 Hb10) as (s'&d'&H1&H2&H3).
+  exists s', d'. unfold read_view_of in H3. injection H3 as _ G1 G2. split_and!; [exact H1|exact H2|congruence|].
+  rewrite G2. exact H5.
 Qed.
 
 (**md
 **A throwing comparer returns, with its failure in the memo's status.**
 
-When a memo's comparer is consulted and throws `z`, `run_memo` returns, the memo's status is `StError`, its failure is `z`, and its value is the one from before the run. It returns `unit`, so a reader takes the failure from the status. This answers `Memo.Run`'s handler of the comparison (Core.fs 4275-4279).
+When a memo's comparer is consulted and throws `z`, `run_memo` returns, the memo's status is `StError`, its failure is `z`, and its value is the one from before the run. A reader takes the failure from the status. This answers `Memo.Run`'s handler of the comparison (Core.fs 4275-4279).
 
 Premises: the body's result is `Ok v`, from the state `run_memo` starts it in. The memo exists at the body's end with no scope violation, and with the status and failure it had before the run, since otherwise the comparer is not consulted. The edges there are coherent, and the fuel exceeds `mark_measure` there.
 *)
@@ -2441,13 +2484,13 @@ Qed.
 (**md
 **A flush that returns ends with `g_flushing` false and an empty live queue.**
 
-When `run_flush` starts outside a flush and returns, `g_flushing` is false, `pending` is empty and the head is 0. This statement has a returned flush as its premise, so it alone would hold of an engine turning a `Fail` into no result. These theorems close that: each takes a sub-body ending in `Fail`, and concludes that the enclosing function returns, with the failure recorded where the F# records it.
+When `run_flush` starts outside a flush and returns, `g_flushing` is false, `pending` is empty and the head is 0. This statement has a returned flush as its premise, so it alone would hold of an engine turning a `Fail` into no result. These theorems close that. Each containment theorem takes a sub-body's result, a `Fail` or for the comparer an `Ok`, and concludes that the enclosing function returns, with the failure recorded where the F# records it. `teardown_continues` takes a step's return and goes on from it.
 
 | Core.fs | Site | Theorem |
 |---|---|---|
 | 1025-1033 | `Owner.RunLate` | [`late_cleanup_contained`](#late_cleanup_contained) |
 | 1171-1184 | `Owner.DisposeScope` | [`cleanup_failure_contained`](#cleanup_failure_contained), [`teardown_continues`](#teardown_continues) |
-| 4247-4261 | `Memo.Run`, a body | [`memo_failure_contained`](#memo_failure_contained) |
+| 4247-4261 | `Memo.Run`, a body or a scope violation | [`memo_failure_contained`](#memo_failure_contained) |
 | 4275-4279 | `Memo.Run`, a comparer | [`comparer_throw_contained`](#comparer_throw_contained) |
 | 4866 | `Effect.RunBody` | [`body_failure_contained`](#body_failure_contained) |
 
@@ -2488,6 +2531,28 @@ Definition memo_case (q : comparer) (body : cmd) : cmd :=
   CEffect 3 (CRead 10 (V 1) (CLog (V 10) Nop)) (
   CEffect 4 (CRead 10 (V 2) (CLog (V 10) Nop)) (
   CWrite (V 1) (K 1%Z) Nop)))).
+
+(** A pure memo's body breaches its scope, and a read answers the fixed failure. The F# raises a new exception each
+    time, so this program stays outside the conformance scenarios: see [README.md]. *)
+Definition memo_scope_violation : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CCleanup Nop Nop) (
+  CTryRead 20 21 (V 2) Nop)).
+
+Example memo_scope_violation_returns :
+  trace_of 100000 current_flags memo_scope_violation = Some [EvHostRead 2 (Fail pure_scope_failure)].
+Proof. vm_compute. reflexivity. Qed.
+
+(** A memo fails with 7 on each run, and its throwing comparer is consulted on the second, over the unchanged failure. *)
+Definition memo_comparer_failure : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure (CmpThrows 9%Z) (CRead 10 (V 1) (CThrow 7%Z)) (
+  CTryRead 20 21 (V 2) (CWrite (V 1) (K 1%Z) (CTryRead 22 23 (V 2) Nop)))).
+
+Example memo_comparer_replaces_failure :
+  trace_of 100000 current_flags memo_comparer_failure =
+    Some [EvHostRead 2 (Fail 7%Z); EvHostRead 2 (Fail 9%Z)].
+Proof. vm_compute. reflexivity. Qed.
 
 Definition flush_child_release : cmd :=
   flush_case (CRead 10 (V 1) (CEffect 11 (CCleanup (CThrow 8%Z) Nop) Nop)).

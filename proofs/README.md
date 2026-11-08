@@ -224,15 +224,16 @@ copy, so it needs no Rocq.
 | `flush_no_nest` | `Pure/Scheduler.v` | `run_flush` with `g_flushing` set returns the state it was given. |
 | `owed_settled` | `Pure/Scheduler.v` | A program from no batch, pull or current computation ends with no flush owed. |
 | `flush_returns_clean` | `Pure/Scheduler.v` | A flush that returns has an empty queue, and every live effect `Clean` and unqueued, with or without a failing body. `Clean` is a mark. |
-| `flush_reruns_dirty` | `Pure/Scheduler.v` | A live effect `Dirty` at its dequeue has its `EvRun` count rise, or ends disposed by its discharge. |
+| `flush_reruns_dirty` | `Pure/Scheduler.v` | A live effect `Dirty` at its dequeue, or raised to `Dirty` by its walk, has its `EvRun` count rise, or ends disposed. |
 | `body_failure_contained`, `cleanup_failure_contained`, `late_cleanup_contained`, `memo_failure_contained`, `comparer_throw_contained` | `Pure/Scheduler.v` | A sub-body ending in `Fail`, or a throwing comparer, leaves the enclosing function returning, with the failure recorded where the F# records it. |
+| `memo_scope_violation_returns`, `memo_comparer_replaces_failure` | `Pure/Scheduler.v` | The two other ways a memo's run records a failure: a scope violation, and a throwing comparer over an unchanged failure. |
 | `drain_continues`, `teardown_continues` | `Pure/Scheduler.v` | The drain and the teardown go on from the state each step returned. |
 | `drain_no_escape` | `Pure/Scheduler.v` | A flush that returns leaves `g_flushing` false and an empty live queue. `flush_survives_body`, `flush_survives_cleanup`, `flush_survives_child_release`, `flush_survives_memo_run` and `flush_survives_comparer` run each failure with an effect behind it. |
 | `dispose_reverse_order` | `Pure/Ownership.v` | `dispose_scope` is one merged list of the detached children and cleanups, each once, with acquisitions strictly falling. |
 | `owners_in_order` | `Pure/Ownership.v` | After a program on a new graph, every owner's lists are in acquisition order. |
 | `cleanup_once`, `cleanup_once_new_graph` | `Pure/Ownership.v` | A host's `EvCleanup` events, with the cleanups its owners hold, are at most its registrations; and each list entry takes one step of `teardown`, or one `run_cleanup` on the late path. Structural, per entry, since a registration carries no id. |
 | `disposed_no_edges`, `disposed_no_edges_new_graph` | `Pure/Ownership.v` | A disposed node off the running stack has no slots, no edge and no observer position. |
-| `disposed_effect_never_runs` | `Pure/Ownership.v` | From a disposed effect, a program, a flush, a `drain` or its dequeue adds no run and no `EvRun`. `queued_effect_disposed_skipped` has a disposal mid-flush. |
+| `disposed_effect_never_runs` | `Pure/Ownership.v` | From a disposed effect, a program, a flush, a `drain` or its dequeue adds no run and no `EvRun`, and the dequeue changes only `queued`. `queued_effect_disposed_skipped` has a disposal mid-flush. |
 | `disposed_memo_answers` | `Pure/Ownership.v` | A read of a disposed memo keeps nodes, trace and queue, and answers what it stored. `disposed_unread_answers_default` has it answer a default. |
 | `late_registration_immediate`, `late_attach_disposed` | `Pure/Ownership.v` | On a disposed scope, a cleanup runs before the body goes on, and a node is disposed at once. |
 | `stale_link_detach_noop` | `Pure/Ownership.v` | `unlink` of a link from an earlier generation returns the state it was given, which pins the model's check and no reachable behaviour. `stale_link_reached` reaches it. |
