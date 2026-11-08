@@ -133,3 +133,19 @@ Definition exp_disposed_self_window : list event := [
 Definition exp_previous_value : list event := [
   EvHostRead 2 (Ok 1%Z); EvHostRead 3 (Ok 42%Z); EvHostRead 2 (Ok 2%Z); EvLog 3 7%Z; EvHostRead 3 (Ok 5%Z)
 ].
+
+Definition exp_disposed_stale_source_read : list event := [
+  EvHostRead 2 (Ok 0%Z); EvDispose 2; EvRun 3; EvLog 3 0%Z; EvHostRead 2 (Ok 0%Z)
+].
+
+Definition exp_walk_passed_source_marked : list event := [
+  EvRun 5; EvLog 5 0%Z; EvHostRead 3 (Ok 1%Z)
+].
+
+Definition exp_walk_passed_source_cleanup : list event := [
+  EvRun 5; EvLog 5 0%Z; EvCleanup 4; EvHostRead 3 (Ok 1%Z)
+].
+
+Definition exp_effect_resolves_over_moved_source : list event := [
+  EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z
+].

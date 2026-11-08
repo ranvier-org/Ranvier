@@ -57,9 +57,10 @@ intended, the entry closes as "spec corrected".
   `self_marking_through_memo` contradicts: the reading memo goes clean over a source whose next run moves. 3438-3441 and the
   doc of `lateLinkConverges` (`AsyncEdges.fs`, 2e8f9690) point the same way: a reader is told when the node ends a run stale.
   The spec names this as its known starting candidate.
-  **`wake_ok` holds.** Every stale node in each end state holds `n_unannounced` (`stale_all_unannounced`), so the edge from the stale
-  node to the clean, unqueued, idle observer is covered by the last disjunct alone, and `no_lost_wakeups` is not falsified:
-  the theorem does not claim a later mark will arrive. **The property that fails:** when a flush returns with an empty live
+  **`wake_ok` holds here.** Every stale node in each end state holds `n_unannounced` (`stale_all_unannounced`), so the edge from the stale
+  node to the clean, unqueued, idle observer is covered by the last disjunct alone: `wake_ok` does not claim a later mark will arrive.
+  `wake_told` fails on these states unless the observer is in `gh_over`, and these observers are. `walk_passed_source_marked` is what
+  falsifies `no_lost_wakeups_statement`. **The property that fails:** when a flush returns with an empty live
   queue and nothing running, every effect's last run read, from each source, the value that source's body computes from the
   current signals. A form over each source's stored value passes on these witnesses, since the effect read the stored 0.
   These programs are outside the well-behaved fragment, since `well_behaved_memo` rejects `CWrite` and `CCleanup`, so the
@@ -86,8 +87,8 @@ intended, the entry closes as "spec corrected".
   `Flush` changes nothing. The harness asserts each of these and the witness states them. F# trace: `[EvRun 5; EvLog 5 10; EvRun 5; EvLog 5 10; EvHostRead 4 (Ok 10)]`. Unlike `self_marking_wake_lost`, the
   memo is clean, so no marked state records the difference. Core.fs 4205-4206 covers a self-read's overflow and 4178-4181 a
   cleanup's nested run, and neither states this. A self-read and a write put it outside the well-behaved fragment. The
-  glitch-free claim excepts the self-dirtying case, and Task 9's `run_end_edges_are_reads` meets this shape: the outer run
-  read `a`, and its source list holds no slot for it.
+  glitch-free claim excepts the self-dirtying case. `run_end_edges_are_reads` states the source list against the reads since the latest
+  run start, so this shape meets it: the outer run read `a`, its source list holds no slot for it, and that read belongs to no run still counted.
 
 - `self_read_check_overflow` (scenarios `self_read_check_overflow`, `mutual_read_check_overflow`, run by `--fatal`;
   `theories/Pure/Witnesses.v`: `self_read_check_resolves_itself`, `self_read_second_resolves_itself`,
@@ -150,6 +151,33 @@ intended, the entry closes as "spec corrected".
   of the skip alone leaves that one open: `resolve_clean_no_stale_source_falsified`, scenario `stale_source_reader`. `read_move_leaves_effect_queued` changes no memo's reads. `nested_self_recompute_resets_cursor`
   starts from `Dirty`, and its lost read has no slot, so `moved_since_last_run` does not see it. `self_read_check_overflow` has no
   result to conclude from, and the theorem's premise is conditional on one: `self_read_check_resolves_itself` has the read at no result.
+
+- `walk_passed_source_marked` (scenarios `walk_passed_source_marked`, `walk_passed_source_cleanup`; `theories/Pure/Witnesses.v`, same names):
+  a check walk passes a source, and a later source's run marks it again. The effect reads `a` then `b`, and `b` writes `a`'s source, in its
+  body or in a cleanup. A write to `b`'s source queues the effect. `Effect.Execute`'s walk (Core.fs 4792) finds `a` clean and runs `b`. The write marks
+  `a` `Dirty` from `Clean`, and `a`'s notice finds the effect already in `Check`, so it adds nothing. `b`'s value holds, and the walk ends with the
+  effect `Check`, which goes `Clean` (4798-4799). F# trace: `[EvRun 5; EvLog 5 0; EvHostRead 3 (Ok 1)]`, and with the cleanup
+  `[EvRun 5; EvLog 5 0; EvCleanup 4; EvHostRead 3 (Ok 1)]`. Before the closing read the harness asserts the signal at 1, `a` at 0 and `Dirty` with
+  `unannounced` false, one effect run, status `None` for the effect, an empty queue, and an explicit `Flush` changing nothing. The effect logged 0, `a`'s body answers 1,
+  and no mark is due: no disjunct of `wake_ok` covers the edge, so this is a lost wake-up in the sense of the design, and not only a stale value.
+  `ResolveCheck` (4308-4316) has the same walk. Against the documents: 4301-4302 says "Reaching the end still in `Check` means nothing above moved",
+  and a source here is `Dirty` at the end. 4178-4181 documents a cleanup that writes a source as a behaviour, so the cleanup form is not excused by
+  the comment at `tests/Ranvier.Tests/Invalidation.fs:33-35`, which puts a memo that writes outside the contract.
+  **Theorems.** `no_lost_wakeups_statement` and `engine_inv_preserved_statement` are false: `no_lost_wakeups_falsified`, `engine_inv_preserved_falsified`.
+  `no_lost_wakeups_unless_passed` proves the exception is the only one: an observer outside `gh_passed` is covered. `gh_passed` is reached only by a walk
+  ending over a live, stale source with no announcement. Whether `well_behaved_memo` keeps `gh_passed` empty is unproved. `diamond_ends_memo_stale` ends a memo's
+  run stale with no write in any body, and a passed memo could then be marked by that memo's next run if it moved, so a proof needs a run over equal reads to
+  answer an equal value. 80000 programs from a scratch generator over that fragment, half with `CmpNever`, reached no live violation of `wake_ok`. That is testing, and Task 11 owes a theorem or a counterexample.
+
+- `effect_resolves_over_moved_source` (scenario of the same name; `theories/Pure/Witnesses.v`, same name): the effect form of
+  `check_resolves_over_moved_source`. An effect reads `a`, writes `a`'s source, and reads `b`, a memo over `a`. The write marks `a` `Dirty` and the
+  running effect `Check` and queued. `b`'s walk runs `a` with the effect as the current computation, and `NotifyDirtyExcept` (Core.fs 4283) skips the effect.
+  The next execution walks `a` and `b`, both clean, and the effect goes `Clean` with no run. F# trace: `[EvHostRead 3 (Ok 0); EvRun 4; EvLog 4 0]`. The harness
+  asserts `a` at 1 and `Clean`, one effect run, status `None`, an empty queue and a `Flush` changing nothing. The effect's body used 0, `a` holds 1, and it does not run again.
+  Against the documents: 386-393 give the skip's reason, that the computation "receives the new value from that very read", and this read is of `b`. Unlike a memo,
+  an effect that writes is inside the contract: `well_behaved_memo` restricts memos only. `wake_ok` holds, since `a` is `Clean`. So this falsifies no theorem of this layer,
+  and it does bear on Task 11's `convergence`: `well_behaved_program` has to exclude this effect, or the theorem is false.
+  `moved_marks_except_running` states the skip.
 
 ## Awaiting ruling
 
@@ -214,6 +242,12 @@ intended, the entry closes as "spec corrected".
   `Projections.fs:1229`, `Streams.fs:504`, `Timed.fs:293`, `ForwardingEdge` (462) and the three other computations
   of `Core.fs` (5160, 5916, 6532). A change to any of these can reopen the entry.
 
+- `disposed_stale_source_read` (scenario of the same name; `theories/Pure/Witnesses.v`, same name), reproduced and closed as spec corrected. A memo disposed
+  while stale, then read by an effect, links an edge with no mark (Core.fs 4335): the source is `Dirty`, with no announcement, over a clean idle observer, so the first
+  statement of `wake_ok` is false. F# trace: `[EvHostRead 2 (Ok 0); EvDispose 2; EvRun 3; EvLog 3 0; EvHostRead 2 (Ok 0)]`. The harness asserts `Dirty`, one observer, the
+  effect's status and an empty queue. Core.fs 4372-4376 documents it: a disposed memo "still answers reads, with the last value it computed" and "stops being woken". No wake-up
+  is owed, so `wake_ok`, `wake_told` and `later_mark_forwarded` cover live sources, and `resolve_over_disposed_dirty_source` is the same case through a walk.
+
 ## Definition changes
 
 Changes to `redundant` from its first statement in the plan.
@@ -247,3 +281,7 @@ Names of theorems that may contain `Admitted`, `admit` or an `Axiom`, one per li
 - `resolve_clean_no_stale_source` (`theories/Pure/Check.v`): `self_marking_wake_lost` falsifies it on the present engine, and
   `resolve_clean_no_stale_source_falsified` proves that. It covers live sources, since a disposed source stays stale without this
   bug: `resolve_over_disposed_dirty_source`. `check.sh` holds it to the same rule.
+- `no_lost_wakeups` (`theories/Pure/Runs.v`): `walk_passed_source_marked` falsifies it on the present engine, and `no_lost_wakeups_falsified`
+  proves that. Use `no_lost_wakeups_when_nothing_passed`, `no_lost_wakeups_unless_passed` or `no_wake_lost_unless_resolved` until the fix.
+- `engine_inv_preserved` (`theories/Pure/Runs.v`): the same counterexample, and `engine_inv_preserved_falsified` proves that. Use
+  `engine_settled_preserved` until the fix.

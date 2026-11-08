@@ -37,8 +37,8 @@ Record node := { n_kind : kind; n_value : val; n_failure : option val; n_status 
                  n_violated : bool; n_body : cmd; n_env : env; n_mode : scope_mode; n_comparer : comparer;
                  n_link : option link }.
 
-(** [f_unannounced] enables the [elif unannounced] branches of marking, and [f_reader_mark] the
-    [MarkReaderCheck] of a read. Clearing one gives the engine before that fix. *)
+(** [f_unannounced] enables a stale run's end setting [n_unannounced] and the [elif unannounced] branches of
+    marking, and [f_reader_mark] the [MarkReaderCheck] of a read. Clearing one gives the engine before that fix. *)
 Record flags := { f_unannounced : bool; f_reader_mark : bool }.
 
 Definition current_flags : flags := {| f_unannounced := true; f_reader_mark := true |}.
@@ -54,10 +54,14 @@ Record ghost := {
   gh_published : gmap node_id read_view; (* a node's view as its observers were last told it *)
   gh_seen : gmap (node_id * node_id) (list read_view); (* a computation's reads of a source, newest first *)
   gh_unnoticed : gset node_id; (* computations whose reads can differ from [gh_published] with no [Dirty] *)
-  gh_window : gmap node_id nat (* [n_runs] at the latest [RecomputeScoped] clearing a memo's [Dirty] *)
+  gh_window : gmap node_id nat; (* [n_runs] at the latest [RecomputeScoped] clearing a memo's [Dirty] *)
+  gh_reads : gmap node_id (list node_id); (* a computation's tracked reads since its latest run start, in order *)
+  gh_passed : gset node_id; (* computations a walk ended [Clean] over a live, stale, unannounced source, since their latest run start *)
+  gh_over : gset node_id (* computations a walk ended [Clean] over a live, stale source, since their latest run start *)
 }.
 
-Definition empty_ghost : ghost := {| gh_published := ∅; gh_seen := ∅; gh_unnoticed := ∅; gh_window := ∅ |}.
+Definition empty_ghost : ghost :=
+  {| gh_published := ∅; gh_seen := ∅; gh_unnoticed := ∅; gh_window := ∅; gh_reads := ∅; gh_passed := ∅; gh_over := ∅ |}.
 
 Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id node;
                   g_owners : gmap owner_id owner_state; g_queue : list node_id; g_queue_head : nat;

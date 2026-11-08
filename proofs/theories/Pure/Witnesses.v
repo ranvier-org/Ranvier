@@ -2,7 +2,7 @@ From stdpp Require Import prelude.
 From stdpp Require Import gmap.
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Base Require Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Check.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Check Runs.
 
 (** ** Walks *)
 
@@ -531,3 +531,235 @@ Example disposed_window_keeps_unannounced :
   node_view window_end 4 = Some (Clean, true, false, StNone, 0%Z) /\
   n_disposed <$> g_nodes window_end !! 4 = Some true.
 Proof. split_and!; vm_compute; reflexivity. Qed.
+
+(** ** Wake-ups *)
+
+Local Definition final_with (fl : flags) (p : cmd) : state :=
+  default (init fl) (fst <$> run_top 100000 p (init fl)).
+
+Local Lemma in_of_bool (x : node_id) (X : gset node_id) : bool_decide (x ∈ X) = true -> x ∈ X.
+Proof. apply bool_decide_eq_true_1. Qed.
+
+Local Lemma bool_of_in (x : node_id) (X : gset node_id) : x ∈ X -> bool_decide (x ∈ X) = true.
+Proof. apply bool_decide_eq_true_2. Qed.
+
+Local Lemma not_covered s src c dc e :
+  g_nodes s !! c = Some dc -> stale (n_freshness dc) = false -> n_queued dc = false -> g_running s = [] ->
+  g_nodes s !! src = Some e -> n_unannounced e = false -> ~ observer_covered s src c.
+Proof.
+  intros Hc Hs Hq Hr He Hu [[(d&Hd&H)|(d&Hd&H)]|[H|H]].
+  - rewrite Hc in Hd. injection Hd as <-. congruence.
+  - rewrite Hc in Hd. injection Hd as <-. congruence.
+  - by rewrite Hr in H.
+  - unfold n_unannounced_of in H. rewrite He in H. simpl in H. congruence.
+Qed.
+
+(** A memo disposed while stale, then read by a new effect. The read links an edge with no mark, and the memo
+    answers its last value, as Core.fs 4372-4376 documents. Closed in [BUGS.md] as spec corrected: [wake_ok] covers
+    live sources. *)
+Definition disposed_stale_read (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CRead 20 (V 2) (CWrite (V 1) (K 1%Z) (CDispose (V 2) (
+  CEffect 3 (CRead 10 (V 2) (CLog (V 10) Nop)) k))))).
+
+Example disposed_stale_source_read :
+  let s := final (disposed_stale_read Nop) in
+  edge s 2 3 /\ stale_of s 2 /\ ~ live_of s 2 /\ ~ observer_covered s 2 3.
+Proof.
+  intros s.
+  destruct (g_nodes s !! (2 : node_id)) as [e|] eqn:He; [|vm_compute in He; discriminate He].
+  destruct (g_nodes s !! (3 : node_id)) as [c|] eqn:Hc; [|vm_compute in Hc; discriminate Hc].
+  split_and!.
+  - exists 0, 0. split; vm_compute; reflexivity.
+  - exists e. split; [done|]. subst s. vm_compute in He. injection He as <-. reflexivity.
+  - intros (e'&He'&Hl). rewrite He in He'. injection He' as <-. subst s. vm_compute in He. injection He as <-. discriminate Hl.
+  - apply (not_covered s 2 3 c e); [done| | |subst s; vm_compute; reflexivity|done|];
+      subst s; vm_compute in He; vm_compute in Hc; injection He as <-; injection Hc as <-; reflexivity.
+Qed.
+
+(** An effect reads [a], then [b]. [b]'s run writes [a]'s source. *)
+Definition walk_passed (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 4 Pure CmpEq (CRead 10 (V 2) (CWrite (V 1) (V 10) Nop)) (
+  CEffect 5 (CRead 10 (V 3) (CRead 11 (V 4) (CLog (V 10) Nop))) (
+  CWrite (V 2) (K 1%Z) k))))).
+
+(** The same with [b] as an owning memo whose cleanup writes [a]'s source, which Core.fs 4178-4181 documents as a
+    behaviour. *)
+Definition walk_passed_by_cleanup (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 4 Owning CmpEq (CRead 10 (V 2) (CCleanup (CWrite (V 1) (K 1%Z) Nop) (CRet (EMul (V 10) (K 0%Z))))) (
+  CEffect 5 (CRead 10 (V 3) (CRead 11 (V 4) (CLog (V 10) Nop))) (
+  CWrite (V 2) (K 1%Z) k))))).
+
+(** What both programs end in: the effect is clean, unqueued and idle over a live, [Dirty] [a] with no
+    announcement, the signal holds 1, [a] holds 0, and a flush changes nothing. *)
+Local Definition passed_over (s : state) : Prop :=
+  edge s 3 5 /\ stale_of s 3 /\ live_of s 3 /\ ~ observer_covered s 3 5 /\
+  (5 : node_id) ∈ gh_passed (g_ghost s) /\ (5 : node_id) ∈ gh_over (g_ghost s) /\
+  n_value <$> g_nodes s !! (1 : node_id) = Some 1%Z /\ n_value <$> g_nodes s !! (3 : node_id) = Some 0%Z /\
+  pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt).
+
+Local Ltac passed_over_proof s :=
+  unfold passed_over; set (e := default (signal_node 0%Z) (g_nodes s !! (3 : node_id)));
+  set (c := default (signal_node 0%Z) (g_nodes s !! (5 : node_id)));
+  assert (He : g_nodes s !! (3 : node_id) = Some e) by (vm_compute; reflexivity);
+  assert (Hc : g_nodes s !! (5 : node_id) = Some c) by (vm_compute; reflexivity);
+  split_and!;
+    [ exists 0, 0; split; vm_compute; reflexivity
+    | exists e; split; [done|vm_compute; reflexivity]
+    | exists e; split; [done|vm_compute; reflexivity]
+    | apply (not_covered s 3 5 c e); [done|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity|done|vm_compute; reflexivity]
+    | apply in_of_bool; vm_compute; reflexivity | apply in_of_bool; vm_compute; reflexivity
+    | vm_compute; reflexivity | vm_compute; reflexivity | vm_compute; reflexivity | vm_compute; reflexivity | vm_compute; reflexivity ].
+
+Example walk_passed_source_marked : passed_over (final (walk_passed Nop)).
+Proof. set (s := final (walk_passed Nop)). passed_over_proof s. Qed.
+
+Example walk_passed_source_cleanup : passed_over (final (walk_passed_by_cleanup Nop)).
+Proof. set (s := final (walk_passed_by_cleanup Nop)). passed_over_proof s. Qed.
+
+(**md
+**Falsified on the present engine: a program can leave an observer of a live stale source uncovered.**
+
+This is a counterexample, not a guarantee. It proves `no_lost_wakeups_statement` false, using the Confirmed bug [`walk_passed_source_marked`](#walk_passed_source_marked): an effect's check walk passes a memo, a later source's run writes that memo's source, and the walk ends with the effect `Clean` over the memo, now `Dirty` with no announcement.
+*)
+Theorem no_lost_wakeups_falsified : ~ no_lost_wakeups_statement.
+Proof.
+  intros H.
+  destruct walk_passed_source_marked as (He & Hs & Hl & Hn & _).
+  apply Hn. refine (H 100000 (walk_passed Nop) (init current_flags) (final (walk_passed Nop)) _ engine_inv_init _ 3 5 He Hs Hl).
+  vm_compute. reflexivity.
+Qed.
+
+(**md
+**Falsified on the present engine: `run_top` need not keep the invariant with `wake_ok`.**
+
+This is a counterexample, not a guarantee. It proves `engine_inv_preserved_statement` false, on the same program as [`no_lost_wakeups_falsified`](#no_lost_wakeups_falsified).
+*)
+Theorem engine_inv_preserved_falsified : ~ engine_inv_preserved_statement.
+Proof.
+  intros H.
+  destruct walk_passed_source_marked as (He & Hs & Hl & Hn & _).
+  apply Hn.
+  refine (ei_wake _ (Pexec _ _ (H 100000) [] (walk_passed Nop) (init current_flags) (final (walk_passed Nop)) _ engine_inv_init I _) 3 5 He Hs Hl).
+  vm_compute. reflexivity.
+Qed.
+
+(** An effect reads [a], writes its source and reads [b], a memo over [a]. [b]'s walk runs [a] with the effect
+    current, and the notice of that run skips the effect. The effect's next execution walks two clean sources and
+    goes [Clean], with its body's first read at 0 and [a] at 1. Confirmed in [BUGS.md]. *)
+Definition effect_over_moved (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 2) (CRet (V 10))) (
+  CRead 20 (V 3) (
+  CEffect 4 (CRead 10 (V 2) (CWrite (V 1) (K 1%Z) (CRead 11 (V 3) (CLog (V 10) Nop)))) k)))).
+
+Example effect_resolves_over_moved_source :
+  let s := final (effect_over_moved Nop) in
+  g_trace s = [EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z] /\
+  node_view s 2 = Some (Clean, false, false, StNone, 1%Z) /\
+  n_freshness <$> g_nodes s !! (4 : node_id) = Some Clean /\ n_runs <$> g_nodes s !! (4 : node_id) = Some 1 /\
+  pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt).
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
+
+(** A diamond with no write in any body: [x] reads [h] and [y], and [m] reads [h], [x] and [y]. [m]'s run reaches [y]'s run
+    through [x], whose notice skips [x] and marks [m], so [m] ends [Dirty] holding its flag. Model only: scenario [S15] runs the
+    same shape on an effect. *)
+Definition diamond_stale (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 2) (CRet (V 10))) (
+  CMemo 4 Pure CmpEq (CRead 10 (V 1) (CRead 11 (V 3) Nop)) (
+  CMemo 5 Pure CmpEq (CRead 10 (V 1) (CRead 11 (V 4) (CRead 12 (V 3) Nop))) (
+  CRead 20 (V 5) (
+  CBatch (CWrite (V 1) (K 1%Z) (CWrite (V 2) (K 1%Z) Nop)) (
+  CRead 21 (V 5) k))))))).
+
+Example diamond_ends_memo_stale :
+  let s := final (diamond_stale Nop) in
+  n_freshness <$> g_nodes s !! (5 : node_id) = Some Dirty /\ n_unannounced <$> g_nodes s !! (5 : node_id) = Some true /\
+  n_runs <$> g_nodes s !! (5 : node_id) = Some 2 /\ gh_passed (g_ghost s) = ∅.
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
+
+(** ** The historic fixes, turned off *)
+
+Local Definition no_reader_mark : flags := {| f_unannounced := true; f_reader_mark := false |}.
+Local Definition no_unannounced : flags := {| f_unannounced := false; f_reader_mark := true |}.
+
+Local Lemma wake_ok_of_all s : stale_all_unannounced s -> wake_ok s.
+Proof.
+  intros H src c _ (d&Hd&Hs) _. right. right. unfold n_unannounced_of. rewrite Hd. simpl. by rewrite (H src d Hd Hs).
+Qed.
+
+(** A memo writes its own source, so its first run for the effect ends stale. *)
+Definition stale_late_reader : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq
+    (CRead 10 (V 1) (CIf (ELt (V 10) (K 3%Z)) (CWrite (V 1) (EAdd (V 10) (K 1%Z)) (CRet (V 10))) (CRet (V 10)))) (
+  CEffect 4 (CRead 10 (V 2) (CIf (V 10) (CRead 11 (V 3) (CLog (V 11) Nop)) (CLog (K (-1)%Z) Nop))) (
+  CWrite (V 2) (K 1%Z) Nop)))).
+
+(**md
+**Removing `MarkReaderCheck` breaks `wake_told`, and `wake_ok` cannot see it.**
+
+*Check, not a guarantee.*
+
+With `f_reader_mark` cleared, the program's final state has an effect clean and idle over a live stale memo it read, with `gh_over` empty, so `wake_told` fails. `no_wake_lost_unless_resolved` has it holding with the flag on. The memo holds its announcement, so `wake_ok` holds on the broken state too: `wake_told` is the statement that detects this mutant.
+*)
+Theorem reader_mark_off_fires :
+  let s_bad := final_with no_reader_mark stale_late_reader in
+  let s_good := final_with current_flags stale_late_reader in
+  ~ wake_told s_bad /\ wake_told s_good /\ wake_ok s_bad.
+Proof.
+  intros s_bad s_good. split_and!.
+  - set (e := default (signal_node 0%Z) (g_nodes s_bad !! (3 : node_id))).
+    set (c := default (signal_node 0%Z) (g_nodes s_bad !! (4 : node_id))).
+    assert (He : g_nodes s_bad !! (3 : node_id) = Some e) by (vm_compute; reflexivity).
+    assert (Hc : g_nodes s_bad !! (4 : node_id) = Some c) by (vm_compute; reflexivity).
+    assert (Hcs : stale (n_freshness c) = false) by (vm_compute; reflexivity).
+    assert (Hcq : n_queued c = false) by (vm_compute; reflexivity).
+    clearbody c.
+    intros H. destruct (H 3 4) as [[(d&Hd&Hs)|(d&Hd&Hq)]|[Hr|Ho]].
+    + exists 1, 0. split; vm_compute; reflexivity.
+    + exists e. split; [exact He|vm_compute; reflexivity].
+    + exists e. split; [exact He|vm_compute; reflexivity].
+    + rewrite Hc in Hd. injection Hd as <-. congruence.
+    + rewrite Hc in Hd. injection Hd as <-. congruence.
+    + vm_compute in Hr. exact Hr.
+    + apply bool_of_in in Ho. vm_compute in Ho. discriminate Ho.
+  - refine (no_wake_lost_unless_resolved 100000 stale_late_reader (init current_flags) s_good _ engine_settled_init _).
+    vm_compute. reflexivity.
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+Qed.
+
+(**md
+**Never setting `n_unannounced` breaks `wake_ok`.**
+
+*Check, not a guarantee.*
+
+With `f_unannounced` cleared, a run ending stale sets no flag and a mark forwards no announcement. On [`self_marking_cleanup`](#self_marking_cleanup) the final state has an effect clean and idle over a live stale memo with no flag, so `wake_ok` fails. With the flag on, `wake_ok` holds on that program.
+*)
+Theorem unannounced_off_fires :
+  let s_bad := final_with no_unannounced (self_marking_cleanup Nop) in
+  let s_good := final_with current_flags (self_marking_cleanup Nop) in
+  ~ wake_ok s_bad /\ wake_ok s_good.
+Proof.
+  intros s_bad s_good. split.
+  - set (e := default (signal_node 0%Z) (g_nodes s_bad !! (5 : node_id))).
+    set (c := default (signal_node 0%Z) (g_nodes s_bad !! (6 : node_id))).
+    assert (He : g_nodes s_bad !! (5 : node_id) = Some e) by (vm_compute; reflexivity).
+    assert (Hc : g_nodes s_bad !! (6 : node_id) = Some c) by (vm_compute; reflexivity).
+    intros H. refine (not_covered s_bad 5 6 c e Hc _ _ _ He _ (H 5 6 _ _ _)).
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + exists 0, 0. split; vm_compute; reflexivity.
+    + exists e. split; [exact He|vm_compute; reflexivity].
+    + exists e. split; [exact He|vm_compute; reflexivity].
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+Qed.

@@ -672,6 +672,98 @@ let scenarios: (string * (Ctx -> unit)) list =
             s.Value <- 5
             c.HostRead 2 (fun () -> counter.Value) |> ignore
             c.HostRead 3 (fun () -> outer.Value) |> ignore
+
+        // BUGS.md, disposed_stale_source_read. A memo disposed while stale answers its last value and links its reader,
+        // with no mark. Core.fs 4372-4376 documents the disposed memo: it stops being woken.
+        "disposed_stale_source_read",
+        fun c ->
+            let s = c.Signal 1 0
+            let m = c.Memo 2 (fun () -> s.Value)
+            c.HostRead 2 (fun () -> m.Value) |> ignore
+            s.Value <- 1
+            c.Dispose 2 (fun () -> m.Dispose ()) (box m)
+            let e = c.Effect 3 (fun () -> c.Log 3 m.Value)
+            c.Check (freshnessOf m = "Dirty") $"the memo is {freshnessOf m}"
+            c.Check ((internalProp m "ObserverCount" :?> int) = 1) "the effect observes the disposed memo"
+            c.CheckQuiet [ "e", box e, "None" ]
+            c.Check (c.HostRead 2 (fun () -> m.Value) = 0) "the disposed memo answers its last value"
+
+        // BUGS.md, walk_passed_source_marked. An effect's walk passes `a`, then a later source's run writes `a`'s source.
+        // The notice finds the effect in `Check`, and the walk ends with the effect clean over `a`, now `Dirty`.
+        "walk_passed_source_marked",
+        fun c ->
+            let s = c.Signal 1 0
+            let t = c.Signal 2 0
+            let a = c.Memo 3 (fun () -> s.Value)
+
+            let b =
+                c.Memo 4 (fun () ->
+                    s.Value <- t.Value
+                    0)
+
+            let e =
+                c.Effect 5 (fun () ->
+                    let x = a.Value
+                    b.Value |> ignore
+                    c.Log 5 x)
+
+            t.Value <- 1
+            c.Check (s.Peek = 1) $"the signal holds {s.Peek}"
+            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
+            c.Check (freshnessOf a = "Dirty") $"the memo is {freshnessOf a}"
+            c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
+            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (c.HostRead 3 (fun () -> a.Value) = 1) "the memo's body answers 1"
+
+        // BUGS.md, walk_passed_source_marked. The same through a cleanup, which Core.fs 4178-4181 documents as a behaviour.
+        "walk_passed_source_cleanup",
+        fun c ->
+            let s = c.Signal 1 0
+            let t = c.Signal 2 0
+            let a = c.Memo 3 (fun () -> s.Value)
+
+            let b =
+                c.OwningMemo 4 (fun () ->
+                    let v = t.Value
+                    c.Cleanup 4 (fun () -> s.Value <- 1)
+                    v * 0)
+
+            let e =
+                c.Effect 5 (fun () ->
+                    let x = a.Value
+                    b.Value |> ignore
+                    c.Log 5 x)
+
+            t.Value <- 1
+            c.Check (s.Peek = 1) $"the signal holds {s.Peek}"
+            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
+            c.Check (freshnessOf a = "Dirty") $"the memo is {freshnessOf a}"
+            c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
+            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (c.HostRead 3 (fun () -> a.Value) = 1) "the memo's body answers 1"
+
+        // BUGS.md, effect_resolves_over_moved_source. An effect reads `a`, writes its source and reads a memo over it. The
+        // walk of that read runs `a` with the effect as the current computation, and NotifyDirtyExcept skips the effect.
+        "effect_resolves_over_moved_source",
+        fun c ->
+            let s = c.Signal 1 0
+            let a = c.Memo 2 (fun () -> s.Value)
+            let b = c.Memo 3 (fun () -> a.Value)
+            c.HostRead 3 (fun () -> b.Value) |> ignore
+
+            let e =
+                c.Effect 4 (fun () ->
+                    let v = a.Value
+                    s.Value <- 1
+                    b.Value |> ignore
+                    c.Log 4 v)
+
+            c.Check (a.Peek = 1) $"the source holds {a.Peek}"
+            c.Check (freshnessOf a = "Clean") $"the source is {freshnessOf a}"
+            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
     ]
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,

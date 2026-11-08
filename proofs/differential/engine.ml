@@ -194,6 +194,14 @@ let rec fold_right f a0 = function
 | Nil -> a0
 | Cons (b, l0) -> f b (fold_right f a0 l0)
 
+(** val existsb : ('a1 -> bool) -> 'a1 list -> bool **)
+
+let rec existsb f = function
+| Nil -> False
+| Cons (a, l0) -> (match f a with
+                   | True -> True
+                   | False -> existsb f l0)
+
 (** val le_lt_dec : nat -> nat -> sumbool **)
 
 let rec le_lt_dec n0 m0 =
@@ -2281,7 +2289,9 @@ let read_view_of d =
 
 type ghost = { gh_published : (node_id, read_view) gmap;
                gh_seen : ((node_id, node_id) prod, read_view list) gmap;
-               gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap }
+               gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap;
+               gh_reads : (node_id, node_id list) gmap;
+               gh_passed : node_id gset; gh_over : node_id gset }
 
 (** val empty_ghost : ghost **)
 
@@ -2293,7 +2303,10 @@ let empty_ghost =
         (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
           nat_countable)));
     gh_unnoticed = (empty0 (gset_empty Coq_Nat.eq_dec nat_countable));
-    gh_window = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
+    gh_window = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable));
+    gh_reads = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable));
+    gh_passed = (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)); gh_over =
+    (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)) }
 
 type state = { g_flags : flags; g_edges : edgeWorld;
                g_nodes : (node_id, node) gmap;
@@ -2875,6 +2888,13 @@ let push_running n0 =
 let pop_running =
   m_modify (fun s -> with_running (tl s.g_running) s)
 
+(** val stale_live : node -> bool **)
+
+let stale_live d =
+  match stale d.n_freshness with
+  | True -> negb d.n_disposed
+  | False -> False
+
 (** val read_prefix : edgeWorld -> node_id -> node_id list **)
 
 let read_prefix w c =
@@ -2916,7 +2936,15 @@ let ghost_read c n0 pre s =
            (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) c)
            g.gh_unnoticed
        | Right -> g.gh_unnoticed);
-      gh_window = g.gh_window } s
+      gh_window = g.gh_window; gh_reads =
+      (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+        c
+        (app
+          (from_option (Obj.magic id) Nil
+            (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) c g.gh_reads))
+          (Cons (n0, Nil)))
+        g.gh_reads);
+      gh_passed = g.gh_passed; gh_over = g.gh_over } s
   | None -> s
 
 (** val ghost_run_start : node_id -> state -> state **)
@@ -2928,7 +2956,32 @@ let ghost_run_start n0 s =
     (difference0 (gset_difference Coq_Nat.eq_dec nat_countable)
       g.gh_unnoticed
       (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
-    gh_window = g.gh_window } s
+    gh_window = g.gh_window; gh_reads =
+    (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+      n0 Nil g.gh_reads);
+    gh_passed =
+    (difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_passed
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
+    gh_over =
+    (difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_over
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)) }
+    s
+
+(** val ghost_effect_start : node_id -> state -> state **)
+
+let ghost_effect_start n0 s =
+  let g = s.g_ghost in
+  with_ghost { gh_published = g.gh_published; gh_seen = g.gh_seen;
+    gh_unnoticed = g.gh_unnoticed; gh_window = g.gh_window; gh_reads =
+    (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+      n0 Nil g.gh_reads);
+    gh_passed =
+    (difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_passed
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0));
+    gh_over =
+    (difference0 (gset_difference Coq_Nat.eq_dec nat_countable) g.gh_over
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)) }
+    s
 
 (** val ghost_publish : node_id -> state -> state **)
 
@@ -2940,7 +2993,8 @@ let ghost_publish n0 s =
       (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
         n0 (read_view_of d) g.gh_published);
       gh_seen = g.gh_seen; gh_unnoticed = g.gh_unnoticed; gh_window =
-      g.gh_window } s
+      g.gh_window; gh_reads = g.gh_reads; gh_passed = g.gh_passed; gh_over =
+      g.gh_over } s
   | None -> s
 
 (** val run_end_unnoticed :
@@ -2986,7 +3040,8 @@ let ghost_run_end n0 r moved s =
       gh_seen = g.gh_seen; gh_unnoticed =
       (union0 (gset_union Coq_Nat.eq_dec nat_countable)
         (run_end_unnoticed n0 r moved d s) g.gh_unnoticed);
-      gh_window = g.gh_window } s
+      gh_window = g.gh_window; gh_reads = g.gh_reads; gh_passed =
+      g.gh_passed; gh_over = g.gh_over } s
   | None -> s
 
 (** val ghost_dirty_cleared : node_id -> nat -> state -> state **)
@@ -3000,8 +3055,43 @@ let ghost_dirty_cleared n0 runs s =
       g.gh_unnoticed);
     gh_window =
     (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
-      n0 runs g.gh_window) }
-    s
+      n0 runs g.gh_window);
+    gh_reads = g.gh_reads; gh_passed = g.gh_passed; gh_over = g.gh_over } s
+
+(** val slot_holds : (node -> bool) -> state -> node_id -> bool **)
+
+let slot_holds p s n0 =
+  existsb (fun src ->
+    match lookup0 (Obj.magic gmap_lookup Coq_Nat.eq_dec nat_countable) src
+            s.g_nodes with
+    | Some e -> p e
+    | None -> False)
+    (fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
+      (sources_of s.g_edges n0).source_slots)
+
+(** val add_if : bool -> node_id -> node_id gset -> node_id gset **)
+
+let add_if b n0 x =
+  match b with
+  | True ->
+    union0 (gset_union Coq_Nat.eq_dec nat_countable)
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0) x
+  | False -> x
+
+(** val ghost_resolved : node_id -> state -> state **)
+
+let ghost_resolved n0 s =
+  let g = s.g_ghost in
+  with_ghost { gh_published = g.gh_published; gh_seen = g.gh_seen;
+    gh_unnoticed = g.gh_unnoticed; gh_window = g.gh_window; gh_reads =
+    g.gh_reads; gh_passed =
+    (add_if
+      (slot_holds (fun e ->
+        match stale_live e with
+        | True -> negb e.n_unannounced
+        | False -> False) s n0)
+      n0 g.gh_passed);
+    gh_over = (add_if (slot_holds stale_live s n0) n0 g.gh_over) } s
 
 (** val root_owner_id : owner_id **)
 
@@ -3383,13 +3473,6 @@ let outside_bodies s =
      | None -> negb s.g_untracked)
   | False -> False
 
-(** val stale_live : node -> bool **)
-
-let stale_live d =
-  match stale d.n_freshness with
-  | True -> negb d.n_disposed
-  | False -> False
-
 (** val track : node_id -> unit0 m **)
 
 let track n0 s =
@@ -3432,6 +3515,13 @@ let on_node e x k =
     match decide (decide_rel Coq_Z.le_dec Z0 z0) with
     | Left -> k (Z.to_nat z0)
     | Right -> stuck)
+
+(** val announce : node_id -> unit0 m **)
+
+let announce n0 s =
+  match s.g_flags.f_unannounced with
+  | True -> modify_node n0 (node_with_unannounced True) s
+  | False -> Some (Pair (s, Tt))
 
 (** val note_host_read : node_id -> outcome -> unit0 m **)
 
@@ -3751,8 +3841,9 @@ and refresh fuel n0 =
              m_bind (get_node n0) (fun d' ->
                match decide (decide_rel freshness_eq_dec d'.n_freshness Check) with
                | Left ->
-                 modify_node n0 (fun x ->
-                   node_with_unannounced False (node_with_freshness Clean x))
+                 m_bind (m_modify (ghost_resolved n0)) (fun _ ->
+                   modify_node n0 (fun x ->
+                     node_with_unannounced False (node_with_freshness Clean x)))
                | Right -> m_return Tt))
          | Right -> m_return Tt)
         (fun _ ->
@@ -3908,9 +3999,7 @@ and run_memo fuel n0 =
                                               (decide_rel freshness_eq_dec
                                                 d3.n_freshness Clean) with
                                       | Left -> m_return Tt
-                                      | Right ->
-                                        modify_node n0
-                                          (node_with_unannounced True))))))))))))))))))
+                                      | Right -> announce n0)))))))))))))))))
 
 (** val execute_effect : nat -> node_id -> unit0 m **)
 
@@ -3929,7 +4018,9 @@ and execute_effect fuel n0 =
                m_bind (get_node n0) (fun d' ->
                  match decide
                          (decide_rel freshness_eq_dec d'.n_freshness Check) with
-                 | Left -> modify_node n0 (node_with_freshness Clean)
+                 | Left ->
+                   m_bind (m_modify (ghost_resolved n0)) (fun _ ->
+                     modify_node n0 (node_with_freshness Clean))
                  | Right -> m_return Tt))
            | Right -> m_return Tt)
           (fun _ ->
@@ -3950,21 +4041,23 @@ and run_effect fuel n0 =
   | S f ->
     m_bind (push_running n0) (fun _ ->
       m_bind (edges (sources_begin_run n0)) (fun _ ->
-        m_bind (get_node n0) (fun d ->
-          m_bind
-            (match d.n_scope with
-             | Some o ->
-               m_bind (modify_node n0 (node_with_in_cleanup True)) (fun _ ->
-                 m_bind (discharge f o) (fun _ ->
-                   modify_node n0 (node_with_in_cleanup False)))
-             | None -> m_return Tt)
-            (fun _ ->
-            m_bind (get_node n0) (fun d' ->
-              m_bind
-                (match d'.n_disposed with
-                 | True -> m_return Tt
-                 | False -> run_effect_body f n0)
-                (fun _ -> pop_running))))))
+        m_bind (m_modify (ghost_effect_start n0)) (fun _ ->
+          m_bind (get_node n0) (fun d ->
+            m_bind
+              (match d.n_scope with
+               | Some o ->
+                 m_bind (modify_node n0 (node_with_in_cleanup True))
+                   (fun _ ->
+                   m_bind (discharge f o) (fun _ ->
+                     modify_node n0 (node_with_in_cleanup False)))
+               | None -> m_return Tt)
+              (fun _ ->
+              m_bind (get_node n0) (fun d' ->
+                m_bind
+                  (match d'.n_disposed with
+                   | True -> m_return Tt
+                   | False -> run_effect_body f n0)
+                  (fun _ -> pop_running)))))))
 
 (** val run_effect_body : nat -> node_id -> unit0 m **)
 

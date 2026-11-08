@@ -252,6 +252,8 @@ Definition pop_running : M unit := m_modify (fun s => with_running (tail (g_runn
 
 (** ** Ghost state *)
 
+Definition stale_live (d : node) : bool := stale (n_freshness d) && negb (n_disposed d).
+
 (** The sources of [c] read in its latest run: the slots before the cursor. *)
 Definition read_prefix (w : EdgeWorld) (c : node_id) : list node_id :=
   fst <$> take (source_cursor (sources_of w c)) (source_slots (sources_of w c)).
@@ -266,7 +268,9 @@ Definition ghost_read (c n : node_id) (pre : list node_id) (s : state) : state :
     with_ghost {| gh_published := gh_published g; gh_seen := <[(c, n) := read_view_of d :: older]> (gh_seen g);
                   gh_unnoticed := if decide (n ∈ g_running s) then {[c]} ∪ gh_unnoticed g
                                   else gh_unnoticed g;
-                  gh_window := gh_window g |} s
+                  gh_window := gh_window g;
+                  gh_reads := <[c := default [] (gh_reads g !! c) ++ [n]]> (gh_reads g);
+                  gh_passed := gh_passed g; gh_over := gh_over g |} s
   | None => s
   end.
 
@@ -274,7 +278,15 @@ Definition ghost_read (c n : node_id) (pre : list node_id) (s : state) : state :
 Definition ghost_run_start (n : node_id) (s : state) : state :=
   let g := g_ghost s in
   with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g ∖ {[n]};
-                gh_window := gh_window g |} s.
+                gh_window := gh_window g; gh_reads := <[n := []]> (gh_reads g);
+                gh_passed := gh_passed g ∖ {[n]}; gh_over := gh_over g ∖ {[n]} |} s.
+
+(** The start of an effect's run, which empties the slots before its cursor. *)
+Definition ghost_effect_start (n : node_id) (s : state) : state :=
+  let g := g_ghost s in
+  with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g;
+                gh_window := gh_window g; gh_reads := <[n := []]> (gh_reads g);
+                gh_passed := gh_passed g ∖ {[n]}; gh_over := gh_over g ∖ {[n]} |} s.
 
 (** A view told to every observer: a creation or a write. *)
 Definition ghost_publish (n : node_id) (s : state) : state :=
@@ -282,7 +294,8 @@ Definition ghost_publish (n : node_id) (s : state) : state :=
   | Some d =>
     let g := g_ghost s in
     with_ghost {| gh_published := <[n := read_view_of d]> (gh_published g); gh_seen := gh_seen g;
-                  gh_unnoticed := gh_unnoticed g; gh_window := gh_window g |} s
+                  gh_unnoticed := gh_unnoticed g; gh_window := gh_window g; gh_reads := gh_reads g;
+                  gh_passed := gh_passed g; gh_over := gh_over g |} s
   | None => s
   end.
 
@@ -305,7 +318,7 @@ Definition ghost_run_end (n : node_id) (r : option node_id) (moved : bool) (s : 
     let g := g_ghost s in
     with_ghost {| gh_published := <[n := read_view_of d]> (gh_published g); gh_seen := gh_seen g;
                   gh_unnoticed := run_end_unnoticed n r moved d s ∪ gh_unnoticed g;
-                  gh_window := gh_window g |} s
+                  gh_window := gh_window g; gh_reads := gh_reads g; gh_passed := gh_passed g; gh_over := gh_over g |} s
   | None => s
   end.
 
@@ -313,7 +326,23 @@ Definition ghost_run_end (n : node_id) (r : option node_id) (moved : bool) (s : 
 Definition ghost_dirty_cleared (n : node_id) (runs : nat) (s : state) : state :=
   let g := g_ghost s in
   with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := {[n]} ∪ gh_unnoticed g;
-                gh_window := <[n := runs]> (gh_window g) |} s.
+                gh_window := <[n := runs]> (gh_window g); gh_reads := gh_reads g; gh_passed := gh_passed g;
+                gh_over := gh_over g |} s.
+
+(** A slot of [n] holds a source satisfying [p]. *)
+Definition slot_holds (p : node -> bool) (s : state) (n : node_id) : bool :=
+  existsb (fun src => match g_nodes s !! src with Some e => p e | None => false end)
+    (fst <$> source_slots (sources_of (g_edges s) n)).
+
+Definition add_if (b : bool) (n : node_id) (x : gset node_id) : gset node_id := if b then {[n]} ∪ x else x.
+
+(** A walk ending in [Check], ahead of [n] going [Clean]. *)
+Definition ghost_resolved (n : node_id) (s : state) : state :=
+  let g := g_ghost s in
+  with_ghost {| gh_published := gh_published g; gh_seen := gh_seen g; gh_unnoticed := gh_unnoticed g;
+                gh_window := gh_window g; gh_reads := gh_reads g;
+                gh_passed := add_if (slot_holds (fun e => stale_live e && negb (n_unannounced e)) s n) n (gh_passed g);
+                gh_over := add_if (slot_holds stale_live s n) n (gh_over g) |} s.
 
 (** ** Owners *)
 
@@ -455,8 +484,6 @@ Definition outside_bodies (s : state) : bool :=
   match g_current s with Some _ => false | None => true end &&
   negb (g_untracked s).
 
-Definition stale_live (d : node) : bool := stale (n_freshness d) && negb (n_disposed d).
-
 (** [Graph.Track]. *)
 Definition track (n : node_id) : M unit :=
   fun s =>
@@ -490,6 +517,10 @@ Definition on_value (e : env) (x : expr) (k : val -> M outcome) : M outcome :=
 
 Definition on_node (e : env) (x : expr) (k : node_id -> M outcome) : M outcome :=
   on_value e x (fun z => if decide (0 <= z)%Z then k (Z.to_nat z) else stuck).
+
+(** The end of a run left stale, under [f_unannounced]. *)
+Definition announce (n : node_id) : M unit :=
+  fun s => if f_unannounced (g_flags s) then modify_node n (node_with_unannounced true) s else Some (s, tt).
 
 (** A host read: outside every computation and cleanup. *)
 Definition note_host_read (n : node_id) (o : outcome) : M unit :=
@@ -739,7 +770,9 @@ with refresh (fuel : nat) (n : node_id) {struct fuel} : M unit :=
         let* _ := resolve_walk f n 0 in
         let* d' := get_node n in
         if decide (n_freshness d' = Check)
-        then modify_node n (fun x => node_with_unannounced false (node_with_freshness Clean x))
+        then
+          let* _ := m_modify (ghost_resolved n) in
+          modify_node n (fun x => node_with_unannounced false (node_with_freshness Clean x))
         else m_return tt
       else m_return tt in
     let* d' := get_node n in
@@ -833,7 +866,7 @@ with run_memo (fuel : nat) (n : node_id) {struct fuel} : M unit :=
     let* _ := m_modify (ghost_run_end n (g_current s) moved) in
     let* _ := if moved then m_step (notify_dirty_except f n (g_current s)) else m_return tt in
     let* d3 := get_node n in
-    if decide (n_freshness d3 = Clean) then m_return tt else modify_node n (node_with_unannounced true)
+    if decide (n_freshness d3 = Clean) then m_return tt else announce n
   end
 
 (** [Effect.Execute]. *)
@@ -848,7 +881,11 @@ with execute_effect (fuel : nat) (n : node_id) {struct fuel} : M unit :=
         if decide (n_freshness d = Check) then
           let* _ := resolve_walk f n 0 in
           let* d' := get_node n in
-          if decide (n_freshness d' = Check) then modify_node n (node_with_freshness Clean) else m_return tt
+          if decide (n_freshness d' = Check)
+          then
+            let* _ := m_modify (ghost_resolved n) in
+            modify_node n (node_with_freshness Clean)
+          else m_return tt
         else m_return tt in
       let* d' := get_node n in
       let* _ := modify_node n (fun x => node_with_freshness Clean (node_with_queued false x)) in
@@ -862,6 +899,7 @@ with run_effect (fuel : nat) (n : node_id) {struct fuel} : M unit :=
   | S f =>
     let* _ := push_running n in
     let* _ := edges (sources_begin_run n) in
+    let* _ := m_modify (ghost_effect_start n) in
     let* d := get_node n in
     let* _ :=
       match n_scope d with

@@ -711,6 +711,31 @@ Local Ltac ok_mod := apply ok_modify_irrelevant; intros ?; irr.
 Lemma ok_emit P e : ok_under P (emit e).
 Proof. ok_mod. Qed.
 
+(** A change to [gh_reads], [gh_passed] and [gh_over] alone. *)
+Definition with_run_ghost (R : gmap node_id (list node_id)) (A O : gset node_id) (s : state) : state :=
+  with_ghost {| gh_published := gh_published (g_ghost s); gh_seen := gh_seen (g_ghost s);
+                gh_unnoticed := gh_unnoticed (g_ghost s); gh_window := gh_window (g_ghost s);
+                gh_reads := R; gh_passed := A; gh_over := O |} s.
+
+Definition reads_or_passed_only (g : state -> state) : Prop :=
+  forall s, exists R A O, g s = with_run_ghost R A O s.
+
+Lemma invariant_reads_only s R A O : check_invariant s -> check_invariant (with_run_ghost R A O s).
+Proof. intros H. destruct H. unfold with_run_ghost, with_ghost. by split; gs. Qed.
+
+Lemma ok_reads_only P g : reads_or_passed_only g -> ok_under P (m_modify g).
+Proof.
+  intros Hg s s' b Hi _ Hm. unfold m_modify in Hm. simplify_eq.
+  destruct (Hg s) as (R & A & O & ->).
+  split; [by apply invariant_reads_only|by apply frame_same].
+Qed.
+
+Lemma resolved_reads_only n : reads_or_passed_only (ghost_resolved n).
+Proof. intros s. by do 3 eexists. Qed.
+
+Lemma effect_start_reads_only n : reads_or_passed_only (ghost_effect_start n).
+Proof. intros s. by do 3 eexists. Qed.
+
 Lemma ok_get_owner P o : ok_under P (get_owner o).
 Proof.
   intros s s' b Hi _ Hm. unfold get_owner in Hm. destruct (g_owners s !! o); simplify_eq.
@@ -1015,10 +1040,10 @@ Lemma invariant_told n d s G s' :
   check_invariant s' /\ frame s s'.
 Proof.
   intros H Hd Hpub Hseen Hwin Hun Hm Hkey.
-  destruct G as [P S U W]. cbn [gh_published gh_seen gh_window gh_unnoticed] in Hpub, Hseen, Hwin, Hun, Hkey.
+  destruct G as [P S U W Rd Pa Ov]. cbn [gh_published gh_seen gh_window gh_unnoticed] in Hpub, Hseen, Hwin, Hun, Hkey.
   subst P S W.
   assert (H1 : check_invariant_except (Some n) (Some n) (with_ghost {| gh_published := <[n := read_view_of d]> (gh_published (g_ghost s));
-      gh_seen := gh_seen (g_ghost s); gh_unnoticed := U; gh_window := gh_window (g_ghost s) |} s)).
+      gh_seen := gh_seen (g_ghost s); gh_unnoticed := U; gh_window := gh_window (g_ghost s); gh_reads := Rd; gh_passed := Pa; gh_over := Ov |} s)).
   { destruct H. unfold with_ghost. split; gs; try done.
     - intros m e Hm1 Hm2 Hm3 Hx. rewrite lookup_insert_ne by congruence. eauto.
     - intros c e y He Hek Hy Hyn.
@@ -1385,7 +1410,13 @@ Section Step.
       apply ok_bind; [apply _|apply ok_any; ih IH|intros _].
       apply ok_get_node_at. intros d'.
       destruct (decide (n_freshness d' = Check)) as [Hc|_]; [|apply ok_return].
-      apply ok_modify_at. ns.
+      intros s s' a Hi [_ Hd] Hm. rewrite bind_m_modify in Hm.
+      destruct (resolved_reads_only n s) as (R & A & O & Hg). rewrite Hg in Hm. simpl in Hm.
+      assert (Hd1 : g_nodes (with_run_ghost R A O s) !! n = Some d') by exact Hd.
+      assert (Hi1 := invariant_reads_only s R A O Hi).
+      destruct (ok_modify_at (fun _ => True) n (fun x => node_with_unannounced false (node_with_freshness Clean x)) d'
+                 ltac:(ns) _ _ _ Hi1 (conj I Hd1) Hm) as [Hi2 F2].
+      split; [done|]. eapply frame_trans; [|exact F2]. by apply frame_same.
     - apply ok_bind; [apply _|apply ok_get_node|intros d'].
       destruct (decide (n_freshness d' = Dirty)); [ih IH|apply ok_return].
   Qed.
@@ -1587,7 +1618,7 @@ Section Step.
     assert (Hk10 : has_kind n KMemo s10) by (apply Hkinds10; by exists d2).
     destruct Hk10 as (d3 & Hd3 & Hk3).
     unfold ghost_run_end in Hm10. rewrite Hd3 in Hm10.
-    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _ |}) in Hm10.
+    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _; gh_reads := _; gh_passed := _; gh_over := _ |}) in Hm10.
     (* the notice *)
     name_k K11.
     assert (Hs11 : exists s11, K11 tt s11 = Some (s', a) /\ check_invariant s11 /\ frame s10 s11).
@@ -1638,7 +1669,9 @@ Section Step.
     destruct (decide (n_freshness d4 = Clean)) as [Hc4|Hc4].
     - unfold m_return in Hm11. simplify_eq. split_and!; [done| |by exists d4].
       split_and!; [done|done|done|done].
-    - unfold modify_node in Hm11. rewrite Hd4 in Hm11. simplify_eq.
+    - unfold announce in Hm11. destruct (f_unannounced (g_flags s11)).
+      2: { simplify_eq. split_and!; [done| |by exists d4]. split_and!; [done|done|done|done]. }
+      unfold modify_node in Hm11. rewrite Hd4 in Hm11. simplify_eq.
       assert (Hclosed' : closed (nodes_and_windows (set_node n (node_with_unannounced true d4) s11)) n \/
                          n_disposed (node_with_unannounced true d4) = true).
       { destruct Hpost as [Hp|Hp]; [left|by right].
@@ -1683,6 +1716,7 @@ Section Step.
       apply ok_bind; [apply _|apply ok_any; ih IH|intros _].
       apply ok_bind; [apply _|apply ok_get_node|intros d'].
       destruct (decide _); [|apply ok_return].
+      apply ok_bind; [apply _|apply ok_reads_only, resolved_reads_only|intros _].
       apply ok_modify_effect; intros ?; simpl; try done; lia.
     - apply ok_bind; [apply _|apply ok_get_node|intros d'].
       apply ok_bind; [apply _|apply ok_modify_effect; intros ?; simpl; try done; lia|intros _].
@@ -1729,6 +1763,7 @@ Section Step.
       - left.
       - intros c Hc. by apply elem_of_cons in Hc. }
     assert (Hrest : ok_effect_rest n (g_running s) (
+      let* _ := m_modify (ghost_effect_start n) in
       let* d := get_node n in
       let* _ :=
         match n_scope d with
@@ -1741,7 +1776,8 @@ Section Step.
       let* d' := get_node n in
       let* _ := if n_disposed d' then m_return tt else run_effect_body f n in
       pop_running)).
-    { apply ok_effect_rest_bind; [apply ok_get_node|intros d].
+    { apply ok_effect_rest_bind; [apply ok_reads_only, effect_start_reads_only|intros _].
+      apply ok_effect_rest_bind; [apply ok_get_node|intros d].
       apply ok_effect_rest_bind.
       { destruct (n_scope d) as [o|]; [|apply ok_return].
         apply ok_bind; [apply _|apply ok_modify_node; nstep|intros _].
@@ -1811,7 +1847,7 @@ Section Step.
     assert (Hd1 : g_nodes s1 !! n = Some (node_with_value v d)) by (simpl; apply lookup_insert_eq).
     unfold ghost_publish in Hm. rewrite Hd1 in Hm.
     apply bind_step in Hm as (s2 & Hn & Hm2).
-    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _ |}) in Hn.
+    set (G := {| gh_published := _; gh_seen := _; gh_unnoticed := _; gh_window := _; gh_reads := _; gh_passed := _; gh_over := _ |}) in Hn.
     assert (Hreach : world_reachable (g_edges s1)) by apply (ci_reachable _ _ _ Hi1).
     destruct (invariant_told n (node_with_value v d) s1 G s2) as [Hi2 F2]; [done|done|done|done|done|simpl; set_solver| | |].
     { apply (any_mark_rtc f n None). right; right; right; left. done. }
@@ -2097,14 +2133,15 @@ Theorem resolve_walk_check_clears f n s s1 d d1 :
     n_runs (node_with_unannounced false (node_with_freshness Clean d1)) = n_runs d1.
 Proof.
   intros Hd Hc Hw Hd1 Hc1.
-  assert (Hd2 : g_nodes (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) s1) !! n =
+  assert (Hg : g_nodes (ghost_resolved n s1) !! n = Some d1) by exact Hd1.
+  assert (Hd2 : g_nodes (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) (ghost_resolved n s1)) !! n =
                 Some (node_with_unannounced false (node_with_freshness Clean d1))) by (simpl; apply lookup_insert_eq).
-  exists (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) s1).
+  exists (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) (ghost_resolved n s1)).
   split_and!; [|done|done|done|done].
   cbn [refresh]. rewrite (bind_get_node _ _ _ _ Hd), decide_True by done.
   rewrite bind_bind, (bind_some _ _ _ _ _ Hw).
   rewrite bind_bind, (bind_get_node _ _ _ _ Hd1), decide_True by done.
-  rewrite (bind_modify_node _ _ _ _ _ Hd1).
+  rewrite bind_bind, bind_m_modify, (bind_modify_node _ _ _ _ _ Hg).
   rewrite (bind_get_node _ _ _ _ Hd2), decide_False by done.
   reflexivity.
 Qed.

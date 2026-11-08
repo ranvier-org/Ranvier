@@ -79,6 +79,8 @@ val fold_left : ('a1 -> 'a2 -> 'a1) -> 'a2 list -> 'a1 -> 'a1
 
 val fold_right : ('a2 -> 'a1 -> 'a1) -> 'a1 -> 'a2 list -> 'a1
 
+val existsb : ('a1 -> bool) -> 'a1 list -> bool
+
 val le_lt_dec : nat -> nat -> sumbool
 
 val le_gt_dec : nat -> nat -> sumbool
@@ -754,7 +756,9 @@ val read_view_of : node -> read_view
 
 type ghost = { gh_published : (node_id, read_view) gmap;
                gh_seen : ((node_id, node_id) prod, read_view list) gmap;
-               gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap }
+               gh_unnoticed : node_id gset; gh_window : (node_id, nat) gmap;
+               gh_reads : (node_id, node_id list) gmap;
+               gh_passed : node_id gset; gh_over : node_id gset }
 
 val empty_ghost : ghost
 
@@ -886,11 +890,15 @@ val push_running : node_id -> unit0 m
 
 val pop_running : unit0 m
 
+val stale_live : node -> bool
+
 val read_prefix : edgeWorld -> node_id -> node_id list
 
 val ghost_read : node_id -> node_id -> node_id list -> state -> state
 
 val ghost_run_start : node_id -> state -> state
+
+val ghost_effect_start : node_id -> state -> state
 
 val ghost_publish : node_id -> state -> state
 
@@ -900,6 +908,12 @@ val run_end_unnoticed :
 val ghost_run_end : node_id -> node_id option -> bool -> state -> state
 
 val ghost_dirty_cleared : node_id -> nat -> state -> state
+
+val slot_holds : (node -> bool) -> state -> node_id -> bool
+
+val add_if : bool -> node_id -> node_id gset -> node_id gset
+
+val ghost_resolved : node_id -> state -> state
 
 val root_owner_id : owner_id
 
@@ -946,8 +960,6 @@ val live_queue : state -> bool
 
 val outside_bodies : state -> bool
 
-val stale_live : node -> bool
-
 val track : node_id -> unit0 m
 
 val mark_reader : nat -> unit0 m
@@ -955,6 +967,8 @@ val mark_reader : nat -> unit0 m
 val on_value : env -> expr -> (val0 -> outcome m) -> outcome m
 
 val on_node : env -> expr -> (node_id -> outcome m) -> outcome m
+
+val announce : node_id -> unit0 m
 
 val note_host_read : node_id -> outcome -> unit0 m
 

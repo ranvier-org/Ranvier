@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs.
 From Ranvier.Conformance Require Check.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -123,3 +123,25 @@ Print Assumptions check_cutoff_settled.
 Print Assumptions self_marking_through_memo_unmoved.
 Print Assumptions Ranvier.Conformance.Check.nested_memo_prev_stuck.
 Print Assumptions Ranvier.Conformance.Check.check_disposed_window.
+Print Assumptions engine_settled_preserved.
+Print Assumptions engine_settled_init.
+Print Assumptions engine_inv_init.
+Print Assumptions no_lost_wakeups_unless_passed.
+Print Assumptions no_wake_lost_unless_resolved.
+Print Assumptions no_lost_wakeups_when_nothing_passed.
+Print Assumptions no_lost_wakeups.
+Print Assumptions engine_inv_preserved.
+Print Assumptions later_mark_forwarded.
+Print Assumptions marks_survive_run.
+Print Assumptions cutoff.
+Print Assumptions moved_marks_except_running.
+Print Assumptions run_end_edges_are_reads.
+Print Assumptions disposed_stale_source_read.
+Print Assumptions walk_passed_source_marked.
+Print Assumptions walk_passed_source_cleanup.
+Print Assumptions no_lost_wakeups_falsified.
+Print Assumptions engine_inv_preserved_falsified.
+Print Assumptions effect_resolves_over_moved_source.
+Print Assumptions diamond_ends_memo_stale.
+Print Assumptions reader_mark_off_fires.
+Print Assumptions unannounced_off_fires.

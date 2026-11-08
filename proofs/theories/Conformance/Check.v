@@ -160,6 +160,10 @@ Definition prog_check_over_moved : cmd := check_over_moved (R 22 (V 4) Nop).
 Definition prog_check_two_reads : cmd := check_two_reads (R 22 (V 3) Nop).
 Definition prog_stale_source_reader : cmd := stale_source_reader (R 22 (V 3) (R 23 (V 3) (R 24 (V 2) Nop))).
 Definition prog_disposed_self_window : cmd := disposed_window (R 22 (V 4) Nop).
+Definition prog_disposed_stale_source_read : cmd := disposed_stale_read (R 22 (V 2) Nop).
+Definition prog_walk_passed_source_marked : cmd := walk_passed (R 22 (V 3) Nop).
+Definition prog_walk_passed_source_cleanup : cmd := walk_passed_by_cleanup (R 22 (V 3) Nop).
+Definition prog_effect_resolves_over_moved_source : cmd := effect_over_moved Nop.
 
 Definition prog_previous_value : cmd :=
   CSignal 1 (K 0) (
@@ -272,6 +276,18 @@ Example check_stale_source_reader :
 Proof. vm_compute. reflexivity. Qed.
 Example check_disposed_self_window :
   trace_of 100000 current_flags prog_disposed_self_window = Some exp_disposed_self_window.
+Proof. vm_compute. reflexivity. Qed.
+Example check_disposed_stale_source_read :
+  trace_of 100000 current_flags prog_disposed_stale_source_read = Some exp_disposed_stale_source_read.
+Proof. vm_compute. reflexivity. Qed.
+Example check_walk_passed_source_marked :
+  trace_of 100000 current_flags prog_walk_passed_source_marked = Some exp_walk_passed_source_marked.
+Proof. vm_compute. reflexivity. Qed.
+Example check_walk_passed_source_cleanup :
+  trace_of 100000 current_flags prog_walk_passed_source_cleanup = Some exp_walk_passed_source_cleanup.
+Proof. vm_compute. reflexivity. Qed.
+Example check_effect_resolves_over_moved_source :
+  trace_of 100000 current_flags prog_effect_resolves_over_moved_source = Some exp_effect_resolves_over_moved_source.
 Proof. vm_compute. reflexivity. Qed.
 Example check_previous_value :
   trace_of 100000 current_flags prog_previous_value = Some exp_previous_value.

@@ -12,6 +12,7 @@ theories/Pure/Edges.v
 theories/Pure/Marking.v
 theories/Pure/Engine.v
 theories/Pure/Check.v
+theories/Pure/Runs.v
 theories/Conformance/Expected.v
 theories/Conformance/Check.v
 theories/Audit.v
