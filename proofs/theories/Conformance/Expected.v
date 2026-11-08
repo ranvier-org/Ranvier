@@ -97,7 +97,7 @@ Definition exp_disposed_running_observer_stays_clean : list event := [
 
 Definition exp_self_marking_cleanup : list event := [
   EvRun 6; EvLog 5 0%Z; EvLog 6 0%Z; EvCleanup 4; EvLog 5 0%Z; EvLog 5 50%Z;
-  EvHostRead 5 (Ok 50%Z)
+  EvHostRead 5 (Ok 50%Z); EvRun 6; EvLog 6 50%Z
 ].
 
 Definition exp_self_marking_body : list event := [

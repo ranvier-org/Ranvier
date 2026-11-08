@@ -239,8 +239,14 @@ Example check_disposed_running_edges :
   (s ← final prog_disposed_running_observer_stays_clean; Some (oitems (obs_of (g_edges s) 2%nat))) = Some [].
 Proof. vm_compute. reflexivity. Qed.
 
+(** The scenario ends with [Graph.Flush], which has no command. *)
+Local Definition trace_then_flush (p : cmd) : option (list event) :=
+  r ← run_top 100000%nat p (init current_flags);
+  r' ← run_flush 100000%nat r.1;
+  Some (g_trace r'.1).
+
 Example check_self_marking_cleanup :
-  trace_of 100000 current_flags prog_self_marking_cleanup = Some exp_self_marking_cleanup.
+  trace_then_flush prog_self_marking_cleanup = Some exp_self_marking_cleanup.
 Proof. vm_compute. reflexivity. Qed.
 Example check_self_marking_body :
   trace_of 100000 current_flags prog_self_marking_body = Some exp_self_marking_body.

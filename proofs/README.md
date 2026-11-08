@@ -117,6 +117,7 @@ rebuilds `src/Ranvier` and regenerates `theories/Conformance/Expected.v`. Under 
 | `self_marking_cleanup_left_behind` | `Pure/Witnesses.v` | A memo's cleanup marks its reader during the reader's run: the reader ends stale, its effect clean and idle, and a flush changes nothing. Confirmed in `BUGS.md`. |
 | `self_marking_body_left_behind` | `Pure/Witnesses.v` | The same end state from a memo writing its own source. Confirmed in `BUGS.md`. |
 | `self_marking_through_memo_left_behind` | `Pure/Witnesses.v` | The same end state through a reading memo. Confirmed in `BUGS.md`. |
+| `read_move_leaves_effect_queued` | `Pure/Witnesses.v` | A read of the left-behind memo queues its effect and owes no flush. Confirmed in `BUGS.md`. |
 | `nested_self_run_ends_clean_and_wrong` | `Pure/Witnesses.v` | A nested self-run trims an edge the outer run read, and the memo ends clean with the outer value. Confirmed in `BUGS.md`. |
 | `requeue_holds_two_entries` | `Pure/Witnesses.v` | A re-queued effect has two entries in `g_queue` and one in `pending`. |
 

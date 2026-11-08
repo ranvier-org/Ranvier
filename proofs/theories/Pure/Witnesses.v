@@ -195,8 +195,18 @@ Definition self_marking_body (k : cmd) : cmd :=
 
 Example self_marking_body_left_behind :
   let s := final (self_marking_body Nop) in
-  left_behind s 2 3 /\ n_value <$> g_nodes s !! 1 = Some 2%Z /\ n_value <$> g_nodes s !! 2 = Some 0%Z.
+  left_behind s 2 3 /\ n_value <$> g_nodes s !! 1 = Some 2%Z /\
+  node_view s 2 = Some (Dirty, true, false, StNone, 0%Z).
 Proof. intros s. split_and!; [left_behind_proof 0 0|vm_compute; reflexivity|vm_compute; reflexivity]. Qed.
+
+(** The read of the left-behind memo moves it, which queues the effect and owes no flush. The next flush
+    runs the effect on the value it missed. Confirmed in [BUGS.md]. *)
+Example read_move_leaves_effect_queued :
+  let s := final (self_marking_cleanup (CRead 20 (V 5) Nop)) in
+  node_view s 6 = Some (Dirty, false, true, StNone, 0%Z) /\
+  pending s = [6] /\ g_owed s = false /\ n_runs <$> g_nodes s !! 6 = Some 1 /\
+  (r ← run_flush 1000 s; Some (g_trace r.1)) = Some (g_trace s ++ [EvRun 6; EvLog 6 50%Z]).
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (** The same memo through a reading memo, whose [ResolveCheck] goes clean. *)
 Definition self_marking_through_memo (k : cmd) : cmd :=
@@ -208,11 +218,13 @@ Definition self_marking_through_memo (k : cmd) : cmd :=
 Example self_marking_through_memo_left_behind :
   let s := final (self_marking_through_memo Nop) in
   left_behind s 2 3 /\ edge s 3 4 /\
+  node_view s 2 = Some (Dirty, true, false, StNone, 0%Z) /\
   node_view s 3 = Some (Clean, false, false, StNone, 0%Z) /\
   node_view s 4 = Some (Clean, false, false, StNone, 0%Z).
 Proof.
   intros s. split_and!;
-    [left_behind_proof 0 0|exists 0, 0; split; vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
+    [left_behind_proof 0 0|exists 0, 0; split; vm_compute; reflexivity
+    |vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
 Qed.
 
 (** A run reads [a], marks itself and reads itself. The nested run's branch trims [a]'s edge, and the
@@ -232,6 +244,9 @@ Definition nested_self_run (k : cmd) : cmd :=
 Example nested_self_run_ends_clean_and_wrong :
   let s := final (nested_self_run Nop) in
   node_view s 4 = Some (Clean, false, false, StNone, 10%Z) /\
+  node_view s 5 = Some (Clean, false, false, StNone, 0%Z) /\
+  oitems (obs_of (g_edges s) 4) = [(5, 0); (4, 2)] /\
+  pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt) /\
   oitems (obs_of (g_edges s) 2) = [] /\ n_value <$> g_nodes s !! 1 = Some 3%Z /\
   n_value <$> g_nodes s !! 3 = Some 20%Z /\
   (2 ∉ fst <$> sslots (src_of (g_edges s) 4)) /\ 3 ∈ fst <$> sslots (src_of (g_edges s) 4).

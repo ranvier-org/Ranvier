@@ -51,12 +51,18 @@ let private statusOf (node: obj) : string =
     let inode = typeof<Graph>.Assembly.GetType "Ranvier.INode"
     (inode.GetProperty("Status").GetValue node).ToString()
 
-/// A graph with a trace. `Effect`, `Memo` and `Signal` take the label a scenario expects, and fail the scenario when
-/// the label differs from the node's id.
+/// The `freshness` field, which `Status.Stale` reports only as stale or not.
+let private freshnessOf (node: obj) : string =
+    (privateField node "freshness").ToString()
+
+/// A graph with a trace. `Effect`, `Memo` and `Signal` take the label a scenario expects. `Check` records a failure
+/// and returns, since a body's exception would end in the node's status, and the run of the script fails at the
+/// scenario's end on any recorded failure or any exception other than `Boom` escaping a body.
 type Ctx() =
     let g = new Graph ()
     let events = ResizeArray<Ev>()
     let booms = Dictionary<int, exn>()
+    let failures = ResizeArray<string>()
 
     member _.Graph = g
     member _.Events = List.ofSeq events
@@ -72,9 +78,21 @@ type Ctx() =
             booms[f] <- ex
             raise ex
 
+    member _.Failures = List.ofSeq failures
+
     member _.Check (condition: bool) (message: string) =
         if not condition then
-            failwith message
+            failures.Add message
+
+    /// Records an exception other than `Boom` leaving a body, and passes every exception on.
+    member _.Guarded(body: unit -> 'a) : 'a =
+        try
+            body ()
+        with
+        | Boom _ -> reraise ()
+        | ex ->
+            failures.Add $"a body raised {ex.GetType().Name}: {ex.Message}"
+            reraise ()
 
     member this.Labelled (label: int) (node: 'n) : 'n =
         this.Check (idOf (box node) = label) $"node labelled {label} has id {idOf (box node)}"
@@ -84,17 +102,17 @@ type Ctx() =
         this.Labelled label (Signal<int>(g, v))
 
     member this.Memo (label: int) (body: unit -> int) : Memo<int> =
-        this.Labelled label (Memo<int>(g, Func<int voption, int>(fun _ -> body ())))
+        this.Labelled label (Memo<int>(g, Func<int voption, int>(fun _ -> this.Guarded body)))
 
     member this.OwningMemo (label: int) (body: unit -> int) : Memo<int> =
-        this.Labelled label (Memo<int>(g, Func<int voption, int>(fun _ -> body ()), true))
+        this.Labelled label (Memo<int>(g, Func<int voption, int>(fun _ -> this.Guarded body), true))
 
     member this.Effect (label: int) (body: unit -> unit) : Effect =
         let run () =
             this.Emit (Run label)
 
             try
-                body ()
+                this.Guarded body
             with Boom f as ex ->
                 this.Emit (FailE (label, f))
                 raise ex
@@ -106,7 +124,7 @@ type Ctx() =
             this.Emit (Cleanup label)
 
             try
-                body ()
+                this.Guarded body
             with Boom f as ex ->
                 this.Emit (FailE (label, f))
                 raise ex
@@ -129,7 +147,7 @@ type Ctx() =
 
     /// `Memo` whose body receives `prev`.
     member this.PrevMemo (label: int) (body: int voption -> int) : Memo<int> =
-        this.Labelled label (Memo<int>(g, Func<int voption, int>(body)))
+        this.Labelled label (Memo<int>(g, Func<int voption, int>(fun prev -> this.Guarded (fun () -> body prev))))
 
     /// The live entries of the graph's effect queue.
     member _.QueueLength =
@@ -574,8 +592,21 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             c.Check (s.Peek = 50) $"the signal holds {s.Peek}"
             c.Check (x.Peek = 0) $"the memo holds {x.Peek}"
+            c.Check (freshnessOf x = "Dirty") $"the memo is {freshnessOf x}"
             c.CheckQuiet [ "x", box x, "Stale"; "e", box e, "None" ]
             c.Check (c.HostRead 5 (fun () -> x.Value) = 50) "the memo's body answers 50"
+
+            // BUGS.md, read_move_leaves_effect_queued. The read's move queues the effect and owes no flush.
+            c.Check (statusOf e = "Stale") $"after the read the effect has status {statusOf e}"
+            c.Check (freshnessOf e = "Dirty") $"after the read the effect is {freshnessOf e}"
+            c.Check (privateField e "queued" :?> bool) "after the read the effect is queued"
+            c.Check (c.QueueLength = 1) $"after the read the queue holds {c.QueueLength}"
+            c.Check (e.Runs = 1) $"after the read the effect has run {e.Runs} times"
+            c.Check (not (privateField c.Graph "flushOwed" :?> bool)) "after the read no flush is owed"
+            c.Graph.Flush ()
+            c.Check (e.Runs = 2) $"the explicit flush leaves {e.Runs} runs"
+            c.Check (statusOf e = "None") $"the explicit flush leaves the status {statusOf e}"
+            c.Check (c.QueueLength = 0) $"the explicit flush leaves {c.QueueLength} queued"
 
         // BUGS.md, self_marking_wake_lost. A memo writes its own source. A run ends stale with the value unchanged, and
         // the next run would change it.
@@ -596,6 +627,7 @@ let scenarios: (string * (Ctx -> unit)) list =
             let e = c.Effect 3 (fun () -> c.Log 3 m.Value)
             c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
             c.Check (m.Peek = 0) $"the memo holds {m.Peek}"
+            c.Check (freshnessOf m = "Dirty") $"the memo is {freshnessOf m}"
             c.CheckQuiet [ "m", box m, "Stale"; "e", box e, "None" ]
             c.HostRead 2 (fun () -> m.Value) |> ignore
 
@@ -618,6 +650,7 @@ let scenarios: (string * (Ctx -> unit)) list =
             let e = c.Effect 4 (fun () -> c.Log 4 r.Value)
             c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
             c.Check (r.Peek = 0) $"the reading memo holds {r.Peek}"
+            c.Check (freshnessOf m = "Dirty") $"the memo is {freshnessOf m}"
             c.CheckQuiet [ "m", box m, "Stale"; "r", box r, "None"; "e", box e, "None" ]
             c.HostRead 3 (fun () -> r.Value) |> ignore
 
@@ -655,6 +688,7 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (m.Peek = 10) $"the memo holds {m.Peek}"
             c.Check (observers a = 0) "the memo holds no edge to a"
             c.Check (observers b = 1) "the memo holds an edge to b"
+            c.Check (observers m = 2) "the memo observes itself beside the effect"
             c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
             a.Value <- 11
             c.Check (m.Peek = 10) $"after the write to a the memo holds {m.Peek}"
@@ -717,6 +751,9 @@ let private render (e: Ev) =
 let private definition (name: string, run: Ctx -> unit) =
     let c = Ctx ()
     run c
+
+    if not c.Failures.IsEmpty then
+        failwith (name + ": " + String.concat "; " c.Failures)
 
     let lines =
         c.Events
