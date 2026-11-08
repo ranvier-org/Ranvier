@@ -26,6 +26,8 @@ Print Assumptions order_varies_by_round.
 Print Assumptions rtrace_answers.
 Print Assumptions final_batch_engine_not_refines.
 Print Assumptions last_run_traces_match_every_prefix.
+Print Assumptions last_run_engine_not_refines.
+Print Assumptions rtrace_extends.
 Print Assumptions redundant_failing_cleanup_changes_settled.
 Print Assumptions logging_cleanup_drop_unobserved.
 Print Assumptions host_read_sees_earlier_write.

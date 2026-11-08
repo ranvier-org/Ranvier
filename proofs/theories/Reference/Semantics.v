@@ -343,9 +343,9 @@ Fixpoint settle (fuel : nat) (order : effect_order) (p : rprog) (st : rstate)
   end.
 
 (** Disposes [n]. A second disposal of a node does nothing, and a signal or an unknown node is stuck.
-    An effect runs its cleanups over the current signals. A memo's last value is its value over
-    [base], the signals at the start of the batch. *)
-Definition apply_dispose (p : rprog) (base : gmap nid val) (n : nid) (st : rstate)
+    An effect runs its cleanups over the current signals. A memo's last value is its value over the
+    current signals. *)
+Definition apply_dispose (p : rprog) (n : nid) (st : rstate)
     : option (rstate * list run) :=
   if decide (n ∈ rs_disposed st) then Some (st, [])
   else
@@ -360,7 +360,7 @@ Definition apply_dispose (p : rprog) (base : gmap nid val) (n : nid) (st : rstat
                  rs_round := rs_round st |},
               [record_of n RkDispose st cs bs])
     | None, Some _ =>
-        o ← memo_value p (rs_frozen st) base n;
+        o ← memo_value p (rs_frozen st) (rs_sigs st) n;
         bs ← dispose_node p (live_read p (rs_frozen st)) n [] (rs_sigs st);
         Some ({| rs_sigs := bsigs bs;
                  rs_effects := rs_effects st;
@@ -371,7 +371,7 @@ Definition apply_dispose (p : rprog) (base : gmap nid val) (n : nid) (st : rstat
     | None, None => None
     end.
 
-Definition apply_input (p : rprog) (base : gmap nid val) (i : rinput) (st : rstate)
+Definition apply_input (p : rprog) (i : rinput) (st : rstate)
     : option (rstate * list run) :=
   match i with
   | RWrite t v =>
@@ -382,19 +382,19 @@ Definition apply_input (p : rprog) (base : gmap nid val) (i : rinput) (st : rsta
                     rs_disposed := rs_disposed st;
                     rs_round := rs_round st |}, [])
       else None
-  | RDispose n => apply_dispose p base n st
+  | RDispose n => apply_dispose p n st
   | RRead n =>
       bs ← host_read p (live_read p (rs_frozen st)) n (rs_sigs st);
       Some (st, [record_of n RkHostRead st [] bs])
   end.
 
-Fixpoint apply_batch (p : rprog) (base : gmap nid val) (b : list rinput) (st : rstate)
+Fixpoint apply_batch (p : rprog) (b : list rinput) (st : rstate)
     : option (rstate * list run) :=
   match b with
   | [] => Some (st, [])
   | i :: b' =>
-      '(st1, r1) ← apply_input p base i st;
-      '(st2, r2) ← apply_batch p base b' st1;
+      '(st1, r1) ← apply_input p i st;
+      '(st2, r2) ← apply_batch p b' st1;
       Some (st2, r1 ++ r2)
   end.
 
@@ -403,7 +403,7 @@ Fixpoint run_history (fuel : nat) (order : effect_order) (p : rprog) (h : rhisto
   match h with
   | [] => Some (st, [])
   | b :: h' =>
-      '(st0, r0) ← apply_batch p (rs_sigs st) b st;
+      '(st0, r0) ← apply_batch p b st;
       '(st1, r1) ← settle fuel order p st0;
       '(st2, r2) ← run_history fuel order p h' st1;
       Some (st2, r0 ++ r1 ++ r2)
@@ -518,16 +518,16 @@ Definition obs_settled : observation :=
   {| obs_ty := gmap nid settled_view * list (nid * outcome);
      obs_of := fun t => (foldl settled_step ∅ t, host_reads t) |}.
 
-(** One valid order for the history, compared at every batch prefix. The engine answers at each prefix
-    of a history it answers. An engine with no traces satisfies this, so an engine proof also owes
-    [engine_answers]. *)
+(** One valid order for the history, compared at every batch prefix. At each prefix of a history it
+    answers, the engine answers with a prefix of the whole trace. An engine with no traces satisfies
+    this, so an engine proof also owes [engine_answers]. *)
 Definition refines (O : observation)
     (engine : rprog -> rhistory -> option (list event)) : Prop :=
   forall p h t, rwf p -> engine p h = Some t ->
     exists ord, is_effect_order ord /\
       forall h', prefix h' h ->
-        exists te fuel tr, engine p h' = Some te /\ rtrace fuel ord p h' = Some tr /\
-          obs_of O te = obs_of O tr.
+        exists te fuel tr, engine p h' = Some te /\ prefix te t /\
+          rtrace fuel ord p h' = Some tr /\ obs_of O te = obs_of O tr.
 
 (** Some fuel of [engine] gives a trace whenever the reference settles under every valid order. *)
 Definition engine_answers

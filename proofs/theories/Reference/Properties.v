@@ -31,7 +31,7 @@ Lemma run_history_mono o1 o2 p f1 f2 :
     run_history f2 o2 p h st = Some r.
 Proof.
   intros Hext Hle h. induction h as [|b h IH]; intros st r Hs; simpl in *; [done|].
-  destruct (apply_batch p (rs_sigs st) b st) as [[st0 r0]|]; simpl in *; [|discriminate].
+  destruct (apply_batch p b st) as [[st0 r0]|]; simpl in *; [|discriminate].
   destruct (settle f1 o1 p st0) as [[st1 r1]|] eqn:E1; simpl in *; [|discriminate].
   rewrite (settle_mono o1 o2 p Hext f1 f2 _ _ Hle E1). simpl.
   destruct (run_history f1 o1 p h st1) as [[st2 r2]|] eqn:E2; simpl in *; [|discriminate].
@@ -353,8 +353,8 @@ Proof.
   apply Forall_app. split; [by eapply run_round_runs|by eapply IH].
 Qed.
 
-Lemma apply_input_runs p base i st st' rs :
-  apply_input p base i st = Some (st', rs) ->
+Lemma apply_input_runs p i st st' rs :
+  apply_input p i st = Some (st', rs) ->
   Forall (run_of p) rs.
 Proof.
   destruct i as [t v|n|n]; simpl.
@@ -367,9 +367,9 @@ Proof.
     apply Forall_singleton; eexists; split_and!; [unfold replay_run; simpl; eassumption|done..].
 Qed.
 
-Lemma apply_batch_runs p base b :
+Lemma apply_batch_runs p b :
   forall st st' rs,
-    apply_batch p base b st = Some (st', rs) ->
+    apply_batch p b st = Some (st', rs) ->
     Forall (run_of p) rs.
 Proof.
   induction b as [|i b IH]; intros st st' rs Hr; simpl in Hr; [by simplify_eq|].
@@ -521,33 +521,43 @@ Proof.
   intros Hr p h t Hwf He.
   destruct (Hr p h t Hwf He) as (ord & Hord & Hall).
   exists ord. split; [done|]. intros h' Hp.
-  destruct (Hall h' Hp) as (te & fuel & tr & Hte & Htr & Heq).
-  exists te, fuel, tr. split_and!; [done|done|by apply obs_settled_coarser].
+  destruct (Hall h' Hp) as (te & fuel & tr & Hte & Hpre & Htr & Heq).
+  exists te, fuel, tr. split_and!; [done|done|done|by apply obs_settled_coarser].
 Qed.
 
-Lemma run_history_prefix fuel o p h k :
-  forall st r,
-    run_history fuel o p (h ++ k) st = Some r ->
-    is_Some (run_history fuel o p h st).
+Lemma run_history_app fuel o p h k :
+  forall st st2 rs,
+    run_history fuel o p (h ++ k) st = Some (st2, rs) ->
+    exists st1 r1 r2,
+      run_history fuel o p h st = Some (st1, r1) /\
+      run_history fuel o p k st1 = Some (st2, r2) /\
+      rs = r1 ++ r2.
 Proof.
-  induction h as [|b h IH]; intros st r Hr; simpl in *; [by eexists|].
-  destruct (apply_batch p (rs_sigs st) b st) as [[st0 r0]|]; simpl in *; [|discriminate].
-  destruct (settle fuel o p st0) as [[st1 r1]|]; simpl in *; [|discriminate].
-  destruct (run_history fuel o p (h ++ k) st1) as [[st2 r2]|] eqn:E; simpl in *; [|discriminate].
-  destruct (IH _ _ E) as [[st3 r3] ->]. simpl. by eexists.
+  induction h as [|b h IH]; intros st st2 rs Hr; simpl in *.
+  - by exists st, [], rs.
+  - destruct (apply_batch p b st) as [[st0 r0]|]; simpl in *; [|discriminate].
+    destruct (settle fuel o p st0) as [[st1 r1]|]; simpl in *; [|discriminate].
+    destruct (run_history fuel o p (h ++ k) st1) as [[st3 r3]|] eqn:E; simpl in *; [|discriminate].
+    injection Hr as <- <-.
+    destruct (IH _ _ _ E) as (st4 & r4 & r5 & E4 & E5 & ->).
+    exists st4, (r0 ++ r1 ++ r4), r5. rewrite E4. simpl.
+    split_and!; [done|done|by rewrite <- !app_assoc].
 Qed.
 
-(** A history with a trace has a trace at each of its prefixes, under the same order and fuel. *)
-Lemma rtrace_prefix fuel o p h h' t :
+(** A history's trace extends the trace of each batch prefix, under the same order and fuel. *)
+Theorem rtrace_extends fuel o p h h' t :
   prefix h' h ->
   rtrace fuel o p h = Some t ->
-  exists t', rtrace fuel o p h' = Some t'.
+  exists t', rtrace fuel o p h' = Some t' /\ prefix t' t.
 Proof.
   intros [k ->]. unfold rtrace, rruns.
   destruct (run_round _ _ _) as [[st1 r1]|]; simpl; [|discriminate].
   destruct (settle fuel o p (next_round st1)) as [[st2 r2]|]; simpl; [|discriminate].
   destruct (run_history fuel o p (h' ++ k) st2) as [[st3 r3]|] eqn:E; simpl; [|discriminate].
-  destruct (run_history_prefix _ _ _ _ _ _ _ E) as [[st4 r4] ->]. simpl. intros _. by eexists.
+  destruct (run_history_app _ _ _ _ _ _ _ _ E) as (st4 & r4 & r5 & E4 & _ & ->).
+  rewrite E4. simpl. intros [= <-].
+  eexists. split; [reflexivity|]. exists (concat (run_events <$> r5)).
+  rewrite <- concat_app, <- fmap_app. by rewrite <- !app_assoc.
 Qed.
 
 (** The reference tier refines itself, under each valid order and fuel. *)
@@ -555,7 +565,7 @@ Theorem reference_refines_itself fuel ord :
   is_effect_order ord -> refines obs_full (rtrace fuel ord).
 Proof.
   intros Hord p h t _ Ht. exists ord. split; [done|]. intros h' Hp.
-  destruct (rtrace_prefix _ _ _ _ _ _ Hp Ht) as [t' Ht'].
+  destruct (rtrace_extends _ _ _ _ _ _ Hp Ht) as (t' & Ht' & Hpre).
   by exists t', fuel, t'.
 Qed.
 
@@ -1170,10 +1180,11 @@ Example disposed_memo_answers_last_value :
     Some [EvRun 9; EvLog 9 1; EvDispose 1; EvRun 9; EvLog 9 1].
 Proof. vm_compute. reflexivity. Qed.
 
-(** A memo disposed after a write in its batch keeps its value from the batch's start. *)
-Example write_then_dispose_memo_keeps_value :
+(** A memo disposed after a write in its batch keeps its value over that write, and a reader whose
+    last read differs runs. *)
+Example write_then_dispose_memo_current_value :
   rtrace 5 t_id memo_and_signal [[RWrite 0 5; RDispose 1]; [RWrite 2 1]] =
-    Some [EvRun 9; EvLog 9 1; EvDispose 1; EvRun 9; EvLog 9 1].
+    Some [EvRun 9; EvLog 9 1; EvDispose 1; EvRun 9; EvLog 9 6; EvRun 9; EvLog 9 6].
 Proof. vm_compute. reflexivity. Qed.
 
 (** A disposed memo keeps its failure. *)
@@ -1195,7 +1206,7 @@ Example dispose_unknown_is_stuck : rtrace 5 t_id one_read [[RDispose 3]] = None.
 Proof. vm_compute. reflexivity. Qed.
 
 (** Effect 9 reads memo 1 only once signal 2 is nonzero, so the initial runs leave memo 1 unread. The
-    reference answers its value at the start of the batch of its disposal. *)
+    reference answers its value over the signals at its disposal. *)
 Definition unread_memo : rprog := {|
   rsignals := {[ 0%nat := 0; 2%nat := 0 ]};
   rmemos := {[ 1%nat := CRead 0 s0 (CRet (EVar 0)) ]};
@@ -1332,11 +1343,11 @@ Proof. vm_compute. reflexivity. Qed.
 Example host_read_effect_is_stuck : rtrace 5 t_id one_read [[RRead 9]] = None.
 Proof. vm_compute. reflexivity. Qed.
 
-(** A host read before a disposal in one batch can answer a value the disposed memo no longer answers,
-    since the last value comes from the batch's start. *)
+(** A memo read and then disposed in one batch keeps the value the read answered. *)
 Example host_read_then_dispose_memo :
   rtrace 5 t_id memo_and_signal [[RWrite 0 5; RRead 1; RDispose 1]; [RRead 1]] =
-    Some [EvRun 9; EvLog 9 1; EvHostRead 1 (Ok 6); EvDispose 1; EvHostRead 1 (Ok 1)].
+    Some [EvRun 9; EvLog 9 1; EvHostRead 1 (Ok 6); EvDispose 1; EvRun 9; EvLog 9 6;
+          EvHostRead 1 (Ok 6)].
 Proof. vm_compute. reflexivity. Qed.
 
 (** No effect reads signal 0. *)
@@ -1409,9 +1420,8 @@ Proof.
   discriminate Hte.
 Qed.
 
-(** [refines] relates no two prefixes' engine traces. An engine that keeps only each prefix's last run
-    has the reference's [obs_settled] at each prefix of [two_writes], though its traces do not extend
-    each other. *)
+(** Traces keeping only each prefix's last run have the reference's [obs_settled] at each prefix of
+    [two_writes]. Only trace extension rejects them: [last_run_engine_not_refines]. *)
 Example last_run_traces_match_every_prefix :
   Some (obs_of obs_settled [EvRun 9; EvLog 9 0]) =
     obs_of obs_settled <$> rtrace 5 t_id one_read [] /\
@@ -1420,6 +1430,22 @@ Example last_run_traces_match_every_prefix :
   Some (obs_of obs_settled [EvRun 9; EvLog 9 2]) =
     obs_of obs_settled <$> rtrace 5 t_id one_read two_writes.
 Proof. vm_compute. auto. Qed.
+
+(** Answers each history with only the last run of [two_writes]'s matching prefix. *)
+Definition last_run_engine (_ : rprog) (h : rhistory) : option (list event) :=
+  match h with
+  | [] => Some [EvRun 9; EvLog 9 0]
+  | [_] => Some [EvRun 9; EvLog 9 1]
+  | _ => Some [EvRun 9; EvLog 9 2]
+  end.
+
+Theorem last_run_engine_not_refines : ~ refines obs_settled last_run_engine.
+Proof.
+  intros Hr.
+  destruct (Hr one_read two_writes _ one_read_rwf eq_refl) as (ord & _ & Hall).
+  destruct (Hall [] (prefix_nil _)) as (te & _ & _ & Hte & [k Hk] & _).
+  injection Hte as <-. discriminate Hk.
+Qed.
 
 (** An order that drops its effects gives the empty trace, so [refines] requires a valid order. *)
 Example invalid_order_runs_nothing : rtrace 0 (fun _ _ => []) one_read [] = Some [].
@@ -1431,7 +1457,7 @@ Theorem silent_engine_not_refines : ~ refines obs_settled (fun _ _ => Some []).
 Proof.
   intros Hr.
   destruct (Hr one_read [] [] one_read_rwf eq_refl) as (ord & Hord & Hall).
-  destruct (Hall [] (prefix_nil _)) as (te & fuel & t' & Hte & Ht & Heq).
+  destruct (Hall [] (prefix_nil _)) as (te & fuel & t' & Hte & _ & Ht & Heq).
   injection Hte as <-.
   rewrite (one_read_first_run _ _ _ Hord Ht) in Heq. vm_compute in Heq. discriminate Heq.
 Qed.
