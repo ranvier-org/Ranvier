@@ -43,12 +43,27 @@ Record flags := { f_unannounced : bool; f_reader_mark : bool }.
 
 Definition current_flags : flags := {| f_unannounced := true; f_reader_mark := true |}.
 
+(** What a read of a node answers from: its value, status and failure. *)
+Definition nview : Type := val * status * option val.
+
+Definition nview_of (d : node) : nview := (n_value d, n_status d, n_failure d).
+
+(** Ghost state of check resolution. Engine decisions depend exclusively on the other fields.
+    [gh_pub] holds each node's view as its observers were last told it: the view at its creation, its
+    last write, or the end of its last run. [gh_seen] holds, for a computation and a source, the view at
+    the computation's latest tracked read of that source. [gh_unnoticed] holds the computations whose
+    reads can differ from [gh_pub] with no [Dirty] recording it, since the start of their last run. *)
+Record ghost := { gh_pub : gmap nid nview; gh_seen : gmap (nid * nid) nview; gh_unnoticed : gset nid }.
+
+Definition empty_ghost : ghost := {| gh_pub := ∅; gh_seen := ∅; gh_unnoticed := ∅ |}.
+
 Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap nid node;
                   g_owners : gmap oid ownerS; g_queue : list nid; g_head : nat;
                   g_flushing : bool; g_owed : bool; g_batch : nat; g_pull : nat;
                   g_current : option nid; g_untracked : bool; g_owner : option oid;
                   g_next : nat; g_trace : list event;
-                  g_running : list nid (* ghost: between a run's start and EndRun *) }.
+                  g_running : list nid (* ghost: between a run's start and EndRun *);
+                  g_ghost : ghost }.
 
 (** [c] observes [src]: a slot of [c] and a position of [src]'s observers each hold the other. *)
 Definition edge (s : state) (src c : nid) : Prop :=

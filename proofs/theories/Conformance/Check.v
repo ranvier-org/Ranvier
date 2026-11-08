@@ -156,6 +156,7 @@ Definition prog_self_marking_cleanup : cmd := self_marking_cleanup (R 20 (V 5) N
 Definition prog_self_marking_body : cmd := self_marking_body (R 20 (V 2) Nop).
 Definition prog_self_marking_through_memo : cmd := self_marking_through_memo (R 20 (V 3) Nop).
 Definition prog_nested_self_run : cmd := nested_self_run (R 20 (V 4) Nop).
+Definition prog_check_over_moved : cmd := check_over_moved (R 22 (V 4) Nop).
 
 Definition prog_previous_value : cmd :=
   CSignal 1 (K 0) (
@@ -256,6 +257,9 @@ Example check_self_marking_through_memo :
 Proof. vm_compute. reflexivity. Qed.
 Example check_nested_self_run :
   trace_of 100000 current_flags prog_nested_self_run = Some exp_nested_self_run.
+Proof. vm_compute. reflexivity. Qed.
+Example check_check_over_moved :
+  trace_of 100000 current_flags prog_check_over_moved = Some exp_check_over_moved.
 Proof. vm_compute. reflexivity. Qed.
 Example check_previous_value :
   trace_of 100000 current_flags prog_previous_value = Some exp_previous_value.

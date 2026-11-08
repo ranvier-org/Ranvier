@@ -99,6 +99,21 @@ type 'a empty = 'a
 
 val empty0 : 'a1 empty -> 'a1
 
+type 'a union = 'a -> 'a -> 'a
+
+val union0 : 'a1 union -> 'a1 -> 'a1 -> 'a1
+
+type 'a difference = 'a -> 'a -> 'a
+
+val difference0 : 'a1 difference -> 'a1 -> 'a1 -> 'a1
+
+type ('a, 'b) singleton = 'a -> 'b
+
+val singleton0 : ('a1, 'a2) singleton -> 'a1 -> 'a2
+
+val list_to_set :
+  ('a1, 'a2) singleton -> 'a2 empty -> 'a2 union -> 'a1 list -> 'a2
+
 type ('a, 'b) filter = __ -> ('a -> decision) -> 'b -> 'b
 
 val filter0 : ('a1, 'a2) filter -> ('a1 -> decision) -> 'a2 -> 'a2
@@ -119,6 +134,10 @@ type ('k, 'a, 'm) lookup = 'k -> 'm -> 'a option
 
 val lookup0 : ('a1, 'a2, 'a3) lookup -> 'a1 -> 'a3 -> 'a2 option
 
+type ('k, 'a, 'm) singletonM = 'k -> 'a -> 'm
+
+val singletonM0 : ('a1, 'a2, 'a3) singletonM -> 'a1 -> 'a2 -> 'a3
+
 type ('k, 'a, 'm) insert = 'k -> 'a -> 'm -> 'm
 
 val insert0 : ('a1, 'a2, 'a3) insert -> 'a1 -> 'a2 -> 'a3 -> 'a3
@@ -136,6 +155,22 @@ val partial_alter :
 type ('m, 'd) dom = 'm -> 'd
 
 val dom0 : ('a1, 'a2) dom -> 'a1 -> 'a2
+
+type 'm merge =
+  __ -> __ -> __ -> (__ option -> __ option -> __ option) -> 'm -> 'm -> 'm
+
+val merge0 :
+  'a1 merge -> ('a2 option -> 'a3 option -> 'a4 option) -> 'a1 -> 'a1 -> 'a1
+
+type ('a, 'm) unionWith = ('a -> 'a -> 'a option) -> 'm -> 'm -> 'm
+
+val union_with :
+  ('a1, 'a2) unionWith -> ('a1 -> 'a1 -> 'a1 option) -> 'a2 -> 'a2 -> 'a2
+
+type ('a, 'm) differenceWith = ('a -> 'a -> 'a option) -> 'm -> 'm -> 'm
+
+val difference_with :
+  ('a1, 'a2) differenceWith -> ('a1 -> 'a1 -> 'a1 option) -> 'a2 -> 'a2 -> 'a2
 
 type ('a, 'c) elements = 'c -> 'a list
 
@@ -281,6 +316,10 @@ val and_dec : decision -> decision -> decision
 
 val or_dec : decision -> decision -> decision
 
+val prod_eq_dec :
+  ('a1, 'a1) relDecision -> ('a2, 'a2) relDecision -> (('a1, 'a2) prod, ('a1,
+  'a2) prod) relDecision
+
 val bool_decide : decision -> bool
 
 val from_option : ('a1 -> 'a2) -> 'a2 -> 'a1 option -> 'a2
@@ -291,6 +330,10 @@ val option_eq_dec :
 val option_bind : (__ -> __ option) -> __ option -> __ option
 
 val option_fmap : (__ -> __) -> __ option -> __ option
+
+val option_union_with : ('a1, 'a1 option) unionWith
+
+val option_difference_with : ('a1, 'a1 option) differenceWith
 
 val z_le_dec : z -> z -> sumbool
 
@@ -347,6 +390,20 @@ module Coq0_list :
 type 'a countable = { encode : ('a -> positive);
                       decode : (positive -> 'a option) }
 
+val prod_encode_fst : positive -> positive
+
+val prod_encode_snd : positive -> positive
+
+val prod_encode : positive -> positive -> positive
+
+val prod_decode_fst : positive -> positive option
+
+val prod_decode_snd : positive -> positive option
+
+val prod_countable :
+  ('a1, 'a1) relDecision -> 'a1 countable -> ('a2, 'a2) relDecision -> 'a2
+  countable -> ('a1, 'a2) prod countable
+
 val n_countable : n countable
 
 val nat_countable : nat countable
@@ -365,11 +422,32 @@ val map_fold :
 
 val map_insert : ('a1, 'a2, 'a3) partialAlter -> ('a1, 'a2, 'a3) insert
 
+val map_singleton :
+  ('a1, 'a2, 'a3) partialAlter -> 'a3 empty -> ('a1, 'a2, 'a3) singletonM
+
 val map_to_list : ('a1, 'a2, 'a3) mapFold -> 'a3 -> ('a1, 'a2) prod list
+
+val map_union_with : 'a1 merge -> ('a2, 'a1) unionWith
+
+val map_difference_with : 'a1 merge -> ('a2, 'a1) differenceWith
+
+val map_union : 'a1 merge -> 'a1 union
+
+val map_difference : 'a1 merge -> 'a1 difference
 
 type 'munit mapset' =
   'munit
   (* singleton inductive, whose constructor was Mapset *)
+
+val mapset_empty : (__ -> 'a1 empty) -> 'a1 mapset' empty
+
+val mapset_singleton :
+  (__ -> 'a2 empty) -> (__ -> ('a1, __, 'a2) partialAlter) -> ('a1, 'a2
+  mapset') singleton
+
+val mapset_union : 'a1 merge -> 'a1 mapset' union
+
+val mapset_difference : 'a1 merge -> 'a1 mapset' difference
 
 val mapset_elements :
   (__ -> ('a1, __, 'a2) mapFold) -> ('a1, 'a2 mapset') elements
@@ -392,6 +470,9 @@ type 'a gmap_dep =
 type ('k, 'a) gmap =
   'a gmap_dep
   (* singleton inductive, whose constructor was GMap *)
+
+val gNode :
+  'a1 gmap_dep -> (__, 'a1) prod option -> 'a1 gmap_dep -> 'a1 gmap_dep
 
 val gmap_dep_ne_case :
   'a1 gmap_dep_ne -> ('a1 gmap_dep -> (__, 'a1) prod option -> 'a1 gmap_dep
@@ -432,6 +513,31 @@ val gmap_fmap :
   ('a1, 'a1) relDecision -> 'a1 countable -> (__ -> __) -> ('a1, __) gmap ->
   ('a1, __) gmap
 
+val gmap_dep_omap_aux :
+  ('a1 gmap_dep_ne -> 'a2 gmap_dep) -> 'a1 gmap_dep -> 'a2 gmap_dep
+
+val gmap_dep_ne_omap : ('a1 -> 'a2 option) -> 'a1 gmap_dep_ne -> 'a2 gmap_dep
+
+val gmap_merge_aux :
+  ('a1 gmap_dep_ne -> 'a2 gmap_dep_ne -> 'a3 gmap_dep) -> ('a1 option -> 'a2
+  option -> 'a3 option) -> 'a1 gmap_dep -> 'a2 gmap_dep -> 'a3 gmap_dep
+
+val diag_None' :
+  ('a1 option -> 'a2 option -> 'a3 option) -> (__, 'a1) prod option -> (__,
+  'a2) prod option -> (__, 'a3) prod option
+
+val gmap_dep_ne_merge :
+  ('a1 option -> 'a2 option -> 'a3 option) -> 'a1 gmap_dep_ne -> 'a2
+  gmap_dep_ne -> 'a3 gmap_dep
+
+val gmap_dep_merge :
+  ('a1 option -> 'a2 option -> 'a3 option) -> 'a1 gmap_dep -> 'a2 gmap_dep ->
+  'a3 gmap_dep
+
+val gmap_merge :
+  ('a1, 'a1) relDecision -> 'a1 countable -> (__ option -> __ option -> __
+  option) -> ('a1, __) gmap -> ('a1, __) gmap -> ('a1, __) gmap
+
 val gmap_fold_aux :
   (positive -> 'a2 -> 'a1 gmap_dep_ne -> 'a2) -> positive -> 'a2 -> 'a1
   gmap_dep -> 'a2
@@ -447,6 +553,16 @@ val gmap_fold :
   -> ('a1, 'a2) gmap -> __
 
 type 'k gset = ('k, unit0) gmap mapset'
+
+val gset_empty : ('a1, 'a1) relDecision -> 'a1 countable -> 'a1 gset empty
+
+val gset_singleton :
+  ('a1, 'a1) relDecision -> 'a1 countable -> ('a1, 'a1 gset) singleton
+
+val gset_union : ('a1, 'a1) relDecision -> 'a1 countable -> 'a1 gset union
+
+val gset_difference :
+  ('a1, 'a1) relDecision -> 'a1 countable -> 'a1 gset difference
 
 val gset_elements :
   ('a1, 'a1) relDecision -> 'a1 countable -> ('a1, 'a1 gset) elements
@@ -624,13 +740,23 @@ type flags = { f_unannounced : bool; f_reader_mark : bool }
 
 val current_flags : flags
 
+type nview = ((val0, status) prod, val0 option) prod
+
+val nview_of : node -> nview
+
+type ghost = { gh_pub : (nid, nview) gmap;
+               gh_seen : ((nid, nid) prod, nview) gmap;
+               gh_unnoticed : nid gset }
+
+val empty_ghost : ghost
+
 type state = { g_flags : flags; g_edges : edgeWorld;
                g_nodes : (nid, node) gmap; g_owners : (oid, ownerS) gmap;
                g_queue : nid list; g_head : nat; g_flushing : bool;
                g_owed : bool; g_batch : nat; g_pull : nat;
                g_current : nid option; g_untracked : bool;
                g_owner : oid option; g_next : nat; g_trace : event list;
-               g_running : nid list }
+               g_running : nid list; g_ghost : ghost }
 
 val node_marked : fresh1 -> bool -> bool -> node -> node
 
@@ -702,6 +828,8 @@ val with_trace : event list -> state -> state
 
 val with_running : nid list -> state -> state
 
+val with_ghost : ghost -> state -> state
+
 val nset_value : val0 -> node -> node
 
 val nset_failure : val0 option -> node -> node
@@ -745,6 +873,20 @@ val edges_opt : (edgeWorld -> edgeWorld option) -> unit0 m
 val push_running : nid -> unit0 m
 
 val pop_running : unit0 m
+
+val read_prefix : edgeWorld -> nid -> nid list
+
+val ghost_read : nid -> nid -> state -> state
+
+val ghost_run_start : nid -> state -> state
+
+val ghost_publish : nid -> state -> state
+
+val run_end_unnoticed : nid -> nid option -> bool -> node -> state -> nid gset
+
+val ghost_run_end : nid -> nid option -> bool -> state -> state
+
+val ghost_dirty_cleared : nid -> state -> state
 
 val root_oid : oid
 

@@ -239,6 +239,34 @@ type 'a empty = 'a
 let empty0 empty1 =
   empty1
 
+type 'a union = 'a -> 'a -> 'a
+
+(** val union0 : 'a1 union -> 'a1 -> 'a1 -> 'a1 **)
+
+let union0 union1 =
+  union1
+
+type 'a difference = 'a -> 'a -> 'a
+
+(** val difference0 : 'a1 difference -> 'a1 -> 'a1 -> 'a1 **)
+
+let difference0 difference1 =
+  difference1
+
+type ('a, 'b) singleton = 'a -> 'b
+
+(** val singleton0 : ('a1, 'a2) singleton -> 'a1 -> 'a2 **)
+
+let singleton0 singleton1 =
+  singleton1
+
+(** val list_to_set :
+    ('a1, 'a2) singleton -> 'a2 empty -> 'a2 union -> 'a1 list -> 'a2 **)
+
+let rec list_to_set h h0 h1 = function
+| Nil -> empty0 h0
+| Cons (x, l0) -> union0 h1 (singleton0 h x) (list_to_set h h0 h1 l0)
+
 type ('a, 'b) filter = __ -> ('a -> decision) -> 'b -> 'b
 
 (** val filter0 : ('a1, 'a2) filter -> ('a1 -> decision) -> 'a2 -> 'a2 **)
@@ -274,6 +302,13 @@ type ('k, 'a, 'm) lookup = 'k -> 'm -> 'a option
 let lookup0 lookup1 =
   lookup1
 
+type ('k, 'a, 'm) singletonM = 'k -> 'a -> 'm
+
+(** val singletonM0 : ('a1, 'a2, 'a3) singletonM -> 'a1 -> 'a2 -> 'a3 **)
+
+let singletonM0 singletonM1 =
+  singletonM1
+
 type ('k, 'a, 'm) insert = 'k -> 'a -> 'm -> 'm
 
 (** val insert0 : ('a1, 'a2, 'a3) insert -> 'a1 -> 'a2 -> 'a3 -> 'a3 **)
@@ -304,6 +339,32 @@ type ('m, 'd) dom = 'm -> 'd
 
 let dom0 dom1 =
   dom1
+
+type 'm merge =
+  __ -> __ -> __ -> (__ option -> __ option -> __ option) -> 'm -> 'm -> 'm
+
+(** val merge0 :
+    'a1 merge -> ('a2 option -> 'a3 option -> 'a4 option) -> 'a1 -> 'a1 -> 'a1 **)
+
+let merge0 merge1 x x0 x1 =
+  Obj.magic merge1 __ __ __ x x0 x1
+
+type ('a, 'm) unionWith = ('a -> 'a -> 'a option) -> 'm -> 'm -> 'm
+
+(** val union_with :
+    ('a1, 'a2) unionWith -> ('a1 -> 'a1 -> 'a1 option) -> 'a2 -> 'a2 -> 'a2 **)
+
+let union_with unionWith0 =
+  unionWith0
+
+type ('a, 'm) differenceWith = ('a -> 'a -> 'a option) -> 'm -> 'm -> 'm
+
+(** val difference_with :
+    ('a1, 'a2) differenceWith -> ('a1 -> 'a1 -> 'a1 option) -> 'a2 -> 'a2 ->
+    'a2 **)
+
+let difference_with differenceWith0 =
+  differenceWith0
 
 type ('a, 'c) elements = 'c -> 'a list
 
@@ -856,6 +917,17 @@ let or_dec p_dec q_dec =
   | Left -> Left
   | Right -> q_dec
 
+(** val prod_eq_dec :
+    ('a1, 'a1) relDecision -> ('a2, 'a2) relDecision -> (('a1, 'a2) prod,
+    ('a1, 'a2) prod) relDecision **)
+
+let prod_eq_dec eqDecision0 eqDecision1 x y =
+  let Pair (a, b) = x in
+  let Pair (a0, b0) = y in
+  (match decide_rel eqDecision0 a a0 with
+   | Left -> decide_rel eqDecision1 b b0
+   | Right -> Right)
+
 (** val bool_decide : decision -> bool **)
 
 let bool_decide = function
@@ -891,6 +963,24 @@ let option_bind f = function
 
 let option_fmap =
   option_map
+
+(** val option_union_with : ('a1, 'a1 option) unionWith **)
+
+let option_union_with f mx my =
+  match mx with
+  | Some x -> (match my with
+               | Some y -> f x y
+               | None -> Some x)
+  | None -> my
+
+(** val option_difference_with : ('a1, 'a1 option) differenceWith **)
+
+let option_difference_with f mx my =
+  match mx with
+  | Some x -> (match my with
+               | Some y -> f x y
+               | None -> Some x)
+  | None -> None
 
 (** val z_le_dec : z -> z -> sumbool **)
 
@@ -1028,6 +1118,101 @@ module Coq0_list =
 type 'a countable = { encode : ('a -> positive);
                       decode : (positive -> 'a option) }
 
+(** val prod_encode_fst : positive -> positive **)
+
+let rec prod_encode_fst = function
+| XI p0 -> XI (XO (prod_encode_fst p0))
+| XO p0 -> XO (XO (prod_encode_fst p0))
+| XH -> XH
+
+(** val prod_encode_snd : positive -> positive **)
+
+let rec prod_encode_snd = function
+| XI p0 -> XO (XI (prod_encode_snd p0))
+| XO p0 -> XO (XO (prod_encode_snd p0))
+| XH -> XO XH
+
+(** val prod_encode : positive -> positive -> positive **)
+
+let rec prod_encode p q =
+  match p with
+  | XI p0 ->
+    (match q with
+     | XI q0 -> XI (XI (prod_encode p0 q0))
+     | XO q0 -> XI (XO (prod_encode p0 q0))
+     | XH -> XI (XI (prod_encode_fst p0)))
+  | XO p0 ->
+    (match q with
+     | XI q0 -> XO (XI (prod_encode p0 q0))
+     | XO q0 -> XO (XO (prod_encode p0 q0))
+     | XH -> XO (XI (prod_encode_fst p0)))
+  | XH ->
+    (match q with
+     | XI q0 -> XI (XI (prod_encode_snd q0))
+     | XO q0 -> XI (XO (prod_encode_snd q0))
+     | XH -> XI XH)
+
+(** val prod_decode_fst : positive -> positive option **)
+
+let rec prod_decode_fst = function
+| XI p0 ->
+  (match p0 with
+   | XI p1 -> Some (match prod_decode_fst p1 with
+                    | Some q -> XI q
+                    | None -> XH)
+   | XO p1 -> Some (match prod_decode_fst p1 with
+                    | Some q -> XI q
+                    | None -> XH)
+   | XH -> Some XH)
+| XO p0 ->
+  (match p0 with
+   | XI p1 ->
+     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x -> XO x)
+       (prod_decode_fst p1)
+   | XO p1 ->
+     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x -> XO x)
+       (prod_decode_fst p1)
+   | XH -> None)
+| XH -> Some XH
+
+(** val prod_decode_snd : positive -> positive option **)
+
+let rec prod_decode_snd = function
+| XI p0 ->
+  (match p0 with
+   | XI p1 -> Some (match prod_decode_snd p1 with
+                    | Some q -> XI q
+                    | None -> XH)
+   | XO p1 ->
+     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x -> XO x)
+       (prod_decode_snd p1)
+   | XH -> Some XH)
+| XO p0 ->
+  (match p0 with
+   | XI p1 -> Some (match prod_decode_snd p1 with
+                    | Some q -> XI q
+                    | None -> XH)
+   | XO p1 ->
+     fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x -> XO x)
+       (prod_decode_snd p1)
+   | XH -> Some XH)
+| XH -> None
+
+(** val prod_countable :
+    ('a1, 'a1) relDecision -> 'a1 countable -> ('a2, 'a2) relDecision -> 'a2
+    countable -> ('a1, 'a2) prod countable **)
+
+let prod_countable _ h _ h0 =
+  { encode = (fun xy ->
+    prod_encode (h.encode (fst xy)) (h0.encode (snd xy))); decode = (fun p ->
+    mbind (Obj.magic (fun _ _ -> option_bind)) (fun x ->
+      mbind (Obj.magic (fun _ _ -> option_bind)) (fun y -> Some (Pair (x,
+        y)))
+        (mbind (Obj.magic (fun _ _ -> option_bind)) (Obj.magic h0).decode
+          (Obj.magic prod_decode_snd p)))
+      (mbind (Obj.magic (fun _ _ -> option_bind)) (Obj.magic h).decode
+        (Obj.magic prod_decode_fst p))) }
+
 (** val n_countable : n countable **)
 
 let n_countable =
@@ -1077,15 +1262,63 @@ let map_fold mapFold0 x x0 x1 =
 let map_insert h i x =
   partial_alter h (fun _ -> Some x) i
 
+(** val map_singleton :
+    ('a1, 'a2, 'a3) partialAlter -> 'a3 empty -> ('a1, 'a2, 'a3) singletonM **)
+
+let map_singleton h h0 i x =
+  insert0 (map_insert h) i x (empty0 h0)
+
 (** val map_to_list :
     ('a1, 'a2, 'a3) mapFold -> 'a3 -> ('a1, 'a2) prod list **)
 
 let map_to_list h =
   map_fold h (fun i x x0 -> Cons ((Pair (i, x)), x0)) Nil
 
+(** val map_union_with : 'a1 merge -> ('a2, 'a1) unionWith **)
+
+let map_union_with h f =
+  merge0 h (union_with option_union_with f)
+
+(** val map_difference_with : 'a1 merge -> ('a2, 'a1) differenceWith **)
+
+let map_difference_with h f =
+  merge0 h (difference_with option_difference_with f)
+
+(** val map_union : 'a1 merge -> 'a1 union **)
+
+let map_union h =
+  union_with (map_union_with h) (fun x _ -> Some x)
+
+(** val map_difference : 'a1 merge -> 'a1 difference **)
+
+let map_difference h =
+  difference_with (map_difference_with h) (fun _ _ -> None)
+
 type 'munit mapset' =
   'munit
   (* singleton inductive, whose constructor was Mapset *)
+
+(** val mapset_empty : (__ -> 'a1 empty) -> 'a1 mapset' empty **)
+
+let mapset_empty h1 =
+  empty0 (h1 __)
+
+(** val mapset_singleton :
+    (__ -> 'a2 empty) -> (__ -> ('a1, __, 'a2) partialAlter) -> ('a1, 'a2
+    mapset') singleton **)
+
+let mapset_singleton h1 h2 x =
+  singletonM0 (map_singleton (Obj.magic h2 __) (h1 __)) x Tt
+
+(** val mapset_union : 'a1 merge -> 'a1 mapset' union **)
+
+let mapset_union h4 x1 x2 =
+  union0 (map_union h4) x1 x2
+
+(** val mapset_difference : 'a1 merge -> 'a1 mapset' difference **)
+
+let mapset_difference h4 x1 x2 =
+  difference0 (map_difference h4) x1 x2
 
 (** val mapset_elements :
     (__ -> ('a1, __, 'a2) mapFold) -> ('a1, 'a2 mapset') elements **)
@@ -1115,6 +1348,34 @@ type 'a gmap_dep =
 type ('k, 'a) gmap =
   'a gmap_dep
   (* singleton inductive, whose constructor was GMap *)
+
+(** val gNode :
+    'a1 gmap_dep -> (__, 'a1) prod option -> 'a1 gmap_dep -> 'a1 gmap_dep **)
+
+let gNode ml mx mr =
+  match ml with
+  | GEmpty ->
+    (match mx with
+     | Some p0 ->
+       let Pair (_, x) = p0 in
+       (match mr with
+        | GEmpty -> GNodes (GNode010 x)
+        | GNodes r -> GNodes (GNode011 (x, r)))
+     | None ->
+       (match mr with
+        | GEmpty -> GEmpty
+        | GNodes r -> GNodes (GNode001 r)))
+  | GNodes l ->
+    (match mx with
+     | Some p0 ->
+       let Pair (_, x) = p0 in
+       (match mr with
+        | GEmpty -> GNodes (GNode110 (l, x))
+        | GNodes r -> GNodes (GNode111 (l, x, r)))
+     | None ->
+       (match mr with
+        | GEmpty -> GNodes (GNode100 l)
+        | GNodes r -> GNodes (GNode101 (l, r))))
 
 (** val gmap_dep_ne_case :
     'a1 gmap_dep_ne -> ('a1 gmap_dep -> (__, 'a1) prod option -> 'a1 gmap_dep
@@ -1362,6 +1623,91 @@ let gmap_dep_fmap f = function
 let gmap_fmap _ _ =
   gmap_dep_fmap
 
+(** val gmap_dep_omap_aux :
+    ('a1 gmap_dep_ne -> 'a2 gmap_dep) -> 'a1 gmap_dep -> 'a2 gmap_dep **)
+
+let gmap_dep_omap_aux go = function
+| GEmpty -> GEmpty
+| GNodes t' -> go t'
+
+(** val gmap_dep_ne_omap :
+    ('a1 -> 'a2 option) -> 'a1 gmap_dep_ne -> 'a2 gmap_dep **)
+
+let rec gmap_dep_ne_omap f x =
+  gmap_dep_ne_case x (fun ml mx mr ->
+    gNode (gmap_dep_omap_aux (fun x0 -> gmap_dep_ne_omap f x0) ml)
+      (mbind (Obj.magic (fun _ _ -> option_bind)) (fun pat ->
+        let Pair (_, x0) = pat in
+        fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x1 -> Pair (__, x1))
+          (Obj.magic f x0))
+        (Obj.magic mx))
+      (gmap_dep_omap_aux (fun x0 -> gmap_dep_ne_omap f x0) mr))
+
+(** val gmap_merge_aux :
+    ('a1 gmap_dep_ne -> 'a2 gmap_dep_ne -> 'a3 gmap_dep) -> ('a1 option ->
+    'a2 option -> 'a3 option) -> 'a1 gmap_dep -> 'a2 gmap_dep -> 'a3 gmap_dep **)
+
+let gmap_merge_aux go f mt1 mt2 =
+  match mt1 with
+  | GEmpty ->
+    (match mt2 with
+     | GEmpty -> GEmpty
+     | GNodes t2' -> gmap_dep_ne_omap (fun x -> f None (Some x)) t2')
+  | GNodes t1' ->
+    (match mt2 with
+     | GEmpty -> gmap_dep_ne_omap (fun x -> f (Some x) None) t1'
+     | GNodes t2' -> go t1' t2')
+
+(** val diag_None' :
+    ('a1 option -> 'a2 option -> 'a3 option) -> (__, 'a1) prod option -> (__,
+    'a2) prod option -> (__, 'a3) prod option **)
+
+let diag_None' f mx my =
+  match mx with
+  | Some p0 ->
+    let Pair (_, x) = p0 in
+    (match my with
+     | Some p1 ->
+       let Pair (_, y) = p1 in
+       fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x0 -> Pair (__, x0))
+         (Obj.magic f (Some x) (Some y))
+     | None ->
+       fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x0 -> Pair (__, x0))
+         (Obj.magic f (Some x) None))
+  | None ->
+    (match my with
+     | Some p0 ->
+       let Pair (_, y) = p0 in
+       fmap (Obj.magic (fun _ _ -> option_fmap)) (fun x -> Pair (__, x))
+         (Obj.magic f None (Some y))
+     | None -> None)
+
+(** val gmap_dep_ne_merge :
+    ('a1 option -> 'a2 option -> 'a3 option) -> 'a1 gmap_dep_ne -> 'a2
+    gmap_dep_ne -> 'a3 gmap_dep **)
+
+let rec gmap_dep_ne_merge f x x0 =
+  gmap_dep_ne_case x (fun ml1 mx1 mr1 ->
+    gmap_dep_ne_case x0 (fun ml2 mx2 mr2 ->
+      gNode
+        (gmap_merge_aux (fun x1 x2 -> gmap_dep_ne_merge f x1 x2) f ml1 ml2)
+        (diag_None' f mx1 mx2)
+        (gmap_merge_aux (fun x1 x2 -> gmap_dep_ne_merge f x1 x2) f mr1 mr2)))
+
+(** val gmap_dep_merge :
+    ('a1 option -> 'a2 option -> 'a3 option) -> 'a1 gmap_dep -> 'a2 gmap_dep
+    -> 'a3 gmap_dep **)
+
+let gmap_dep_merge f =
+  gmap_merge_aux (gmap_dep_ne_merge f) f
+
+(** val gmap_merge :
+    ('a1, 'a1) relDecision -> 'a1 countable -> (__ option -> __ option -> __
+    option) -> ('a1, __) gmap -> ('a1, __) gmap -> ('a1, __) gmap **)
+
+let gmap_merge _ _ =
+  gmap_dep_merge
+
 (** val gmap_fold_aux :
     (positive -> 'a2 -> 'a1 gmap_dep_ne -> 'a2) -> positive -> 'a2 -> 'a1
     gmap_dep -> 'a2 **)
@@ -1401,6 +1747,31 @@ let gmap_fold _ h f y pat =
     | None -> id) XH y pat
 
 type 'k gset = ('k, unit0) gmap mapset'
+
+(** val gset_empty :
+    ('a1, 'a1) relDecision -> 'a1 countable -> 'a1 gset empty **)
+
+let gset_empty eqDecision0 h =
+  mapset_empty (fun _ -> gmap_empty eqDecision0 h)
+
+(** val gset_singleton :
+    ('a1, 'a1) relDecision -> 'a1 countable -> ('a1, 'a1 gset) singleton **)
+
+let gset_singleton eqDecision0 h =
+  mapset_singleton (fun _ -> gmap_empty eqDecision0 h)
+    (Obj.magic (fun _ -> gmap_partial_alter eqDecision0 h))
+
+(** val gset_union :
+    ('a1, 'a1) relDecision -> 'a1 countable -> 'a1 gset union **)
+
+let gset_union eqDecision0 h =
+  mapset_union (Obj.magic (fun _ _ _ -> gmap_merge eqDecision0 h))
+
+(** val gset_difference :
+    ('a1, 'a1) relDecision -> 'a1 countable -> 'a1 gset difference **)
+
+let gset_difference eqDecision0 h =
+  mapset_difference (Obj.magic (fun _ _ _ -> gmap_merge eqDecision0 h))
 
 (** val gset_elements :
     ('a1, 'a1) relDecision -> 'a1 countable -> ('a1, 'a1 gset) elements **)
@@ -1872,13 +2243,34 @@ type flags = { f_unannounced : bool; f_reader_mark : bool }
 let current_flags =
   { f_unannounced = True; f_reader_mark = True }
 
+type nview = ((val0, status) prod, val0 option) prod
+
+(** val nview_of : node -> nview **)
+
+let nview_of d =
+  Pair ((Pair (d.n_value, d.n_status)), d.n_failure)
+
+type ghost = { gh_pub : (nid, nview) gmap;
+               gh_seen : ((nid, nid) prod, nview) gmap;
+               gh_unnoticed : nid gset }
+
+(** val empty_ghost : ghost **)
+
+let empty_ghost =
+  { gh_pub = (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); gh_seen =
+    (empty0
+      (gmap_empty (prod_eq_dec Coq_Nat.eq_dec Coq_Nat.eq_dec)
+        (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
+          nat_countable)));
+    gh_unnoticed = (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)) }
+
 type state = { g_flags : flags; g_edges : edgeWorld;
                g_nodes : (nid, node) gmap; g_owners : (oid, ownerS) gmap;
                g_queue : nid list; g_head : nat; g_flushing : bool;
                g_owed : bool; g_batch : nat; g_pull : nat;
                g_current : nid option; g_untracked : bool;
                g_owner : oid option; g_next : nat; g_trace : event list;
-               g_running : nid list }
+               g_running : nid list; g_ghost : ghost }
 
 (** val node_marked : fresh1 -> bool -> bool -> node -> node **)
 
@@ -1900,7 +2292,7 @@ let set_node n0 d s =
     g_flushing = s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch;
     g_pull = s.g_pull; g_current = s.g_current; g_untracked = s.g_untracked;
     g_owner = s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running }
+    s.g_running; g_ghost = s.g_ghost }
 
 (** val enqueue : nid -> state -> state **)
 
@@ -1910,7 +2302,7 @@ let enqueue n0 s =
     s.g_head; g_flushing = s.g_flushing; g_owed = s.g_owed; g_batch =
     s.g_batch; g_pull = s.g_pull; g_current = s.g_current; g_untracked =
     s.g_untracked; g_owner = s.g_owner; g_next = s.g_next; g_trace =
-    s.g_trace; g_running = s.g_running }
+    s.g_trace; g_running = s.g_running; g_ghost = s.g_ghost }
 
 (** val walk_marks :
     (nid -> state -> state option) -> nid -> nat -> state -> state option **)
@@ -2083,7 +2475,7 @@ let with_edges v s =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
     s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running }
+    s.g_running; g_ghost = s.g_ghost }
 
 (** val with_owners : (oid, ownerS) gmap -> state -> state **)
 
@@ -2092,7 +2484,8 @@ let with_owners v s =
     v; g_queue = s.g_queue; g_head = s.g_head; g_flushing = s.g_flushing;
     g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
     s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running }
+    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
 (** val with_queue : nid list -> state -> state **)
 
@@ -2101,7 +2494,8 @@ let with_queue v s =
     s.g_owners; g_queue = v; g_head = s.g_head; g_flushing = s.g_flushing;
     g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
     s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running }
+    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
 (** val with_head : nat -> state -> state **)
 
@@ -2110,7 +2504,8 @@ let with_head v s =
     s.g_owners; g_queue = s.g_queue; g_head = v; g_flushing = s.g_flushing;
     g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
     s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running }
+    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
 (** val with_flushing : bool -> state -> state **)
 
@@ -2119,7 +2514,8 @@ let with_flushing v s =
     s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing = v;
     g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull; g_current =
     s.g_current; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running }
+    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
 (** val with_owed : bool -> state -> state **)
 
@@ -2129,7 +2525,7 @@ let with_owed v s =
     s.g_flushing; g_owed = v; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
     s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running }
+    s.g_running; g_ghost = s.g_ghost }
 
 (** val with_batch : nat -> state -> state **)
 
@@ -2139,7 +2535,7 @@ let with_batch v s =
     s.g_flushing; g_owed = s.g_owed; g_batch = v; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
     s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running }
+    s.g_running; g_ghost = s.g_ghost }
 
 (** val with_pull : nat -> state -> state **)
 
@@ -2149,7 +2545,7 @@ let with_pull v s =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = v;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
     s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
-    s.g_running }
+    s.g_running; g_ghost = s.g_ghost }
 
 (** val with_current : nid option -> state -> state **)
 
@@ -2158,7 +2554,8 @@ let with_current v s =
     s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = v; g_untracked = s.g_untracked; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running }
+    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
 (** val with_untracked : bool -> state -> state **)
 
@@ -2167,7 +2564,8 @@ let with_untracked v s =
     s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = v; g_owner = s.g_owner; g_next =
-    s.g_next; g_trace = s.g_trace; g_running = s.g_running }
+    s.g_next; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
+    s.g_ghost }
 
 (** val with_owner : oid option -> state -> state **)
 
@@ -2176,7 +2574,8 @@ let with_owner v s =
     s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner = v;
-    g_next = s.g_next; g_trace = s.g_trace; g_running = s.g_running }
+    g_next = s.g_next; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
 (** val with_next : nat -> state -> state **)
 
@@ -2185,7 +2584,8 @@ let with_next v s =
     s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = v; g_trace = s.g_trace; g_running = s.g_running }
+    s.g_owner; g_next = v; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
 (** val with_trace : event list -> state -> state **)
 
@@ -2194,7 +2594,8 @@ let with_trace v s =
     s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = v; g_running = s.g_running }
+    s.g_owner; g_next = s.g_next; g_trace = v; g_running = s.g_running;
+    g_ghost = s.g_ghost }
 
 (** val with_running : nid list -> state -> state **)
 
@@ -2203,7 +2604,18 @@ let with_running v s =
     s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
     s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
     g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
-    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running = v }
+    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running = v;
+    g_ghost = s.g_ghost }
+
+(** val with_ghost : ghost -> state -> state **)
+
+let with_ghost v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_head = s.g_head; g_flushing =
+    s.g_flushing; g_owed = s.g_owed; g_batch = s.g_batch; g_pull = s.g_pull;
+    g_current = s.g_current; g_untracked = s.g_untracked; g_owner =
+    s.g_owner; g_next = s.g_next; g_trace = s.g_trace; g_running =
+    s.g_running; g_ghost = v }
 
 (** val nset_value : val0 -> node -> node **)
 
@@ -2391,6 +2803,114 @@ let push_running n0 =
 
 let pop_running =
   m_mod (fun s -> with_running (tl s.g_running) s)
+
+(** val read_prefix : edgeWorld -> nid -> nid list **)
+
+let read_prefix w c =
+  fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
+    (firstn (src_of w c).scursor (Obj.magic (src_of w c).sslots))
+
+(** val ghost_read : nid -> nid -> state -> state **)
+
+let ghost_read c n0 s =
+  match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
+  | Some d ->
+    let g = s.g_ghost in
+    with_ghost { gh_pub = g.gh_pub; gh_seen =
+      (insert0
+        (map_insert
+          (gmap_partial_alter (prod_eq_dec Coq_Nat.eq_dec Coq_Nat.eq_dec)
+            (prod_countable Coq_Nat.eq_dec nat_countable Coq_Nat.eq_dec
+              nat_countable)))
+        (Pair (c, n0)) (nview_of d) g.gh_seen);
+      gh_unnoticed =
+      (match decide
+               (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+                 s.g_running) with
+       | Left ->
+         union0 (gset_union Coq_Nat.eq_dec nat_countable)
+           (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) c)
+           g.gh_unnoticed
+       | Right -> g.gh_unnoticed) }
+      s
+  | None -> s
+
+(** val ghost_run_start : nid -> state -> state **)
+
+let ghost_run_start n0 s =
+  let g = s.g_ghost in
+  with_ghost { gh_pub = g.gh_pub; gh_seen = g.gh_seen; gh_unnoticed =
+    (difference0 (gset_difference Coq_Nat.eq_dec nat_countable)
+      g.gh_unnoticed
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)) }
+    s
+
+(** val ghost_publish : nid -> state -> state **)
+
+let ghost_publish n0 s =
+  match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
+  | Some d ->
+    let g = s.g_ghost in
+    with_ghost { gh_pub =
+      (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+        n0 (nview_of d) g.gh_pub);
+      gh_seen = g.gh_seen; gh_unnoticed = g.gh_unnoticed } s
+  | None -> s
+
+(** val run_end_unnoticed :
+    nid -> nid option -> bool -> node -> state -> nid gset **)
+
+let run_end_unnoticed n0 r moved d s =
+  match moved with
+  | True ->
+    (match r with
+     | Some c ->
+       (match decide
+                (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+                  (read_prefix s.g_edges c)) with
+        | Left -> singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) c
+        | Right -> empty0 (gset_empty Coq_Nat.eq_dec nat_countable))
+     | None -> empty0 (gset_empty Coq_Nat.eq_dec nat_countable))
+  | False ->
+    (match decide
+             (decide_rel
+               (option_eq_dec
+                 (prod_eq_dec (prod_eq_dec Coq_Z.eq_dec status_eq_dec)
+                   (option_eq_dec Coq_Z.eq_dec)))
+               (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0
+                 s.g_ghost.gh_pub)
+               (Some (nview_of d))) with
+     | Left -> empty0 (gset_empty Coq_Nat.eq_dec nat_countable)
+     | Right ->
+       list_to_set (gset_singleton Coq_Nat.eq_dec nat_countable)
+         (gset_empty Coq_Nat.eq_dec nat_countable)
+         (gset_union Coq_Nat.eq_dec nat_countable)
+         (obs_view (obs_of s.g_edges n0)))
+
+(** val ghost_run_end : nid -> nid option -> bool -> state -> state **)
+
+let ghost_run_end n0 r moved s =
+  match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes with
+  | Some d ->
+    let g = s.g_ghost in
+    with_ghost { gh_pub =
+      (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+        n0 (nview_of d) g.gh_pub);
+      gh_seen = g.gh_seen; gh_unnoticed =
+      (union0 (gset_union Coq_Nat.eq_dec nat_countable)
+        (run_end_unnoticed n0 r moved d s) g.gh_unnoticed) }
+      s
+  | None -> s
+
+(** val ghost_dirty_cleared : nid -> state -> state **)
+
+let ghost_dirty_cleared n0 s =
+  let g = s.g_ghost in
+  with_ghost { gh_pub = g.gh_pub; gh_seen = g.gh_seen; gh_unnoticed =
+    (union0 (gset_union Coq_Nat.eq_dec nat_countable)
+      (singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) n0)
+      g.gh_unnoticed) }
+    s
 
 (** val root_oid : oid **)
 
@@ -2778,7 +3298,7 @@ let track n0 s =
   match s.g_current with
   | Some c ->
     (match sl_add c n0 s.g_edges with
-     | Some w -> Some (Pair ((with_edges w s), Tt))
+     | Some w -> Some (Pair ((ghost_read c n0 (with_edges w s)), Tt))
      | None -> None)
   | None -> Some (Pair (s, Tt))
 
@@ -2861,7 +3381,7 @@ let effect_node b e =
 (** val add_node : nid -> node -> unit0 m **)
 
 let add_node n0 d =
-  m_mod (set_node n0 d)
+  m_mod (fun s -> ghost_publish n0 (set_node n0 d s))
 
 (** val current_owner : oid option m **)
 
@@ -3159,17 +3679,18 @@ and recompute fuel n0 =
       match d.n_scope with
       | Some o ->
         m_bind (mod_node n0 (nset_fresh Clean)) (fun _ ->
-          m_bind (discharge f o) (fun _ ->
-            m_bind (get_node n0) (fun d' ->
-              match d'.n_disposed with
-              | True -> m_ret Tt
-              | False ->
-                (match decide (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
-                 | Left -> run_memo f n0
-                 | Right ->
-                   (match decide (decide_rel fresh_eq_dec d'.n_fresh Dirty) with
-                    | Left -> recompute f n0
-                    | Right -> m_ret Tt)))))
+          m_bind (m_mod (ghost_dirty_cleared n0)) (fun _ ->
+            m_bind (discharge f o) (fun _ ->
+              m_bind (get_node n0) (fun d' ->
+                match d'.n_disposed with
+                | True -> m_ret Tt
+                | False ->
+                  (match decide (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
+                   | Left -> run_memo f n0
+                   | Right ->
+                     (match decide (decide_rel fresh_eq_dec d'.n_fresh Dirty) with
+                      | Left -> recompute f n0
+                      | Right -> m_ret Tt))))))
       | None -> run_memo f n0)
 
 (** val run_memo : nat -> nid -> unit0 m **)
@@ -3189,84 +3710,90 @@ and run_memo fuel n0 =
               (nset_status StNone (nset_unann False (nset_fresh Clean x))))))
         (fun _ ->
         m_bind (edges (sl_begin n0)) (fun _ ->
-          m_bind (push_running n0) (fun _ ->
-            let body_env =
-              match d.n_published with
-              | True -> Cons ((Pair (prev_var, previous)), d.n_env)
-              | False -> without_prev d.n_env
-            in
-            m_bind (hosted n0 (exec f body_env d.n_body)) (fun r ->
-              m_bind (get_node n0) (fun d1 ->
-                let result =
-                  match d1.n_violated with
-                  | True -> Fail pure_scope_failure
-                  | False -> r
-                in
-                m_bind
-                  (match result with
-                   | Ok v ->
-                     mod_node n0 (fun x ->
-                       nset_published True (nset_value v x))
-                   | Fail _ -> m_ret Tt)
-                  (fun _ ->
+          m_bind (m_mod (ghost_run_start n0)) (fun _ ->
+            m_bind (push_running n0) (fun _ ->
+              let body_env =
+                match d.n_published with
+                | True -> Cons ((Pair (prev_var, previous)), d.n_env)
+                | False -> without_prev d.n_env
+              in
+              m_bind (hosted n0 (exec f body_env d.n_body)) (fun r ->
+                m_bind (get_node n0) (fun d1 ->
+                  let result =
+                    match d1.n_violated with
+                    | True -> Fail pure_scope_failure
+                    | False -> r
+                  in
                   m_bind
-                    (edges_opt
-                      (match d1.n_disposed with
-                       | True -> sl_clear n0
-                       | False -> sl_end n0))
+                    (match result with
+                     | Ok v ->
+                       mod_node n0 (fun x ->
+                         nset_published True (nset_value v x))
+                     | Fail _ -> m_ret Tt)
                     (fun _ ->
-                    m_bind pop_running (fun _ ->
-                      m_bind
-                        (match result with
-                         | Ok _ -> m_ret Tt
-                         | Fail y ->
-                           mod_node n0 (fun x ->
-                             nset_violated False
-                               (nset_status StError (nset_failure (Some y) x))))
-                        (fun _ ->
-                        m_bind (get_node n0) (fun d2 ->
-                          m_bind
-                            (match decide
-                                     (or_dec
-                                       (not_dec
-                                         (decide_rel status_eq_dec
-                                           d2.n_status previous_status))
-                                       (not_dec
-                                         (decide_rel
-                                           (option_eq_dec Coq_Z.eq_dec)
-                                           d2.n_failure previous_failure))) with
-                             | Left -> m_ret True
-                             | Right ->
-                               (match d2.n_cmp with
-                                | CmpEq ->
-                                  m_ret
-                                    (bool_decide
-                                      (not_dec
-                                        (decide_rel Coq_Z.eq_dec d2.n_value
-                                          previous)))
-                                | CmpNever -> m_ret True
-                                | CmpThrows y ->
+                    m_bind
+                      (edges_opt
+                        (match d1.n_disposed with
+                         | True -> sl_clear n0
+                         | False -> sl_end n0))
+                      (fun _ ->
+                      m_bind pop_running (fun _ ->
+                        m_bind
+                          (match result with
+                           | Ok _ -> m_ret Tt
+                           | Fail y ->
+                             mod_node n0 (fun x ->
+                               nset_violated False
+                                 (nset_status StError
+                                   (nset_failure (Some y) x))))
+                          (fun _ ->
+                          m_bind (get_node n0) (fun d2 ->
+                            m_bind
+                              (match decide
+                                       (or_dec
+                                         (not_dec
+                                           (decide_rel status_eq_dec
+                                             d2.n_status previous_status))
+                                         (not_dec
+                                           (decide_rel
+                                             (option_eq_dec Coq_Z.eq_dec)
+                                             d2.n_failure previous_failure))) with
+                               | Left -> m_ret True
+                               | Right ->
+                                 (match d2.n_cmp with
+                                  | CmpEq ->
+                                    m_ret
+                                      (bool_decide
+                                        (not_dec
+                                          (decide_rel Coq_Z.eq_dec d2.n_value
+                                            previous)))
+                                  | CmpNever -> m_ret True
+                                  | CmpThrows y ->
+                                    m_bind
+                                      (mod_node n0 (fun x ->
+                                        nset_status StError
+                                          (nset_failure (Some y)
+                                            (nset_value previous x))))
+                                      (fun _ -> m_ret True)))
+                              (fun moved ->
+                              m_bind m_get (fun s ->
+                                m_bind
+                                  (m_mod (ghost_run_end n0 s.g_current moved))
+                                  (fun _ ->
                                   m_bind
-                                    (mod_node n0 (fun x ->
-                                      nset_status StError
-                                        (nset_failure (Some y)
-                                          (nset_value previous x))))
-                                    (fun _ -> m_ret True)))
-                            (fun moved ->
-                            m_bind m_get (fun s ->
-                              m_bind
-                                (match moved with
-                                 | True ->
-                                   m_step
-                                     (notify_dirty_except f n0 s.g_current)
-                                 | False -> m_ret Tt)
-                                (fun _ ->
-                                m_bind (get_node n0) (fun d3 ->
-                                  match decide
-                                          (decide_rel fresh_eq_dec d3.n_fresh
-                                            Clean) with
-                                  | Left -> m_ret Tt
-                                  | Right -> mod_node n0 (nset_unann True))))))))))))))))
+                                    (match moved with
+                                     | True ->
+                                       m_step
+                                         (notify_dirty_except f n0
+                                           s.g_current)
+                                     | False -> m_ret Tt)
+                                    (fun _ ->
+                                    m_bind (get_node n0) (fun d3 ->
+                                      match decide
+                                              (decide_rel fresh_eq_dec
+                                                d3.n_fresh Clean) with
+                                      | Left -> m_ret Tt
+                                      | Right -> mod_node n0 (nset_unann True))))))))))))))))))
 
 (** val execute_effect : nat -> nid -> unit0 m **)
 
@@ -3496,7 +4023,8 @@ and write_signal fuel n0 v =
          | Left -> m_ret Tt
          | Right ->
            m_bind (mod_node n0 (nset_value v)) (fun _ ->
-             m_bind (m_step (notify_dirty f n0)) (fun _ -> request_flush f)))
+             m_bind (m_mod (ghost_publish n0)) (fun _ ->
+               m_bind (m_step (notify_dirty f n0)) (fun _ -> request_flush f))))
       | _ -> stuck)
 
 (** val request_flush : nat -> unit0 m **)
@@ -3565,7 +4093,8 @@ let init fl =
       (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)));
     g_queue = Nil; g_head = O; g_flushing = False; g_owed = False; g_batch =
     O; g_pull = O; g_current = None; g_untracked = False; g_owner = (Some
-    root_oid); g_next = O; g_trace = Nil; g_running = Nil }
+    root_oid); g_next = O; g_trace = Nil; g_running = Nil; g_ghost =
+    empty_ghost }
 
 (** val run_top : nat -> cmd -> outcome m **)
 

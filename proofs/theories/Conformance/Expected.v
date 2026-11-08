@@ -113,6 +113,10 @@ Definition exp_nested_self_run : list event := [
   EvRun 5; EvLog 5 10%Z; EvRun 5; EvLog 5 10%Z; EvHostRead 4 (Ok 10%Z)
 ].
 
+Definition exp_check_over_moved : list event := [
+  EvHostRead 3 (Ok 0%Z); EvLog 4 0%Z; EvHostRead 4 (Ok 0%Z); EvHostRead 4 (Ok 0%Z)
+].
+
 Definition exp_previous_value : list event := [
   EvHostRead 2 (Ok 1%Z); EvHostRead 3 (Ok 42%Z); EvHostRead 2 (Ok 2%Z); EvLog 3 7%Z; EvHostRead 3 (Ok 5%Z)
 ].

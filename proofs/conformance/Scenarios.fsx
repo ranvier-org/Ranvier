@@ -530,6 +530,30 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
             c.Check (c.HostRead 4 (fun () -> m.Value) = 10) "a clean read answers the stored value"
 
+        // BUGS.md, check_resolves_over_moved_source. x reads a, writes a's source, and reads b, a memo over a. b's walk runs
+        // a under x's body, and the notice of that run skips x. x ends in Check, and its next read resolves it clean.
+        "check_over_moved",
+        fun c ->
+            let s = c.Signal 1 0
+            let a = c.Memo 2 (fun () -> s.Value)
+            let b = c.Memo 3 (fun () -> a.Value)
+
+            let x =
+                c.Memo 4 (fun () ->
+                    let v = a.Value
+                    s.Value <- 1
+                    b.Value |> ignore
+                    c.Log 4 v
+                    v)
+
+            c.HostRead 3 (fun () -> b.Value) |> ignore
+            c.HostRead 4 (fun () -> x.Value) |> ignore
+            c.Check (freshnessOf x = "Check") $"the reader is {freshnessOf x}"
+            c.Check (freshnessOf a = "Clean") $"the source is {freshnessOf a}"
+            c.Check (c.HostRead 4 (fun () -> x.Value) = 0) "the resolved read answers the value of the old read"
+            c.Check (freshnessOf x = "Clean") $"after its read the reader is {freshnessOf x}"
+            c.Check (a.Peek = 1) $"the source holds {a.Peek}"
+
         // A memo's previous value. A memo nested in a published memo starts with none, and a later run has its own.
         "previous_value",
         fun c ->

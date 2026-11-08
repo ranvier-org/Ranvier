@@ -127,6 +127,27 @@ intended, the entry closes as "spec corrected".
   `engine_inv_preserved` hold over results, which this read has none of. In the differential check this program is `fatal` on the
   F# side and has no result in the model, which counts as a both-sides skip and closes nothing.
 
+- `check_resolves_over_moved_source` (scenario `check_over_moved`; `theories/Pure/Witnesses.v`, same name, and
+  `resolve_clean_no_move_falsified`): a memo `x` reads `a`, writes `a`'s source, and reads `b`, a memo over `a` that has run
+  before. The write marks `a` `Dirty`, and `x` and `b` `Check`. `b`'s `ResolveCheck` runs `a` with `x` as the current
+  computation, and `NotifyDirtyExcept` (Core.fs 4283) skips `x`. `x`'s run ends in `Check` with its value from the old `a`.
+  The next read walks `x`'s sources, both now clean, and `x` goes `Clean` with no run: `x` answers 0 with `a` at 1. F# trace:
+  `[EvHostRead 3 (Ok 0); EvLog 4 0; EvHostRead 4 (Ok 0); EvHostRead 4 (Ok 0)]`. The harness asserts `Check`, the answer 0, `Clean`
+  and `a` at 1. Against the documents: Core.fs 4301-4302 says "Reaching the end still in `Check` means nothing above moved", and
+  here `a` moved. The skip's reason at 4283 fits a reader about to read the source, and this reader read it earlier in the run.
+  **Contrary evidence.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the contract", and this
+  memo writes. From reading, not run: a cleanup that writes under `x`'s run reaches the same skip, which Core.fs 4178-4181 documents
+  as a behaviour. **Theorems.** `resolve_clean_no_move` is false on this engine, and is the Open theorem below.
+  `resolve_clean_unmoved` proves the strongest form found, under `reads_settled`: the memo is not in `gh_unnoticed`, and neither it
+  nor a source is running. `gh_unnoticed` records four events: this skip, a read of a running node, the `Dirty` cleared at the start
+  of `RecomputeScoped` (Core.fs 4191), and a run with no move ending on a view other than the published one, which takes a nested run.
+  `check_cutoff_settled` shows the premise holding on an ordinary resolution. From `Clean` or `Check`, the conclusion holds of any
+  memo: `unmoved_short_of_dirty`.
+  **The other Confirmed entries.** `self_marking_wake_lost` does not falsify this theorem, since the reader read the stored value:
+  `self_marking_through_memo_unmoved`. `read_move_leaves_effect_queued` changes no memo's reads. `nested_self_recompute_resets_cursor`
+  starts from `Dirty`, and its lost read has no slot, so `moved_since_last_run` does not see it. `self_read_check_overflow` has no
+  result to conclude from, and the theorem's premise is conditional on one: `self_read_check_resolves_itself` has the read at no result.
+
 ## Awaiting ruling
 
 - `disposed_running_observer_stays_clean` (`theories/Pure/Witnesses.v`, scenario of the same name): an effect that disposes
@@ -208,3 +229,7 @@ Changes to `redundant` from its first statement in the plan.
 
 Names of theorems that may contain `Admitted`, `admit` or an `Axiom`, one per line as a list item.
 `check.sh` compares its findings against this section.
+
+- `resolve_clean_no_move` (`theories/Pure/Check.v`): `check_resolves_over_moved_source` falsifies it on the present engine, and
+  `resolve_clean_no_move_falsified` proves that. It states what the fix owes, and nothing may use it until the fix closes it. Use
+  `resolve_clean_unmoved` until then.

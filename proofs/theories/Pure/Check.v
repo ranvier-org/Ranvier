@@ -1,0 +1,1719 @@
+From stdpp Require Import prelude gmap.
+From Stdlib Require Import ZArith.
+From Ranvier.Base Require Import Prelude Syntax.
+From Ranvier.Pure Require Import ObserverSet SourceList State Edges Marking Engine.
+
+Open Scope nat_scope.
+
+(** ** What a resolution claims *)
+
+(** A source of [n] has a value, status or failure different from [n]'s latest tracked read of it. *)
+Definition moved_since_last_run (s : state) (n : nid) : Prop :=
+  exists src i mh d,
+    slot_at (g_edges s) n i = Some (src, mh) /\ g_nodes s !! src = Some d /\
+    gh_seen (g_ghost s) !! (n, src) <> Some (nview_of d).
+
+(** The premise [resolve_clean_unmoved] takes: [n]'s reads have no unnoticed difference, and neither [n]
+    nor a source of [n] is running. *)
+Definition reads_settled (s : state) (n : nid) : Prop :=
+  n ∉ gh_unnoticed (g_ghost s) /\ n ∉ g_running s /\
+  forall src, src ∈ fst <$> sslots (src_of (g_edges s) n) -> src ∉ g_running s.
+
+(** ** Source lists, without their handles *)
+
+Definition slot_view (w : EdgeWorld) (c : nid) : list nid * nat :=
+  (fst <$> sslots (src_of w c), scursor (src_of w c)).
+
+Lemma read_prefix_view w c : read_prefix w c = take (slot_view w c).2 (slot_view w c).1.
+Proof. unfold read_prefix, slot_view. simpl. apply fmap_take. Qed.
+
+Lemma slots_view w c : fst <$> sslots (src_of w c) = (slot_view w c).1.
+Proof. done. Qed.
+
+Lemma slots_length w c : length (sslots (src_of w c)) = length (slot_view w c).1.
+Proof. unfold slot_view. simpl. by rewrite length_fmap. Qed.
+
+Lemma slot_view_set_obs s o w c : slot_view (set_obs s o w) c = slot_view w c.
+Proof. unfold slot_view. by rewrite src_of_set_obs. Qed.
+
+Lemma fmap_fst_alter (l : list (nid * option nat)) i mh :
+  fst <$> alter (fun p : nid * option nat => (p.1, mh)) i l = fst <$> l.
+Proof.
+  revert i. induction l as [|a l IH]; intros [|i]; simpl; try done. f_equal. apply IH.
+Qed.
+
+Lemma slot_view_set_handle c i mh w c' : slot_view (set_handle c i mh w) c' = slot_view w c'.
+Proof.
+  unfold slot_view, set_handle. rewrite src_of_set_src.
+  destruct (decide (c' = c)) as [->|]; simpl; [|done]. by rewrite fmap_fst_alter.
+Qed.
+
+Lemma slot_view_remove_slot self i w w' c :
+  sl_remove_slot self i w = Some w' -> slot_view w' c = slot_view w c.
+Proof.
+  unfold sl_remove_slot. destruct (slot_at w self i) as [[s [h|]]|]; intros Hr; try (by simplify_eq).
+  unfold remove_edge in Hr. destruct (obs_remove_at self h (obs_of w s)) as [[o' [[[m ms] h']|]]|];
+    simpl in Hr; simplify_eq.
+  - unfold sl_moved_in. by rewrite !slot_view_set_handle, slot_view_set_obs.
+  - by rewrite slot_view_set_handle, slot_view_set_obs.
+Qed.
+
+Lemma slot_view_trim_loop self i n w w' c :
+  trim_loop self i n w = Some w' -> slot_view w' c = slot_view w c.
+Proof.
+  revert i w. induction n as [|n IH]; intros i w Hr; simpl in Hr; [by simplify_eq|].
+  destruct (sl_remove_slot self i w) as [w1|] eqn:E; simpl in Hr; [|done].
+  rewrite (IH _ _ Hr). by eapply slot_view_remove_slot.
+Qed.
+
+Lemma slot_view_trim self from w w' c :
+  sl_trim self from w = Some w' ->
+  slot_view w' c =
+    if decide (c = self) then (take from (slot_view w c).1, (slot_view w c).2) else slot_view w c.
+Proof.
+  unfold sl_trim. intros Hr. destruct (trim_loop _ _ _ _) as [w1|] eqn:E; simpl in Hr; [|done]. simplify_eq.
+  pose proof (slot_view_trim_loop _ _ _ _ _ c E) as Hv.
+  destruct (decide (c = self)) as [->|Hne].
+  - rewrite <- Hv. unfold slot_view. rewrite src_of_set_src, decide_True by done. simpl.
+    by rewrite fmap_take.
+  - rewrite <- Hv. unfold slot_view. by rewrite src_of_set_src, decide_False by done.
+Qed.
+
+Lemma slot_view_end self w w' c :
+  sl_end self w = Some w' ->
+  (slot_view w self).2 <= length (slot_view w self).1 ->
+  slot_view w' c =
+    if decide (c = self) then (take (slot_view w c).2 (slot_view w c).1, (slot_view w c).2)
+    else slot_view w c.
+Proof.
+  unfold sl_end. intros Hr Hle.
+  destruct (decide (scursor (src_of w self) < length (sslots (src_of w self)))) as [Hl|Hl].
+  - rewrite (slot_view_trim _ _ _ _ _ Hr). destruct (decide (c = self)) as [->|]; done.
+  - simplify_eq. destruct (decide (c = self)) as [->|]; [|done].
+    rewrite slots_length in Hl. change (scursor (src_of w' self)) with (slot_view w' self).2 in Hl.
+    rewrite take_ge by lia. by destruct (slot_view w' self).
+Qed.
+
+Lemma slot_view_clear self w w' c :
+  sl_clear self w = Some w' ->
+  slot_view w' c = if decide (c = self) then ([], 0) else slot_view w c.
+Proof.
+  unfold sl_clear. intros Hr. destruct (sl_trim self 0 w) as [w1|] eqn:E; simpl in Hr; [|done]. simplify_eq.
+  pose proof (slot_view_trim _ _ _ _ c E) as Hv.
+  unfold slot_view at 1. rewrite src_of_set_src.
+  destruct (decide (c = self)) as [->|Hne]; simpl.
+  - rewrite slots_view, Hv. simpl. by rewrite take_0.
+  - by rewrite <- Hv.
+Qed.
+
+Lemma slot_view_begin c w c' :
+  slot_view (sl_begin c w) c' =
+    if decide (c' = c) then ((slot_view w c').1, 0) else slot_view w c'.
+Proof.
+  unfold slot_view, sl_begin. rewrite src_of_set_src. destruct (decide (c' = c)) as [->|]; done.
+Qed.
+
+Lemma slot_view_append self s mh o w c :
+  slot_view (sl_append self s mh o w) c =
+    if decide (c = self) then ((slot_view w c).1 ++ [s], S (length (slot_view w c).1))
+    else slot_view w c.
+Proof.
+  unfold sl_append, slot_view. rewrite src_of_set_obs, src_of_set_src.
+  destruct (decide (c = self)) as [->|]; simpl; [|done].
+  by rewrite fmap_app, length_fmap.
+Qed.
+
+Lemma slot_view_link self s w c :
+  slot_view (sl_link self s w) c =
+    if decide (c = self) then ((slot_view w c).1 ++ [s], S (length (slot_view w c).1))
+    else slot_view w c.
+Proof.
+  destruct (sl_link_cases self s w) as [[-> _]|[-> _]]; apply slot_view_append.
+Qed.
+
+Lemma elem_take (l : list nid) n x : x ∈ take n l -> x ∈ l.
+Proof. intros H. rewrite <- (take_drop n l). apply elem_of_app. by left. Qed.
+
+(** What a tracked read does to the slots. *)
+Lemma slot_view_add self s w w' :
+  (slot_view w self).2 <= length (slot_view w self).1 ->
+  sl_add self s w = Some w' ->
+  (forall c, c <> self -> slot_view w' c = slot_view w c) /\
+  (slot_view w' self).2 <= length (slot_view w' self).1 /\
+  (forall x, x ∈ (slot_view w' self).1 -> x ∈ (slot_view w self).1 \/ x = s) /\
+  (forall x, x ∈ read_prefix w' self -> x ∈ read_prefix w self \/ x = s).
+Proof.
+  intros Hle. unfold sl_add.
+  destruct (decide (fst <$> sslots (src_of w self) !! scursor (src_of w self) = Some s)) as [Hp|Hp].
+  - intros Hr. simplify_eq.
+    assert (Hv : forall c, slot_view (set_src self {| sslots := sslots (src_of w self);
+                   scursor := S (scursor (src_of w self)) |} w) c =
+                 if decide (c = self) then ((slot_view w c).1, S (slot_view w c).2) else slot_view w c).
+    { intros c. unfold slot_view. rewrite src_of_set_src. by destruct (decide (c = self)) as [->|]. }
+    assert (Hlt : scursor (src_of w self) < length (sslots (src_of w self))).
+    { apply lookup_lt_is_Some_1. destruct (sslots (src_of w self) !! scursor (src_of w self)) eqn:E;
+        simpl in Hp; [by eexists|done]. }
+    assert (Hlk : (slot_view w self).1 !! (slot_view w self).2 = Some s).
+    { unfold slot_view. simpl. rewrite list_lookup_fmap. done. }
+    split_and!.
+    + intros c Hc. by rewrite Hv, decide_False.
+    + rewrite Hv, decide_True by done. unfold slot_view. simpl. rewrite length_fmap. lia.
+    + intros x. rewrite Hv, decide_True by done. cbn [fst snd]. auto.
+    + intros x. rewrite !read_prefix_view, Hv, decide_True by done. cbn [fst snd].
+      rewrite (take_S_r _ _ s) by done. rewrite elem_of_app, list_elem_of_singleton. tauto.
+  - destruct (decide (0 < scursor (src_of w self) /\
+                      fst <$> sslots (src_of w self) !! pred (scursor (src_of w self)) = Some s)).
+    { intros Hr. simplify_eq. split_and!; auto. }
+    intros Hr. destruct (sl_end self w) as [w1|] eqn:E; simpl in Hr; simplify_eq.
+    pose proof (slot_view_end _ _ _ self E Hle) as Hself.
+    rewrite decide_True in Hself by done.
+    split_and!.
+    + intros c Hc. rewrite slot_view_link, decide_False by done.
+      pose proof (slot_view_end _ _ _ c E Hle) as Hv. by rewrite decide_False in Hv.
+    + rewrite slot_view_link, decide_True by done. cbn [fst snd]. rewrite length_app. simpl. lia.
+    + intros x. rewrite slot_view_link, decide_True by done. cbn [fst snd].
+      rewrite elem_of_app, list_elem_of_singleton, Hself. cbn [fst snd].
+      intros [Hx|Hx]; [left|by right]. by eapply elem_take.
+    + intros x. rewrite !read_prefix_view, slot_view_link, decide_True by done. cbn [fst snd].
+      rewrite Hself. cbn [fst snd]. rewrite take_ge by (rewrite length_app; simpl; lia).
+      rewrite elem_of_app, list_elem_of_singleton. tauto.
+Qed.
+
+Lemma read_prefix_in w c x : x ∈ read_prefix w c -> x ∈ fst <$> sslots (src_of w c).
+Proof. rewrite read_prefix_view. apply elem_take. Qed.
+
+(** ** The invariant *)
+
+Definition has_kind (n : nid) (k : kind) (s : state) : Prop :=
+  exists d, g_nodes s !! n = Some d /\ n_kind d = k.
+
+(** The invariant behind [resolve_clean_unmoved]: a memo with no [Dirty] and no unnoticed difference read
+    each source's published view, and a node outside any run has published its view. [x] is a node whose
+    run has ended and has yet to publish, and [e] a node whose new view its observers have yet to take. *)
+Record inv_xe (x e : option nid) (s : state) : Prop := {
+  ci_reach : ew_reachable (g_edges s);
+  ci_cursor : forall c, (slot_view (g_edges s) c).2 <= length (slot_view (g_edges s) c).1;
+  ci_ended : forall c, has_kind c KMemo s -> c ∉ g_running s ->
+    (slot_view (g_edges s) c).2 = length (slot_view (g_edges s) c).1;
+  ci_next : forall n, is_Some (g_nodes s !! n) -> n <= g_next s;
+  ci_slots : forall c y, y ∈ (slot_view (g_edges s) c).1 ->
+    is_Some (g_nodes s !! c) /\ (has_kind y KMemo s \/ has_kind y KSignal s);
+  ci_running : forall c, c ∈ g_running s -> is_Some (g_nodes s !! c);
+  ci_current : forall c, g_current s = Some c -> c ∈ g_running s;
+  ci_queue : forall y, y ∈ g_queue s -> has_kind y KEffect s;
+  ci_pub : forall n d, g_nodes s !! n = Some d -> n_kind d <> KEffect -> n ∉ g_running s ->
+    x <> Some n -> gh_pub (g_ghost s) !! n = Some (nview_of d);
+  ci_seen : forall c d y, g_nodes s !! c = Some d -> n_kind d = KMemo -> y ∈ read_prefix (g_edges s) c ->
+    e <> Some y ->
+    gh_seen (g_ghost s) !! (c, y) = gh_pub (g_ghost s) !! y \/ n_fresh d = Dirty \/
+    c ∈ gh_unnoticed (g_ghost s)
+}.
+
+Notation inv_x x := (inv_xe x None).
+
+Definition check_inv : state -> Prop := inv_x None.
+
+(** What every engine function returns unchanged. *)
+Definition frame (s s' : state) : Prop :=
+  g_running s' = g_running s /\ g_current s' = g_current s /\
+  forall n k, has_kind n k s -> has_kind n k s'.
+
+Lemma frame_refl s : frame s s.
+Proof. split_and!; auto. Qed.
+
+Lemma frame_trans s1 s2 s3 : frame s1 s2 -> frame s2 s3 -> frame s1 s3.
+Proof.
+  intros (H1 & H2 & H3) (H1' & H2' & H3'). split_and!; try congruence. auto.
+Qed.
+
+Lemma inv_weaken x s : check_inv s -> inv_x x s.
+Proof.
+  intros H. destruct H. split; try done. intros n d ???? . eauto using ci_pub0.
+Qed.
+
+Lemma inv_running n s : inv_x (Some n) s -> n ∈ g_running s -> check_inv s.
+Proof.
+  intros H Hr. destruct H. split; try done. intros m d Hd Hk Hm _.
+  apply (ci_pub0 m d); try done. intros Heq. simplify_eq.
+Qed.
+
+(** ** Updates holding the invariant *)
+
+(** Fields the invariant does not read. *)
+Definition irrelevant (s s' : state) : Prop :=
+  g_edges s' = g_edges s /\ g_nodes s' = g_nodes s /\ g_ghost s' = g_ghost s /\
+  g_running s' = g_running s /\ g_current s' = g_current s /\ g_next s' = g_next s /\
+  g_queue s' = g_queue s.
+
+Lemma has_kind_same n k s s' : g_nodes s' = g_nodes s -> has_kind n k s -> has_kind n k s'.
+Proof. unfold has_kind. intros ->. done. Qed.
+
+Lemma inv_irrelevant x e s s' : irrelevant s s' -> inv_xe x e s -> inv_xe x e s'.
+Proof.
+  intros (He & Hn & Hg & Hr & Hc & Hx & Hq) H. destruct H.
+  split; unfold has_kind in *; rewrite ?He, ?Hn, ?Hg, ?Hr, ?Hc, ?Hx, ?Hq; done.
+Qed.
+
+Lemma frame_irrelevant s s' : irrelevant s s' -> frame s s'.
+Proof.
+  intros (He & Hn & Hg & Hr & Hc & Hx & Hq). split_and!; try done. intros n k. by apply has_kind_same.
+Qed.
+
+Local Ltac gs := cbn [g_edges g_nodes g_ghost g_running g_current g_next g_queue gh_pub gh_seen gh_unnoticed].
+
+Local Ltac irr := unfold irrelevant; simpl; split_and!; reflexivity.
+
+(** A change to a node that keeps its kind, its view unless an effect, and a memo's [Dirty]. *)
+Definition node_step (u : node -> node) (d : node) : Prop :=
+  n_kind (u d) = n_kind d /\
+  (n_kind d <> KEffect -> nview_of (u d) = nview_of d) /\
+  (n_kind d = KMemo -> n_fresh d = Dirty -> n_fresh (u d) = Dirty).
+
+Lemma has_kind_set n d d' m k s :
+  g_nodes s !! n = Some d -> n_kind d' = n_kind d ->
+  has_kind m k s -> has_kind m k (set_node n d' s).
+Proof.
+  intros Hd Hk (e & He & Hek). unfold has_kind. simpl.
+  destruct (decide (m = n)) as [->|Hne].
+  - rewrite lookup_insert_eq. eexists. split; [done|]. simplify_eq. congruence.
+  - rewrite lookup_insert_ne by done. eauto.
+Qed.
+
+Lemma has_kind_set_back n d d' m k s :
+  g_nodes s !! n = Some d -> n_kind d' = n_kind d ->
+  has_kind m k (set_node n d' s) -> has_kind m k s.
+Proof.
+  intros Hd Hk (e & He & Hek). unfold has_kind. simpl in He.
+  destruct (decide (m = n)) as [->|Hne].
+  - rewrite lookup_insert_eq in He. simplify_eq. eexists. split; [done|]. congruence.
+  - rewrite lookup_insert_ne in He by done. eauto.
+Qed.
+
+Lemma is_Some_set m n d s : is_Some (g_nodes s !! n) -> is_Some (g_nodes s !! m) -> is_Some (g_nodes (set_node n d s) !! m).
+Proof.
+  intros _ H. simpl. destruct (decide (m = n)) as [->|]; [rewrite lookup_insert_eq; by eexists|].
+  by rewrite lookup_insert_ne.
+Qed.
+
+Lemma is_Some_set_back m n d s : is_Some (g_nodes s !! n) -> is_Some (g_nodes (set_node n d s) !! m) -> is_Some (g_nodes s !! m).
+Proof.
+  intros Hn. simpl. destruct (decide (m = n)) as [->|Hne]; [done|]. by rewrite lookup_insert_ne.
+Qed.
+
+Lemma inv_set_gen x e n u d s :
+  inv_xe x e s -> g_nodes s !! n = Some d -> n_kind (u d) = n_kind d ->
+  (x <> Some n -> n_kind d <> KEffect -> n ∉ g_running s -> nview_of (u d) = nview_of d) ->
+  (n_kind d = KMemo -> n_fresh d = Dirty -> n_fresh (u d) = Dirty \/ n ∈ gh_unnoticed (g_ghost s)) ->
+  inv_xe x e (set_node n (u d) s).
+Proof.
+  intros H Hd Hk Hv Hf. destruct H.
+  assert (Hsome : is_Some (g_nodes s !! n)) by eauto.
+  unfold set_node. split; gs; try done.
+  - intros c Hc. apply ci_ended0. exact (has_kind_set_back n d (u d) c KMemo s Hd Hk Hc).
+  - intros m Hm. apply ci_next0. exact (is_Some_set_back m n (u d) s Hsome Hm).
+  - intros c y Hy. destruct (ci_slots0 c y Hy) as [Hc Hyk]. split.
+    + exact (is_Some_set c n (u d) s Hsome Hc).
+    + destruct Hyk; [left|right]; eapply (has_kind_set n d (u d)); eauto.
+  - intros c Hc. exact (is_Some_set c n (u d) s Hsome (ci_running0 c Hc)).
+  - intros y Hy. eapply (has_kind_set n d (u d)); eauto.
+  - intros m e'. destruct (decide (m = n)) as [->|Hne].
+    + rewrite lookup_insert_eq. intros Heq Hek Hr Hx. simplify_eq.
+      rewrite Hk in Hek. rewrite Hv by done. eauto.
+    + rewrite lookup_insert_ne by done. eauto.
+  - intros c e' y. destruct (decide (c = n)) as [->|Hne].
+    + rewrite lookup_insert_eq. intros Heq Hek Hy Hex. simplify_eq. rewrite Hk in Hek.
+      destruct (ci_seen0 n d y Hd Hek Hy Hex) as [H|[H|H]]; [by left|..|by right; right].
+      destruct (Hf Hek H) as [H1|H1]; [by right; left|by right; right].
+    + rewrite lookup_insert_ne by done. eauto.
+Qed.
+
+Lemma inv_set x e n u d s :
+  inv_xe x e s -> g_nodes s !! n = Some d -> node_step u d -> inv_xe x e (set_node n (u d) s).
+Proof.
+  intros H Hd (Hk & Hv & Hf). apply inv_set_gen; auto.
+Qed.
+
+Lemma frame_set n u d s :
+  g_nodes s !! n = Some d -> n_kind (u d) = n_kind d -> frame s (set_node n (u d) s).
+Proof.
+  intros Hd Hk. split_and!; try done. intros m k. by apply has_kind_set with d.
+Qed.
+
+(** ** Marks hold the invariant *)
+
+Lemma inv_enqueue x e n s : has_kind n KEffect s -> inv_xe x e s -> inv_xe x e (enqueue n s).
+Proof.
+  intros Hn H. destruct H. split; simpl; try done.
+  intros y Hy. apply (has_kind_same y KEffect s); [done|].
+  apply elem_of_app in Hy as [Hy|Hy]; [auto|]. apply list_elem_of_singleton in Hy. by subst.
+Qed.
+
+Lemma prim_inv x e s s' : mark_prim s s' -> inv_xe x e s -> inv_xe x e s' /\ frame s s'.
+Proof.
+  intros Hp H.
+  assert (Hrise : forall f d, fresh_le (n_fresh d) f -> n_fresh d = Dirty -> f = Dirty).
+  { intros f d Hle Hd. rewrite Hd in Hle. destruct f; unfold fresh_le in Hle; simpl in Hle; try lia; done. }
+  destruct Hp as [s n d f u Hd Hk Hf Hu|s n d f Hd Hk Hq Hf|s n d f Hd Hk Hq Hf].
+  - split.
+    + apply (inv_set x e n (node_marked f u (n_queued d)) d); [done|done|].
+      split_and!; try done. intros _ Hdy. simpl. eauto.
+    + apply (frame_set n (node_marked f u (n_queued d)) d); done.
+  - split.
+    + apply (inv_set x e n (node_marked f (n_unann d) true) d); [done|done|].
+      split_and!; try done. intros Hkm. congruence.
+    + apply (frame_set n (node_marked f (n_unann d) true) d); done.
+  - assert (Hs : inv_xe x e (set_node n (node_marked f (n_unann d) true d) s)).
+    { apply (inv_set x e n (node_marked f (n_unann d) true) d); [done|done|].
+      split_and!; try done. intros Hkm. congruence. }
+    assert (Hfr : frame s (set_node n (node_marked f (n_unann d) true d) s)).
+    { apply (frame_set n (node_marked f (n_unann d) true) d); done. }
+    split.
+    + apply inv_enqueue; [|done]. apply (proj2 (proj2 Hfr)). by exists d.
+    + eapply frame_trans; [exact Hfr|]. split_and!; try done.
+Qed.
+
+Lemma marks_inv x e s s' : rtc mark_prim s s' -> inv_xe x e s -> inv_xe x e s' /\ frame s s'.
+Proof.
+  induction 1 as [s|s1 s2 s3 Hp _ IH]; intros H; [split; [done|apply frame_refl]|].
+  destruct (prim_inv _ _ _ _ Hp H) as [H2 F2]. destruct (IH H2) as [H3 F3].
+  split; [done|]. by eapply frame_trans.
+Qed.
+
+(** A mark holds each node's view, the edges and the ghost state. *)
+Lemma prim_holds s s' : mark_prim s s' ->
+  g_edges s' = g_edges s /\ g_ghost s' = g_ghost s /\
+  forall m d, g_nodes s !! m = Some d ->
+    exists d', g_nodes s' !! m = Some d' /\ n_kind d' = n_kind d /\ nview_of d' = nview_of d /\
+               (n_fresh d = Dirty -> n_fresh d' = Dirty).
+Proof.
+  intros Hp.
+  assert (Hrise : forall f d, fresh_le (n_fresh d) f -> n_fresh d = Dirty -> f = Dirty).
+  { intros f d Hle Hd. rewrite Hd in Hle. destruct f; unfold fresh_le in Hle; simpl in Hle; try lia; done. }
+  destruct Hp as [s n d f u Hd Hk Hf Hu|s n d f Hd Hk Hq Hf|s n d f Hd Hk Hq Hf];
+    (split_and!; [done|done|]); intros m e He; simpl;
+    (destruct (decide (m = n)) as [->|Hne];
+     [rewrite lookup_insert_eq; eexists; split_and!; [done|..]; simplify_eq; simpl; eauto
+     |rewrite lookup_insert_ne by done; eexists; split_and!; eauto]).
+Qed.
+
+Lemma marks_holds s s' : rtc mark_prim s s' ->
+  g_edges s' = g_edges s /\ g_ghost s' = g_ghost s /\
+  forall m d, g_nodes s !! m = Some d ->
+    exists d', g_nodes s' !! m = Some d' /\ n_kind d' = n_kind d /\ nview_of d' = nview_of d /\
+               (n_fresh d = Dirty -> n_fresh d' = Dirty).
+Proof.
+  induction 1 as [s|s1 s2 s3 Hp _ IH].
+  - split_and!; [done|done|]. intros m d Hd. eexists. split_and!; eauto.
+  - destruct (prim_holds _ _ Hp) as (He & Hg & Hn). destruct IH as (He' & Hg' & Hn').
+    split_and!; try congruence. intros m d Hd.
+    destruct (Hn _ _ Hd) as (d2 & Hd2 & Hk & Hv & Hf).
+    destruct (Hn' _ _ Hd2) as (d3 & Hd3 & Hk' & Hv' & Hf').
+    exists d3. split_and!; [done|congruence|congruence|auto].
+Qed.
+
+(** ** Source-list steps *)
+
+Lemma inv_edges_common x s w' self :
+  inv_x x s ->
+  ew_reachable w' ->
+  (forall c, (slot_view w' c).2 <= length (slot_view w' c).1) ->
+  (forall c, c <> self -> slot_view w' c = slot_view (g_edges s) c) ->
+  (forall y, y ∈ (slot_view w' self).1 -> y ∈ (slot_view (g_edges s) self).1) ->
+  (forall y, y ∈ read_prefix w' self -> y ∈ read_prefix (g_edges s) self) ->
+  (has_kind self KMemo s -> self ∉ g_running s ->
+     (slot_view w' self).2 = length (slot_view w' self).1) ->
+  inv_x x (with_edges w' s).
+Proof.
+  intros H Hr Hcur Hoth Hsl Hpre Hend. destruct H. unfold with_edges.
+  split; gs; try done.
+  - intros c Hc Hnr. destruct (decide (c = self)) as [->|Hne]; [by apply Hend|].
+    rewrite Hoth by done. by apply ci_ended0.
+  - intros c y Hy. destruct (decide (c = self)) as [->|Hne]; [apply ci_slots0; by apply Hsl|].
+    rewrite Hoth in Hy by done. eauto.
+  - intros c d y Hd Hk Hy _. destruct (decide (c = self)) as [->|Hne]; [eapply ci_seen0; eauto|].
+    eapply ci_seen0; eauto. rewrite read_prefix_view, Hoth in Hy by done.
+    by rewrite read_prefix_view.
+Qed.
+
+Lemma inv_end x n w' s :
+  inv_x x s -> sl_end n (g_edges s) = Some w' ->
+  inv_x x (with_edges w' s) /\ (slot_view w' n).2 = length (slot_view w' n).1.
+Proof.
+  intros H Hr. pose proof (ci_cursor _ _ _ H n) as Hle.
+  pose proof (fun c => slot_view_end _ _ _ c Hr Hle) as Hv.
+  assert (Hself : slot_view w' n = (take (slot_view (g_edges s) n).2 (slot_view (g_edges s) n).1,
+                                    (slot_view (g_edges s) n).2)).
+  { rewrite Hv, decide_True by done. done. }
+  assert (Hlen : (slot_view w' n).2 = length (slot_view w' n).1).
+  { rewrite Hself. cbn [fst snd]. rewrite length_take. lia. }
+  split; [|done].
+  eapply inv_edges_common; [done|..].
+  - eapply er_end; [apply (ci_reach _ _ _ H)|done].
+  - intros c. destruct (decide (c = n)) as [->|Hne]; [lia|].
+    rewrite Hv, decide_False by done. apply (ci_cursor _ _ _ H).
+  - intros c Hc. by rewrite Hv, decide_False.
+  - intros y. rewrite Hself. cbn [fst snd]. apply elem_take.
+  - intros y. rewrite !read_prefix_view. rewrite Hself. cbn [fst snd].
+    rewrite take_ge by (rewrite length_take; lia). done.
+  - done.
+Qed.
+
+Lemma inv_clear x n w' s :
+  inv_x x s -> sl_clear n (g_edges s) = Some w' ->
+  inv_x x (with_edges w' s) /\ (slot_view w' n).2 = length (slot_view w' n).1.
+Proof.
+  intros H Hr. pose proof (fun c => slot_view_clear _ _ _ c Hr) as Hv.
+  assert (Hself : slot_view w' n = ([], 0)) by (rewrite Hv, decide_True by done; done).
+  split; [|by rewrite Hself].
+  eapply inv_edges_common; [done|..].
+  - eapply er_clear; [apply (ci_reach _ _ _ H)|done].
+  - intros c. destruct (decide (c = n)) as [->|Hne]; [rewrite Hself; cbn [fst snd]; lia|].
+    rewrite Hv, decide_False by done. apply (ci_cursor _ _ _ H).
+  - intros c Hc. by rewrite Hv, decide_False.
+  - intros y. rewrite Hself. cbn [fst snd]. intros Hy. by apply not_elem_of_nil in Hy.
+  - intros y. rewrite read_prefix_view, Hself. cbn [fst snd]. intros Hy. by apply not_elem_of_nil in Hy.
+  - by rewrite Hself.
+Qed.
+
+(** ** Hoare triples over the monad *)
+
+Class Stable (P : state -> Prop) := stable : forall s s', frame s s' -> P s -> P s'.
+
+Global Instance stable_true : Stable (fun _ => True).
+Proof. by intros ???. Qed.
+
+Global Instance stable_kind n k : Stable (has_kind n k).
+Proof. intros s s' (_ & _ & H) Hk. auto. Qed.
+
+Definition okP {A} (P : state -> Prop) (m : M A) : Prop :=
+  forall s s' a, check_inv s -> P s -> m s = Some (s', a) -> check_inv s' /\ frame s s'.
+
+Local Notation ok m := (okP (fun _ => True) m).
+
+Lemma ok_any {A} P (m : M A) : ok m -> okP P m.
+Proof. intros H s s' a Hi _ Hm. by eapply H. Qed.
+
+Lemma ok_weaken {A} (P Q : state -> Prop) (m : M A) : (forall s, Q s -> P s) -> okP P m -> okP Q m.
+Proof. intros HPQ H s s' a Hi HQ Hm. eapply H; eauto. Qed.
+
+Lemma ok_bind {A B} P `{!Stable P} (m : M A) (k : A -> M B) :
+  okP P m -> (forall a, okP P (k a)) -> okP P (m_bind m k).
+Proof.
+  intros Hm Hk s s' b Hi HP Hr. unfold m_bind in Hr.
+  destruct (m s) as [[s1 a]|] eqn:E; [|done].
+  destruct (Hm _ _ _ Hi HP E) as [Hi1 F1].
+  destruct (Hk a _ _ _ Hi1 (stable _ _ F1 HP) Hr) as [Hi2 F2].
+  split; [done|]. by eapply frame_trans.
+Qed.
+
+(** The step of a bind, for proofs that read the state in between. *)
+Lemma run_bind {A B} P (m : M A) (k : A -> M B) s s' b :
+  okP P m -> check_inv s -> P s -> m_bind m k s = Some (s', b) ->
+  exists s1 a, m s = Some (s1, a) /\ check_inv s1 /\ frame s s1 /\ k a s1 = Some (s', b).
+Proof.
+  intros Hm Hi HP Hr. unfold m_bind in Hr.
+  destruct (m s) as [[s1 a]|] eqn:E; [|done].
+  destruct (Hm _ _ _ Hi HP E). eauto 8.
+Qed.
+
+Lemma ok_ret {A} P (a : A) : okP P (m_ret a).
+Proof. intros s s' b Hi _ Hm. unfold m_ret in Hm. simplify_eq. split; [done|apply frame_refl]. Qed.
+
+Lemma ok_stuck {A} P : okP P (@stuck A).
+Proof. intros s s' b _ _ Hm. done. Qed.
+
+Lemma ok_get P : okP P m_get.
+Proof. intros s s' b Hi _ Hm. unfold m_get in Hm. simplify_eq. split; [done|apply frame_refl]. Qed.
+
+Lemma ok_get_node P n : okP P (get_node n).
+Proof.
+  intros s s' b Hi _ Hm. unfold get_node in Hm. destruct (g_nodes s !! n); simplify_eq.
+  split; [done|apply frame_refl].
+Qed.
+
+(** A read of a node, with what it found. *)
+Lemma ok_get_node_at {B} P n (k : node -> M B) :
+  (forall d, okP (fun s => P s /\ g_nodes s !! n = Some d) (k d)) ->
+  okP P (m_bind (get_node n) k).
+Proof.
+  intros H s s' b Hi HP Hm. unfold m_bind, get_node in Hm.
+  destruct (g_nodes s !! n) as [d|] eqn:E; [|done].
+  eapply (H d); eauto.
+Qed.
+
+Lemma ok_mod_irrelevant P (g : state -> state) :
+  (forall s, irrelevant s (g s)) -> okP P (m_mod g).
+Proof.
+  intros Hg s s' b Hi _ Hm. unfold m_mod in Hm. simplify_eq.
+  split; [eapply inv_irrelevant; eauto|apply frame_irrelevant; auto].
+Qed.
+
+Local Ltac ok_mod := apply ok_mod_irrelevant; intros ?; irr.
+
+Lemma ok_emit P e : okP P (emit e).
+Proof. ok_mod. Qed.
+
+Lemma ok_get_owner P o : okP P (get_owner o).
+Proof.
+  intros s s' b Hi _ Hm. unfold get_owner in Hm. destruct (g_owners s !! o); simplify_eq.
+  split; [done|apply frame_refl].
+Qed.
+
+Lemma ok_put_owner P o x : okP P (put_owner o x).
+Proof. ok_mod. Qed.
+
+Lemma ok_mod_at P n u d :
+  node_step u d -> okP (fun s => P s /\ g_nodes s !! n = Some d) (mod_node n u).
+Proof.
+  intros Hu s s' b Hi [_ Hd] Hm. unfold mod_node in Hm. rewrite Hd in Hm. simplify_eq.
+  split; [by apply (inv_set None None n u d)|]. apply frame_set; [done|apply Hu].
+Qed.
+
+Lemma ok_mod_node P n u : (forall d, node_step u d) -> okP P (mod_node n u).
+Proof.
+  intros Hu s s' b Hi _ Hm. unfold mod_node in Hm.
+  destruct (g_nodes s !! n) as [d|] eqn:Hd; simplify_eq.
+  split; [by apply (inv_set None None n u d)|]. apply frame_set; [done|apply Hu].
+Qed.
+
+Lemma ok_mod_effect n u :
+  (forall d, n_kind (u d) = n_kind d) -> okP (has_kind n KEffect) (mod_node n u).
+Proof.
+  intros Hu s s' b Hi (d & Hd & Hk) Hm. unfold mod_node in Hm. rewrite Hd in Hm. simplify_eq.
+  split.
+  - apply (inv_set None None n u d); [done|done|]. split_and!; [done|intros; congruence|intros; congruence].
+  - apply frame_set; [done|apply Hu].
+Qed.
+
+Lemma ok_mark P (g : state -> option state) :
+  (forall s s', g s = Some s' -> rtc mark_prim s s') -> okP P (m_step g).
+Proof.
+  intros Hg s s' b Hi _ Hm. unfold m_step in Hm. destruct (g s) as [s1|] eqn:E; simplify_eq.
+  apply (marks_inv None None); [by eapply Hg|done].
+Qed.
+
+Lemma ok_on_value P e x (k : val -> M outcome) :
+  (forall v, okP P (k v)) -> okP P (on_value e x k).
+Proof.
+  intros Hk s s' b Hi HP Hm. unfold on_value in Hm.
+  destruct (eval_expr e (env_lookup e prev_var) x) as [[v|y]|]; simplify_eq.
+  - by eapply Hk.
+  - split; [done|apply frame_refl].
+Qed.
+
+Lemma ok_on_node P e x (k : nid -> M outcome) :
+  (forall t, okP P (k t)) -> okP P (on_node e x k).
+Proof.
+  intros Hk. apply ok_on_value. intros v. destruct (decide (0 <= v)%Z); [apply Hk|apply ok_stuck].
+Qed.
+
+Lemma ok_note P n o : okP P (note_host_read n o).
+Proof.
+  intros s s' b Hi HP Hm. unfold note_host_read in Hm.
+  destruct (g_current s); [simplify_eq; split; [done|apply frame_refl]|].
+  destruct (g_owner s) as [r|]; [|simplify_eq; split; [done|apply frame_refl]].
+  destruct (decide (r = root_oid)); [|simplify_eq; split; [done|apply frame_refl]].
+  by eapply ok_emit.
+Qed.
+
+Lemma ok_log_label P : okP P log_label.
+Proof.
+  intros s s' b Hi _ Hm. unfold log_label in Hm.
+  destruct (g_current s), (g_owner s); simplify_eq; split; try done; apply frame_refl.
+Qed.
+
+Lemma inv_with_current x o s :
+  (forall c, o = Some c -> c ∈ g_running s) -> inv_x x s -> inv_x x (with_current o s).
+Proof. intros Ho H. destruct H. split; simpl; done. Qed.
+
+Lemma ok_hosted {A} n (body : M A) :
+  ok body -> okP (fun s => n ∈ g_running s) (hosted n body).
+Proof.
+  intros Hb s s' a Hi Hn Hm. unfold hosted, m_bind, m_mod, m_ret in Hm.
+  destruct (body _) as [[s1 r]|] eqn:E; [|done]. simplify_eq.
+  assert (H0 : check_inv (with_owner None (with_current (Some n) s))).
+  { eapply inv_irrelevant; [|apply (inv_with_current None (Some n) s); [intros ? [=->]; done|done]]. irr. }
+  destruct (Hb _ _ _ H0 I E) as [Hi1 (Hr & _ & Hk)]. simpl in Hr.
+  split.
+  - eapply inv_irrelevant; [|eapply inv_with_current; [|exact Hi1]]; [irr|].
+    rewrite Hr. apply (ci_current _ _ _ Hi).
+  - split_and!; [simpl; done|done|]. intros m k Hmk. apply (has_kind_same m k s1); [done|].
+    apply Hk. done.
+Qed.
+
+Lemma ok_untracked {A} (body : M A) : ok body -> ok (untracked body).
+Proof.
+  intros Hb s s' a Hi _ Hm. unfold untracked, m_bind, m_mod, m_ret in Hm.
+  destruct (body _) as [[s1 r]|] eqn:E; [|done]. simplify_eq.
+  assert (H0 : check_inv (with_untracked (match g_current s with Some _ => true | None => g_untracked s end) (with_current None s))).
+  { eapply inv_irrelevant; [|apply (inv_with_current None None s); [done|done]]. irr. }
+  destruct (Hb _ _ _ H0 I E) as [Hi1 (Hr & _ & Hk)]. simpl in Hr.
+  split.
+  - eapply inv_irrelevant; [|eapply inv_with_current; [|exact Hi1]]; [irr|].
+    rewrite Hr. apply (ci_current _ _ _ Hi).
+  - split_and!; [simpl; done|done|]. intros m k Hmk. apply (has_kind_same m k s1); [done|].
+    apply Hk. done.
+Qed.
+
+Lemma ok_detached o (body : M unit) : ok body -> ok (detached o body).
+Proof.
+  intros Hb s s' a Hi _ Hm. unfold detached, m_bind, m_mod in Hm.
+  destruct (body _) as [[s1 r]|] eqn:E; [|done]. simplify_eq.
+  assert (H0 : check_inv (with_batch (S (g_batch s)) (with_owner (Some o) (with_current None s)))).
+  { eapply inv_irrelevant; [|apply (inv_with_current None None s); [done|done]]. irr. }
+  destruct (Hb _ _ _ H0 I E) as [Hi1 (Hr & _ & Hk)]. simpl in Hr.
+  split.
+  - eapply inv_irrelevant; [|eapply inv_with_current; [|exact Hi1]]; [irr|].
+    rewrite Hr. apply (ci_current _ _ _ Hi).
+  - split_and!; [simpl; done|done|]. intros m k Hmk. apply (has_kind_same m k s1); [done|].
+    apply Hk. done.
+Qed.
+
+(** ** A tracked read *)
+
+Lemma inv_track s c y w' d :
+  check_inv s -> g_current s = Some c -> sl_add c y (g_edges s) = Some w' ->
+  g_nodes s !! y = Some d -> n_kind d <> KEffect ->
+  check_inv (ghost_read c y (with_edges w' s)).
+Proof.
+  intros H Hc Ha Hd Hk. unfold ghost_read. simpl. rewrite Hd.
+  assert (Hr := ci_reach _ _ _ H). assert (Hcur := ci_cursor _ _ _ H).
+  assert (Hrun := ci_current _ _ _ H c Hc).
+  destruct (slot_view_add _ _ _ _ (Hcur c) Ha) as (Hoth & Hle & Hsl & Hpre).
+  assert (Hpub := ci_pub _ _ _ H). assert (Hseen := ci_seen _ _ _ H).
+  destruct H. unfold with_ghost, with_edges. split; gs; try done.
+  - eapply er_add; eauto.
+  - intros c'. destruct (decide (c' = c)) as [->|Hne]; [done|]. by rewrite Hoth.
+  - intros c' Hc' Hnr. destruct (decide (c' = c)) as [->|Hne]; [done|].
+    rewrite Hoth by done. by apply ci_ended0.
+  - intros c' y' Hy'. destruct (decide (c' = c)) as [->|Hne].
+    + split; [by apply ci_running0|].
+      destruct (Hsl _ Hy') as [Hin| ->]; [eapply ci_slots0; eauto|].
+      destruct (n_kind d) eqn:Ekd; [right; by exists d|left; by exists d|done].
+    + rewrite Hoth in Hy' by done. eauto.
+  - intros c' e y' He Hek Hy' _.
+    destruct (decide ((c', y') = (c, y))) as [Heq|Hne].
+    + injection Heq as -> ->. rewrite lookup_insert_eq.
+      destruct (decide (y ∈ g_running s)) as [Hin|Hnr].
+      * right. right. set_solver.
+      * left. symmetry. apply (Hpub y d); auto.
+    + rewrite lookup_insert_ne by done.
+      assert (Hold : y' ∈ read_prefix (g_edges s) c').
+      { destruct (decide (c' = c)) as [->|Hc'].
+        - destruct (Hpre _ Hy') as [Hin| ->]; [done|naive_solver].
+        - rewrite read_prefix_view, Hoth in Hy' by done. by rewrite read_prefix_view. }
+      destruct (Hseen _ _ _ He Hek Hold ltac:(done)) as [H1|[H1|H1]]; [by left|by right; left|].
+      right. right. destruct (decide (y ∈ g_running s)); set_solver.
+Qed.
+
+Lemma ok_track n k : k <> KEffect -> okP (has_kind n k) (track n).
+Proof.
+  intros Hk s s' a Hi (d & Hd & Hdk) Hm. unfold track in Hm.
+  destruct (g_current s) as [c|] eqn:Ec; [|simplify_eq; split; [done|apply frame_refl]].
+  destruct (sl_add c n (g_edges s)) as [w|] eqn:Ea; [|done]. simplify_eq.
+  split.
+  - eapply inv_track; eauto.
+  - unfold ghost_read. simpl. rewrite Hd. split_and!; [done|done|]. intros m j. done.
+Qed.
+
+(** ** New nodes *)
+
+Lemma inv_new_node s n d :
+  check_inv s -> n = S (g_next s) ->
+  check_inv (ghost_publish n (set_node n d (with_next n s))) /\
+  frame s (ghost_publish n (set_node n d (with_next n s))).
+Proof.
+  intros H ->. set (n := S (g_next s)).
+  assert (Habs : g_nodes s !! n = None).
+  { destruct (g_nodes s !! n) eqn:E; [|done].
+    pose proof (ci_next _ _ _ H n ltac:(rewrite E; eauto)). subst n. lia. }
+  assert (Hne : forall m, is_Some (g_nodes s !! m) -> m <> n).
+  { intros m Hm ->. rewrite Habs in Hm. by destruct Hm. }
+  assert (Hkind : forall m k, has_kind m k s -> m <> n).
+  { intros m k (e & He & _). apply Hne. eauto. }
+  assert (Hup : forall m k, has_kind m k s ->
+            has_kind m k (ghost_publish n (set_node n d (with_next n s)))).
+  { intros m k Hm. pose proof (Hkind _ _ Hm) as Hmn. destruct Hm as (e & He & Hek).
+    exists e. unfold ghost_publish. simpl. rewrite lookup_insert_eq. simpl.
+    rewrite lookup_insert_ne by done. auto. }
+  assert (Hslots := ci_slots _ _ _ H).
+  assert (Hnoslots : slot_view (g_edges s) n = ([], 0)).
+  { destruct (slot_view (g_edges s) n) as [l c] eqn:E.
+    assert (Hl : l = []).
+    { destruct l as [|y l]; [done|].
+      destruct (Hslots n y) as [Hn _]; [rewrite E; simpl; left|]. by destruct (Hne n Hn). }
+    subst. pose proof (ci_cursor _ _ _ H n) as Hc. rewrite E in Hc. simpl in Hc. f_equal. lia. }
+  split.
+  - unfold ghost_publish. simpl. rewrite lookup_insert_eq. simpl.
+    destruct H. unfold with_ghost, set_node, with_next. split; gs; try done.
+    + intros c Hc Hnr. destruct (decide (c = n)) as [->|Hcn].
+      { rewrite Hnoslots; done. }
+      apply ci_ended0; [|done]. destruct Hc as (e & He & Hek). exists e.
+      simpl in He. rewrite lookup_insert_ne in He by done. done.
+    + intros m. destruct (decide (m = n)) as [->|Hm].
+      * lia.
+      * rewrite lookup_insert_ne by done. intros Hs. pose proof (ci_next0 _ Hs). subst n. lia.
+    + intros c y Hy. destruct (Hslots c y Hy) as [Hc Hyk]. split.
+      * pose proof (Hne c Hc). rewrite lookup_insert_ne by done. done.
+      * destruct Hyk as [Hyk|Hyk]; [left|right]; apply (Hup y _ ) in Hyk;
+          unfold ghost_publish in Hyk; simpl in Hyk; rewrite lookup_insert_eq in Hyk; exact Hyk.
+    + intros c Hc. pose proof (Hne c (ci_running0 c Hc)). rewrite lookup_insert_ne by done.
+      by apply ci_running0.
+    + intros y Hy. pose proof (Hup y _ (ci_queue0 y Hy)) as Hyk.
+      unfold ghost_publish in Hyk. simpl in Hyk. rewrite lookup_insert_eq in Hyk. exact Hyk.
+    + intros m e. destruct (decide (m = n)) as [->|Hm].
+      * rewrite lookup_insert_eq. intros [=<-] _ _ _. by rewrite lookup_insert_eq.
+      * rewrite !lookup_insert_ne by done. eauto.
+    + intros c e y. destruct (decide (c = n)) as [->|Hcn].
+      * rewrite read_prefix_view, Hnoslots. simpl.
+        intros _ _ Hy. by apply not_elem_of_nil in Hy.
+      * rewrite lookup_insert_ne by done. intros He Hek Hy _.
+        assert (Hyn : y <> n).
+        { intros ->. destruct (Hslots c n (read_prefix_in _ _ _ Hy)) as [_ [Hk|Hk]];
+            by apply (Hkind n _ Hk). }
+        rewrite lookup_insert_ne by done. eapply ci_seen0; eauto.
+  - split_and!; [..|apply Hup]; unfold ghost_publish; simpl; rewrite lookup_insert_eq; done.
+Qed.
+
+Lemma ok_new_node {B} P `{!Stable P} (D : nid -> node) (k : nid -> M B) :
+  (forall n, okP P (k n)) ->
+  okP P (m_bind next_id (fun n => m_bind (add_node n (D n)) (fun _ => k n))).
+Proof.
+  intros Hk s s' b Hi HP Hm. unfold m_bind, next_id, add_node, m_mod in Hm. simpl in Hm.
+  destruct (inv_new_node s (S (g_next s)) (D (S (g_next s))) Hi eq_refl) as [Hi1 F1].
+  destruct (Hk _ _ _ _ Hi1 (stable _ _ F1 HP) Hm) as [Hi2 F2].
+  split; [done|]. by eapply frame_trans.
+Qed.
+
+(** ** A publication *)
+
+Lemma prefix_observer w c n :
+  ew_reachable w -> n ∈ read_prefix w c -> c ∈ obs_view (obs_of w n).
+Proof.
+  intros Hr Hin. apply (held_iff_slot w c n (reachable_wf _ Hr)). by apply read_prefix_in.
+Qed.
+
+Lemma prim_dom s s' m : mark_prim s s' -> is_Some (g_nodes s' !! m) -> is_Some (g_nodes s !! m).
+Proof.
+  intros Hp. destruct Hp as [s n d f u Hd _ _ _|s n d f Hd _ _ _|s n d f Hd _ _ _]; simpl;
+    (destruct (decide (m = n)) as [->|Hne]; [intros _; by eexists|by rewrite lookup_insert_ne]).
+Qed.
+
+Lemma marks_dom s s' m : rtc mark_prim s s' -> is_Some (g_nodes s' !! m) -> is_Some (g_nodes s !! m).
+Proof.
+  induction 1 as [s|s1 s2 s3 Hp _ IH]; [done|]. intros H. eapply prim_dom; eauto.
+Qed.
+
+(** [n]'s new view in [gh_pub], and marks after it. A memo holding an earlier read of [n] has taken the new
+    view, gone [Dirty], or joined [gh_unnoticed]. *)
+Lemma inv_told n d s G s' :
+  inv_x (Some n) s ->
+  g_nodes s !! n = Some d ->
+  gh_pub G = <[n := nview_of d]> (gh_pub (g_ghost s)) ->
+  gh_seen G = gh_seen (g_ghost s) ->
+  gh_unnoticed (g_ghost s) ⊆ gh_unnoticed G ->
+  rtc mark_prim (with_ghost G s) s' ->
+  (forall c dc, g_nodes s !! c = Some dc -> n_kind dc = KMemo -> n ∈ read_prefix (g_edges s) c ->
+     gh_seen G !! (c, n) = Some (nview_of d) \/ ends_dirty s' c \/ c ∈ gh_unnoticed G) ->
+  check_inv s' /\ frame s s'.
+Proof.
+  intros H Hd Hpub Hseen Hun Hm Hkey.
+  assert (H1 : inv_xe (Some n) (Some n) (with_ghost G s)).
+  { destruct H. unfold with_ghost. split; gs; try done.
+    - intros m e Hm1 Hm2 Hm3 Hx. rewrite Hpub. rewrite lookup_insert_ne by congruence. eauto.
+    - intros c e y He Hek Hy Hyn. rewrite Hpub, Hseen. rewrite lookup_insert_ne by congruence.
+      destruct (ci_seen0 c e y He Hek Hy ltac:(done)) as [H1|[H1|H1]]; [by left|by right; left|].
+      right. right. set_solver. }
+  destruct (marks_inv _ _ _ _ Hm H1) as [H2 F2].
+  destruct (marks_holds _ _ Hm) as (He & Hg & Hn).
+  simpl in He, Hg.
+  assert (Hnodes : g_nodes (with_ghost G s) = g_nodes s) by done.
+  split.
+  - destruct H2. split; try done.
+    + intros m e Hm1 Hm2 Hm3 Hx. destruct (decide (m = n)) as [->|Hne].
+      * destruct (Hn n d Hd) as (d' & Hd' & _ & Hv & _).
+        assert (d' = e) by congruence. subst d'.
+        rewrite Hg, Hpub, lookup_insert_eq. by rewrite Hv.
+      * apply (ci_pub0 m e); try done. congruence.
+    + intros c e y He' Hek Hy _. destruct (decide (y = n)) as [->|Hne].
+      * destruct (marks_dom _ _ c Hm ltac:(by eexists)) as [dc Hdc].
+        destruct (Hn c dc Hdc) as (d' & Hd' & Hk' & _ & _).
+        assert (d' = e) by congruence. subst d'.
+        rewrite He in Hy.
+        destruct (Hkey c dc Hdc ltac:(congruence) Hy) as [K|[(d2 & Hd2 & K)|K]].
+        -- left. rewrite Hg, K, Hpub, lookup_insert_eq. done.
+        -- assert (d2 = e) by congruence. subst d2. by right; left.
+        -- right. right. by rewrite Hg.
+      * eapply ci_seen0; eauto. congruence.
+  - split_and!; [apply F2|apply F2|].
+    intros m k Hmk. apply (proj2 (proj2 F2)). done.
+Qed.
+
+(** ** Starting and ending runs *)
+
+Lemma inv_run_begin n u d s :
+  check_inv s -> g_nodes s !! n = Some d -> n_kind (u d) = n_kind d ->
+  check_inv (with_running (n :: g_running s)
+    (ghost_run_start n (with_edges (sl_begin n (g_edges s)) (set_node n (u d) s)))).
+Proof.
+  intros H Hd Hk.
+  assert (Hsome : is_Some (g_nodes s !! n)) by eauto.
+  assert (Hr := ci_reach _ _ _ H). destruct H.
+  unfold with_running, ghost_run_start, with_ghost, with_edges, set_node.
+  split; gs.
+  - by apply er_begin.
+  - intros c. rewrite slot_view_begin. destruct (decide (c = n)); cbn [fst snd]; [lia|done].
+  - intros c Hc Hnr. rewrite slot_view_begin. destruct (decide (c = n)) as [->|Hne].
+    + exfalso. apply Hnr. left.
+    + apply ci_ended0; [exact (has_kind_set_back n d (u d) c KMemo s Hd Hk Hc)|].
+      intros Hin. apply Hnr. by right.
+  - intros m Hm. apply ci_next0. exact (is_Some_set_back m n (u d) s Hsome Hm).
+  - intros c y Hy. rewrite slot_view_begin in Hy.
+    assert (Hy' : y ∈ (slot_view (g_edges s) c).1).
+    { destruct (decide (c = n)); done. }
+    destruct (ci_slots0 c y Hy') as [Hc Hyk]. split.
+    + exact (is_Some_set c n (u d) s Hsome Hc).
+    + destruct Hyk; [left|right]; eapply (has_kind_set n d (u d)); eauto.
+  - intros c Hc. apply elem_of_cons in Hc as [->|Hc].
+    + exact (is_Some_set n n (u d) s Hsome Hsome).
+    + exact (is_Some_set c n (u d) s Hsome (ci_running0 c Hc)).
+  - intros c Hc. right. auto.
+  - intros y Hy. eapply (has_kind_set n d (u d)); eauto.
+  - intros m e. destruct (decide (m = n)) as [->|Hne].
+    + intros _ _ Hnr. exfalso. apply Hnr. left.
+    + rewrite lookup_insert_ne by done. intros He Hek Hnr Hx.
+      apply (ci_pub0 m e); try done. intros Hin. apply Hnr. by right.
+  - intros c e y. rewrite read_prefix_view, slot_view_begin.
+    destruct (decide (c = n)) as [->|Hne].
+    + cbn [fst snd]. rewrite take_0. intros _ _ Hy. by apply not_elem_of_nil in Hy.
+    + rewrite lookup_insert_ne by done. intros He Hek Hy Hx.
+      rewrite <- read_prefix_view in Hy.
+      destruct (ci_seen0 c e y He Hek Hy Hx) as [H1|[H1|H1]]; [by left|by right; left|].
+      right. right. set_solver.
+Qed.
+
+Lemma has_kind_unique n k k' s : has_kind n k s -> has_kind n k' s -> k = k'.
+Proof. intros (d & Hd & <-) (d' & Hd' & <-). by simplify_eq. Qed.
+
+Lemma inv_effect_begin n r s :
+  check_inv s -> has_kind n KEffect s -> (forall c, c ∈ g_running s -> c ∈ r) -> n ∈ r ->
+  (forall c, c ∈ r -> c = n \/ c ∈ g_running s) ->
+  check_inv (with_edges (sl_begin n (g_edges s)) (with_running r s)).
+Proof.
+  intros H Hk Hsub Hn Hback.
+  assert (Hr := ci_reach _ _ _ H). destruct H.
+  assert (Hsome : is_Some (g_nodes s !! n)) by (destruct Hk as (d & Hd & _); eauto).
+  unfold with_running, with_edges. split; gs.
+  - by apply er_begin.
+  - intros c. rewrite slot_view_begin. destruct (decide (c = n)); cbn [fst snd]; [lia|done].
+  - intros c Hc Hnr. rewrite slot_view_begin. destruct (decide (c = n)) as [->|Hne].
+    + exfalso. by apply Hnr.
+    + apply ci_ended0; [exact Hc|]. intros Hin. by apply Hnr, Hsub.
+  - done.
+  - intros c y Hy. rewrite slot_view_begin in Hy. apply ci_slots0. destruct (decide (c = n)); done.
+  - intros c Hc. destruct (Hback c Hc) as [->|Hin]; auto.
+  - intros c Hc. auto.
+  - done.
+  - intros m e He Hek Hnr Hx. apply (ci_pub0 m e); try done. intros Hin. by apply Hnr, Hsub.
+  - intros c e y He Hek Hy Hx. rewrite read_prefix_view, slot_view_begin in Hy.
+    destruct (decide (c = n)) as [->|Hne].
+    + cbn [fst snd] in Hy. rewrite take_0 in Hy. by apply not_elem_of_nil in Hy.
+    + rewrite <- read_prefix_view in Hy. eauto.
+Qed.
+
+Lemma inv_pop n rest x s :
+  inv_x x s -> g_running s = n :: rest ->
+  (has_kind n KMemo s -> (slot_view (g_edges s) n).2 = length (slot_view (g_edges s) n).1) ->
+  (forall c, g_current s = Some c -> c ∈ rest) ->
+  x = Some n \/ has_kind n KEffect s ->
+  inv_x x (with_running rest s).
+Proof.
+  intros H Hrun Hlen Hcur Hok. destruct H. unfold with_running. split; gs; try done.
+  - intros c Hc Hnr. destruct (decide (c = n)) as [->|Hne]; [auto|].
+    apply ci_ended0; [done|]. rewrite Hrun. intros Hin. apply elem_of_cons in Hin as [->|Hin]; [done|auto].
+  - intros c Hc. apply ci_running0. rewrite Hrun. by right.
+  - intros m e He Hek Hnr Hx. apply (ci_pub0 m e); try done.
+    rewrite Hrun. intros Hin. apply elem_of_cons in Hin as [->|Hin]; [|done].
+    destruct Hok as [->|Hk]; [done|].
+    destruct Hk as (e' & He' & Hek'). simplify_eq.
+Qed.
+
+(** ** Binds, one step at a time *)
+
+Lemma bind_bind {A B C} (m : M A) (k1 : A -> M B) (k2 : B -> M C) s :
+  m_bind (m_bind m k1) k2 s = m_bind m (fun x => m_bind (k1 x) k2) s.
+Proof. unfold m_bind. by destruct (m s) as [[s1 a]|]. Qed.
+
+Lemma bind_some {A B} (m : M A) (k : A -> M B) s s1 a :
+  m s = Some (s1, a) -> m_bind m k s = k a s1.
+Proof. intros Hm. unfold m_bind. by rewrite Hm. Qed.
+
+Lemma bind_get_node {B} n d (k : node -> M B) s :
+  g_nodes s !! n = Some d -> m_bind (get_node n) k s = k d s.
+Proof. intros Hd. unfold m_bind, get_node. by rewrite Hd. Qed.
+
+Lemma bind_mod_node {B} n u d (k : unit -> M B) s :
+  g_nodes s !! n = Some d -> m_bind (mod_node n u) k s = k tt (set_node n (u d) s).
+Proof. intros Hd. unfold m_bind, mod_node. by rewrite Hd. Qed.
+
+Lemma bind_m_mod {B} g (k : unit -> M B) s : m_bind (m_mod g) k s = k tt (g s).
+Proof. done. Qed.
+
+Lemma bind_m_ret {A B} (a : A) (k : A -> M B) s : m_bind (m_ret a) k s = k a s.
+Proof. done. Qed.
+
+Lemma bind_get {B} (k : state -> M B) s : m_bind m_get k s = k s s.
+Proof. done. Qed.
+
+Lemma bind_edges_opt {B} u (k : unit -> M B) s s' a :
+  m_bind (edges_opt u) k s = Some (s', a) ->
+  exists w, u (g_edges s) = Some w /\ k tt (with_edges w s) = Some (s', a).
+Proof.
+  unfold m_bind, edges_opt. destruct (u (g_edges s)) as [w|]; [eauto|done].
+Qed.
+
+Lemma bind_step {B} g (k : unit -> M B) s s' a :
+  m_bind (m_step g) k s = Some (s', a) ->
+  exists s1, g s = Some s1 /\ k tt s1 = Some (s', a).
+Proof.
+  unfold m_bind, m_step. destruct (g s) as [s1|]; [eauto|done].
+Qed.
+
+Local Ltac name_k K :=
+  match goal with H : m_bind _ ?k _ = _ |- _ => set (K := k) in H end.
+
+Lemma ok_edges_opt_end P n (b : bool) : okP P (edges_opt (if b then sl_clear n else sl_end n)).
+Proof.
+  intros s s' a Hi _ Hm. unfold edges_opt in Hm.
+  destruct b.
+  - destruct (sl_clear n (g_edges s)) as [w|] eqn:E; [|done]. simplify_eq.
+    split; [by destruct (inv_clear _ _ _ _ Hi E)|]. split_and!; try done.
+  - destruct (sl_end n (g_edges s)) as [w|] eqn:E; [|done]. simplify_eq.
+    split; [by destruct (inv_end _ _ _ _ Hi E)|]. split_and!; try done.
+Qed.
+
+Lemma ok_edges_clear P n : okP P (edges_opt (sl_clear n)).
+Proof. exact (ok_edges_opt_end P n true). Qed.
+
+Lemma ok_mark_dirty P f n : okP P (m_step (mark_dirty f n)).
+Proof. apply ok_mark. intros s0 s1 Hm. by eapply mark_dirty_rtc. Qed.
+
+Lemma ok_mark_reader P f : okP P (mark_reader f).
+Proof.
+  intros s s' a Hi _ Hm. unfold mark_reader in Hm.
+  destruct (g_current s) as [c|]; [|simplify_eq; split; [done|apply frame_refl]].
+  destruct (f_reader_mark (g_flags s)); [|simplify_eq; split; [done|apply frame_refl]].
+  destruct (mark_check f c s) as [s1|] eqn:E; [|done]. simplify_eq.
+  apply (marks_inv None None); [by eapply mark_check_rtc|done].
+Qed.
+
+Lemma ok_current_owner P : okP P current_owner.
+Proof.
+  intros s s' a Hi _ Hm. unfold current_owner in Hm.
+  destruct (g_owner s) as [o|]; [simplify_eq; split; [done|apply frame_refl]|].
+  destruct (g_current s) as [h|]; [|done].
+  destruct (g_nodes s !! h) as [d|] eqn:Hd; [|done].
+  destruct (n_scope d) as [o|]; [simplify_eq; eapply inv_irrelevant in Hi; [split; [exact Hi|]|]|].
+  - apply frame_irrelevant. irr.
+  - irr.
+  - destruct (match n_kind d, n_mode d with KMemo, Pure => true | _, _ => false end).
+    + simplify_eq. split.
+      * apply (inv_set None None h (nset_violated true) d); [done|done|]. split_and!; done.
+      * apply (frame_set h (nset_violated true) d); done.
+    + simplify_eq.
+      set (s1 := with_owners _ s).
+      assert (Hi1 : check_inv s1) by (eapply inv_irrelevant; [|exact Hi]; irr).
+      assert (Hd1 : g_nodes s1 !! h = Some d) by done.
+      set (o := stdpp.base.fresh (dom (g_owners s))).
+      assert (Hi2 := inv_set None None h (nset_scope (Some o)) d s1 Hi1 Hd1 ltac:(split_and!; done)).
+      assert (F2 := frame_set h (nset_scope (Some o)) d s1 Hd1 eq_refl).
+      split.
+      * eapply inv_irrelevant; [|exact Hi2]. irr.
+      * eapply frame_trans; [apply frame_irrelevant; irr|].
+        eapply frame_trans; [exact F2|]. apply frame_irrelevant. irr.
+Qed.
+
+(** ** The engine holds the invariant *)
+
+Definition in_effect_run (n : nid) (s : state) : Prop :=
+  has_kind n KEffect s /\ n ∈ g_running s.
+
+Global Instance stable_effect_run n : Stable (in_effect_run n).
+Proof.
+  intros s s' F [Hk Hn]. split; [apply F, Hk|]. destruct F as (-> & _). done.
+Qed.
+
+Record engine_ok (f : nat) : Prop := {
+  Eexec : forall e c, ok (exec f e c);
+  Eread : forall n b, ok (read f n b);
+  Eread_node : forall n, ok (read_node f n);
+  Eupdate : forall n, ok (update_if_necessary f n);
+  Erefresh_or_pull : forall n, okP (has_kind n KMemo) (refresh_or_pull f n);
+  Epull : forall n, okP (has_kind n KMemo) (pull f n);
+  Erefresh : forall n, okP (has_kind n KMemo) (refresh f n);
+  Ewalk : forall n i, ok (resolve_walk f n i);
+  Erecompute : forall n, okP (has_kind n KMemo) (recompute f n);
+  Erun_memo : forall n, okP (has_kind n KMemo) (run_memo f n);
+  Eexecute : forall n, okP (has_kind n KEffect) (execute_effect f n);
+  Erun_effect : forall n, okP (has_kind n KEffect) (run_effect f n);
+  Ebody : forall n, okP (in_effect_run n) (run_effect_body f n);
+  Edischarge : forall o, ok (discharge f o);
+  Eretire : forall o, ok (retire f o);
+  Edispose_scope : forall o, ok (dispose_scope f o);
+  Eteardown : forall o ls cs, ok (teardown f o ls cs);
+  Ecleanup : forall o b e, ok (run_cleanup f o b e);
+  Erelease : forall n, ok (release f n);
+  Edispose : forall n, ok (dispose_node f n);
+  Eattach : forall n o, ok (attach f n o);
+  Ewrite : forall n v, ok (write_signal f n v);
+  Erequest : ok (request_flush f);
+  Esettle : ok (settle_flush f);
+  Eflush : ok (run_flush f);
+  Edrain : ok (drain f)
+}.
+
+Local Ltac nstep :=
+  intros ?; unfold node_step; split_and!; try reflexivity; try (intros; assumption).
+
+Local Ltac ih IH :=
+  first
+    [ apply (Eexec _ IH) | apply (Eread _ IH) | apply (Eread_node _ IH) | apply (Eupdate _ IH)
+    | apply (Erefresh_or_pull _ IH) | apply (Epull _ IH) | apply (Erefresh _ IH) | apply (Ewalk _ IH)
+    | apply (Erecompute _ IH) | apply (Erun_memo _ IH) | apply (Eexecute _ IH)
+    | apply (Erun_effect _ IH) | apply (Ebody _ IH) | apply (Edischarge _ IH) | apply (Eretire _ IH)
+    | apply (Edispose_scope _ IH) | apply (Eteardown _ IH) | apply (Ecleanup _ IH)
+    | apply (Erelease _ IH) | apply (Edispose _ IH) | apply (Eattach _ IH) | apply (Ewrite _ IH)
+    | apply (Erequest _ IH) | apply (Esettle _ IH) | apply (Eflush _ IH) | apply (Edrain _ IH) ].
+
+Local Ltac go1 IH :=
+  first
+    [ apply ok_ret | apply ok_stuck | apply ok_get | apply ok_get_node | apply ok_get_owner
+    | apply ok_put_owner | apply ok_emit | apply ok_note | apply ok_log_label | apply ok_current_owner
+    | apply ok_mark_reader | apply ok_mark_dirty | apply ok_edges_clear | apply ok_edges_opt_end
+    | apply ok_on_node; intros ? | apply ok_on_value; intros ?
+    | apply ok_new_node; [apply _|intros ?]
+    | apply ok_detached
+    | apply ok_mod_node; nstep
+    | apply ok_mod_irrelevant; intros ?; irr
+    | ih IH
+    | apply ok_any; ih IH
+    | apply ok_bind; [apply _| |intros ?]
+    | match goal with |- okP _ (match ?x with _ => _ end) => destruct x end ].
+
+Local Ltac go IH := repeat go1 IH.
+
+Section Step.
+  Variable f : nat.
+  Hypothesis IH : engine_ok f.
+
+  Lemma ok_exec_S e c : ok (exec (S f) e c).
+  Proof. destruct c; cbn [exec]; go IH. Qed.
+
+  Lemma ok_read_S n b : ok (read (S f) n b).
+  Proof. destruct b; cbn [read]; [ih IH|]. apply ok_untracked. ih IH. Qed.
+
+  Lemma ok_read_node_S n : ok (read_node (S f) n).
+  Proof.
+    cbn [read_node]. apply ok_get_node_at. intros d.
+    destruct (n_kind d) eqn:Ek.
+    - apply (ok_weaken (has_kind n KSignal)); [intros s [_ Hd]; by exists d|].
+      apply ok_bind; [apply _|apply ok_track; done|intros _; apply ok_ret].
+    - apply (ok_weaken (has_kind n KMemo)); [intros s [_ Hd]; by exists d|].
+      apply ok_bind; [apply _| |intros _; go IH].
+      destruct (stale_live d).
+      + apply ok_bind; [apply _|ih IH|intros _].
+        apply ok_bind; [apply _|apply ok_track; done|intros _].
+        go IH.
+      + apply ok_track. done.
+    - apply ok_stuck.
+  Qed.
+
+  Lemma ok_update_S n : ok (update_if_necessary (S f) n).
+  Proof.
+    cbn [update_if_necessary]. apply ok_get_node_at. intros d.
+    destruct (n_kind d) eqn:Ek; try apply ok_ret.
+    destruct (stale_live d); [|apply ok_ret].
+    apply (ok_weaken (has_kind n KMemo)); [intros s [_ Hd]; by exists d|]. ih IH.
+  Qed.
+
+  Lemma ok_refresh_or_pull_S n : okP (has_kind n KMemo) (refresh_or_pull (S f) n).
+  Proof.
+    cbn [refresh_or_pull]. apply ok_bind; [apply _|apply ok_get|intros s].
+    destruct (deferring s); ih IH.
+  Qed.
+
+  Lemma ok_pull_S n : okP (has_kind n KMemo) (pull (S f) n).
+  Proof.
+    cbn [pull]. apply ok_bind; [apply _|apply ok_mod_irrelevant; intros ?; irr|intros _].
+    apply ok_bind; [apply _|ih IH|intros _].
+    apply ok_bind; [apply _|apply ok_mod_irrelevant; intros ?; irr|intros _].
+    apply ok_bind; [apply _|apply ok_get|intros s].
+    destruct (_ && _); [apply ok_any; ih IH|apply ok_ret].
+  Qed.
+
+  Lemma ok_refresh_S n : okP (has_kind n KMemo) (refresh (S f) n).
+  Proof.
+    cbn [refresh]. apply ok_bind; [apply _|apply ok_get_node|intros d].
+    apply ok_bind; [apply _| |intros _].
+    - destruct (decide (n_fresh d = Check)); [|apply ok_ret].
+      apply ok_bind; [apply _|apply ok_any; ih IH|intros _].
+      apply ok_get_node_at. intros d'.
+      destruct (decide (n_fresh d' = Check)) as [Hc|_]; [|apply ok_ret].
+      apply ok_mod_at. split_and!; try done. intros _ Hd. congruence.
+    - apply ok_bind; [apply _|apply ok_get_node|intros d'].
+      destruct (decide (n_fresh d' = Dirty)); [ih IH|apply ok_ret].
+  Qed.
+
+  Lemma ok_walk_S n i : ok (resolve_walk (S f) n i).
+  Proof. cbn [resolve_walk]. go IH. Qed.
+
+  Lemma inv_cleared n d s :
+    check_inv s -> g_nodes s !! n = Some d ->
+    check_inv (ghost_dirty_cleared n (set_node n (nset_fresh Clean d) s)) /\
+    frame s (ghost_dirty_cleared n (set_node n (nset_fresh Clean d) s)).
+  Proof.
+    intros H Hd.
+    assert (H1 : check_inv (ghost_dirty_cleared n s)).
+    { destruct H. unfold ghost_dirty_cleared, with_ghost. split; gs; try done.
+      intros c e y He Hek Hy Hx.
+      destruct (ci_seen0 c e y He Hek Hy Hx) as [H1|[H1|H1]]; [by left|by right; left|].
+      right. right. set_solver. }
+    assert (Hin : n ∈ gh_unnoticed (g_ghost (ghost_dirty_cleared n s))) by (simpl; set_solver).
+    split.
+    - exact (inv_set_gen None None n (nset_fresh Clean) d _ H1 Hd eq_refl
+               (fun _ _ _ => eq_refl) (fun _ _ => or_intror Hin)).
+    - apply (frame_set n (nset_fresh Clean) d s Hd eq_refl).
+  Qed.
+
+  Lemma ok_recompute_S n : okP (has_kind n KMemo) (recompute (S f) n).
+  Proof.
+    cbn [recompute]. apply ok_get_node_at. intros d.
+    destruct (n_scope d) as [o|]; [|apply (ok_weaken (has_kind n KMemo)); [intros s [Hs _]; done|ih IH]].
+    intros s s' a Hi [Hk Hd] Hm.
+    rewrite (bind_mod_node _ _ _ _ _ Hd) in Hm. rewrite bind_m_mod in Hm.
+    destruct (inv_cleared n d s Hi Hd) as [Hi1 F1].
+    assert (Hrest : okP (has_kind n KMemo) (
+      let* _ := discharge f o in
+      let* d' := get_node n in
+      if n_disposed d' then m_ret tt
+      else if decide (n_runs d' = n_runs d) then run_memo f n
+      else if decide (n_fresh d' = Dirty) then recompute f n
+      else m_ret tt)).
+    { apply ok_bind; [apply _|apply ok_any; ih IH|intros _].
+      apply ok_bind; [apply _|apply ok_get_node|intros d'].
+      destruct (n_disposed d'); [apply ok_ret|].
+      destruct (decide _); [ih IH|].
+      destruct (decide _); [ih IH|apply ok_ret]. }
+    destruct (Hrest _ _ _ Hi1 (stable _ _ F1 Hk) Hm) as [Hi2 F2].
+    split; [done|]. by eapply frame_trans.
+  Qed.
+
+  Lemma ok_run_memo_S n : okP (has_kind n KMemo) (run_memo (S f) n).
+  Proof.
+    intros s s' a Hi Hk Hm. cbn [run_memo] in Hm.
+    destruct Hk as (d & Hd & Hkd).
+    rewrite (bind_get_node _ _ _ _ Hd) in Hm.
+    rewrite (bind_mod_node _ _ _ _ _ Hd) in Hm.
+    unfold edges, push_running in Hm. rewrite !bind_m_mod in Hm.
+    set (u := fun x => nset_runs (S (n_runs x)) (nset_failure None (nset_status StNone
+        (nset_unann false (nset_fresh Clean x))))) in Hm.
+    pose proof (inv_run_begin n u d s Hi Hd eq_refl) as Hi4.
+    set (s4 := with_running _ (ghost_run_start _ _)) in Hi4.
+    assert (Hkinds4 : forall m k, has_kind m k s -> has_kind m k s4).
+    { intros m k Hmk. exact (has_kind_set n d (u d) m k s Hd eq_refl Hmk). }
+    assert (Hrun4 : g_running s4 = n :: g_running s) by done.
+    assert (Hcur4 : g_current s4 = g_current s) by done.
+    assert (Hin4 : n ∈ g_running s4) by (rewrite Hrun4; left).
+    destruct (run_bind _ _ _ _ _ _ (ok_hosted n _ (Eexec _ IH _ _)) Hi4 Hin4 Hm)
+      as (s5 & r & _ & Hi5 & F5 & Hm5).
+    destruct F5 as (Hrun5 & Hcur5 & Hkinds5). rewrite Hrun4 in Hrun5. rewrite Hcur4 in Hcur5.
+    assert (Hk5 : has_kind n KMemo s5) by (apply Hkinds5, Hkinds4; by exists d).
+    destruct Hk5 as (d1 & Hd1 & Hk1).
+    rewrite (bind_get_node _ _ _ _ Hd1) in Hm5.
+    set (result := if n_violated d1 then Fail pure_scope_failure else r) in Hm5.
+    (* the value *)
+    name_k K6.
+    assert (Hs6 : exists s6, K6 tt s6 = Some (s', a) /\ inv_x (Some n) s6 /\ frame s5 s6).
+    { destruct result as [v|y].
+      - rewrite (bind_mod_node _ _ _ _ _ Hd1) in Hm5. eexists. split; [exact Hm5|].
+        split.
+        + apply (inv_set_gen (Some n) None n (fun x => nset_published true (nset_value v x)) d1);
+            [by apply inv_weaken|done|done|done|intros; left; done].
+        + apply (frame_set n (fun x => nset_published true (nset_value v x)) d1); done.
+      - rewrite bind_m_ret in Hm5. eexists. split; [exact Hm5|]. split; [by apply inv_weaken|apply frame_refl]. }
+    clear Hm5. destruct Hs6 as (s6 & Hm6 & Hi6 & F6). subst K6. cbv beta in Hm6.
+    destruct F6 as (Hrun6 & Hcur6 & Hkinds6). rewrite Hrun5 in Hrun6. rewrite Hcur5 in Hcur6.
+    (* the edges *)
+    apply bind_edges_opt in Hm6 as (w & Hw & Hm7).
+    assert (Hi7 : inv_x (Some n) (with_edges w s6) /\ (slot_view w n).2 = length (slot_view w n).1).
+    { destruct (n_disposed d1); [by apply inv_clear|by apply inv_end]. }
+    destruct Hi7 as [Hi7 Hlen].
+    (* the pop *)
+    unfold pop_running in Hm7. rewrite bind_m_mod in Hm7.
+    assert (Hcurin : forall c, g_current s = Some c -> c ∈ g_running s) by apply (ci_current _ _ _ Hi).
+    simpl in Hm7. rewrite Hrun6 in Hm7. simpl in Hm7.
+    assert (Hi8 : inv_x (Some n) (with_running (g_running s) (with_edges w s6))).
+    { apply (inv_pop n); [done|done|done|simpl; rewrite Hcur6; done|by left]. }
+    set (s8 := with_running _ (with_edges w s6)) in Hi8, Hm7.
+    assert (Hkinds8 : forall m k, has_kind m k s5 -> has_kind m k s8).
+    { intros m k Hmk. apply (has_kind_same m k s6); [done|]. apply Hkinds6. done. }
+    assert (Hrun8 : g_running s8 = g_running s) by done.
+    assert (Hcur8 : g_current s8 = g_current s) by (simpl; done).
+    (* the failure *)
+    name_k K9.
+    assert (Hk8 : has_kind n KMemo s8) by (apply Hkinds8; by exists d1).
+    assert (Hs9 : exists s9, K9 tt s9 = Some (s', a) /\ inv_x (Some n) s9 /\ frame s8 s9).
+    { destruct result as [v|y].
+      - rewrite bind_m_ret in Hm7. eexists. split; [exact Hm7|]. split; [done|apply frame_refl].
+      - destruct Hk8 as (e & He & Hek).
+        rewrite (bind_mod_node _ _ _ _ _ He) in Hm7. eexists. split; [exact Hm7|]. split.
+        + apply (inv_set_gen (Some n) None n
+            (fun x => nset_violated false (nset_status StError (nset_failure (Some y) x))) e);
+            [done|done|done|done|intros; left; done].
+        + apply (frame_set n (fun x => nset_violated false (nset_status StError (nset_failure (Some y) x))) e); done. }
+    clear Hm7. destruct Hs9 as (s9 & Hm9 & Hi9 & F9). subst K9. cbv beta in Hm9.
+    destruct F9 as (Hrun9 & Hcur9 & Hkinds9). rewrite Hrun8 in Hrun9. rewrite Hcur8 in Hcur9.
+    assert (Hk9 : has_kind n KMemo s9) by (by apply Hkinds9).
+    destruct Hk9 as (d2 & Hd2 & Hk2).
+    rewrite (bind_get_node _ _ _ _ Hd2) in Hm9.
+    (* moved *)
+    name_k K10.
+    assert (Hs10 : exists s10 mv, K10 mv s10 = Some (s', a) /\ inv_x (Some n) s10 /\ frame s9 s10).
+    { destruct (decide _).
+      - rewrite bind_m_ret in Hm9. do 2 eexists. split; [exact Hm9|]. split; [done|apply frame_refl].
+      - destruct (n_cmp d2) as [| |y].
+        + rewrite bind_m_ret in Hm9. do 2 eexists. split; [exact Hm9|]. split; [done|apply frame_refl].
+        + rewrite bind_m_ret in Hm9. do 2 eexists. split; [exact Hm9|]. split; [done|apply frame_refl].
+        + rewrite bind_bind in Hm9. rewrite (bind_mod_node _ _ _ _ _ Hd2) in Hm9. rewrite bind_m_ret in Hm9.
+          do 2 eexists. split; [exact Hm9|]. split.
+          * apply (inv_set_gen (Some n) None n
+              (fun x => nset_status StError (nset_failure (Some y) (nset_value (n_value d) x))) d2);
+              [done|done|done|done|intros; left; done].
+          * apply (frame_set n (fun x => nset_status StError (nset_failure (Some y) (nset_value (n_value d) x))) d2); done. }
+    clear Hm9. destruct Hs10 as (s10 & mv & Hm10 & Hi10 & F10). subst K10. cbv beta in Hm10.
+    destruct F10 as (Hrun10 & Hcur10 & Hkinds10). rewrite Hrun9 in Hrun10. rewrite Hcur9 in Hcur10.
+    rewrite bind_get in Hm10. rewrite bind_m_mod in Hm10.
+    assert (Hk10 : has_kind n KMemo s10) by (apply Hkinds10; by exists d2).
+    destruct Hk10 as (d3 & Hd3 & Hk3).
+    unfold ghost_run_end in Hm10. rewrite Hd3 in Hm10.
+    set (G := {| gh_pub := _; gh_seen := _; gh_unnoticed := _ |}) in Hm10.
+    (* the notice *)
+    name_k K11.
+    assert (Hs11 : exists s11, K11 tt s11 = Some (s', a) /\ check_inv s11 /\ frame s10 s11).
+    { assert (Hreach : ew_reachable (g_edges s10)) by apply (ci_reach _ _ _ Hi10).
+      destruct mv.
+      - apply bind_step in Hm10 as (s11 & Hn & Hm11).
+        exists s11. split; [exact Hm11|].
+        apply (inv_told n d3 s10 G); [done|done|done|done|simpl; set_solver| |].
+        + eapply (any_mark_rtc f n (g_current s10)). right; right; right; right. done.
+        + intros c dc Hc Hkc Hpre.
+          destruct (decide (g_current s10 = Some c)) as [Hr|Hr].
+          * right. right. subst G. simpl. unfold run_end_unnoticed. rewrite Hr.
+            rewrite decide_True by done. set_solver.
+          * right. left. eapply (notify_dirty_ends_dirty f n (g_current s10) (with_ghost G s10)).
+            -- by apply prefix_observer.
+            -- exists dc. split; [done|by left].
+            -- right. split; [exact Hn|done].
+      - rewrite bind_m_ret in Hm10. exists (with_ghost G s10). split; [exact Hm10|].
+        apply (inv_told n d3 s10 G); [done|done|done|done|simpl; set_solver|apply rtc_refl|].
+        intros c dc Hc Hkc Hpre. subst G. simpl. unfold run_end_unnoticed.
+        destruct (decide (gh_pub (g_ghost s10) !! n = Some (nview_of d3))) as [Hp|Hp].
+        + destruct (ci_seen _ _ _ Hi10 c dc n Hc Hkc Hpre ltac:(done)) as [H1|[H1|H1]].
+          * left. by rewrite H1.
+          * right. left. by exists dc.
+          * right. right. set_solver.
+        + right. right. apply elem_of_union_l, elem_of_list_to_set. by apply prefix_observer. }
+    clear Hm10. destruct Hs11 as (s11 & Hm11 & Hi11 & F11). subst K11. cbv beta in Hm11.
+    destruct F11 as (Hrun11 & Hcur11 & Hkinds11). rewrite Hrun10 in Hrun11. rewrite Hcur10 in Hcur11.
+    assert (Hk11 : has_kind n KMemo s11) by (apply Hkinds11; by exists d3).
+    destruct Hk11 as (d4 & Hd4 & Hk4).
+    rewrite (bind_get_node _ _ _ _ Hd4) in Hm11.
+    assert (Hkinds_all : forall m k, has_kind m k s -> has_kind m k s11).
+    { intros m k Hmk. apply Hkinds11, Hkinds10, Hkinds9, Hkinds8, Hkinds5, Hkinds4, Hmk. }
+    destruct (decide (n_fresh d4 = Clean)).
+    - unfold m_ret in Hm11. simplify_eq. split; [done|]. split_and!; [done|done|done].
+    - unfold mod_node in Hm11. rewrite Hd4 in Hm11. simplify_eq.
+      split.
+      + apply (inv_set None None n (nset_unann true) d4); [done|done|split_and!; done].
+      + split_and!; [done|done|].
+        intros m k Hmk. apply (has_kind_set n d4 (nset_unann true d4)); [done|done|auto].
+  Qed.
+
+  Lemma ok_execute_S n : okP (has_kind n KEffect) (execute_effect (S f) n).
+  Proof.
+    cbn [execute_effect]. apply ok_bind; [apply _|apply ok_get_node|intros d].
+    destruct (n_disposed d).
+    { apply ok_mod_node. nstep. }
+    apply ok_bind; [apply _| |intros _].
+    - destruct (decide _); [|apply ok_ret].
+      apply ok_bind; [apply _|apply ok_any; ih IH|intros _].
+      apply ok_bind; [apply _|apply ok_get_node|intros d'].
+      destruct (decide _); [|apply ok_ret].
+      apply ok_mod_effect. done.
+    - apply ok_bind; [apply _|apply ok_get_node|intros d'].
+      apply ok_bind; [apply _|apply ok_mod_effect; done|intros _].
+      destruct (decide _); [ih IH|apply ok_ret].
+  Qed.
+
+  (** The rest of an effect's run, through its pop. *)
+  Definition okT {A} (n : nid) (rest : list nid) (m : M A) : Prop :=
+    forall s s' a, check_inv s -> has_kind n KEffect s -> g_running s = n :: rest ->
+      (forall c, g_current s = Some c -> c ∈ rest) ->
+      m s = Some (s', a) ->
+      check_inv s' /\ g_running s' = rest /\ g_current s' = g_current s /\
+      forall m k, has_kind m k s -> has_kind m k s'.
+
+  Lemma okT_bind {A B} n rest (m : M A) (k : A -> M B) :
+    okP (in_effect_run n) m -> (forall a, okT n rest (k a)) -> okT n rest (m_bind m k).
+  Proof.
+    intros Hm Hk s s' b Hi Hkn Hr Hc Hb. unfold m_bind in Hb.
+    destruct (m s) as [[s1 a]|] eqn:E; [|done].
+    destruct (Hm _ _ _ Hi ltac:(split; [done|rewrite Hr; left]) E) as [Hi1 (Hr1 & Hc1 & Hk1)].
+    destruct (Hk a _ _ _ Hi1 (Hk1 _ _ Hkn) ltac:(congruence) ltac:(by rewrite Hc1) Hb) as (Hi2 & Hr2 & Hc2 & Hk2).
+    split_and!; [done|done|congruence|auto].
+  Qed.
+
+  Lemma okT_pop n rest : okT n rest pop_running.
+  Proof.
+    intros s s' a Hi Hk Hr Hc Hm. unfold pop_running, m_mod in Hm. simplify_eq.
+    simpl. rewrite Hr. simpl. split_and!; [|done|done|done].
+    apply (inv_pop n); [done|done| |done|by right].
+    intros Hm. pose proof (has_kind_unique _ _ _ _ Hk Hm). done.
+  Qed.
+
+  Lemma ok_run_effect_S n : okP (has_kind n KEffect) (run_effect (S f) n).
+  Proof.
+    intros s s' a Hi Hk Hm. cbn [run_effect] in Hm.
+    unfold push_running, edges in Hm. rewrite !bind_m_mod in Hm.
+    assert (Hi1 : check_inv (with_edges (sl_begin n (g_edges (with_running (n :: g_running s) s)))
+                              (with_running (n :: g_running s) s))).
+    { refine (inv_effect_begin n (n :: g_running s) s Hi Hk _ _ _).
+      - intros c Hc. by right.
+      - left.
+      - intros c Hc. by apply elem_of_cons in Hc. }
+    assert (Hrest : okT n (g_running s) (
+      let* d := get_node n in
+      let* _ :=
+        match n_scope d with
+        | Some o =>
+          let* _ := mod_node n (nset_in_cleanup true) in
+          let* _ := discharge f o in
+          mod_node n (nset_in_cleanup false)
+        | None => m_ret tt
+        end in
+      let* d' := get_node n in
+      let* _ := if n_disposed d' then m_ret tt else run_effect_body f n in
+      pop_running)).
+    { apply okT_bind; [apply ok_get_node|intros d].
+      apply okT_bind.
+      { destruct (n_scope d) as [o|]; [|apply ok_ret].
+        apply ok_bind; [apply _|apply ok_mod_node; nstep|intros _].
+        apply ok_bind; [apply _|apply ok_any; ih IH|intros _].
+        apply ok_mod_node. nstep. }
+      intros _.
+      apply okT_bind; [apply ok_get_node|intros d'].
+      apply okT_bind.
+      { destruct (n_disposed d'); [apply ok_ret|ih IH]. }
+      intros _. apply okT_pop. }
+    destruct (Hrest _ _ _ Hi1 Hk ltac:(done) (ci_current _ _ _ Hi) Hm) as (Hi2 & Hr2 & Hc2 & Hk2).
+    split; [done|]. split_and!; [done|done|]. auto.
+  Qed.
+
+  Lemma ok_body_S n : okP (in_effect_run n) (run_effect_body (S f) n).
+  Proof.
+    cbn [run_effect_body].
+    apply ok_bind; [apply _|apply ok_get_node|intros d].
+    apply ok_bind; [apply _| |intros _].
+    { apply (ok_weaken (has_kind n KEffect)); [intros s [? _]; done|apply ok_mod_effect; done]. }
+    apply ok_bind; [apply _|apply ok_emit|intros _].
+    apply ok_bind; [apply _| |intros r].
+    { apply (ok_weaken (fun s => n ∈ g_running s)); [intros s [_ ?]; done|apply ok_hosted; ih IH]. }
+    apply ok_bind; [apply _|apply ok_get_node|intros d'].
+    apply ok_bind; [apply _|apply ok_edges_opt_end|intros _].
+    destruct r; [apply ok_ret|].
+    apply ok_bind; [apply _| |intros _; apply ok_emit].
+    apply (ok_weaken (has_kind n KEffect)); [intros s [? _]; done|apply ok_mod_effect; done].
+  Qed.
+
+  Lemma ok_discharge_S o : ok (discharge (S f) o).
+  Proof. cbn [discharge]. go IH. Qed.
+
+  Lemma ok_retire_S o : ok (retire (S f) o).
+  Proof. cbn [retire]. go IH. Qed.
+
+  Lemma ok_dispose_scope_S o : ok (dispose_scope (S f) o).
+  Proof. cbn [dispose_scope]. go IH. Qed.
+
+  Lemma ok_teardown_S o ls cs : ok (teardown (S f) o ls cs).
+  Proof. cbn [teardown]. go IH. Qed.
+
+  Lemma ok_cleanup_S o b e : ok (run_cleanup (S f) o b e).
+  Proof. cbn [run_cleanup]. unfold record_error. go IH. Qed.
+
+  Lemma ok_release_S n : ok (release (S f) n).
+  Proof. cbn [release]. go IH. Qed.
+
+  Lemma ok_dispose_S n : ok (dispose_node (S f) n).
+  Proof. cbn [dispose_node]. unfold unlink. go IH. Qed.
+
+  Lemma ok_attach_S n o : ok (attach (S f) n o).
+  Proof. cbn [attach]. go IH. Qed.
+
+  Lemma ok_write_S n v : ok (write_signal (S f) n v).
+  Proof.
+    cbn [write_signal]. apply ok_get_node_at. intros d.
+    destruct (n_kind d) eqn:Ek; try apply ok_stuck.
+    destruct (decide _); [apply ok_ret|].
+    intros s s' a Hi [_ Hd] Hm.
+    rewrite (bind_mod_node _ _ _ _ _ Hd) in Hm. rewrite bind_m_mod in Hm.
+    set (s1 := set_node n (nset_value v d) s) in Hm.
+    assert (Hi1 : inv_x (Some n) s1).
+    { apply (inv_set_gen (Some n) None n (nset_value v) d); [by apply inv_weaken|done|done|done|].
+      intros Hk. congruence. }
+    assert (F1 : frame s s1) by (apply (frame_set n (nset_value v) d); done).
+    assert (Hd1 : g_nodes s1 !! n = Some (nset_value v d)) by (simpl; apply lookup_insert_eq).
+    unfold ghost_publish in Hm. rewrite Hd1 in Hm.
+    apply bind_step in Hm as (s2 & Hn & Hm2).
+    set (G := {| gh_pub := _; gh_seen := _; gh_unnoticed := _ |}) in Hn.
+    assert (Hreach : ew_reachable (g_edges s1)) by apply (ci_reach _ _ _ Hi1).
+    destruct (inv_told n (nset_value v d) s1 G s2) as [Hi2 F2]; [done|done|done|done|simpl; set_solver| | |].
+    { apply (any_mark_rtc f n None). right; right; right; left. done. }
+    { intros c dc Hc Hkc Hpre. right. left.
+      eapply (notify_dirty_ends_dirty f n None (with_ghost G s1)).
+      - by apply prefix_observer.
+      - exists dc. split; [done|by left].
+      - left. exact Hn. }
+    assert (Hflush : ok (request_flush f)) by ih IH.
+    destruct (Hflush _ _ _ Hi2 I Hm2) as [Hi3 F3].
+    split; [done|]. eapply frame_trans; [exact F1|]. by eapply frame_trans.
+  Qed.
+
+  Lemma ok_request_S : ok (request_flush (S f)).
+  Proof. cbn [request_flush]. go IH. Qed.
+
+  Lemma ok_settle_S : ok (settle_flush (S f)).
+  Proof. cbn [settle_flush]. go IH. Qed.
+
+  Lemma ok_flush_S : ok (run_flush (S f)).
+  Proof. cbn [run_flush]. go IH. Qed.
+
+  Lemma ok_drain_S : ok (drain (S f)).
+  Proof.
+    cbn [drain]. intros s s' a Hi _ Hm. rewrite bind_get in Hm.
+    destruct (g_queue s !! g_head s) as [n|] eqn:Eq.
+    - rewrite bind_m_mod in Hm.
+      assert (Hin : n ∈ g_queue s) by (apply list_elem_of_lookup; by exists (g_head s)).
+      assert (Hi1 : check_inv (with_head (S (g_head s)) s)) by (eapply inv_irrelevant; [|exact Hi]; irr).
+      assert (Hk : has_kind n KEffect (with_head (S (g_head s)) s)) by apply (ci_queue _ _ _ Hi n Hin).
+      assert (Hrest : okP (has_kind n KEffect) (let* _ := execute_effect f n in drain f)).
+      { apply ok_bind; [apply _|ih IH|intros _; apply ok_any; ih IH]. }
+      destruct (Hrest _ _ _ Hi1 Hk Hm) as [Hi2 F2].
+      split; [done|]. eapply frame_trans; [|exact F2]. apply frame_irrelevant. irr.
+    - unfold m_mod in Hm. simplify_eq. split.
+      + destruct Hi. unfold with_queue, with_head. split; gs; try done.
+        intros y Hy. by apply not_elem_of_nil in Hy.
+      + split_and!; [done|done|]. intros m k Hmk. done.
+  Qed.
+End Step.
+
+Theorem engine_ok_all f : engine_ok f.
+Proof.
+  induction f as [|f IH].
+  - split; intros; try (intros s s' a _ _ Hm; destruct_all (option nat); done);
+      intros s s' a _ _ Hm; done.
+  - split.
+    + apply ok_exec_S, IH.
+    + apply ok_read_S, IH.
+    + apply ok_read_node_S, IH.
+    + apply ok_update_S, IH.
+    + apply ok_refresh_or_pull_S, IH.
+    + apply ok_pull_S, IH.
+    + apply ok_refresh_S, IH.
+    + apply ok_walk_S, IH.
+    + apply ok_recompute_S, IH.
+    + apply ok_run_memo_S, IH.
+    + apply ok_execute_S, IH.
+    + apply ok_run_effect_S, IH.
+    + apply ok_body_S, IH.
+    + apply ok_discharge_S, IH.
+    + apply ok_retire_S, IH.
+    + apply ok_dispose_scope_S, IH.
+    + apply ok_teardown_S, IH.
+    + apply ok_cleanup_S, IH.
+    + apply ok_release_S, IH.
+    + apply ok_dispose_S, IH.
+    + apply ok_attach_S, IH.
+    + apply ok_write_S, IH.
+    + apply ok_request_S, IH.
+    + apply ok_settle_S, IH.
+    + apply ok_flush_S, IH.
+    + apply ok_drain_S, IH.
+Qed.
+
+(** ** The invariant holds everywhere a program reaches *)
+
+Lemma slot_view_empty c : slot_view empty_world c = ([], 0).
+Proof. unfold slot_view, src_of. simpl. rewrite lookup_empty. done. Qed.
+
+Theorem check_inv_init fl : check_inv (init fl).
+Proof.
+  unfold init. split; gs.
+  - apply er_empty.
+  - intros c. rewrite slot_view_empty. simpl. lia.
+  - intros c (d & Hd & _). simpl in Hd. rewrite lookup_empty in Hd. done.
+  - intros n Hn. rewrite lookup_empty in Hn. by destruct Hn.
+  - intros c y Hy. rewrite slot_view_empty in Hy. by apply not_elem_of_nil in Hy.
+  - intros c Hc. by apply not_elem_of_nil in Hc.
+  - done.
+  - intros y Hy. by apply not_elem_of_nil in Hy.
+  - intros n d Hd. rewrite lookup_empty in Hd. done.
+  - intros c d y Hd. rewrite lookup_empty in Hd. done.
+Qed.
+
+Theorem check_inv_run_top f c s s' r :
+  check_inv s -> run_top f c s = Some (s', r) -> check_inv s'.
+Proof. intros Hi Hm. exact (proj1 (Eexec _ (engine_ok_all f) [] c _ _ _ Hi I Hm)). Qed.
+
+Theorem check_inv_update f n s s' :
+  check_inv s -> update_if_necessary f n s = Some (s', tt) -> check_inv s'.
+Proof. intros Hi Hm. exact (proj1 (Eupdate _ (engine_ok_all f) n _ _ _ Hi I Hm)). Qed.
+
+(** ** Check resolution *)
+
+(** A memo short of [Dirty], with settled reads, took the current view of each source. *)
+Theorem unmoved_short_of_dirty s n d :
+  check_inv s -> g_nodes s !! n = Some d -> n_kind d = KMemo -> n_fresh d <> Dirty ->
+  reads_settled s n -> ~ moved_since_last_run s n.
+Proof.
+  intros Hi Hd Hk Hf (Hun & Hnr & Hsr) (src & i & mh & e & Hslot & He & Hne).
+  assert (Hin : src ∈ fst <$> sslots (src_of (g_edges s) n)).
+  { apply list_elem_of_lookup. exists i. rewrite list_lookup_fmap. unfold slot_at in Hslot. by rewrite Hslot. }
+  assert (Hpre : src ∈ read_prefix (g_edges s) n).
+  { rewrite read_prefix_view. pose proof (ci_ended _ _ _ Hi n ltac:(by exists d) Hnr) as Hl.
+    rewrite Hl, firstn_all. done. }
+  assert (Hkind : n_kind e <> KEffect).
+  { destruct (ci_slots _ _ _ Hi n src Hin) as [_ [(e' & He' & Hk')|(e' & He' & Hk')]]; simplify_eq; congruence. }
+  pose proof (ci_pub _ _ _ Hi src e He Hkind (Hsr src Hin) ltac:(done)) as Hpub.
+  destruct (ci_seen _ _ _ Hi n d src Hd Hk Hpre ltac:(done)) as [H1|[H1|H1]]; [|done|done].
+  apply Hne. by rewrite H1.
+Qed.
+
+(** The strongest true form of [resolve_clean_no_move]. *)
+Theorem resolve_clean_unmoved f n s s' d d' :
+  check_inv s ->
+  g_nodes s !! n = Some d -> n_kind d = KMemo -> n_fresh d = Check ->
+  update_if_necessary f n s = Some (s', tt) ->
+  g_nodes s' !! n = Some d' -> n_fresh d' = Clean ->
+  reads_settled s' n ->
+  ~ moved_since_last_run s' n.
+Proof.
+  intros Hi Hd Hk _ Hu Hd' Hc Hset.
+  pose proof (Eupdate _ (engine_ok_all f) n _ _ _ Hi I Hu) as [Hi' (_ & _ & Hks)].
+  destruct (Hks n KMemo ltac:(by exists d)) as (e & He & Hek). simplify_eq.
+  eapply unmoved_short_of_dirty; eauto. congruence.
+Qed.
+
+(** The unqualified statement, which the fix phase owes. [check_resolves_over_moved_source] in [BUGS.md] is
+    its counterexample on the present engine. *)
+Definition resolve_clean_no_move_statement : Prop :=
+  forall f n s s' d d',
+    check_inv s ->
+    g_nodes s !! n = Some d -> n_kind d = KMemo -> n_fresh d = Check ->
+    update_if_necessary f n s = Some (s', tt) ->
+    g_nodes s' !! n = Some d' -> n_fresh d' = Clean ->
+    ~ moved_since_last_run s' n.
+
+Theorem resolve_clean_no_move : resolve_clean_no_move_statement.
+Admitted.
+
+(** A node out of [Check], [Dirty] included, ends the walk at this slot with the state unchanged. *)
+Theorem resolve_dirty_stops_walk f n i s d :
+  g_nodes s !! n = Some d -> n_fresh d <> Check ->
+  resolve_walk (S f) n i s = Some (s, tt).
+Proof.
+  intros Hd Hne. cbn [resolve_walk]. rewrite (bind_get_node _ _ _ _ Hd), bind_get.
+  by rewrite decide_False.
+Qed.
+
+(** A node in [Check] updates the source at its cursor, then walks on from the next slot. *)
+Theorem resolve_walk_step f n i s d src mh :
+  g_nodes s !! n = Some d -> n_fresh d = Check ->
+  sslots (src_of (g_edges s) n) !! i = Some (src, mh) ->
+  resolve_walk (S f) n i s = m_bind (update_if_necessary f src) (fun _ => resolve_walk f n (S i)) s.
+Proof.
+  intros Hd Hc Hs. cbn [resolve_walk]. rewrite (bind_get_node _ _ _ _ Hd), bind_get.
+  rewrite decide_True by done. by rewrite Hs.
+Qed.
+
+(** [ResolveCheck]: a walk that ends in [Check] leaves the node [Clean] with [n_unann] false, and no run. *)
+Theorem resolve_clears_unannounced f n s s1 d d1 :
+  g_nodes s !! n = Some d -> n_fresh d = Check ->
+  resolve_walk f n 0 s = Some (s1, tt) ->
+  g_nodes s1 !! n = Some d1 -> n_fresh d1 = Check ->
+  exists s', refresh (S f) n s = Some (s', tt) /\
+    g_nodes s' !! n = Some (nset_unann false (nset_fresh Clean d1)) /\
+    n_fresh (nset_unann false (nset_fresh Clean d1)) = Clean /\
+    n_unann (nset_unann false (nset_fresh Clean d1)) = false /\
+    n_runs (nset_unann false (nset_fresh Clean d1)) = n_runs d1.
+Proof.
+  intros Hd Hc Hw Hd1 Hc1.
+  assert (Hd2 : g_nodes (set_node n (nset_unann false (nset_fresh Clean d1)) s1) !! n =
+                Some (nset_unann false (nset_fresh Clean d1))) by (simpl; apply lookup_insert_eq).
+  exists (set_node n (nset_unann false (nset_fresh Clean d1)) s1).
+  split_and!; [|done|done|done|done].
+  cbn [refresh]. rewrite (bind_get_node _ _ _ _ Hd), decide_True by done.
+  rewrite bind_bind, (bind_some _ _ _ _ _ Hw).
+  rewrite bind_bind, (bind_get_node _ _ _ _ Hd1), decide_True by done.
+  rewrite (bind_mod_node _ _ _ _ _ Hd1).
+  rewrite (bind_get_node _ _ _ _ Hd2), decide_False by done.
+  reflexivity.
+Qed.
+
+(** A signal has nothing to bring current. *)
+Theorem signal_update_noop f n s d :
+  g_nodes s !! n = Some d -> n_kind d = KSignal ->
+  update_if_necessary (S f) n s = Some (s, tt).
+Proof.
+  intros Hd Hk. cbn [update_if_necessary]. rewrite (bind_get_node _ _ _ _ Hd), Hk. done.
+Qed.
+
+Lemma track_nodes n s s' : track n s = Some (s', tt) -> g_nodes s' = g_nodes s.
+Proof.
+  unfold track. destruct (g_current s); [|intros; by simplify_eq].
+  destruct (sl_add _ _ _); [|done]. intros Hm. simplify_eq. unfold ghost_read. simpl.
+  by destruct (g_nodes s !! n).
+Qed.
+
+Lemma read_node_disposed f n s s' d o :
+  g_nodes s !! n = Some d -> n_kind d = KMemo -> n_disposed d = true ->
+  read_node f n s = Some (s', o) ->
+  g_nodes s' = g_nodes s /\
+  o = match n_status d with StError => Fail (default 0%Z (n_failure d)) | _ => Ok (n_value d) end.
+Proof.
+  intros Hd Hk Hdisp Hr. destruct f as [|f]; [done|]. cbn [read_node] in Hr.
+  rewrite (bind_get_node _ _ _ _ Hd), Hk in Hr.
+  assert (Hl : stale_live d = false) by (unfold stale_live; rewrite Hdisp; apply andb_false_r).
+  rewrite Hl in Hr. unfold m_bind in Hr.
+  destruct (track n s) as [[s1 []]|] eqn:Et; [|done].
+  apply track_nodes in Et.
+  assert (Hd1 : g_nodes s1 !! n = Some d) by (by rewrite Et).
+  fold (m_bind (get_node n) (fun d' => match n_status d' with
+      | StError => m_ret (Fail (default 0%Z (n_failure d')))
+      | _ => m_ret (Ok (n_value d')) end) s1) in Hr.
+  rewrite (bind_get_node _ _ _ _ Hd1) in Hr.
+  destruct (n_status d); unfold m_ret in Hr; by simplify_eq.
+Qed.
+
+(** A read of a disposed memo keeps every node, and answers the stored value or failure. *)
+Theorem disposed_memo_no_refresh f n b s s' d o :
+  g_nodes s !! n = Some d -> n_kind d = KMemo -> n_disposed d = true ->
+  read f n b s = Some (s', o) ->
+  g_nodes s' = g_nodes s /\
+  o = match n_status d with StError => Fail (default 0%Z (n_failure d)) | _ => Ok (n_value d) end.
+Proof.
+  intros Hd Hk Hdisp Hr. destruct f as [|f]; [done|]. cbn [read] in Hr.
+  destruct b; [by eapply read_node_disposed|].
+  unfold untracked, m_bind, m_mod, m_ret in Hr.
+  destruct (read_node f n _) as [[s1 r]|] eqn:E; [|done]. simplify_eq.
+  eapply read_node_disposed in E as [Hn Ho]; [|done|done|done]. split; [done|done].
+Qed.

@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check.
 From Ranvier.Conformance Require Check.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -99,5 +99,20 @@ Print Assumptions nested_self_run_ends_clean_and_wrong.
 Print Assumptions self_read_check_resolves_itself.
 Print Assumptions self_read_second_resolves_itself.
 Print Assumptions mutual_read_check_resolves_itself.
+Print Assumptions check_inv_init.
+Print Assumptions check_inv_run_top.
+Print Assumptions check_inv_update.
+Print Assumptions unmoved_short_of_dirty.
+Print Assumptions resolve_clean_unmoved.
+Print Assumptions resolve_clean_no_move.
+Print Assumptions resolve_dirty_stops_walk.
+Print Assumptions resolve_walk_step.
+Print Assumptions resolve_clears_unannounced.
+Print Assumptions signal_update_noop.
+Print Assumptions disposed_memo_no_refresh.
+Print Assumptions check_resolves_over_moved_source.
+Print Assumptions resolve_clean_no_move_falsified.
+Print Assumptions check_cutoff_settled.
+Print Assumptions self_marking_through_memo_unmoved.
 Print Assumptions Ranvier.Conformance.Check.nested_memo_prev_stuck.
 Print Assumptions Ranvier.Conformance.Check.check_disposed_window.

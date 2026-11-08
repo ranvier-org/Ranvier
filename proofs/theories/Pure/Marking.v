@@ -17,7 +17,7 @@ Definition set_node (n : nid) (d : node) (s : state) : state :=
      g_owners := g_owners s; g_queue := g_queue s; g_head := g_head s;
      g_flushing := g_flushing s; g_owed := g_owed s; g_batch := g_batch s; g_pull := g_pull s;
      g_current := g_current s; g_untracked := g_untracked s; g_owner := g_owner s;
-     g_next := g_next s; g_trace := g_trace s; g_running := g_running s |}.
+     g_next := g_next s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
 
 (** [Graph.Schedule]. *)
 Definition enqueue (n : nid) (s : state) : state :=
@@ -25,7 +25,7 @@ Definition enqueue (n : nid) (s : state) : state :=
      g_owners := g_owners s; g_queue := g_queue s ++ [n]; g_head := g_head s;
      g_flushing := g_flushing s; g_owed := g_owed s; g_batch := g_batch s; g_pull := g_pull s;
      g_current := g_current s; g_untracked := g_untracked s; g_owner := g_owner s;
-     g_next := g_next s; g_trace := g_trace s; g_running := g_running s |}.
+     g_next := g_next s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s |}.
 
 (** The backward walk of [NotifyDirty], [NotifyDirtyExcept] and [NotifyCheck]. The natural is the
     cursor plus one, and each step reads the observer set of the current state. A cursor at or past the

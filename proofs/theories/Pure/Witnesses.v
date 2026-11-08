@@ -2,7 +2,7 @@ From stdpp Require Import prelude.
 From stdpp Require Import gmap.
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Base Require Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Check.
 
 (** ** Walks *)
 
@@ -53,7 +53,8 @@ Local Definition mark_state (w : EdgeWorld) (nodes : gmap nid node) (q : list ni
     (running : list nid) : state :=
   {| g_flags := current_flags; g_edges := w; g_nodes := nodes; g_owners := ∅; g_queue := q;
      g_head := h; g_flushing := false; g_owed := false; g_batch := 0; g_pull := 0; g_current := None;
-     g_untracked := false; g_owner := None; g_next := 3; g_trace := []; g_running := running |}.
+     g_untracked := false; g_owner := None; g_next := 3; g_trace := []; g_running := running;
+     g_ghost := empty_ghost |}.
 
 (** Computation 2, in a run, has read source 1. *)
 Local Definition linked_world : EdgeWorld :=
@@ -307,3 +308,110 @@ Example mutual_read_check_resolves_itself :
   trace_of 500 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop)) = None /\
   trace_of 2000 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop)) = None.
 Proof. split_and!; try (vm_compute; reflexivity). vm_compute. eexists. reflexivity. Qed.
+
+(** ** Check resolution *)
+
+Lemma check_inv_final p : check_inv (final p).
+Proof.
+  unfold final. destruct (run_top 100000 p (init current_flags)) as [[s r]|] eqn:E; simpl.
+  - eapply check_inv_run_top; [apply check_inv_init|exact E].
+  - apply check_inv_init.
+Qed.
+
+Local Lemma settled_of s n :
+  gh_unnoticed (g_ghost s) = ∅ -> g_running s = [] -> reads_settled s n.
+Proof.
+  intros Hu Hr. unfold reads_settled. rewrite Hu, Hr. split_and!.
+  - set_solver.
+  - apply not_elem_of_nil.
+  - intros src _. apply not_elem_of_nil.
+Qed.
+
+(** [x] reads [a], writes [a]'s source, and reads [b], a memo over [a]. [b]'s walk runs [a] under [x]'s
+    body, and the notice of that run skips [x], the current computation. *)
+Definition check_over_moved (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 2) (CRet (V 10))) (
+  CMemo 4 Pure CmpEq
+    (CRead 10 (V 2) (CWrite (V 1) (K 1%Z) (CRead 11 (V 3) (CLog (V 10) (CRet (V 10)))))) (
+  CRead 20 (V 3) (CRead 21 (V 4) k))))).
+
+Local Definition over_moved_start : state := final (check_over_moved Nop).
+
+Local Definition over_moved_end : state :=
+  default over_moved_start (fst <$> update_if_necessary 1000 4 over_moved_start).
+
+(** [x] goes from [Check] to [Clean] with no run, holding the value of its read of 0, and [a] holds 1.
+    Confirmed in [BUGS.md]. *)
+Example check_resolves_over_moved_source :
+  node_view over_moved_start 4 = Some (Check, true, false, StNone, 0%Z) /\
+  n_kind <$> g_nodes over_moved_start !! 4 = Some KMemo /\
+  update_if_necessary 1000 4 over_moved_start = Some (over_moved_end, tt) /\
+  node_view over_moved_end 4 = Some (Clean, false, false, StNone, 0%Z) /\
+  node_view over_moved_end 2 = Some (Clean, false, false, StNone, 1%Z) /\
+  n_runs <$> g_nodes over_moved_end !! 4 = Some 1 /\
+  moved_since_last_run over_moved_end 4 /\
+  gh_unnoticed (g_ghost over_moved_end) = {[4]}.
+Proof.
+  split_and!; try (vm_compute; reflexivity).
+  exists 2, 0, (Some 1), (default (signal_node 0%Z) (g_nodes over_moved_end !! 2)).
+  split_and!; [vm_compute; reflexivity|vm_compute; reflexivity|].
+  vm_compute. intros H. discriminate H.
+Qed.
+
+Theorem resolve_clean_no_move_falsified : ~ resolve_clean_no_move_statement.
+Proof.
+  intros H.
+  destruct check_resolves_over_moved_source as (_ & _ & Hu & _ & _ & _ & Hm & _).
+  destruct (g_nodes over_moved_start !! 4) as [d|] eqn:Hd; [|vm_compute in Hd; discriminate Hd].
+  destruct (g_nodes over_moved_end !! 4) as [d'|] eqn:Hd'; [|vm_compute in Hd'; discriminate Hd'].
+  refine (H 1000 4 over_moved_start over_moved_end d d' (check_inv_final _) Hd _ _ Hu Hd' _ Hm).
+  all: vm_compute in Hd; vm_compute in Hd'; injection Hd as <-; injection Hd' as <-; reflexivity.
+Qed.
+
+(** The usual resolution: a memo reads a memo whose value holds. It goes from [Check] to [Clean] with no
+    run, and [resolve_clean_unmoved]'s premise holds. *)
+Definition check_cutoff (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (ELt (V 10) (K 100%Z)))) (
+  CMemo 3 Pure CmpEq (CRead 11 (V 2) (CRet (V 11))) (
+  CRead 20 (V 3) (CWrite (V 1) (K 1%Z) k)))).
+
+Local Definition cutoff_start : state := final (check_cutoff Nop).
+
+Local Definition cutoff_end : state :=
+  default cutoff_start (fst <$> update_if_necessary 1000 3 cutoff_start).
+
+Example check_cutoff_settled :
+  n_fresh <$> g_nodes cutoff_start !! 3 = Some Check /\
+  update_if_necessary 1000 3 cutoff_start = Some (cutoff_end, tt) /\
+  n_fresh <$> g_nodes cutoff_end !! 3 = Some Clean /\
+  n_runs <$> g_nodes cutoff_end !! 3 = n_runs <$> g_nodes cutoff_start !! 3 /\
+  reads_settled cutoff_end 3 /\ ~ moved_since_last_run cutoff_end 3.
+Proof.
+  assert (Hset : reads_settled cutoff_end 3).
+  { apply settled_of; vm_compute; reflexivity. }
+  split_and!; try (vm_compute; reflexivity); [done|].
+  destruct (g_nodes cutoff_start !! 3) as [d|] eqn:Hd; [|vm_compute in Hd; discriminate Hd].
+  destruct (g_nodes cutoff_end !! 3) as [d'|] eqn:Hd'; [|vm_compute in Hd'; discriminate Hd'].
+  assert (Hu : update_if_necessary 1000 3 cutoff_start = Some (cutoff_end, tt)) by (vm_compute; reflexivity).
+  refine (resolve_clean_unmoved 1000 3 cutoff_start cutoff_end d d' (check_inv_final _) Hd _ _ Hu Hd' _ Hset).
+  all: vm_compute in Hd; vm_compute in Hd'; injection Hd as <-; injection Hd' as <-; reflexivity.
+Qed.
+
+(** [self_marking_wake_lost] does not reach [moved_since_last_run]: the reader goes clean over a [Dirty]
+    source whose stored value it read. *)
+Example self_marking_through_memo_unmoved :
+  let s := final (self_marking_through_memo Nop) in
+  n_fresh <$> g_nodes s !! 2 = Some Dirty /\ n_fresh <$> g_nodes s !! 3 = Some Clean /\
+  reads_settled s 3 /\ ~ moved_since_last_run s 3.
+Proof.
+  intros s.
+  assert (Hset : reads_settled s 3).
+  { apply settled_of; vm_compute; reflexivity. }
+  split_and!; try (vm_compute; reflexivity); [done|].
+  destruct (g_nodes s !! 3) as [d|] eqn:Hd; [|vm_compute in Hd; discriminate Hd].
+  refine (unmoved_short_of_dirty s 3 d (check_inv_final _) Hd _ _ Hset).
+  all: subst s; vm_compute in Hd; injection Hd as <-; first [reflexivity|discriminate].
+Qed.
