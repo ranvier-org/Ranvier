@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
 
@@ -58,3 +58,10 @@ Print Assumptions snapshot_trim_fails.
 Print Assumptions walk_covers_duplicate_observer.
 Print Assumptions walk_visits_moved_twice.
 Print Assumptions walk_visits_added_observer.
+Print Assumptions coherent_begin.
+Print Assumptions coherent_add.
+Print Assumptions coherent_end.
+Print Assumptions coherent_clear.
+Print Assumptions coherent_moved.
+Print Assumptions moved_alone_breaks_coherent.
+Print Assumptions edge_iff_both_sides.

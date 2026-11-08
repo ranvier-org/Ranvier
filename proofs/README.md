@@ -20,6 +20,8 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 - `theories/Pure/ObserverSet.v`: `ObserverSet`, and the backward re-clamped walk.
 - `theories/Pure/SourceList.v`: `SourceList` over both ends of every edge, and the edge invariants.
 - `theories/Pure/Witnesses.v`: checked counterexamples and behaviour witnesses.
+- `theories/Pure/State.v`: the graph state, and `edge`.
+- `theories/Pure/Edges.v`: edge coherence over the source-list operations.
 - `theories/Audit.v`: one `Print Assumptions` per theorem; `check.sh` reads it.
 - `BUGS.md`: defect ledger. `CORRESPONDENCE.md`: model-to-F# map.
 
@@ -79,6 +81,11 @@ Both run from any directory. See `VERSIONS.md` for the toolchain.
 | `walk_covers_duplicate_observer` | `Pure/Witnesses.v` | An observer held twice can be missed though present throughout. Modelled in `BUGS.md`. |
 | `walk_visits_moved_twice` | `Pure/Witnesses.v` | A moved observer is visited twice. |
 | `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. Modelled in `BUGS.md`. |
+| `coherent_begin` | `Pure/Edges.v` | `sl_begin` preserves `coherent`. |
+| `coherent_add`, `coherent_end`, `coherent_clear` | `Pure/Edges.v` | From a coherent world, each returns `Some`, and the result is coherent. |
+| `coherent_moved` | `Pure/Edges.v` | Removing a slot's edge returns a coherent world. A move in that removal is paired with it, and the moved slot holds its new handle. |
+| `moved_alone_breaks_coherent` | `Pure/Edges.v` | A move to a different handle with no removal breaks coherence. |
+| `edge_iff_both_sides` | `Pure/Edges.v` | In a coherent world, an edge holds exactly when `c` is in `src`'s observers, and exactly when a slot of `c` holds `src` with a handle. |
 
 ## Literature
 
