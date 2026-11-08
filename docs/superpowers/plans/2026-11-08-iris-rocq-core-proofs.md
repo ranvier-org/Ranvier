@@ -325,7 +325,7 @@ Definition coherent (w : EdgeWorld) : Prop.
 
 `coherent w` holds when, for all `c i s h`, slot `i` of `c` holds `(s, Some h)` if and only if position `h` of `s`'s observers holds `(c, i)`. Fill `ownerS` and `status` from Core.fs lines 855-1250 and the `Status` type.
 
-- [ ] **Step 1: Theorems.** `coherent_add`, `coherent_begin`, `coherent_end`, `coherent_clear`, `coherent_moved` (each `sl_*` preserves `coherent` and never returns `None` from a coherent world), and `edge_iff_both_sides`.
+- [ ] **Step 1: Theorems.** `coherent_add`, `coherent_begin`, `coherent_end`, `coherent_clear`, `coherent_moved`, for a move paired with its swap-removal, since a bare `sl_moved_in` breaks coherence (each `sl_*` preserves `coherent` and never returns `None` from a coherent world), and `edge_iff_both_sides`.
 - [ ] **Step 2: Prove them, then audit.** Expected: exit 0.
 - [ ] **Step 3: Commit** as `feat(proofs): prove edge coherence`.
 
@@ -402,7 +402,7 @@ Theorems later quantify over `fuel`, so a `Some` result means "this operation re
 | S14 | Candidate from the spec: self-writing memo, read by an effect |
 | S15 | Candidate: `e` reads `[h,x,y]`, `x` reads `[h,y]`, batch writes `h` and `y`'s source |
 
-- [ ] **Step 2: Run it.** Run: `rtk dotnet build src/Ranvier -c Release`, then `rtk dotnet fsi proofs/conformance/Scenarios.fsx`. Expected: `Expected.v` holds 16 definitions. `src/Ranvier` shows no diff.
+- [ ] **Step 2: Run it.** Run: `rtk dotnet build src/Ranvier -c Release`, then `rtk dotnet fsi proofs/conformance/Scenarios.fsx`. Expected: `Expected.v` holds 16 definitions. `src/Ranvier` shows no diff. Separately, take `walk_covers_duplicate_observer` to the F#: `ObserverSet` is internal, so run it as a `Ranvier.Tests` case with a stub `IComputation` whose `MarkDirty` mutates the set, then settle its `BUGS.md` entry.
 - [ ] **Step 3: Write `Conformance/Check.v`:** one `Example check_Snn : trace_of 100000 current_flags prog_Snn = Some exp_Snn. Proof. vm_compute. reflexivity. Qed.` per scenario. Run the build; expected: fails, `Engine` undefined.
 - [ ] **Step 4: Implement `Engine.v`** line by line from Core.fs, including `finally` paths and `moved` with `CmpThrows`. `f_reader_mark = false` drops the `MarkReaderCheck` in `TrackCurrent`.
 - [ ] **Step 5: Run the build.** Expected: all 16 pass. A mismatch is first a model error; fix `Engine.v`. Only after confirming from Core.fs that the model is faithful, and that the F# behaviour is what the scenario records, is the mismatch a correspondence question to report.
@@ -519,7 +519,7 @@ Definition engine_inv (s : state) : Prop.   (* coherent, wake_ok, stack discipli
 
 ### Task 11: Whole-graph theorems and regression witnesses (layer 9, pure)
 
-**Files:** Create `proofs/theories/Pure/WholeGraph.v`, `Pure/Witnesses.v`.
+**Files:** Create `proofs/theories/Pure/WholeGraph.v`. Extend `Pure/Witnesses.v`.
 
 **Interfaces:**
 - Consumes: Tasks 7-10, `well_behaved_memo`.
@@ -619,7 +619,7 @@ Lemma obs_remove_at_spec l o c h o' m :
 
 Arrays with grow and blanking per Core.fs; `first`/`rest` is kept in `SourceList`, `latest` and `scan_limit` in `ObserverSet`, `held` abstracted to the `gset` the spec names.
 
-- [ ] **Step 1: Specs.** Add `Ghost.v`, then specs for each code function. Add the walk: `walk_spec`, which for a visitor closure with a mutating spec proves `walk_covers`'s conclusion, in HeapLang.
+- [ ] **Step 1: Specs.** Add `Ghost.v`, then specs for each code function. Add the walk: `walk_spec`, which for a visitor closure with a mutating spec proves `walk_covers`'s conclusion, in HeapLang, with its `held_once` premise.
 - [ ] **Step 2: Prove them, then audit.** Expected: exit 0.
 - [ ] **Step 3: Commit** as `feat(proofs): prove the heap edge structures`.
 
