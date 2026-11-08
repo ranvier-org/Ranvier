@@ -764,9 +764,13 @@ Proof.
   - destruct (well_formed_clear c w IH) as (w'' & Hc' & Hw). congruence.
 Qed.
 
-(** ** The source-list theorems *)
+(** ** What a tracked read does to the source list *)
 
-(** A read matching the cursor's slot advances the cursor and leaves every edge unchanged. *)
+(**md
+**A read matching the slot at the cursor only advances the cursor.**
+
+When the slot at the cursor holds the source being read, `Add` succeeds, the cursor moves up one, and every observer set, this computation's slots and every other computation's source list stay as they were.
+*)
 Theorem sources_add_positional self s w :
   fst <$> slot_at w self (source_cursor (sources_of w self)) = Some s ->
   exists w', sources_add self s w = Some w' /\
@@ -782,7 +786,11 @@ Proof.
   - intros c Hne. rewrite sources_of_set_sources, decide_False by done. done.
 Qed.
 
-(** A read of the source just matched leaves the world unchanged. *)
+(**md
+**Reading the source just matched again changes nothing.**
+
+When the slot at the cursor holds a different source and the slot just before the cursor holds this one, `Add` returns the world unchanged.
+*)
 Theorem sources_add_repeat self s w :
   fst <$> slot_at w self (source_cursor (sources_of w self)) <> Some s ->
   0 < source_cursor (sources_of w self) ->
@@ -804,8 +812,13 @@ Proof.
   - rewrite lookup_take_ge by lia. fold (slot_at w' self j). rewrite Hnone by lia. done.
 Qed.
 
-(** A read matching neither drops every slot from the cursor, unlinks the edges they held, then
-    appends. *)
+(**md
+**A read matching neither slot drops the rest of the list and appends the source.**
+
+When the read matches neither the slot at the cursor nor the one before it, the new list is the slots before the cursor followed by the source, with the cursor at its end. The two ends of every edge still agree, and the computation appears only in the observers of sources in its new list.
+
+Premise: the two ends of every edge agree beforehand (`edge_match`).
+*)
 Theorem sources_add_truncates self s w :
   edge_match w ->
   fst <$> slot_at w self (source_cursor (sources_of w self)) <> Some s ->
@@ -835,7 +848,13 @@ Proof.
     apply Hnot. by eapply slot_source.
 Qed.
 
-(** At most one slot of a source holds an edge, and that slot is the source's first. *)
+(** ** At most one edge per source *)
+
+(**md
+**A computation holds at most one edge per source, in that source's first slot.**
+
+In every world built from empty by the source-list operations, two slots of a computation that hold edges to one source are the same slot, and a slot holds an edge exactly when no earlier slot names its source.
+*)
 Theorem sources_no_duplicate_edge w :
   world_reachable w ->
   (forall c s i j hi hj,
@@ -848,12 +867,18 @@ Proof.
   - intros c. apply Hf.
 Qed.
 
-(** ** Every removal of a trim *)
+(** ** Trimming keeps the edges consistent *)
 
 Lemma well_formed_slots_unique w : world_well_formed w -> slots_unique w.
 Proof. intros [_ Hf] c s i j hi hj. by apply first_owns_unique. Qed.
 
-(** With one edge per source, a removal moves only another computation's edge. *)
+(**md
+**Removing a computation's edge moves only another computation's edge.**
+
+The observer that a removal moves into the hole is a different computation from the one being removed.
+
+Premises: the two ends of every edge agree (`edge_match`), the computation holds at most one edge per source (`slots_unique`), and the removal uses the handle stored in the computation's slot.
+*)
 Theorem trim_moves_only_others w self i s h o' m ms h' :
   edge_match w -> slots_unique w ->
   slot_at w self i = Some (s, Some h) ->
@@ -902,8 +927,13 @@ Proof.
   by eapply Hu.
 Qed.
 
-(** Each [w'] is the world between two removals of a trim. It keeps both invariants, each observer set
-    holds an observer at most once, and the next removal moves only another computation's edge. *)
+(**md
+**Every world between the removals of a trim stays consistent.**
+
+After any number of removals, the two ends of every edge agree, each computation holds at most one edge per source, each observer set holds an observer at most once, and the next removal moves only another computation's edge.
+
+Premises: the first two properties hold when the trim starts.
+*)
 Theorem trim_every_removal self from k w w' :
   edge_match w -> slots_unique w ->
   trim_loop self from k w = Some w' ->
@@ -929,7 +959,11 @@ Definition world_point (w : EdgeWorld) : Prop :=
 Lemma reachable_point w : world_reachable w -> world_point w.
 Proof. intros Hr. exists 0, 0, 0, w. done. Qed.
 
-(** The premise of [walk_covers], for an observer present in the set. *)
+(**md
+**An observer in a set occupies exactly one position.**
+
+Holds in every reachable world and in every world between the removals of a trim that starts from one. It supplies `walk_covers` with its premise at a single point of a walk.
+*)
 Theorem observer_held_once w s c :
   world_point w -> c ∈ observer_view (observers_of w s) -> held_once c (observers_of w s).
 Proof.
@@ -940,9 +974,13 @@ Proof.
   split; [done|]. apply Honce.
 Qed.
 
-(** Review Focus 4: A, B, A with an edge in each A slot, the later edge last in A's observers. The
-    first removal moves it, the later slot reads the moved handle, and a clear removes every edge.
-    [sources_no_duplicate_edge] excludes this list from reachable worlds: see [aba_reachable_trim]. *)
+(**md
+**A clear stays correct when a removal moves the computation's own later edge.**
+
+Take the source list A, B, A with an edge in each slot, the later A edge last in A's observers. The first removal moves that edge, the later slot then holds the moved handle, and `Clear` still succeeds, leaving an empty list and the computation in no observer set.
+
+Premises: this exact list and the two ends of every edge agreeing. Reachable worlds exclude this list ([`sources_no_duplicate_edge`](#sources_no_duplicate_edge)), so this covers a world built by hand: see [`aba_reachable_trim`](#aba_reachable_trim).
+*)
 Theorem sources_trim_moves_own_edge w self A B ha hb ha' :
   edge_match w ->
   source_slots (sources_of w self) = [(A, Some ha); (B, Some hb); (A, Some ha')] ->
@@ -970,9 +1008,13 @@ Proof.
   - destruct (sources_clear_ok self w Hm) as (w' & Hr & _ & Hs & _ & _ & Hgone). eauto.
 Qed.
 
-(** Review Focus 5. A read missing its slot, with the source's observers above the scan limit and
-    [observer_latest] holding another observer: [TUnknown], and one edge for the source afterwards, whether or
-    not the source already had a slot. *)
+(**md
+**A read that `TryAdd` can't answer for still leaves one edge.**
+
+When a read misses its slot, the source has more than `scan_limit` observers and `observer_latest` holds another observer, `TryAdd` answers `TUnknown`. `Add` still succeeds, the world stays well formed, and the computation holds exactly one position in the source's observers, whether or not the source already had a slot.
+
+Premise: the world is well formed beforehand. The observer count and `observer_latest` are measured after the trim of the slots from the cursor onward.
+*)
 Theorem sources_add_unknown_no_duplicate self s w w1 :
   world_well_formed w ->
   fst <$> slot_at w self (source_cursor (sources_of w self)) <> Some s ->

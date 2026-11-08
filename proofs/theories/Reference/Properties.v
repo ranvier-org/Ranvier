@@ -3,7 +3,7 @@ From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Reference Require Export Semantics.
 
-(** * Determinism *)
+(** * The reference trace is deterministic *)
 
 Lemma settle_mono o1 o2 p :
   (forall i l, o1 i l = o2 i l) ->
@@ -52,8 +52,11 @@ Proof.
   rewrite (run_history_mono o1 o2 p f1 f2 Hext Hle h st2 (st3, r3) E2). done.
 Qed.
 
-(** Two orders that agree at every round on every list, and any two sufficient fuels, give one
-    trace. *)
+(**md
+**The reference gives one trace for a program, a history and an effect order.**
+
+Two orders that agree at every round on every list, with any two fuels that both reach a result, give the same trace.
+*)
 Theorem reference_trace_deterministic f1 f2 o1 o2 p h t1 t2 :
   (forall i l, o1 i l = o2 i l) ->
   reference_trace f1 o1 p h = Some t1 ->
@@ -69,7 +72,7 @@ Proof.
   - rewrite (reference_runs_mono o2 o1 p f2 f1 h r2 (fun i l => eq_sym (Hext i l)) Hle E2) in E1. congruence.
 Qed.
 
-(** * Memo values *)
+(** * A memo's value follows its dependencies *)
 
 #[local] Arguments memo_value : simpl never.
 #[local] Arguments live_read : simpl never.
@@ -170,8 +173,13 @@ Proof.
     + by apply list_elem_of_In.
 Qed.
 
-(** A memo's value over [s1] is its value over any [s2] that agrees on the signals discovered by
-    the evaluation over [s1]. *)
+(**md
+**A memo's value depends only on the signals its evaluation reached.**
+
+A memo's value over one set of signals is also its value over any other set that agrees on the signals in `memo_deps` of the first evaluation.
+
+Premise: the program is well formed.
+*)
 Theorem memo_value_extensional p frz s1 s2 n o :
   well_formed_program p ->
   memo_value p frz s1 n = Some o ->
@@ -483,9 +491,11 @@ Proof.
     intros Hin. apply list_elem_of_singleton in Hin. discriminate Hin.
 Qed.
 
-(** Each [EvLog] of a trace belongs to one effect run or disposal record. A record that writes no signal has
-    its reads and events computed from one snapshot of the signals, the disposed memos' values and the
-    environments of its cleanups. *)
+(**md
+**Each log belongs to one run, and a run that writes no signal computes from one snapshot.**
+
+A trace is the concatenation of its records' events, and each `EvLog` lies in a record for its node. A record that writes no signal has its reads and events reproduced by replaying it with every read answered from one snapshot of the signals and the disposed memos' values. The guarantee is silent on a record that writes. A cleanup's environment, and so a value it logs, can date from the run that registered it. This describes the reference, not the engine.
+*)
 Theorem glitch_free_by_definition fuel order p h evs n v :
   reference_trace fuel order p h = Some evs ->
   EvLog n v ∈ evs ->
@@ -510,11 +520,19 @@ Qed.
 
 (** * Observations and refinement *)
 
+(**md
+**Equal full traces have equal settled views.**
+
+`observe_full` distinguishes at least as much as `observe_settled`.
+*)
 Theorem observe_settled_coarser t1 t2 :
   observe observe_full t1 = observe observe_full t2 ->
   observe observe_settled t1 = observe observe_settled t2.
 Proof. simpl. intros ->. reflexivity. Qed.
 
+(**md
+**An engine refining the full trace refines the settled view.**
+*)
 Theorem refines_full_implies_settled engine :
   refines observe_full engine -> refines observe_settled engine.
 Proof.
@@ -544,7 +562,11 @@ Proof.
     split_and!; [done|done|by rewrite <- !app_assoc].
 Qed.
 
-(** A history's trace extends the trace of each batch prefix, under the same order and fuel. *)
+(**md
+**A history's trace extends the trace of each batch prefix.**
+
+Under one order and fuel, if the history has a trace, each batch prefix has a trace that is a prefix of it.
+*)
 Theorem reference_trace_extends fuel o p h h' t :
   prefix h' h ->
   reference_trace fuel o p h = Some t ->
@@ -560,7 +582,11 @@ Proof.
   rewrite <- concat_app, <- fmap_app. by rewrite <- !app_assoc.
 Qed.
 
-(** The reference tier refines itself, under each valid order and fuel. *)
+(**md
+**The reference refines itself on the full trace.**
+
+Holds under each valid order and any fuel, at every batch prefix of a well-formed program.
+*)
 Theorem reference_refines_itself fuel ord :
   is_effect_order ord -> refines observe_full (reference_trace fuel ord).
 Proof.
@@ -569,14 +595,21 @@ Proof.
   by exists t', fuel, t'.
 Qed.
 
-(** The reference tier, indexed by its fuel, answers under each valid order. *)
+(**md
+**The reference answers whenever it settles.**
+
+Under a valid order, some fuel gives a trace for a well-formed program and history, provided the reference settles under every valid order.
+*)
 Theorem reference_trace_answers ord : is_effect_order ord -> engine_answers (fun k => reference_trace k ord).
 Proof.
   intros Hord p h _ Hs. destruct (Hs ord Hord) as (fuel & t & Ht). by exists fuel, t.
 Qed.
 
-(** An engine with no traces refines every observation, so an engine proof owes [engine_answers]
-    as well. *)
+(**md
+**An engine with no traces passes `refines` for every observation.**
+
+`refines` constrains only the answers an engine gives, so this is a caution about the definition, not a guarantee. An engine proof also owes `engine_answers`, which rejects this engine: see [`none_engine_not_answers`](#none_engine_not_answers).
+*)
 Theorem none_engine_refines O : refines O (fun _ _ => None).
 Proof. intros p h t _ Hn. discriminate Hn. Qed.
 
@@ -1236,7 +1269,7 @@ Example order_varies_by_round :
           EvRun 8; EvLog 8 7; EvRun 9; EvLog 9 7].
 Proof. vm_compute. reflexivity. Qed.
 
-(** ** Observations *)
+(** ** What dropping a redundant run changes *)
 
 Definition resetting_trace_without_redundant : list event :=
   [EvRun 9; EvRun 8; EvLog 8 0; EvRun 9].
@@ -1294,6 +1327,11 @@ Definition resetting_failing_cleanup : program := {|
 Definition resetting_failing_cleanup_runs :=
   default [] (reference_runs 5 order_reversed resetting_failing_cleanup [[RWrite 0 1; RWrite 1 1]]).
 
+(**md
+**Dropping a redundant run can change what a reader sees, when its cleanup fails.**
+
+This is a counterexample on one program, `resetting_failing_cleanup`, under the reversed order: effect 8's second run counts as redundant and discharges a failing cleanup, and the trace without that run has a different `observe_settled`. The failure is the one the removal loses.
+*)
 Theorem redundant_failing_cleanup_changes_settled :
   reference_trace 5 order_reversed resetting_failing_cleanup [[RWrite 0 1; RWrite 1 1]] =
     Some [EvRun 9; EvRun 8; EvRun 9; EvCleanup 8; EvFail 8 7; EvRun 8] /\
@@ -1371,7 +1409,7 @@ Example dropped_write_observed_by_host_read :
     observe observe_settled <$> reference_trace 5 order_identity unlogged_signal write_dropped.
 Proof. vm_compute. discriminate. Qed.
 
-(** ** Refinement *)
+(** ** What refinement rejects *)
 
 Lemma one_read_well_formed : well_formed_program one_read.
 Proof.
@@ -1412,6 +1450,11 @@ Example final_batch_engine_settled_at_full_history :
     observe observe_settled <$> reference_trace 5 order_identity one_read two_writes.
 Proof. vm_compute. reflexivity. Qed.
 
+(**md
+**`refines` rejects an engine that answers only the full history.**
+
+An engine matching the reference's settled view on a two-batch history fails at the empty prefix, where it gives no answer. This is a check on the definition of `refines`, not a guarantee about Ranvier.
+*)
 Theorem final_batch_engine_not_refines : ~ refines observe_settled final_batch_engine.
 Proof.
   intros Hr.
@@ -1439,6 +1482,11 @@ Definition last_run_engine (_ : program) (h : history) : option (list event) :=
   | _ => Some [EvRun 9; EvLog 9 2]
   end.
 
+(**md
+**`refines` rejects traces that match at each prefix but don't extend each other.**
+
+An engine answering each prefix of `two_writes` with only its last run has the reference's settled view at each prefix, and fails the requirement that a prefix's trace is a prefix of the whole trace. This is a check on the definition of `refines`, not a guarantee about Ranvier.
+*)
 Theorem last_run_engine_not_refines : ~ refines observe_settled last_run_engine.
 Proof.
   intros Hr.
@@ -1451,8 +1499,11 @@ Qed.
 Example invalid_order_runs_nothing : reference_trace 0 (fun _ _ => []) one_read [] = Some [].
 Proof. vm_compute. reflexivity. Qed.
 
-(** The engine that emits nothing refines no observation that sees a run's value. A valid order runs
-    every effect in the initial round. *)
+(**md
+**`refines` rejects an engine that emits nothing.**
+
+A valid order runs every effect in the initial round, so an empty trace misses a run's value under `observe_settled`. This is a check on the definition of `refines`, not a guarantee about Ranvier.
+*)
 Theorem silent_engine_not_refines : ~ refines observe_settled (fun _ _ => Some []).
 Proof.
   intros Hr.
@@ -1462,6 +1513,11 @@ Proof.
   rewrite (one_read_first_run _ _ _ Hord Ht) in Heq. vm_compute in Heq. discriminate Heq.
 Qed.
 
+(**md
+**`engine_answers` rejects an engine with no traces.**
+
+The counterpart of [`none_engine_refines`](#none_engine_refines). This is a check on the definition of `engine_answers`, not a guarantee about Ranvier.
+*)
 Theorem none_engine_not_answers : ~ engine_answers (fun _ _ _ => None).
 Proof.
   intros Ha.

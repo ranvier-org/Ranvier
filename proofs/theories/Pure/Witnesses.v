@@ -309,7 +309,7 @@ Example mutual_read_check_resolves_itself :
   trace_of 2000 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop)) = None.
 Proof. split_and!; try (vm_compute; reflexivity). vm_compute. eexists. reflexivity. Qed.
 
-(** ** Check resolution *)
+(** ** Check resolution counterexamples *)
 
 Lemma check_invariant_final p : check_invariant (final p).
 Proof.
@@ -362,6 +362,11 @@ Proof.
   - vm_compute. intros H. discriminate H.
 Qed.
 
+(**md
+**Falsified on the present engine: a memo can resolve `Clean` over a moved source.**
+
+This is a counterexample, not a guarantee. It proves `resolve_clean_no_move_statement` false, using the Confirmed bug [`check_resolves_over_moved_source`](#check_resolves_over_moved_source): a memo reads a memo, writes that memo's source, then reads another memo over it, and later resolves `Clean` holding the old value.
+*)
 Theorem resolve_clean_no_move_falsified : ~ resolve_clean_no_move_statement.
 Proof.
   intros H.
@@ -462,6 +467,11 @@ Local Definition stale_start : state := final (stale_source_reader Nop).
 Local Definition stale_end : state :=
   default stale_start (fst <$> update_if_necessary 1000 3 stale_start).
 
+(**md
+**Falsified on the present engine: a memo can resolve `Clean` over a live stale source.**
+
+This is a counterexample, not a guarantee. It proves `resolve_clean_no_stale_source_statement` false, on the program [`stale_source_reader`](#stale_source_reader), an instance of the Confirmed bug `self_marking_wake_lost`: the source's own run leaves it `Dirty` with its value unchanged, and its reader goes `Clean` over it.
+*)
 Theorem resolve_clean_no_stale_source_falsified : ~ resolve_clean_no_stale_source_statement.
 Proof.
   intros H.

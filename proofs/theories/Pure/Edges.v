@@ -8,18 +8,30 @@ From Ranvier.Pure Require Import ObserverSet SourceList State.
     [first_owns] and [slots_unique], and [observer_held_once] gives [held_once]. *)
 Definition coherent (w : EdgeWorld) : Prop := edge_match w.
 
+(** ** Source-list operations keep the two ends of every edge in agreement *)
+
 Lemma coherent_empty : coherent empty_world.
 Proof.
   intros c i s h. unfold slot_at, observers_of, sources_of. simpl. rewrite !lookup_empty. simpl.
   rewrite !lookup_nil. done.
 Qed.
 
+(**md
+**Starting a run keeps the two ends of every edge in agreement.**
+
+`BeginRun` on a coherent world gives a coherent world.
+*)
 Theorem coherent_begin c w : coherent w -> coherent (sources_begin_run c w).
 Proof.
   intros Hm c' i s h. unfold sources_begin_run. rewrite slot_at_set_sources, observers_of_set_sources.
   destruct (decide (c' = c)) as [->|]; apply Hm.
 Qed.
 
+(**md
+**A tracked read succeeds and keeps the two ends of every edge in agreement.**
+
+`Add` on a coherent world returns a world, and that world is coherent.
+*)
 Theorem coherent_add self s w :
   coherent w -> exists w', sources_add self s w = Some w' /\ coherent w'.
 Proof.
@@ -34,17 +46,31 @@ Proof.
     eexists. split; [reflexivity|]. by apply edge_match_link.
 Qed.
 
+(**md
+**Ending a run succeeds and keeps the two ends of every edge in agreement.**
+
+`EndRun` on a coherent world returns a world, and that world is coherent.
+*)
 Theorem coherent_end self w :
   coherent w -> exists w', sources_end_run self w = Some w' /\ coherent w'.
 Proof. intros Hm. destruct (sources_end_run_ok self w Hm) as (w' & Hr & Hm' & _). eauto. Qed.
 
+(**md
+**Clearing a source list succeeds and keeps the two ends of every edge in agreement.**
+
+`Clear` on a coherent world returns a world, and that world is coherent.
+*)
 Theorem coherent_clear self w :
   coherent w -> exists w', sources_clear self w = Some w' /\ coherent w'.
 Proof. intros Hm. destruct (sources_clear_ok self w Hm) as (w' & Hr & Hm' & _). eauto. Qed.
 
-(** Removing a slot's edge returns a coherent world: the removal and the blanked slot, with the move
-    when the removal moves another observer. The moved observer takes the removed handle, and its slot
-    holds that handle. *)
+(**md
+**Removing a slot's edge keeps coherence, and the moved observer takes the removed handle.**
+
+The result is the removal, the blanked slot and, when the removal moved another observer, that observer's `MovedIn`. The moved observer's slot holds the source with the removed handle.
+
+Premises: a coherent world, and a slot holding the source with this handle.
+*)
 Theorem coherent_moved self i s h w :
   coherent w ->
   slot_at w self i = Some (s, Some h) ->
@@ -73,7 +99,13 @@ Proof.
     done.
 Qed.
 
-(** A removal with no blanking of the removed slot breaks coherence. *)
+(** ** A partial update breaks that agreement *)
+
+(**md
+**A removal without blanking the removed slot breaks coherence.**
+
+From a coherent world, removing the slot's observer entry and leaving the slot's handle in place gives a world that is not coherent. This marks a step the engine has to pair with another, and is no guarantee about the engine.
+*)
 Theorem remove_edge_alone_breaks_coherent self i s h w w1 :
   coherent w ->
   slot_at w self i = Some (s, Some h) ->
@@ -98,7 +130,11 @@ Proof.
     rewrite Hhole in Hq. simplify_eq. tauto.
 Qed.
 
-(** A move to a different handle, with no removal, breaks coherence. *)
+(**md
+**A move to a different handle without a removal breaks coherence.**
+
+From a coherent world, giving a slot a different handle and leaving the observer set in place gives a world that is not coherent. This marks a step the engine has to pair with another, and is no guarantee about the engine.
+*)
 Theorem moved_alone_breaks_coherent c slot s h h' w :
   coherent w ->
   slot_at w c slot = Some (s, Some h) ->
@@ -112,7 +148,13 @@ Proof.
   apply Hm in Hmoved. rewrite Hs in Hmoved. simplify_eq.
 Qed.
 
-(** In a coherent world either side of an edge implies the other. *)
+(** ** What an edge means *)
+
+(**md
+**In a coherent world, either side of an edge implies the other.**
+
+`c` observes `src` exactly when `c` is in `src`'s observers, and exactly when a slot of `c` holds `src` with a handle.
+*)
 Theorem edge_iff_both_sides s src c :
   coherent (g_edges s) ->
   (edge s src c <-> c ∈ observer_view (observers_of (g_edges s) src)) /\
@@ -127,8 +169,11 @@ Proof.
     + intros (i & h & Hs). exists i, h. split; [done|by apply Hm].
 Qed.
 
-(** In a well-formed world, [c] has an edge from every source in its slots, whichever slot holds the
-    handle. *)
+(**md
+**In a well-formed world, a computation observes exactly the sources in its slots.**
+
+Every source in a slot has an edge, whichever slot holds the handle.
+*)
 Theorem edge_iff_read s src c :
   world_well_formed (g_edges s) ->
   edge s src c <-> src ∈ fst <$> source_slots (sources_of (g_edges s) c).

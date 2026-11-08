@@ -106,8 +106,13 @@ Proof.
   - intros (i & s & Hs). exists i. apply view_lookup. eauto.
 Qed.
 
-(** ** Add and try-add *)
+(** ** Adding an observer *)
 
+(**md
+**Adding an observer appends it to the end of the set.**
+
+The returned handle is the old observer count, and that position now holds the observer with its slot. The visible order is the old order followed by the new observer, and `observer_latest` holds the new handle. Holds for every set.
+*)
 Theorem observers_add_position c slot o :
   (observers_add c slot o).2 = length (observer_items o) /\
   observer_items (observers_add c slot o).1 !! length (observer_items o) = Some (c, slot) /\
@@ -138,6 +143,11 @@ Proof.
   - right; right. split_and!; [done|lia|done].
 Qed.
 
+(**md
+**A small set always knows whether it holds an observer.**
+
+With at most `scan_limit` observers, `TryAdd` answers `TAdded` or `TUnlinked`, and `TUnlinked` exactly when the observer is already in the set.
+*)
 Theorem observers_try_add_cases c slot o :
   length (observer_items o) <= scan_limit ->
   (observers_try_add c slot o).2 <> TUnknown /\
@@ -150,8 +160,13 @@ Proof.
   - unfold scan_limit in *. lia.
 Qed.
 
-(** ** Remove *)
+(** ** Removing an observer *)
 
+(**md
+**A handle that holds another observer fails the removal.**
+
+When the handle's position is out of range or holds a different observer, `RemoveAt` returns `None`, the model's `InvalidOperationException`.
+*)
 Theorem observers_remove_mismatch c h o :
   fst <$> observer_items o !! h <> Some c -> observers_remove_at c h o = None.
 Proof.
@@ -159,7 +174,11 @@ Proof.
   rewrite decide_False; [done|]. congruence.
 Qed.
 
-(** The last observer fills the hole, and the notice names it. Removing the last gives no notice. *)
+(**md
+**Removal fills the hole with the last observer and reports the move.**
+
+Removing from a middle position moves the last observer there. The result names that observer, its slot and its new handle, and `observer_latest` follows it if it pointed at the moved observer. Removing the last observer shortens the set and reports no move. The handle has to be the observer's actual position.
+*)
 Theorem observers_remove_at_swap c s m ms pre mid latest :
   observers_remove_at c (length pre)
     {| observer_items := pre ++ (c, s) :: mid ++ [(m, ms)]; observer_latest := latest |} =
@@ -225,7 +244,7 @@ Proof.
       rewrite list_lookup_insert_eq by lia. done.
 Qed.
 
-(** ** Walk coverage *)
+(** ** Notification walks reach their observers *)
 
 Lemma apply_mutations_app ms1 ms2 o :
   apply_mutations (ms1 ++ ms2) o = apply_mutations ms1 o ≫= apply_mutations ms2.
@@ -317,8 +336,13 @@ Proof.
     eapply IH; [done|done|lia].
 Qed.
 
-(** An observer held exactly once at every point of a walk is visited. Held twice, it can be missed:
-    [walk_covers_duplicate_observer] in [Pure/Witnesses.v]. *)
+(**md
+**A notification walk visits every observer held exactly once throughout.**
+
+The set can change between visits. An observer in exactly one position at the start, and after every mutation of the walk, appears among the visits at least once. The walk starts from the full observer count.
+
+The premise matters: an observer held twice can be missed, as [`walk_covers_duplicate_observer`](Ranvier.Pure.Witnesses.html#walk_covers_duplicate_observer) shows. A moved observer can be visited twice, as [`walk_visits_moved_twice`](Ranvier.Pure.Witnesses.html#walk_visits_moved_twice) shows.
+*)
 Theorem walk_covers o muts vis o' c :
   walk (length (observer_items o)) o muts vis o' ->
   Forall (held_once c) (mutation_points (concat muts) o) ->
@@ -332,7 +356,11 @@ Proof.
   apply view_lookup in Hp as [s Hs]. by eapply lookup_lt_Some.
 Qed.
 
-(** The [k]th observer visited was present after the mutations of the [k] visits before it. *)
+(**md
+**A walk visits only observers present at the time of the visit.**
+
+The `k`th observer visited belongs to the set as it stands after the mutations of the `k` earlier visits. Holds from any starting cursor. An observer added during the walk can be visited: see [`walk_visits_added_observer`](Ranvier.Pure.Witnesses.html#walk_visits_added_observer).
+*)
 Theorem walk_visits_only_seen n o muts vis o' :
   walk n o muts vis o' ->
   forall k c, vis !! k = Some c ->
