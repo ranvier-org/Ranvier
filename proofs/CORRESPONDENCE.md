@@ -129,3 +129,14 @@ Each row's symbols are in `theories/Pure/Engine.v`, and `theories/Conformance/Ch
 - `self_marking_cleanup`, `self_marking_body`, `self_marking_through_memo` and `nested_self_run` assert statuses, values, an empty queue read from `queueHead` and `queueCount`, and that `Graph.Flush` changes nothing. `Status.Stale` covers `Check` and `Dirty`, so the harness reads the private `freshness` field where a witness states `Dirty`. `theories/Pure/Witnesses.v` states the same of the model, with `run_flush` for `Flush`. The command language has no flush, so these asserts sit outside the traces, and `check_self_marking_cleanup` ends with `run_flush` for the scenario's closing `Graph.Flush`.
 - `disposed_running_observer_stays_clean` asserts its window inside the body, and `check_disposed_window` states it of the model by running a body prefix under `hosted`.
 - `check.sh` regenerates from `dotnet`, and under WSL through interop. An unavailable `dotnet` fails the audit. It also fails unless each `exp_NAME` has a `check_NAME` stated over it.
+
+### Differential check
+
+`proofs/differential/run.sh` compares `trace_of` under `current_flags`, extracted by `theories/Extract.v`, with an interpreter of the same programs over the built assembly (`Generate.fsx`, on the harness of `conformance/Harness.fsx`). Agreement is evidence on the programs generated, and proves nothing about other programs. See `README.md` for what it leaves out.
+
+- A body's label is the node whose body it is, and a cleanup's the node of the body that registered it, which `log_label` computes from the state. Host reads are the reads of the program's top level, batches included.
+- A zero divisor raises a new `Boom -1` each time, as `/` raises a new exception, and the trace reports it as `-1`. `Boom f` for any other `f` is one instance, as the `Fail f` row requires. A program raising two zero divisors is excluded, since the model has one failure identity. Such a program with a self-reading memo moves on every F# run and passes the budget, where the model stops.
+- Values are `int` under checked arithmetic and `val` is `Z`. An overflow fails the run as a harness failure, and the generator keeps values small.
+- `CmpNever` and `CmpThrows` go through the internal `Memo.CreateWithComparer` by reflection, and `CmpEq` through the public constructor.
+- An effect's first body can run before its constructor returns, so the interpreter takes the object from `Graph.CurrentComputation` for a `CDispose` of a running effect. F# code holding only the constructor's result has no such reference: `S10` defers the run with a batch.
+- `EPrev` reads the previous value from the environment, as `prev_var` does, and the interpreter sets it from the argument `Memo` passes to the body.

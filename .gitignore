@@ -49,3 +49,5 @@ artifacts/
 .*.aux
 Makefile.rocq*
 .Makefile.rocq*
+proofs/engine.ml
+proofs/engine.mli

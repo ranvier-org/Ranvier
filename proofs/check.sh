@@ -11,6 +11,8 @@
 #   5. regenerating theories/Conformance/Expected.v from the F# leaves it unchanged. Under WSL this runs
 #      the Windows `dotnet.exe` through interop, with a relative path resolved from the Windows view of
 #      this directory. RANVIER_DOTNET names another dotnet. A missing dotnet fails the check.
+#   6. regenerating engine.ml and engine.mli from theories/Extract.v matches the copies in differential/;
+#   7. differential/run.sh 200 1 exits 0.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -159,6 +161,20 @@ if dotnet_cmd="$(find_dotnet)"; then
 else
   note "no dotnet found, so theories/Conformance/Expected.v could not be regenerated"
 fi
+
+# 6. Extraction. Compiling theories/Extract.v writes both files beside this script.
+rm -f engine.ml engine.mli
+if ! bash ./build.sh --run rocq compile -Q theories Ranvier theories/Extract.v >"$out" 2>&1; then
+  cat "$out" >&2
+  note "theories/Extract.v failed to compile"
+else
+  for f in engine.ml engine.mli; do
+    diff -u "differential/$f" "$f" >&2 || note "differential/$f differs from what theories/Extract.v generates; copy $f there"
+  done
+fi
+
+# 7. The differential check. Its agreement is evidence, not a proof.
+bash differential/run.sh 200 1 || note "differential/run.sh 200 1 failed"
 
 if [ "$fail" -ne 0 ]; then
   echo "check.sh: FAILED" >&2

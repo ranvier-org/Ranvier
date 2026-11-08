@@ -42,10 +42,18 @@ opam install -j16 rocq-core.9.1.0 rocq-stdlib rocq-iris-heap-lang.4.5.0
 On a machine with `sudo`, install `libgmp-dev`, `unzip` and `bubblewrap` with apt and drop the
 user-space workarounds and `--disable-sandboxing`.
 
+## Differential check
+
+`differential/run.sh` needs OCaml and the .NET SDK, and no Rocq, stdpp or Iris: it compiles the committed
+`differential/engine.ml` with `ocamlopt` alone, with no opam package beyond the compiler. Locally it takes OCaml from the
+switch above and the Windows `dotnet.exe` through interop. The workflow `proofs-differential.yml` installs OCaml 4.14.2 with
+`ocaml/setup-ocaml@v3` and the SDK from `global.json` with `actions/setup-dotnet@v6`, on `ubuntu-latest`.
+
 ## Commands
 
 - Build: `bash proofs/build.sh`
 - Audit: `bash proofs/check.sh`
+- Differential check: `bash proofs/differential/run.sh [count] [seed]`
 - Run a command in the toolchain environment: `bash proofs/build.sh --run CMD ARGS`
 
 ## Smoke theorem
