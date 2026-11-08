@@ -1,7 +1,7 @@
 From stdpp Require Import prelude.
 From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Engine.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Witnesses.
 From Ranvier.Conformance Require Import Expected.
 
 Open Scope Z_scope.
@@ -152,6 +152,22 @@ Definition prog_disposed_running_observer_stays_clean : cmd :=
       (CDispose (V 3) (R 10 (V 2) (L (V 10) (W (V 1) (EAdd (V 10) (K 1)) Nop)))) Nop) (
   W (V 1) (K 50) (R 20 (V 2) Nop)))).
 
+Definition prog_self_marking_cleanup : cmd := self_marking_cleanup (R 20 (V 5) Nop).
+Definition prog_self_marking_body : cmd := self_marking_body (R 20 (V 2) Nop).
+Definition prog_self_marking_through_memo : cmd := self_marking_through_memo (R 20 (V 3) Nop).
+Definition prog_nested_self_run : cmd := nested_self_run (R 20 (V 4) Nop).
+
+Definition prog_previous_value : cmd :=
+  CSignal 1 (K 0) (
+  CMemo 2 Pure CmpEq
+    (R 10 (V 1) (CIf (EEq (V 10) (K 0)) (CRet (K 1)) (CRet (EAdd EPrev (K 1))))) (
+  CMemo 3 Owning CmpEq
+    (R 10 (V 1) (
+     CIf (V 10)
+       (CMemo 11 Pure CmpEq (CRet (K 7)) (R 12 (V 11) (L (V 12) (CRet (V 10)))))
+       (CRet (K 42)))) (
+  R 20 (V 2) (R 21 (V 3) (W (V 1) (K 5) (R 22 (V 2) (R 23 (V 3) Nop))))))).
+
 Example check_S01 : trace_of 100000 current_flags prog_S01 = Some exp_S01.
 Proof. vm_compute. reflexivity. Qed.
 Example check_S02 : trace_of 100000 current_flags prog_S02 = Some exp_S02.
@@ -222,3 +238,46 @@ Proof. vm_compute. reflexivity. Qed.
 Example check_disposed_running_edges :
   (s ← final prog_disposed_running_observer_stays_clean; Some (oitems (obs_of (g_edges s) 2%nat))) = Some [].
 Proof. vm_compute. reflexivity. Qed.
+
+Example check_self_marking_cleanup :
+  trace_of 100000 current_flags prog_self_marking_cleanup = Some exp_self_marking_cleanup.
+Proof. vm_compute. reflexivity. Qed.
+Example check_self_marking_body :
+  trace_of 100000 current_flags prog_self_marking_body = Some exp_self_marking_body.
+Proof. vm_compute. reflexivity. Qed.
+Example check_self_marking_through_memo :
+  trace_of 100000 current_flags prog_self_marking_through_memo = Some exp_self_marking_through_memo.
+Proof. vm_compute. reflexivity. Qed.
+Example check_nested_self_run :
+  trace_of 100000 current_flags prog_nested_self_run = Some exp_nested_self_run.
+Proof. vm_compute. reflexivity. Qed.
+Example check_previous_value :
+  trace_of 100000 current_flags prog_previous_value = Some exp_previous_value.
+Proof. vm_compute. reflexivity. Qed.
+
+(** A memo nested in a published memo has no previous value on its first run, as [compute] gets
+    [ValueNone] at Core.fs 4234: [EPrev] is stuck. *)
+Example nested_memo_prev_stuck :
+  trace_of 100000 current_flags
+    (CSignal 1 (K 0) (
+     CMemo 2 Owning CmpEq
+       (R 10 (V 1) (CIf (V 10)
+         (CMemo 11 Pure CmpEq (CRet EPrev) (R 12 (V 11) (L (V 12) (CRet (V 10)))))
+         (CRet (K 42)))) (
+     R 20 (V 2) (W (V 1) (K 5) (R 21 (V 2) Nop))))) = None.
+Proof. vm_compute. reflexivity. Qed.
+
+(** The window of [disposed_running_observer_stays_clean], from a body running for effect 3 after its
+    disposal: the read links an edge, and the write leaves the effect clean and unqueued. *)
+Example check_disposed_window :
+  let setup :=
+    CSignal 1 (K 0) (CMemo 2 Pure CmpEq (R 10 (V 1) (CRet (V 10))) (CEffect 3 Nop Nop)) in
+  let e : env := [(3%nat, 3); (2%nat, 2); (1%nat, 1)] in
+  let run (b : cmd) :=
+    r ← run_top 100000%nat setup (init current_flags);
+    r' ← hosted 3%nat (exec 100000%nat e (CDispose (V 3) b)) r.1;
+    Some r'.1 in
+  (s ← run (R 10 (V 2) Nop); Some (oitems (obs_of (g_edges s) 2%nat))) = Some [(3%nat, 0%nat)] /\
+  (s ← run (R 10 (V 2) (W (V 1) (K 1) Nop)); d ← g_nodes s !! 3%nat;
+   Some (n_fresh d, n_queued d, length (pending s))) = Some (Clean, false, 0%nat).
+Proof. split; vm_compute; reflexivity. Qed.

@@ -333,6 +333,9 @@ Definition pure_scope_failure : val := (-2)%Z.
     closures it creates. Programs use smaller variables. *)
 Definition prev_var : var := 4096%nat.
 
+(** The environment of an unpublished memo's run, which drops the enclosing body's previous value. *)
+Definition without_prev (e : env) : env := filter (fun p : var * val => p.1 <> prev_var) e.
+
 (** ** Contexts *)
 
 (** [Graph.Detached]. *)
@@ -718,7 +721,8 @@ with run_memo (fuel : nat) (n : nid) {struct fuel} : M unit :=
         (nset_unann false (nset_fresh Clean x))))) in
     let* _ := edges (sl_begin n) in
     let* _ := push_running n in
-    let body_env := if n_published d then (prev_var, previous) :: n_env d else n_env d in
+    let body_env :=
+      if n_published d then (prev_var, previous) :: n_env d else without_prev (n_env d) in
     let* r := hosted n (exec f body_env (n_body d)) in
     let* d1 := get_node n in
     let result := if n_violated d1 then Fail pure_scope_failure else r in

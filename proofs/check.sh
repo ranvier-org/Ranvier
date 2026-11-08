@@ -7,7 +7,8 @@
 #   3. `Admitted`, `admit`, `give_up`, `Admit Obligations` and top-level `Axiom`, `Parameter` and
 #      `Conjecture` occur only in declarations named under `## Open theorems` in BUGS.md.
 #      A failure of the scan itself fails the check.
-#   4. regenerating theories/Conformance/Expected.v from the F# leaves it unchanged. Under WSL this runs
+#   4. each `exp_NAME` in theories/Conformance/Expected.v has a `check_NAME` in Check.v stated over it;
+#   5. regenerating theories/Conformance/Expected.v from the F# leaves it unchanged. Under WSL this runs
 #      the Windows `dotnet.exe` through interop, with a relative path resolved from the Windows view of
 #      this directory. RANVIER_DOTNET names another dotnet. A missing dotnet fails the check.
 set -euo pipefail
@@ -123,7 +124,19 @@ while IFS=$'\t' read -r loc name; do
   fi
 done <<<"$scan_hits"
 
-# 4. Conformance. The regenerated file sits beside the script, inside the checkout dotnet.exe can see.
+# 4. Each scenario has its Example.
+exp_names="$(sed -n 's/^Definition exp_\([A-Za-z0-9_]*\) .*/\1/p' theories/Conformance/Expected.v)" \
+  || { echo "check.sh: could not read the scenario names" >&2; exit 1; }
+[ -n "$exp_names" ] || note "theories/Conformance/Expected.v defines no scenario"
+while IFS= read -r name; do
+  [ -n "$name" ] || continue
+  grep -qE "^Example check_$name( |$)" theories/Conformance/Check.v \
+    || note "exp_$name has no Example check_$name in theories/Conformance/Check.v"
+  grep -qE "Some exp_$name\.\$" theories/Conformance/Check.v \
+    || note "no Example in theories/Conformance/Check.v is stated over exp_$name"
+done <<<"$exp_names"
+
+# 5. Conformance. The regenerated file sits beside the script, inside the checkout dotnet.exe can see.
 find_dotnet() {
   if [ -n "${RANVIER_DOTNET:-}" ]; then echo "$RANVIER_DOTNET"; return 0; fi
   if command -v dotnet >/dev/null 2>&1; then command -v dotnet; return 0; fi

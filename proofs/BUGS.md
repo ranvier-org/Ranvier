@@ -23,20 +23,20 @@ intended, the entry closes as "spec corrected".
   by `redundant`, for the owner's ruling at Task 12.
 - `self_writing_memo_ends_stale` (scenario `S14`): a memo writes its own source, and an effect reads it. The memo's
   value does not change, so the effect resolves its `Check` to `Clean` while the memo is `Dirty` with no further mark
-  due. The flush ends with the signal at 3 and the memo's last run over 2. F# trace:
-  `[EvRun 3; EvLog 2 0; EvLog 3 0; EvLog 2 1; EvLog 2 2; EvLog 2 3; EvHostRead 2 (Ok 0); EvHostRead 1 (Ok 3)]`, where
-  `EvLog 2 3` is the host read's pull. No comment in `Core.fs` states this end state.
+  due. The flush ends with the signal at 2 and the memo's last run over 1, which the harness asserts. F# trace:
+  `[EvRun 3; EvLog 2 0; EvLog 3 0; EvLog 2 1; EvLog 2 2; EvLog 2 3; EvHostRead 2 (Ok 0); EvHostRead 1 (Ok 3)]`. `EvLog 2 2`
+  is the host read's pull, whose write queues the effect, and `EvLog 2 3` is the walk in the flush that pull settles.
+  Here the memo's value stays 0, so the effect's read stays right. When the next run changes the value, the effect is
+  left behind: `self_marking_wake_lost` under Confirmed.
 - `diamond_marks_running_effect` (scenario `S15`): the effect reads `[h, x, y]` and `x` reads `[h, y]`, and a batch
   writes `h` and `y`'s source. Under the effect's run, `y`'s run moves and marks the effect through its old edge,
   since `NotifyDirtyExcept` skips only `x`, the current computation. The effect runs again on equal reads. F# trace:
   `[EvRun 5; EvLog 3 0; EvLog 4 0; EvLog 5 0; EvRun 5; EvLog 3 1; EvLog 4 2; EvLog 5 4; EvRun 5; EvLog 5 4]`.
 - `recompute_scoped_keeps_unannounced` (from reading, no trace): `RecomputeScoped` sets `Clean` before `Discharge`
-  (Core.fs 4191-4192) and does not clear `unannounced`. A mark in the discharge window takes the `Clean` branch, and a
-  run that does not follow keeps the flag. Whether a reader can miss or gain a notice from this is open.
-- `nested_self_recompute_resets_cursor` (from reading, no trace): a body that reads itself after marking itself runs a
-  nested `Run` on the same `SourceList` (Core.fs 4209), whose `BeginRun` resets the cursor of the run in progress. The
-  outer run's later reads then match from the nested run's end. Whether its source list can end without one of its reads
-  is open.
+  (Core.fs 4191-4192) and does not clear `unannounced`. Verified from reading, not run: the flag from before the window
+  survives only when the memo is disposed in the window. With the memo live, `runs = before` takes `Run`, which clears it
+  (4208), and otherwise a nested `Run` has cleared it, and any later value comes from that run's end (4289-4290). A mark in
+  the window takes the `Clean` branch and leaves the flag. Whether the disposed case can miss or gain a notice is open.
 - `disposed_memo_keeps_observers` (from reading, no trace): `Memo.Dispose` clears the memo's sources and leaves its
   observers (Core.fs 4377-4398). A reader keeps an edge to the disposed memo, which marks no one again once its sources
   are gone, except for the marks of a run in progress when it was disposed.
@@ -45,8 +45,48 @@ intended, the entry closes as "spec corrected".
 
 ## Confirmed
 
+- `self_marking_wake_lost` (scenarios `self_marking_cleanup`, `self_marking_body`, `self_marking_through_memo`;
+  `theories/Pure/Witnesses.v`: `self_marking_cleanup_left_behind`, `self_marking_body_left_behind`,
+  `self_marking_through_memo_left_behind`): a run marked during itself ends stale with an unchanged value, its reader's
+  `Check` resolves to `Clean`, and the reader keeps a value the memo's next run would change. No mark is due. F# trace of
+  the first, before its closing read: `R6; L5 0; L6 0; C4; L5 0`. The signal holds 50, `x` is `Stale` with value 0, and
+  the effect is clean and saw only 0, with an empty queue. An explicit `Flush` adds no event and changes no status. The
+  harness asserts each of these, and the closing host read answers 50. `self_marking_body` is the same end state from a
+  memo writing its own source, with the signal at 2, the memo at 0 and its next run answering 2.
+  Path: `Effect.Execute`'s walk (Core.fs 4792) pulls `x`. A write during `x`'s run marks `x` from `Clean` (4483-4498), and
+  the notice reaches an effect already `Check`. `x`'s value does not move, so it does not mark the effect dirty, and it ends
+  with `unannounced` (4289). The walk ends and the effect goes `Clean` (4798-4799). `MarkReaderCheck` (4339) is on the body
+  read path only. `Memo.ResolveCheck` (4314-4316) has the same gap, through a reading memo: `self_marking_through_memo`.
+  No comment in `Core.fs` states this, and 3438-3441 and the doc of `lateLinkConverges` (`AsyncEdges.fs`, 2e8f9690) point the
+  other way: a reader told when the node ends a run stale. The spec names it as its known starting candidate.
+  **`wake_ok` holds.** Every stale node in each end state holds `n_unann` (`stale_all_unann`), so the edge from the stale
+  node to the clean, unqueued, idle observer is covered by the last disjunct alone, and `no_lost_wakeups` is not falsified:
+  the theorem does not claim a later mark will arrive. **The property that fails:** when a flush returns with an empty live
+  queue and nothing running, every effect has run against the latest values it reads. These programs are outside the
+  well-behaved fragment, since `well_behaved_memo` rejects `CWrite` and `CCleanup`, so the fragment's convergence theorem
+  and refinement are not falsified. Task 11 owns the statement of that property over all programs, so no open theorem is
+  named here. Task 8's `resolve_clean_no_move` meets this shape.
+- `nested_self_recompute_resets_cursor` (scenario `nested_self_run`; `theories/Pure/Witnesses.v`:
+  `nested_self_run_ends_clean_and_wrong`): a run reads `a`, writes `flip`, which marks it, and reads itself. The nested run
+  (Core.fs 4209) takes another branch and its `EndRun` trims `a`'s edge, and the outer run then stores the value it computed
+  from `a`. After `flip <- 2`, the memo is clean with value 10, its body now answers 20, `a` has no observers and `b`
+  has one. After `a <- 11` the memo is still clean at 10. An explicit `Flush` changes nothing. The harness asserts each of
+  these. F# trace: `[EvRun 5; EvLog 5 10; EvRun 5; EvLog 5 10; EvHostRead 4 (Ok 10)]`. Unlike `self_marking_wake_lost`, the
+  memo is clean, so no marked state records the difference. Core.fs 4205-4206 covers a self-read's overflow and 4178-4181 a
+  cleanup's nested run, and neither states this. A self-read and a write put it outside the well-behaved fragment. The
+  glitch-free claim excepts the self-dirtying case, and Task 9's `run_end_edges_are_reads` meets this shape: the outer run
+  read `a`, and its source list holds no slot for it.
+
 ## Awaiting ruling
 
+- `disposed_running_observer_stays_clean` (`theories/Pure/Witnesses.v`, scenario of the same name): an effect that disposes
+  itself mid-body keeps running, a later read links an edge, its write leaves it clean and unqueued, and the `finally` at
+  Core.fs 4854-4855 clears the edge. The harness asserts each step inside the body: the memo has 0 observers after the
+  disposal and 1 after the read, the effect's status is `None` with `queued` false after the write, and 0 observers at the
+  end. `check_disposed_window` states the window of the model. No Core.fs doc covers this window, and 4372 ("stops tracking
+  and stops being woken") and 4882 ("Detaches from every source") lean the other way. Nothing is lost: the effect is
+  disposed, so no later run owes a value, and the edge ends with the run. The question for the owner: is the window intended?
+  The case falls under the running disjunct of `later_mark_forwarded`, not under `takes_marks`.
 - `reference_run_redundant` (`theories/Reference/Properties.v`): the reference tier itself has a
   redundant run. A round's run set comes from its starting snapshot, and an earlier effect of the
   round can restore the value a later one read. Under `t_rev`, the `resetting` program re-runs effect
@@ -80,13 +120,6 @@ intended, the entry closes as "spec corrected".
   cleanups stays clean, so `mark_forwards_on_clean` and `mark_forwards_on_unannounced` conclude "ends stale" for each
   observer in `takes_marks`. Scenario `in_cleanup_observer_stays_clean`: the cleanup's write moves the memo, no extra run
   follows, and the body reads the written value 100.
-- `disposed_running_observer_stays_clean` (`theories/Pure/Witnesses.v`), reproduced and closed as spec corrected. An
-  effect that disposes itself mid-body keeps running, a later read links an edge, its write leaves it clean and queues
-  nothing, and the `finally` at Core.fs 4854-4855 clears the edge. Scenario `disposed_running_observer_stays_clean`
-  checks all four. The basis is weaker than the entry above: no doc comment in `Core.fs` states this window. The code
-  tests `disposed` at 4743 and 4758, `tests/Ranvier.Tests/DischargeReentry.fs:666` pins the edge's end, and the design
-  spec states "a disposed computation holds no source edges once its run has ended; a disposed effect ignores marks".
-  The case falls under the running disjunct of `later_mark_forwarded`, not under `takes_marks`.
 - `walk_visits_added_observer` (`theories/Pure/Witnesses.v`), closed for `Memo` and `Effect` marks: a walk's
   mutations are empty, so a mark cannot add the observer the witness visits. `mark_preserves_edges` holds for
   all five marking operations, and `notify_walk_unmutated` states each walk as `walk` with no mutations, so the

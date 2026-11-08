@@ -86,7 +86,7 @@ rebuilds `src/Ranvier` and regenerates `theories/Conformance/Expected.v`. Under 
 | `snapshot_trim_fails` | `Pure/SourceList.v` | Handles read before the removals fail on that world. |
 | `walk_covers_duplicate_observer` | `Pure/Witnesses.v` | An observer held twice can be missed though present throughout. Closed in `BUGS.md`. |
 | `walk_visits_moved_twice` | `Pure/Witnesses.v` | A moved observer is visited twice. |
-| `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. Modelled in `BUGS.md`. |
+| `walk_visits_added_observer` | `Pure/Witnesses.v` | An observer added during a walk is visited when a later removal moves it below the cursor. Closed in `BUGS.md`. |
 | `coherent_begin` | `Pure/Edges.v` | `sl_begin` preserves `coherent`. |
 | `coherent_add`, `coherent_end`, `coherent_clear` | `Pure/Edges.v` | From a coherent world, each returns `Some`, and the result is coherent. |
 | `coherent_empty` | `Pure/Edges.v` | The empty world is coherent. |
@@ -113,7 +113,11 @@ rebuilds `src/Ranvier` and regenerates `theories/Conformance/Expected.v`. Under 
 | `memo_mark_dirty_tells_check` | `Pure/Marking.v` | `mark_dirty` of a memo raises no other node to `Dirty`. |
 | `clean_memo_keeps_unann` | `Pure/Marking.v` | The `Clean` transition starts its walk with `n_unann` unchanged. |
 | `in_cleanup_observer_stays_clean` | `Pure/Witnesses.v` | A memo's in-cleanup observer, with a coherent edge, stays clean, which `takes_marks` excepts. Closed in `BUGS.md`. |
-| `disposed_running_observer_stays_clean` | `Pure/Witnesses.v` | An effect disposed mid-body holds an edge while running, and ignores the mark. Closed in `BUGS.md`. |
+| `disposed_running_observer_stays_clean` | `Pure/Witnesses.v` | An effect disposed mid-body holds an edge while running, and ignores the mark. Awaiting ruling in `BUGS.md`. |
+| `self_marking_cleanup_left_behind` | `Pure/Witnesses.v` | A memo's cleanup marks its reader during the reader's run: the reader ends stale, its effect clean and idle, and a flush changes nothing. Confirmed in `BUGS.md`. |
+| `self_marking_body_left_behind` | `Pure/Witnesses.v` | The same end state from a memo writing its own source. Confirmed in `BUGS.md`. |
+| `self_marking_through_memo_left_behind` | `Pure/Witnesses.v` | The same end state through a reading memo. Confirmed in `BUGS.md`. |
+| `nested_self_run_ends_clean_and_wrong` | `Pure/Witnesses.v` | A nested self-run trims an edge the outer run read, and the memo ends clean with the outer value. Confirmed in `BUGS.md`. |
 | `requeue_holds_two_entries` | `Pure/Witnesses.v` | A re-queued effect has two entries in `g_queue` and one in `pending`. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` and removing `MarkReaderCheck` fall to Tasks 7, 9 and 11, and `wake_ok` arrives at Task 9.

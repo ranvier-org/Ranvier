@@ -127,6 +127,29 @@ type Ctx() =
         if not was then
             this.Emit (Disposed label)
 
+    /// `Memo` whose body receives `prev`.
+    member this.PrevMemo (label: int) (body: int voption -> int) : Memo<int> =
+        this.Labelled label (Memo<int>(g, Func<int voption, int>(body)))
+
+    /// The live entries of the graph's effect queue.
+    member _.QueueLength =
+        (privateField g "queueCount" :?> int)
+        - (privateField g "queueHead" :?> int)
+
+    /// Asserts each node's status, an empty queue, and that an explicit flush adds no event and leaves the statuses.
+    member this.CheckQuiet(expected: (string * obj * string) list) =
+        let check (stage: string) =
+            for name, node, status in expected do
+                this.Check (statusOf node = status) $"{stage}: {name} has status {statusOf node}, not {status}"
+
+            this.Check (this.QueueLength = 0) $"{stage}: the queue holds {this.QueueLength}"
+
+        check "before the flush"
+        let before = events.Count
+        g.Flush ()
+        this.Check (events.Count = before) "the explicit flush ran something"
+        check "after the flush"
+
     member this.HostRead (label: int) (read: unit -> int) : int =
         try
             let v = read ()
@@ -434,7 +457,9 @@ let scenarios: (string * (Ctx -> unit)) list =
 
                     0)
 
-            c.Effect 3 (fun () -> c.Log 3 m.Value) |> ignore
+            let e = c.Effect 3 (fun () -> c.Log 3 m.Value)
+            c.Check (s.Peek = 2) $"the first flush leaves the signal at {s.Peek}"
+            c.CheckQuiet [ "m", box m, "Stale"; "e", box e, "None" ]
             c.HostRead 2 (fun () -> m.Value) |> ignore
             c.HostRead 1 (fun () -> s.Value) |> ignore
 
@@ -487,12 +512,15 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.HostRead 2 (fun () -> m.Value) |> ignore
 
         // BUGS.md: an effect disposes itself, reads a memo over a signal, and writes that signal. The read links an edge
-        // until the run's end, and the mark leaves the effect clean.
+        // until the run's end, and the mark leaves the effect clean and unqueued.
         "disposed_running_observer_stays_clean",
         fun c ->
             let s = c.Signal 1 0
             let m = c.Memo 2 (fun () -> s.Value)
             let started = ref false
+
+            let observers () =
+                internalProp m "ObserverCount" :?> int
 
             // The constructor runs the first body unless a batch defers it, and the body needs its own reference.
             let self: Effect ref = ref Unchecked.defaultof<Effect>
@@ -502,14 +530,171 @@ let scenarios: (string * (Ctx -> unit)) list =
                     c.Effect 3 (fun () ->
                         started.Value <- true
                         c.Dispose 3 (fun () -> self.Value.Dispose ()) (box self.Value)
+                        c.Check (observers () = 0) "the disposal leaves the memo unobserved"
                         let v = m.Value
                         c.Log 3 v
-                        s.Value <- v + 1))
+                        c.Check (observers () = 1) "the read after the disposal links an edge"
+                        s.Value <- v + 1
+                        c.Check (statusOf self.Value = "None") $"the mark leaves the effect clean: {statusOf self.Value}"
+                        c.Check (not (privateField self.Value "queued" :?> bool)) "the mark leaves the effect unqueued"
+                        c.Check (c.QueueLength = 0) "the mark queues nothing"))
 
             c.Check started.Value "the effect ran"
-            c.Check ((internalProp m "ObserverCount" :?> int) = 0) "the run's end cleared the effect's edge"
+            c.Check (observers () = 0) "the run's end cleared the effect's edge"
             s.Value <- 50
             c.HostRead 2 (fun () -> m.Value) |> ignore
+
+        // BUGS.md, self_marking_wake_lost. An owning memo's cleanup writes a source its reader x has read in the same run,
+        // so x ends stale with an unchanged value. The effect's check resolves to clean, and it keeps the old value.
+        "self_marking_cleanup",
+        fun c ->
+            let h = c.Signal 1 0
+            let k = c.Signal 2 0
+            let s = c.Signal 3 0
+
+            let y =
+                c.OwningMemo 4 (fun () ->
+                    let v = k.Value
+                    c.Cleanup 4 (fun () -> s.Value <- 50)
+                    v * 0)
+
+            let x =
+                c.Memo 5 (fun () ->
+                    h.Value |> ignore
+                    let v = s.Value
+                    y.Value |> ignore
+                    c.Log 5 v
+                    v)
+
+            let e = c.Effect 6 (fun () -> c.Log 6 x.Value)
+
+            c.Batch (fun () ->
+                h.Value <- 1
+                k.Value <- 1)
+
+            c.Check (s.Peek = 50) $"the signal holds {s.Peek}"
+            c.Check (x.Peek = 0) $"the memo holds {x.Peek}"
+            c.CheckQuiet [ "x", box x, "Stale"; "e", box e, "None" ]
+            c.Check (c.HostRead 5 (fun () -> x.Value) = 50) "the memo's body answers 50"
+
+        // BUGS.md, self_marking_wake_lost. A memo writes its own source. A run ends stale with the value unchanged, and
+        // the next run would change it.
+        "self_marking_body",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m =
+                c.Memo 2 (fun () ->
+                    let v = s.Value
+                    c.Log 2 v
+
+                    if v < 3 then
+                        s.Value <- v + 1
+
+                    if v < 2 then 0 else v)
+
+            let e = c.Effect 3 (fun () -> c.Log 3 m.Value)
+            c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
+            c.Check (m.Peek = 0) $"the memo holds {m.Peek}"
+            c.CheckQuiet [ "m", box m, "Stale"; "e", box e, "None" ]
+            c.HostRead 2 (fun () -> m.Value) |> ignore
+
+        // BUGS.md, self_marking_wake_lost. The same memo through a reading memo, whose ResolveCheck goes clean.
+        "self_marking_through_memo",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m =
+                c.Memo 2 (fun () ->
+                    let v = s.Value
+                    c.Log 2 v
+
+                    if v < 3 then
+                        s.Value <- v + 1
+
+                    if v < 2 then 0 else v)
+
+            let r = c.Memo 3 (fun () -> m.Value)
+            let e = c.Effect 4 (fun () -> c.Log 4 r.Value)
+            c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
+            c.Check (r.Peek = 0) $"the reading memo holds {r.Peek}"
+            c.CheckQuiet [ "m", box m, "Stale"; "r", box r, "None"; "e", box e, "None" ]
+            c.HostRead 3 (fun () -> r.Value) |> ignore
+
+        // BUGS.md, nested_self_recompute_resets_cursor. A run reads a, marks itself, and reads itself. The nested run takes
+        // another branch and trims a's edge. The outer run then stores the value it computed from a, clean.
+        "nested_self_run",
+        fun c ->
+            let flip = c.Signal 1 1
+            let a = c.Signal 2 10
+            let b = c.Signal 3 20
+            let self: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
+
+            let m =
+                c.Memo 4 (fun () ->
+                    let f = flip.Value
+
+                    if f = 1 then
+                        a.Value
+                    elif f = 2 then
+                        let v = a.Value
+                        flip.Value <- 3
+                        self.Value.Value |> ignore
+                        v
+                    else
+                        b.Value)
+
+            self.Value <- m
+            let e = c.Effect 5 (fun () -> c.Log 5 m.Value)
+            flip.Value <- 2
+
+            let observers (node: obj) =
+                internalProp node "ObserverCount" :?> int
+
+            c.Check (flip.Peek = 3) $"flip holds {flip.Peek}"
+            c.Check (m.Peek = 10) $"the memo holds {m.Peek}"
+            c.Check (observers a = 0) "the memo holds no edge to a"
+            c.Check (observers b = 1) "the memo holds an edge to b"
+            c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
+            a.Value <- 11
+            c.Check (m.Peek = 10) $"after the write to a the memo holds {m.Peek}"
+            c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
+            c.Check (c.HostRead 4 (fun () -> m.Value) = 10) "a clean read answers the stored value"
+
+        // A memo's previous value. A memo nested in a published memo starts with none, and a later run has its own.
+        "previous_value",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let counter =
+                c.PrevMemo 2 (fun prev ->
+                    if s.Value = 0 then
+                        c.Check prev.IsNone "the first run has no previous value"
+                        1
+                    else
+                        c.Check prev.IsSome "a later run has its previous value"
+                        prev.Value + 1)
+
+            let outer =
+                c.OwningMemo 3 (fun () ->
+                    let v = s.Value
+
+                    if v <> 0 then
+                        let inner =
+                            c.PrevMemo 4 (fun prev ->
+                                c.Check prev.IsNone "the nested memo's first run has no previous value"
+                                7)
+
+                        c.Log 3 inner.Value
+                        v
+                    else
+                        42)
+
+            c.HostRead 2 (fun () -> counter.Value) |> ignore
+            c.HostRead 3 (fun () -> outer.Value) |> ignore
+            s.Value <- 5
+            c.HostRead 2 (fun () -> counter.Value) |> ignore
+            c.HostRead 3 (fun () -> outer.Value) |> ignore
     ]
 
 let private renderOutcome =

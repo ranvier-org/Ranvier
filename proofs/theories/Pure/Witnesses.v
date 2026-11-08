@@ -2,7 +2,7 @@ From stdpp Require Import prelude.
 From stdpp Require Import gmap.
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Base Require Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Marking.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine.
 
 (** ** Walks *)
 
@@ -88,7 +88,7 @@ Qed.
 
 (** Effect 2 disposes itself mid-body and then reads memo 1: [Track] and [AddSource] link the edge with
     no disposed test, and the [finally] of [RunBody] clears it. The effect ignores the mark, and it is
-    running. Closed in [BUGS.md]. *)
+    running. Awaiting ruling in [BUGS.md]. *)
 Example disposed_running_observer_stays_clean :
   let s := mark_state linked_world
              (<[1 := clean_node KMemo false false]> (<[2 := clean_node KEffect false true]> ∅)) [] 0 [2] in
@@ -114,4 +114,129 @@ Proof.
   simpl. split.
   - intros d _. vm_compute. split; [lia|]. intros _ Hin. inversion Hin.
   - eexists. split; [vm_compute; reflexivity|]. split; vm_compute; reflexivity.
+Qed.
+
+(** ** Runs of the engine *)
+
+Import Syntax.
+Open Scope nat_scope.
+
+Local Notation V := EVar.
+Local Notation K := EConst.
+Local Notation Nop := (CRet (EConst 0%Z)).
+
+(** The state a program ends in, under [current_flags]. *)
+Local Definition final (p : cmd) : state :=
+  default (init current_flags) (fst <$> run_top 100000 p (init current_flags)).
+
+Local Definition node_view (s : state) (n : nid) : option (fresh * bool * bool * status * val) :=
+  d ← g_nodes s !! n; Some (n_fresh d, n_unann d, n_queued d, n_status d, n_value d).
+
+(** Every stale node holds [n_unann], which is the last disjunct of [wake_ok]. *)
+Local Definition stale_all_unann (s : state) : Prop :=
+  forall n d, g_nodes s !! n = Some d -> stale (n_fresh d) = true -> n_unann d = true.
+
+Local Lemma stale_all_unann_of_list s :
+  forallb (fun p : nid * node => negb (stale (n_fresh p.2)) || n_unann p.2) (map_to_list (g_nodes s)) = true ->
+  stale_all_unann s.
+Proof.
+  intros H n d Hd Hst.
+  assert (Hin : In (n, d) (map_to_list (g_nodes s))).
+  { apply list_elem_of_In, elem_of_map_to_list, Hd. }
+  pose proof (proj1 (forallb_forall _ _) H (n, d) Hin) as Hp.
+  simpl in Hp. by rewrite Hst in Hp.
+Qed.
+
+(** The end state a lost wake-up leaves: [x] is stale and holds [n_unann], its observer [e] is clean
+    and unqueued, nothing is live or running, and a flush changes nothing. Confirmed in [BUGS.md]. *)
+Local Definition left_behind (s : state) (x e : nid) : Prop :=
+  edge s x e /\ stale_all_unann s /\
+  (exists f v, node_view s x = Some (f, true, false, StNone, v) /\ stale f = true) /\
+  (exists v, node_view s e = Some (Clean, false, false, StNone, v)) /\
+  pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt).
+
+Local Ltac left_behind_proof i h :=
+  split_and!;
+    [ exists i, h; split; vm_compute; reflexivity
+    | apply stale_all_unann_of_list; vm_compute; reflexivity
+    | eexists _, _; split; vm_compute; reflexivity
+    | eexists; vm_compute; reflexivity
+    | vm_compute; reflexivity
+    | vm_compute; reflexivity
+    | vm_compute; reflexivity ].
+
+(** An owning memo's cleanup writes a source its reader [x] has read in the same run. *)
+Definition self_marking_cleanup (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (CSignal 3 (K 0%Z) (
+  CMemo 4 Owning CmpEq
+    (CRead 10 (V 2) (CCleanup (CWrite (V 3) (K 50%Z) Nop) (CRet (EMul (V 10) (K 0%Z))))) (
+  CMemo 5 Pure CmpEq
+    (CRead 10 (V 1) (CRead 11 (V 3) (CRead 12 (V 4) (CLog (V 11) (CRet (V 11)))))) (
+  CEffect 6 (CRead 10 (V 5) (CLog (V 10) Nop)) (
+  CBatch (CWrite (V 1) (K 1%Z) (CWrite (V 2) (K 1%Z) Nop)) k)))))).
+
+Example self_marking_cleanup_left_behind :
+  let s := final (self_marking_cleanup Nop) in
+  left_behind s 5 6 /\ node_view s 5 = Some (Dirty, true, false, StNone, 0%Z) /\
+  n_value <$> g_nodes s !! 3 = Some 50%Z.
+Proof. intros s. split_and!; [left_behind_proof 0 0|vm_compute; reflexivity|vm_compute; reflexivity]. Qed.
+
+Definition self_marking_memo_body : cmd :=
+  CRead 10 (V 1) (CLog (V 10) (
+  CIf (ELt (V 10) (K 3%Z))
+    (CWrite (V 1) (EAdd (V 10) (K 1%Z)) (CIf (ELt (V 10) (K 2%Z)) Nop (CRet (V 10))))
+    (CIf (ELt (V 10) (K 2%Z)) Nop (CRet (V 10))))).
+
+(** A memo writes its own source. Its next run answers 2, and the effect saw 0. *)
+Definition self_marking_body (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq self_marking_memo_body (
+  CEffect 3 (CRead 10 (V 2) (CLog (V 10) Nop)) k)).
+
+Example self_marking_body_left_behind :
+  let s := final (self_marking_body Nop) in
+  left_behind s 2 3 /\ n_value <$> g_nodes s !! 1 = Some 2%Z /\ n_value <$> g_nodes s !! 2 = Some 0%Z.
+Proof. intros s. split_and!; [left_behind_proof 0 0|vm_compute; reflexivity|vm_compute; reflexivity]. Qed.
+
+(** The same memo through a reading memo, whose [ResolveCheck] goes clean. *)
+Definition self_marking_through_memo (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq self_marking_memo_body (
+  CMemo 3 Pure CmpEq (CRead 10 (V 2) (CRet (V 10))) (
+  CEffect 4 (CRead 10 (V 3) (CLog (V 10) Nop)) k))).
+
+Example self_marking_through_memo_left_behind :
+  let s := final (self_marking_through_memo Nop) in
+  left_behind s 2 3 /\ edge s 3 4 /\
+  node_view s 3 = Some (Clean, false, false, StNone, 0%Z) /\
+  node_view s 4 = Some (Clean, false, false, StNone, 0%Z).
+Proof.
+  intros s. split_and!;
+    [left_behind_proof 0 0|exists 0, 0; split; vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
+Qed.
+
+(** A run reads [a], marks itself and reads itself. The nested run's branch trims [a]'s edge, and the
+    outer run stores the value it computed from [a]. The memo ends clean, at 10, with no edge to [a],
+    where its body answers 20. Confirmed in [BUGS.md]. *)
+Definition nested_self_run (k : cmd) : cmd :=
+  CSignal 1 (K 1%Z) (CSignal 2 (K 10%Z) (CSignal 3 (K 20%Z) (
+  CMemo 4 Pure CmpEq
+    (CRead 10 (V 1) (
+     CIf (EEq (V 10) (K 1%Z)) (CRead 11 (V 2) (CRet (V 11))) (
+     CIf (EEq (V 10) (K 2%Z))
+       (CRead 11 (V 2) (CWrite (V 1) (K 3%Z) (CRead 12 (V 4) (CRet (V 11)))))
+       (CRead 11 (V 3) (CRet (V 11)))))) (
+  CEffect 5 (CRead 10 (V 4) (CLog (V 10) Nop)) (
+  CWrite (V 1) (K 2%Z) (CWrite (V 2) (K 11%Z) k)))))).
+
+Example nested_self_run_ends_clean_and_wrong :
+  let s := final (nested_self_run Nop) in
+  node_view s 4 = Some (Clean, false, false, StNone, 10%Z) /\
+  oitems (obs_of (g_edges s) 2) = [] /\ n_value <$> g_nodes s !! 1 = Some 3%Z /\
+  n_value <$> g_nodes s !! 3 = Some 20%Z /\
+  (2 ∉ fst <$> sslots (src_of (g_edges s) 4)) /\ 3 ∈ fst <$> sslots (src_of (g_edges s) 4).
+Proof.
+  intros s. split_and!; try (vm_compute; reflexivity).
+  - vm_compute. intros Hin. repeat (apply elem_of_cons in Hin as [Hin|Hin]; [discriminate Hin|]). by apply not_elem_of_nil in Hin.
+  - vm_compute. repeat (first [left | right]; try done).
 Qed.
