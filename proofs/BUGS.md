@@ -70,8 +70,8 @@ intended, the entry closes as "spec corrected".
   **Contrary evidence, by shape.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the
   contract" and "The same shape arises legitimately from a source that settles inline". `self_marking_body` and
   `self_marking_through_memo` are memos that write, so that comment puts them outside the contract. `self_marking_cleanup` is
-  the strongest case: no body writes, only a cleanup writes a source, and Core.fs 4178-4181 documents a cleanup that writes a
-  source as a behaviour. The inline settle is `S03`'s shape, which async nodes reach and which this entry has not run on them.
+  the strongest case: no body writes, only a cleanup writes a source. Core.fs 4178-4181 describes a cleanup that writes a source and
+  then reads the memo, and this cleanup does not read it, so no document covers this form. The inline settle is `S03`'s shape, which async nodes reach and which this entry has not run on them.
 - `read_move_leaves_effect_queued` (scenario `self_marking_cleanup`, closing read; `theories/Pure/Witnesses.v`, same name): a
   stale read whose run moves its value queues a clean observer, and no flush follows. After `x.Value`, the effect is `Dirty`
   and queued, the queue holds 1, `flushOwed` is false and `Runs` is 1. An explicit `Flush` then runs it and logs 50. The
@@ -142,8 +142,8 @@ intended, the entry closes as "spec corrected".
   The harness asserts `Check`, the answer 0, `Clean`, and `a` at 1. `gh_seen` keeps every view of a source read in a run, so
   `moved_since_last_run` sees the first read.
   **Contrary evidence.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the contract", and this
-  memo writes. From reading, not run: a cleanup that writes under `x`'s run reaches the same skip, which Core.fs 4178-4181 documents
-  as a behaviour. **Theorems.** `resolve_clean_no_move` is false on this engine, and is the Open theorem below.
+  memo writes. From reading, not run: a cleanup that writes under `x`'s run reaches the same skip. Core.fs 4178-4181 describes a cleanup
+  that writes a source and then reads the memo, so no document covers a cleanup that only writes. **Theorems.** `resolve_clean_no_move` is false on this engine, and is the Open theorem below.
   `resolve_clean_unmoved` proves it under `reads_settled`, from `check_invariant`'s preservation and `unmoved_short_of_dirty`, without using the walk: the memo is not in `gh_unnoticed`, and neither it
   nor a source is running. `gh_unnoticed` records four events: this skip, a read of a running node, the `Dirty` cleared at the start
   of `RecomputeScoped` (Core.fs 4191), and a run with no move ending on a view other than the published one, which takes a nested run.
@@ -167,7 +167,7 @@ intended, the entry closes as "spec corrected".
   wakes when another source of it moves, or when `a` is read and a flush follows. `walk_passed_stays_deaf` states this in the model.
   `ResolveCheck` (4308-4316) has the same walk. Against the documents: 4301-4302 says "Reaching the end still in `Check` means nothing above moved",
   and a source here is `Dirty` at the end. 4178-4181 describes a cleanup that writes a source and then reads the memo, and this cleanup does not read it, so no document covers this form.
-  In the cleanup form no memo body writes, which is the case `tests/Ranvier.Tests/Invalidation.fs:33-35` puts outside the contract, though an owning memo's cleanup does the writing.
+  `tests/Ranvier.Tests/Invalidation.fs:33-35` puts a memo that writes outside the contract. In the cleanup form no memo body writes, so that comment does not reach this form.
   **Theorems.** `no_lost_wakeups_statement` and `engine_inv_preserved_statement` are false: `no_lost_wakeups_falsified`, `engine_inv_preserved_falsified`.
   `no_lost_wakeups_unless_passed` proves the exception is the only one: an observer outside `gh_passed` is covered. `gh_passed` is reached only by a walk
   ending over a live, stale source with no announcement, and it is per computation: once an observer has passed one source, the exception covers all its sources until its next run.

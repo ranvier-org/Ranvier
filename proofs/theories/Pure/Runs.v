@@ -2973,7 +2973,7 @@ Proof.
 Qed.
 
 (**md
-**Every live stale source has its observers covered, apart from the observers a walk resolved over it.**
+**Every live stale source has its observers covered, apart from observers a walk resolved over a stale source.**
 
 For any edge from a live, stale source to an observer, after a whole program: the observer is stale or queued, or on the running stack, or the source holds its announcement flag, or the observer is in `gh_passed`. `gh_passed` holds exactly the computations whose check walk ended and went `Clean` while a slot held a live, stale source with no announcement, since their latest run start. Membership is per computation, not per source: once an observer has passed over one source, the exception covers every source of that observer until its next run starts, a different lost wake-up on another source included.
 
@@ -3283,7 +3283,8 @@ Qed.
 
 (** ** What a memo's run guarantees *)
 
-(** [p] runs [c] up to a point, then returns. A branch of [p] holds a point in that branch of [c]. *)
+(** [p] runs [c] up to a point, then returns. A branch of [p] holds a point in that branch of [c]. Points lie
+    between the commands of a body, so a mark set and cleared inside one command is out of reach. *)
 Inductive body_prefix : cmd -> cmd -> Prop :=
   | prefix_stop c : body_prefix (CRet (EConst 0%Z)) c
   | prefix_let x e p k : body_prefix p k -> body_prefix (CLet x e p) (CLet x e k)
@@ -3312,7 +3313,7 @@ Definition marks_survive_run_statement : Prop :=
 (**md
 **Open, and false on the present engine: a mark received during a run leaves the memo stale at the run's end, holding its announcement.**
 
-A point in the run is a point in the body's commands, stated by running a `body_prefix` of the body. This states what the fix phase owes, as `marks_survive_run_statement`. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`marks_survive_run_falsified`](Ranvier.Pure.Witnesses.html#marks_survive_run_falsified) proves that: a later self-read runs the memo again inside its run, and that nested run clears the mark. Until the fix, later layers use [`marks_survive_body_end`](#marks_survive_body_end).
+A point in the run is a point in the body's commands, stated by running a `body_prefix` of the body. This states what the fix phase owes, as `marks_survive_run_statement`. A mark set and cleared inside one command, such as a batch body, a nested call or the discharge window, is outside the statement. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`marks_survive_run_falsified`](Ranvier.Pure.Witnesses.html#marks_survive_run_falsified) proves that: a later self-read runs the memo again inside its run, and that nested run clears the mark. Until the fix, later layers use [`marks_survive_body_end`](#marks_survive_body_end).
 *)
 Theorem marks_survive_run : marks_survive_run_statement.
 Admitted.
