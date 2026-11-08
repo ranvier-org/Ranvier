@@ -44,7 +44,7 @@ user-space workarounds and `--disable-sandboxing`.
 
 ## Differential check
 
-`differential/run.sh 2000` takes about 15 seconds on the development machine, plus a process restart of about 8 seconds per
+`differential/run.sh 2000` takes about 15 seconds on the development machine, plus a process restart of about 5 seconds per
 fatal program. `differential/run.sh` needs OCaml and the .NET SDK, and no Rocq, stdpp or Iris: it compiles the committed
 `differential/engine.ml` with `ocamlopt` alone, with no opam package beyond the compiler. Locally it takes OCaml from the
 switch above and the Windows `dotnet.exe` through interop. The workflow `proofs-differential.yml` installs OCaml 4.14.2 with
