@@ -50,11 +50,27 @@ fatal program. `differential/run.sh` needs OCaml and the .NET SDK, and no Rocq, 
 switch above and the Windows `dotnet.exe` through interop. The workflow `proofs-differential.yml` installs OCaml 4.14.2 with
 `ocaml/setup-ocaml@v3` and the SDK from `global.json` with `actions/setup-dotnet@v6`, on `ubuntu-latest`.
 
+## Documentation
+
+`docs.sh` renders the theories with [rocqnavi](https://github.com/affeldt-aist/rocqnavi), pinned at commit `95e370f`
+(2026-11-04). Rocqnavi is GPL-2.0, so its source stays out of this repository: when the binary is missing, `docs.sh` clones it
+at the pin into the ignored folder `docs/.rocqnavi/` and builds it. It has its own opam switch, and the project's switch stays
+untouched. `docs.sh` also needs `python3`, and the pages load Markdown, syntax highlighting and fonts from CDNs when viewed.
+
+```sh
+opam switch create rocqnavi ocaml-base-compiler.4.14.2 --no-switch
+opam install --switch=rocqnavi dune ocamlfind dune-glob yojson
+```
+
+`-external https://plv.mpi-sws.org/coqdoc/stdpp stdpp` links stdpp's names to its published documentation. Rocqnavi has no
+script option, so `docs.sh` inserts the tag for `docs/ranvier.js` before `</body>`.
+
 ## Commands
 
 - Build: `bash proofs/build.sh`
 - Audit: `bash proofs/check.sh`
 - Differential check: `bash proofs/differential/run.sh [count] [seed]`
+- Documentation: `bash proofs/docs.sh`
 - Run a command in the toolchain environment: `bash proofs/build.sh --run CMD ARGS`
 
 ## Smoke theorem

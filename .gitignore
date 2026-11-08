@@ -51,3 +51,7 @@ Makefile.rocq*
 .Makefile.rocq*
 proofs/engine.ml
 proofs/engine.mli
+
+# proofs/docs.sh output and its rocqnavi clone
+proofs/docs/html/
+proofs/docs/.rocqnavi/

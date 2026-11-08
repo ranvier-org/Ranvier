@@ -8,8 +8,9 @@ commit `d701e6c5`.
 - Build: `bash proofs/build.sh`
 - Audit: `bash proofs/check.sh`
 - Differential check: `bash proofs/differential/run.sh [count] [seed]`
+- Documentation: `bash proofs/docs.sh`, which prints where the pages are. Start at the Guarantees page.
 
-All three run from any directory. See `VERSIONS.md` for the toolchain. The audit and the differential check also need the
+All four run from any directory. See `VERSIONS.md` for the toolchain. The audit and the differential check also need the
 .NET SDK, since they rebuild `src/Ranvier`. Under WSL they run the Windows `dotnet.exe`.
 
 ## The link to the F#
@@ -78,6 +79,7 @@ copy, so it needs no Rocq.
 - `differential/Generate.fsx`: the program generator, the text form, and the interpreter over real objects.
 - `differential/run.sh`: the comparison.
 - `theories/Audit.v`: one `Print Assumptions` per theorem; `check.sh` reads it.
+- `docs.sh`, `docs/guarantees.py`, `docs/ranvier.css`, `docs/ranvier.js`: the pages, the Guarantees overview and their checks.
 - `BUGS.md`: defect ledger. `CORRESPONDENCE.md`: model-to-F# map.
 
 ## Theorem index
