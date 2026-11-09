@@ -286,8 +286,13 @@ copy, so it needs no Rocq.
 | `trace_of_mode_off`, `engine_of_mode_off` | `Pure/Optimised.v` | Under `SkipOff` the optimised engine's trace is `trace_of`'s, at every fuel and flags. |
 | `observed_mode_off` | `Extract.v` | Under `SkipOff` the differential check's model side is `observed`. |
 | `mark_dirty_saturated_id`, `marks_keep_saturated`, `notify_dirty_stamped_id` | `Pure/Optimised.v` | A `Dirty` mark of a saturated node is the identity, marks keep saturation, and under `stamp_ok` a stamped signal's walk is the identity. |
-| `mark_dirty_saturates_falsified` | `Pure/Optimised.v` | A `Dirty` mark of a `Clean` memo holding an announcement leaves it unsaturated. |
-| `saturated_record_unsound`, `optimised_simulates_falsified` | `Pure/Optimised.v` | The record after such a walk breaks `stamp_ok`, and on the reachable `prog_window` the optimised engine ends outside `sim` with an equal trace. |
+| `mark_dirty_saturates_falsified`, `mark_dirty_saturates_or_window` | `Pure/Optimised.v` | A `Dirty` mark leaves its node saturated except a `Clean` memo holding a due announcement, the 4191 case. |
+| `unchecked_record_unsound`, `unchecked_record_breaks_sim` | `Pure/Optimised.v` | A record after every walk (`SkipUnchecked`) breaks `stamp_ok`, and on the reachable `prog_window` ends outside `sim` with an equal trace. |
+| `walk_record_sound`, `checked_record_withheld`, `prog_window_checked` | `Pure/Optimised.v` | The checked record keeps `stamp_ok`, withholds the stamp in the 4191 case, and `prog_window` ends in `sim`. |
+| `optimised_simulates`, `stamp_ok_preserved` | `Pure/Optimised.v` | From `sim` with bounded stamps, the optimised engine's runs end as the present engine's, in `sim`, at every fuel; `stamp_ok` holds throughout. |
+| `optimised_trace_eq`, `engine_of_optimised_eq` | `Pure/Optimised.v` | The optimised engine's trace is the present engine's, at every fuel and flags. |
+| `optimised_refines`, `optimised_exact_except`, `optimised_order_exact_except`, `engine_of_optimised_answers_on`, `witness_302_optimised` | `Pure/Optimised.v` | The present engine's refinement, order, answer and #302 results hold of the optimised engine. |
+| `optimised_cleanups`, `cleanup_registered_in_teardown_runs_late` | `Pure/Optimised.v` | The optimised engine's cleanup events are the present engine's, at most one per registration; a cleanup registered during its host's teardown runs after the host's next run, as Core.fs documents. |
 | `leave_dirty_cleanup_skip`, `leave_dirty_unannounced_skip` | `Pure/Optimised.v` | Without the advances at 4825 and 4290 a write skips a walk it owes: each trace differs from `SkipOff`'s, and `SkipAll` agrees with `SkipOff`. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` falls to `wake_ok` and `marks_survive_body_end`, and removing `MarkReaderCheck` to `wake_told`: `unannounced_off_fires`, `reader_mark_off_fires`. `wake_ok` holds with `MarkReaderCheck` removed, since the source holds its flag.
@@ -407,14 +412,18 @@ no epoch advance. The differential check covers `Signal`, `Memo` and `Effect` on
 of design D2 (4191, 4207, 4290, 4807, 4825), the record after a setter's walk, the skip, and the clear on
 `AddObserver` and `TryAddObserver`. Under `SkipOff` it is the present engine (`trace_of_mode_off`).
 
-The record is unsound under D2. `RecomputeScoped` (4191) writes `Clean` and leaves `unannounced` set, and `MarkDirty`
-(4483-4498) of a `Clean` memo keeps the flag: the memo ends `Dirty` with its announcement due, which is not saturated
-(`mark_dirty_saturates_falsified`). A cleanup that writes a source of its memo inside that memo's discharge therefore
-records a stamp `stamp_ok` rejects (`saturated_record_unsound`), and a second write in the same discharge skips the walk
-that spends the announcement. On `prog_window` the traces agree and the end states differ in the disposed memo's
-`unannounced` (`optimised_simulates_falsified`), so the simulation and `stamp_ok_preserved` of the plan are false.
-`optimised_trace_eq` is unproved. The examples `leave_dirty_cleanup_skip` and `leave_dirty_unannounced_skip` show the
-advances at 4825 and 4290 are each needed.
+An unconditional record is unsound under D2. `RecomputeScoped` (4191) writes `Clean` and leaves `unannounced` set, and
+`MarkDirty` (4483-4498) of a `Clean` memo keeps the flag: the memo ends `Dirty` with its announcement due, which is not
+saturated (`mark_dirty_saturates_falsified`). A cleanup that writes a source of its memo inside that memo's discharge
+records a stamp `stamp_ok` rejects (`unchecked_record_unsound`), and on `prog_window` the end states differ in the
+disposed memo's `unannounced` (`unchecked_record_breaks_sim`).
+
+By the round 2 ruling, the record checks that the walk left every observer saturated (`all_saturated`). With that check,
+and an advance at an effect's creation, the optimised engine simulates the present engine at every fuel
+(`optimised_simulates`, `rsims_all`), its trace is the present engine's (`optimised_trace_eq`), and the refinement,
+order, answer and #302 results carry over. The examples `leave_dirty_cleanup_skip` and `leave_dirty_unannounced_skip`
+show the advances at 4825 and 4290 are each needed. `cleanups_before_replacement` is false over every registration, as
+Core.fs documents (`cleanup_registered_in_teardown_runs_late`); its corrected form is an unproved obligation in `BUGS.md`.
 
 ## Literature
 

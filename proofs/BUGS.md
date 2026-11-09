@@ -241,6 +241,13 @@ Each entry of Task 12 is a difference between the engine and the reference, with
 
 ## Closed
 
+- `cleanup_registered_in_teardown_runs_late` (`theories/Pure/Optimised.v`), reproduced and closed as spec corrected. A
+  cleanup that registers a cleanup with the scope it is torn down from: the second cleanup joins the emptied scope and
+  runs at the next teardown, after the host's next run. Core.fs 1130-1132 documents this: "A cleanup or child
+  registered while this teardown runs joins the emptied scope and outlives the teardown." Scenario
+  `S18_cleanup_in_teardown`, F# trace `R2; L2 0; C2; R2; L2 1; C2; C2; L2 7; R2; L2 2`, equal to the model's. It
+  falsifies Task 13a's `cleanups_before_replacement` read over every registration; the corrected statement is under
+  Unproved obligations.
 - `walk_covers_duplicate_observer` (`theories/Pure/Witnesses.v`), reproduced and closed as spec corrected. The test
   "a walk can miss an observer held at two positions" (`tests/Ranvier.Tests/Observers.fs`) runs the witness on the F#
   with a stub `IComputation`: `NotifyDirty` visits the observers at positions 1 and 0, and misses the one held at both
@@ -330,6 +337,13 @@ Statements Task 12 leaves unproved, with no `Admitted` behind them. None is a di
 - `queue_order_through_memos` (`theories/Pure/Refinement.v`, beside `notify_queues_observers_reversed`): the walk's order is proved for a source's direct effect observers, and across a swap-removal in `notify_after_swap`. A memo among the observers forwards through `mark_check`, depth first, under a freshness test that reads the state as the walk changes it. The smallest open lemma: `notify_dirty` appends the effects of a depth-first walk of `observer_items`, from the last position, entering a memo only when `Clean` or owing an announcement, and skipping an effect that is queued, disposed or in a cleanup. `history_order` takes its rounds from the engine's runs, so no theorem computes it from observer positions.
 - `answers_where_reference_settles` (`theories/Pure/Refinement.v`, the premise `bodies_total` of `engine_of_answers_on`): `refinable` plus the reference's success, with no `bodies_total`. The inputs are done: `inputs_total_of_runs` derives them from the reference's success. **The bodies stop here.** Measure: `mu` is unaffected, and it needs no premise on bodies. Step: `exec_tot`, at each `on_value`, `on_node` and read, which takes `body_ends` over all answers because the layer's post-condition `kept` says nothing of a read's answer. Two lemmas are open, and each is the smallest I can state. `read_answers_denotation`: from `gd` under a flush or batch, a read ending in `tot` answers `memo_value` over the current signals. `Aread` proves this of a completed call under `rd_pre`, so the layer would carry `aS` as well as `gd`, with `run_begin` at each body's start, and `Aexec` takes `body_eval A e cm = Some r0` as a premise, which the reference's success has to supply for each body the engine starts. `engine_evaluates_within_reference`: each memo body the engine runs at given signals, and each effect body at given reads, is one whose evaluation by the reference's `memo_value`, `reads_moved` or `run_round` at those signals gave a result, which couples `resolve_walk`'s stop at the first moved source to `reads_moved`'s stop at the first difference. Not a counterexample: by reading, the engine's walk evaluates sources in slot order and stops as the reference does, and `bodies_conservative` shows the premise is stricter than needed.
 - `memos_below_stuck_paths` (`theories/Pure/Refinement.v`, the field `memos_below` of `refinable`): `memos_below` takes a rank from the class `Rank`, and every theorem over `refinable` holds for every rank, so the id order is gone (proved; `reads_higher_refinable` is a memo reading a higher id inside the theorems). What remains is the stuck path: `memos_below` asks for a lower rank on every path of a memo's body, and `memos_acyclic` only on the paths that return. Not attempted. Where it stops: `tbl_pure` builds `pure_at`, which covers every path, from `memos_below`, so a premise over the paths that return needs a `pure_at` over those paths through `WholeGraph.v`. No counterexample: a read on a stuck path has no effect on either side's answer, by reading.
+
+- `cleanups_before_replacement` (Task 13a, `theories/Pure/Optimised.v`): each cleanup registered outside its host's
+  teardown has its `EvCleanup` before the host's next `EvRun` or its `EvDispose`. Not attempted: it is a statement of
+  the present engine, it needs an invariant tying a host's scope (`n_scope`, `o_host`) to the cleanups registered with
+  it, and the optimised engine inherits it unchanged through `optimised_trace_eq`. What is proved: the optimised trace's
+  `EvCleanup` events are the present engine's, at most one per registration, and each teardown runs each detached
+  entry once (`optimised_cleanups`).
 
 ## Open theorems
 

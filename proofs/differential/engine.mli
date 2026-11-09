@@ -81,6 +81,8 @@ val fold_right : ('a2 -> 'a1 -> 'a1) -> 'a1 -> 'a2 list -> 'a1
 
 val existsb : ('a1 -> bool) -> 'a1 list -> bool
 
+val forallb : ('a1 -> bool) -> 'a1 list -> bool
+
 val le_lt_dec : nat -> nat -> sumbool
 
 val le_gt_dec : nat -> nat -> sumbool
@@ -316,11 +318,15 @@ module Z :
   val eq_dec : z -> z -> sumbool
  end
 
+val true_dec : decision
+
 val not_dec : decision -> decision
 
 val and_dec : decision -> decision -> decision
 
 val or_dec : decision -> decision -> decision
+
+val bool_eq_dec : (bool, bool) relDecision
 
 val prod_eq_dec :
   ('a1, 'a1) relDecision -> ('a2, 'a2) relDecision -> (('a1, 'a2) prod, ('a1,
@@ -773,6 +779,7 @@ val empty_ghost : ghost
 type skip_mode =
 | SkipOff
 | SkipLeaveDirty
+| SkipUnchecked
 | SkipAll
 
 type state = { g_flags : flags; g_edges : edgeWorld;
@@ -1074,12 +1081,25 @@ type advance_point =
 | A4290
 | A4807
 | A4825
+| ANewEffect
 
 val advances : skip_mode -> advance_point -> bool
 
 val advance : advance_point -> unit0 m
 
+val modify_node_adv : advance_point -> node_id -> (node -> node) -> unit0 m
+
+val add_node_adv : node_id -> node -> unit0 m
+
 val skip_on : skip_mode -> bool
+
+val stamp_current_dec : state -> node_id -> decision
+
+val saturated_dec : state -> node_id -> decision
+
+val all_saturated : node_id -> state -> bool
+
+val record_due : node_id -> state -> bool
 
 val skip_due : nat -> node_id -> state -> bool
 

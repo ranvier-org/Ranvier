@@ -1,6 +1,6 @@
 (* The OCaml half of the differential check. Reads programs from stdin, one S-expression per line, runs the extracted
-   [observed_mode] under [current_flags] in the skip mode of the second argument ([off], the default, [leave-dirty] or
-   [all]), and writes one line per program, tab-separated: index, status, trace, end state and closed state. The status
+   [observed_mode] under [current_flags] in the skip mode of the second argument ([off], the default, [leave-dirty],
+   [unchecked] or [all]), and writes one line per program, tab-separated: index, status, trace, end state and closed state. The status
    is [ok], or [none] when [observed_mode] has no result: exhausted fuel or a stuck body. In mode [off],
    [observed_mode] is [observed] ([observed_mode_off]).
 
@@ -167,8 +167,9 @@ let read_mode (s : string) : skip_mode =
   match s with
   | "off" -> SkipOff
   | "leave-dirty" -> SkipLeaveDirty
+  | "unchecked" -> SkipUnchecked
   | "all" -> SkipAll
-  | _ -> failwith "the skip mode is off, leave-dirty or all"
+  | _ -> failwith "the skip mode is off, leave-dirty, unchecked or all"
 
 let () =
   let fuel = nat_of_int (int_of_string Sys.argv.(1)) in

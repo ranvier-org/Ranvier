@@ -1399,6 +1399,20 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.HostRead 3 (fun () -> n.Value) |> ignore
             s.Value <- 20
             c.HostRead 3 (fun () -> n.Value) |> ignore
+
+        // Pure/Optimised.v, cleanup_registered_in_teardown_runs_late. A cleanup registers a cleanup with the scope it is
+        // torn down from. The second cleanup outlives the teardown (Core.fs 1130-1132) and runs at the next one.
+        "S18_cleanup_in_teardown",
+        fun c ->
+            let s = c.Signal 1 0
+
+            c.Effect 2 (fun () ->
+                c.Cleanup 2 (fun () -> c.Cleanup 2 (fun () -> c.Log 2 7))
+                c.Log 2 s.Value)
+            |> ignore
+
+            s.Value <- 1
+            s.Value <- 2
     ]
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,

@@ -182,11 +182,35 @@ each its namesake of `Pure/Engine.v` with three changes. The F# side is not writ
 
 | Model symbol | Core.fs symbol | Simplification and reason |
 |---|---|---|
-| `g_skip`, `skip_mode` | none | The mode is model-only. `SkipOff` is the present engine, `SkipAll` the design, and `SkipLeaveDirty` advances only at 4191, 4207 and 4807, for the counterexamples. The engine of `Pure/Engine.v` reads none of the three fields. |
-| `g_epoch`, `advance`, `advance_point` | a graph `epoch : int64` | `nat`, so no wrap. Each `advance` sits in the step of its write: 4191 in `orecompute`, 4207 in `orun_memo`, 4290 in `oannounce`, 4802/4807 in `oexecute_effect` after the `Clean` and unqueued write, 4825 in `orun_effect` after `in_cleanup <- false`. 4786 has none. |
-| `g_stamps`, `record`, `notify_write` | a `Signal` field `stamp` | The setter's walk (3817-3818) records the epoch on the signal when it returns. `notify_write` skips the walk while the stamp is current, at positive fuel, and keeps the value write, the events and `RequestFlush`. `WriteExcept` has no model command. |
+| `g_skip`, `skip_mode` | none | The mode is model-only. `SkipOff` is the present engine and `SkipAll` the design. `SkipLeaveDirty` advances only at 4191, 4207 and 4807, and `SkipUnchecked` records after every walk; both are for counterexamples. The engine of `Pure/Engine.v` reads none of the three fields. |
+| `g_epoch`, `advance`, `advance_point`, `modify_node_adv`, `add_node_adv` | a graph `epoch : int64` | `nat`, so no wrap. Each `advance` is one step with its write: 4191 in `orecompute`, 4207 in `orun_memo`, 4290 in `oannounce`, 4802/4807 in `oexecute_effect` after the `Clean` and unqueued write, 4825 in `orun_effect` after `in_cleanup <- false`, and `ANewEffect` at an effect's creation. 4786 has none. |
+| `g_stamps`, `record`, `all_saturated`, `notify_write` | a `Signal` field `stamp`; `MarkDirty`'s saturation bit | The setter's walk (3817-3818) records the epoch on the signal when it returns and every observer is saturated (`walk_record_sound`). F#: `MarkDirty` returns whether it left its node saturated, and `NotifyDirty` records only if all did; since marks keep saturation, F# records only where the model does. `notify_write` skips the walk while the stamp is current, at positive fuel, and keeps the value write, the events and `RequestFlush`. `WriteExcept` has no model command. |
 | `unstamp`, `links`, `otrack` | `AddObserver`, `TryAddObserver` (3767-3780) | A tracked read clears the stamp exactly when `sources_add` takes its miss branch, the branch that calls `AddObserver` or `TryAddObserver`. |
-| `saturated`, `memo_saturated`, `effect_saturated` | `Memo.MarkDirty` (4483-4504), `Effect.MarkDirty` (4742-4755) | A node a `Dirty` mark leaves unchanged (`mark_dirty_saturated_id`). A signal and an absent node count as saturated. |
+| `saturated`, `memo_saturated`, `effect_saturated`, `node_sat` | `Memo.MarkDirty` (4483-4504), `Effect.MarkDirty` (4742-4755) | A node a `Dirty` mark leaves unchanged (`mark_dirty_saturated_id`). A signal and an absent node count as saturated. |
 
-The table of helpers to `keeps_or_advances` lemmas of the plan is not written: the record is unsound under the advance
-table (`saturated_record_unsound`), so Step 3 stopped at the design gate. See `README.md`, Task 13a.
+4191 leaves `unannounced` set. A memo whose last run ended stale is `Clean` with an announcement inside its next
+`RecomputeScoped` discharge, and `MarkDirty` of it keeps the flag, so the memo ends unsaturated
+(`mark_dirty_saturates_or_window`). The advance at 4191 precedes the walk, so only the check at the record covers it.
+
+### Each write of a node: kept saturation or an advance
+
+Every state change of the engine is one of these. The simulation (`rsims_all`) uses each lemma at its site.
+
+| Helper and site | Fields written | Lemma |
+|---|---|---|
+| `modify_node` with `node_with_value`, `published`, `status`, `failure`, `runs`, `violated`, `link`, `scope` (the setter, `run_memo` after the body, `run_effect_body`, `CmpThrows`, `attach`, `release`, `current_owner`) | no saturation field | `keeps_value` ... `keeps_scope`, `keeps_or_advances_modify` |
+| `run_effect`: `inCleanup <- true` | `n_in_cleanup` | `keeps_in_cleanup_set` |
+| `dispose_node`: `disposed <- true` | `n_disposed`, `n_link` | `keeps_disposed_set` |
+| `execute_effect` on a disposed effect (4786): `queued <- false` | `n_queued` | `keeps_unqueued_disposed`, in `simM_execute_head` |
+| `execute_effect` (4798), `refresh` (4316): `Check` to `Clean` | `n_freshness`, `n_unannounced` | `keeps_clean_from_check`, `keeps_resolved_memo`, in `simM_resolved` |
+| `recompute` 4191, `run_memo` 4207, `announce` 4290, `execute_effect` 4802/4807, `run_effect` 4825 | saturation fields | advance: `keeps_or_advances_modify_adv`, `simM_modify_adv` |
+| `add_node` of a signal or a memo | a new node | `keeps_signal_node`, `keeps_memo_node`, `simM_add_node` |
+| `add_node` of an effect | a new node | advance `ANewEffect`: `simM_add_node_adv` |
+| `mark_check`, `mark_dirty`, `notify_*`, `effect_marked`, `enqueue`, `mark_reader` | freshness, announcement, queue | `marks_keep_saturated` (`rtc_keeps_saturated`) |
+| `with_edges` by `sources_begin_run`, `sources_end_run`, `sources_clear` | edges | no observer added: `obs_sub`, `end_run_obs`, `clear_obs` |
+| `track`: `sources_add` | edges | an observer only on its miss branch, which clears the stamp: `sources_add_obs`, `simM_track` |
+| `with_owners`, `with_queue`, `with_queue_head`, `with_flushing`, `with_flush_owed`, `with_batch_depth`, `with_pull_depth`, `with_current`, `with_current_owner`, `with_untracked`, `with_next_id`, `with_trace`, `with_running`, `with_ghost`, `with_registered` (`push_running`, `pop_running`, owner updates, the ghost) | no node or edge | `simM_inert`, `simM_modify` |
+
+The effect creation advance is a model choice: an absent id counts as saturated, and the model carries no invariant
+that a new id is no observer. The F# may advance at the `Effect` constructor or argue that a new object is no
+observer.

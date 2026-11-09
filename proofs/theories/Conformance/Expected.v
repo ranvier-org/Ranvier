@@ -256,3 +256,8 @@ Definition exp_S16_cleanup_rewrite : list event := [
 Definition exp_S17_self_write_announce : list event := [
   EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 2%Z)
 ].
+
+Definition exp_S18_cleanup_in_teardown : list event := [
+  EvRun 2; EvLog 2 0%Z; EvCleanup 2; EvRun 2; EvLog 2 1%Z; EvCleanup 2;
+  EvCleanup 2; EvLog 2 7%Z; EvRun 2; EvLog 2 2%Z
+].

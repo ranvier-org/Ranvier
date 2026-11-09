@@ -78,10 +78,11 @@ Definition empty_ghost : ghost :=
 
 (**md
 The saturated-write skip of `Pure/Optimised.v`. `SkipOff` is the present engine. `SkipAll` advances the
-graph epoch at every write that can make a saturated observer unsaturated. `SkipLeaveDirty` advances only
-where a node leaves `Dirty`, and exists for the counterexamples of `Pure/Optimised.v`.
+graph epoch at every write that can make a saturated observer unsaturated, and a walk records only when
+it leaves every observer saturated. `SkipLeaveDirty` advances only where a node leaves `Dirty`, and
+`SkipUnchecked` records after every walk. Both exist for the counterexamples of `Pure/Optimised.v`.
 *)
-Inductive skip_mode := SkipOff | SkipLeaveDirty | SkipAll.
+Inductive skip_mode := SkipOff | SkipLeaveDirty | SkipUnchecked | SkipAll.
 
 Global Instance skip_mode_eq_dec : EqDecision skip_mode.
 Proof. solve_decision. Defined.

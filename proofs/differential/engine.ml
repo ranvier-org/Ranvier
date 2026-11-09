@@ -202,6 +202,14 @@ let rec existsb f = function
                    | True -> True
                    | False -> existsb f l0)
 
+(** val forallb : ('a1 -> bool) -> 'a1 list -> bool **)
+
+let rec forallb f = function
+| Nil -> True
+| Cons (a, l0) -> (match f a with
+                   | True -> forallb f l0
+                   | False -> False)
+
 (** val le_lt_dec : nat -> nat -> sumbool **)
 
 let rec le_lt_dec n0 m0 =
@@ -912,6 +920,11 @@ module Z =
                  | _ -> Right)
  end
 
+(** val true_dec : decision **)
+
+let true_dec =
+  Left
+
 (** val not_dec : decision -> decision **)
 
 let not_dec = function
@@ -931,6 +944,17 @@ let or_dec p_dec q_dec =
   match p_dec with
   | Left -> Left
   | Right -> q_dec
+
+(** val bool_eq_dec : (bool, bool) relDecision **)
+
+let bool_eq_dec x y =
+  match x with
+  | True -> (match y with
+             | True -> Left
+             | False -> Right)
+  | False -> (match y with
+              | True -> Right
+              | False -> Left)
 
 (** val prod_eq_dec :
     ('a1, 'a1) relDecision -> ('a2, 'a2) relDecision -> (('a1, 'a2) prod,
@@ -2327,6 +2351,7 @@ let empty_ghost =
 type skip_mode =
 | SkipOff
 | SkipLeaveDirty
+| SkipUnchecked
 | SkipAll
 
 type state = { g_flags : flags; g_edges : edgeWorld;
@@ -4477,6 +4502,7 @@ type advance_point =
 | A4290
 | A4807
 | A4825
+| ANewEffect
 
 (** val advances : skip_mode -> advance_point -> bool **)
 
@@ -4485,10 +4511,11 @@ let advances m0 p =
   | SkipOff -> False
   | SkipLeaveDirty ->
     (match p with
-     | A4290 -> False
-     | A4825 -> False
-     | _ -> True)
-  | SkipAll -> True
+     | A4191 -> True
+     | A4207 -> True
+     | A4807 -> True
+     | _ -> False)
+  | _ -> True
 
 (** val advance : advance_point -> unit0 m **)
 
@@ -4498,11 +4525,62 @@ let advance p =
     | True -> with_epoch (S s.g_epoch) s
     | False -> s)
 
+(** val modify_node_adv :
+    advance_point -> node_id -> (node -> node) -> unit0 m **)
+
+let modify_node_adv p n0 u =
+  m_bind (modify_node n0 u) (fun _ -> advance p)
+
+(** val add_node_adv : node_id -> node -> unit0 m **)
+
+let add_node_adv n0 d =
+  m_bind (add_node n0 d) (fun _ -> advance ANewEffect)
+
 (** val skip_on : skip_mode -> bool **)
 
 let skip_on = function
 | SkipOff -> False
 | _ -> True
+
+(** val stamp_current_dec : state -> node_id -> decision **)
+
+let stamp_current_dec s src =
+  decide_rel (option_eq_dec Coq_Nat.eq_dec)
+    (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) src s.g_stamps) (Some
+    s.g_epoch)
+
+(** val saturated_dec : state -> node_id -> decision **)
+
+let saturated_dec s n0 =
+  let o = lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) n0 s.g_nodes in
+  (match o with
+   | Some n1 ->
+     let k = n1.n_kind in
+     (match k with
+      | KSignal -> true_dec
+      | KMemo ->
+        and_dec (decide_rel freshness_eq_dec n1.n_freshness Dirty)
+          (decide_rel bool_eq_dec (announce_due s n1) False)
+      | KEffect ->
+        or_dec (decide_rel bool_eq_dec n1.n_disposed True)
+          (or_dec (decide_rel bool_eq_dec n1.n_in_cleanup True)
+            (and_dec (decide_rel freshness_eq_dec n1.n_freshness Dirty)
+              (decide_rel bool_eq_dec n1.n_queued True))))
+   | None -> true_dec)
+
+(** val all_saturated : node_id -> state -> bool **)
+
+let all_saturated src s =
+  forallb (fun c -> bool_decide (saturated_dec s c))
+    (observer_view (observers_of s.g_edges src))
+
+(** val record_due : node_id -> state -> bool **)
+
+let record_due src s =
+  match s.g_skip with
+  | SkipOff -> False
+  | SkipUnchecked -> True
+  | _ -> all_saturated src s
 
 (** val skip_due : nat -> node_id -> state -> bool **)
 
@@ -4511,17 +4589,13 @@ let skip_due fuel src s =
   | O -> False
   | S _ ->
     (match skip_on s.g_skip with
-     | True ->
-       bool_decide
-         (decide_rel (option_eq_dec Coq_Nat.eq_dec)
-           (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) src s.g_stamps)
-           (Some s.g_epoch))
+     | True -> bool_decide (stamp_current_dec s src)
      | False -> False)
 
 (** val record : node_id -> state -> state **)
 
 let record src s =
-  match skip_on s.g_skip with
+  match record_due src s with
   | True ->
     with_stamps
       (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
@@ -4590,9 +4664,7 @@ let otrack n0 s =
 
 let oannounce n0 s =
   match s.g_flags.f_unannounced with
-  | True ->
-    m_bind (modify_node n0 (node_with_unannounced True)) (fun _ ->
-      advance A4290) s
+  | True -> modify_node_adv A4290 n0 (node_with_unannounced True) s
   | False -> Some (Pair (s, Tt))
 
 (** val oexec : nat -> env -> cmd -> outcome m **)
@@ -4655,7 +4727,7 @@ let rec oexec fuel e c =
      | CEffect (x, b, k) ->
        m_bind next_id (fun n0 ->
          let e' = Cons ((Pair (x, (Z.of_nat n0))), e) in
-         m_bind (add_node n0 (effect_node b e')) (fun _ ->
+         m_bind (add_node_adv n0 (effect_node b e')) (fun _ ->
            m_bind current_owner (fun owner ->
              match owner with
              | Some o ->
@@ -4839,23 +4911,22 @@ and orecompute fuel n0 =
     m_bind (get_node n0) (fun d ->
       match d.n_scope with
       | Some o ->
-        m_bind (modify_node n0 (node_with_freshness Clean)) (fun _ ->
-          m_bind (advance A4191) (fun _ ->
-            m_bind (m_modify (ghost_dirty_cleared n0 d.n_runs)) (fun _ ->
-              m_bind (odischarge f o) (fun _ ->
-                m_bind (get_node n0) (fun d' ->
-                  match d'.n_disposed with
-                  | True -> m_return Tt
-                  | False ->
-                    (match decide
-                             (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
-                     | Left -> orun_memo f n0
-                     | Right ->
-                       (match decide
-                                (decide_rel freshness_eq_dec d'.n_freshness
-                                  Dirty) with
-                        | Left -> orecompute f n0
-                        | Right -> m_return Tt)))))))
+        m_bind (modify_node_adv A4191 n0 (node_with_freshness Clean))
+          (fun _ ->
+          m_bind (m_modify (ghost_dirty_cleared n0 d.n_runs)) (fun _ ->
+            m_bind (odischarge f o) (fun _ ->
+              m_bind (get_node n0) (fun d' ->
+                match d'.n_disposed with
+                | True -> m_return Tt
+                | False ->
+                  (match decide (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
+                   | Left -> orun_memo f n0
+                   | Right ->
+                     (match decide
+                              (decide_rel freshness_eq_dec d'.n_freshness
+                                Dirty) with
+                      | Left -> orecompute f n0
+                      | Right -> m_return Tt))))))
       | None -> orun_memo f n0)
 
 (** val orun_memo : nat -> node_id -> unit0 m **)
@@ -4869,99 +4940,98 @@ and orun_memo fuel n0 =
       let previous_status = d.n_status in
       let previous_failure = d.n_failure in
       m_bind
-        (modify_node n0 (fun x ->
+        (modify_node_adv A4207 n0 (fun x ->
           node_with_runs (S x.n_runs)
             (node_with_failure None
               (node_with_status StNone
                 (node_with_unannounced False (node_with_freshness Clean x))))))
         (fun _ ->
-        m_bind (advance A4207) (fun _ ->
-          m_bind (edges (sources_begin_run n0)) (fun _ ->
-            m_bind (m_modify (ghost_run_start n0)) (fun _ ->
-              m_bind (push_running n0) (fun _ ->
-                let body_env =
-                  match d.n_published with
-                  | True -> Cons ((Pair (prev_var, previous)), d.n_env)
-                  | False -> without_prev d.n_env
-                in
-                m_bind (hosted n0 (oexec f body_env d.n_body)) (fun r ->
-                  m_bind (get_node n0) (fun d1 ->
-                    let result =
-                      match d1.n_violated with
-                      | True -> Fail pure_scope_failure
-                      | False -> r
-                    in
+        m_bind (edges (sources_begin_run n0)) (fun _ ->
+          m_bind (m_modify (ghost_run_start n0)) (fun _ ->
+            m_bind (push_running n0) (fun _ ->
+              let body_env =
+                match d.n_published with
+                | True -> Cons ((Pair (prev_var, previous)), d.n_env)
+                | False -> without_prev d.n_env
+              in
+              m_bind (hosted n0 (oexec f body_env d.n_body)) (fun r ->
+                m_bind (get_node n0) (fun d1 ->
+                  let result =
+                    match d1.n_violated with
+                    | True -> Fail pure_scope_failure
+                    | False -> r
+                  in
+                  m_bind
+                    (match result with
+                     | Ok v ->
+                       modify_node n0 (fun x ->
+                         node_with_published True (node_with_value v x))
+                     | Fail _ -> m_return Tt)
+                    (fun _ ->
                     m_bind
-                      (match result with
-                       | Ok v ->
-                         modify_node n0 (fun x ->
-                           node_with_published True (node_with_value v x))
-                       | Fail _ -> m_return Tt)
+                      (edges_opt
+                        (match d1.n_disposed with
+                         | True -> sources_clear n0
+                         | False -> sources_end_run n0))
                       (fun _ ->
-                      m_bind
-                        (edges_opt
-                          (match d1.n_disposed with
-                           | True -> sources_clear n0
-                           | False -> sources_end_run n0))
-                        (fun _ ->
-                        m_bind pop_running (fun _ ->
-                          m_bind
-                            (match result with
-                             | Ok _ -> m_return Tt
-                             | Fail y ->
-                               modify_node n0 (fun x ->
-                                 node_with_violated False
-                                   (node_with_status StError
-                                     (node_with_failure (Some y) x))))
-                            (fun _ ->
-                            m_bind (get_node n0) (fun d2 ->
-                              m_bind
-                                (match decide
-                                         (or_dec
-                                           (not_dec
-                                             (decide_rel status_eq_dec
-                                               d2.n_status previous_status))
-                                           (not_dec
-                                             (decide_rel
-                                               (option_eq_dec Coq_Z.eq_dec)
-                                               d2.n_failure previous_failure))) with
-                                 | Left -> m_return True
-                                 | Right ->
-                                   (match d2.n_comparer with
-                                    | CmpEq ->
-                                      m_return
-                                        (bool_decide
-                                          (not_dec
-                                            (decide_rel Coq_Z.eq_dec
-                                              d2.n_value previous)))
-                                    | CmpNever -> m_return True
-                                    | CmpThrows y ->
-                                      m_bind
-                                        (modify_node n0 (fun x ->
-                                          node_with_status StError
-                                            (node_with_failure (Some y)
-                                              (node_with_value previous x))))
-                                        (fun _ -> m_return True)))
-                                (fun moved ->
-                                m_bind m_get (fun s ->
-                                  m_bind
-                                    (m_modify
-                                      (ghost_run_end n0 s.g_current moved))
-                                    (fun _ ->
+                      m_bind pop_running (fun _ ->
+                        m_bind
+                          (match result with
+                           | Ok _ -> m_return Tt
+                           | Fail y ->
+                             modify_node n0 (fun x ->
+                               node_with_violated False
+                                 (node_with_status StError
+                                   (node_with_failure (Some y) x))))
+                          (fun _ ->
+                          m_bind (get_node n0) (fun d2 ->
+                            m_bind
+                              (match decide
+                                       (or_dec
+                                         (not_dec
+                                           (decide_rel status_eq_dec
+                                             d2.n_status previous_status))
+                                         (not_dec
+                                           (decide_rel
+                                             (option_eq_dec Coq_Z.eq_dec)
+                                             d2.n_failure previous_failure))) with
+                               | Left -> m_return True
+                               | Right ->
+                                 (match d2.n_comparer with
+                                  | CmpEq ->
+                                    m_return
+                                      (bool_decide
+                                        (not_dec
+                                          (decide_rel Coq_Z.eq_dec d2.n_value
+                                            previous)))
+                                  | CmpNever -> m_return True
+                                  | CmpThrows y ->
                                     m_bind
-                                      (match moved with
-                                       | True ->
-                                         m_step
-                                           (notify_dirty_except f n0
-                                             s.g_current)
-                                       | False -> m_return Tt)
-                                      (fun _ ->
-                                      m_bind (get_node n0) (fun d3 ->
-                                        match decide
-                                                (decide_rel freshness_eq_dec
-                                                  d3.n_freshness Clean) with
-                                        | Left -> m_return Tt
-                                        | Right -> oannounce n0))))))))))))))))))
+                                      (modify_node n0 (fun x ->
+                                        node_with_status StError
+                                          (node_with_failure (Some y)
+                                            (node_with_value previous x))))
+                                      (fun _ -> m_return True)))
+                              (fun moved ->
+                              m_bind m_get (fun s ->
+                                m_bind
+                                  (m_modify
+                                    (ghost_run_end n0 s.g_current moved))
+                                  (fun _ ->
+                                  m_bind
+                                    (match moved with
+                                     | True ->
+                                       m_step
+                                         (notify_dirty_except f n0
+                                           s.g_current)
+                                     | False -> m_return Tt)
+                                    (fun _ ->
+                                    m_bind (get_node n0) (fun d3 ->
+                                      match decide
+                                              (decide_rel freshness_eq_dec
+                                                d3.n_freshness Clean) with
+                                      | Left -> m_return Tt
+                                      | Right -> oannounce n0)))))))))))))))))
 
 (** val oexecute_effect : nat -> node_id -> unit0 m **)
 
@@ -4988,14 +5058,12 @@ and oexecute_effect fuel n0 =
           (fun _ ->
           m_bind (get_node n0) (fun d' ->
             m_bind
-              (modify_node n0 (fun x ->
+              (modify_node_adv A4807 n0 (fun x ->
                 node_with_freshness Clean (node_with_queued False x)))
               (fun _ ->
-              m_bind (advance A4807) (fun _ ->
-                match decide
-                        (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
-                | Left -> orun_effect f n0
-                | Right -> m_return Tt)))))
+              match decide (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
+              | Left -> orun_effect f n0
+              | Right -> m_return Tt))))
 
 (** val orun_effect : nat -> node_id -> unit0 m **)
 
@@ -5013,8 +5081,7 @@ and orun_effect fuel n0 =
                  m_bind (modify_node n0 (node_with_in_cleanup True))
                    (fun _ ->
                    m_bind (odischarge f o) (fun _ ->
-                     m_bind (modify_node n0 (node_with_in_cleanup False))
-                       (fun _ -> advance A4825)))
+                     modify_node_adv A4825 n0 (node_with_in_cleanup False)))
                | None -> m_return Tt)
               (fun _ ->
               m_bind (get_node n0) (fun d' ->

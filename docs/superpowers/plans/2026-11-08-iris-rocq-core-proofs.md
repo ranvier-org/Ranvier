@@ -635,9 +635,12 @@ Definition engine_of_optimised (k : nat) (p : program) (h : history) : option (l
   | 4290 | memo `unannounced <- true` | announcement due |
   | 4802 / 4807 | effect `queued <- false`, `freshness <- Clean` (`Execute`, live path), one advance after 4807 | leaves `Dirty` and `queued` |
   | 4825 | effect `inCleanup <- false` | leaves cleanup |
+  | `Effect` constructor | a new effect, `Clean` and unqueued | the model's id was absent, so counted saturated (added in Task 13a round 2) |
 
   4786, `queued <- false` on a disposed effect, keeps the effect saturated and gets no advance. Under `SkipLeaveDirty` only 4191, 4207 and 4802/4807 advance. That mode exists only for the Examples of Step 3.
-- *Record:* a signal write's `notify_dirty` walk sets `g_stamps !! src := g_epoch` when it returns. Every observer it visited is then saturated (`mark_dirty_saturates`). The walk is `notify_dirty` from `CWrite`, the setter (Core.fs 3817-3818). `WriteExcept` (3831) has no model command; in F# it never records.
+
+  4191 leaves `unannounced` as it is. A memo that ends a run stale holds `unannounced = true`, so inside its next `RecomputeScoped` discharge it is `Clean` with an announcement, and `MarkDirty` of it sets `Dirty` and keeps the flag: the memo ends unsaturated after the walk. No advance fixes this, since the advance at 4191 precedes the walk. The record checks instead (round 2 ruling, fix 1).
+- *Record:* a signal write's `notify_dirty` walk sets `g_stamps !! src := g_epoch` when it returns, and only when the walk left every observer saturated (`all_saturated`; `walk_record_sound`). A memo marked from `Clean` with an announcement is not, so a walk over the 4191 case records nothing. The walk is `notify_dirty` from `CWrite`, the setter (Core.fs 3817-3818). `WriteExcept` (3831) has no model command; in F# it never records. The unconditional record is `SkipUnchecked`, kept for its counterexample (`unchecked_record_unsound`, `unchecked_record_breaks_sim`).
 - *Skip:* a `CWrite` of a new value to a signal with `stamp_current` performs no walk, and keeps the value write, the trace events and `RequestFlush`. The skip uses fuel exactly as `notify_dirty` does, returning `None` wherever the walk would, so trace equality holds at every fuel.
 - *Clear:* every observer addition to a signal, through `sources_add` and through both the `Add` and the `TryAdd` paths (Core.fs 3775-3780), deletes the signal's stamp. Memos keep no stamp. If a later change gives memos stamps, it must also clear them at 4464 and 4467.
 
@@ -653,7 +656,7 @@ Definition engine_of_optimised (k : nat) (p : program) (h : history) : option (l
 - [ ] **Step 3: Prove `optimised_refines : forall k, refines <chosen observation> (engine_of_optimised k)`, `engine_answers engine_of_optimised`, and `optimised_cleanups`: each registered cleanup runs exactly once, before its replacement or disposal.** `observe_settled` alone admits an engine that drops a logging cleanup. A counterexample here is the gate working: record it, and revise or reject the optimisation.
   - [ ] **3a. Saturation lemmas, in `Optimised.v`.**
     - `mark_dirty_saturated_id : saturated s c -> mark_dirty (S f) c s = Some s`.
-    - `mark_dirty_saturates : mark_dirty f c s = Some s' -> saturated s' c`.
+    - `mark_dirty_saturates_or_window : mark_dirty (S f) c s = Some s' -> saturated s' c \/` `c` was a `Clean` memo with an announcement due. The unconditional `mark_dirty_saturates` is false (`mark_dirty_saturates_falsified`), and the record checks `all_saturated` (`walk_record_sound`).
     - `marks_keep_saturated : any_mark f n r s s' -> saturated s c -> saturated s' c`, for every `c`.
     - `notify_dirty_stamped_id : stamp_ok s -> stamp_current s src -> notify_dirty (S f) src s = Some s`.
   - [ ] **3b. One lemma per engine transition: it keeps saturation of every node, or advances the epoch.** List every state-changing helper of `Engine.v` and `Marking.v` (`set_node` sites by the fields they write, `enqueue`, `with_edges`, `push_running`, `pop_running`, owner updates, observer additions and removals). For each, prove `keeps_or_advances_<helper> : saturated s c -> saturated s' c \/ g_epoch s < g_epoch s'`. An observer addition instead proves that it clears the stamp. Record the table of helpers to lemmas in `CORRESPONDENCE.md`. A helper with neither proof is a missing advance point: add it to the table above and to the F# list in Step 4.
@@ -690,7 +693,8 @@ Definition engine_of_optimised (k : nat) (p : program) (h : history) : option (l
     - A signal observed by a `Binding`, or another non-joining `IComputation`, still walks on every write.
   - [ ] **4d. Implement.**
     - A graph field `epoch : int64`, and an internal `Advance ()` called at each point of 4b.
-    - On `Signal`, a field `stamp : int64` initialised to `-1L`, set at the end of `NotifyDirty` from the setter (3817-3818) when every visited observer joins the epoch, and cleared at 3775-3780.
+    - On `Signal`, a field `stamp : int64` initialised to `-1L`, set at the end of `NotifyDirty` from the setter (3817-3818) when every visited observer joins the epoch and every mark left its node saturated, and cleared at 3775-3780. `MarkDirty` returns whether it left the node saturated: `false` for a memo marked from `Clean` with `unannounced` set (the 4191 case). `NotifyDirty` records only if all did. The model checks saturation of each observer at the walk's end instead; since marks keep saturation, a node each mark left saturated is saturated at the end, so the F# records only where the model does.
+    - An advance at the `Effect` constructor, or a reason that a new effect is never an observer of a stamped signal.
     - The skip test before 3817.
     - `WriteExcept` (3831) may skip and never records.
     - Joining is a member of the internal `IComputation`, true on core `Memo` and `Effect` only. Before adding it, run `fcs_refactor_impact` on `IComputation`.

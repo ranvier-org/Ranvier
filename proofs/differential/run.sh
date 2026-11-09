@@ -28,7 +28,7 @@ fi
 count="${1:-200}"
 seed="${2:-1}"
 fuel="${RANVIER_DIFF_FUEL:-2000}"
-# The skip mode of the model side: off (the default, and CI's), leave-dirty or all. See theories/Pure/Optimised.v.
+# The skip mode of the model side: off (the default, and CI's), leave-dirty, unchecked or all. See theories/Pure/Optimised.v.
 mode="${RANVIER_SKIP_MODE:-off}"
 
 if ! command -v ocamlopt >/dev/null 2>&1; then
