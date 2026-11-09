@@ -247,6 +247,7 @@ Print Assumptions engine_of_answers_on.
 Print Assumptions answers_reached.
 Print Assumptions refinable_alone_no_answer.
 Print Assumptions bodies_conservative.
+Print Assumptions reads_higher_refinable.
 Print Assumptions runs_agree_has_content.
 Print Assumptions weak_refinement.
 Print Assumptions exact_refinement.

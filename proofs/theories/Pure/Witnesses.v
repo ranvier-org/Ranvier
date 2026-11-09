@@ -1149,7 +1149,7 @@ Proof.
   set (s := final (disposed_stale_read Nop)).
   assert (Hm : run_top 100000 (disposed_stale_read Nop) (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
   assert (Hr : read 1000 2 true s = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
-  destruct (H 100000 1000 _ s _ 2 s _ Hm (not_dirtying_b s 2 ltac:(vm_compute; reflexivity)) Hr) as [k Hk].
+  destruct (H 100000 1000 _ s _ 2 s _ Hm (@not_dirtying_b id_rank s 2 ltac:(vm_compute; reflexivity)) Hr) as [k Hk].
   destruct k as [|[|k]]; vm_compute in Hk; discriminate Hk.
 Qed.
 
@@ -1296,7 +1296,7 @@ Proof.
   intros H. set (s := final read_flush).
   assert (Hm : run_top 100000 read_flush (init current_flags) = Some (s, Fail 5%Z)) by (vm_compute; reflexivity).
   assert (Hr : read 1000 3 true s = Some (default s (fst <$> read 1000 3 true s), Ok 9%Z)) by (vm_compute; reflexivity).
-  assert (Hp : pure_in (shapes s) 3) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : pure_b (shapes s) 4 3 = true))).
+  assert (Hp : pure_in (shapes s) 3) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : @pure_b id_rank (shapes s) 4 3 = true))).
   pose proof (H 100000 1000 _ s _ 3 _ _ Hm Hp Hr) as Hd.
   assert (Hd2 : denotes s 3 (Ok 1%Z)) by (exists 5; vm_compute; reflexivity).
   pose proof (denotes_unique s 3 _ _ Hd Hd2) as Hz. discriminate Hz.
@@ -1339,7 +1339,7 @@ Proof.
   assert (Hm : run_top 100000 read_past_flush (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
   assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
   assert (Hr : read 1000 5 true s = Some (default s (fst <$> read 1000 5 true s), Ok 9%Z)) by (vm_compute; reflexivity).
-  assert (Hp : pure_in (shapes s) 5) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : pure_b (shapes s) 6 5 = true))).
+  assert (Hp : pure_in (shapes s) 5) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : @pure_b id_rank (shapes s) 6 5 = true))).
   pose proof (H 100000 1000 _ s _ 5 _ _ Hm Hq Hp Hr) as Hd.
   assert (Hd2 : denotes s 5 (Ok 1%Z)) by (exists 5; vm_compute; reflexivity).
   pose proof (denotes_unique s 5 _ _ Hd Hd2) as Hz. discriminate Hz.
@@ -2211,6 +2211,50 @@ Example memo_reads_higher_id :
   rtrace reads_higher [[Semantics.RWrite 0 1%Z]; [Semantics.RWrite 0 2%Z]] =
     Some [EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 1%Z; EvRun 3; EvLog 3 2%Z].
 Proof. split; vm_compute; reflexivity. Qed.
+
+(** The rank that swaps the engine ids of the two memos of [reads_higher]. *)
+Definition swap_rank : Rank := fun n => match n with 2 => 3 | 3 => 2 | _ => n end.
+
+(**md
+**`reads_higher` is refinable under a rank other than the ids, and not under the ids.**
+
+*Check, not a guarantee.*
+
+The memo with the lower id reads the memo with the higher id, so `memos_below` fails with the ids as the rank. Under `swap_rank` it holds, and `reads_higher` meets `refinable` with its two-batch history, so the theorems over `refinable` cover it.
+*)
+Theorem reads_higher_refinable :
+  Semantics.well_formed_program reads_higher /\
+  @Refinement.refinable swap_rank reads_higher [[Semantics.RWrite 0 1%Z]; [Semantics.RWrite 0 2%Z]] /\
+  ~ @Refinement.memos_below id_rank reads_higher.
+Proof.
+  split_and!.
+  - refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+    + rewrite ?dom_insert_L, ?dom_singleton_L. set_solver.
+    + rewrite ?dom_insert_L, ?dom_singleton_L. set_solver.
+    + rewrite ?dom_insert_L, ?dom_singleton_L. set_solver.
+    + apply map_Forall_insert_2; [reflexivity|apply map_Forall_singleton; reflexivity].
+    + apply map_Forall_singleton. reflexivity.
+    + exists (fun n => match n with 1 => 2 | 2 => 1 | _ => n end). apply map_Forall_insert_2; [|apply map_Forall_singleton].
+      * intros rd o st t v Hx Hin Hm. vm_compute in Hx. destruct (rd 2) as [[a|a]|]; vm_compute in Hx; repeat (case_match; vm_compute in Hx); simplify_eq;
+        apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try discriminate).
+        all: try lia.
+      * intros rd o st t v Hx Hin Hm. vm_compute in Hx. destruct (rd 0) as [[a|a]|]; vm_compute in Hx; repeat (case_match; vm_compute in Hx); simplify_eq;
+        apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try discriminate).
+        all: try lia.
+  - split_and!.
+    + intros m c Hc. simpl in Hc. apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]].
+      * cbn [Refinement.rename body_pureu]. split; [reflexivity|]. split.
+        -- intros z Hz _ _. vm_compute in Hz. injection Hz as <-. vm_compute. lia.
+        -- intros v. reflexivity.
+      * apply lookup_singleton_Some in Hc as [<- <-]. cbn [Refinement.rename body_pureu]. split; [reflexivity|]. split.
+        -- intros z Hz _ _. vm_compute in Hz. injection Hz as <-. vm_compute. lia.
+        -- intros v. reflexivity.
+    + intros n c Hc. simpl in Hc. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+    + intros b n Hb Hn. apply elem_of_cons in Hb as [->|Hb]; [apply list_elem_of_singleton in Hn; discriminate Hn|].
+      apply list_elem_of_singleton in Hb as ->. apply list_elem_of_singleton in Hn. discriminate Hn.
+  - intros H. pose proof (H 1 _ eq_refl) as Hb. cbn [Refinement.rename body_pureu] in Hb. destruct Hb as (_&Hr&_).
+    pose proof (Hr 3%Z ltac:(vm_compute; reflexivity) ltac:(lia) ltac:(vm_compute; lia)) as K. vm_compute in K. lia.
+Qed.
 
 (** ** No fuel answers on [restored_source] *)
 
