@@ -582,16 +582,140 @@ The audit passing here shows `wake_ok` detects #302 and `wake_told` detects #290
 
 ### Task 13a: The worked optimisation (layer 11)
 
-Written in detail once Task 13 has chosen the optimisation. Its fixed shape:
+The optimisation Task 13 chose (`proofs/README.md`, `## Pure-tier report`): a signal write skips its notify walk while every observer of the signal is saturated, tracked by a graph epoch. It changes no event. The controller ruled on the design (D2): any walk may take a record, and the epoch advances at every write that can make a saturated node unsaturated.
 
-**Files:** Create `proofs/theories/Pure/Optimised.v`. Implementation goes in `src/Ranvier` on its own branch, cut from this one, with a normal PR.
+**Files:**
+- Create: `proofs/theories/Pure/Optimised.v`.
+- Modify, on `claude/iris-rocq-ranvier-project-f3d6ae`: `Pure/State.v` (three state fields), `Pure/Engine.v` (advance points, record and skip, all gated on the mode), every `state` record literal outside `Engine.v`, `theories/Extract.v`, `proofs/differential/engine.ml` and `engine.mli` (regenerated), `driver.ml`, `run.sh`, `conformance/Scenarios.fsx`, `Conformance/Expected.v` (regenerated), `Conformance/Check.v`, `Audit.v`, `CORRESPONDENCE.md`, `README.md`.
+- Modify, on `claude/notify-skip-epoch` only: `src/Ranvier/Core.fs`, `tests/Ranvier.Tests`.
 
-- [ ] **Step 1: Write this task's detailed plan** into this file: optimised transitions, observation, simulation relation, benchmark, and the heap obligations it implies.
+The fix-phase rule holds: `src/Ranvier` has no diff on `claude/iris-rocq-ranvier-project-f3d6ae`. The F# change lands only on `claude/notify-skip-epoch`.
+
+**Interfaces:**
+- Consumes: `Engine`, `Marking`, `engine_inv`, `cleanup_once`, `weak_refinement_except`, `exact_refinement_except`, `engine_order_exact_except`, `engine_of_answers_on`, `witness_302`.
+- Produces:
+
+```rocq
+(* State.v *)
+Inductive skip_mode := SkipOff | SkipLeaveDirty | SkipAll.
+(* state gains: g_skip : skip_mode; g_epoch : nat; g_stamps : gmap node_id nat.
+   init sets SkipOff, 0 and ∅. *)
+
+(* Optimised.v *)
+Definition memo_saturated (s : state) (d : node) : Prop :=
+  n_freshness d = Dirty /\ announce_due s d = false.
+Definition effect_saturated (d : node) : Prop :=
+  n_disposed d = true \/ n_in_cleanup d = true \/ (n_freshness d = Dirty /\ n_queued d = true).
+Definition saturated (s : state) (n : node_id) : Prop :=
+  match g_nodes s !! n with
+  | Some d => match n_kind d with
+              | KMemo => memo_saturated s d | KEffect => effect_saturated d | KSignal => True end
+  | None => True
+  end.
+Definition stamp_current (s : state) (src : node_id) : Prop := g_stamps s !! src = Some (g_epoch s).
+Definition stamp_ok (s : state) : Prop :=
+  forall src c, stamp_current s src -> observer_of s src c -> saturated s c.
+Definition strip (s : state) : state.        (* g_skip := SkipOff, g_epoch := 0, g_stamps := ∅ *)
+Definition sim (s o : state) : Prop :=
+  strip s = strip o /\ g_skip s = SkipOff /\ g_skip o = SkipAll /\ stamp_ok o.
+Definition trace_of_mode (fuel : nat) (fl : flags) (m : skip_mode) (c : cmd) : option (list event).
+Definition engine_of_optimised (k : nat) (p : program) (h : history) : option (list event) :=
+  project p <$> trace_of_mode k current_flags SkipAll (erase p h).
+```
+
+`observer_of s src c` holds when `c` is an item of `observer_items (observers_of (g_edges s) src)`, the set `notify_with` walks. The model fields correspond to Core.fs as follows: `n_freshness` to `freshness`, `n_unannounced` to `unannounced`, `n_in_cleanup` to `inCleanup`, `n_queued` to `queued`, `n_disposed` to `disposed`. `announce_due s d` is `f_unannounced` and `n_unannounced d`. `memo_saturated` holds exactly when `mark_dirty` is the identity on a memo, matching `Memo.MarkDirty` (Core.fs 4483-4504). `effect_saturated` holds exactly when `effect_marked Dirty` is the identity, matching `Effect.MarkDirty` (4742-4755).
+
+**The optimised transitions.** All four are gated on `g_skip`. Under `SkipOff`, the engine reads and writes none of the new fields: its states are the present engine's states with the three fields at their initial values, and its traces are those of `engine_of`. This keeps every proof of Tasks 1-12 about the present engine's states valid with no repair beyond record literals.
+- *Advance:* `g_epoch` increases by one in the same step as each write that can make a saturated node unsaturated. The candidate points, as an obligation of Step 3 rather than a trusted list:
+
+  | Core.fs | Write | Saturation lost |
+  |---|---|---|
+  | 4191 | memo `freshness <- Clean` (`RecomputeScoped`) | leaves `Dirty` |
+  | 4207 | memo `freshness <- Clean` (`Run`) | leaves `Dirty` |
+  | 4290 | memo `unannounced <- true` | announcement due |
+  | 4802 / 4807 | effect `queued <- false`, `freshness <- Clean` (`Execute`, live path), one advance after 4807 | leaves `Dirty` and `queued` |
+  | 4825 | effect `inCleanup <- false` | leaves cleanup |
+
+  4786, `queued <- false` on a disposed effect, keeps the effect saturated and gets no advance. Under `SkipLeaveDirty` only 4191, 4207 and 4802/4807 advance. That mode exists only for the Examples of Step 3.
+- *Record:* a signal write's `notify_dirty` walk sets `g_stamps !! src := g_epoch` when it returns. Every observer it visited is then saturated (`mark_dirty_saturates`). The walk is `notify_dirty` from `CWrite`, the setter (Core.fs 3817-3818). `WriteExcept` (3831) has no model command; in F# it never records.
+- *Skip:* a `CWrite` of a new value to a signal with `stamp_current` performs no walk, and keeps the value write, the trace events and `RequestFlush`. The skip uses fuel exactly as `notify_dirty` does, returning `None` wherever the walk would, so trace equality holds at every fuel.
+- *Clear:* every observer addition to a signal, through `sources_add` and through both the `Add` and the `TryAdd` paths (Core.fs 3775-3780), deletes the signal's stamp. Memos keep no stamp. If a later change gives memos stamps, it must also clear them at 4464 and 4467.
+
+**The simulation.** `sim s o` relates the present engine's state `s` to the optimised engine's state `o`. The two are equal apart from `g_skip`, `g_epoch` and `g_stamps`, and `o` meets `stamp_ok`. The epoch is free under `sim`: only `o`'s epoch matters, through `stamp_ok`. Equal `strip` includes equal `g_queue`, `g_queue_head`, `g_trace` and node records, so the queue's content and order agree at every step. Effect order is proved here as part of trace equality. It does not come from `history_order`, which holds by construction and fixes no order.
+
+- [x] **Step 1: Write this task's detailed plan** into this file: optimised transitions, observation, simulation relation, benchmark, and the heap obligations it implies.
 - [ ] **Step 2: Model the optimised engine** as `engine_of_optimised`, by flag or as its own transitions, sharing `Engine.v` wherever behaviour is unchanged.
+  - [ ] **2a.** Add the names of Steps 2-3 to `Audit.v`, then run `rtk bash proofs/check.sh`. Expected: fails, names undefined.
+  - [ ] **2b.** Add `skip_mode` and the three fields to `state`, with `with_skip`, `with_epoch` and `with_stamps` helpers. The mode lives in `state`, not in `flags`, so the `flags` literals in `Witnesses.v` and `Marking.v` stay as they are. Update each `state` literal (`rtk grep "g_registered :=" proofs/theories`). Run `rtk bash proofs/build.sh`. Expected: exit 0 with every existing proof unchanged. A proof that breaks on the new fields is repaired in form only (record literals, `with_*` unfolding). A repair that changes a proof's argument, rather than its form, goes to the controller first: it means `SkipOff` is not the identity on the new fields.
+  - [ ] **2c.** In `Engine.v`, add `advance (p : advance_point)` at each point in the table, with `advance_point` naming the Core.fs line. Add the record after the `CWrite` walk, the skip before it, and the clear in the observer-add path. Under `SkipOff` each new branch is the identity.
+  - [ ] **2d.** Define `trace_of_mode` and `observed_mode` (`Extract.v`'s `observed` with a mode). Prove `trace_of_mode_off : trace_of_mode k fl SkipOff c = trace_of k fl c` by unfolding. Prove `engine_of_optimised` well-defined against `engine_of` by the same route.
+  - [ ] **2e.** Run the build and `check.sh`. Expected: exit 0, and `Conformance/Check.v`'s 16+ examples unchanged, since they run `SkipOff`.
 - [ ] **Step 3: Prove `optimised_refines : forall k, refines <chosen observation> (engine_of_optimised k)`, `engine_answers engine_of_optimised`, and `optimised_cleanups`: each registered cleanup runs exactly once, before its replacement or disposal.** `observe_settled` alone admits an engine that drops a logging cleanup. A counterexample here is the gate working: record it, and revise or reject the optimisation.
+  - [ ] **3a. Saturation lemmas, in `Optimised.v`.**
+    - `mark_dirty_saturated_id : saturated s c -> mark_dirty (S f) c s = Some s`.
+    - `mark_dirty_saturates : mark_dirty f c s = Some s' -> saturated s' c`.
+    - `marks_keep_saturated : any_mark f n r s s' -> saturated s c -> saturated s' c`, for every `c`.
+    - `notify_dirty_stamped_id : stamp_ok s -> stamp_current s src -> notify_dirty (S f) src s = Some s`.
+  - [ ] **3b. One lemma per engine transition: it keeps saturation of every node, or advances the epoch.** List every state-changing helper of `Engine.v` and `Marking.v` (`set_node` sites by the fields they write, `enqueue`, `with_edges`, `push_running`, `pop_running`, owner updates, observer additions and removals). For each, prove `keeps_or_advances_<helper> : saturated s c -> saturated s' c \/ g_epoch s < g_epoch s'`. An observer addition instead proves that it clears the stamp. Record the table of helpers to lemmas in `CORRESPONDENCE.md`. A helper with neither proof is a missing advance point: add it to the table above and to the F# list in Step 4.
+  - [ ] **3c. The invariant.** `stamp_ok_preserved`: under `SkipAll`, `stamp_ok` is preserved by each mutual function of `Engine.v`, for all fuel, by induction on fuel. It follows from 3a and 3b. A walk's record is sound by `mark_dirty_saturates` and `marks_keep_saturated`, because a `notify_dirty` walk over the model's observers runs no body.
+  - [ ] **3d. The decision-1 variant fails.** Add these to `Pure/Optimised.v` as checked `Example`s, by `vm_compute`, under `SkipLeaveDirty`:
+    - `leave_dirty_cleanup_skip`: effect `E` reads `s`, and its cleanup writes `s`. The host writes `s` twice, with a flush after each. The trace under `SkipLeaveDirty` has no second run of `E`. `SkipOff` and `SkipAll` give the trace with that run, and the two are equal.
+    - `leave_dirty_unannounced_skip`: memo `M` reads `s`, and while `s < 1` its body writes `s + 1`. Effect `E` reads `M`. After the first flush, the host writes `s` to a new value. Under `SkipLeaveDirty`, `M`'s body walk records while `M` is still saturated, and 4290 then makes `M` unsaturated with no advance. The host's write is skipped, which drops the `NotifyCheck` that `M`'s announcement owes `E`, so the trace differs from `SkipOff`'s. `SkipOff` and `SkipAll` agree. If `vm_compute` shows no difference, lengthen the host's writes until the lost announcement reaches an event. A program that never shows one goes back to the controller, because the 4290 advance would then be unjustified by a witness.
+
+    Each Example also shows `~ stamp_ok` at the state just before the skipped walk. These show that the advances at 4825 and 4290 are needed.
+  - [ ] **3e. The simulation.** `optimised_simulates`: for each mutual function and all fuel, from `sim s o` the two runs both return `None`, or return equal results with `sim` on the end states. Proved by induction on fuel. At a `CWrite` with `stamp_current o src`, the present engine walks and `notify_dirty_stamped_id` makes the walk the identity. Everywhere else the two take the same branch, and `stamp_ok` comes from 3c.
+  - [ ] **3f. Trace equality and its consequences.**
+    - `optimised_trace_eq : forall k fl c, trace_of_mode k fl SkipAll c = trace_of k fl c`. It holds for all `fl`, so `witness_302_optimised` restates `witness_302` for the optimised engine with `f_unannounced` off.
+    - `engine_of_optimised_eq : engine_of_optimised k p h = engine_of current_flags k p h`.
+    - `optimised_refines k : refines_on refinable observe_settled (engine_of_optimised k)`, from `weak_refinement_except`. `refines_on refinable` is the form the present engine meets. It is a change of form from the fixed shape's `refines`, not of strength.
+    - `optimised_exact_except`: `exact_refinement_except` with `engine_of_optimised`, under the same `runs_agree` premise.
+    - `optimised_order_exact_except`: `engine_order_exact_except` for the optimised engine.
+    - `engine_of_optimised_answers_on`: `engine_of_answers_on` for the optimised engine.
+  - [ ] **3g. `optimised_cleanups`.** The `EvCleanup` events of the optimised trace equal the present engine's, by `optimised_trace_eq`. On that trace, `cleanup_once` gives at most one `EvCleanup` per registration. Prove the rest on the shared trace as `cleanups_before_replacement`: each registration whose host re-runs or is disposed has its `EvCleanup` before the host's next `EvRun` or its `EvDispose`. If that is false on the present engine, it goes through the resist procedure as an Open theorem of the present engine. It is not a counterexample to the optimisation.
+  - [ ] **3h. Audit.** Run `rtk bash proofs/check.sh`. Expected: exit 0, and `optimised_trace_eq`, `optimised_refines` and `optimised_cleanups` print only allowlisted assumptions.
+  - [ ] **3i. Extraction and differential.**
+    - Extract `observed_mode` and `skip_mode` beside `observed` in `Extract.v`, and regenerate `engine.ml`.
+    - `driver.ml` takes a mode argument, `off` by default. `run.sh` passes `RANVIER_SKIP_MODE` through, and CI keeps `off`.
+    - Both sides compare the trace through the closing reads and flush, and the two end-state views (`view_of`). The epoch and stamps are not in the view, so equal views still mean equal compared state.
+    - On this branch, run `rtk bash proofs/differential/run.sh 2000 9` once with mode `off` and once with `all`, against the present F#. Expected: exit 0 both times, with the same agree counts.
+    - Add the two Examples' programs to `Scenarios.fsx` as `S16_cleanup_rewrite` and `S17_self_write_announce`, with `check_` Examples in `Conformance/Check.v` at `SkipOff`. Their `Expected.v` traces are the present F#'s, and the optimised F# must reproduce them in Step 4.
+  - [ ] **3j.** Update `CORRESPONDENCE.md` with the new fields, the advance table and the record and skip, and update `README.md`'s theorem index. Commit as `feat(proofs): prove the saturated-write skip refines the engine`.
 - [ ] **Step 4: Only then implement it in F#.** Test-first, against the differential check with the extracted optimised engine.
+  - [ ] **4a.** `rtk git worktree add .claude/worktrees/notify-skip-epoch -b claude/notify-skip-epoch claude/iris-rocq-ranvier-project-f3d6ae`. All of Step 4 runs there, and the proofs worktree is left alone while its gates run.
+  - [ ] **4b. Enumerate the writes.** List every write to `freshness`, `unannounced`, `inCleanup`, `queued` and `disposed` in `Core.fs`, in every `IComputation` implementor (`rtk grep -n "freshness <-\|unannounced <-\|inCleanup <-\|queued <-\|disposed <-" src/Ranvier/Core.fs`; at `d701e6c5`, this includes 5162-5197, 5451-5504, 5568-5937 and 6195-6556). Map each to one of: an advance; "keeps saturation", with the reason; or "implementor does not join the epoch". Put the table in the PR description. A write in a joining implementor with no advance and no reason blocks the step.
+  - [ ] **4c. Tests first, in `tests/Ranvier.Tests`, failing on the branch's present F#.**
+    - A write to a signal whose 64 memo observers are `Dirty` and unannounced leaves every memo's `MarkDirty` uncalled. Use an internal counter, or `Tracer` under a test-only build.
+    - `BatchOfTenWrites`' shape: the nine later writes perform no walk.
+    - Regression cases for S16 and S17, `S08`, `S13`, `S14` and #302's test from `d701e6c5`. These pass before the change and must keep passing.
+    - A signal observed by a `Binding`, or another non-joining `IComputation`, still walks on every write.
+  - [ ] **4d. Implement.**
+    - A graph field `epoch : int64`, and an internal `Advance ()` called at each point of 4b.
+    - On `Signal`, a field `stamp : int64` initialised to `-1L`, set at the end of `NotifyDirty` from the setter (3817-3818) when every visited observer joins the epoch, and cleared at 3775-3780.
+    - The skip test before 3817.
+    - `WriteExcept` (3831) may skip and never records.
+    - Joining is a member of the internal `IComputation`, true on core `Memo` and `Effect` only. Before adding it, run `fcs_refactor_impact` on `IComputation`.
+    - The skip keeps `Tracer.Write`, `Tracer.Notified` and `RequestFlush`.
+  - [ ] **4e. Gates.**
+    - `rtk dotnet build Ranvier.slnx -c Release` and the full `Ranvier.Tests` suite, unfiltered.
+    - `rtk bash proofs/check.sh`, which regenerates `Expected.v` from the optimised F# and must find no diff.
+    - `RANVIER_SKIP_MODE=all rtk bash proofs/differential/run.sh 2000 10`. Expected: exit 0, skipped under 5%.
+    - `dotnet fsi build.fsx -- analyze --group library --build`.
+  - [ ] **4f.** Commit on `claude/notify-skip-epoch` as `perf(core): skip a signal's notify walk while its observers are saturated`. Do not push. The PR is opened only when the controller confirms, and the controller asks the user before pushing.
 - [ ] **Step 5: Benchmark.** Report measured results beside the proof. A proof says nothing about speed, and an optimisation that doesn't help is dropped, however well proved.
+  - [ ] **5a.** Build Release on both branches. Confirm optimisation from the assembly, not from BenchmarkDotNet's runtime line, which can show `DEBUG` for a Release F# build. Read `DebuggableAttribute` on `bench/Ranvier.Benchmarks/bin/Release/*/Ranvier.dll` with a scratchpad `.fsx` that loads it by `Assembly.LoadFrom`. Expected: `IsJITOptimizerDisabled = false`. Record the output.
+  - [ ] **5b.** Run on each branch, at the same seed set and on the same machine, with `--inProcess` while the nested-worktree project clash persists: `rtk dotnet run --project bench/Ranvier.Benchmarks -c Release --no-build -- --inProcess --filter "*SignalBenchmarks.Write" "*SignalBenchmarks.WriteAndPropagate" "*EffectBenchmarks.*" "*BindingUpdateBenchmarks.WriteAndFlush"`. Restore any tracked file under `docs/.ai/benchmarks/results` that the run overwrites.
+  - [ ] **5c.** Report gains and regressions side by side, before and after, with error columns. Expected gains are on `Write` with dirty unread memos and on `BatchOfTenWrites`. Expected regressions are on `WriteAndFlush`, `WriteAndPropagate`, and the `signal-binding` case of `BindingUpdateBenchmarks.WriteAndFlush`, where the skip never fires and the advance, stamp test and joining test only add cost. Signals observed by bindings, the shape Ranvier's UI produces most, gain nothing. Drop the optimisation if any regression on those shapes exceeds its benchmark's error bars, or if `BatchOfTenWrites` gains less than its error bars.
 - [ ] **Step 6: Report to the owner**, and ask them to review the heap scope in Tasks 14-16 in light of it.
+  - [ ] **6a.** The report gives the theorems, the differential counts, the benchmark table and these heap obligations for Tasks 14-16:
+    - `is_graph` carries `g_epoch`, each signal's stamp, and `stamp_ok`.
+    - Each advance point is one step together with its field write: no step between them can run a walk.
+    - The observer-set add specs (`Heap/ObserverSet.v`) clear the owning signal's stamp on `Add` and `TryAdd`.
+    - The skip's spec refines `notify_dirty`'s identity under `stamp_current`.
+    - The record's spec needs `notify_walk_unmutated` over joining observers.
+    - The epoch is an unbounded `Z` in HeapLang. The F# `int64` assumes no wrap, and a Fable build's `int64` cost needs measuring.
+    - Under `RANVIER_TRACE` (Debug builds), a skipped walk emits no `Tracer.Mark` events (Core.fs 380). This observation lies outside the model, so trace-log tests may change.
+    - UI `Binding`s and other non-joining `IComputation` implementors record nothing and gain nothing.
+  - [ ] **6b.** Ask the owner whether Tasks 14-16 take these obligations on, or keep the heap tier at the present engine.
 
 ---
 
