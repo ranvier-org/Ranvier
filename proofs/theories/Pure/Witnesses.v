@@ -1332,3 +1332,32 @@ Proof.
   split_and!; try assumption.
   intros H. apply N2. refine (H 100000 (never_lost Nop) _ (Ok 0%Z) _ A2 Q2). vm_compute. reflexivity.
 Qed.
+
+(** An effect that reads signal [1], and signal [2] untracked. A write of signal [2] wakes nothing. *)
+Definition untracked_read (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 5%Z) (
+  CEffect 3 (CRead 10 (V 1) (CReadUntracked 11 (V 2) (CLog (V 11) Nop))) (
+  CWrite (V 2) (K 6%Z) k))).
+
+(**md
+**An effect's untracked read reaches every premise of `convergence`, and its log stays behind.**
+
+*Check, not a guarantee.*
+
+After [`untracked_read`](#untracked_read) the effect has logged 5 and signal `2` holds 6. `convergence` holds: the log is a run of the body with the untracked read answered by some value, and no more is promised of it. A write of the tracked signal brings the log up to date.
+*)
+Theorem untracked_read_reached :
+  let s := final (untracked_read Nop) in
+  let s' := final (untracked_read (CWrite (V 1) (K 1%Z) Nop)) in
+  run_top 100000 (untracked_read Nop) (init current_flags) = Some (s, Ok 0%Z) /\
+  well_behaved_program s /\ effects_only_read s /\ quiescent s /\ converged s /\
+  last_run_logs 3 (g_trace s) = [5%Z] /\ n_value <$> g_nodes s !! (2 : node_id) = Some 6%Z /\
+  last_run_logs 3 (g_trace s') = [6%Z].
+Proof.
+  intros s s'.
+  assert (Hm : run_top 100000 (untracked_read Nop) (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
+  assert (Ha : well_behaved_program s) by (apply well_behaved_of_b; vm_compute; reflexivity).
+  assert (He : effects_only_read s) by (apply effects_only_read_of_shape; [exact Ha|vm_compute; reflexivity]).
+  assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
+  split_and!; try assumption; [exact (convergence 100000 _ s _ Hm Ha He Hq)|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
+Qed.

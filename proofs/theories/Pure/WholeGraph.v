@@ -70,24 +70,98 @@ Fixpoint body_eval (ans : node_id -> option outcome) (e : env) (c : cmd) : optio
   end.
 
 (** A body built from returns, failures, lets, branches, tracked reads, batches and logs, independent of the previous
-    value, whose reads satisfy [Q] for every answer the earlier reads can give. *)
-Fixpoint body_pure (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
+    value, whose reads satisfy [Q] for every answer the earlier reads can give. With [u], untracked reads too. *)
+Fixpoint body_pureu (u : bool) (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
   match c with
   | CRet x => expr_plain x = true
   | CThrow _ => True
-  | CLet x v k => expr_plain v = true /\ forall z, ev e v = Some (Ok z) -> body_pure Q ((x, z) :: e) k
+  | CLet x v k => expr_plain v = true /\ forall z, ev e v = Some (Ok z) -> body_pureu u Q ((x, z) :: e) k
   | CIf v a b =>
     expr_plain v = true /\
-    forall z, ev e v = Some (Ok z) -> (z = 0%Z -> body_pure Q e b) /\ (z <> 0%Z -> body_pure Q e a)
+    forall z, ev e v = Some (Ok z) -> (z = 0%Z -> body_pureu u Q e b) /\ (z <> 0%Z -> body_pureu u Q e a)
   | CRead x n k =>
     expr_plain n = true /\ (forall z, ev e n = Some (Ok z) -> (0 <= z)%Z -> Q (Z.to_nat z)) /\
-    forall v, body_pure Q ((x, v) :: e) k
+    forall v, body_pureu u Q ((x, v) :: e) k
   | CTryRead x ok n k =>
     expr_plain n = true /\ (forall z, ev e n = Some (Ok z) -> (0 <= z)%Z -> Q (Z.to_nat z)) /\
-    (forall v, body_pure Q ((ok, 1%Z) :: (x, v) :: e) k) /\ (forall y, body_pure Q ((ok, 0%Z) :: (x, y) :: e) k)
-  | CLog v k => expr_plain v = true /\ body_pure Q e k
-  | CBatch b k => body_pure Q e b /\ body_pure Q e k
+    (forall v, body_pureu u Q ((ok, 1%Z) :: (x, v) :: e) k) /\ (forall y, body_pureu u Q ((ok, 0%Z) :: (x, y) :: e) k)
+  | CReadUntracked x n k =>
+    u = true /\ expr_plain n = true /\ (forall z, ev e n = Some (Ok z) -> (0 <= z)%Z -> Q (Z.to_nat z)) /\
+    forall v, body_pureu u Q ((x, v) :: e) k
+  | CLog v k => expr_plain v = true /\ body_pureu u Q e k
+  | CBatch b k => body_pureu u Q e b /\ body_pureu u Q e k
   | _ => False
+  end.
+
+Notation body_pure := (body_pureu false).
+
+(** A body's run: result [r] and logs [l], with its tracked reads answered by [ans] and each untracked read by some value. *)
+Fixpoint body_run (ans : node_id -> option outcome) (e : env) (c : cmd) (r : outcome) (l : list val) : Prop :=
+  match c with
+  | CRet x => ev e x = Some r /\ l = []
+  | CThrow y => r = Fail y /\ l = []
+  | CLet x v k =>
+    match ev e v with
+    | Some (Ok z) => body_run ans ((x, z) :: e) k r l
+    | Some (Fail y) => r = Fail y /\ l = []
+    | None => False
+    end
+  | CIf v a b =>
+    match ev e v with
+    | Some (Ok z) => if decide (z = 0%Z) then body_run ans e b r l else body_run ans e a r l
+    | Some (Fail y) => r = Fail y /\ l = []
+    | None => False
+    end
+  | CRead x n k =>
+    match ev e n with
+    | Some (Ok z) =>
+      (0 <= z)%Z /\
+      match ans (Z.to_nat z) with
+      | Some (Ok v) => body_run ans ((x, v) :: e) k r l
+      | Some (Fail y) => r = Fail y /\ l = []
+      | None => False
+      end
+    | Some (Fail y) => r = Fail y /\ l = []
+    | None => False
+    end
+  | CTryRead x ok n k =>
+    match ev e n with
+    | Some (Ok z) =>
+      (0 <= z)%Z /\
+      match ans (Z.to_nat z) with
+      | Some (Ok v) => body_run ans ((ok, 1%Z) :: (x, v) :: e) k r l
+      | Some (Fail y) => body_run ans ((ok, 0%Z) :: (x, y) :: e) k r l
+      | None => False
+      end
+    | Some (Fail y) => r = Fail y /\ l = []
+    | None => False
+    end
+  | CReadUntracked x n k =>
+    match ev e n with
+    | Some (Ok z) =>
+      (0 <= z)%Z /\ ((exists v, body_run ans ((x, v) :: e) k r l) \/ (exists y, r = Fail y /\ l = []))
+    | Some (Fail y) => r = Fail y /\ l = []
+    | None => False
+    end
+  | CLog v k =>
+    match ev e v with
+    | Some (Ok z) => exists l', l = z :: l' /\ body_run ans e k r l'
+    | Some (Fail y) => r = Fail y /\ l = []
+    | None => False
+    end
+  | CBatch b k =>
+    (exists z l1 l2, body_run ans e b (Ok z) l1 /\ body_run ans e k r l2 /\ l = l1 ++ l2) \/
+    (exists y, r = Fail y /\ body_run ans e b (Fail y) l)
+  | _ => False
+  end.
+
+(** A body with an untracked read: its log can stay behind, and the state holds no record of what the read answered. *)
+Fixpoint has_untracked (c : cmd) : bool :=
+  match c with
+  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CLog _ k | CWrite _ _ k | CCleanup _ k => has_untracked k
+  | CIf _ a b | CBatch a b => has_untracked a || has_untracked b
+  | CReadUntracked _ _ _ => true
+  | _ => false
   end.
 
 (** The logs of a body whose reads are answered by [ans], up to its result. [None] is a stuck body. *)
@@ -191,17 +265,14 @@ Definition self_dirtying (s : state) (n : node_id) : Prop := ~ pure_in (shapes s
 Definition well_behaved_program (s : state) : Prop :=
   forall n d, g_nodes s !! n = Some d -> n_kind d = KMemo -> pure_in (shapes s) n.
 
-(** The body of an effect built from returns, failures, lets, branches, tracked reads, batches and logs, whose reads reach
-    only nodes outside the self-dirtying case. The targets can be computed. *)
+(** The body of an effect built from returns, failures, lets, branches, tracked and untracked reads, batches and logs, whose
+    reads reach only nodes outside the self-dirtying case. The targets can be computed. *)
 Definition quiet_effect (s : state) (c : node_id) (d : node) : Prop :=
-  n_kind d = KEffect /\ body_pure (fun t => readable (shapes s) t -> pure_in (shapes s) t) (n_env d) (n_body d).
+  n_kind d = KEffect /\ body_pureu true (fun t => readable (shapes s) t -> pure_in (shapes s) t) (n_env d) (n_body d).
 
 (** Named premise of [convergence]. The exclusions from an effect's body:
 
     Resting on a counterexample: a write, by [effect_resolves_over_moved_source], pending the owner's ruling.
-
-    An untracked read: the logs clause of [converged] is false over it, since the source can move with no run, and what it
-    is entitled to is unstated. Unproved in a weaker form, with no counterexample.
 
     Resting on the proof's reach, unproved with no counterexample: a cleanup, and an effect or other node created in the
     body. *)
@@ -354,16 +425,70 @@ Proof.
   - destruct (ev g e) as [[z|y]|]; [apply IHc|congruence|done].
 Qed.
 
-Lemma body_pure_mono (P Q : node_id -> Prop) e c :
-  (forall t, P t -> Q t) -> body_pure P e c -> body_pure Q e c.
+Lemma body_pure_mono (P Q : node_id -> Prop) u e c :
+  (forall t, P t -> Q t) -> body_pureu u P e c -> body_pureu u Q e c.
 Proof.
   intros H. revert e. induction c; intros g; simpl; try done.
   - intros [A B]. split; [done|]. intros z Hz. apply IHc, B, Hz.
   - intros [A B]. split; [done|]. intros z Hz. destruct (B z Hz) as [C D]. split; intros K; [apply IHc2, C, K|apply IHc1, D, K].
   - intros (A&B&C). split_and!; [done|intros z Hz Hp; apply H, B; done|intros v; apply IHc, C].
   - intros (A&B&C&D). split_and!; [done|intros z Hz Hp; apply H, B; done|intros v; apply IHc, C|intros v; apply IHc, D].
+  - intros (A&B&C&D). split_and!; [done|done|intros z Hz Hp; apply H, C; done|intros v; apply IHc, D].
   - intros [A B]. split; [apply IHc1, A|apply IHc2, B].
   - intros [A B]. split; [done|]. apply IHc, B.
+Qed.
+
+Lemma body_pure_u (Q : node_id -> Prop) e c : body_pure Q e c -> body_pureu true Q e c.
+Proof.
+  revert e. induction c; intros g; simpl; try done.
+  - intros [A B]. split; [done|]. intros z Hz. apply IHc, B, Hz.
+  - intros [A B]. split; [done|]. intros z Hz. destruct (B z Hz) as [C D]. split; intros K; [apply IHc2, C, K|apply IHc1, D, K].
+  - intros (A&B&C). split_and!; [done|done|intros v; apply IHc, C].
+  - intros (A&B&C&D). split_and!; [done|done|intros v; apply IHc, C|intros v; apply IHc, D].
+  - intros [K _]. discriminate K.
+  - intros [A B]. split; [apply IHc1, A|apply IHc2, B].
+  - intros [A B]. split; [done|]. apply IHc, B.
+Qed.
+
+Lemma body_run_mono (A B : node_id -> option outcome) e c r l :
+  (forall t o, A t = Some o -> B t = Some o) -> body_run A e c r l -> body_run B e c r l.
+Proof.
+  intros H. revert e r l. induction c; intros g r0 l0; simpl; try done.
+  - destruct (ev g e) as [[z|y]|]; [apply IHc|done|done].
+  - destruct (ev g e) as [[z|y]|]; [|done|done]. destruct (decide _); [apply IHc2|apply IHc1].
+  - destruct (ev g n) as [[z|y]|]; [|done|done]. intros [Hz K]. split; [done|].
+    destruct (A _) as [[v|y]|] eqn:E; [rewrite (H _ _ E); revert K; apply IHc|rewrite (H _ _ E); done|done].
+  - destruct (ev g n) as [[z|y]|]; [|done|done]. intros [Hz K]. split; [done|].
+    destruct (A _) as [[v|y]|] eqn:E; [rewrite (H _ _ E); revert K; apply IHc|rewrite (H _ _ E); revert K; apply IHc|done].
+  - destruct (ev g n) as [[z|y]|]; [|done|done]. intros [Hz [(v&K)|K]]; split; [done|left; exists v; revert K; apply IHc|done|by right].
+  - intros [(z&l1&l2&K1&K2&->)|(y&->&K)]; [left; exists z, l1, l2; split_and!; [by apply IHc1|by apply IHc2|done]|right; exists y; split; [done|by apply IHc1]].
+  - destruct (ev g e) as [[z|y]|]; [|done|done]. intros (l'&->&K). exists l'. split; [done|]. revert K. apply IHc.
+Qed.
+
+(** With no untracked read on its way, a run is what [body_eval] and [body_logs] answer. *)
+Lemma body_run_eval (A : node_id -> option outcome) (Q : node_id -> Prop) u e c r l :
+  body_pureu u Q e c -> (u = true -> has_untracked c = false) -> body_run A e c r l -> body_eval A e c = Some r /\ body_logs A e c = Some l.
+Proof.
+  revert e r l. induction c; intros g r0 l0 Hp Hu; simpl in *; try done.
+  - intros [H ->]. rewrite H. done.
+  - intros [-> ->]. done.
+  - destruct Hp as [_ Hk]. destruct (ev g e) as [[z|y]|]; [apply IHc; [apply (Hk z eq_refl)|done]|intros [-> ->]; done|done].
+  - destruct Hp as [_ Hab]. destruct (ev g e) as [[z|y]|]; [|intros [-> ->]; done|done]. destruct (Hab z eq_refl) as [Hb Ha].
+    destruct (decide _) as [Hz|Hz].
+    + apply IHc2; [exact (Hb Hz)|intros K; pose proof (Hu K) as K2; apply orb_false_iff in K2; tauto].
+    + apply IHc1; [exact (Ha Hz)|intros K; pose proof (Hu K) as K2; apply orb_false_iff in K2; tauto].
+  - destruct Hp as (_&_&Hk). destruct (ev g n) as [[z|y]|]; [|intros [-> ->]; done|done]. intros [Hz K]. rewrite !decide_True by done.
+    destruct (A _) as [[v|y]|]; [apply IHc; [apply Hk|done|done]|destruct K as [-> ->]; done|done].
+  - destruct Hp as (_&_&Hk1&Hk2). destruct (ev g n) as [[z|y]|]; [|intros [-> ->]; done|done]. intros [Hz K]. rewrite !decide_True by done.
+    destruct (A _) as [[v|y]|]; [apply IHc; [apply Hk1|done|done]|apply IHc; [apply Hk2|done|done]|done].
+  - destruct Hp as [K _]. rewrite K in Hu. pose proof (Hu eq_refl). done.
+  - destruct Hp as [Hb Hk]. assert (Hu1 : u = true -> has_untracked c1 = false) by (intros K; pose proof (Hu K) as K2; apply orb_false_iff in K2; tauto).
+    assert (Hu2 : u = true -> has_untracked c2 = false) by (intros K; pose proof (Hu K) as K2; apply orb_false_iff in K2; tauto).
+    intros [(z&l1&l2&K1&K2&->)|(y&->&K)].
+    + destruct (IHc1 _ _ _ Hb Hu1 K1) as [E1 E2]. destruct (IHc2 _ _ _ Hk Hu2 K2) as [E3 E4]. rewrite E1, E2, E3, E4. done.
+    + destruct (IHc1 _ _ _ Hb Hu1 K) as [E1 E2]. rewrite E1, E2. done.
+  - destruct Hp as [_ Hk]. destruct (ev g e) as [[z|y]|]; [|intros [-> ->]; done|done]. intros (l'&->&K).
+    destruct (IHc _ _ _ Hk Hu K) as [E1 E2]. rewrite E1, E2. done.
 Qed.
 
 Lemma den_S k s n o : den k s n = Some o -> den (S k) s n = Some o.
@@ -1615,24 +1740,38 @@ Proof.
   by apply fmap_is_Some in B2.
 Qed.
 
-Lemma read_readable g t s s' o : read g t true s = Some (s', o) -> readable (shapes s) t.
+Lemma read_node_readable g t s s' o : read_node g t s = Some (s', o) -> readable (shapes s) t.
 Proof.
-  intros H. destruct g as [|g]; [done|]. cbn [read] in H. destruct g as [|g]; [done|]. cbn [read_node] in H.
+  intros H. destruct g as [|g]; [done|]. cbn [read_node] in H.
   unfold readable, shapes. rewrite lookup_fmap. unfold m_bind, get_node in H. destruct (g_nodes s !! t) as [d|] eqn:E; [|done].
   simpl. unfold shape_of. destruct (n_kind d); done.
 Qed.
 
+Lemma read_readable g t s s' o : read g t true s = Some (s', o) -> readable (shapes s) t.
+Proof. intros H. destruct g as [|g]; [done|]. cbn [read] in H. exact (read_node_readable _ _ _ _ _ H). Qed.
+
+Lemma read_u_readable g t s s' o : read g t false s = Some (s', o) -> readable (shapes s) t.
+Proof.
+  intros H. destruct g as [|g]; [done|]. cbn [read] in H. unfold untracked, m_bind, m_modify in H. simpl in H.
+  destruct (read_node g t _) as [[s2 r]|] eqn:E; [|done]. exact (read_node_readable _ _ _ _ _ E).
+Qed.
+
 Record A_ok (f : nat) : Prop := {
-  Aexec : forall (T : node_id -> Prop) (L c : node_id) d e' e cm s s' r A r0,
+  Aexec : forall (T : node_id -> Prop) (u : bool) (L c : node_id) d e' e cm s s' r A r0,
     aS T L s -> g_current s = Some c -> g_nodes s !! c = Some d -> qc s c d -> env_agree e' e ->
-    below_or_all L c d s ->
-    body_pure (fun t => readable (shapes s) t -> t < L /\ pure_in (shapes s) t) e cm ->
+    below_or_all L c d s -> (u = true -> n_kind d = KEffect) ->
+    body_pureu u (fun t => readable (shapes s) t -> t < L /\ pure_in (shapes s) t) e cm ->
     (~ T c -> body_eval A e cm = Some r0 /\ guide T s A) ->
     (T c \/ (~ T c /\ pure_in (shapes s) c)) ->
     exec f e' cm s = Some (s', r) ->
-    aS T L s' /\ atom T L (Some c) s s' /\ body_eval (seen_ans s' c) e cm = Some r /\ (~ T c -> r = r0) /\
+    aS T L s' /\ atom T L (Some c) s s' /\ (~ T c -> r = r0) /\
     (forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) /\
-    (exists l, body_logs (seen_ans s' c) e cm = Some l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l));
+    (exists l, body_run (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l));
+  Aunt : forall (T : node_id -> Prop) (L c t : node_id) s s1 o,
+    aS T L s -> g_current s = Some c -> g_flushing s = true -> ~ pure_in (shapes s) c -> t < L -> pure_in (shapes s) t ->
+    read f t false s = Some (s1, o) ->
+    aS T L s1 /\ atom T L (Some c) s s1 /\ g_current s1 = Some c /\
+    (forall u, seen_ans s1 c u = seen_ans s c u) /\ trace_view c (g_trace s1) = trace_view c (g_trace s);
   Aread : forall (T : node_id -> Prop) (lim t : node_id) s s' o, rd_pre T lim t s -> read f t true s = Some (s', o) -> rd_post T lim t s s' o;
   Anode : forall (T : node_id -> Prop) (lim t : node_id) s s' o, rd_pre T lim t s -> read_node f t s = Some (s', o) -> rd_post T lim t s s' o;
   Aupd : forall (T : node_id -> Prop) (lim t : node_id) s s' a, aS T lim s -> t < lim -> pure_in (shapes s) t ->
@@ -2045,6 +2184,51 @@ Section Step.
   Lemma Aread_S : forall (T : node_id -> Prop) (lim t : node_id) s s' o, rd_pre T lim t s -> read (S f) t true s = Some (s', o) -> rd_post T lim t s s' o.
   Proof. intros T lim t s s' o H Hm. cbn [read] in Hm. exact (Anode _ IH T lim t s s' o H Hm). Qed.
 
+  Lemma Aunt_S : forall (T : node_id -> Prop) (L c t : node_id) s s1 o,
+    aS T L s -> g_current s = Some c -> g_flushing s = true -> ~ pure_in (shapes s) c -> t < L -> pure_in (shapes s) t ->
+    read (S f) t false s = Some (s1, o) ->
+    aS T L s1 /\ atom T L (Some c) s s1 /\ g_current s1 = Some c /\
+    (forall u, seen_ans s1 c u = seen_ans s c u) /\ trace_view c (g_trace s1) = trace_view c (g_trace s).
+  Proof.
+    intros T L c t s s1 o Ha Hcur Hfl Hnp Hlt Hp Hm. pose proof Hm as Hm0. pose proof Ha as (Hc&Hw&St).
+    cbn [read] in Hm. unfold untracked, m_bind, m_modify in Hm. simpl in Hm. rewrite Hcur in Hm.
+    set (s0 := with_untracked true (with_current None s)) in Hm.
+    destruct (read_node f t s0) as [[s2 r]|] eqn:E; [|done]. injection Hm as <- <-.
+    assert (H0 : same4 s s0) by done.
+    assert (Hsh0 : shapes s0 = shapes s) by exact (same4_shapes _ _ H0).
+    assert (Hc0 : run_core s0).
+    { destruct Hc as [Hi Hx].
+      assert (He1 : irrelevant (with_current None s) s0) by (unfold irrelevant; simpl; split_and!; reflexivity).
+      assert (He2 : fields_same (with_current None s) s0) by (split; reflexivity). split.
+      - eapply invariant_irrelevant; [exact He1|]. apply invariant_with_current; [|exact Hi]. done.
+      - eapply extras_same; [exact He2|]. apply extras_current; [exact Hx|done]. }
+    assert (Ha0 : aS T L s0).
+    { split_and!; [done|exact (whole_same _ _ H0 Hw)|]. refine (stk_same T L s s0 H0 _ St). intros _. right. done. }
+    assert (Hpre : rd_pre T L t s0).
+    { split_and!; [done|done|by rewrite Hsh0|intros c0 dc Hc0' _ _ _; discriminate Hc0'|intros c0 Hc0'; discriminate Hc0']. }
+    destruct (Anode _ IH T L t s0 s2 r Hpre E) as ((Hc2&Hw2&St2)&A0&_&_&Vk).
+    change (g_current s0) with (@None node_id) in A0.
+    set (s3 := with_untracked (g_untracked s) (with_current (Some c) s2)).
+    assert (H3 : same4 s2 s3) by done.
+    assert (Hc3 : run_core s3).
+    { replace s3 with (fst (s3, r)) by reflexivity. exact (proj1 (Rread _ (runs_ok_all (S f)) t false s s3 r Hc I Hm0)). }
+    assert (Hc3' : g_current s3 = Some c) by reflexivity.
+    assert (Hrnc : ~ rn s0 L None c).
+    { intros [[K _]|K]; [apply Hnp; by rewrite <- Hsh0|done]. }
+    destruct (at_slots _ _ _ _ _ A0 c Hrnc) as [Sl Se].
+    split_and!.
+    - split_and!; [done|exact (whole_same _ _ H3 Hw2)|]. refine (stk_same T L s2 s3 H3 _ St2). intros _. left. unfold deferring. by rewrite Hc3'.
+    - assert (A1 : atom T L None s s3).
+      { eapply atom_wrap; [exact A0|exact H0|exact H3|reflexivity|reflexivity|reflexivity|reflexivity|..].
+        all: first [reflexivity|exact (eq_sym Hcur)|intros Ho0; exact (at_owed _ _ _ _ _ A0 Ho0)|exact (at_flags _ _ _ _ _ A0)|exact (at_batch _ _ _ _ _ A0)|exact (at_pull _ _ _ _ _ A0)|exact (at_flushing _ _ _ _ _ A0)]. }
+      refine (atom_mono T L L None (Some c) s s3 _ _ A1); [lia|intros m Hm1; discriminate Hm1].
+    - done.
+    - intros u. unfold seen_ans. change (g_edges s3) with (g_edges s2). change (g_ghost s3) with (g_ghost s2).
+      assert (P1 : read_prefix (g_edges s2) c = read_prefix (g_edges s) c) by (rewrite !read_prefix_view; change (g_edges s) with (g_edges s0); by rewrite Sl).
+      rewrite P1. assert (S1 : seen_of (g_ghost s2) c u = seen_of (g_ghost s) c u) by exact (Se u). rewrite S1. done.
+    - change (g_trace s3) with (g_trace s2). change (g_trace s) with (g_trace s0). apply Vk. intros [K _]. apply Hnp. by rewrite <- Hsh0.
+  Qed.
+
   Lemma guide_atom (T : node_id -> Prop) lim x s s' A : atom T lim x s s' -> guide T s A -> guide T s' A.
   Proof.
     intros At Hg t o Ho. destruct (Hg t o Ho) as (Hp&HT&e&He&Hq&Hv).
@@ -2130,61 +2314,59 @@ Section Step.
     rewrite Ho in E. destruct (g_flushing s); unfold m_return, m_modify in E; injection E as <- _; [by left|by right].
   Qed.
 
-  Lemma Aexec_S : forall (T : node_id -> Prop) (L c : node_id) d e' e cm s s' r A r0,
+  Lemma Aexec_S : forall (T : node_id -> Prop) (u : bool) (L c : node_id) d e' e cm s s' r A r0,
     aS T L s -> g_current s = Some c -> g_nodes s !! c = Some d -> qc s c d -> env_agree e' e ->
-    below_or_all L c d s ->
-    body_pure (fun t => readable (shapes s) t -> t < L /\ pure_in (shapes s) t) e cm ->
+    below_or_all L c d s -> (u = true -> n_kind d = KEffect) ->
+    body_pureu u (fun t => readable (shapes s) t -> t < L /\ pure_in (shapes s) t) e cm ->
     (~ T c -> body_eval A e cm = Some r0 /\ guide T s A) ->
     (T c \/ (~ T c /\ pure_in (shapes s) c)) ->
     exec (S f) e' cm s = Some (s', r) ->
-    aS T L s' /\ atom T L (Some c) s s' /\ body_eval (seen_ans s' c) e cm = Some r /\ (~ T c -> r = r0) /\
+    aS T L s' /\ atom T L (Some c) s s' /\ (~ T c -> r = r0) /\
     (forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) /\
-    (exists l, body_logs (seen_ans s' c) e cm = Some l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l)).
+    (exists l, body_run (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l)).
   Proof.
-    intros T L c d e' e cm s s' r A r0 Ha Hcur Hd Hq Hag HL Hbp Hg Hor Hm.
-    assert (Hdone : s' = s -> body_eval A e cm = Some r \/ T c -> body_eval (seen_ans s c) e cm = Some r ->
-              body_logs (seen_ans s c) e cm = Some [] ->
-              aS T L s' /\ atom T L (Some c) s s' /\ body_eval (seen_ans s' c) e cm = Some r /\ (~ T c -> r = r0) /\
+    intros T u L c d e' e cm s s' r A r0 Ha Hcur Hd Hq Hag HL Hue Hbp Hg Hor Hm.
+    assert (Hdone : s' = s -> body_eval A e cm = Some r \/ T c -> body_run (seen_ans s c) e cm r [] ->
+              aS T L s' /\ atom T L (Some c) s s' /\ (~ T c -> r = r0) /\
               (forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) /\
-              (exists l, body_logs (seen_ans s' c) e cm = Some l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l))).
-    { intros -> Hr0 Hb Hl. split_and!; [done|apply atom_refl|done| |done|].
+              (exists l, body_run (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l))).
+    { intros -> Hr0 Hb. split_and!; [done|apply atom_refl| |done|].
       - intros HT. destruct (Hg HT) as [H1 _]. destruct Hr0 as [H2|H2]; [congruence|done].
       - exists []. split; [done|]. by rewrite app_nil_r. }
     destruct cm as [x|y|x v k|v a b|x n k|x ok n k|x n k|n v k|x v k|x mo q b k|x b k|b k|n k|b k|v k]; cbn [exec] in Hm; simpl in Hbp.
     - unfold on_value in Hm. rewrite (ev_of _ _ _ Hag Hbp) in Hm.
       destruct (ev e x) as [[z|y]|] eqn:Ev; unfold m_return in Hm; try done; injection Hm as <- <-.
-      + apply Hdone; [done| |simpl; done|simpl; rewrite Ev; done]. destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done.
-      + apply Hdone; [done| |simpl; done|simpl; rewrite Ev; done]. destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done.
-    - unfold m_return in Hm. injection Hm as <- <-. apply Hdone; [done| |simpl; done|simpl; done].
+      + apply Hdone; [done| |simpl; rewrite Ev; done]. destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done.
+      + apply Hdone; [done| |simpl; rewrite Ev; done]. destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done.
+    - unfold m_return in Hm. injection Hm as <- <-. apply Hdone; [done| |simpl; done].
       destruct Hor as [K|K]; [by right|]. left. done.
     - destruct Hbp as [Hv Hk]. unfold on_value in Hm. rewrite (ev_of _ _ _ Hag Hv) in Hm.
       destruct (ev e v) as [[z|y]|] eqn:Ev; try done.
-      + destruct (Aexec _ IH T L c d _ _ k s s' r A r0 Ha Hcur Hd Hq (env_agree_cons x z _ _ Hag) HL (Hk z eq_refl)
-                   ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev in H1; by split) Hor Hm) as (R1&R2&R3&R4&R5&R6).
-        split_and!; try done; simpl; rewrite Ev; done.
-      + injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done|simpl; rewrite Ev; done].
+      + destruct (Aexec _ IH T u L c d _ _ k s s' r A r0 Ha Hcur Hd Hq (env_agree_cons x z _ _ Hag) HL Hue (Hk z eq_refl)
+                   ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev in H1; by split) Hor Hm) as (R1&R2&R3&R4&(l&R5&R6)).
+        split_and!; [done|done|done|done|]. exists l. split; [simpl; rewrite Ev; done|done].
+      + injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done].
         destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done.
     - destruct Hbp as (Hv&Hab). unfold on_value in Hm. rewrite (ev_of _ _ _ Hag Hv) in Hm.
       destruct (ev e v) as [[z|y]|] eqn:Ev; try done.
       + destruct (Hab z eq_refl) as [Hb' Ha'].
         destruct (decide (z = 0%Z)) as [Hz|Hz].
-        * destruct (Aexec _ IH T L c d _ _ b s s' r A r0 Ha Hcur Hd Hq Hag HL (Hb' Hz)
-                     ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev, decide_True in H1 by done; by split) Hor Hm) as (R1&R2&R3&R4&R5&R6).
-          split_and!; try done; simpl; rewrite Ev, decide_True by done; done.
-        * destruct (Aexec _ IH T L c d _ _ a s s' r A r0 Ha Hcur Hd Hq Hag HL (Ha' Hz)
-                     ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev, decide_False in H1 by done; by split) Hor Hm) as (R1&R2&R3&R4&R5&R6).
-          split_and!; try done; simpl; rewrite Ev, decide_False by done; done.
-      + injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done|simpl; rewrite Ev; done].
+        * destruct (Aexec _ IH T u L c d _ _ b s s' r A r0 Ha Hcur Hd Hq Hag HL Hue (Hb' Hz)
+                     ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev, decide_True in H1 by done; by split) Hor Hm) as (R1&R2&R3&R4&(l&R5&R6)).
+          split_and!; [done|done|done|done|]. exists l. split; [simpl; rewrite Ev, decide_True by done; done|done].
+        * destruct (Aexec _ IH T u L c d _ _ a s s' r A r0 Ha Hcur Hd Hq Hag HL Hue (Ha' Hz)
+                     ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev, decide_False in H1 by done; by split) Hor Hm) as (R1&R2&R3&R4&(l&R5&R6)).
+          split_and!; [done|done|done|done|]. exists l. split; [simpl; rewrite Ev, decide_False by done; done|done].
+      + injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done].
         destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done.
     - (* a tracked read *)
       destruct Hbp as (Hn&Ht&Hk). unfold on_node, on_value in Hm. rewrite (ev_of _ _ _ Hag Hn) in Hm.
       destruct (ev e n) as [[z|y]|] eqn:Ev; try done.
-      2: { injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done|simpl; rewrite Ev; done].
+      2: { injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done].
            destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done. }
       destruct (decide (0 <= z)%Z) as [Hz|Hz]; [|done].
       apply bind_inv in Hm as (s1 & o & Hrd & Hm).
       destruct (Ht z eq_refl Hz (read_readable _ _ _ _ _ Hrd)) as [Hlt Hpt]. set (t := Z.to_nat z) in *.
-      (* the answer the guide holds *)
       assert (Hguide : ~ T c -> exists o0, A t = Some o0 /\ guide T s A /\ pure_in (shapes s) t /\ ~ T t /\
                 exists et, g_nodes s !! t = Some et /\ (quiet et \/ n_disposed et = true) /\ view_answer (read_view_of et) = o0).
       { intros K. destruct (Hg K) as [H1 H2]. simpl in H1. rewrite Ev, decide_True in H1 by done. fold t in H1.
@@ -2194,24 +2376,24 @@ Section Step.
       destruct (exec_read T L c d s s1 o t Ha Hcur Hd Hq HL Hlt Hpt Hor1 Hrd) as (Ha1&A1&Hcur1&(d1&Hd1&Hq1&HL1)&Hse&Hkeep&Hans&Hv1).
       erewrite bind_some in Hm; [|exact (note_body t o s1 ltac:(eauto))].
       pose proof (at_shapes _ _ _ _ _ A1) as Hsh.
+      assert (Hue1 : u = true -> n_kind d1 = KEffect).
+      { intros K. pose proof (Hue K) as K2. pose proof (shapes_lookup s c d Hd) as Y1. pose proof (shapes_lookup s1 c d1 Hd1) as Y2. rewrite Hsh, Y1 in Y2. unfold shape_of in Y2. injection Y2 as Y4 _ _ _. congruence. }
       assert (Ho0 : ~ T c -> A t = Some o).
       { intros K. destruct (Hguide K) as (o0&EA&_&_&HTt&et&He&Hq0&Hv). rewrite (Hans et He Hq0 HTt) in Hv. by rewrite <- Hv in EA. }
       destruct o as [v|y].
-      + assert (Hbp1 : body_pure (fun t0 => readable (shapes s1) t0 -> t0 < L /\ pure_in (shapes s1) t0) ((x, v) :: e) k).
+      + assert (Hbp1 : body_pureu u (fun t0 => readable (shapes s1) t0 -> t0 < L /\ pure_in (shapes s1) t0) ((x, v) :: e) k).
         { rewrite Hsh. apply Hk. }
-        destruct (Aexec _ IH T L c d1 _ _ k s1 s' r A r0 Ha1 Hcur1 Hd1 Hq1 (env_agree_cons x v _ _ Hag) HL1 Hbp1
+        destruct (Aexec _ IH T u L c d1 _ _ k s1 s' r A r0 Ha1 Hcur1 Hd1 Hq1 (env_agree_cons x v _ _ Hag) HL1 Hue1 Hbp1
                    ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev, decide_True in H1 by done; fold t in H1; rewrite (Ho0 K) in H1; split; [done|exact (guide_atom _ _ _ _ _ _ A1 H2)])
-                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R3&R4&R5&(l&R6&R7)).
-        split_and!; [done|eapply atom_trans; [exact A1|exact R2]| |done|auto|].
-        * simpl. rewrite Ev, decide_True by done. fold t. rewrite (R5 _ _ Hse). exact R3.
-        * exists l. split; [|by rewrite R7, Hv1]. simpl. rewrite Ev, decide_True by done. fold t. rewrite (R5 _ _ Hse). exact R6.
-      + unfold m_return in Hm. injection Hm as <- <-. split_and!; [done|done| |intros K; destruct (Hg K) as [H1 _]; simpl in H1; rewrite Ev, decide_True in H1 by done; fold t in H1; rewrite (Ho0 K) in H1; congruence|done|].
-        * simpl. rewrite Ev, decide_True by done. fold t. rewrite Hse. done.
-        * exists []. split; [simpl; rewrite Ev, decide_True by done; fold t; rewrite Hse; done|by rewrite app_nil_r].
+                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R3&R4&(l&R5&R6)).
+        split_and!; [done|eapply atom_trans; [exact A1|exact R2]|done|auto|].
+        exists l. split; [|by rewrite R6, Hv1]. simpl. rewrite Ev. split; [done|]. fold t. rewrite (R4 _ _ Hse). exact R5.
+      + unfold m_return in Hm. injection Hm as <- <-. split_and!; [done|done|intros K; destruct (Hg K) as [H1 _]; simpl in H1; rewrite Ev, decide_True in H1 by done; fold t in H1; rewrite (Ho0 K) in H1; congruence|done|].
+        exists []. split; [simpl; rewrite Ev; split; [done|]; fold t; rewrite Hse; done|by rewrite app_nil_r].
     - (* a tracked read that keeps a failure *)
       destruct Hbp as (Hn&Ht&Hk1&Hk2). unfold on_node, on_value in Hm. rewrite (ev_of _ _ _ Hag Hn) in Hm.
       destruct (ev e n) as [[z|y]|] eqn:Ev; try done.
-      2: { injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done|simpl; rewrite Ev; done].
+      2: { injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done].
            destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done. }
       destruct (decide (0 <= z)%Z) as [Hz|Hz]; [|done].
       apply bind_inv in Hm as (s1 & o & Hrd & Hm).
@@ -2225,26 +2407,57 @@ Section Step.
       destruct (exec_read T L c d s s1 o t Ha Hcur Hd Hq HL Hlt Hpt Hor1 Hrd) as (Ha1&A1&Hcur1&(d1&Hd1&Hq1&HL1)&Hse&Hkeep&Hans&Hv1).
       erewrite bind_some in Hm; [|exact (note_body t o s1 ltac:(eauto))].
       pose proof (at_shapes _ _ _ _ _ A1) as Hsh.
+      assert (Hue1 : u = true -> n_kind d1 = KEffect).
+      { intros K. pose proof (Hue K) as K2. pose proof (shapes_lookup s c d Hd) as Y1. pose proof (shapes_lookup s1 c d1 Hd1) as Y2. rewrite Hsh, Y1 in Y2. unfold shape_of in Y2. injection Y2 as Y4 _ _ _. congruence. }
       assert (Ho0 : ~ T c -> A t = Some o).
       { intros K. destruct (Hguide K) as (o0&EA&_&_&HTt&et&He&Hq0&Hv). rewrite (Hans et He Hq0 HTt) in Hv. by rewrite <- Hv in EA. }
       destruct o as [v|y].
-      + assert (Hbp1 : body_pure (fun t0 => readable (shapes s1) t0 -> t0 < L /\ pure_in (shapes s1) t0) ((ok, 1%Z) :: (x, v) :: e) k).
+      + assert (Hbp1 : body_pureu u (fun t0 => readable (shapes s1) t0 -> t0 < L /\ pure_in (shapes s1) t0) ((ok, 1%Z) :: (x, v) :: e) k).
         { rewrite Hsh. apply Hk1. }
-        destruct (Aexec _ IH T L c d1 _ _ k s1 s' r A r0 Ha1 Hcur1 Hd1 Hq1 (env_agree_cons ok _ _ _ (env_agree_cons x v _ _ Hag)) HL1 Hbp1
+        destruct (Aexec _ IH T u L c d1 _ _ k s1 s' r A r0 Ha1 Hcur1 Hd1 Hq1 (env_agree_cons ok _ _ _ (env_agree_cons x v _ _ Hag)) HL1 Hue1 Hbp1
                    ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev, decide_True in H1 by done; fold t in H1; rewrite (Ho0 K) in H1; split; [done|exact (guide_atom _ _ _ _ _ _ A1 H2)])
-                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R3&R4&R5&(l&R6&R7)).
-        split_and!; [done|eapply atom_trans; [exact A1|exact R2]| |done|auto|].
-        * simpl. rewrite Ev, decide_True by done. fold t. rewrite (R5 _ _ Hse). exact R3.
-        * exists l. split; [|by rewrite R7, Hv1]. simpl. rewrite Ev, decide_True by done. fold t. rewrite (R5 _ _ Hse). exact R6.
-      + assert (Hbp1 : body_pure (fun t0 => readable (shapes s1) t0 -> t0 < L /\ pure_in (shapes s1) t0) ((ok, 0%Z) :: (x, y) :: e) k).
+                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R3&R4&(l&R5&R6)).
+        split_and!; [done|eapply atom_trans; [exact A1|exact R2]|done|auto|].
+        exists l. split; [|by rewrite R6, Hv1]. simpl. rewrite Ev. split; [done|]. fold t. rewrite (R4 _ _ Hse). exact R5.
+      + assert (Hbp1 : body_pureu u (fun t0 => readable (shapes s1) t0 -> t0 < L /\ pure_in (shapes s1) t0) ((ok, 0%Z) :: (x, y) :: e) k).
         { rewrite Hsh. apply Hk2. }
-        destruct (Aexec _ IH T L c d1 _ _ k s1 s' r A r0 Ha1 Hcur1 Hd1 Hq1 (env_agree_cons ok _ _ _ (env_agree_cons x y _ _ Hag)) HL1 Hbp1
+        destruct (Aexec _ IH T u L c d1 _ _ k s1 s' r A r0 Ha1 Hcur1 Hd1 Hq1 (env_agree_cons ok _ _ _ (env_agree_cons x y _ _ Hag)) HL1 Hue1 Hbp1
                    ltac:(intros K; destruct (Hg K) as [H1 H2]; simpl in H1; rewrite Ev, decide_True in H1 by done; fold t in H1; rewrite (Ho0 K) in H1; split; [done|exact (guide_atom _ _ _ _ _ _ A1 H2)])
-                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R3&R4&R5&(l&R6&R7)).
-        split_and!; [done|eapply atom_trans; [exact A1|exact R2]| |done|auto|].
-        * simpl. rewrite Ev, decide_True by done. fold t. rewrite (R5 _ _ Hse). exact R3.
-        * exists l. split; [|by rewrite R7, Hv1]. simpl. rewrite Ev, decide_True by done. fold t. rewrite (R5 _ _ Hse). exact R6.
-    - done.
+                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R3&R4&(l&R5&R6)).
+        split_and!; [done|eapply atom_trans; [exact A1|exact R2]|done|auto|].
+        exists l. split; [|by rewrite R6, Hv1]. simpl. rewrite Ev. split; [done|]. fold t. rewrite (R4 _ _ Hse). exact R5.
+    - (* an untracked read *)
+      destruct Hbp as (Hu&Hn&Ht&Hk). subst u. unfold on_node, on_value in Hm. rewrite (ev_of _ _ _ Hag Hn) in Hm.
+      assert (HTc : T c).
+      { destruct Hor as [K|[K _]]; [done|]. destruct (Hg K) as [H1 _]. simpl in H1. discriminate H1. }
+      destruct (ev e n) as [[z|y]|] eqn:Ev; try done.
+      2: { injection Hm as <- <-. apply Hdone; [done|by right|simpl; rewrite Ev; done]. }
+      destruct (decide (0 <= z)%Z) as [Hz|Hz]; [|done].
+      apply bind_inv in Hm as (s1 & o & Hrd & Hm).
+      destruct (Ht z eq_refl Hz (read_u_readable _ _ _ _ _ Hrd)) as [Hlt Hpt]. set (t := Z.to_nat z) in *.
+      pose proof Ha as (Hc0&_&_).
+      assert (Hkd : n_kind d = KEffect) by exact (Hue eq_refl).
+      assert (Hfl : g_flushing s = true).
+      { refine (b_effect_flushing _ (proj1 (proj2 Hc0)) c _ _); [exists d; done|exact (b_current _ (proj1 (proj2 Hc0)) c Hcur)]. }
+      assert (Hnpc : ~ pure_in (shapes s) c) by (intros K0; exact (pure_kind s c d K0 Hd Hkd)).
+      destruct (Aunt _ IH T L c t s s1 o Ha Hcur Hfl Hnpc Hlt Hpt Hrd) as (Ha1&A1&Hcur1&Hse&Hv1).
+      erewrite bind_some in Hm; [|exact (note_body t o s1 ltac:(eauto))].
+      pose proof (at_shapes _ _ _ _ _ A1) as Hsh.
+      destruct (at_any _ _ _ _ _ A1 c d Hd) as (d1&Hd1&_).
+      assert (Hq1 : qc s1 c d1) by exact (qc_shapes s1 s c d1 d (eq_sym Hsh) Hd1 Hd Hq).
+      assert (HL1 : below_or_all L c d1 s1) by exact (below_shapes L c d d1 s s1 Hsh Hd Hd1 HL).
+      assert (Hkd1 : n_kind d1 = KEffect).
+      { pose proof (shapes_lookup s c d Hd) as Y1. pose proof (shapes_lookup s1 c d1 Hd1) as Y2. rewrite Hsh, Y1 in Y2. unfold shape_of in Y2. injection Y2 as Y4 _ _ _. congruence. }
+      assert (Hup : forall t0 o0, seen_ans s c t0 = Some o0 -> seen_ans s1 c t0 = Some o0) by (intros t0 o0 Ho; by rewrite Hse).
+      destruct o as [v|y].
+      + assert (Hbp1 : body_pureu true (fun t0 => readable (shapes s1) t0 -> t0 < L /\ pure_in (shapes s1) t0) ((x, v) :: e) k).
+        { rewrite Hsh. apply Hk. }
+        destruct (Aexec _ IH T true L c d1 _ _ k s1 s' r A r0 Ha1 Hcur1 Hd1 Hq1 (env_agree_cons x v _ _ Hag) HL1 (fun _ => Hkd1) Hbp1
+                   (fun K => False_ind _ (K HTc)) (or_introl HTc) Hm) as (R1&R2&R3&R4&(l&R5&R6)).
+        split_and!; [done|eapply atom_trans; [exact A1|exact R2]|done|intros t0 o0 Ho; exact (R4 _ _ (Hup _ _ Ho))|].
+        exists l. split; [|by rewrite R6, Hv1]. simpl. rewrite Ev. split; [done|]. left. exists v. exact R5.
+      + unfold m_return in Hm. injection Hm as <- <-. split_and!; [done|done|intros K; done|done|].
+        exists []. split; [simpl; rewrite Ev; split; [done|]; right; exists y; done|by rewrite app_nil_r, Hv1].
     - done.
     - done.
     - done.
@@ -2263,9 +2476,9 @@ Section Step.
       assert (Hg0 : ~ T c -> body_eval A e b = Some r01 /\ guide T s0 A).
       { intros K. destruct (Hg K) as [H1 H2]. simpl in H1. split; [|exact (guide_same _ _ _ _ H0 H2)]. subst r01.
         destruct (body_eval A e b) as [x0|]; done. }
-      destruct (Aexec _ IH T L c d _ _ b s0 s1 r1 A r01 Ha0 Hcur Hd (qc_same _ _ _ _ (ltac:(split_and!; done) : same4 s0 s) Hq) Hag (below_shapes L c d d s s0 Hsh0 Hd Hd HL)
+      destruct (Aexec _ IH T u L c d _ _ b s0 s1 r1 A r01 Ha0 Hcur Hd (qc_same _ _ _ _ (ltac:(split_and!; done) : same4 s0 s) Hq) Hag (below_shapes L c d d s s0 Hsh0 Hd Hd HL) Hue
                  ltac:(by rewrite Hsh0)
-                 Hg0 ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh0]]) Hb1) as (R1&R2&R3&R4&R5&(l1&R6&R7)).
+                 Hg0 ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh0]]) Hb1) as (R1&R2&R4&R5&(l1&R6&R7)).
       pose proof (at_shapes _ _ _ _ _ R2) as Sh1.
       assert (H1 : same4 s1 s2) by done.
       assert (Hcur2 : g_current s2 = Some c) by exact (eq_trans (at_current _ _ _ _ _ R2) Hcur).
@@ -2295,25 +2508,25 @@ Section Step.
         destruct (at_any _ _ _ _ _ A4 c d Hd) as (d3&Hd3&_).
         assert (Hq3 : qc s3 c d3) by exact (qc_shapes s3 s c d3 d (eq_sym Sh4) Hd3 Hd Hq).
         assert (HL3 : below_or_all L c d3 s3) by exact (below_shapes L c d d3 s s3 Sh4 Hd Hd3 HL).
+        assert (Hue3 : u = true -> n_kind d3 = KEffect).
+        { intros K. pose proof (Hue K) as K2. pose proof (shapes_lookup s c d Hd) as Y1. pose proof (shapes_lookup s3 c d3 Hd3) as Y2. rewrite Sh4, Y1 in Y2. unfold shape_of in Y2. injection Y2 as Y4 _ _ _. congruence. }
         assert (Hse3 : forall t o, seen_ans s2 c t = Some o -> seen_ans s3 c t = Some o) by (intros t o Ho; by rewrite (seen_ans_same _ _ _ H3)).
-        destruct (Aexec _ IH T L c d3 _ _ k s3 s' r A r0 Ha3 Hcur3 Hd3 Hq3 Hag HL3 ltac:(by rewrite Sh4)
+        destruct (Aexec _ IH T u L c d3 _ _ k s3 s' r A r0 Ha3 Hcur3 Hd3 Hq3 Hag HL3 Hue3 ltac:(by rewrite Sh4)
                    ltac:(intros K; destruct (Hg K) as [X3 X4]; simpl in X3; pose proof (R4 K) as X5; subst r01;
                          destruct (body_eval A e b) as [[v0|y0]|]; simpl in X5;
                          [split; [exact X3|exact (guide_atom _ _ _ _ _ _ A4 X4)]|discriminate X5|discriminate X3])
-                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Sh4]]) Hm) as (Q1&Q2&Q3&Q4&Q5&(l2&Q6&Q7)).
+                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Sh4]]) Hm) as (Q1&Q2&Q4&Q5&(l2&Q6&Q7)).
         assert (Hup : forall t o, seen_ans s1 c t = Some o -> seen_ans s' c t = Some o) by (intros t o Ho; exact (Q5 _ _ (Hse3 _ _ (Hse2 _ _ Ho)))).
-        pose proof (body_eval_mono _ _ _ _ _ Hup R3) as E1. pose proof (body_logs_mono _ _ _ _ _ Hup R6) as E2.
-        split_and!; [done|eapply atom_trans; [exact A4|exact Q2]| |done|intros t o Ho; exact (Hup _ _ (R5 _ _ (Hse0 _ _ Ho)))|].
-        * cbn [body_eval]. rewrite E1. exact Q3.
-        * exists (l1 ++ l2). split; [cbn [body_logs]; rewrite E1, E2, Q6; reflexivity|].
-          rewrite Q7, fmap_app, app_assoc. destruct Hs3 as [ -> | -> ]; exact (f_equal (fun x => x ++ (EvLog c <$> l2)) Hv2).
+        pose proof (body_run_mono _ _ _ _ _ _ Hup R6) as E1.
+        split_and!; [done|eapply atom_trans; [exact A4|exact Q2]|done|intros t o Ho; exact (Hup _ _ (R5 _ _ (Hse0 _ _ Ho)))|].
+        exists (l1 ++ l2). split; [left; exists v, l1, l2; split_and!; done|].
+        rewrite Q7, fmap_app, app_assoc. destruct Hs3 as [ -> | -> ]; exact (f_equal (fun x => x ++ (EvLog c <$> l2)) Hv2).
       + cbv iota in Hm. unfold m_return in Hm. injection Hm as <- <-.
-        pose proof (body_eval_mono _ _ _ _ _ Hse2 R3) as E1. pose proof (body_logs_mono _ _ _ _ _ Hse2 R6) as E2.
-        split_and!; [done|done| | |intros t o Ho; exact (Hse2 _ _ (R5 _ _ (Hse0 _ _ Ho)))|].
-        * cbn [body_eval]. rewrite E1. reflexivity.
+        pose proof (body_run_mono _ _ _ _ _ _ Hse2 R6) as E1.
+        split_and!; [done|done| |intros t o Ho; exact (Hse2 _ _ (R5 _ _ (Hse0 _ _ Ho)))|].
         * intros K. destruct (Hg K) as [X3 _]. simpl in X3. pose proof (R4 K) as X5. subst r01.
           destruct (body_eval A e b) as [[v0|y0]|]; simpl in X5; [discriminate X5|congruence|discriminate X3].
-        * exists l1. split; [cbn [body_logs]; rewrite E1, E2; reflexivity|exact Hv2].
+        * exists l1. split; [right; exists y; split; [done|exact E1]|exact Hv2].
     - (* a log *)
       destruct Hbp as [Hv Hk]. unfold on_value in Hm. rewrite (ev_of _ _ _ Hag Hv) in Hm.
       destruct (ev e v) as [[z|y]|] eqn:Ev; try done.
@@ -2328,16 +2541,15 @@ Section Step.
         assert (A1 : atom T L (Some c) s s1).
         { apply atom_same; try done. intros m Hm0. subst s1. simpl. apply trace_view_other. intros ->. apply Hm0. by right. }
         pose proof (same4_shapes _ _ H1) as Hsh.
-        destruct (Aexec _ IH T L c d _ _ k s1 s' r A r0 Ha1 ltac:(done) ltac:(done) ltac:(exact (qc_same _ _ _ _ H1 Hq)) Hag (below_shapes L c d d s s1 Hsh Hd Hd HL)
+        destruct (Aexec _ IH T u L c d _ _ k s1 s' r A r0 Ha1 ltac:(done) ltac:(done) ltac:(exact (qc_same _ _ _ _ H1 Hq)) Hag (below_shapes L c d d s s1 Hsh Hd Hd HL) Hue
                    ltac:(by rewrite Hsh)
                    ltac:(intros K; destruct (Hg K) as [H3 H2]; simpl in H3; rewrite Ev in H3; split; [done|exact (guide_atom _ _ _ _ _ _ A1 H2)])
-                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R3&R4&R5&(l&R6&R7)).
-        split_and!; [done|eapply atom_trans; [exact A1|exact R2]| |done| |].
-        * simpl. rewrite Ev. done.
+                   ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Hsh]]) Hm) as (R1&R2&R4&R5&(l&R6&R7)).
+        split_and!; [done|eapply atom_trans; [exact A1|exact R2]|done| |].
         * intros t o Ho. apply R5. by rewrite (seen_ans_same _ _ _ H1).
-        * exists (z :: l). split; [simpl; rewrite Ev, R6; done|].
+        * exists (z :: l). split; [simpl; rewrite Ev; exists l; done|].
           rewrite R7. subst s1. simpl. rewrite trace_view_log, <- app_assoc. done.
-      + injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done|simpl; rewrite Ev; done].
+      + injection Hm as <- <-. apply Hdone; [done| |simpl; rewrite Ev; done].
         destruct Hor as [K|K]; [by right|]. left. simpl. rewrite Ev. done.
   Qed.
 
@@ -2884,8 +3096,9 @@ Section Step.
     (* the body *)
     destruct (hosted_parts _ _ _ _ _ Eh) as (s1 & Ex & Es2). fold s0 in Ex.
     assert (Hbp0 : body_pure (fun u => readable (shapes s0) u -> u < t /\ pure_in (shapes s0) u) (n_env d) (n_body d)) by (by rewrite Sh0).
-    destruct (Aexec _ IH T' t t (run_node d) (run_env d) (n_env d) (n_body d) s0 s1 r (seen_ans s t) r0 Ha0 Hcur0 Ht0 Hqc0
-                (env_agree_run d) (or_introl (conj Hk eq_refl)) Hbp0 Hguide Hor Ex) as ((Hc1&Hw1&St1)&A1&Hev&Hrr&_).
+    destruct (Aexec _ IH T' false t t (run_node d) (run_env d) (n_env d) (n_body d) s0 s1 r (seen_ans s t) r0 Ha0 Hcur0 Ht0 Hqc0
+                (env_agree_run d) (or_introl (conj Hk eq_refl)) ltac:(discriminate) Hbp0 Hguide Hor Ex) as ((Hc1&Hw1&St1)&A1&Hrr&_&(lr9&Hrun9&_)).
+    pose proof (proj1 (body_run_eval _ _ _ _ _ _ _ Hbp0 ltac:(discriminate) Hrun9)) as Hev.
     assert (Hrnt : ~ rn s0 t None t) by (intros [[_ K]|K]; [lia|done]).
     destruct (at_rise _ _ _ _ _ A1 t (run_node d) Hrnt Ht0) as (d1&Hd1&R1).
     pose proof R1 as (Sh1&Vw1&Di1&_&_&Sc1&Vi1&Fr1&Fl1).
@@ -3110,6 +3323,7 @@ Lemma A_ok_all f : A_ok f.
 Proof.
   induction f as [|f IH]; [exact A_ok_0|]. split.
   - exact (Aexec_S f IH).
+  - exact (Aunt_S f IH).
   - exact (Aread_S f IH).
   - exact (Anode_S f IH).
   - exact (Aupd_S f IH).
@@ -3132,7 +3346,7 @@ Definition window (d : node) : Prop := n_status d = StUninitialized.
 (** The effect ran, and its latest run read and logged what its body answers over the recorded reads. *)
 Definition ran_ok (s : state) (c : node_id) (d : node) : Prop :=
   exists r l pre,
-    body_eval (seen_ans s c) (n_env d) (n_body d) = Some r /\ body_logs (seen_ans s c) (n_env d) (n_body d) = Some l /\
+    body_run (seen_ans s c) (n_env d) (n_body d) r l /\
     trace_view c (g_trace s) = pre ++ EvRun c :: (EvLog c <$> l).
 
 (** [X] holds the effects whose scheduling mark is due. *)
@@ -3162,9 +3376,9 @@ Lemma ran_ok_ext s s' c d d' :
   n_env d' = n_env d -> n_body d' = n_body d -> trace_view c (g_trace s') = trace_view c (g_trace s) ->
   ran_ok s c d -> ran_ok s' c d'.
 Proof.
-  intros H1 H2 He Hb Hv (r&l&pre&A&B&C). exists r, l, pre. rewrite He, Hb, Hv.
+  intros H1 H2 He Hb Hv (r&l&pre&A&C). exists r, l, pre. rewrite He, Hb, Hv.
   assert (Hm : forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) by (intros t o H; exact (eq_trans (seen_ans_ext s s' c H1 H2 t) H)).
-  split_and!; [exact (body_eval_mono _ _ _ _ _ Hm A)|exact (body_logs_mono _ _ _ _ _ Hm B)|exact C].
+  split; [exact (body_run_mono _ _ _ _ _ _ Hm A)|exact C].
 Qed.
 
 Lemma ran_frame X s s' :
@@ -4948,11 +5162,11 @@ Proof.
   { unfold shapes. rewrite HnI, fmap_insert. assert (X : shape_of (u5 (u d)) = shape_of d) by done. rewrite X. apply insert_id. by rewrite lookup_fmap, Hd. }
   assert (HdI : g_nodes sI !! n = Some (u5 (u d))) by exact Hd6.
   assert (HqeI : quiet_effect sI n (u5 (u d))) by exact (isq_shape_fwd _ _ _ _ _ HshI eq_refl Hq).
-  assert (Hbp8 : body_pure (fun t => readable (shapes sI) t -> t < L /\ pure_in (shapes sI) t) (n_env (u d)) (n_body (u d))).
+  assert (Hbp8 : body_pureu true (fun t => readable (shapes sI) t -> t < L /\ pure_in (shapes sI) t) (n_env (u d)) (n_body (u d))).
   { destruct HqeI as [_ Hb8]. revert Hb8. apply body_pure_mono. intros t Ht9 Hr9. split; [exact (Hids t (readable_node _ _ Hr9))|exact (Ht9 Hr9)]. }
-  destruct (Aexec _ (A_ok_all g) (fun x => x = n) L n (u5 (u d)) (n_env (u d)) (n_env (u d)) (n_body (u d)) sI s8 r (fun _ => None) (Ok 0%Z)
-              (conj HcI (conj WI StI)) eq_refl HdI QI (env_agree_refl _) (or_intror (conj Hk Hids)) Hbp8
-              ltac:(intros K; exfalso; apply K; reflexivity) (or_introl eq_refl) Ex) as ((Hc8&Hw8&St8)&A8&Hev8&_&_&(l8&Hlog8&Hview8)).
+  destruct (Aexec _ (A_ok_all g) (fun x => x = n) true L n (u5 (u d)) (n_env (u d)) (n_env (u d)) (n_body (u d)) sI s8 r (fun _ => None) (Ok 0%Z)
+              (conj HcI (conj WI StI)) eq_refl HdI QI (env_agree_refl _) (or_intror (conj Hk Hids)) (fun _ => Hk) Hbp8
+              ltac:(intros K; exfalso; apply K; reflexivity) (or_introl eq_refl) Ex) as ((Hc8&Hw8&St8)&A8&_&_&(l8&Hrun8&Hview8)).
   assert (Hrnn : ~ rn sI L None n).
   { intros [[K _]|K]; [|done]. exact (pure_kind sI n _ K HdI Hk). }
   destruct (at_rise _ _ _ _ _ A8 n (u5 (u d)) Hrnn HdI) as (d8&Hd8&R8).
@@ -5000,9 +5214,8 @@ Proof.
         - intros y. apply SeE. }
       assert (Hsf : shape_of dF = shape_of (u5 (u d))) by (rewrite ShF; apply R8).
       unfold shape_of in Hsf. injection Hsf as _ _ E5 B5.
-      exists r, l8, (trace_view n (g_trace s0)). rewrite E5, B5. split_and!.
-      + exact (body_eval_mono _ _ _ _ _ Hm5 Hev8).
-      + exact (body_logs_mono _ _ _ _ _ Hm5 Hlog8).
+      exists r, l8, (trace_view n (g_trace s0)). rewrite E5, B5. split.
+      + exact (body_run_mono _ _ _ _ _ _ Hm5 Hrun8).
       + rewrite VE, Hview8, HtI, trace_view_app. unfold trace_view at 2. rewrite filter_cons_True, filter_nil; [|simpl; by apply bool_decide_eq_true_2].
         rewrite <- app_assoc. reflexivity.
     - destruct (shapes_node_back s0 sE c d' ShE Hd') as (x&Hx&Hsx).
@@ -6142,22 +6355,22 @@ Definition converged (s : state) : Prop :=
     n_freshness d = Clean /\ 0 < count_runs e (g_trace s) /\
     (forall t, t ∈ read_prefix (g_edges s) e -> seen_of (g_ghost s) e t <> [] /\
        forall v, v ∈ seen_of (g_ghost s) e t -> denotes s t (view_answer v)) /\
-    exists r' k,
+    (exists r' k, body_run (den k s) (n_env d) (n_body d) r' (last_run_logs e (g_trace s))) /\
+    (has_untracked (n_body d) = false -> exists r' k,
       body_eval (seen_ans s e) (n_env d) (n_body d) = Some r' /\ body_eval (den k s) (n_env d) (n_body d) = Some r' /\
       body_logs (seen_ans s e) (n_env d) (n_body d) = Some (last_run_logs e (g_trace s)) /\
-      body_logs (den k s) (n_env d) (n_body d) = Some (last_run_logs e (g_trace s)).
+      body_logs (den k s) (n_env d) (n_body d) = Some (last_run_logs e (g_trace s))).
 
 (**md
 **Convergence: at quiescence, every effect ran, and its last run read and logged what its sources now denote.**
 
-After a whole program from a new graph that leaves no live queue entry and nothing running, each live effect is `Clean` and has an `EvRun` in the trace. Each source read in its last run has a recorded read, each answering what the source denotes over the current signals. The effect's body, with each read answered from its recorded reads, gives the same result as with each read answered by the denotation, and its logs over the denotation are the `EvLog`s of its last run.
+After a whole program from a new graph that leaves no live queue entry and nothing running, each live effect is `Clean` and has an `EvRun` in the trace. Each source of a tracked read in its last run has a recorded read, each answering what the source denotes over the current signals. Its last run's `EvLog`s are the logs of a run of its body with each tracked read answered by the denotation and each untracked read by some value. An untracked read is entitled to no more: its source can move with no run. With no untracked read in the body, the body gives one result over its recorded reads and over the denotation, with the logs of its last run.
 
-Premises: the program's end state has every memo outside the self-dirtying case, and every effect only reads. Batches and computed read targets are inside the premises, in memos and in effects: [`widened_forms_reached`](Ranvier.Pure.Witnesses.html#widened_forms_reached).
+Premises: the program's end state has every memo outside the self-dirtying case, and every effect only reads. Batches and computed read targets, in memos and in effects, and an effect's untracked reads are inside the premises: [`widened_forms_reached`](Ranvier.Pure.Witnesses.html#widened_forms_reached), [`untracked_read_reached`](Ranvier.Pure.Witnesses.html#untracked_read_reached).
 
 Exclusions from an effect's body:
 
 - A write rests on a counterexample: [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) falsifies the conclusion ([`effects_only_read_needed`](Ranvier.Pure.Witnesses.html#effects_only_read_needed)). This premise is provisional, pending the owner's ruling on that entry.
-- An untracked read: the logs clause is false over it, since the source can move with no run. A weaker form is unproved with no counterexample.
 - A cleanup, and an effect or other node created in the body, rest on the proof's reach: unproved with no counterexample.
 
 `quiescent` excludes the queue `failed_batch_leaves_queue` leaves. [`convergence_reached`](Ranvier.Pure.Witnesses.html#convergence_reached) reaches every premise on a live effect over live memos. The form over all programs is the Open `convergence_all_statement`.
@@ -6197,18 +6410,18 @@ Proof.
       - simpl in K. unfold nothing_passed in Hnp. rewrite Hnp in K. set_solver.
       - destruct K as (w&Kw&Kr). pose proof (proj2 Hset e d w Hd Kw Hl). lia. }
     exact (quiet_denotes s (proj1 Hw) Hc Hnr t x Hx Hpt Hqx). }
-  split_and!; [done| | |].
-  - destruct (proj1 (proj2 (proj2 (proj2 Hw))) e d Hd (He e d Hd Hk) Hl ltac:(by rewrite Hcl)) as [[K _]|(r0&l&pre&_&_&K)]; [done|].
-    exact (count_runs_view _ _ _ _ K).
-  - intros t Ht. destruct (Hsrc t Ht) as [A (x&Hx&B&C)]. split; [done|]. intros v Hv. rewrite (B v Hv). by exists (S t).
-  - destruct (proj1 (proj2 (proj2 (proj2 Hw))) e d Hd (He e d Hd Hk) Hl ltac:(by rewrite Hcl)) as [[K _]|(r0&l&pre&A&B&C)]; [done|].
-    rewrite (last_run_logs_view _ _ _ _ C).
-    assert (Hm5 : forall t o, seen_ans s e t = Some o -> den (S (g_next_id s)) s t = Some o).
-    { intros t o Ho. pose proof (seen_ans_prefix _ _ _ _ Ho) as Hpre. destruct (Hsrc t Hpre) as [N (x&Hx&H1&H2)].
-      unfold seen_ans in Ho. rewrite decide_True in Ho by done. destruct (seen_of (g_ghost s) e t) as [|v l0] eqn:Es; [done|].
-      simpl in Ho. injection Ho as <-. rewrite (H1 v) by left. eapply den_mono; [|exact H2].
-      pose proof (core_ids s Hc t (mk_is_Some _ _ Hx)). lia. }
-    exists r0, (S (g_next_id s)). split_and!; [done|exact (body_eval_mono _ _ _ _ _ Hm5 A)|done|exact (body_logs_mono _ _ _ _ _ Hm5 B)].
+  destruct (proj1 (proj2 (proj2 (proj2 Hw))) e d Hd (He e d Hd Hk) Hl ltac:(by rewrite Hcl)) as [[K _]|(r0&l&pre&A&C)]; [done|].
+  rewrite (last_run_logs_view _ _ _ _ C).
+  assert (Hm5 : forall t o, seen_ans s e t = Some o -> den (S (g_next_id s)) s t = Some o).
+  { intros t o Ho. pose proof (seen_ans_prefix _ _ _ _ Ho) as Hpre. destruct (Hsrc t Hpre) as [N (x&Hx&H1&H2)].
+    unfold seen_ans in Ho. rewrite decide_True in Ho by done. destruct (seen_of (g_ghost s) e t) as [|v l0] eqn:Es; [done|].
+    simpl in Ho. injection Ho as <-. rewrite (H1 v) by left. eapply den_mono; [|exact H2].
+    pose proof (core_ids s Hc t (mk_is_Some _ _ Hx)). lia. }
+  split_and!; [done|exact (count_runs_view _ _ _ _ C)| |exists r0, (S (g_next_id s)); exact (body_run_mono _ _ _ _ _ _ Hm5 A)|].
+  - intros t Ht. destruct (Hsrc t Ht) as [A1 (x&Hx&B&D)]. split; [done|]. intros v Hv. rewrite (B v Hv). by exists (S t).
+  - intros Hnu. destruct (He e d Hd Hk) as [_ Hbp].
+    destruct (body_run_eval _ _ _ _ _ _ _ Hbp (fun _ => Hnu) A) as [E1 E2].
+    exists r0, (S (g_next_id s)). split_and!; [done|exact (body_eval_mono _ _ _ _ _ Hm5 E1)|done|exact (body_logs_mono _ _ _ _ _ Hm5 E2)].
 Qed.
 
 (** ** Deciding the premises on a concrete state *)
@@ -6236,7 +6449,7 @@ Proof.
   intros H n d Hd Hk. unfold effects_only_read_b in H. rewrite forallb_forall in H.
   assert (Hin : In (n, d) (map_to_list (g_nodes s))) by (apply list_elem_of_In; apply elem_of_map_to_list; exact Hd).
   specialize (H _ Hin). simpl in H. rewrite Hk in H. split; [exact Hk|].
-  eapply body_ok_pure; [|apply static_agrees_of|exact H]. intros t Ht _. exact (pure_b_sound (shapes s) (Datatypes.S t) t Ht).
+  apply body_pure_u. eapply body_ok_pure; [|apply static_agrees_of|exact H]. intros t Ht _. exact (pure_b_sound (shapes s) (Datatypes.S t) t Ht).
 Qed.
 
 (** The grammar of [body_pure], with its reads free. *)
@@ -6246,19 +6459,20 @@ Fixpoint body_shape (c : cmd) : bool :=
   | CThrow _ => true
   | CLet _ v k => expr_plain v && body_shape k
   | CIf v a b => expr_plain v && body_shape a && body_shape b
-  | CRead _ n k | CTryRead _ _ n k => expr_plain n && body_shape k
+  | CRead _ n k | CTryRead _ _ n k | CReadUntracked _ n k => expr_plain n && body_shape k
   | CLog v k => expr_plain v && body_shape k
   | CBatch b k => body_shape b && body_shape k
   | _ => false
   end.
 
-Lemma body_shape_pure (Q : node_id -> Prop) e c : (forall t, Q t) -> body_shape c = true -> body_pure Q e c.
+Lemma body_shape_pure (Q : node_id -> Prop) e c : (forall t, Q t) -> body_shape c = true -> body_pureu true Q e c.
 Proof.
   intros HQ. revert e. induction c; intros g; simpl; try done; rewrite ?andb_true_iff.
   - intros [H1 H2]. split; [done|]. intros z _. auto.
   - intros [[H1 H2] H3]. split; [done|]. intros z _. split; intros _; auto.
   - intros [H1 H2]. split_and!; [done|intros; apply HQ|intros v; auto].
   - intros [H1 H2]. split_and!; [done|intros; apply HQ|intros v; auto|intros v; auto].
+  - intros [H1 H2]. split_and!; [done|done|intros; apply HQ|intros v; auto].
   - intros [H1 H2]. split; auto.
   - intros [H1 H2]. split; auto.
 Qed.
@@ -6282,16 +6496,16 @@ Proof.
   intros t Hr. exact (readable_pure s t Ha Hr).
 Qed.
 
-(** A test that a body is not pure, trying a sample of answers for each read. *)
-Fixpoint refute (Q : node_id -> bool) (e : env) (c : cmd) : bool :=
+(** A test that a body is not pure, trying a sample of answers for each read. With [u], untracked reads are allowed. *)
+Fixpoint refute (u : bool) (Q : node_id -> bool) (e : env) (c : cmd) : bool :=
   match c with
   | CRet x => negb (expr_plain x)
   | CThrow _ => false
-  | CLet x v k => negb (expr_plain v) || match ev e v with Some (Ok z) => refute Q ((x, z) :: e) k | _ => false end
+  | CLet x v k => negb (expr_plain v) || match ev e v with Some (Ok z) => refute u Q ((x, z) :: e) k | _ => false end
   | CIf v a b =>
     negb (expr_plain v) ||
     match ev e v with
-    | Some (Ok z) => if decide (z = 0%Z) then refute Q e b else refute Q e a
+    | Some (Ok z) => if decide (z = 0%Z) then refute u Q e b else refute u Q e a
     | _ => false
     end
   | CRead x n k =>
@@ -6299,20 +6513,26 @@ Fixpoint refute (Q : node_id -> bool) (e : env) (c : cmd) : bool :=
     match ev e n with
     | Some (Ok z) => bool_decide (0 <= z)%Z && Q (Z.to_nat z)
     | _ => false
-    end || existsb (fun v => refute Q ((x, v) :: e) k) [0%Z; 1%Z; 2%Z; 3%Z]
+    end || existsb (fun v => refute u Q ((x, v) :: e) k) [0%Z; 1%Z; 2%Z; 3%Z]
   | CTryRead x ok n k =>
     negb (expr_plain n) ||
     match ev e n with
     | Some (Ok z) => bool_decide (0 <= z)%Z && Q (Z.to_nat z)
     | _ => false
-    end || existsb (fun v => refute Q ((ok, 1%Z) :: (x, v) :: e) k) [0%Z; 1%Z; 2%Z; 3%Z]
-  | CLog v k => negb (expr_plain v) || refute Q e k
-  | CBatch b k => refute Q e b || refute Q e k
+    end || existsb (fun v => refute u Q ((ok, 1%Z) :: (x, v) :: e) k) [0%Z; 1%Z; 2%Z; 3%Z]
+  | CReadUntracked x n k =>
+    negb u || negb (expr_plain n) ||
+    match ev e n with
+    | Some (Ok z) => bool_decide (0 <= z)%Z && Q (Z.to_nat z)
+    | _ => false
+    end || existsb (fun v => refute u Q ((x, v) :: e) k) [0%Z; 1%Z; 2%Z; 3%Z]
+  | CLog v k => negb (expr_plain v) || refute u Q e k
+  | CBatch b k => refute u Q e b || refute u Q e k
   | _ => true
   end.
 
-Lemma refute_sound (Q : node_id -> bool) (P : node_id -> Prop) e c :
-  (forall t, Q t = true -> ~ P t) -> refute Q e c = true -> ~ body_pure P e c.
+Lemma refute_sound u (Q : node_id -> bool) (P : node_id -> Prop) e c :
+  (forall t, Q t = true -> ~ P t) -> refute u Q e c = true -> ~ body_pureu u P e c.
 Proof.
   intros HQ. revert e. induction c; intros g; simpl; try done; try (intros _ K; exact K); rewrite ?orb_true_iff.
   - intros H H1. rewrite H1 in H. done.
@@ -6325,6 +6545,9 @@ Proof.
     + destruct (ev g n) as [[z|y]|]; [|done|done]. apply andb_true_iff in H as [Hz H]. apply bool_decide_eq_true_1 in Hz. exact (HQ _ H (H2 z eq_refl Hz)).
     + destruct H as [H|[H|[H|[H|H]]]]; try done; exact (IHc _ H (H3 _)).
   - intros H (H1&H2&H3&_). destruct H as [[H|H]|H]; [rewrite H1 in H; done| |].
+    + destruct (ev g n) as [[z|y]|]; [|done|done]. apply andb_true_iff in H as [Hz H]. apply bool_decide_eq_true_1 in Hz. exact (HQ _ H (H2 z eq_refl Hz)).
+    + destruct H as [H|[H|[H|[H|H]]]]; try done; exact (IHc _ H (H3 _)).
+  - intros H (H0&H1&H2&H3). destruct H as [[[H|H]|H]|H]; [rewrite H0 in H; done|rewrite H1 in H; done| |].
     + destruct (ev g n) as [[z|y]|]; [|done|done]. apply andb_true_iff in H as [Hz H]. apply bool_decide_eq_true_1 in Hz. exact (HQ _ H (H2 z eq_refl Hz)).
     + destruct H as [H|[H|[H|[H|H]]]]; try done; exact (IHc _ H (H3 _)).
   - intros H [H1 H2]. destruct H as [H|H]; [exact (IHc1 _ H H1)|exact (IHc2 _ H H2)].
@@ -6344,7 +6567,7 @@ Fixpoint bad_b (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n : n
   | Datatypes.S k' =>
     match S !! n with
     | Some (KSignal, _, _, _) => false
-    | Some (KMemo, CmpEq, e, b) => refute (fun t => readable_b S t && (bool_decide (n <= t) || bad_b S k' t)) e b
+    | Some (KMemo, CmpEq, e, b) => refute false (fun t => readable_b S t && (bool_decide (n <= t) || bad_b S k' t)) e b
     | _ => true
     end
   end.
@@ -6355,7 +6578,7 @@ Proof. unfold readable_b, readable. destruct (S !! t) as [[[[[] ?] ?] ?]|]; done
 Lemma bad_b_sound S : forall k n, bad_b S k n = true -> ~ pure_at S k n.
 Proof.
   induction k as [|k IH]; intros n; [simpl; tauto|]. simpl. destruct (S !! n) as [[[[[] [| |]] e] b]|]; try done; try (intros _ K; exact K).
-  intros H. refine (refute_sound _ _ _ _ _ H). intros t Ht K.
+  intros H. refine (refute_sound false _ _ _ _ _ H). intros t Ht K.
   apply andb_true_iff in Ht as [H1 H2]. destruct (K (readable_b_sound _ _ H1)) as [K1 K2].
   apply orb_true_iff in H2 as [H2|H2]; [apply bool_decide_eq_true_1 in H2; lia|exact (IH t H2 K2)].
 Qed.
@@ -6367,9 +6590,9 @@ Lemma not_dirtying_b s n : pure_b (shapes s) (Datatypes.S n) n = true -> ~ self_
 Proof. intros H K. exact (K (pure_b_sound (shapes s) (Datatypes.S n) n H)). Qed.
 
 Lemma not_quiet_b s c d :
-  refute (fun t => readable_b (shapes s) t && bad_b (shapes s) (Datatypes.S t) t) (n_env d) (n_body d) = true -> ~ quiet_effect s c d.
+  refute true (fun t => readable_b (shapes s) t && bad_b (shapes s) (Datatypes.S t) t) (n_env d) (n_body d) = true -> ~ quiet_effect s c d.
 Proof.
-  intros H [_ K]. refine (refute_sound _ _ _ _ _ H K). intros t Ht K2. apply andb_true_iff in Ht as [H1 H2].
+  intros H [_ K]. refine (refute_sound true _ _ _ _ _ H K). intros t Ht K2. apply andb_true_iff in Ht as [H1 H2].
   exact (bad_b_sound (shapes s) (Datatypes.S t) t H2 (K2 (readable_b_sound _ _ H1))).
 Qed.
 
@@ -6398,8 +6621,8 @@ Definition glitch_free_read_statement : Prop :=
     run_top f c (init current_flags) = Some (s, r) -> ~ self_dirtying s n ->
     read f' n true s = Some (s', o) -> exists k, body_den k s n = Some o.
 
-(** The read for a pure node, over a program whose other nodes are free. A read can settle a flush, and an effect in it can
-    write a source of the node, so this needs a state with nothing queued: [read_settles_writer] is the counterexample. *)
+(** The read for a pure node, over a program whose other nodes are free. False in a state with a queue:
+    [read_settles_writer]. *)
 Definition read_per_node_statement : Prop :=
   forall f f' c s r n s' o,
     run_top f c (init current_flags) = Some (s, r) -> pure_in (shapes s) n ->
@@ -6488,15 +6711,6 @@ Proof.
   specialize (H _ Hin). simpl in H. rewrite Hk in H. eapply body_ok_pure; [|apply static_agrees_of|exact H].
   intros t Ht. apply bool_decide_eq_true_1 in Ht. destruct (g_nodes s !! t); [intros _; exact Ht|done].
 Qed.
-
-(** A body with an untracked read: its log can stay behind, and the program holds no record of what the read answered. *)
-Fixpoint has_untracked (c : cmd) : bool :=
-  match c with
-  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CLog _ k | CWrite _ _ k | CCleanup _ k => has_untracked k
-  | CIf _ a b | CBatch a b => has_untracked a || has_untracked b
-  | CReadUntracked _ _ _ => true
-  | _ => false
-  end.
 
 (** Each live effect is [Clean] and ran, each source of its last run answered what its erased body computes now, and,
     with no untracked read in the effect, its last run logged what its erased body logs over those answers. *)
