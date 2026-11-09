@@ -77,10 +77,21 @@ Definition empty_ghost : ghost :=
      gh_run_reads := ∅; gh_nested := ∅ |}.
 
 (**md
+The saturated-write skip of `Pure/Optimised.v`. `SkipOff` is the present engine. `SkipAll` advances the
+graph epoch at every write that can make a saturated observer unsaturated. `SkipLeaveDirty` advances only
+where a node leaves `Dirty`, and exists for the counterexamples of `Pure/Optimised.v`.
+*)
+Inductive skip_mode := SkipOff | SkipLeaveDirty | SkipAll.
+
+Global Instance skip_mode_eq_dec : EqDecision skip_mode.
+Proof. solve_decision. Defined.
+
+(**md
 The whole state of a graph: the edge world (`g_edges`), the nodes, the owners, the effect queue with its
 head, the flush and batch bookkeeping, the running computation and owner, the id counter, the event
-trace (`g_trace`), and the ghost fields `g_running`, `g_ghost` and `g_registered`, which no engine
-decision reads.
+trace (`g_trace`), the ghost fields `g_running`, `g_ghost` and `g_registered`, which no engine
+decision reads, and the fields of the saturated-write skip: its mode (`g_skip`), the graph epoch
+(`g_epoch`) and each signal's stamp (`g_stamps`). The engine of `Pure/Engine.v` reads none of the last three.
 *)
 Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id node;
                   g_owners : gmap owner_id owner_state; g_queue : list node_id; g_queue_head : nat;
@@ -89,7 +100,8 @@ Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id n
                   g_next_id : nat; g_trace : list event;
                   g_running : list node_id (* ghost: between a run's start and EndRun *);
                   g_ghost : ghost;
-                  g_registered : gmap node_id nat (* ghost: the cleanups registered per host *) }.
+                  g_registered : gmap node_id nat (* ghost: the cleanups registered per host *);
+                  g_skip : skip_mode; g_epoch : nat; g_stamps : gmap node_id nat }.
 
 (**md
 `c` observes `src`: a slot of `c` and a position of `src`'s observers each hold the other.

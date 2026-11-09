@@ -18,7 +18,8 @@ Definition set_node (n : node_id) (d : node) (s : state) : state :=
      g_flushing := g_flushing s; g_flush_owed := g_flush_owed s; g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s;
      g_current := g_current s; g_untracked := g_untracked s; g_current_owner := g_current_owner s;
      g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
-     g_registered := g_registered s |}.
+     g_registered := g_registered s;
+     g_skip := g_skip s; g_epoch := g_epoch s; g_stamps := g_stamps s |}.
 
 (** [Graph.Schedule]. *)
 Definition enqueue (n : node_id) (s : state) : state :=
@@ -27,7 +28,8 @@ Definition enqueue (n : node_id) (s : state) : state :=
      g_flushing := g_flushing s; g_flush_owed := g_flush_owed s; g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s;
      g_current := g_current s; g_untracked := g_untracked s; g_current_owner := g_current_owner s;
      g_next_id := g_next_id s; g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s;
-     g_registered := g_registered s |}.
+     g_registered := g_registered s;
+     g_skip := g_skip s; g_epoch := g_epoch s; g_stamps := g_stamps s |}.
 
 (** The backward walk of [NotifyDirty], [NotifyDirtyExcept] and [NotifyCheck]. The natural is the
     cursor plus one, and each step reads the observer set of the current state. A cursor at or past the

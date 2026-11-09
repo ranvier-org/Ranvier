@@ -72,7 +72,7 @@ Local Definition mark_state (w : EdgeWorld) (nodes : gmap node_id node) (q : lis
   {| g_flags := current_flags; g_edges := w; g_nodes := nodes; g_owners := ∅; g_queue := q;
      g_queue_head := h; g_flushing := false; g_flush_owed := false; g_batch_depth := 0; g_pull_depth := 0; g_current := None;
      g_untracked := false; g_current_owner := None; g_next_id := 3; g_trace := []; g_running := running;
-     g_ghost := empty_ghost; g_registered := ∅ |}.
+     g_ghost := empty_ghost; g_registered := ∅; g_skip := SkipOff; g_epoch := 0; g_stamps := ∅ |}.
 
 (** Computation 2, in a run, has read source 1. *)
 Local Definition linked_world : EdgeWorld :=
