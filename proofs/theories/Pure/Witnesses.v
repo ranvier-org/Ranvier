@@ -1079,7 +1079,7 @@ Definition live_diamond (k : cmd) : cmd :=
 
 *Check, not a guarantee.*
 
-[`live_diamond`](#live_diamond) reaches every premise of [`convergence`](Ranvier.Pure.WholeGraph.html#convergence) and [`well_behaved_nothing_passed`](Ranvier.Pure.WholeGraph.html#well_behaved_nothing_passed). The effect read the memo at 10, the value its body answers over the signal at 3.
+[`live_diamond`](#live_diamond) reaches every premise of [`convergence`](Ranvier.Pure.WholeGraph.html#convergence) and [`well_behaved_nothing_passed`](Ranvier.Pure.WholeGraph.html#well_behaved_nothing_passed). The effect read the memo at 10, the value its body answers over the signal at 3, and its last run logged 10.
 *)
 Theorem convergence_reached :
   let s := final (live_diamond Nop) in
@@ -1087,7 +1087,7 @@ Theorem convergence_reached :
   well_behaved_program s /\ effects_only_read s /\ quiescent s /\
   (exists d, g_nodes s !! (5 : node_id) = Some d /\ n_kind d = KEffect /\ n_disposed d = false) /\
   (exists d, g_nodes s !! (4 : node_id) = Some d /\ n_kind d = KMemo /\ n_disposed d = false) /\
-  read_prefix (g_edges s) 5 = [4] /\ denotes s 4 (Ok 10%Z) /\
+  read_prefix (g_edges s) 5 = [4] /\ denotes s 4 (Ok 10%Z) /\ last_run_logs 5 (g_trace s) = [10%Z] /\
   forall v, v ∈ seen_of (g_ghost s) 5 4 -> view_answer v = Ok 10%Z.
 Proof.
   intros s.
@@ -1105,8 +1105,9 @@ Proof.
   split_and!; try assumption.
   - exists e. split_and!; assumption.
   - exists (default (signal_node 0%Z) (g_nodes s !! (4 : node_id))). split_and!; vm_compute; reflexivity.
-  - intros v Hv. destruct (convergence 100000 _ s _ Hm Ha He Hq 5 e 4 Hd5 Hk5 Hl5 Hin) as (_&_&Hall).
-    exact (denotes_unique s 4 _ _ (Hall v Hv) Hden).
+  - vm_compute. reflexivity.
+  - intros v Hv. destruct (convergence 100000 _ s _ Hm Ha He Hq 5 e Hd5 Hk5 Hl5) as (_&_&Hsrc&_).
+    exact (denotes_unique s 4 _ _ (proj2 (Hsrc 4 Hin) v Hv) Hden).
 Qed.
 
 (**md
