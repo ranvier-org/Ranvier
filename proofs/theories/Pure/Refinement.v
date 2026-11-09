@@ -858,7 +858,7 @@ Qed.
 
 Lemma tk_shapes s s' : tk_step s s' -> shapes s' = shapes s.
 Proof.
-  intros [F B _ _ _ _ _ _]. apply map_eq. intros m. unfold shapes. rewrite !lookup_fmap.
+  intros [F B _ _ _ _ _ _ _ _]. apply map_eq. intros m. unfold shapes. rewrite !lookup_fmap.
   destruct (g_nodes s !! m) as [d|] eqn:E.
   - destruct (F m d E) as (d'&Hd'&H&_). rewrite Hd'. simpl. by rewrite H.
   - destruct (g_nodes s' !! m) as [d'|] eqn:E'; [|done]. destruct (B m d' E') as [x Hx]. congruence.
@@ -1223,6 +1223,28 @@ Definition runs_in : list event -> list node_id :=
 
 Lemma runs_in_app a b : runs_in (a ++ b) = runs_in a ++ runs_in b.
 Proof. unfold runs_in. apply omap_app. Qed.
+
+(** The entries taken by the drain of a flush requested at fuel [g], in order. *)
+Definition flush_queue (g : nat) (s : state) : list node_id :=
+  match g with
+  | S (S g') => dequeued g' (with_flush_owed false (with_flushing true s))
+  | _ => []
+  end.
+
+Lemma runs_in_logs (b : list event) : (forall ev, ev ∈ b -> exists m v, ev = EvLog m v) -> runs_in b = [].
+Proof.
+  induction b as [|e b IH]; intros H; [done|].
+  destruct (H e ltac:(left)) as (m&v&->). apply IH. intros ev Hev. apply H. by right.
+Qed.
+
+Lemma flush_tr_runs s t rs : flush_tr s t rs -> runs_in t = (fun x => x.1.1) <$> rs.
+Proof.
+  induction 1 as [|pre t rs Hm _ IH|n d r l b t rs _ _ Hr _ IH]; [done|..].
+  - rewrite runs_in_app, IH, (runs_in_logs pre); [done|]. intros ev Hev. destruct (Hm ev Hev) as (m&v&->&_). by exists m, v.
+  - change (n :: runs_in (b ++ fail_evs n r ++ t) = n :: ((fun x => x.1.1) <$> rs)). f_equal.
+    pose proof Hr as (_&Hb&_). rewrite runs_in_app, (runs_in_logs b), runs_in_app, IH; [by destruct r|].
+    intros ev Hev. destruct (Hb ev Hev) as (m&v&->&_). by exists m, v.
+Qed.
 
 Lemma runs_in_blocks F es : runs_in (concat (blkF F <$> es)) = es.
 Proof.
@@ -1732,7 +1754,8 @@ Qed.
 Lemma host_flush g sigs D s s' a :
   host_ok p sigs D s -> g_batch_depth s = 0 -> request_flush g s = Some (s', a) ->
   host_ok p sigs D s' /\ g_batch_depth s' = 0 /\ pending s' = [] /\ post s s' /\
-  exists t rs, g_trace s' = g_trace s ++ t /\ flush_tr s' t rs.
+  exists t rs, g_trace s' = g_trace s ++ t /\ flush_tr s' t rs /\
+    (fun x => x.1.1) <$> rs `sublist_of` flush_queue g s /\ drop (g_queue_head s) (g_queue s) `prefix_of` flush_queue g s.
 Proof.
   intros Hh Hb E. pose proof E as E0. pose proof (ho_tbl _ _ _ _ Hh) as Ht. destruct (tbl_good' s Ht) as [Hg Hnu].
   destruct g as [|g]; [done|]. cbn [request_flush] in E. rewrite bind_get in E.
@@ -1740,7 +1763,8 @@ Proof.
   destruct (live_queue s) eqn:Elq.
   2: { unfold m_return in E. injection E as <- _. split_and!; [done|done| |apply post_refl|].
        - unfold pending. apply drop_ge. unfold live_queue in Elq. apply bool_decide_eq_false_1 in Elq. lia.
-       - exists [], []. split; [simpl; rewrite app_nil_r; done|constructor]. }
+       - exists [], []. split_and!; [simpl; rewrite app_nil_r; done|constructor|apply sublist_nil_l|].
+         rewrite drop_ge; [apply prefix_nil|]. unfold live_queue in Elq. apply bool_decide_eq_false_1 in Elq. lia. }
   assert (Hout : outside_bodies s = true).
   { unfold outside_bodies. rewrite (ho_pull _ _ _ _ Hh), (ho_cur _ _ _ _ Hh), (ho_unt _ _ _ _ Hh). done. }
   rewrite Hout in E. pose proof E as Ef.
@@ -1781,7 +1805,7 @@ Proof.
     destruct (Kd' _ y Hy) as (z&Hz&Dz). rewrite Hx1 in Hz. injection Hz as <-. rewrite Dz. exact (ho_disp _ _ _ _ Hh n y Hy Hky).
   - pose proof Hpost as [[_ _ R3 _ _ _] _]. split_and!; [exact Ho|rewrite R3; exact Hb| |exact Hpost|].
     + exact (proj1 (proj2 (drain_no_escape _ _ _ _ (ho_flu _ _ _ _ Hh) Ef))).
-    + destruct (Hl Hnu) as (t&rs&Tt&Ft). exists t, rs. split; [exact Tt|].
+    + destruct (Hl Hnu) as (t&rs&Tt&Ft&Sb&Pf). exists t, rs. split_and!; [exact Tt| |exact Sb|exact Pf].
       refine (flush_tr_keep _ _ _ _ _ Ft). split; [reflexivity|]. intros u e He _ Hq. exists e. done.
 Qed.
 
@@ -1809,7 +1833,7 @@ Proof.
   assert (Hb3 : g_batch_depth s3 = 0) by (simpl; rewrite B2; simpl; rewrite Hb; done).
   assert (Ho3 : host_ok p sigs2 D2 s3) by (apply host_batch; [exact Ho2|exact (sched_down _ _ (ho_sched _ _ _ _ Ho2) (ho_owed _ _ _ _ Ho2))]).
   apply bind_inv in E as (s4 & [] & Ef & E).
-  destruct (host_flush g sigs2 D2 s3 s4 tt Ho3 Hb3 Ef) as (Ho4&Hb4&Hp4&Hpost&t&fr&Tt&Ft).
+  destruct (host_flush g sigs2 D2 s3 s4 tt Ho3 Hb3 Ef) as (Ho4&Hb4&Hp4&Hpost&t&fr&Tt&Ft&_).
   destruct g as [|g]; [done|]. cbn [exec] in E. unfold on_value in E. simpl in E. unfold m_return in E. injection E as <- <-.
   exists sigs2, D2, st2, rs, tb, t, fr. split_and!; try done.
   - rewrite Tt. change (g_trace s3) with (g_trace s2). rewrite T2. change (g_trace s1) with (g_trace s). rewrite <- app_assoc. done.
@@ -2064,7 +2088,7 @@ Proof.
   intros E. pose proof E as E0. destruct (erase_parts p [] f s r E) as (g&s1&r1&s2&->&Es&Hrest).
   destruct (init_host p Hwf Hmb Hro g s1 r1 Es) as (->&Tr1&B1&Ho1).
   destruct Hrest as (Ef&Ed). rewrite B1 in Ef. simpl in Ef.
-  destruct (host_flush p Hwf Hmb Hro g _ _ _ s2 tt Ho1 eq_refl Ef) as (Ho&Hb&Hq&_&t&fr&Tt&Ft).
+  destruct (host_flush p Hwf Hmb Hro g _ _ _ s2 tt Ho1 eq_refl Ef) as (Ho&Hb&Hq&_&t&fr&Tt&Ft&_).
   destruct g as [|g]; [done|]. simpl in Ed. cbn [exec] in Ed. unfold on_value in Ed. simpl in Ed. unfold m_return in Ed. injection Ed as <- <-.
   set (sigs := Semantics.program_signals p). set (F := content p sigs). fold sigs in Ho.
   pose proof (sim_converged s2 sigs ∅ Ho Hq (ex_intro _ _ (ex_intro _ _ (ex_intro _ _ E0)))) as Hcv.
@@ -2281,7 +2305,120 @@ Proof.
   split_and!; [exact A|exact B|]. split; [exact (si_quiet _ _ _ _ _ _ Si)|exact (ho_run _ _ _ _ Hh)].
 Qed.
 
+(** ** The order of a flush *)
+
+Lemma sublist_in (x : node_id) (l q : list node_id) : l `sublist_of` q -> x ∈ l -> x ∈ q.
+Proof.
+  induction 1 as [|y l q _ IH|y l q _ IH]; intros H.
+  - by apply not_elem_of_nil in H.
+  - apply elem_of_cons in H as [->|H]; [left|right; by apply IH].
+  - right. by apply IH.
+Qed.
+
+Lemma sublist_pred (l q : list node_id) : l `sublist_of` q -> pred <$> l `sublist_of` pred <$> q.
+Proof.
+  induction 1 as [|y l q _ IH|y l q _ IH]; simpl.
+  - apply sublist_nil_l.
+  - by apply sublist_skip.
+  - by apply sublist_cons.
+Qed.
+
+Lemma filter_absent (x : node_id) (l : list node_id) :
+  x ∉ l -> filter (fun y => y = x) l = [] /\ filter (fun y => y <> x) l = l.
+Proof.
+  induction l as [|y l IH]; intros H; [done|].
+  apply not_elem_of_cons in H as [Hy Hl]. destruct (IH Hl) as [A B].
+  rewrite filter_cons_False, filter_cons_True by done. rewrite A, B. done.
+Qed.
+
+Lemma order_by_sublist (q l : list node_id) : NoDup q -> l `sublist_of` q -> order_by q l = l.
+Proof.
+  revert l. induction q as [|x q IH]; intros l Hn Hs; [done|].
+  apply NoDup_cons in Hn as [Hx Hn]. simpl. apply sublist_cons_r in Hs as [Hs|(l'&->&Hs)].
+  - destruct (filter_absent x l (fun K => Hx (sublist_in _ _ _ Hs K))) as [A B]. rewrite A, B. exact (IH l Hn Hs).
+  - destruct (filter_absent x l' (fun K => Hx (sublist_in _ _ _ Hs K))) as [A B].
+    rewrite filter_cons_True, filter_cons_False by (try done; intros K; exact (K eq_refl)). rewrite A, B, (IH l' Hn Hs). done.
+Qed.
+
+(** The flush takes only the entries live at its start, once each. Scenario [S15] has an effect requeued during its own run. *)
+Definition queue_steady (g : nat) (s : state) : Prop :=
+  NoDup (pred <$> flush_queue g s) /\ pred <$> flush_queue g s = live_queue_of s.
+
+(**md
+**The `EvRun`s of a flush follow the entries its drain takes, and the queue at its start where nothing is requeued.**
+
+For a refinable program, take the state of the engine at a batch's flush, and let `runs` be the flush's `EvRun`s and `Q` the entries the drain takes, in the reference's ids. Then:
+
+- `runs` is a sublist of `Q`: an entry whose effect is clean or disposed is skipped.
+- `Q` extends the live queue at the flush's start, in order: `live_queue_of` is the head of `Q`, and marking walks during the flush add the rest.
+- With `Q` free of duplicates, `runs` is ordered by `Q`.
+- With `queue_steady`, `runs` is ordered by `engine_order` at the flush's start.
+
+`queue_steady` is a named premise, and the unconditional statement is the Open `engine_order_exact_statement`. [`engine_order_exact_falsified`](Ranvier.Pure.Witnesses.html#engine_order_exact_falsified) has a flush whose first effect runs again after the second, from a requeue of the `S15` class.
+*)
+Theorem engine_order_exact_except k p h b s0 r0 s1 r1 s2 a t :
+  Semantics.well_formed_program p -> refinable p (h ++ [b]) ->
+  run_top k (erase p h) (init current_flags) = Some (s0, r0) ->
+  exec k [] (foldr (input_cmd p) done_cmd b) (with_batch_depth 1 s0) = Some (s1, r1) ->
+  request_flush k (with_batch_depth 0 s1) = Some (s2, a) ->
+  g_trace s2 = g_trace s1 ++ t ->
+  (pred <$> runs_in t) `sublist_of` (pred <$> flush_queue k (with_batch_depth 0 s1)) /\
+  live_queue_of (with_batch_depth 0 s1) `prefix_of` (pred <$> flush_queue k (with_batch_depth 0 s1)) /\
+  (NoDup (pred <$> flush_queue k (with_batch_depth 0 s1)) ->
+     pred <$> runs_in t = order_by (pred <$> flush_queue k (with_batch_depth 0 s1)) (pred <$> runs_in t)) /\
+  (queue_steady k (with_batch_depth 0 s1) ->
+     pred <$> runs_in t = engine_order (with_batch_depth 0 s1) 0%nat (pred <$> runs_in t)).
+Proof.
+  intros Hwf (Hmb&Hro&Hnd) E0 Ei Ef Tt.
+  assert (Hnd0 : forall b0 n, b0 ∈ h -> Semantics.RDispose n ∈ b0 -> Semantics.program_memos p !! n = None).
+  { intros b0 n Hb0. apply Hnd. apply elem_of_app. by left. }
+  assert (Hnd1 : forall n, Semantics.RDispose n ∈ b -> Semantics.program_memos p !! n = None).
+  { intros n. apply (Hnd b n). apply elem_of_app. right. by left. }
+  destruct (sim_all p Hwf Hmb Hro (fun _ l => l) (fun _ _ => reflexivity _) h k s0 r0 Hnd0 E0) as (st&rs&sigs&D&_&_&Si&_).
+  destruct Si as [Hh Hb0 _ Hr Hset _ _ _].
+  pose proof Hr as Hr0. destruct Hr as (Rs&Rf&Rd).
+  set (Bs := fun _ : node_id => Semantics.memo_value p ∅ sigs).
+  assert (Hen : ref_entries p Bs st).
+  { intros n c Hc. destruct (Hset n c Hc) as [K|[K1 K2]]; [by left|right]. rewrite Rs, Rf in K2. done. }
+  assert (Hup : with_batch_depth 1 s0 = with_batch_depth (S (g_batch_depth s0)) s0) by (by rewrite Hb0).
+  rewrite Hup in Ei.
+  assert (Ho1 : host_ok p sigs D (with_batch_depth (S (g_batch_depth s0)) s0)) by (apply host_batch; [exact Hh|exact (sched_up _ (ho_sched _ _ _ _ Hh))]).
+  destruct (host_inputs p Hwf Hmb Hro b k [] sigs D _ s1 r1 st Bs Ho1 ltac:(simpl; lia) binder_nil Hr0 Hen Hnd1 Ei)
+    as (sigs2&D2&_&_&_&_&_&Ho2&_&_&B2&_).
+  assert (Ho3 : host_ok p sigs2 D2 (with_batch_depth (pred (g_batch_depth s1)) s1)) by (apply host_batch; [exact Ho2|exact (sched_down _ _ (ho_sched _ _ _ _ Ho2) (ho_owed _ _ _ _ Ho2))]).
+  assert (Hdn : with_batch_depth (pred (g_batch_depth s1)) s1 = with_batch_depth 0 s1) by (rewrite B2; simpl; by rewrite Hb0).
+  rewrite Hdn in Ho3.
+  destruct (host_flush p Hwf Hmb Hro k sigs2 D2 _ s2 a Ho3 eq_refl Ef) as (_&_&_&_&t'&fr&Tt'&Ft&Sb&Pf).
+  assert (Htt : t' = t).
+  { apply (app_inv_head (g_trace s1)). rewrite <- Tt. exact (eq_sym Tt'). }
+  subst t'. rewrite (flush_tr_runs _ _ _ Ft).
+  set (Q := flush_queue k (with_batch_depth 0 s1)) in *.
+  assert (Sb' : pred <$> ((fun x : node_id * outcome * list val => x.1.1) <$> fr) `sublist_of` (pred <$> Q)) by (by apply sublist_pred).
+  split_and!.
+  - exact Sb'.
+  - unfold live_queue_of. destruct Pf as [x Hx]. rewrite Hx, fmap_app. by eexists.
+  - intros Hn. symmetry. exact (order_by_sublist _ _ Hn Sb').
+  - intros [Hn He]. unfold engine_order. rewrite <- He. symmetry. exact (order_by_sublist _ _ Hn Sb').
+Qed.
+
 (** ** The statements with no premise *)
+
+Definition engine_order_exact_statement : Prop :=
+  forall k p h b s0 r0 s1 r1 s2 a t,
+    Semantics.well_formed_program p -> refinable p (h ++ [b]) ->
+    run_top k (erase p h) (init current_flags) = Some (s0, r0) ->
+    exec k [] (foldr (input_cmd p) done_cmd b) (with_batch_depth 1 s0) = Some (s1, r1) ->
+    request_flush k (with_batch_depth 0 s1) = Some (s2, a) ->
+    g_trace s2 = g_trace s1 ++ t ->
+    pred <$> runs_in t = engine_order (with_batch_depth 0 s1) 0%nat (pred <$> runs_in t).
+
+(**md
+**Open, and false on the present engine: the `EvRun`s of a flush on a refinable program are in the order of the queue at its start.**
+
+[`engine_order_exact_falsified`](Ranvier.Pure.Witnesses.html#engine_order_exact_falsified) proves `engine_order_exact_statement` false from a requeue of the `S15` class. Use [`engine_order_exact_except`](#engine_order_exact_except).
+*)
+Theorem engine_order_exact : engine_order_exact_statement.
+Proof. Admitted.
 
 Definition weak_refinement_statement : Prop :=
   forall k, Semantics.refines Semantics.observe_settled (engine_of current_flags k).

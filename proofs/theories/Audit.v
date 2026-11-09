@@ -236,10 +236,13 @@ Print Assumptions comparer_conservative.
 Print Assumptions weak_refinement_except.
 Print Assumptions exact_refinement_except.
 Print Assumptions refinable_meets_convergence.
+Print Assumptions engine_order_exact_except.
 Print Assumptions weak_refinement.
 Print Assumptions exact_refinement.
+Print Assumptions engine_order_exact.
 Print Assumptions weak_refinement_falsified.
 Print Assumptions exact_refinement_falsified.
+Print Assumptions engine_order_exact_falsified.
 Print Assumptions refinable_reached.
 Print Assumptions effect_dispose_outside.
 Print Assumptions memo_dispose_outside.

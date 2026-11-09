@@ -1910,3 +1910,80 @@ Proof.
       apply elem_of_cons in Hn as [Hn|Hn]; [done|]. apply list_elem_of_singleton in Hn. injection Hn as ->. vm_compute. reflexivity.
   - vm_compute. reflexivity.
 Qed.
+
+(** The diamond of scenario [S15] beside a second effect over its source. The marking walk queues the diamond's effect first. *)
+Definition requeue_order : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z; 1 := 0%Z ]};
+  Semantics.program_memos := {[ 2 := CRead 10 (K 1%Z) (CRet (V 10));
+                                3 := CRead 10 (K 0%Z) (CRead 11 (K 2%Z) (CRet (EAdd (V 10) (V 11)))) ]};
+  Semantics.program_effects := {[ 5 := CRead 10 (K 0%Z) (CRead 11 (K 3%Z) (CRead 12 (K 2%Z) (CLog (EAdd (EAdd (V 10) (V 11)) (V 12)) Nop)));
+                                  4 := CRead 10 (K 0%Z) (CLog (V 10) Nop) ]};
+|}.
+
+Definition requeue_batch : list Semantics.host_input := [Semantics.RWrite 0 1%Z; Semantics.RWrite 1 2%Z].
+
+Definition requeue_s0 : state :=
+  match run_top 20000 (Refinement.erase requeue_order []) (init current_flags) with Some (s, _) => s | None => init current_flags end.
+
+Definition requeue_s1 : state :=
+  match exec 20000 [] (foldr (Refinement.input_cmd requeue_order) Refinement.done_cmd requeue_batch) (with_batch_depth 1 requeue_s0) with
+  | Some (s, _) => s
+  | None => requeue_s0
+  end.
+
+Definition requeue_s2 : state :=
+  match request_flush 20000 (with_batch_depth 0 requeue_s1) with Some (s, _) => s | None => requeue_s1 end.
+
+(** Under [5]'s run, memo [2]'s run marks it again, so it runs before and after [4]. The queue at the flush's start holds [5], [4]. *)
+Example requeue_runs_after_later_entry :
+  g_trace requeue_s2 = g_trace requeue_s1 ++ [EvRun 6; EvLog 6 6%Z; EvRun 5; EvLog 5 1%Z; EvRun 6; EvLog 6 6%Z] /\
+  Refinement.live_queue_of (with_batch_depth 0 requeue_s1) = [5; 4] /\
+  Refinement.flush_queue 20000 (with_batch_depth 0 requeue_s1) = [6; 5; 6].
+Proof. split_and!; vm_compute; reflexivity. Qed.
+
+Lemma requeue_order_well_formed : Semantics.well_formed_program requeue_order.
+Proof.
+  refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - intros m c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[_ <-]|[_ Hc]]; [reflexivity|]. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+  - intros m c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[_ <-]|[_ Hc]]; [reflexivity|]. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+  - exists (fun n => n). intros m c Hc rd o st t v Hx Hin Hm.
+    simpl in Hc; apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]]; [|apply lookup_singleton_Some in Hc as [<- <-]].
+    + vm_compute in Hx. destruct (rd 1) as [[a|a]|]; vm_compute in Hx; simplify_eq;
+        apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try lia).
+    + vm_compute in Hx. destruct (rd 0) as [[a|a]|]; vm_compute in Hx; try simplify_eq; try (destruct (rd 2) as [[b|b]|]; vm_compute in Hx; simplify_eq);
+        apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try lia).
+Qed.
+
+Lemma requeue_order_refinable : Refinement.refinable requeue_order ([] ++ [requeue_batch]).
+Proof.
+  split_and!.
+  - intros m c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]]; [|apply lookup_singleton_Some in Hc as [<- <-]]; cbn [Refinement.rename body_pureu].
+    + split; [reflexivity|]. split.
+      * intros z Hz _ _. vm_compute in Hz. injection Hz as <-. vm_compute. lia.
+      * intros v. reflexivity.
+    + split; [reflexivity|]. split.
+      * intros z Hz _ _. vm_compute in Hz. injection Hz as <-. vm_compute. lia.
+      * intros v. split; [reflexivity|]. split.
+        -- intros z Hz _ _. vm_compute in Hz. injection Hz as <-. vm_compute. lia.
+        -- intros w. reflexivity.
+  - intros n c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[_ <-]|[_ Hc]]; [reflexivity|]. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+  - intros b n Hb Hn. apply list_elem_of_singleton in Hb as ->. apply elem_of_cons in Hn as [Hn|Hn]; [done|]. apply list_elem_of_singleton in Hn. done.
+Qed.
+
+(**md
+**A flush's `EvRun`s can leave the order of the queue at its start: an effect marked during its own run runs after a later entry.**
+
+`engine_order_exact_statement` fails on `requeue_order`, a program meeting `refinable`: the queue at the flush's start is `[5; 4]`, and the flush runs `5`, `4`, `5`. The requeue is the class of `diamond_marks_running_effect` (S15), whose F# scenario gives the redundant run. The order with a second effect is computed on the model.
+*)
+Theorem engine_order_exact_falsified : ~ Refinement.engine_order_exact_statement.
+Proof.
+  intros H.
+  assert (E0 : run_top 20000 (Refinement.erase requeue_order []) (init current_flags) = Some (requeue_s0, Ok 0%Z)) by (vm_compute; reflexivity).
+  assert (E1 : exec 20000 [] (foldr (Refinement.input_cmd requeue_order) Refinement.done_cmd requeue_batch) (with_batch_depth 1 requeue_s0) = Some (requeue_s1, Ok 0%Z)) by (vm_compute; reflexivity).
+  assert (E2 : request_flush 20000 (with_batch_depth 0 requeue_s1) = Some (requeue_s2, tt)) by (vm_compute; reflexivity).
+  pose proof (H 20000 requeue_order [] requeue_batch _ _ _ _ _ _ _ requeue_order_well_formed requeue_order_refinable E0 E1 E2 (proj1 requeue_runs_after_later_entry)) as E.
+  vm_compute in E. discriminate E.
+Qed.
