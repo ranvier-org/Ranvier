@@ -394,6 +394,7 @@ type internal ObserverSet() =
     /// and was saturated by its mark.
     /// </summary>
     member this.NotifyDirtySaturating() =
+        // A copy of `NotifyDirty`'s loop, kept separate so `NotifyDirty` keeps no accumulator on its hot path.
         let mutable saturated = true
         let mutable i = count - 1
 
@@ -3773,19 +3774,21 @@ type Graph(options: GraphOptions) =
             untrackedHost <- previousHost
             untrackedInBody <- previousInBody
 
-/// <summary>
-/// A settable source.
-/// </summary>
 /// <summary>Signal stamp values that equal no epoch.</summary>
 module internal Stamp =
     /// <summary>The stamp of a signal with no recorded walk, or with an observer added since.</summary>
     [<Literal>]
-    let None = -1L
+    let Unrecorded = -1L
 
-    /// <summary>The stamp during a walk. An observer added during the walk replaces it with <c>None</c>.</summary>
+    /// <summary>
+    /// The stamp during a walk. An observer added during the walk replaces it with <c>Unrecorded</c>.
+    /// </summary>
     [<Literal>]
     let Walking = -2L
 
+/// <summary>
+/// A settable source.
+/// </summary>
 type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
 #if RANVIER_TRACE
@@ -3799,10 +3802,10 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 
     /// <summary>
     /// The graph epoch at the start of the latest walk that left every observer saturated. While it equals
-    /// <c>graph.Epoch</c>, a write skips the walk. <c>Stamp.Walking</c> during a walk, and <c>Stamp.None</c> after an
-    /// observer is added.
+    /// <c>graph.Epoch</c>, a write skips the walk. <c>Stamp.Walking</c> during a walk, and <c>Stamp.Unrecorded</c>
+    /// after an observer is added.
     /// </summary>
-    let mutable stamp = Stamp.None
+    let mutable stamp = Stamp.Unrecorded
 
 #if RANVIER_COUNTERS
     do Counters.SignalCreated ()
@@ -3834,7 +3837,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             if Platform.isNull (box observers) then
                 observers <- ObserverSet ()
 #endif
-            stamp <- Stamp.None
+            stamp <- Stamp.Unrecorded
             observers.Add (c, slot)
 
         member _.TryAddObserver(c, slot) =
@@ -3842,7 +3845,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             if Platform.isNull (box observers) then
                 observers <- ObserverSet ()
 #endif
-            stamp <- Stamp.None
+            stamp <- Stamp.Unrecorded
             observers.TryAdd (c, slot)
 
         // A handle comes from an add, so the set exists.
@@ -4803,8 +4806,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
         // remember to collect.
         link <- graph.CurrentOwner.AttachLinked this
         Tracer.EffectNew (graph, id, link.Owner)
-        // A new effect needs no advance: it is in no observer set until a run adds an edge, and adding an edge clears
-        // the source's stamp.
+        // Edges to a new effect are added through `AddObserver` or `TryAddObserver`, which clear the source's stamp.
         (this :> IComputation).MarkDirty() |> ignore
         graph.RequestFlush ()
 

@@ -3,9 +3,6 @@ module Ranvier.Tests.NotifySkip
 open Expecto
 open Ranvier
 
-/// <summary>Whether <c>s</c>'s stamp is the graph's current epoch, so its next write skips the walk.</summary>
-let private stamped (s: Signal<'T>) = s.Stamped
-
 #if RANVIER_TRACE
 /// <summary>The marks made by walks of <c>source</c> after trace sequence <c>since</c>.</summary>
 let private marksFrom (g: Graph) (source: INode) (since: int) =
@@ -47,9 +44,9 @@ let tests =
 #if RANVIER_TRACE
                 Expect.equal (marksFrom g s before) 0 "the second write marks no reader"
 #endif
-                Expect.isTrue (stamped s) "the walk over saturated readers records the stamp"
+                Expect.isTrue s.Stamped "the walk over saturated readers records the stamp"
                 Expect.isTrue (memos |> Array.forall (fun m -> m.Value = 3)) "every memo reads the latest value"
-                Expect.isFalse (stamped s) "the recomputes advanced the epoch"
+                Expect.isFalse s.Stamped "the recomputes advanced the epoch"
                 s.Value <- 3
 #if RANVIER_TRACE
                 let before = Trace.lastSeq g
@@ -102,27 +99,107 @@ let tests =
 #if RANVIER_TRACE
                 Expect.equal (marksFrom g s before) 6 "each write marks the memo and the binding"
 #endif
-                Expect.isFalse (stamped s) "a walk over a binding records nothing"
+                Expect.isFalse s.Stamped "a walk over a binding records nothing"
                 Expect.equal (List.ofSeq log) [ 0; 3 ] "the binding writes the latest value"
                 Expect.equal m.Value 3 "the memo reads the latest value"
             }
 
-            test "a new effect reading a stamped signal clears the stamp, and runs on the next write" {
+            test "an effect created after a record leaves the stamp stale, and runs on the next write" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let s = createSignal 0
                 let m = createMemo (fun _ -> s.Value)
                 m.Value |> ignore
                 s.Value <- 1
-                Expect.isTrue (stamped s) "the walk over the dirty memo records the stamp"
+                Expect.isTrue s.Stamped "the walk over the dirty memo records the stamp"
                 let seen = ResizeArray<int>()
 
                 createEffect (fun () -> seen.Add s.Value)
                 |> ignore
 
-                Expect.isFalse (stamped s) "the effect's edge clears the stamp"
+                Expect.isFalse s.Stamped "the stamp is stale after the effect's first run"
                 s.Value <- 2
                 Expect.equal (List.ofSeq seen) [ 1; 2 ] "the effect runs on the write after its creation"
+            }
+
+            test "a binding added after a record clears the stamp through AddObserver" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                let m = createMemo (fun _ -> s.Value)
+                m.Value |> ignore
+                s.Value <- 1
+                Expect.isTrue s.Stamped "the walk over the dirty memo records the stamp"
+                let log = ResizeArray<int>()
+                bindSignal s log (fun t v -> t.Add v)
+                Expect.isFalse s.Stamped "the binding's edge clears the stamp"
+                s.Value <- 2
+                Expect.equal (List.ofSeq log) [ 1; 2 ] "the binding writes the value after its creation"
+            }
+
+            test "an effectOn added after a record clears the stamp through TryAddObserver" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                let other = createSignal 10
+                let m = createMemo (fun _ -> s.Value)
+                m.Value |> ignore
+                s.Value <- 1
+                Expect.isTrue s.Stamped "the walk over the dirty memo records the stamp"
+                let log = ResizeArray<int>()
+
+                // `s` is the second source read, so its edge goes through `TryAddObserver`.
+                createEffectOn (fun () -> other.Value + s.Value) log.Add
+                |> ignore
+
+                Expect.isFalse s.Stamped "the effect's second edge clears the stamp"
+                s.Value <- 2
+                Expect.equal (List.ofSeq log) [ 11; 12 ] "the effect acts on the value after its creation"
+            }
+
+            test "a mark leaving a memo with an announcement due records no stamp" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                let t = createSignal 0
+                let armed = ref true
+                let stamped = ResizeArray<bool>()
+#if RANVIER_TRACE
+                let secondMarks = ref -1
+#endif
+
+                let m =
+                    createMemoWith (fun _ ->
+                        let v = s.Value
+                        t.Value |> ignore
+
+                        // The first run writes its own source, so it ends stale with an announcement due.
+                        if v < 1 then
+                            s.Value <- v + 1
+
+                        // Run in the next run's discharge, while the memo is `Clean` with the announcement still due.
+                        onCleanup (fun () ->
+                            if armed.Value then
+                                armed.Value <- false
+                                t.Value <- 1
+                                stamped.Add t.Stamped
+#if RANVIER_TRACE
+                                let before = Trace.lastSeq g
+#endif
+                                t.Value <- 2
+#if RANVIER_TRACE
+                                secondMarks.Value <- marksFrom g t before
+#endif
+                        )
+
+                        v)
+
+                Expect.equal m.Value 0 "the first run"
+                Expect.equal m.Value 1 "the second run, after the discharge"
+                Expect.equal (List.ofSeq stamped) [ false ] "the walk over the announcing memo records nothing"
+#if RANVIER_TRACE
+                Expect.equal secondMarks.Value 1 "the second write in the discharge walks"
+#endif
             }
 
             test "S03, #302: each even write reaches the effect through a stale middle" {
