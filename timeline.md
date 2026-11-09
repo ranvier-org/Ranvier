@@ -141,6 +141,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 83,367 | 126,768 | 1,744,387 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 83,472 | 127,076 | 1,751,049 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 83,472 | 127,069 | 1,751,109 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 83,471 | 127,080 | 1,751,085 |
 
 ## app-table
 
@@ -283,6 +284,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 4,431,486 | 9,354,616 | 107,989,834 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 4,436,368 | 9,346,352 | 107,994,402 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 4,436,376 | 9,349,633 | 107,995,750 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 4,436,383 | 9,349,181 | 108,350,650 |
 
 ## async-recover
 
@@ -425,6 +427,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 139,175 | 41,261 | 434,862 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 139,123 | 41,385 | 435,918 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 139,123 | 41,358 | 435,913 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 139,123 | 41,390 | 435,918 |
 
 ## async-resolve
 
@@ -567,6 +570,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,791,327 | 1,022,933 | 11,970,236 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,789,437 | 1,002,119 | 12,001,293 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,789,437 | 1,002,322 | 12,001,541 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,789,437 | 1,002,208 | 12,002,003 |
 
 ## chain
 
@@ -709,6 +713,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 13,035 | 318 | 2,457 | 4,491 | 3,173 | 72,781 | 66,934 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,779 | 67,991 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 13,163 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 
 ## chain-affinity
 
@@ -851,6 +856,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,556 | 3,074 | 2,503 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,578 | 3,096 | 2,525 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,578 | 3,096 | 2,525 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,578 | 3,096 | 2,525 |
 
 ## control
 
@@ -993,6 +999,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 74,710 | 839,887 | 2,598,328 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 74,710 | 839,916 | 2,599,746 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 74,710 | 839,917 | 2,601,846 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 74,710 | 839,878 | 2,596,615 |
 
 ## create
 
@@ -1135,6 +1142,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 13,448,272 | 2,861,677 | 2,570,368 | 2,127,335 | 4,045,335 | 34,034,704 | 50,427,819 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 13,448,320 | 2,861,677 | 2,570,368 | 2,127,029 | 4,045,288 | 34,034,540 | 50,427,542 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 13,560,214 | 2,861,677 | 2,570,368 | 2,127,977 | 4,045,504 | 34,034,781 | 50,427,563 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 13,448,339 | 2,861,678 | 2,570,368 | 2,127,940 | 4,045,522 | 34,034,706 | 50,427,743 |
 
 ## create-on
 
@@ -1277,6 +1285,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,949,484 | 4,179,831 | 55,228,833 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,965,484 | 4,179,738 | 55,228,826 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,949,500 | 4,179,927 | 55,228,848 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,949,500 | 4,179,716 | 55,228,832 |
 
 ## cutoff
 
@@ -1419,6 +1428,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1561,6 +1571,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 781 | 751 | 16,520 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 781 | 751 | 16,520 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 781 | 751 | 16,520 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1703,6 +1714,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 751 | 802 | 16,543 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 767 | 802 | 16,543 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 751 | 802 | 16,543 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1845,6 +1857,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 2,707,641 | 806,291 | 367,497 | 476,112 | 494,942 | 13,205,966 | 9,105,898 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,706,242 | 806,291 | 367,497 | 475,912 | 495,063 | 13,207,421 | 9,105,864 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,707,643 | 806,291 | 367,497 | 475,885 | 494,904 | 13,206,203 | 9,106,127 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,707,646 | 806,290 | 367,497 | 475,728 | 495,018 | 13,205,645 | 9,106,230 |
 
 ## dispose-on
 
@@ -1987,6 +2000,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 346,497 | 487,810 | 8,902,684 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 346,497 | 488,010 | 8,902,473 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 346,497 | 487,899 | 8,902,696 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 346,497 | 487,772 | 8,902,689 |
 
 ## editable-edit
 
@@ -2129,6 +2143,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 181,706 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 182,106 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 182,106 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 182,106 |
 
 ## editable-upstream
 
@@ -2271,6 +2286,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 232,855 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 233,855 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 233,855 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 233,855 |
 
 ## fail-recompute
 
@@ -2413,6 +2429,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 64,941 | 1,373 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 64,895 | 1,383 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 64,895 | 1,383 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 64,895 | 1,383 |
 
 ## flight
 
@@ -2555,6 +2572,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 10,964 | 6,212 | 6,213 | 11,292 | 10,732 | 22,368 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 
 ## keyed-insert
 
@@ -2697,6 +2715,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,921,729 | 53,917 | 54,961 | 3,277,646 | 237,740 | 175,910 | 45,095,928 | 2,634,743 | 2,655,606 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,925,731 | 53,917 | 54,960 | 3,280,002 | 660,378 | 243,099 | 45,313,167 | 2,634,661 | 2,655,749 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,925,731 | 53,917 | 54,957 | 3,279,982 | 660,645 | 243,398 | 45,302,976 | 2,634,617 | 2,655,689 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,925,763 | 53,949 | 54,987 | 3,279,968 | 660,380 | 243,032 | 45,302,969 | 2,634,654 | 2,655,739 |
 
 ## keyed-remove
 
@@ -2839,6 +2858,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,920,672 | 43,600 | 45,302 | 3,299,680 | 591,911 | 606,036 | 45,051,184 | 1,924,671 | 1,960,222 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,924,662 | 43,600 | 45,304 | 3,284,123 | 595,995 | 602,228 | 45,268,308 | 1,924,733 | 1,960,386 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,924,656 | 43,600 | 45,304 | 3,284,095 | 596,028 | 602,225 | 45,268,271 | 1,924,738 | 1,960,304 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,924,688 | 43,632 | 45,335 | 3,284,134 | 596,134 | 602,246 | 45,280,310 | 1,924,740 | 1,960,427 |
 
 ## keyed-swap
 
@@ -2981,6 +3001,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,973,355 | 46,205 | 46,927 | 3,630,161 | 149,240 | 513,562 | 46,212,794 | 915,647 | 936,121 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,977,355 | 46,205 | 46,927 | 3,650,183 | 147,932 | 508,942 | 46,429,291 | 915,636 | 935,766 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,977,355 | 46,205 | 46,927 | 3,649,794 | 147,934 | 509,120 | 46,429,306 | 915,662 | 935,759 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,977,387 | 46,238 | 46,959 | 3,649,956 | 148,225 | 508,907 | 46,429,259 | 915,664 | 935,781 |
 
 ## mvu-dispatch
 
@@ -3123,6 +3144,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 58,292 | 788 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 58,548 | 788 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 58,548 | 788 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 58,548 | 788 |
 
 ## persist-write
 
@@ -3265,6 +3287,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | — | — |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — |
 
 ## project-chain
 
@@ -3407,6 +3430,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,077,249 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,077,312 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,077,356 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,077,292 |
 
 ## project-churn
 
@@ -3549,6 +3573,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 36,385 | 34,263 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 36,386 | 34,251 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 36,402 | 34,269 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 36,386 | 34,251 |
 
 ## project-edit
 
@@ -3691,6 +3716,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 50,493 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 50,495 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 50,496 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 50,527 |
 
 ## project-reorder
 
@@ -3833,6 +3859,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 780,084 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 780,083 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 780,084 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 780,116 |
 
 ## server-render
 
@@ -3975,6 +4002,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | — | — | — |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — | — |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — | — |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — | — |
 
 ## shape-diamond
 
@@ -4117,6 +4145,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 60,212 | 81,521 | 1,774,667 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 60,816 | 82,845 | 1,802,883 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 60,816 | 82,845 | 1,802,884 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 60,816 | 82,845 | 1,802,884 |
 
 ## shape-dynamic
 
@@ -4259,6 +4288,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 84,378 | 108,947 | 2,038,136 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 84,378 | 108,947 | 2,038,136 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 84,378 | 108,947 | 2,038,136 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4401,6 +4431,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,950 | 1,548 | 2,505 | 4,703 | 7,305 | 13,878 | 47,579 | 45,786 | 55,381 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,048 | 47,796 | 46,003 | 55,600 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,047 | 47,796 | 46,003 | 55,599 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,954 | 1,552 | 2,509 | 5,030 | 7,372 | 14,047 | 47,796 | 46,003 | 55,599 |
 
 ## stream-burst-16
 
@@ -4543,6 +4574,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 5,022 | 24,618 | 5,715 | 9,744 | 49,105 | 8,253 | 123,811 | 720,148 | 113,733 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 5,056 | 24,682 | 5,719 | 9,818 | 49,282 | 8,192 | 124,966 | 723,620 | 113,950 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 5,056 | 24,682 | 5,719 | 9,816 | 49,281 | 8,194 | 124,968 | 723,620 | 113,950 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 5,056 | 24,682 | 5,719 | 9,816 | 49,281 | 8,194 | 124,969 | 723,620 | 113,950 |
 
 ## stream-burst-256
 
@@ -4685,6 +4717,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 54,162 | 393,702 | 57,054 | 132,673 | 797,953 | 45,138 | 1,343,781 | 11,508,728 | 1,046,728 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 54,676 | 394,726 | 57,058 | 133,543 | 800,308 | 45,152 | 1,359,966 | 11,564,280 | 1,046,887 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 54,676 | 394,726 | 57,058 | 133,585 | 800,313 | 45,152 | 1,359,880 | 11,564,280 | 1,046,979 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 54,676 | 394,726 | 57,058 | 133,576 | 800,308 | 45,152 | 1,359,974 | 11,564,280 | 1,046,979 |
 
 ## stream-restart
 
@@ -4827,6 +4860,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 4,209 | 5,035 | 5,729 | 5,327 | 43,015 | 72,135 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 4,216 | 5,040 | 5,740 | 5,334 | 43,390 | 72,512 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 4,216 | 5,040 | 5,740 | 5,335 | 43,388 | 72,509 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 4,216 | 5,040 | 5,739 | 5,333 | 43,387 | 72,513 |
 
 ## timed-admit-both
 
@@ -4969,6 +5003,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 117,709 | 130,037 | 2,693,830 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 117,709 | 130,037 | 2,693,850 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 117,709 | 130,035 | 2,693,850 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 117,709 | 130,037 | 2,693,850 |
 
 ## timed-admit-debounce
 
@@ -5111,6 +5146,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 116,614 | 128,619 | 2,654,132 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 116,614 | 128,619 | 2,654,132 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 116,614 | 128,630 | 2,654,132 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 116,614 | 128,619 | 2,654,132 |
 
 ## timed-admit-first
 
@@ -5253,6 +5289,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 69,621 | 79,565 | 1,620,678 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 69,621 | 79,565 | 1,620,678 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 69,621 | 79,565 | 1,620,678 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 69,621 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -5395,6 +5432,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 116,876 | 128,937 | 2,663,988 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 116,876 | 128,939 | 2,663,988 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 116,876 | 128,937 | 2,663,988 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 116,876 | 128,951 | 2,663,988 |
 
 ## timed-capture-both
 
@@ -5537,6 +5575,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 35,740 | 44,936 | 847,273 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,740 | 44,936 | 847,271 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,740 | 44,936 | 847,273 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,740 | 44,935 | 847,273 |
 
 ## timed-capture-debounce
 
@@ -5679,6 +5718,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 35,612 | 44,232 | 847,657 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,612 | 44,232 | 847,657 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,612 | 44,232 | 847,657 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5821,6 +5861,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 32,092 | 36,741 | 745,651 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 32,092 | 36,741 | 745,651 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 32,092 | 36,741 | 745,651 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -5963,6 +6004,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 35,548 | 44,168 | 839,785 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,548 | 44,169 | 839,785 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,548 | 44,168 | 839,785 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -6105,6 +6147,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,781 | 3,351,295 | 2,545,097 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,087,783 | 38,805 | 84,105 | 263,101 | 145,791 | 3,351,293 | 2,545,076 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,087,790 | 38,805 | 84,105 | 263,375 | 145,799 | 3,351,253 | 2,545,074 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,087,790 | 38,805 | 84,105 | 263,378 | 145,804 | 3,351,294 | 2,545,083 |
 
 ## update-on
 
@@ -6247,6 +6290,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 94,605 | 169,036 | 2,872,451 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 96,205 | 169,022 | 2,872,468 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 94,605 | 169,024 | 2,872,469 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 94,605 | 169,026 | 2,872,447 |
 
 ## work-form
 
@@ -6389,6 +6433,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 172,679 | 165,150 | 308,861 | 296,993 | 5,421,850 | 5,334,910 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 172,679 | 165,150 | 308,860 | 296,991 | 5,421,847 | 5,334,916 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 172,679 | 165,150 | 308,844 | 296,977 | 5,421,848 | 5,334,914 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 172,679 | 165,150 | 308,825 | 296,956 | 5,421,849 | 5,334,915 |
 
 ## work-status
 
@@ -6531,6 +6576,7 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 102,045 | 80,235 | 269,333 | 156,135 | 2,659,266 | 2,391,299 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 102,045 | 81,835 | 269,342 | 156,127 | 2,659,268 | 2,391,317 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 102,045 | 80,235 | 269,340 | 156,111 | 2,659,292 | 2,391,318 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 102,045 | 80,235 | 269,299 | 156,136 | 2,659,293 | 2,391,318 |
 
 ## work-value
 
@@ -6673,4 +6719,5 @@
 | `ce3a8b6` | 2026-11-07 | feat(core): add tryGetOwner, an owner query that leaves a pure run intact (#300) | 109,169 | 121,071 | 269,596 | 283,404 | 2,643,900 | 2,968,474 |
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 109,169 | 122,671 | 269,603 | 283,402 | 2,643,913 | 2,968,473 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 109,169 | 121,071 | 269,611 | 283,430 | 2,643,903 | 2,968,463 |
+| `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 109,169 | 121,069 | 269,542 | 283,397 | 2,643,937 | 2,968,473 |
 
