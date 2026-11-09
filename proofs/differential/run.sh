@@ -20,7 +20,9 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ "$(uname -s)" != "Linux" ]; then
   distro="${RANVIER_WSL_DISTRO:-Ubuntu}"
   wsl_here="$(MSYS_NO_PATHCONV=1 wsl.exe -d "$distro" -- wslpath -u "$(cygpath -m "$here")" | tr -d '\r')"
-  exec env MSYS_NO_PATHCONV=1 wsl.exe -d "$distro" -- bash "$wsl_here/$(basename "${BASH_SOURCE[0]}")" "$@"
+  # WSLENV carries the skip mode into the distribution.
+  exec env MSYS_NO_PATHCONV=1 WSLENV="RANVIER_SKIP_MODE${WSLENV:+:$WSLENV}" \
+    wsl.exe -d "$distro" -- bash "$wsl_here/$(basename "${BASH_SOURCE[0]}")" "$@"
 fi
 
 count="${1:-200}"
