@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Ledger.
 From Ranvier.Conformance Require Check.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -262,3 +262,4 @@ Print Assumptions refinable_reached.
 Print Assumptions effect_dispose_outside.
 Print Assumptions memo_dispose_outside.
 Print Assumptions memo_prev_outside.
+Print Assumptions disposed_memo_keeps_observers.

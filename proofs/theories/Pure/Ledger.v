@@ -23,15 +23,15 @@ Definition disposed_keeps_observer (k : cmd) : cmd :=
 (**md
 **A disposed memo keeps its observers, and its reader stays clean on the stored value.**
 
-*Check, not a guarantee.* After the disposal and the write, memo `2` is disposed with its stored 0 and still holds effect `3`
+*Check, not a guarantee.* After the disposal and the write, signal `1` holds 5, and memo `2` is disposed with its stored 0 and still holds effect `3`
 as its observer. The effect has one run, is `Clean` and unqueued, and the trace has no second run. Core.fs 4372-4376
 documents both halves: a disposed memo answers reads with the last value it computed, and stops being woken. Closed in
 `BUGS.md` as spec corrected.
 *)
 Example disposed_memo_keeps_observers :
   let s := final (disposed_keeps_observer Nop) in
-  (d ← g_nodes s !! 2; e ← g_nodes s !! 3;
-   Some (n_disposed d, n_value d, observer_view (observers_of (g_edges s) 2),
-         n_freshness e, n_queued e, n_runs e)) = Some (true, 0%Z, [3], Clean, false, 1) /\
+  (g ← g_nodes s !! 1; d ← g_nodes s !! 2; e ← g_nodes s !! 3;
+   Some (n_value g, n_disposed d, n_value d, observer_view (observers_of (g_edges s) 2),
+         n_freshness e, n_queued e, n_runs e)) = Some (5%Z, true, 0%Z, [3], Clean, false, 1) /\
   g_trace s = [EvRun 3; EvLog 3 0%Z; EvDispose 2].
 Proof. split; vm_compute; reflexivity. Qed.

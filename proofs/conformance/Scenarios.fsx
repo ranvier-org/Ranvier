@@ -601,6 +601,23 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (c.HostRead 3 (fun () -> r.Value) = 0) "the clean reader answers the value of its old read"
             c.Check (c.HostRead 2 (fun () -> m.Value) = 2) "the source's next run moves its value"
 
+        // BUGS.md, disposed_memo_keeps_observers. A disposed memo answers its last value, keeps its observer, and does not
+        // wake it. Core.fs 4372-4376.
+        "disposed_memo_keeps_observers",
+        fun c ->
+            let s = c.Signal 1 0
+            let m = c.Memo 2 (fun () -> s.Value)
+            let e = c.Effect 3 (fun () -> c.Log 3 m.Value)
+            c.Dispose 2 (fun () -> m.Dispose ()) (box m)
+            s.Value <- 5
+            c.Check (privateField m "disposed" :?> bool) "the memo is disposed"
+            c.Check (m.Peek = 0) $"the disposed memo holds {m.Peek}"
+            c.Check (s.Peek = 5) $"the signal holds {s.Peek}"
+            c.Check ((internalProp m "ObserverCount" :?> int) = 1) "the effect still observes the disposed memo"
+            c.Check (e.Runs = 1) $"the effect has {e.Runs} runs"
+            c.Check (not (privateField e "queued" :?> bool)) "the effect is not queued"
+            c.Check ((privateField e "freshness").ToString() = "Clean") "the effect is Clean"
+
         // BUGS.md, disposed_window_keeps_unannounced. A nested run ends stale and registers a cleanup that disposes the
         // memo. The next untracked self-read discharges it in RecomputeScoped's window, with the nested run's flag set.
         "disposed_self_window",

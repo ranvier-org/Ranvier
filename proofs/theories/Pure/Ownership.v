@@ -434,7 +434,7 @@ Qed.
 
 A read of a disposed memo that returns leaves every node, the trace and the queue as they were, so no body ran and nothing was scheduled. It answers `Fail` of the stored failure when the status is `StError` (0 when `n_failure` is `None`), and otherwise `Ok` of the stored value. Core.fs 4372-4376 documents that a disposed memo "still answers reads, with the last value it computed".
 
-That stored value need not be a computed one, and need not be up to date. A memo disposed before its first run answers the default: [`disposed_unread_answers_default`](#disposed_unread_answers_default). The reference tier answers from the signals at the disposal, and `BUGS.md` holds that difference as `disposed_unread_memo_value` and `write_then_dispose_memo_current_value`, Suspected, for the owner's ruling. A tracked read can still add an edge from the disposed memo: [`disposed_stale_source_read`](Ranvier.Pure.Witnesses.html#disposed_stale_source_read).
+That stored value need not be a computed one, and need not be up to date. A memo disposed before its first run answers the default: [`disposed_unread_answers_default`](#disposed_unread_answers_default). The reference tier answers from the signals at the disposal, and `BUGS.md` holds that difference as `disposed_unread_memo_value` and `write_then_dispose_memo_current_value`, Awaiting ruling. A tracked read can still add an edge from the disposed memo: [`disposed_stale_source_read`](Ranvier.Pure.Witnesses.html#disposed_stale_source_read).
 
 - [f:] the fuel.
 - [n:] the disposed memo read.

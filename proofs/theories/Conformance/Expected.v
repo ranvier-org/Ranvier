@@ -126,6 +126,10 @@ Definition exp_stale_source_reader : list event := [
   EvHostRead 2 (Ok 2%Z)
 ].
 
+Definition exp_disposed_memo_keeps_observers : list event := [
+  EvRun 3; EvLog 3 0%Z; EvDispose 2
+].
+
 Definition exp_disposed_self_window : list event := [
   EvHostRead 4 (Ok 0%Z); EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0%Z)
 ].

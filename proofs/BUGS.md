@@ -287,11 +287,10 @@ Each entry of Task 12 is a difference between the engine and the reference, with
   `Memo.Dispose` clears the memo's sources and leaves its observers (Core.fs 4377-4398), so a reader keeps its edge to the
   disposed memo. Program: an effect reads memo `m` over `s`, the host disposes `m`, then writes `s <- 5`. The model ends with
   `m` disposed at 0 and observed by the effect, and the effect `Clean`, unqueued, with one run; trace
-  `[EvRun 3; EvLog 3 0; EvDispose 2]`. F#, run by a harness script outside `Scenarios.fsx` (the script and its output are in
-  the Task 13 report): `m.Peek` 0, `ObserverCount` 1, one effect run, `queued` false, `Clean`, and the same events. Core.fs
+  `[EvRun 3; EvLog 3 0; EvDispose 2]`. F#, scenario `disposed_memo_keeps_observers` of `Scenarios.fsx`, with
+  `check_disposed_memo_keeps_observers` in `Conformance/Check.v`: `m.Peek` 0, `s.Peek` 5, `ObserverCount` 1, one effect run, `queued` false, `Clean`, and the same events. Core.fs
   4372-4376 documents both halves: a disposed memo "still answers reads, with the last value it computed" and "stops being
-  woken". The reader holds that value, which no later write moves, so no mark is owed. A run in progress at the disposal can
-  still end with a move, and its notice then reaches these readers, which read the new stored value.
+  woken". The reader holds that value, which no later write moves, so no mark is owed.
 - `glitch_free_read_statement` (`theories/Pure/WholeGraph.v`), closed as spec corrected. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, as `disposed_stale_source_read` closed the same form of `wake_ok`. `glitch_free_read_falsified` is the record. `glitch_free_read` is the form proved. The form over the node alone is `read_settles_writer` under Awaiting ruling, and at quiescence `quiescent_read_answers_past_flush` under Confirmed.
 
 ## Rulings

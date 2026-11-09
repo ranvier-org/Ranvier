@@ -2,6 +2,7 @@ From stdpp Require Import prelude.
 From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Runs Witnesses Scheduler Ownership WholeGraph.
+From Ranvier.Pure Require Import Ledger.
 From Ranvier.Conformance Require Import Expected.
 
 Open Scope Z_scope.
@@ -182,6 +183,7 @@ Definition prog_nested_self_run : cmd := nested_self_run (R 20 (V 4) Nop).
 Definition prog_check_over_moved : cmd := check_over_moved (R 22 (V 4) Nop).
 Definition prog_check_two_reads : cmd := check_two_reads (R 22 (V 3) Nop).
 Definition prog_stale_source_reader : cmd := stale_source_reader (R 22 (V 3) (R 23 (V 3) (R 24 (V 2) Nop))).
+Definition prog_disposed_memo_keeps_observers : cmd := disposed_keeps_observer Nop.
 Definition prog_disposed_self_window : cmd := disposed_window (R 22 (V 4) Nop).
 Definition prog_disposed_stale_source_read : cmd := disposed_stale_read (R 22 (V 2) Nop).
 Definition prog_walk_passed_source_marked : cmd := walk_passed (W (V 1) (K 2) (R 22 (V 3) Nop)).
@@ -299,6 +301,10 @@ Example check_check_two_reads :
 Proof. vm_compute. reflexivity. Qed.
 Example check_stale_source_reader :
   trace_of 100000 current_flags prog_stale_source_reader = Some exp_stale_source_reader.
+Proof. vm_compute. reflexivity. Qed.
+(** `BUGS.md`, `disposed_memo_keeps_observers`: a disposed memo keeps its observer and wakes none. *)
+Example check_disposed_memo_keeps_observers :
+  trace_of 100000 current_flags prog_disposed_memo_keeps_observers = Some exp_disposed_memo_keeps_observers.
 Proof. vm_compute. reflexivity. Qed.
 Example check_disposed_self_window :
   trace_of 100000 current_flags prog_disposed_self_window = Some exp_disposed_self_window.
