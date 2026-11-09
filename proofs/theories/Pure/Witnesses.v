@@ -2135,7 +2135,7 @@ Definition reads_unused : Semantics.program := {|
 (**md
 **`refinable` alone does not give an answer: an effect reading an id the program does not use has none at any fuel.**
 
-`reads_unused` is well formed and refinable, and no fuel gives an engine trace. The reference has no answer either, so the theorem refutes the form with no premise on the reference, and it does not refute `engine_of_answers_on` without `bodies_total`.
+`reads_unused` is well formed and refinable, and no fuel gives an engine trace. The reference has no answer at fuel 5 under `order_identity` (computed, the last conjunct), so the theorem refutes the form with no premise on the reference, and it does not refute `engine_of_answers_on` without `bodies_total`.
 *)
 Theorem refinable_alone_no_answer :
   Semantics.well_formed_program reads_unused /\ Refinement.refinable reads_unused [] /\

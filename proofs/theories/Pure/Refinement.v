@@ -540,8 +540,8 @@ Definition rtop : nat := S (max_list (rk <$> seq 0 lim)).
 Lemma rtop_gt t : t < lim -> rk t < rtop.
 Proof. intros H. apply Nat.lt_succ_r, max_list_elem_of_le, list_elem_of_fmap. exists t. split; [done|]. apply elem_of_seq. lia. Qed.
 
-(** A memo of [Sh] with a rank below [r]. A call on a node of rank below [r] changes the slots of these memos and of the
-    current computation, and of no other node. *)
+(** A memo of [Sh] with a rank below [r]. A call on a node of rank below [r] changes only the slots of these memos and of
+    the current computation. *)
 Definition xl (r : nat) (c : node_id) : Prop := rk c < r /\ exists q e b, Sh !! c = Some (KMemo, q, e, b).
 
 Record gd (s : state) : Prop := {
@@ -3897,9 +3897,11 @@ Definition Rdp (p : Semantics.program) (t : node_id) : Prop :=
      (Semantics.program_signals p !! (n : node_id) = None /\ is_Some (Semantics.program_memos p !! (n : node_id)))).
 
 (** Every memo and effect body of the program meets [body_ends], over all answers to its reads. A read's target is a signal or a
-    memo of the program, and a memo's read has a target below the memo. So an effect's write or cleanup, an untracked read, a
-    read of an effect or an unused id, an unbound variable and a possibly negative target all fail it, on a path no run takes as
-    well. [bodies_conservative] is such a program, and the engine answers on it. *)
+    memo of the program, and a memo's read has a target below the memo. [body_ends] constrains a continuation only under a
+    value: after an expression that fails, as in [CLet x (EDiv 1 0) (CWrite ...)], a write, cleanup, untracked read or unbound
+    variable meets it, so [bodies_total] does not imply [effects_read_only] and [refinable] stays beside it. On a path reached
+    by values, those constructs, a read of an effect or an unused id and a possibly negative target all fail it, on a path no
+    run takes as well. [bodies_conservative] is such a program, and the engine answers on it. *)
 Definition bodies_total (p : Semantics.program) : Prop :=
   (forall (n : node_id) c, Semantics.program_signals p !! n = None -> Semantics.program_memos p !! n = Some c ->
      body_ends (fun t => rk t < rk (S n) /\ Rdp p t) [] (rename c)) /\
@@ -4499,7 +4501,7 @@ The measure of the drain is `mu`: the weights of the stale memos and the live qu
 
 `bodies_total` reads a body over all answers to its reads, so it fails on a path no run takes, and no counterexample backs it on such a program: [`bodies_conservative`](Ranvier.Pure.Witnesses.html#bodies_conservative). Deriving it from the reference's success is open: `answers_where_reference_settles` in `BUGS.md`.
 
-`refinable` alone is not enough: [`refinable_alone_no_answer`](Ranvier.Pure.Witnesses.html#refinable_alone_no_answer). There the reference has no answer either, so that theorem does not refute the form with the reference's success. [`engine_of_answers_falsified`](Ranvier.Pure.Witnesses.html#engine_of_answers_falsified) refutes the statement with no `refinable`, on an effect that writes.
+`refinable` alone is not enough: [`refinable_alone_no_answer`](Ranvier.Pure.Witnesses.html#refinable_alone_no_answer). There the reference has no answer at the fuel and order computed, so that theorem does not refute the form with the reference's success. [`engine_of_answers_falsified`](Ranvier.Pure.Witnesses.html#engine_of_answers_falsified) refutes the statement with neither `refinable` nor `bodies_total`, which is `engine_answers` itself: its effect reads and then writes, so it fails both.
 *)
 Theorem engine_of_answers_on p h ord fuel t0 :
   Semantics.well_formed_program p -> refinable p h -> bodies_total p ->
@@ -4594,7 +4596,7 @@ Qed.
 This is the link between `well_formed_program` and `well_behaved_program`, `effects_only_read` and `quiescent`. Each gap between them, and what closes it:
 
 - **Rank.** `memos_acyclic` gives some rank over the paths that return. `pure_at` takes its rank from the class `Rank`, and the theorem holds for every rank, so a memo may read a higher id. `erase` keeps ids, shifted by one so that node 0 exists, and `memos_below` ranks the shifted ids.
-- **Stuck paths.** `memo_reads_below` says nothing of a path with no result, and `body_pure` covers every path. `memos_below` asks for every path, so a memo reading a node of equal or higher rank on a stuck path is outside the theorems, conservatively. Such a read has no effect on either side's answer.
+- **Stuck paths.** `memo_reads_below` says nothing of a path with no result, and `body_pure` covers every path. `memos_below` asks for every path, so a memo reading a node of equal or higher rank on a stuck path is outside the theorems, conservatively. By reading, such a read has no effect on either side's answer.
 - **`EVar 4096`.** `expr_no_prev` accepts it and `expr_plain` rejects it. `rename` closes this gap with no premise: `rv` moves a body's variables off `prev_var`, so a renamed body's expressions are plain ([`plain_rename`](#plain_rename)) and the engine's binding of the previous value is out of reach of every body.
 - **`CmpEq`.** `erase` chooses it for every memo. A default-policy memo returning a new reference value each run, or `nan`, is `CmpNever` in the model, so neither this theorem nor the refinements cover such a memo. `cmp_never_passes_source` shows that memo losing updates.
 - **Memo logs.** `well_behaved_memo` allows `CLog`, and the reference discards a memo's logs. `engine_of` projects them out of the trace, which is what the reference's semantics asks for, so the refinements say nothing about how often a memo's body runs.
