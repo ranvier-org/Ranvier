@@ -44,6 +44,13 @@ Proof. simpl. eexists. walk_steps. Qed.
 
 (** ** Marks *)
 
+(**md
+A `Clean` node of kind `k` holding 0, with no failure, status, run, scope or link, and the body `CRet 0`.
+
+- [k:] the kind of the node.
+- [cleanup:] the node's `n_in_cleanup`.
+- [disposed:] the node's `n_disposed`.
+*)
 Local Definition clean_node (k : kind) (cleanup disposed : bool) : node :=
   {| n_kind := k; n_value := 0%Z; n_failure := None; n_status := StNone; n_freshness := Clean;
      n_unannounced := false; n_runs := 0; n_published := false; n_disposed := disposed; n_queued := false;
@@ -51,6 +58,15 @@ Local Definition clean_node (k : kind) (cleanup disposed : bool) : node :=
      n_body := Syntax.CRet (Syntax.EConst 0%Z); n_env := []; n_mode := Syntax.Pure;
      n_comparer := Syntax.CmpEq; n_link := None |}.
 
+(**md
+A state under `current_flags`, with no owner, no current computation, no flush or batch, an empty trace and an empty ghost state.
+
+- [w:] the edges.
+- [nodes:] the nodes.
+- [q:] the queue.
+- [h:] the queue head.
+- [running:] the running stack.
+*)
 Local Definition mark_state (w : EdgeWorld) (nodes : gmap node_id node) (q : list node_id) (h : nat)
     (running : list node_id) : state :=
   {| g_flags := current_flags; g_edges := w; g_nodes := nodes; g_owners := ∅; g_queue := q;
@@ -132,6 +148,12 @@ Local Notation Nop := (CRet (EConst 0%Z)).
 Local Definition final (p : cmd) : state :=
   default (init current_flags) (fst <$> run_top 100000 p (init current_flags)).
 
+(**md
+The freshness, announcement flag, queued flag, status and value of node `n`.
+
+- [s:] the state.
+- [n:] the node.
+*)
 Local Definition node_view (s : state) (n : node_id) : option (freshness * bool * bool * status * val) :=
   d ← g_nodes s !! n; Some (n_freshness d, n_unannounced d, n_queued d, n_status d, n_value d).
 
@@ -151,7 +173,10 @@ Proof.
 Qed.
 
 (** The end state a lost wake-up leaves: [x] is stale and holds [n_unannounced], its observer [e] is clean
-    and unqueued, nothing is live or running, and a flush changes nothing. Confirmed in [BUGS.md]. *)
+    and unqueued, nothing is live or running, and a flush changes nothing. Confirmed in [BUGS.md].
+    - [s:] the end state.
+    - [x:] the stale node.
+    - [e:] the observer of [x] left clean. *)
 Local Definition left_behind (s : state) (x e : node_id) : Prop :=
   edge s x e /\ stale_all_unannounced s /\
   (exists f v, node_view s x = Some (f, true, false, StNone, v) /\ stale f = true) /\
@@ -184,6 +209,9 @@ Example self_marking_cleanup_left_behind :
   n_value <$> g_nodes s !! 3 = Some 50%Z.
 Proof. intros s. split_and!; [left_behind_proof 0 0|vm_compute; reflexivity|vm_compute; reflexivity]. Qed.
 
+(**md
+A memo body that reads and logs signal 1, writes the read plus 1 to signal 1 while the read is below 3, and answers 0 for a read below 2 and the read otherwise.
+*)
 Definition self_marking_memo_body : cmd :=
   CRead 10 (V 1) (CLog (V 10) (
   CIf (ELt (V 10) (K 3%Z))
@@ -536,6 +564,12 @@ Proof. split_and!; vm_compute; reflexivity. Qed.
 
 (** ** Wake-ups *)
 
+(**md
+The state a program ends in, under the flags `fl`.
+
+- [fl:] the engine's flags.
+- [p:] the program.
+*)
 Local Definition final_with (fl : flags) (p : cmd) : state :=
   default (init fl) (fst <$> run_top 100000 p (init fl)).
 
@@ -703,6 +737,9 @@ Definition nested_host_body : cmd :=
     (CRead 11 (V 2) (CWrite (V 1) (K 3%Z) (CRead 12 (V 4) (CRet (V 11)))))
     (CRead 11 (V 3) (CRet (V 11))))).
 
+(**md
+Signals 1, 2 and 3 and memo 4 over `nested_host_body`, a host read of memo 4, then a write of 2 to signal 1.
+*)
 Definition nested_host : cmd :=
   CSignal 1 (K 1%Z) (CSignal 2 (K 10%Z) (CSignal 3 (K 20%Z) (
   CMemo 4 Pure CmpEq nested_host_body (CRead 20 (V 4) (CWrite (V 1) (K 2%Z) Nop))))).
@@ -883,7 +920,9 @@ Local Lemma not_well_behaved s n d :
   g_nodes s !! n = Some d -> n_kind d = KMemo -> self_dirtying s n -> ~ well_behaved_program s.
 Proof. intros Hd Hk H K. exact (H (K n d Hd Hk)). Qed.
 
-(** Every effect of the state has id [e]. *)
+(** Every effect of the state has id [e].
+    - [s:] the state.
+    - [e:] the id of the effect. *)
 Local Definition sole_effect (s : state) (e : node_id) : bool :=
   forallb (fun x : node_id * node =>
     match n_kind x.2 with KEffect => bool_decide (x.1 = e) | _ => true end) (map_to_list (g_nodes s)).
@@ -907,11 +946,13 @@ Proof.
   apply Hne. exact (denotes_unique s t o (Ok l) Ho Hden).
 Qed.
 
-(** Issue 302's program, from conformance scenario S03: three memos in a diamond with a logging memo, written in
-    four batches. *)
+(** One batch of issue 302's program, conformance scenario S03: writes [i] to signals 2, 3 and 1, in that order. *)
 Definition s03_batch (i : val) : cmd :=
   CWrite (V 2) (K i) (CWrite (V 3) (K i) (CWrite (V 1) (K i) Nop)).
 
+(**md
+Conformance scenario S03: memos 4, 5 and 6 over signals 1, 2 and 3, memo 6 logging, effect 7 reading memo 6, and four batches of `s03_batch`.
+*)
 Definition prog_S03 : cmd :=
   CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (CSignal 3 (K 0%Z) (
   CMemo 4 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -1397,6 +1438,9 @@ Qed.
     A program per form with a behaviour no fix changes. A row outside the premises states the premise excluding it. A row
     inside them states that the present engine satisfies the conclusion. *)
 
+(**md
+An effect that creates a child effect in its body.
+*)
 Definition row_child_effect : cmd :=
   CSignal 1 (K 0%Z) (CEffect 2 (CRead 10 (V 1) (CEffect 11 (CLog (K 1%Z) Nop) (CLog (V 10) Nop))) Nop).
 
@@ -1406,6 +1450,9 @@ Proof.
   apply (converged_all_of_b 10). vm_compute. reflexivity.
 Qed.
 
+(**md
+An effect that disposes a memo in its body.
+*)
 Definition row_effect_disposes : cmd :=
   CSignal 1 (K 0%Z) (CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
   CEffect 3 (CRead 11 (V 1) (CDispose (V 2) (CLog (V 11) Nop))) (CWrite (V 1) (K 4%Z) Nop))).
@@ -1416,6 +1463,9 @@ Proof.
   apply (converged_all_of_b 10). vm_compute. reflexivity.
 Qed.
 
+(**md
+A memo that reads its signal untracked, under an effect.
+*)
 Definition row_memo_untracked : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CReadUntracked 10 (V 1) (CRet (V 10))) (
@@ -1430,6 +1480,9 @@ Proof.
   vm_compute in Hb. discriminate Hb.
 Qed.
 
+(**md
+A `CmpThrows` memo under an effect, with a write of its signal.
+*)
 Definition row_throwing_comparer : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure (CmpThrows 7%Z) (CRead 10 (V 1) (CRet (V 10))) (
@@ -1444,6 +1497,9 @@ Proof.
   apply (Hb 7%Z). vm_compute. reflexivity.
 Qed.
 
+(**md
+A `Pure` memo that registers a cleanup in its body.
+*)
 Definition row_pure_cleanup : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CCleanup Nop (CRead 10 (V 1) (CRet (V 10)))) (
@@ -1455,6 +1511,9 @@ Proof.
   apply (converged_all_of_b 10). vm_compute. reflexivity.
 Qed.
 
+(**md
+A `Pure` memo that creates an effect in its body.
+*)
 Definition row_pure_creation : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CEffect 11 Nop (CRet (V 10)))) (
@@ -1466,6 +1525,9 @@ Proof.
   apply (converged_all_of_b 10). vm_compute. reflexivity.
 Qed.
 
+(**md
+A memo that writes its signal, reads it, and writes it again.
+*)
 Definition row_read_between_writes : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CWrite (V 1) (K 1%Z) (CRead 10 (V 1) (CWrite (V 1) (K 2%Z) (CRet (V 10))))) (
@@ -1481,6 +1543,9 @@ Proof.
   refine (Hb 1%Z 1 ltac:(vm_compute; reflexivity) _ _); [by left|]. exists 1. simpl. by left.
 Qed.
 
+(**md
+An effect whose write of its source fails on a division by zero.
+*)
 Definition row_failing_write : cmd :=
   CSignal 1 (K 0%Z) (CEffect 2 (CRead 10 (V 1) (CWrite (V 1) (EDiv (K 1%Z) (EMul (V 10) (K 0%Z))) (CLog (K 7%Z) Nop))) Nop).
 
@@ -1490,6 +1555,9 @@ Proof.
   apply (converged_all_of_b 10). vm_compute. reflexivity.
 Qed.
 
+(**md
+An `Owning` memo that creates a memo in its body and reads it.
+*)
 Definition row_memo_creates : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Owning CmpEq (CMemo 11 Pure CmpEq (CRead 12 (V 1) (CRet (V 12))) (CRead 13 (V 11) (CRet (V 13)))) (
@@ -1504,6 +1572,9 @@ Proof.
   vm_compute in Hb. discriminate Hb.
 Qed.
 
+(**md
+A memo that answers its previous value once its signal reaches 3.
+*)
 Definition row_memo_prev : cmd :=
   CSignal 1 (K 1%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CIf (ELt (V 10) (K 3%Z)) (CRet (V 10)) (CRet EPrev))) (
@@ -1560,16 +1631,31 @@ Proof.
     ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)).
 Qed.
 
+(**md
+A memo body that reads signal 1, answers the read below 100, and runs `b` otherwise.
+*)
 Local Definition branch (b : cmd) : cmd :=
   CRead 10 (V 1) (CIf (ELt (V 10) (K 100%Z)) (CRet (V 10)) b).
 
-(** Memo [2] reads signal [1] and runs [b] at 100 or above. An effect reads the memo, and the signal is written to 5. *)
+(** Memo [2] reads signal [1] and runs [b] at 100 or above. An effect reads the memo, and the signal is written to 5.
+    - [m:] the scope mode of the memo.
+    - [c:] the comparer of the memo.
+    - [b:] the branch the memo runs at 100 or above. *)
 Local Definition host (m : scope_mode) (c : comparer) (b : cmd) : cmd :=
   CSignal 1 (K 0%Z) (CMemo 2 m c (branch b) (
   CEffect 3 (CRead 11 (V 2) (CLog (V 11) Nop)) (CWrite (V 1) (K 5%Z) Nop))).
 
+(**md
+`host` with an untracked read on the branch at 100 or above, unreached by the program's runs.
+*)
 Definition dead_untracked : cmd := host Pure CmpEq (CReadUntracked 12 (V 1) (CRet (V 12))).
+(**md
+`host` with `EPrev` on the branch at 100 or above, unreached by the program's runs.
+*)
 Definition dead_prev : cmd := host Pure CmpEq (CRet EPrev).
+(**md
+`host` with an `Owning` memo creating a signal on the branch at 100 or above, unreached by the program's runs.
+*)
 Definition dead_creation : cmd := host Owning CmpEq (CSignal 12 (K 0%Z) (CRet (K 0%Z))).
 
 (** A [CmpThrows] memo that runs once, read by an effect. *)
@@ -1923,15 +2009,24 @@ Definition requeue_order : Semantics.program := {|
 
 Definition requeue_batch : list Semantics.host_input := [Semantics.RWrite 0 1%Z; Semantics.RWrite 1 2%Z].
 
+(**md
+The state after the engine program of `requeue_order` with an empty history.
+*)
 Definition requeue_s0 : state :=
   match run_top 20000 (Refinement.erase requeue_order []) (init current_flags) with Some (s, _) => s | None => init current_flags end.
 
+(**md
+The state after the inputs of `requeue_batch`, inside the batch.
+*)
 Definition requeue_s1 : state :=
   match exec 20000 [] (foldr (Refinement.input_cmd requeue_order) Refinement.done_cmd requeue_batch) (with_batch_depth 1 requeue_s0) with
   | Some (s, _) => s
   | None => requeue_s0
   end.
 
+(**md
+The state after the flush that closes the batch.
+*)
 Definition requeue_s2 : state :=
   match request_flush 20000 (with_batch_depth 0 requeue_s1) with Some (s, _) => s | None => requeue_s1 end.
 
@@ -2034,6 +2129,9 @@ Proof.
   intros [x Hx]. destruct h0 as [|b0 h1]; [by left|right]. destruct h1 as [|b1 h2]; [|done]. injection Hx as ->. reflexivity.
 Qed.
 
+(**md
+The state at the flush of `drain_order`'s one batch: after the engine program and the batch's write, with the batch closed.
+*)
 Definition drain_flush : state :=
   with_batch_depth 0
     (match exec 20000 [] (foldr (Refinement.input_cmd drain_order) Refinement.done_cmd [Semantics.RWrite 0 1%Z])
@@ -2258,22 +2356,33 @@ Qed.
 
 (** ** No fuel answers on [restored_source] *)
 
+(**md
+The state after `setup_cmd` of `restored_source`, inside its batch.
+*)
 Definition rs_setup : state := Eval vm_compute in
   match exec 100 [] (Refinement.setup_cmd restored_source) (with_batch_depth 1 (init current_flags)) with
   | Some (s, _) => s
   | None => init current_flags
   end.
 
+(**md
+The state after the first execution of effect 2, in a flush that has taken its queue entry.
+*)
 Definition rs_first : state := Eval vm_compute in
   match execute_effect 100 2 (with_queue_head 1 (with_flush_owed false (with_flushing true (with_batch_depth 0 rs_setup)))) with
   | Some (s, _) => s
   | None => rs_setup
   end.
 
+(**md
+Effect 2 of `rs_first` with run count `r`.
+*)
 Definition rs_node (r : nat) : node :=
   match g_nodes rs_first !! 2 with Some d => node_with_runs r d | None => signal_node 0%Z end.
 
-(** The drain's state from the effect's first run on, with its one live entry first: the trace and the run count move. *)
+(** The drain's state from the effect's first run on, with its one live entry first: the trace and the run count move.
+    - [t:] the trace.
+    - [r:] the run count of effect 2. *)
 Definition rs_at (t : list event) (r : nat) : state :=
   with_queue [2] (with_queue_head 0 (with_trace t (set_node 2 (rs_node r) rs_first))).
 

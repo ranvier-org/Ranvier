@@ -8,6 +8,12 @@ Open Scope nat_scope.
 
 (** ** More fuel keeps an answer *)
 
+(**md
+Every result of `m` is the result of `m'` from the same state.
+
+- [m:] the call at less fuel.
+- [m':] the call at more fuel.
+*)
 Definition le_m {A} (m m' : M A) : Prop := forall s r, m s = Some r -> m' s = Some r.
 
 Lemma le_bind {A B} (m m' : M A) (k k' : A -> M B) : le_m m m' -> (forall a, le_m (k a) (k' a)) -> le_m (m_bind m k) (m_bind m' k').
@@ -73,6 +79,12 @@ Proof.
   destruct (mark_check f c s) as [s1|] eqn:Em; [|done]. by rewrite (mark_check_le _ _ _ _ _ Hl Em).
 Qed.
 
+(**md
+Every engine function at fuel `f` is `le_m` the same function at fuel `g`.
+
+- [f:] the smaller fuel.
+- [g:] the larger fuel.
+*)
 Record fuel_le (f g : nat) : Prop := {
   fl_exec : forall e c, le_m (exec f e c) (exec g e c);
   fl_read : forall n t, le_m (read f n t) (read g n t);
@@ -156,6 +168,9 @@ Proof.
     try fl_go IH Hl.
 Qed.
 
+(**md
+More fuel keeps every answer of every engine function.
+*)
 Lemma fuel_le_all f : forall g, f <= g -> fuel_le f g.
 Proof.
   induction f as [|f IH]; intros g Hl.
@@ -172,6 +187,9 @@ Variable x : list node_id.
 Definition shift (s : state) : state :=
   with_queue (x ++ g_queue s) (with_queue_head (length x + g_queue_head s) s).
 
+(**md
+A result with its state shifted.
+*)
 Definition shifted {A} (r : option (state * A)) : option (state * A) := (fun y => (shift y.1, y.2)) <$> r.
 
 (** Under a flush, [m] on the shifted state is [m] on the state, shifted, and the flush stays open. *)
@@ -360,6 +378,9 @@ Proof.
   intros s' c Ec. unfold m_return in Ec. injection Ec as <- _. exact (A2 _ _ eq_refl).
 Qed.
 
+(**md
+Every engine function at fuel `f` satisfies `cm`.
+*)
 Record cm_ok (f : nat) : Prop := {
   co_exec : forall e c, cm (exec f e c);
   co_read : forall n t, cm (read f n t);
@@ -482,6 +503,9 @@ Proof.
   - apply cm_get; intros s Hf; [reflexivity|]. cbv beta. rewrite Hf. apply cm_ret.
 Qed.
 
+(**md
+`cm_ok` holds at every fuel: under a flush, every engine function on a `shift`ed state returns its result on the state, shifted.
+*)
 Lemma cm_all f : cm_ok f.
 Proof.
   induction f as [|f IH]; [split; intros; intros s Hf; split; done|by apply cm_ok_S].
@@ -491,7 +515,10 @@ End Shift.
 
 (** A body of returns, failures, lets, branches, tracked and try reads, logs and batches, where for every answer to a read and
     both arms of a branch reachable from those answers, each expression evaluates and each read's target is non-negative and
-    meets [Q]. The answers range over all values, so a path no run takes counts. *)
+    meets [Q]. The answers range over all values, so a path no run takes counts.
+    - [Q:] the condition on each read's target.
+    - [e:] the environment of the body.
+    - [c:] the body. *)
 Fixpoint body_ends (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
   match c with
   | CRet x => expr_plain x = true /\ is_Some (ev e x)
@@ -535,15 +562,23 @@ Hypothesis Hbe : forall m q e b, Sh !! m = Some (KEffect, q, e, b) -> body_ends 
 Variable lim : nat.
 Hypothesis Hlim : forall t x, Sh !! t = Some x -> t < lim.
 
+(**md
+A rank above the rank of every id below `lim`.
+*)
 Definition rtop : nat := S (max_list (rk <$> seq 0 lim)).
 
 Lemma rtop_gt t : t < lim -> rk t < rtop.
 Proof. intros H. apply Nat.lt_succ_r, max_list_elem_of_le, list_elem_of_fmap. exists t. split; [done|]. apply elem_of_seq. lia. Qed.
 
 (** A memo of [Sh] with a rank below [r]. A call on a node of rank below [r] changes only the slots of these memos and of
-    the current computation. *)
+    the current computation.
+    - [r:] the rank bound.
+    - [c:] the node tested. *)
 Definition xl (r : nat) (c : node_id) : Prop := rk c < r /\ exists q e b, Sh !! c = Some (KMemo, q, e, b).
 
+(**md
+The state has the shapes `Sh`, scopes of `None` on every computation, only effects in its queue, reachable edges with cursors in range, slots holding `Rd` nodes of lower rank in memos, a root owner, and links to the root owner only.
+*)
 Record gd (s : state) : Prop := {
   gd_sh : shapes s = Sh;
   gd_scope : forall m d, g_nodes s !! m = Some d -> n_kind d <> KSignal -> n_scope d = None;
@@ -558,7 +593,9 @@ Record gd (s : state) : Prop := {
 
 (** ** The measure of a flush *)
 
-(** A sum over the ids from [lim - i] up to [lim]. *)
+(** A sum over the ids from [lim - i] up to [lim].
+    - [g:] the summand of each id.
+    - [i:] the count of ids summed. *)
 Fixpoint sum_up (g : node_id -> nat) (i : nat) : nat :=
   match i with
   | 0 => 0
@@ -592,26 +629,43 @@ Fixpoint gsum (i : nat) : nat :=
   | S i => lim * (2 * gsum i + 2 * lim + 1) + gsum i
   end.
 
+(**md
+The bound on the rise of `mu` from the marks a run of `t` starts.
+*)
 Definition cost (t : node_id) : nat := gsum (rtop - S (rk t)) + lim.
 
+(**md
+The weight a stale memo `m` adds to `mu`.
+*)
 Definition wt (m : node_id) : nat := 2 * gsum (rtop - S (rk m)) + 2 * lim + 1.
 
 Lemma gsum_mono a b : a <= b -> gsum a <= gsum b.
 Proof. induction 1 as [|b _ IH]; [done|]. simpl. lia. Qed.
 
-(** A stale memo holds its weight. *)
+(** A stale memo holds its weight.
+    - [s:] the state.
+    - [m:] the node weighed. *)
 Definition stale_w (s : state) (m : node_id) : nat :=
   match g_nodes s !! m with
   | Some d => match n_kind d, n_freshness d with KMemo, Clean => 0 | KMemo, _ => wt m | _, _ => 0 end
   | None => 0
   end.
 
+(**md
+1 for a queued effect, 0 for every other node.
+
+- [s:] the state.
+- [m:] the node.
+*)
 Definition qbit (s : state) (m : node_id) : nat :=
   match g_nodes s !! m with
   | Some d => match n_kind d with KEffect => if n_queued d then 1 else 0 | _ => 0 end
   | None => 0
   end.
 
+(**md
+The count of live queue entries.
+*)
 Definition qlen (s : state) : nat := length (g_queue s) - g_queue_head s.
 
 (** Every drain step lowers this: the weights of the stale memos, and the live queue entries. *)
@@ -639,6 +693,14 @@ Proof.
     simpl. lia.
 Qed.
 
+(**md
+A call keeps the slots of every computation outside `X` and other than the current one, the current computation, the flush flag and the batch depth, and raises `mu` by at most `u`.
+
+- [u:] the bound on the rise of `mu`.
+- [X:] the computations whose slots can change.
+- [s:] the state before the call.
+- [s':] the state after the call.
+*)
 Record kept (u : Z) (X : node_id -> Prop) (s s' : state) : Prop := {
   kp_slots : forall c, ~ X c -> g_current s <> Some c -> (slot_view (g_edges s') c).1 = (slot_view (g_edges s) c).1;
   kp_cur : g_current s' = g_current s;
@@ -659,14 +721,28 @@ Qed.
 Lemma kept_le u u' X s s' : (u <= u')%Z -> kept u X s s' -> kept u' X s s'.
 Proof. intros H [A B C D E]. split; try done. lia. Qed.
 
+(**md
+From `s`, `F` returns `r` at every fuel from some bound on.
+
+- [F:] the engine function, by fuel.
+- [s:] the start state.
+- [r:] the result.
+*)
 Definition ev_m {A} (F : nat -> M A) (s : state) (r : state * A) : Prop := exists N, forall f, N <= f -> F f s = Some r.
 
-(** For enough fuel, [F] ends from each state of [gd] and [P], and ends in [gd] with [mu] raised by at most [u]. *)
+(** For enough fuel, [F] ends from each state of [gd] and [P], and ends in [gd] with [mu] raised by at most [u].
+    - [u:] the bound on the rise of [mu].
+    - [X:] the computations whose slots can change.
+    - [P:] the premise of the call.
+    - [F:] the engine function, by fuel. *)
 Definition totu {A} (u : Z) (X : node_id -> Prop) (P : state -> Prop) (F : nat -> M A) : Prop :=
   forall s, gd s -> tk_ctx s -> P s -> exists s' a, ev_m F s (s', a) /\ gd s' /\ kept u X s s'.
 
 Notation tot := (totu 0).
 
+(**md
+`P` holds across every `kept` call between `gd` states.
+*)
 Class TS (P : state -> Prop) := ts : forall u X s s', gd s -> gd s' -> kept u X s s' -> P s -> P s'.
 
 Global Instance ts_true : TS (fun _ => True).
@@ -684,7 +760,9 @@ Proof.
   destruct (shapes_node_back s' s n d E Hd) as (x&Hx&Hs). unfold shape_of in Hs. injection Hs as K _ _ _. exists x. split; [done|congruence].
 Qed.
 
-(** The read target lies below the current memo. *)
+(** The read target lies below the current memo.
+    - [t:] the read target.
+    - [s:] the state. *)
 Definition pt (t : node_id) (s : state) : Prop :=
   forall c q e b, g_current s = Some c -> Sh !! c = Some (KMemo, q, e, b) -> rk t < rk c.
 
@@ -887,6 +965,9 @@ Proof.
   lia.
 Qed.
 
+(**md
+`c` is a memo of `Sh`.
+*)
 Definition memo_sh (c : node_id) : Prop := exists q e b, Sh !! c = Some (KMemo, q, e, b).
 
 Lemma observer_low s c y k i :
@@ -1299,6 +1380,9 @@ Proof. split; [lia|by eexists _, _, _]. Qed.
 Lemma n_lim : n < lim.
 Proof. exact (Hlim _ _ Hsn). Qed.
 
+(**md
+The memo `n` of the section is `Dirty` in `s`.
+*)
 Definition dirty_at (s : state) : Prop := exists d, g_nodes s !! n = Some d /\ n_freshness d = Dirty.
 
 (** A run takes [wt n] off the measure, and its marks add at most [cost n]. *)
@@ -1362,7 +1446,9 @@ Proof.
   exists N. intros f Hf. unfold m_bind, get_node. rewrite Hd, Hsc. exact (Ev f Hf).
 Qed.
 
-(** A memo left stale by its refresh has run, so the measure has room for a mark of its reader. *)
+(** A memo left stale by its refresh has run, so the measure has room for a mark of its reader.
+    - [s:] the state before the refresh.
+    - [s':] the state after the refresh. *)
 Definition rpost (s s' : state) : Prop := 0 < stale_w s' n -> mu s' + cost n <= mu s.
 
 Lemma cost_wt : wt n = 2 * cost n + 1.
@@ -1567,6 +1653,8 @@ Qed.
 Every memo body in `Sh` meets `body_ends`, with its reads below its own id. From a state of `gd` under a flush or a batch, `read_node` and `update_if_necessary` end at enough fuel, in `gd`. The rank of the id bounds the memo calls, the body bounds each run and the slot count bounds each walk.
 
 `mu`, the sum of the stale memos' weights and the live queue entries, does not rise. A run takes `wt n` off, and its marks add at most `cost n`, half of it. A read of a memo left stale by its own run marks the reader, within the other half.
+
+- [k:] the rank bound of the nodes read.
 *)
 Theorem reads_end k : below k.
 Proof.
@@ -1576,6 +1664,12 @@ Qed.
 Global Instance ts_none : TS (fun s => g_current s = None).
 Proof. intros u X s s' _ _ K H. by rewrite (kp_cur _ _ _ _ K). Qed.
 
+(**md
+The computations whose slots a run of effect `e` can change: every memo of `Sh` ranked below `rtop`, and `e`.
+
+- [e:] the effect.
+- [c:] the computation tested.
+*)
 Definition xe (e : node_id) (c : node_id) : Prop := xl rtop c \/ c = e.
 
 Lemma pt_none t s : g_current s = None -> pt t s.
@@ -1662,6 +1756,9 @@ End Effect.
 **The drain ends: each entry it takes lowers `mu`.**
 
 From a state of `gd` with the flush open and no current computation, `drain` ends at enough fuel. `execute_effect` raises no `mu`, and taking an entry takes one off the live queue.
+
+- [k:] a bound on `mu` of the start state.
+- [s:] the start state.
 *)
 Theorem drain_ends k : forall s, gd s -> g_flushing s = true -> g_current s = None -> mu s <= k ->
   exists s' a, ev_m (fun f => drain f) s (s', a) /\ gd s' /\ g_flushing s' = true.
@@ -1694,6 +1791,9 @@ End Total.
 (** Moves a body's variables off [prev_var], the variable the engine binds to a memo's previous value. *)
 Definition rv (x : var) : var := if Nat.ltb x prev_var then x else S x.
 
+(**md
+An expression with each variable moved by `rv`.
+*)
 Fixpoint rename_expr (e : expr) : expr :=
   match e with
   | EConst z => EConst z
@@ -1731,10 +1831,16 @@ Fixpoint rename (c : cmd) : cmd :=
 (** A body with no result. *)
 Definition stuck_cmd : cmd := CRet (EVar 0).
 
+(**md
+A body that returns 0.
+*)
 Definition done_cmd : cmd := CRet (EConst 0%Z).
 
 (** Creates the node at an id. An id the program does not use holds a memo with no result, so a read of it has no result, as
-    in the reference, and later ids keep their places. A memo takes [Pure] and [CmpEq]. *)
+    in the reference, and later ids keep their places. A memo takes [Pure] and [CmpEq].
+    - [p:] the reference program.
+    - [n:] the reference id.
+    - [k:] the continuation. *)
 Definition node_cmd (p : Semantics.program) (n : node_id) (k : cmd) : cmd :=
   match Semantics.program_signals p !! n, Semantics.program_memos p !! n, Semantics.program_effects p !! n with
   | Some v, _, _ => CSignal prev_var (EConst v) k
@@ -1747,12 +1853,21 @@ Definition node_cmd (p : Semantics.program) (n : node_id) (k : cmd) : cmd :=
 Definition node_bound (p : Semantics.program) : nat :=
   S (max_list (elements (dom (Semantics.program_signals p) ∪ dom (Semantics.program_memos p) ∪ dom (Semantics.program_effects p)))).
 
+(**md
+Creates the node of `p` at each id below `node_bound`, in id order.
+*)
 Definition setup_cmd (p : Semantics.program) : cmd := foldr (node_cmd p) done_cmd (seq 0 (node_bound p)).
 
+(**md
+The engine id of reference node `n`, as a constant.
+*)
 Definition engine_id (n : node_id) : expr := EConst (Z.of_nat (S n)).
 
 (** A host input. A host read is a [CTryRead], so a failed memo's failure is the read's answer and the program goes on. A
-    disposal of a node the reference has no memo or effect at has no result. *)
+    disposal of a node the reference has no memo or effect at has no result.
+    - [p:] the reference program.
+    - [i:] the host input.
+    - [k:] the continuation. *)
 Definition input_cmd (p : Semantics.program) (i : Semantics.host_input) (k : cmd) : cmd :=
   match i with
   | Semantics.RWrite t v => CWrite (engine_id t) (EConst v) k
@@ -1764,13 +1879,28 @@ Definition input_cmd (p : Semantics.program) (i : Semantics.host_input) (k : cmd
     end
   end.
 
+(**md
+The inputs of `b` in one engine batch, then `k`.
+
+- [p:] the reference program.
+- [b:] the batch of host inputs.
+- [k:] the continuation.
+*)
 Definition batch_cmd (p : Semantics.program) (b : list Semantics.host_input) (k : cmd) : cmd :=
   CBatch (foldr (input_cmd p) done_cmd b) k.
 
+(**md
+Each batch of `h` as an engine batch, in order.
+
+- [p:] the reference program.
+- [h:] the history.
+*)
 Definition history_cmd (p : Semantics.program) (h : Semantics.history) : cmd := foldr (batch_cmd p) done_cmd h.
 
 (** The engine program for a reference program and a history: every node created in one batch, in id order, then each batch of
-    the history. Each closing batch flushes, as settling does in the reference. *)
+    the history. Each closing batch flushes, as settling does in the reference.
+    - [p:] the reference program.
+    - [h:] the history. *)
 Definition erase (p : Semantics.program) (h : Semantics.history) : cmd := CBatch (setup_cmd p) (history_cmd p h).
 
 (** An event in the reference's ids. *)
@@ -1784,22 +1914,40 @@ Definition event_back (ev : event) : event :=
   | EvHostRead n o => EvHostRead (pred n) o
   end.
 
-(** An event the reference can hold. The reference discards a memo's logs, so only an effect's events and the host's stay. *)
+(** An event the reference can hold. The reference discards a memo's logs, so only an effect's events and the host's stay.
+    - [p:] the reference program.
+    - [ev:] the engine event. *)
 Definition event_kept (p : Semantics.program) (ev : event) : bool :=
   match ev with
   | EvRun n | EvLog n _ | EvCleanup n | EvFail n _ => bool_decide (is_Some (Semantics.program_effects p !! pred n))
   | EvDispose _ | EvHostRead _ _ => true
   end.
 
+(**md
+The events of an engine trace the reference can hold, in the reference's ids.
+
+- [p:] the reference program.
+- [t:] the engine trace.
+*)
 Definition project (p : Semantics.program) (t : list event) : list event :=
   event_back <$> filter (fun ev => event_kept p ev = true) t.
 
+(**md
+The engine as a reference engine: the projected trace of the engine program for `p` and `h`, or `None` when the run has no result.
+
+- [fl:] the engine's flags.
+- [k:] the fuel.
+- [p:] the reference program.
+- [h:] the history.
+*)
 Definition engine_of (fl : flags) (k : nat) (p : Semantics.program) (h : Semantics.history) : option (list event) :=
   project p <$> trace_of k fl (erase p h).
 
 (** ** The order of a flush *)
 
-(** The entries of [l] in the order of [q], each value's copies together, then the entries [q] does not hold. *)
+(** The entries of [l] in the order of [q], each value's copies together, then the entries [q] does not hold.
+    - [q:] the order.
+    - [l:] the entries ordered. *)
 Fixpoint order_by (q l : list node_id) : list node_id :=
   match q with
   | [] => l
@@ -1809,6 +1957,9 @@ Fixpoint order_by (q l : list node_id) : list node_id :=
 (** The queue a flush starts from, in the reference's ids. *)
 Definition live_queue_of (s : state) : list node_id := pred <$> drop (g_queue_head s) (g_queue s).
 
+(**md
+The effect order that sorts a round by the live queue of `s`.
+*)
 Definition engine_order (s : state) : Semantics.effect_order := fun _ l => order_by (live_queue_of s) l.
 
 (** ** A body read through its answers, in the reference *)
@@ -1822,7 +1973,10 @@ Fixpoint frag_body (c : cmd) : bool :=
   | _ => false
   end.
 
-(** The tracked reads of a body whose reads are answered by [B]. *)
+(** The tracked reads of a body whose reads are answered by [B].
+    - [B:] the answer of each node read.
+    - [g:] the environment of the body.
+    - [c:] the body. *)
 Fixpoint tracked (B : node_id -> option outcome) (g : env) (c : cmd) : list (node_id * outcome) :=
   match c with
   | CLet x v k => match ev g v with Some (Ok z) => tracked B ((x, z) :: g) k | _ => [] end
@@ -1861,7 +2015,10 @@ Fixpoint tracked (B : node_id -> option outcome) (g : env) (c : cmd) : list (nod
   | _ => []
   end.
 
-(** A body state after reads [R] and events [E]. *)
+(** A body state after reads [R] and events [E].
+    - [st:] the body state before.
+    - [R:] the reads appended.
+    - [E:] the events appended. *)
 Definition adv (st : Semantics.body_state) (R : list (node_id * outcome)) (E : list event) : Semantics.body_state :=
   {| Semantics.body_signals := Semantics.body_signals st; Semantics.body_reads := Semantics.body_reads st ++ R;
      Semantics.body_all_reads := Semantics.body_all_reads st ++ R; Semantics.body_cleanups := Semantics.body_cleanups st;
@@ -1934,7 +2091,9 @@ Proof.
     rewrite emit_adv, (IHc Hf _ (adv st _ _) _ _ Hrd He E1), adv_adv. done.
 Qed.
 
-(** Whether some read differs from the answers [B], oldest first. *)
+(** Whether some read differs from the answers [B], oldest first.
+    - [B:] the current answers.
+    - [R:] the recorded reads, oldest first. *)
 Fixpoint moved_by (B : node_id -> option outcome) (R : list (node_id * outcome)) : option bool :=
   match R with
   | [] => Some false
@@ -2013,9 +2172,22 @@ Qed.
 
 (** ** The reference over a program whose effects only read *)
 
+(**md
+The events of one run of `n`: its `EvRun`, its logs, then an `EvFail` when the result is a failure.
+
+- [n:] the node run.
+- [r:] the result of the run.
+- [l:] the logs of the run.
+*)
 Definition blk (n : node_id) (r : outcome) (l : list val) : list event :=
   EvRun n :: (EvLog n <$> l) ++ fail_evs n r.
 
+(**md
+The events of one run of `n` with the result and logs `F` gives it.
+
+- [F:] the result and logs of each node.
+- [n:] the node run.
+*)
 Definition blkF (F : node_id -> outcome * list val) (n : node_id) : list event := blk n (F n).1 (F n).2.
 
 Section RefRun.
@@ -2101,7 +2273,9 @@ Definition ref_settled (st : Semantics.reference_state) : Prop :=
     (n ∉ Semantics.rs_disposed st /\
      Semantics.rs_effects st !! n = Some (tracked (Semantics.memo_value p (Semantics.rs_frozen st) (Semantics.rs_signals st)) [] c, [])).
 
-(** A live effect holds reads over some earlier answers, and evaluates over the current ones to [F]. *)
+(** A live effect holds reads over some earlier answers, and evaluates over the current ones to [F].
+    - [F:] the result and logs of each effect over the current answers.
+    - [st:] the reference state. *)
 Definition ref_pending (F : node_id -> outcome * list val) (st : Semantics.reference_state) : Prop :=
   forall n c, Semantics.program_effects p !! n = Some c ->
     (n ∈ Semantics.rs_disposed st /\ Semantics.rs_effects st !! n = None) \/
@@ -2184,6 +2358,14 @@ End RefRun.
 
 (** ** The settled view *)
 
+(**md
+A settled view after a run of `n`: the run's logs and failure as its last events, the failure added to the failures once, and the disposal flag kept.
+
+- [v:] the view before the run, or `None`.
+- [n:] the node run.
+- [r:] the result of the run.
+- [l:] the logs of the run.
+*)
 Definition aft (v : option Semantics.settled_view) (n : node_id) (r : outcome) (l : list val) : Semantics.settled_view :=
   let cur := default {| Semantics.sv_last := []; Semantics.sv_failures := []; Semantics.sv_disposed := false |} v in
   {| Semantics.sv_last := (EvLog n <$> l) ++ fail_evs n r;
@@ -2243,7 +2425,9 @@ Proof. unfold rv. destruct (Nat.ltb_spec x prev_var); lia. Qed.
 Lemma rv_inj x y : rv x = rv y -> x = y.
 Proof. unfold rv. destruct (Nat.ltb_spec x prev_var), (Nat.ltb_spec y prev_var); lia. Qed.
 
-(** [e] holds [g]'s bindings under [rv]. *)
+(** [e] holds [g]'s bindings under [rv].
+    - [g:] the reference environment.
+    - [e:] the engine environment. *)
 Definition env_rel (g e : env) : Prop := forall x, env_lookup e (rv x) = env_lookup g x.
 
 Lemma env_rel_cons x v g e : env_rel g e -> env_rel ((x, v) :: g) ((rv x, v) :: e).
@@ -2354,16 +2538,31 @@ Definition memos_below (p : Semantics.program) : Prop :=
 Definition effects_read_only (p : Semantics.program) : Prop :=
   forall n c, Semantics.program_effects p !! n = Some c -> frag_body c = true.
 
-(** The history disposes no memo. *)
+(** The history disposes no memo.
+    - [p:] the reference program.
+    - [h:] the history. *)
 Definition no_memo_disposal (p : Semantics.program) (h : Semantics.history) : Prop :=
   forall b n, b ∈ h -> Semantics.RDispose n ∈ b -> Semantics.program_memos p !! n = None.
 
+(**md
+The premises of the refinement theorems: `memos_below`, `effects_read_only` and `no_memo_disposal`.
+
+- [p:] the reference program.
+- [h:] the history.
+*)
 Definition refinable (p : Semantics.program) (h : Semantics.history) : Prop :=
   memos_below p /\ effects_read_only p /\ no_memo_disposal p h.
 
 (** An environment binding only [prev_var]. *)
 Definition binder_env (e : env) : Prop := env_agree e [].
 
+(**md
+`d` is the engine node `node_cmd` creates for reference id `n`: a signal, a memo or an effect with the renamed body, or a stuck memo at an unused id, each with `CmpEq` and an environment binding only `prev_var`.
+
+- [p:] the reference program.
+- [n:] the reference id.
+- [d:] the engine node.
+*)
 Definition node_match (p : Semantics.program) (n : node_id) (d : node) : Prop :=
   n_comparer d = CmpEq /\ binder_env (n_env d) /\
   match Semantics.program_signals p !! n, Semantics.program_memos p !! n, Semantics.program_effects p !! n with
@@ -2373,7 +2572,9 @@ Definition node_match (p : Semantics.program) (n : node_id) (d : node) : Prop :=
   | None, None, None => n_kind d = KMemo /\ n_body d = stuck_cmd
   end.
 
-(** The nodes the engine program creates. *)
+(** The nodes the engine program creates.
+    - [p:] the reference program.
+    - [s:] the engine state. *)
 Definition tbl (p : Semantics.program) (s : state) : Prop :=
   g_nodes s !! (0 : node_id) = None /\
   forall n, (n < node_bound p -> exists d, g_nodes s !! (S n : node_id) = Some d /\ node_match p n d) /\
@@ -2499,7 +2700,10 @@ Proof.
     destruct (Semantics.program_memos p !! t) as [c1|] eqn:Em1; [exfalso; apply Hm; by eexists|done].
 Qed.
 
-(** The signals of a state, in the reference's ids. *)
+(** The signals of a state, in the reference's ids.
+    - [p:] the reference program.
+    - [sigs:] the reference signals.
+    - [s:] the engine state. *)
 Definition sig_rel (p : Semantics.program) (sigs : gmap node_id val) (s : state) : Prop :=
   forall (n : node_id) d, g_nodes s !! (S n : node_id) = Some d -> n_kind d = KSignal -> sigs !! n = Some (n_value d).
 
@@ -2636,6 +2840,12 @@ Qed.
 
 (** ** The host's steps *)
 
+(**md
+The answer of engine id `t` from the reference answers `B`: `None` at 0, and `B u` at `S u`.
+
+- [B:] the reference answers.
+- [t:] the engine id.
+*)
 Definition answers (B : node_id -> option outcome) (t : node_id) : option outcome :=
   match t with 0 => None | S u => B u end.
 
@@ -2655,6 +2865,13 @@ Proof.
   rewrite (logs_rename (answers B) c eq_refl _ _ (binder_rel _ He)) in Hv. exact Hv.
 Qed.
 
+(**md
+The result and logs of effect `n`'s body over the memo values of the signals `sigs`, with `Ok 0` and no logs for a stuck body or a node that is no effect.
+
+- [p:] the reference program.
+- [sigs:] the reference signals.
+- [n:] the reference id.
+*)
 Definition content (p : Semantics.program) (sigs : gmap node_id val) (n : node_id) : outcome * list val :=
   match Semantics.program_effects p !! n with
   | Some c =>
@@ -2667,7 +2884,11 @@ Lemma content_eq p sigs n c r l :
   body_logs (Semantics.memo_value p ∅ sigs) [] c = Some l -> content p sigs n = (r, l).
 Proof. intros H1 H2 H3. unfold content. by rewrite H1, H2, H3. Qed.
 
-(** The state between a host's inputs. *)
+(** The state between a host's inputs.
+    - [p:] the reference program.
+    - [sigs:] the reference signals.
+    - [D:] the disposed reference ids.
+    - [s:] the engine state. *)
 Record host_ok (p : Semantics.program) (sigs : gmap node_id val) (D : gset node_id) (s : state) : Prop := {
   ho_core : run_core s;
   ho_wk : wk0 s;
@@ -2893,6 +3114,9 @@ Proof.
   rewrite host_reads_app. assert (H : forall l : list val, Semantics.host_reads (EvLog n <$> l) = []) by (induction l as [|z l IHl]; [done|exact IHl]). rewrite H. by destruct (F n).1.
 Qed.
 
+(**md
+The events of the reference runs `rs`, in order.
+*)
 Definition evs (rs : list Semantics.run) : list event := concat (Semantics.run_events <$> rs).
 
 Lemma evs_app a b : evs (a ++ b) = evs a ++ evs b.
@@ -2905,7 +3129,9 @@ Definition runs_in : list event -> list node_id :=
 Lemma runs_in_app a b : runs_in (a ++ b) = runs_in a ++ runs_in b.
 Proof. unfold runs_in. apply omap_app. Qed.
 
-(** The entries taken by the drain of a flush requested at fuel [g], in order. *)
+(** The entries taken by the drain of a flush requested at fuel [g], in order.
+    - [g:] the fuel of the request.
+    - [s:] the state at the request. *)
 Definition flush_queue (g : nat) (s : state) : list node_id :=
   match g with
   | S (S g') => dequeued g' (with_flush_owed false (with_flushing true s))
@@ -2960,6 +3186,12 @@ Qed.
 
 (** ** A program's start *)
 
+(**md
+The state after `setup_cmd` has created the nodes of ids below `i`: each live and matching `node_match`, a signal holding its initial value, the next id at `i`, no current computation, the root as current owner, a batch open, and an empty trace.
+
+- [i:] the count of nodes created.
+- [s:] the engine state.
+*)
 Definition setup_state (i : nat) (s : state) : Prop :=
   g_next_id s = i /\ g_nodes s !! (0 : node_id) = None /\
   (forall n, n < i -> exists d, g_nodes s !! (S n : node_id) = Some d /\ node_match p n d /\ n_disposed d = false /\
@@ -3310,11 +3542,16 @@ Proof.
   change (('(st3, r3) ← Semantics.apply_batch q b0 st1; Some (st3, r1 ++ r3)) = Some (st2, r1 ++ r2)). rewrite H2. reflexivity.
 Qed.
 
-(** The reference's state at a host's inputs. *)
+(** The reference's state at a host's inputs.
+    - [sigs:] the reference signals.
+    - [D:] the disposed reference ids.
+    - [st:] the reference state. *)
 Definition ref_rel (sigs : gmap node_id val) (D : gset node_id) (st : Semantics.reference_state) : Prop :=
   Semantics.rs_signals st = sigs /\ Semantics.rs_frozen st = ∅ /\ Semantics.rs_disposed st = D.
 
-(** The entries of live effects hold no cleanups, and disposed effects hold no entry. *)
+(** The entries of live effects hold no cleanups, and disposed effects hold no entry.
+    - [Bs:] the answers each effect's recorded reads were taken over.
+    - [st:] the reference state. *)
 Definition ref_entries (Bs : node_id -> node_id -> option outcome) (st : Semantics.reference_state) : Prop :=
   forall n c, Semantics.program_effects p !! n = Some c ->
     (n ∈ Semantics.rs_disposed st /\ Semantics.rs_effects st !! n = None) \/
@@ -3527,6 +3764,13 @@ End Host.
 
 #[local] Arguments Semantics.settle : simpl never.
 
+(**md
+The reference run of `p` over `h` at fuel 1: the first round, settling, then the history, with the end state and every run.
+
+- [ord:] the effect order.
+- [p:] the reference program.
+- [h:] the history.
+*)
 Definition ref_all (ord : Semantics.effect_order) (p : Semantics.program) (h : Semantics.history)
     : option (Semantics.reference_state * list Semantics.run) :=
   '(st1, r1) ← Semantics.run_round p (ord 0%nat (Semantics.effect_ids p)) (Semantics.reference_start p);
@@ -3618,9 +3862,17 @@ Hypothesis Hro : effects_read_only p.
 Variable ord : Semantics.effect_order.
 Hypothesis Hord : Semantics.is_effect_order ord.
 
+(**md
+The settled view of each node after the trace `t`.
+*)
 Definition settled_map (t : list event) : gmap node_id Semantics.settled_view := foldl Semantics.settled_step ∅ t.
 
-(** What a prefix of the history holds. The last clause is the exact trace, given matching runs. *)
+(** What a prefix of the history holds. The last clause is the exact trace, given matching runs.
+    - [s:] the engine state.
+    - [st:] the reference state.
+    - [rs:] the reference runs so far.
+    - [sigs:] the reference signals.
+    - [D:] the disposed reference ids. *)
 Record sim_inv (s : state) (st : Semantics.reference_state) (rs : list Semantics.run) (sigs : gmap node_id val) (D : gset node_id) : Prop := {
   si_host : host_ok p sigs D s;
   si_bat : g_batch_depth s = 0;
@@ -3821,7 +4073,9 @@ Proof.
     + intros n c Hc _. rewrite Evs. unfold settled_map. rewrite foldl_blocks, decide_True by (apply Hls0; by eexists). rewrite aft_idem. done.
 Qed.
 
-(** The engine's and the reference's runs agree at every prefix up to [h]. *)
+(** The engine's and the reference's runs agree at every prefix up to [h].
+    - [f:] the engine's fuel.
+    - [h:] the history. *)
 Definition runs_agree (f : nat) (h : Semantics.history) : Prop :=
   forall h0 s0 r0 st0 rs0, h0 `prefix_of` h -> run_top f (erase p h0) (init current_flags) = Some (s0, r0) ->
     ref_all ord p h0 = Some (st0, rs0) -> runs_in (project p (g_trace s0)) = runs_in (evs rs0).
@@ -3890,7 +4144,9 @@ End Sim.
 (** ** The engine answers on a read-only program *)
 
 (** A node a body or a host may read: a signal, or a memo of the program. An id the program does not use holds a memo with no
-    result: [refinable_alone_no_answer]. *)
+    result: [refinable_alone_no_answer].
+    - [p:] the reference program.
+    - [t:] the engine id. *)
 Definition Rdp (p : Semantics.program) (t : node_id) : Prop :=
   exists n, t = S n /\ n < node_bound p /\
     (is_Some (Semantics.program_signals p !! (n : node_id)) \/
@@ -3908,7 +4164,9 @@ Definition bodies_total (p : Semantics.program) : Prop :=
   (forall (n : node_id) c, Semantics.program_signals p !! n = None -> Semantics.program_memos p !! n = None -> Semantics.program_effects p !! n = Some c ->
      body_ends (Rdp p) [] (rename c)).
 
-(** Each input of the history has a target of its kind. A reference run of the history gives this: [inputs_total_of_runs]. *)
+(** Each input of the history has a target of its kind. A reference run of the history gives this: [inputs_total_of_runs].
+    - [p:] the reference program.
+    - [h:] the history. *)
 Definition inputs_total (p : Semantics.program) (h : Semantics.history) : Prop :=
   forall b i, b ∈ h -> i ∈ b ->
     match i with
@@ -3949,6 +4207,9 @@ Proof.
   rewrite decide_True by lia. rewrite Nat2Z.id. reflexivity.
 Qed.
 
+(**md
+Every link of a node of `s` belongs to the root owner.
+*)
 Definition link_ok (s : state) : Prop := forall m d l, g_nodes s !! m = Some d -> n_link d = Some l -> l_owner l = root_owner_id.
 
 Lemma link_marks s s' : rtc mark_prim s s' -> link_ok s -> link_ok s'.
@@ -4381,7 +4642,9 @@ Proof.
   exists (S g), (project p (g_trace s)). unfold engine_of, trace_of. rewrite Er. reflexivity.
 Qed.
 
-(** What a reference state keeps of its history, with no disposal of a memo. *)
+(** What a reference state keeps of its history, with no disposal of a memo.
+    - [p:] the reference program.
+    - [st:] the reference state. *)
 Definition ref_inv (p : Semantics.program) (st : Semantics.reference_state) : Prop :=
   Semantics.rs_frozen st = ∅ /\ forall n, n ∈ Semantics.rs_disposed st -> is_Some (Semantics.program_effects p !! (n : node_id)).
 
@@ -4416,7 +4679,9 @@ Proof.
   destruct (Semantics.program_memos p !! n) as [x|]; [by eexists|done].
 Qed.
 
-(** One input the reference takes has a target of its kind. *)
+(** One input the reference takes has a target of its kind.
+    - [p:] the reference program.
+    - [i:] the host input. *)
 Definition input_ok (p : Semantics.program) (i : Semantics.host_input) : Prop :=
   match i with
   | Semantics.RWrite t _ => is_Some (Semantics.program_signals p !! (t : node_id))
@@ -4502,6 +4767,12 @@ The measure of the drain is `mu`: the weights of the stale memos and the live qu
 `bodies_total` reads a body over all answers to its reads, so it fails on a path no run takes, and no counterexample backs it on such a program: [`bodies_conservative`](Ranvier.Pure.Witnesses.html#bodies_conservative). Deriving it from the reference's success is open: `answers_where_reference_settles` in `BUGS.md`.
 
 `refinable` alone is not enough: [`refinable_alone_no_answer`](Ranvier.Pure.Witnesses.html#refinable_alone_no_answer). There the reference has no answer at the fuel and order computed, so that theorem does not refute the form with the reference's success. [`engine_of_answers_falsified`](Ranvier.Pure.Witnesses.html#engine_of_answers_falsified) refutes the statement with neither `refinable` nor `bodies_total`, which is `engine_answers` itself: its effect reads and then writes, so it fails both.
+
+- [p:] the reference program.
+- [h:] the history.
+- [ord:] the effect order of the reference's run.
+- [fuel:] the reference's fuel.
+- [t0:] the reference's trace.
 *)
 Theorem engine_of_answers_on p h ord fuel t0 :
   Semantics.well_formed_program p -> refinable p h -> bodies_total p ->
@@ -4515,7 +4786,10 @@ Qed.
 
 (** ** The refinements *)
 
-(** [Semantics.refines] over the programs and histories satisfying [P]. *)
+(** [Semantics.refines] over the programs and histories satisfying [P].
+    - [P:] the premise on a program and its history.
+    - [O:] the observation compared.
+    - [engine:] the engine refined. *)
 Definition refines_on (P : Semantics.program -> Semantics.history -> Prop) (O : Semantics.observation)
     (engine : Semantics.program -> Semantics.history -> option (list event)) : Prop :=
   forall p h t, Semantics.well_formed_program p -> P p h -> engine p h = Some t ->
@@ -4541,6 +4815,8 @@ Premises, beyond `well_formed_program`, each named by `refinable`:
 `erase` gives every memo `Pure` and `CmpEq`. A default-policy memo returning a new reference value each run, or `nan`, is `CmpNever` in the model: this theorem does not cover it, and `cmp_never_passes_source` under Confirmed in `BUGS.md` shows it losing updates.
 
 The unconditional statement is the Open `weak_refinement_statement`. `engine_answers` is a separate obligation: see `engine_of_answers_statement`.
+
+- [k:] the engine's fuel.
 *)
 Theorem weak_refinement_except k :
   refines_on refinable Semantics.observe_settled (engine_of current_flags k).
@@ -4568,6 +4844,13 @@ Qed.
 On a refinable program, with an order under which every batch prefix has the same sequence of `EvRun`s in the engine's trace and in the reference's, the two traces are equal at every prefix.
 
 With equal `EvRun` sequences, logs, failures, disposals and host reads agree event for event. The premise `runs_agree` excludes a redundant run (`batch_restored_value_reruns`, S07, and `diamond_marks_running_effect`, S15), a missed run and a reordering. No theorem derives `runs_agree` from the absence of redundant runs: see `runs_agree_bridge` in `BUGS.md`. The unconditional statement is the Open `exact_refinement_statement`.
+
+- [k:] the engine's fuel.
+- [p:] the reference program.
+- [h:] the history.
+- [t:] the engine's trace of the whole history.
+- [ord:] the effect order of the reference's run.
+- [h':] a batch prefix of `h`.
 *)
 Theorem exact_refinement_except k p h t ord :
   Semantics.well_formed_program p -> refinable p h -> Semantics.is_effect_order ord ->
@@ -4601,6 +4884,12 @@ This is the link between `well_formed_program` and `well_behaved_program`, `effe
 - **`CmpEq`.** `erase` chooses it for every memo. A default-policy memo returning a new reference value each run, or `nan`, is `CmpNever` in the model, so neither this theorem nor the refinements cover such a memo. `cmp_never_passes_source` shows that memo losing updates.
 - **Memo logs.** `well_behaved_memo` allows `CLog`, and the reference discards a memo's logs. `engine_of` projects them out of the trace, which is what the reference's semantics asks for, so the refinements say nothing about how often a memo's body runs.
 - **Effects.** `well_behaved_effect` allows writes, cleanups and untracked reads. `effects_read_only` rejects them, as the docs of [`weak_refinement_except`](#weak_refinement_except) say.
+
+- [p:] the reference program.
+- [h:] the history, or a batch prefix of it.
+- [f:] the engine's fuel.
+- [s:] the end state of the engine program.
+- [r:] the outcome of the engine program.
 *)
 Theorem refinable_meets_convergence p h f s r :
   Semantics.well_formed_program p -> refinable p h -> run_top f (erase p h) (init current_flags) = Some (s, r) ->
@@ -4647,7 +4936,9 @@ Proof.
     rewrite filter_cons_True, filter_cons_False by (try done; intros K; exact (K eq_refl)). rewrite A, B, (IH l' Hn Hs). done.
 Qed.
 
-(** The flush takes only the entries live at its start, once each. Scenario [S15] has an effect requeued during its own run. *)
+(** The flush takes only the entries live at its start, once each. Scenario [S15] has an effect requeued during its own run.
+    - [g:] the fuel of the flush request.
+    - [s:] the state at the request. *)
 Definition queue_steady (g : nat) (s : state) : Prop :=
   NoDup (pred <$> flush_queue g s) /\ pred <$> flush_queue g s = live_queue_of s.
 
@@ -4661,6 +4952,18 @@ For a refinable program, take the state of the engine at a batch's flush, and le
 - Under `queue_steady`, `runs` is ordered by `engine_order`.
 
 The last conjunct is conditional on its premise: `queue_steady` is a statement about the computed drain, not a class of programs. What this theorem delivers for every refinable program is "runs follow the drain". The last conjunct with no premise is the Open `engine_order_exact_statement`, and [`engine_order_exact_falsified`](Ranvier.Pure.Witnesses.html#engine_order_exact_falsified) refutes it for the queue at a flush's start. That says nothing of [`history_order`](#history_order_is_effect_order), the order that fits a whole history.
+
+- [k:] the engine's fuel.
+- [p:] the reference program.
+- [h:] the history before the batch.
+- [b:] the batch.
+- [s0:] the state after the engine program for `h`.
+- [r0:] the outcome of the engine program for `h`.
+- [s1:] the state after the batch's inputs, at batch depth 1.
+- [r1:] the outcome of the batch's inputs.
+- [s2:] the state after the flush.
+- [a:] the result of the flush request.
+- [t:] the events the flush adds to the trace.
 *)
 Theorem engine_order_exact_except k p h b s0 r0 s1 r1 s2 a t :
   Semantics.well_formed_program p -> refinable p (h ++ [b]) ->
@@ -4718,12 +5021,19 @@ Proof.
   revert l. induction q as [|x q IH]; intros l; [done|]. simpl. rewrite IH. apply filter_split.
 Qed.
 
-(** The engine's runs at a history, in the reference's ids. *)
+(** The engine's runs at a history, in the reference's ids.
+    - [k:] the engine's fuel.
+    - [p:] the reference program.
+    - [h:] the history. *)
 Definition engine_runs (k : nat) (p : Semantics.program) (h : Semantics.history) : list node_id :=
   runs_in (default [] (engine_of current_flags k p h)).
 
 (** The runs of each batch of [h] in turn, after the runs of [pre]. A batch with no run takes no entry, as a settled run set takes
-    no round index in the reference. *)
+    no round index in the reference.
+    - [k:] the engine's fuel.
+    - [p:] the reference program.
+    - [pre:] the batches before [h].
+    - [h:] the batches whose runs are listed. *)
 Fixpoint batch_rounds (k : nat) (p : Semantics.program) (pre h : Semantics.history) : list (list node_id) :=
   match h with
   | [] => []
@@ -4732,13 +5042,19 @@ Fixpoint batch_rounds (k : nat) (p : Semantics.program) (pre h : Semantics.histo
     (if decide (new = []) then [] else [new]) ++ batch_rounds k p (pre ++ [b]) h'
   end.
 
-(** The runs of each round of the history, the initial round first. *)
+(** The runs of each round of the history, the initial round first.
+    - [k:] the engine's fuel.
+    - [p:] the reference program.
+    - [h:] the history. *)
 Definition engine_rounds (k : nat) (p : Semantics.program) (h : Semantics.history) : list (list node_id) :=
   engine_runs k p [] :: batch_rounds k p [] h.
 
 (** Each round's effects in the order of that round's runs in the engine. The order is read from the engine's run, so that the
     engine follows it holds by construction. No theorem computes it from observer positions: [queue_order_through_memos] in
-    [BUGS.md]. *)
+    [BUGS.md].
+    - [k:] the engine's fuel.
+    - [p:] the reference program.
+    - [h:] the history. *)
 Definition history_order (k : nat) (p : Semantics.program) (h : Semantics.history) : Semantics.effect_order :=
   fun i l => order_by (default [] (engine_rounds k p h !! i)) l.
 
@@ -4746,6 +5062,10 @@ Definition history_order (k : nat) (p : Semantics.program) (h : Semantics.histor
 **`history_order` is an effect order, so it can instantiate `exact_refinement_except`.**
 
 Each round's list is a permutation, whatever the engine ran.
+
+- [k:] the engine's fuel.
+- [p:] the reference program.
+- [h:] the history.
 *)
 Theorem history_order_is_effect_order k p h : Semantics.is_effect_order (history_order k p h).
 Proof. intros i l. apply order_by_perm. Qed.
@@ -4754,6 +5074,12 @@ Proof. intros i l. apply order_by_perm. Qed.
 **Exact refinement under the engine's own order.**
 
 `exact_refinement_except` at `history_order`. The order conclusion holds by construction, since `history_order` is read from the engine's runs. The content is at the level of values: under `runs_agree`, logs, failures, disposals and host reads agree event for event. `runs_agree` has content: [`runs_agree_has_content`](Ranvier.Pure.Witnesses.html#runs_agree_has_content) has it fail at `history_order` on a program with a redundant run, and [`history_order_reached`](Ranvier.Pure.Witnesses.html#history_order_reached) meets it on a program where the order of creation does not.
+
+- [k:] the engine's fuel.
+- [p:] the reference program.
+- [h:] the history.
+- [t:] the engine's trace of the whole history.
+- [h':] a batch prefix of `h`.
 *)
 Corollary exact_refinement_history k p h t :
   Semantics.well_formed_program p -> refinable p h ->
@@ -4767,7 +5093,9 @@ Qed.
 
 (** ** What a marking walk does to the queue *)
 
-(** Each of [ids] is an effect ready to enqueue: live, unqueued and outside a cleanup. *)
+(** Each of [ids] is an effect ready to enqueue: live, unqueued and outside a cleanup.
+    - [s:] the state.
+    - [ids:] the effects tested. *)
 Definition walk_ready (s : state) (ids : list node_id) : Prop :=
   forall c, c ∈ ids -> exists d, g_nodes s !! c = Some d /\ n_kind d = KEffect /\ n_disposed d = false /\ n_in_cleanup d = false /\ n_queued d = false.
 
@@ -4809,6 +5137,10 @@ Qed.
 Each observer of `src` is an effect that is live, unqueued and outside a cleanup, each once. `notify_dirty` then appends their ids to the queue in the reverse of `observer_items`.
 
 This covers a source's direct observers. A memo among them forwards through `mark_check`, depth first, under a freshness test that reads the state: `BUGS.md` under `queue_order_through_memos` names what is open.
+
+- [f:] the fuel, one less than the walk's.
+- [src:] the source written.
+- [s:] the state before the walk.
 *)
 Theorem notify_queues_observers_reversed f src s :
   let ids := (observer_items (observers_of (g_edges s) src)).*1 in
@@ -4828,6 +5160,19 @@ Qed.
 **A swap-removal moves the last observer from first in the walk's queue to the removed observer's place.**
 
 The source's observers are `pre`, `c`, `mid`, `m`. Before the removal, the walk appends `m`, `mid` reversed, `c`, `pre` reversed. `observers_remove_at_swap` removes `c` and moves `m` into its position, and over the resulting observer set the walk appends `mid` reversed, `m`, `pre` reversed.
+
+- [f:] the fuel, one less than the walk's.
+- [src:] the source written.
+- [s:] the state before the removal.
+- [s2:] a state whose observer set of `src` is the set after the removal.
+- [pre:] the observers ahead of `c`.
+- [c:] the removed observer.
+- [cs:] the slot stored with `c`.
+- [m:] the last observer.
+- [ms:] the slot stored with `m`.
+- [mid:] the observers between `c` and `m`.
+- [latest:] the `observer_latest` of the set before the removal.
+- [o':] the observer set after the removal.
 *)
 Corollary notify_after_swap f src s s2 pre c cs (m : node_id) (ms : nat) mid latest o' :
   observers_of (g_edges s) src = {| observer_items := pre ++ (c, cs) :: mid ++ [(m, ms)]; observer_latest := latest |} ->
@@ -4856,6 +5201,9 @@ Qed.
 
 (** ** The statements with no premise *)
 
+(**md
+The order conclusion of [`engine_order_exact_except`](#engine_order_exact_except) with no `queue_steady` premise: the `EvRun`s of a batch's flush are in `engine_order`.
+*)
 Definition engine_order_exact_statement : Prop :=
   forall k p h b s0 r0 s1 r1 s2 a t,
     Semantics.well_formed_program p -> refinable p (h ++ [b]) ->
@@ -4873,6 +5221,9 @@ Definition engine_order_exact_statement : Prop :=
 Theorem engine_order_exact : engine_order_exact_statement.
 Proof. Admitted.
 
+(**md
+At every fuel, `engine_of` refines the reference under `observe_settled`, on every well-formed program.
+*)
 Definition weak_refinement_statement : Prop :=
   forall k, Semantics.refines Semantics.observe_settled (engine_of current_flags k).
 
@@ -4884,6 +5235,9 @@ This states what a fix owes, or what the owner's rulings on the reference would 
 Theorem weak_refinement : weak_refinement_statement.
 Proof. Admitted.
 
+(**md
+At every fuel, `engine_of` refines the reference under `observe_full`, on every well-formed program.
+*)
 Definition exact_refinement_statement : Prop :=
   forall k, Semantics.refines Semantics.observe_full (engine_of current_flags k).
 
@@ -4895,6 +5249,9 @@ Definition exact_refinement_statement : Prop :=
 Theorem exact_refinement : exact_refinement_statement.
 Proof. Admitted.
 
+(**md
+`engine_answers` of the engine under the current flags.
+*)
 Definition engine_of_answers_statement : Prop := Semantics.engine_answers (engine_of current_flags).
 
 (**md
