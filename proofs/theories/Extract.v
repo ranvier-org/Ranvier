@@ -26,6 +26,13 @@ Record node_view := {
 (** The live queue length and the root owner's error count, beside each node in id order. *)
 Record state_view := { v_nodes : list node_view; v_queue : nat; v_errors : nat }.
 
+(**md
+The compared fields of node `n`, whose stored node is `d`, with its source and observer counts in `s`.
+
+- [s:] the state.
+- [n:] the node id.
+- [d:] the stored node.
+*)
 Definition view_node (s : state) (n : node_id) (d : node) : node_view :=
   {| v_id := n; v_kind := n_kind d; v_value := n_value d; v_status := n_status d;
      v_failure := n_failure d; v_freshness := n_freshness d; v_unannounced := n_unannounced d; v_runs := n_runs d;
@@ -36,11 +43,17 @@ Definition view_node (s : state) (n : node_id) (d : node) : node_view :=
 (** Node ids run from 1 to [g_next_id]. *)
 Definition node_ids (s : state) : list node_id := seq 1 (g_next_id s).
 
+(**md
+The end-state view of `s`: its nodes in id order, its pending queue length and its root owner's error count.
+*)
 Definition view_of (s : state) : state_view :=
   {| v_nodes := omap (fun n => view_node s n <$> g_nodes s !! n) (node_ids s);
      v_queue := length (pending s);
      v_errors := default 0 (length ∘ o_errors <$> g_owners s !! root_owner_id) |}.
 
+(**md
+The ids of the memos in `s`, in id order.
+*)
 Definition memo_ids (s : state) : list node_id :=
   omap (fun n => match n_kind <$> g_nodes s !! n with Some KMemo => Some n | _ => None end) (node_ids s).
 
@@ -58,8 +71,14 @@ Definition closing (fuel : nat) : M unit :=
     | None => None
     end.
 
-(** The trace through the closing reads and flush, the view at the program's end, and the view after
-    the closing. *)
+(**md
+The trace through the closing reads and flush, the view at the program's end, and the view after
+the closing. `None` when the run or the closing is stuck or runs out of fuel.
+
+- [fuel:] the bound on nested steps.
+- [fl:] the flags of the new graph.
+- [c:] the program run.
+*)
 Definition observed (fuel : nat) (fl : flags) (c : cmd) : option (list event * state_view * state_view) :=
   match run_top fuel c (init fl) with
   | None => None

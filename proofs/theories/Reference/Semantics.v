@@ -7,6 +7,10 @@ From Ranvier.Base Require Import Prelude Syntax.
 Global Instance outcome_eq_dec : EqDecision outcome.
 Proof. solve_decision. Defined.
 
+(**md
+A reactive program: the initial values of its signals, the bodies of its memos and the bodies of its
+effects, each keyed by node id.
+*)
 Record program := {
   program_signals : gmap node_id val;
   program_memos : gmap node_id cmd;
@@ -27,6 +31,11 @@ Definition history := list (list host_input).
     initial round has index 0. *)
 Definition effect_order := nat -> list node_id -> list node_id.
 
+(**md
+`order` returns a permutation of the list it is given.
+
+- [order:] the effect order tested.
+*)
 Definition is_effect_order (order : effect_order) : Prop := forall i l, order i l ≡ₚ l.
 
 (** The state of one body's evaluation. *)
@@ -92,12 +101,21 @@ Definition node_of (z : val) : option node_id :=
 Local Notation with_ok r st k :=
   (mbind (fun o => match o with Ok v => k v | Fail f => Some (Fail f, st) end) r).
 
-(** Evaluates a body on behalf of node [n]. [None] marks a stuck body: an undefined expression, a
-    read [rd] leaves unanswered, a write to a non-signal, or a command outside the fragment.
-    A zero condition selects the else branch. A failed expression ends the body. A failed read binds
-    the failure to [x] for [CTryRead], and ends the body for [CRead] and [CReadUntracked]. [CBatch] sequences
-    its parts, and a failure ends the body and keeps the state reached. [CCleanup] registers its
-    cleanup, or on a retired scope runs it at once, where a failure ends only the cleanup. *)
+(**md
+Evaluates a body on behalf of node `n`. `None` marks a stuck body: an undefined expression, a
+read `rd` leaves unanswered, a write to a non-signal, or a command outside the fragment.
+A zero condition selects the else branch. A failed expression ends the body. A failed read binds
+the failure to `x` for `CTryRead`, and ends the body for `CRead` and `CReadUntracked`. `CBatch` sequences
+its parts, and a failure ends the body and keeps the state reached. `CCleanup` registers its
+cleanup, or on a retired scope runs it at once, where a failure ends only the cleanup.
+
+- [p:] the program, which determines the signals a write may target.
+- [rd:] the answer to each read.
+- [n:] the node on whose behalf the body runs.
+- [g:] the local variable environment.
+- [c:] the body evaluated.
+- [st:] the body state at the start.
+*)
 Fixpoint exec (p : program) (rd : reader) (n : node_id) (g : env) (c : cmd) (st : body_state)
     : option (outcome * body_state) :=
   match c with
@@ -154,8 +172,15 @@ Fixpoint exec (p : program) (rd : reader) (n : node_id) (g : env) (c : cmd) (st 
   | CSignal _ _ _ | CMemo _ _ _ _ _ | CEffect _ _ _ | CDispose _ _ => None
   end.
 
-(** A node's value over [sigs], with at most [k] nested memo evaluations. A disposed memo answers
-    from [frz]. A memo's logs are discarded. *)
+(**md
+A node's value over `sigs`, with at most `k` nested memo evaluations. A disposed memo answers
+from `frz`. A memo's logs are discarded.
+
+- [k:] the bound on nested memo evaluations.
+- [frz:] the answers of disposed memos.
+- [sigs:] the signal values.
+- [n:] the node evaluated.
+*)
 Fixpoint node_value (k : nat) (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val) (n : node_id)
     : option outcome :=
   match k with
@@ -194,12 +219,21 @@ Fixpoint node_deps (k : nat) (p : program) (frz : gmap node_id outcome) (sigs : 
       end
   end.
 
-(** The current value of a signal or memo. The fuel covers every memo chain of an acyclic
-    program. *)
+(**md
+The current value of a signal or memo. The fuel covers every memo chain of an acyclic
+program.
+
+- [frz:] the answers of disposed memos.
+- [sigs:] the signal values.
+- [n:] the node read.
+*)
 Definition memo_value (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val) (n : node_id)
     : option outcome :=
   node_value (S (size (program_memos p))) p frz sigs n.
 
+(**md
+The signals reached through the tracked reads of memo `n`, as `node_deps` with the fuel of `memo_value`.
+*)
 Definition memo_deps (p : program) (frz : gmap node_id outcome) (sigs : gmap node_id val) (n : node_id)
     : list node_id :=
   node_deps (S (size (program_memos p))) p frz sigs n.
@@ -223,8 +257,15 @@ Fixpoint run_cleanups (p : program) (rd : reader) (n : node_id) (cs : list (cmd 
       run_cleanups p rd n cs' (note_fail n r.1 r.2)
   end.
 
-(** One run of effect [n]: the previous run's cleanups, then the body. A failed body emits its
-    failure and keeps the reads and cleanups reached. *)
+(**md
+One run of effect `n`: the previous run's cleanups, then the body. A failed body emits its
+failure and keeps the reads and cleanups reached.
+
+- [rd:] the answer to each read.
+- [body:] the effect's body.
+- [cs:] the cleanups registered by the previous run, newest first.
+- [sigs:] the signal values at the start of the run.
+*)
 Definition run_effect (p : program) (rd : reader) (n : node_id) (body : cmd) (cs : list (cmd * env))
     (sigs : gmap node_id val) : option body_state :=
   st ← run_cleanups p rd n cs (body_start sigs);
@@ -242,6 +283,9 @@ Definition host_read (p : program) (rd : reader) (n : node_id) (sigs : gmap node
   o ← rd sigs n;
   Some (body_emit (EvHostRead n o) (body_start sigs)).
 
+(**md
+What a `run` record describes: an effect run, a disposal or a host read.
+*)
 Inductive record_kind := RkEffect | RkDispose | RkHostRead.
 
 Global Instance record_kind_eq_dec : EqDecision record_kind.
@@ -281,6 +325,14 @@ Definition record_of (n : node_id) (kind : record_kind) (st : reference_state) (
      run_frozen := rs_frozen st; run_ran_cleanups := cs; run_reads := body_reads bs;
      run_all_reads := body_all_reads bs; run_events := body_events bs; run_writes := body_writes bs |}.
 
+(**md
+Runs the effects `ns` in list order, each over the signals the previous one left. `None` when an
+effect is missing from the program or its body is stuck.
+
+- [p:] the program.
+- [ns:] the effects run, in order.
+- [st:] the reference state at the start of the round.
+*)
 Fixpoint run_round (p : program) (ns : list node_id) (st : reference_state) : option (reference_state * list run) :=
   match ns with
   | [] => Some (st, [])
@@ -325,8 +377,15 @@ Definition next_round (st : reference_state) : reference_state :=
   {| rs_signals := rs_signals st; rs_effects := rs_effects st; rs_frozen := rs_frozen st;
      rs_disposed := rs_disposed st; rs_round := S (rs_round st) |}.
 
-(** Runs rounds until a round's run set is empty. [None] when [fuel] rounds do not reach that. An
-    empty run set takes no round index. *)
+(**md
+Runs rounds until a round's run set is empty. `None` when `fuel` rounds do not reach that. An
+empty run set takes no round index.
+
+- [fuel:] the bound on the number of rounds.
+- [order:] the order of the effects within each round.
+- [p:] the program.
+- [st:] the reference state at the start.
+*)
 Fixpoint settle (fuel : nat) (order : effect_order) (p : program) (st : reference_state)
     : option (reference_state * list run) :=
   ns ← run_set p st (effect_ids p);
@@ -371,6 +430,10 @@ Definition apply_dispose (p : program) (n : node_id) (st : reference_state)
     | None, None => None
     end.
 
+(**md
+Applies a host input. A write to a signal sets it, and a write to any other node is stuck. A disposal
+is `apply_dispose`. A read records a host read.
+*)
 Definition apply_input (p : program) (i : host_input) (st : reference_state)
     : option (reference_state * list run) :=
   match i with
@@ -412,8 +475,15 @@ Fixpoint run_history (fuel : nat) (order : effect_order) (p : program) (h : hist
 Definition reference_start (p : program) : reference_state :=
   {| rs_signals := program_signals p; rs_effects := ∅; rs_frozen := ∅; rs_disposed := ∅; rs_round := 0%nat |}.
 
-(** Every effect run, disposal and host read of the history: an initial round of all effects, then settling, then
-    each batch followed by settling. [fuel] bounds the rounds of each settling. *)
+(**md
+Every effect run, disposal and host read of the history: an initial round of all effects, then settling, then
+each batch followed by settling. `fuel` bounds the rounds of each settling.
+
+- [fuel:] the bound on the rounds of each settling.
+- [order:] the order of the effects within each round.
+- [p:] the program.
+- [h:] the history of host input batches.
+*)
 Definition reference_runs (fuel : nat) (order : effect_order) (p : program) (h : history)
     : option (list run) :=
   '(st1, r1) ← run_round p (order 0%nat (effect_ids p)) (reference_start p);
@@ -421,11 +491,17 @@ Definition reference_runs (fuel : nat) (order : effect_order) (p : program) (h :
   '(_, r3) ← run_history fuel order p h st2;
   Some (r1 ++ r2 ++ r3).
 
+(**md
+The events of `reference_runs`, concatenated in order.
+*)
 Definition reference_trace (fuel : nat) (order : effect_order) (p : program) (h : history)
     : option (list event) :=
   rs ← reference_runs fuel order p h;
   Some (concat (run_events <$> rs)).
 
+(**md
+An effect body that creates no node and disposes no node: it may read, write, log, register cleanups and batch.
+*)
 Fixpoint well_behaved_effect (c : cmd) : bool :=
   match c with
   | CRet e => expr_no_prev e
@@ -438,7 +514,13 @@ Fixpoint well_behaved_effect (c : cmd) : bool :=
   | CSignal _ _ _ | CMemo _ _ _ _ _ | CEffect _ _ _ | CDispose _ _ => false
   end.
 
-(** Whatever its reads answer, a memo body reads only memos of lower rank. *)
+(**md
+Whatever its reads answer, a memo body reads only memos of lower rank.
+
+- [rank:] the rank assigned to each node.
+- [m:] the memo.
+- [c:] the memo's body.
+*)
 Definition memo_reads_below (p : program) (rank : node_id -> nat) (m : node_id) (c : cmd) : Prop :=
   forall (rd : node_id -> option outcome) o st t v,
     exec p (fun _ => rd) m [] c (body_start ∅) = Some (o, st) ->
@@ -446,9 +528,16 @@ Definition memo_reads_below (p : program) (rank : node_id -> nat) (m : node_id) 
     is_Some (program_memos p !! t) ->
     (rank t < rank m)%nat.
 
+(**md
+Some rank makes every memo body read only memos of lower rank, so the memos read each other acyclically.
+*)
 Definition memos_acyclic (p : program) : Prop :=
   exists rank, map_Forall (memo_reads_below p rank) (program_memos p).
 
+(**md
+The programs the refinement statements cover: signals, memos and effects have disjoint ids, memo bodies are
+`well_behaved_memo`, effect bodies are `well_behaved_effect`, and the memos are acyclic.
+*)
 Definition well_formed_program (p : program) : Prop :=
   dom (program_signals p) ## dom (program_memos p) /\
   dom (program_signals p) ## dom (program_effects p) /\
@@ -461,9 +550,15 @@ Definition well_formed_program (p : program) : Prop :=
 Definition runs_of (rs : list run) (n : node_id) : list run :=
   filter (fun r => run_node r = n /\ run_kind r = RkEffect) rs.
 
-(** Run [S j] of effect [n] in [rs] is redundant when it and run [j] made the same reads, tracked and
-    untracked, cleanups included, in the same order and with the same outcomes. The initial run has
-    no previous run. *)
+(**md
+Run `S j` of effect `n` in `rs` is redundant when it and run `j` made the same reads, tracked and
+untracked, cleanups included, in the same order and with the same outcomes. The initial run has
+no previous run.
+
+- [rs:] the runs of the history.
+- [n:] the effect.
+- [k:] the index of the run, among the effect's runs, tested for redundancy.
+*)
 Definition redundant (p : program) (rs : list run) (n : node_id) (k : nat) : Prop :=
   is_Some (program_effects p !! n) /\
   exists j prev cur,
@@ -518,9 +613,14 @@ Definition observe_settled : observation :=
   {| observed_type := gmap node_id settled_view * list (node_id * outcome);
      observe := fun t => (foldl settled_step ∅ t, host_reads t) |}.
 
-(** One valid order for the history, compared at every batch prefix. At each prefix of a history it
-    answers, the engine answers with a prefix of the whole trace. An engine with no traces satisfies
-    this, so an engine proof also owes [engine_answers]. *)
+(**md
+One valid order for the history, compared at every batch prefix. At each prefix of a history it
+answers, the engine answers with a prefix of the whole trace. An engine with no traces satisfies
+this, so an engine proof also owes `engine_answers`.
+
+- [O:] the observation that must agree between the engine and the reference.
+- [engine:] the engine, mapping a program and history to its trace.
+*)
 Definition refines (O : observation)
     (engine : program -> history -> option (list event)) : Prop :=
   forall p h t, well_formed_program p -> engine p h = Some t ->
@@ -529,7 +629,11 @@ Definition refines (O : observation)
         exists te fuel tr, engine p h' = Some te /\ prefix te t /\
           reference_trace fuel ord p h' = Some tr /\ observe O te = observe O tr.
 
-(** Some fuel of [engine] gives a trace whenever the reference settles under every valid order. *)
+(**md
+Some fuel of `engine` gives a trace whenever the reference settles under every valid order.
+
+- [engine:] the engine, taking its fuel first.
+*)
 Definition engine_answers
     (engine : nat -> program -> history -> option (list event)) : Prop :=
   forall p h, well_formed_program p ->

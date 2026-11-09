@@ -13,12 +13,31 @@ Definition empty_observer_set : observer_set := {| observer_items := []; observe
 (** [TUnlinked] and [TUnknown] are [EdgeHandle.Unlinked] and [EdgeHandle.Unknown]. *)
 Inductive tried := TAdded (h : nat) | TUnlinked | TUnknown.
 
+(**md
+The observers of `o` in position order, without their slots.
+*)
 Definition observer_view (o : observer_set) : list node_id := fst <$> observer_items o.
 
+(**md
+Appends the observer `c` and returns the new set with the handle of the new position, the old observer count.
+
+- [c:] the observing computation.
+- [slot:] the observer's slot, kept for the `MovedIn` notice of a later move.
+- [o:] the set added to.
+*)
 Definition observers_add (c : node_id) (slot : nat) (o : observer_set) : observer_set * nat :=
   let h := length (observer_items o) in
   ({| observer_items := observer_items o ++ [(c, slot)]; observer_latest := h |}, h).
 
+(**md
+Adds `c` unless the set already holds it. The answer is `TAdded` with the new handle, `TUnlinked` when `c`
+is already held, or `TUnknown` when the set exceeds `scan_limit` and `c` is not the latest observer, so
+membership is not decided.
+
+- [c:] the observing computation.
+- [slot:] the observer's slot.
+- [o:] the set added to.
+*)
 Definition observers_try_add (c : node_id) (slot : nat) (o : observer_set) : observer_set * tried :=
   let add := fun _ : unit => let '(o', h) := observers_add c slot o in (o', TAdded h) in
   if decide (length (observer_items o) = 0) then add ()
@@ -27,8 +46,14 @@ Definition observers_try_add (c : node_id) (slot : nat) (o : observer_set) : obs
     if decide (c ∈ observer_view o) then (o, TUnlinked) else add ()
   else (o, TUnknown).
 
-(** Swap-removal. The result's notice is (observer, slot, new handle) for the observer moved. [None]
-    as the whole result is the [InvalidOperationException] of a handle holding another observer. *)
+(**md
+Swap-removal. The result's notice is (observer, slot, new handle) for the observer moved. `None`
+as the whole result is the `InvalidOperationException` of a handle holding another observer.
+
+- [c:] the observer removed.
+- [h:] the handle, which has to be the position of `c`.
+- [o:] the set removed from.
+*)
 Definition observers_remove_at (c : node_id) (h : nat) (o : observer_set) : option (observer_set * option (node_id * nat * nat)) :=
   let last := pred (length (observer_items o)) in
   match observer_items o !! h with
@@ -51,21 +76,32 @@ Definition observers_remove_at (c : node_id) (h : nat) (o : observer_set) : opti
 (** A mutation of the observer set between two visits of a walk. *)
 Inductive walk_mutation := WAdd (c : node_id) (slot : nat) | WRemove (c : node_id) (h : nat).
 
+(**md
+The set after the mutation `m`, or `None` when a removal fails.
+*)
 Definition apply_mutation (m : walk_mutation) (o : observer_set) : option observer_set :=
   match m with
   | WAdd c slot => Some (observers_add c slot o).1
   | WRemove c h => fst <$> observers_remove_at c h o
   end.
 
+(**md
+The set after the mutations `ms` in order, or `None` when one fails.
+*)
 Fixpoint apply_mutations (ms : list walk_mutation) (o : observer_set) : option observer_set :=
   match ms with
   | [] => Some o
   | m :: r => apply_mutation m o ≫= apply_mutations r
   end.
 
-(** The walk of [NotifyDirty], [NotifyDirtyExcept] and [NotifyCheck]. The first argument is the
-    cursor plus one, and starts as the observer count. Each step re-clamps it to the count, visits the
-    observer below it, then applies that visit's mutations. *)
+(**md
+The walk of `NotifyDirty`, `NotifyDirtyExcept` and `NotifyCheck`. The first argument is the
+cursor plus one, and starts as the observer count. Each step re-clamps it to the count, visits the
+observer below it, then applies that visit's mutations.
+
+`walk n o muts vis o'` relates the cursor `n` and the starting set `o` to the mutations applied at each
+visit (`muts`), the observers visited in order (`vis`) and the final set `o'`.
+*)
 Inductive walk : nat -> observer_set -> list (list walk_mutation) -> list node_id -> observer_set -> Prop :=
   | walk_end n o :
       min n (length (observer_items o)) = 0 ->
@@ -88,7 +124,12 @@ Fixpoint mutation_points (ms : list walk_mutation) (o : observer_set) : list obs
          end
        end.
 
-(** [c] occupies exactly one position. *)
+(**md
+`c` occupies exactly one position of `o`.
+
+- [c:] the observer.
+- [o:] the observer set.
+*)
 Definition held_once (c : node_id) (o : observer_set) : Prop :=
   c ∈ observer_view o /\ forall i j, observer_view o !! i = Some c -> observer_view o !! j = Some c -> i = j.
 
@@ -112,6 +153,10 @@ Qed.
 **Adding an observer appends it to the end of the set.**
 
 The returned handle is the old observer count, and that position now holds the observer with its slot. The visible order is the old order followed by the new observer, and `observer_latest` holds the new handle. Holds for every set.
+
+- [c:] the observer added.
+- [slot:] the slot recorded with the observer.
+- [o:] the set added to.
 *)
 Theorem observers_add_position c slot o :
   (observers_add c slot o).2 = length (observer_items o) /\
@@ -147,6 +192,10 @@ Qed.
 **A small set always knows whether it holds an observer.**
 
 With at most `scan_limit` observers, `TryAdd` answers `TAdded` or `TUnlinked`, and `TUnlinked` exactly when the observer is already in the set.
+
+- [c:] the observer offered.
+- [slot:] the slot recorded if `c` is added.
+- [o:] the set, which holds at most `scan_limit` observers.
 *)
 Theorem observers_try_add_cases c slot o :
   length (observer_items o) <= scan_limit ->
@@ -166,6 +215,10 @@ Qed.
 **A handle that holds another observer fails the removal.**
 
 When the handle's position is out of range or holds a different observer, `RemoveAt` returns `None`, the model's `InvalidOperationException`.
+
+- [c:] the observer removed.
+- [h:] the handle, which does not point at `c`.
+- [o:] the set removed from.
 *)
 Theorem observers_remove_mismatch c h o :
   fst <$> observer_items o !! h <> Some c -> observers_remove_at c h o = None.
@@ -178,6 +231,14 @@ Qed.
 **Removal fills the hole with the last observer and reports the move.**
 
 Removing from a middle position moves the last observer there. The result names that observer, its slot and its new handle, and `observer_latest` follows it if it pointed at the moved observer. Removing the last observer shortens the set and reports no move. The handle has to be the observer's actual position.
+
+- [c:] the observer removed, at position `length pre`.
+- [s:] the slot of `c`.
+- [m:] the last observer, which moves into the hole.
+- [ms:] the slot of `m`.
+- [pre:] the observers before `c`.
+- [mid:] the observers between `c` and `m`.
+- [latest:] the value of `observer_latest`.
 *)
 Theorem observers_remove_at_swap c s m ms pre mid latest :
   observers_remove_at c (length pre)
@@ -342,6 +403,12 @@ Qed.
 The set can change between visits. An observer in exactly one position at the start, and after every mutation of the walk, appears among the visits at least once. The walk starts from the full observer count.
 
 An observer held twice can be missed, as [`walk_covers_duplicate_observer`](Ranvier.Pure.Witnesses.html#walk_covers_duplicate_observer) shows. A moved observer can be visited twice, as [`walk_visits_moved_twice`](Ranvier.Pure.Witnesses.html#walk_visits_moved_twice) shows.
+
+- [o:] the observer set at the start of the walk.
+- [muts:] the mutations applied after each visit.
+- [vis:] the observers visited, in order.
+- [o':] the observer set at the end of the walk.
+- [c:] the observer that is held once throughout.
 *)
 Theorem walk_covers o muts vis o' c :
   walk (length (observer_items o)) o muts vis o' ->
@@ -360,6 +427,13 @@ Qed.
 **A walk visits only observers present at the time of the visit.**
 
 The `k`th observer visited belongs to the set as it stands after the mutations of the `k` earlier visits. Holds from any starting cursor. An observer added during the walk can be visited: see [`walk_visits_added_observer`](Ranvier.Pure.Witnesses.html#walk_visits_added_observer).
+
+- [n:] the starting cursor plus one.
+- [o:] the observer set at the start of the walk.
+- [muts:] the mutations applied after each visit.
+- [vis:] the observers visited, in order.
+- [o':] the observer set at the end of the walk.
+- [k:] the index of a visit.
 *)
 Theorem walk_visits_only_seen n o muts vis o' :
   walk n o muts vis o' ->

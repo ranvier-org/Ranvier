@@ -65,12 +65,24 @@ opam install --switch=rocqnavi dune ocamlfind dune-glob yojson
 `-external https://plv.mpi-sws.org/coqdoc/stdpp stdpp` links stdpp's names to its published documentation. Rocqnavi has no
 script option, so `docs.sh` inserts the tag for `docs/ranvier.js` before `</body>`.
 
+## Navigator site
+
+`site.sh` builds a second rendering of the theories with `Nacara.Plugin.Rocq` and `FSharp.Data.Rocq` from
+[FSharp.Data.Rocq](https://github.com/ranvier-org/FSharp.Data.Rocq), at the version in `site/Ranvier.Proofs.Site.fsproj`. It needs
+this toolchain, `python3` and the .NET SDK, and no second opam switch.
+
+The workflow `proofs-site.yml` runs `check.sh` and `site.sh` on `ubuntu-latest`, and uploads the pages as the artifact
+`proofs-site`. The workflow `docs.yml` places the newest artifact from `master` at `/proofs/` of the Pages deployment. Its opam
+cache key is the hash of this file, so a version change here rebuilds the toolchain. A version change also needs the matching
+change to the install command in `proofs-site.yml`.
+
 ## Commands
 
 - Build: `bash proofs/build.sh`
 - Audit: `bash proofs/check.sh`
 - Differential check: `bash proofs/differential/run.sh [count] [seed]`
 - Documentation: `bash proofs/docs.sh`
+- Navigator site: `bash proofs/site.sh`
 - Run a command in the toolchain environment: `bash proofs/build.sh --run CMD ARGS`
 
 ## Smoke theorem

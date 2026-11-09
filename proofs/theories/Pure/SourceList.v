@@ -12,27 +12,65 @@ Record EdgeWorld := { world_observers : gmap node_id observer_set; world_sources
 Definition empty_source_list : source_list := {| source_slots := []; source_cursor := 0 |}.
 Definition empty_world : EdgeWorld := {| world_observers := ∅; world_sources := ∅ |}.
 
+(**md
+The observers of `s` in `w`, empty when `s` has none stored.
+*)
 Definition observers_of (w : EdgeWorld) (s : node_id) : observer_set := default empty_observer_set (world_observers w !! s).
+(**md
+The source list of `c` in `w`, empty when `c` has none stored.
+*)
 Definition sources_of (w : EdgeWorld) (c : node_id) : source_list := default empty_source_list (world_sources w !! c).
+(**md
+Slot `i` of computation `c` in `w`: its source and edge handle, or `None` past the end of the list.
+
+- [w:] the edge world.
+- [c:] the computation.
+- [i:] the slot index.
+*)
 Definition slot_at (w : EdgeWorld) (c : node_id) (i : nat) : option (node_id * option nat) :=
   source_slots (sources_of w c) !! i.
 
+(**md
+`w` with the observer set of `s` replaced by `o`.
+*)
 Definition set_observers (s : node_id) (o : observer_set) (w : EdgeWorld) : EdgeWorld :=
   {| world_observers := <[s := o]> (world_observers w); world_sources := world_sources w |}.
+(**md
+`w` with the source list of `c` replaced by `l`.
+*)
 Definition set_sources (c : node_id) (l : source_list) (w : EdgeWorld) : EdgeWorld :=
   {| world_observers := world_observers w; world_sources := <[c := l]> (world_sources w) |}.
 
+(**md
+`BeginRun`: `w` with the cursor of `c` moved to the start of its slots.
+*)
 Definition sources_begin_run (c : node_id) (w : EdgeWorld) : EdgeWorld :=
   set_sources c {| source_slots := source_slots (sources_of w c); source_cursor := 0 |} w.
 
+(**md
+`w` with the edge handle of slot `i` of `c` replaced by `mh`.
+
+- [c:] the computation.
+- [i:] the slot index.
+- [mh:] the new handle, `None` for an unlinked slot.
+*)
 Definition set_handle (c : node_id) (i : nat) (mh : option nat) (w : EdgeWorld) : EdgeWorld :=
   let l := sources_of w c in
   set_sources c {| source_slots := alter (fun p => (p.1, mh)) i (source_slots l); source_cursor := source_cursor l |} w.
 
+(**md
+`MovedIn`: gives slot `slot` of `c` the handle `h`.
+*)
 Definition sources_moved_in (c : node_id) (slot h : nat) (w : EdgeWorld) : EdgeWorld :=
   set_handle c slot (Some h) w.
 
-(** [RemoveObserverAt], with the [MovedIn] of the observer it moves. *)
+(**md
+`RemoveObserverAt`, with the `MovedIn` of the observer it moves.
+
+- [self:] the observer removed.
+- [s:] the source whose observers are changed.
+- [h:] the handle of `self` in the observers of `s`.
+*)
 Definition remove_edge (self s : node_id) (h : nat) (w : EdgeWorld) : option EdgeWorld :=
   match observers_remove_at self h (observers_of w s) with
   | Some (o', n) =>
@@ -44,33 +82,60 @@ Definition remove_edge (self s : node_id) (h : nat) (w : EdgeWorld) : option Edg
   | None => None
   end.
 
-(** One iteration of [trimFrom]. The handle comes from the world current at this slot. *)
+(**md
+One iteration of `trimFrom`. The handle comes from the world current at this slot.
+
+- [self:] the computation trimmed.
+- [i:] the slot removed.
+*)
 Definition sources_remove_slot (self : node_id) (i : nat) (w : EdgeWorld) : option EdgeWorld :=
   match slot_at w self i with
   | Some (s, Some h) => set_handle self i None <$> remove_edge self s h w
   | _ => Some w
   end.
 
+(**md
+Removes `n` slots of `self` from slot `i` on, in order, by `sources_remove_slot`.
+*)
 Fixpoint trim_loop (self : node_id) (i n : nat) (w : EdgeWorld) : option EdgeWorld :=
   match n with
   | 0 => Some w
   | S n' => sources_remove_slot self i w ≫= trim_loop self (S i) n'
   end.
 
-(** [trimFrom]. *)
+(**md
+`trimFrom`: removes the edges of the slots of `self` from `from` on, then drops those slots.
+
+- [self:] the computation trimmed.
+- [from:] the first slot dropped.
+*)
 Definition sources_trim_from (self : node_id) (from : nat) (w : EdgeWorld) : option EdgeWorld :=
   trim_loop self from (length (source_slots (sources_of w self)) - from) w ≫= fun w1 =>
   let l1 := sources_of w1 self in
   Some (set_sources self {| source_slots := take from (source_slots l1); source_cursor := source_cursor l1 |} w1).
 
+(**md
+`EndRun`: trims the slots at and after the cursor of `self`.
+*)
 Definition sources_end_run (self : node_id) (w : EdgeWorld) : option EdgeWorld :=
   let l := sources_of w self in
   if decide (source_cursor l < length (source_slots l)) then sources_trim_from self (source_cursor l) w else Some w.
 
+(**md
+`Clear`: removes every edge of `self` and empties its slot list, with the cursor at the start.
+*)
 Definition sources_clear (self : node_id) (w : EdgeWorld) : option EdgeWorld :=
   sources_trim_from self 0 w ≫= fun w1 =>
   Some (set_sources self {| source_slots := source_slots (sources_of w1 self); source_cursor := 0 |} w1).
 
+(**md
+Appends slot `(s, mh)` to `self` with the cursor after it, and stores `o` as the observers of `s`.
+
+- [self:] the computation.
+- [s:] the source appended.
+- [mh:] the slot's edge handle.
+- [o:] the observer set of `s` after the append.
+*)
 Definition sources_append (self s : node_id) (mh : option nat) (o : observer_set) (w : EdgeWorld) : EdgeWorld :=
   let l := sources_of w self in
   set_observers s o
@@ -770,6 +835,10 @@ Qed.
 **A read matching the slot at the cursor only advances the cursor.**
 
 When the slot at the cursor holds the source being read, `Add` succeeds, the cursor moves up one, and every observer set, this computation's slots and every other computation's source list stay as they were.
+
+- [self:] the computation reading.
+- [s:] the source read.
+- [w:] the edge world before the read.
 *)
 Theorem sources_add_positional self s w :
   fst <$> slot_at w self (source_cursor (sources_of w self)) = Some s ->
@@ -790,6 +859,10 @@ Qed.
 **Reading the source just matched again changes nothing.**
 
 When the slot at the cursor holds a different source and the slot just before the cursor holds this one, `Add` returns the world unchanged.
+
+- [self:] the computation reading.
+- [s:] the source read.
+- [w:] the edge world, which `sources_add` leaves unchanged.
 *)
 Theorem sources_add_repeat self s w :
   fst <$> slot_at w self (source_cursor (sources_of w self)) <> Some s ->
@@ -818,6 +891,10 @@ Qed.
 When the read matches neither the slot at the cursor nor the one before it, the new list is the slots before the cursor followed by the source, with the cursor at its end. The two ends of every edge still agree, and the computation appears only in the observers of sources in its new list.
 
 Premise: the two ends of every edge agree beforehand (`edge_match`).
+
+- [self:] the computation reading.
+- [s:] the source read.
+- [w:] the edge world before the read.
 *)
 Theorem sources_add_truncates self s w :
   edge_match w ->
@@ -854,6 +931,8 @@ Qed.
 **A computation holds at most one edge per source, in that source's first slot.**
 
 In every world built from empty by the source-list operations, two slots of a computation that hold edges to one source are the same slot, and a slot holds an edge exactly when no earlier slot names its source.
+
+- [w:] a world built by the source-list operations from an empty world.
 *)
 Theorem sources_no_duplicate_edge w :
   world_reachable w ->
@@ -878,6 +957,16 @@ Proof. intros [_ Hf] c s i j hi hj. by apply first_owns_unique. Qed.
 The observer that a removal moves into the hole is a different computation from the one being removed.
 
 Premises: the two ends of every edge agree (`edge_match`), every computation holds at most one edge per source (`slots_unique`), and the removal uses the handle stored in the computation's slot.
+
+- [w:] the world before the removal.
+- [self:] the computation whose slot is removed.
+- [i:] the slot removed.
+- [s:] the source in slot `i`.
+- [h:] the handle in slot `i`.
+- [o':] the observer set of `s` after the removal.
+- [m:] the observer moved into the hole.
+- [ms:] the slot of `m`.
+- [h':] the new handle of `m`.
 *)
 Theorem trim_moves_only_others w self i s h o' m ms h' :
   edge_match w -> slots_unique w ->
@@ -933,6 +1022,12 @@ Qed.
 After any number of removals, the two ends of every edge agree, each computation holds at most one edge per source, each observer set holds an observer at most once, and the next removal moves only another computation's edge.
 
 Premises: the first two properties hold when the trim starts.
+
+- [self:] the computation trimmed.
+- [from:] the first slot removed.
+- [k:] the number of slots removed.
+- [w:] the world before the trim.
+- [w':] the world after the trim.
 *)
 Theorem trim_every_removal self from k w w' :
   edge_match w -> slots_unique w ->
@@ -963,6 +1058,10 @@ Proof. intros Hr. exists 0, 0, 0, w. done. Qed.
 **An observer in a set occupies exactly one position.**
 
 Holds in every reachable world and in every world between the removals of a trim that starts from one.
+
+- [w:] a `world_point`.
+- [s:] the source.
+- [c:] an observer of `s`.
 *)
 Theorem observer_held_once w s c :
   world_point w -> c ∈ observer_view (observers_of w s) -> held_once c (observers_of w s).
@@ -980,6 +1079,14 @@ Qed.
 Take the source list A, B, A with an edge in each slot, the later A edge last in A's observers. The first removal moves that edge, the later slot then holds the moved handle, and `Clear` still succeeds, leaving an empty list and the computation in no observer set.
 
 Premises: this exact list and the two ends of every edge agreeing. Reachable worlds exclude this list ([`sources_no_duplicate_edge`](#sources_no_duplicate_edge)), so this covers a world built by hand: see [`aba_reachable_trim`](#aba_reachable_trim).
+
+- [w:] the world, whose slots for `self` are `A`, `B`, `A`.
+- [self:] the computation trimmed.
+- [A:] the source in the first and third slots.
+- [B:] the source in the second slot.
+- [ha:] the handle in the first slot.
+- [hb:] the handle in the second slot.
+- [ha':] the handle in the third slot, the last position of the observers of `A`.
 *)
 Theorem sources_trim_moves_own_edge w self A B ha hb ha' :
   edge_match w ->
@@ -1014,6 +1121,11 @@ Qed.
 When a read misses its slot, the source has more than `scan_limit` observers and `observer_latest` holds another observer, `TryAdd` answers `TUnknown`. `Add` still succeeds, the world stays well formed, and the computation holds exactly one position in the source's observers, whether or not the source already had a slot.
 
 Premise: the world is well formed beforehand. The observer count and `observer_latest` are measured after the trim of the slots from the cursor onward.
+
+- [self:] the computation reading.
+- [s:] the source read.
+- [w:] the world before the read.
+- [w1:] the world after `sources_end_run` on `self`.
 *)
 Theorem sources_add_unknown_no_duplicate self s w w1 :
   world_well_formed w ->

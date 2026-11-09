@@ -44,6 +44,12 @@ Fixpoint walk_marks (mark : node_id -> state -> option state) (src : node_id) (n
          end
   end.
 
+(**md
+Marks the observers of `src` with `mark`, walking backward from the observer count of the starting state.
+
+- [mark:] the mark applied to each observer visited.
+- [src:] the source whose observers are marked.
+*)
 Definition notify_with (mark : node_id -> state -> option state) (src : node_id) (s : state) : option state :=
   walk_marks mark src (length (observer_items (observers_of (g_edges s) src))) s.
 
@@ -80,6 +86,12 @@ Fixpoint mark_check (fuel : nat) (n : node_id) (s : state) {struct fuel} : optio
     end
   end.
 
+(**md
+`NotifyCheck`: marks each observer of `src` with `mark_check`.
+
+- [fuel:] the bound on the recursion of the marks.
+- [src:] the source whose observers are marked.
+*)
 Definition notify_check (fuel : nat) (src : node_id) (s : state) : option state :=
   notify_with (mark_check fuel) src s.
 
@@ -105,6 +117,12 @@ Definition mark_dirty (fuel : nat) (n : node_id) (s : state) : option state :=
     end
   end.
 
+(**md
+`NotifyDirty`: marks each observer of `src` with `mark_dirty`.
+
+- [fuel:] the bound on the recursion of the marks.
+- [src:] the source whose observers are marked.
+*)
 Definition notify_dirty (fuel : nat) (src : node_id) (s : state) : option state :=
   notify_with (mark_dirty fuel) src s.
 
@@ -112,6 +130,13 @@ Definition notify_dirty (fuel : nat) (src : node_id) (s : state) : option state 
 Definition mark_except (fuel : nat) (r : option node_id) (c : node_id) (s : state) : option state :=
   if decide (r = Some c) then Some s else mark_dirty fuel c s.
 
+(**md
+`NotifyDirtyExcept`: marks each observer of `src` with `mark_dirty`, skipping the computation `r`.
+
+- [fuel:] the bound on the recursion of the marks.
+- [src:] the source whose observers are marked.
+- [r:] the current computation, or `None`.
+*)
 Definition notify_dirty_except (fuel : nat) (src : node_id) (r : option node_id) (s : state) : option state :=
   notify_with (mark_except fuel r) src s.
 
@@ -138,6 +163,11 @@ Definition mark_measure (s : state) : nat := nodes_score (g_nodes s).
 
 (** ** The primitive steps *)
 
+(**md
+One change to a node's freshness mark: a memo takes a freshness at or above its own and keeps or clears its
+unannounced flag, a queued effect takes a freshness at or above its own, or an unqueued effect does so and
+is enqueued.
+*)
 Inductive mark_prim : state -> state -> Prop :=
   | prim_memo s n d f u :
       g_nodes s !! n = Some d ->
@@ -433,6 +463,10 @@ Qed.
 **Marking a node finishes on any graph, cycles included.**
 
 With fuel above `mark_measure`, `mark_check` and `mark_dirty` return a state.
+
+- [fuel:] the fuel, above `mark_measure s`.
+- [n:] the node marked.
+- [s:] the starting state.
 *)
 Theorem mark_terminates fuel n s :
   mark_measure s < fuel ->
@@ -443,6 +477,11 @@ Proof. intros Hb. split; [by apply mark_check_some|by apply mark_dirty_some]. Qe
 **Marking a node's observers finishes on any graph, cycles included.**
 
 With fuel above `mark_measure`, `notify_check`, `notify_dirty` and `notify_dirty_except` return a state.
+
+- [fuel:] the fuel, above `mark_measure s`.
+- [n:] the source whose observers are marked.
+- [r:] the current computation skipped by `notify_dirty_except`, or `None`.
+- [s:] the starting state.
 *)
 Theorem notify_terminates fuel n r s :
   mark_measure s < fuel ->
@@ -464,6 +503,14 @@ Qed.
 **Marks only raise freshness.**
 
 After any of the five marking operations, each existing node still exists, and its freshness has stayed or risen in the order `Clean`, `Check`, `Dirty`.
+
+- [fuel:] the fuel.
+- [n:] the node or source marked.
+- [r:] the current computation skipped by `notify_dirty_except`, or `None`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
+- [m:] a node of `s`.
+- [d:] the node `m` in `s`.
 *)
 Theorem mark_monotone fuel n r s s' m d :
   any_mark fuel n r s s' ->
@@ -478,6 +525,13 @@ Qed.
 **A `Check` mark leaves a `Dirty` node `Dirty`.**
 
 Covers `mark_check` only. `mark_monotone` gives the same for every marking operation.
+
+- [fuel:] the fuel.
+- [n:] the node marked.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
+- [m:] a `Dirty` node of `s`.
+- [d:] the node `m` in `s`.
 *)
 Theorem dirty_not_lost fuel n s s' m d :
   mark_check fuel n s = Some s' ->
@@ -495,6 +549,12 @@ Qed.
 **Marks leave the edges alone.**
 
 Each of the five marking operations leaves both ends of every edge unchanged.
+
+- [fuel:] the fuel.
+- [n:] the node or source marked.
+- [r:] the current computation skipped by `notify_dirty_except`, or `None`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
 *)
 Theorem mark_preserves_edges fuel n r s s' :
   any_mark fuel n r s s' -> g_edges s' = g_edges s.
@@ -502,6 +562,9 @@ Proof. intros Ha. by eapply marks_edges, any_mark_rtc. Qed.
 
 (** ** A marking walk visits a fixed list *)
 
+(**md
+Marks the observers `vis` in order with `mark`, stopping at the first `None`.
+*)
 Fixpoint mark_list (mark : node_id -> state -> option state) (vis : list node_id) (s : state) : option state :=
   match vis with
   | [] => Some s
@@ -559,6 +622,11 @@ Qed.
 **A marking walk visits the observers present at its start, last position first.**
 
 Each notify operation folds its mark over that one list, and the walk is a `walk` with empty mutations at every visit. A `walk` with a mutation behaves differently: see [`walk_visits_added_observer`](Ranvier.Pure.Witnesses.html#walk_visits_added_observer).
+
+- [fuel:] the fuel.
+- [src:] the source whose observers are marked.
+- [r:] the current computation skipped by `notify_dirty_except`, or `None`.
+- [s:] the state.
 *)
 Theorem notify_walk_unmutated fuel src r s (o := observers_of (g_edges s) src) (vis := rev (observer_view o)) :
   walk (length (observer_items o)) o ((fun _ => []) <$> vis) vis o /\
@@ -605,6 +673,9 @@ Definition takes_marks (s : state) (m : node_id) : Prop :=
   exists d, g_nodes s !! m = Some d /\
     (n_kind d = KMemo \/ (n_kind d = KEffect /\ n_disposed d = false /\ n_in_cleanup d = false)).
 
+(**md
+Node `m` exists in `s` and is `Check` or `Dirty`.
+*)
 Definition ends_stale (s : state) (m : node_id) : Prop :=
   exists d, g_nodes s !! m = Some d /\ stale (n_freshness d) = true.
 
@@ -699,6 +770,13 @@ Qed.
 **A marking walk leaves each observer stale.**
 
 Each observer of the source that takes marks ends `Check` or `Dirty`. `notify_dirty_except` skips the running computation, so the guarantee covers observers other than that one. An observer takes marks when it is a memo, or an effect outside its disposal and its cleanups.
+
+- [fuel:] the fuel.
+- [src:] the source whose observers are marked.
+- [r:] the current computation skipped by `notify_dirty_except`, or `None`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
+- [m:] an observer of `src` that takes marks.
 *)
 Theorem notify_stales fuel src r s s' m :
   m ∈ observer_view (observers_of (g_edges s) src) ->
@@ -739,6 +817,13 @@ Proof. intros Hn Hin Ht. eapply (notify_stales f n None s1 s' m); [done|done|by 
 **A clean memo goes stale and passes the mark to its observers.**
 
 After `mark_check` or `mark_dirty` of a `Clean` memo, the memo is stale, and so is each of its observers that takes marks. An effect in its cleanups stays clean: see [`in_cleanup_observer_stays_clean`](Ranvier.Pure.Witnesses.html#in_cleanup_observer_stays_clean).
+
+- [fuel:] the fuel.
+- [n:] the `Clean` memo marked.
+- [d:] the node `n` in `s`.
+- [os:] the observers of `n` in `s`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
 *)
 Theorem mark_forwards_on_clean fuel n d os s s' :
   g_nodes s !! n = Some d ->
@@ -762,6 +847,13 @@ Qed.
 After `mark_check` or `mark_dirty`, the memo is still stale with `n_unannounced` cleared, and each of its observers that takes marks is stale.
 
 Premises: the `f_unannounced` flag is on, and the memo is stale with `n_unannounced` set.
+
+- [fuel:] the fuel.
+- [n:] the stale memo marked.
+- [d:] the node `n` in `s`, which holds an announcement.
+- [os:] the observers of `n` in `s`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
 *)
 Theorem mark_forwards_on_unannounced fuel n d os s s' :
   f_unannounced (g_flags s) = true ->
@@ -898,6 +990,13 @@ Qed.
 Each marking operation preserves `queue_once`: at most one pending entry for the node, and none while its flag is unset. An effect marked along several paths has at most one pending entry.
 
 Premise: `queue_once` holds beforehand.
+
+- [fuel:] the fuel.
+- [n:] the node or source marked.
+- [r:] the current computation skipped by `notify_dirty_except`, or `None`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
+- [m:] a node with at most one pending queue entry in `s`.
 *)
 Theorem mark_keeps_queue_once fuel n r s s' m :
   any_mark fuel n r s s' -> queue_once s m -> queue_once s' m.
@@ -912,6 +1011,12 @@ Qed.
 After `mark_check` or `mark_dirty`, the effect's `n_queued` is set and `queue_once` still holds. An effect that was not queued has a pending entry, provided the queue head lies within the queue.
 
 Premises: the effect is outside its disposal and its cleanups, and `queue_once` holds beforehand.
+
+- [fuel:] the fuel.
+- [n:] the effect marked.
+- [d:] the node `n` in `s`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
 *)
 Theorem effect_mark_queues fuel n d s s' :
   g_nodes s !! n = Some d ->
@@ -932,6 +1037,11 @@ Qed.
 **A disposed effect ignores marks.**
 
 `mark_check` and `mark_dirty` return the state unchanged, given any positive fuel.
+
+- [fuel:] the fuel, which the marks run at `S fuel`.
+- [n:] the disposed effect marked.
+- [d:] the node `n` in `s`.
+- [s:] the state, which the marks leave unchanged.
 *)
 Theorem disposed_effect_ignores_marks fuel n d s :
   g_nodes s !! n = Some d ->
@@ -946,6 +1056,11 @@ Qed.
 **An effect running its cleanups ignores marks.**
 
 `mark_check` and `mark_dirty` return the state unchanged, given any positive fuel.
+
+- [fuel:] the fuel, which the marks run at `S fuel`.
+- [n:] the effect marked, which is in a cleanup.
+- [d:] the node `n` in `s`.
+- [s:] the state, which the marks leave unchanged.
 *)
 Theorem in_cleanup_ignores_marks fuel n d s :
   g_nodes s !! n = Some d ->
@@ -958,6 +1073,9 @@ Qed.
 
 (** ** How Dirty and Check marks differ *)
 
+(**md
+Node `m` exists in `s` and is `Dirty`.
+*)
 Definition ends_dirty (s : state) (m : node_id) : Prop :=
   exists d, g_nodes s !! m = Some d /\ n_freshness d = Dirty.
 
@@ -975,6 +1093,11 @@ Proof. intros Hf. exists d. split; [apply lookup_insert_eq|done]. Qed.
 **A `Dirty` mark makes its target `Dirty`.**
 
 A memo, or an effect outside its disposal and its cleanups, ends `Dirty`. That includes an effect already queued on `Check`.
+
+- [fuel:] the fuel.
+- [n:] the node marked.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
 *)
 Theorem mark_dirty_ends_dirty fuel n s s' :
   takes_marks s n -> mark_dirty fuel n s = Some s' -> ends_dirty s' n.
@@ -995,6 +1118,13 @@ Qed.
 **A dirty walk leaves each observer `Dirty`.**
 
 Each observer of the source that takes marks ends `Dirty`. `notify_dirty_except` skips the running computation, so the guarantee covers observers other than that one.
+
+- [fuel:] the fuel.
+- [src:] the source whose observers are marked.
+- [r:] the current computation skipped by `notify_dirty_except`, or `None`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
+- [m:] an observer of `src` that takes marks.
 *)
 Theorem notify_dirty_ends_dirty fuel src r s s' m :
   m ∈ observer_view (observers_of (g_edges s) src) ->
@@ -1075,6 +1205,13 @@ Qed.
 **A `Check` mark makes no node `Dirty`.**
 
 `mark_check` and `notify_check` leave each node short of `Dirty` still short of it.
+
+- [fuel:] the fuel.
+- [n:] the node or source marked.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
+- [m:] a node of `s` that is not `Dirty`.
+- [d:] the node `m` in `s`.
 *)
 Theorem mark_check_keeps_check fuel n s s' m d :
   (mark_check fuel n s = Some s' \/ notify_check fuel n s = Some s') ->
@@ -1093,6 +1230,14 @@ Qed.
 **A `Dirty` mark on a memo makes no other node `Dirty`.**
 
 `mark_dirty` of a memo leaves every other node that was short of `Dirty` still short of it.
+
+- [fuel:] the fuel.
+- [n:] the memo marked.
+- [d:] the node `n` in `s`.
+- [s:] the state before the marking.
+- [s':] the state after the marking.
+- [m:] a node other than `n`.
+- [d0:] the node `m` in `s`, which is not `Dirty`.
 *)
 Theorem memo_mark_dirty_keeps_others_short fuel n d s s' m d0 :
   g_nodes s !! n = Some d ->
@@ -1121,6 +1266,11 @@ Qed.
 **Marking a clean memo leaves its announcement flag as it was.**
 
 `mark_check` sets the memo to `Check` and `mark_dirty` sets it to `Dirty`, each with `n_unannounced` unchanged, and then each walks the observers with `mark_check`. Given any positive fuel.
+
+- [fuel:] the fuel, which the marks run at `S fuel`.
+- [n:] the `Clean` memo marked.
+- [d:] the node `n` in `s`.
+- [s:] the state before the marking.
 *)
 Theorem clean_memo_keeps_unannounced fuel n d s :
   g_nodes s !! n = Some d ->

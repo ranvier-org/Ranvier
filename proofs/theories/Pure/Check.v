@@ -26,6 +26,9 @@ Definition reads_settled (s : state) (n : node_id) : Prop :=
 
 (** ** Source lists, without their handles *)
 
+(**md
+The sources of the slots of `c`, in order, with its cursor.
+*)
 Definition slot_view (w : EdgeWorld) (c : node_id) : list node_id * nat :=
   (fst <$> source_slots (sources_of w c), source_cursor (sources_of w c)).
 
@@ -189,6 +192,9 @@ Proof. rewrite read_prefix_view. apply elem_take. Qed.
 
 (** ** The invariant *)
 
+(**md
+Node `n` exists in `s` with kind `k`.
+*)
 Definition has_kind (n : node_id) (k : kind) (s : state) : Prop :=
   exists d, g_nodes s !! n = Some d /\ n_kind d = k.
 
@@ -241,6 +247,9 @@ Definition nodes_and_windows (s : state) : gmap node_id node * gmap node_id nat 
 Definition closed (p : gmap node_id node * gmap node_id nat) (n : node_id) : Prop :=
   forall d r, p.1 !! n = Some d -> p.2 !! n = Some r -> r < n_runs d.
 
+(**md
+The node `d` is disposed, has a closed window, or holds no announcement.
+*)
 Definition settled_flag (p : gmap node_id node * gmap node_id nat) (n : node_id) (d : node) : Prop :=
   n_disposed d = true \/ closed p n \/ n_unannounced d = false.
 
@@ -635,6 +644,9 @@ Qed.
 
 (** ** Hoare triples over the monad *)
 
+(**md
+`P` survives every `frame` step.
+*)
 Class Stable (P : state -> Prop) := stable : forall s s', frame s s' -> P s -> P s'.
 
 Global Instance stable_true : Stable (fun _ => True).
@@ -643,6 +655,13 @@ Proof. by intros ???. Qed.
 Global Instance stable_kind n k : Stable (has_kind n k).
 Proof. intros s s' (_ & _ & H & _) Hk. auto. Qed.
 
+(**md
+From a state satisfying `check_invariant` and `P`, a completed step `m` ends in a state satisfying
+`check_invariant`, related to the start by `frame`.
+
+- [P:] the premise on the starting state.
+- [m:] the step.
+*)
 Definition ok_under {A} (P : state -> Prop) (m : M A) : Prop :=
   forall s s' a, check_invariant s -> P s -> m s = Some (s', a) -> check_invariant s' /\ frame s s'.
 
@@ -1283,6 +1302,10 @@ Qed.
 Definition run_post (s : state) (n : node_id) : Prop :=
   exists d, g_nodes s !! n = Some d /\ (closed (nodes_and_windows s) n \/ n_disposed d = true).
 
+(**md
+A completed step `m` from a state satisfying `check_invariant`, where `n` is a memo, ends in a state
+satisfying `run_post` for `n`.
+*)
 Definition ok_post (m : M unit) (n : node_id) : Prop :=
   forall s s' a, check_invariant s -> has_kind n KMemo s -> m s = Some (s', a) -> run_post s' n.
 
@@ -1294,6 +1317,12 @@ Proof.
   intros s s' (Hr & _ & Hk' & _) [Hk Hn]. split; [auto|by rewrite Hr].
 Qed.
 
+(**md
+Every engine function at fuel `f`, from `exec` to `drain`, satisfies `ok_under` with the premise it needs,
+and `run_memo` and `recompute` satisfy `ok_post`.
+
+- [f:] the fuel.
+*)
 Record engine_ok (f : nat) : Prop := {
   Eexec : forall e c, ok (exec f e c);
   Eread : forall n b, ok (read f n b);
@@ -1896,6 +1925,8 @@ End Step.
 When a function returns, the [check invariant](#check_invariant) still holds, `g_running` and `g_current` are back to their starting values, each node keeps its kind, and each memo's run count and disposal only go forward (`frame`). After `run_memo` or `recompute` of a memo, the memo is disposed, or `RecomputeScoped` has never cleared its `Dirty`, or the memo has run since `RecomputeScoped` last did.
 
 Premises: the invariant holds at the start. Functions over a memo or an effect require a node of that kind, and `run_effect_body` requires that effect's run to be in progress.
+
+- [f:] the fuel.
 *)
 Theorem engine_ok_all f : engine_ok f.
 Proof.
@@ -1942,6 +1973,8 @@ Proof. unfold slot_view, sources_of. simpl. rewrite lookup_empty. done. Qed.
 **A new graph satisfies the check invariant.**
 
 The [check invariant](#check_invariant) holds under any flags.
+
+- [fl:] the flags of the new graph.
 *)
 Theorem check_invariant_init fl : check_invariant (init fl).
 Proof.
@@ -1967,6 +2000,12 @@ Qed.
 **A whole program keeps the check invariant.**
 
 If the [check invariant](#check_invariant) holds at the start and `run_top` returns, the invariant holds in the final state. A program that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
+
+- [f:] the fuel.
+- [c:] the command run.
+- [s:] the starting state.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
 *)
 Theorem check_invariant_run_top f c s s' r :
   check_invariant s -> run_top f c s = Some (s', r) -> check_invariant s'.
@@ -1976,6 +2015,11 @@ Proof. intros Hi Hm. exact (proj1 (Eexec _ (engine_ok_all f) [] c _ _ _ Hi I Hm)
 **`update_if_necessary` keeps the check invariant.**
 
 If the [check invariant](#check_invariant) holds at the start and `update_if_necessary` returns, the invariant holds afterwards.
+
+- [f:] the fuel.
+- [n:] the node brought up to date.
+- [s:] the starting state.
+- [s':] the state after the update.
 *)
 Theorem check_invariant_update f n s s' :
   check_invariant s -> update_if_necessary f n s = Some (s', tt) -> check_invariant s'.
@@ -1989,6 +2033,10 @@ Proof. intros Hi Hm. exact (proj1 (Eupdate _ (engine_ok_all f) n _ _ _ Hi I Hm))
 Each source in the memo's slots has a recorded read, and each recorded read equals the source's stored value, status and failure, which can themselves be stale.
 
 Premises: the [check invariant](#check_invariant) holds, and `reads_settled`: the memo has no unnoticed difference in its reads, and neither it nor any of its sources is running.
+
+- [s:] the state.
+- [n:] a memo that is not `Dirty`.
+- [d:] the node `n` in `s`.
 *)
 Theorem unmoved_short_of_dirty s n d :
   check_invariant s -> g_nodes s !! n = Some d -> n_kind d = KMemo -> n_freshness d <> Dirty ->
@@ -2014,6 +2062,13 @@ Qed.
 Each source in the memo's slots has a recorded read, and each recorded read equals the source's stored value, status and failure, which can themselves be stale: [`self_marking_through_memo_unmoved`](Ranvier.Pure.Witnesses.html#self_marking_through_memo_unmoved) has the source `Dirty` and the reader `Clean`.
 
 Premises: the [check invariant](#check_invariant) holds, the memo starts in `Check`, `update_if_necessary` returns with the memo `Clean`, and `reads_settled` holds at the end. `reads_settled` says the memo has no unnoticed difference in its reads, and neither it nor any of its sources is running. The guarantee comes from the invariant and that premise, not from the walk. The unqualified claim is false: see `resolve_clean_no_move_statement`.
+
+- [f:] the fuel.
+- [n:] the memo, in `Check` before the update.
+- [s:] the state before the update.
+- [s':] the state after the update.
+- [d:] the node `n` in `s`.
+- [d':] the node `n` in `s'`, which is `Clean`.
 *)
 Theorem resolve_clean_unmoved f n s s' d d' :
   check_invariant s ->
@@ -2071,6 +2126,12 @@ Admitted.
 **The check walk stops as soon as the node leaves `Check`.**
 
 With the node `Clean` or `Dirty`, the walk returns the state unchanged at this slot, given any positive fuel.
+
+- [f:] the fuel, which the walk runs at `S f`.
+- [n:] the node walked.
+- [i:] the slot the walk is at.
+- [s:] the state, which the walk returns unchanged.
+- [d:] the node `n` in `s`.
 *)
 Theorem resolve_dirty_stops_walk f n i s d :
   g_nodes s !! n = Some d -> n_freshness d <> Check ->
@@ -2084,6 +2145,14 @@ Qed.
 **The check walk updates one source, then moves to the next slot.**
 
 With the node in `Check` and a source in this slot, the walk runs `update_if_necessary` on that source and continues from the next slot, given any positive fuel.
+
+- [f:] the fuel, which the walk runs at `S f`.
+- [n:] the node walked, in `Check`.
+- [i:] the slot the walk is at.
+- [s:] the state.
+- [d:] the node `n` in `s`.
+- [src:] the source in slot `i`.
+- [mh:] the edge handle of slot `i`.
 *)
 Theorem resolve_walk_step f n i s d src mh :
   g_nodes s !! n = Some d -> n_freshness d = Check ->
@@ -2100,6 +2169,13 @@ Qed.
 Holds on every path of `update_if_necessary`: the walk ending in `Check`, or a run after it.
 
 Premises: the [check invariant](#check_invariant) holds, the memo starts in `Check` and ends `Clean`, and the memo is not disposed at the end. A memo disposed during `RecomputeScoped` can keep the flag, as [`disposed_window_keeps_unannounced`](Ranvier.Pure.Witnesses.html#disposed_window_keeps_unannounced) shows.
+
+- [f:] the fuel.
+- [n:] the memo, in `Check` before the update.
+- [s:] the state before the update.
+- [s':] the state after the update.
+- [d:] the node `n` in `s`.
+- [d':] the node `n` in `s'`, which is `Clean` and not disposed.
 *)
 Theorem resolve_clears_unannounced f n s s' d d' :
   check_invariant s ->
@@ -2122,6 +2198,13 @@ Qed.
 **A check walk that ends in `Check` makes the node `Clean` with no run after the walk.**
 
 For a node that starts in `Check`, `refresh` succeeds with the node as the walk left it, except `Clean` with `n_unannounced` false. Its run count is the one the walk left, which says nothing of runs during the walk.
+
+- [f:] the fuel, which `refresh` runs at `S f`.
+- [n:] the memo, in `Check` before and after the walk.
+- [s:] the state before the walk.
+- [s1:] the state after the walk.
+- [d:] the node `n` in `s`.
+- [d1:] the node `n` in `s1`.
 *)
 Theorem resolve_walk_check_clears f n s s1 d d1 :
   g_nodes s !! n = Some d -> n_freshness d = Check ->
@@ -2151,6 +2234,11 @@ Qed.
 **Updating a signal does nothing.**
 
 `update_if_necessary` on a signal returns the state unchanged, given any positive fuel.
+
+- [f:] the fuel, which the update runs at `S f`.
+- [n:] the signal.
+- [s:] the state, which the update returns unchanged.
+- [d:] the node `n` in `s`.
 *)
 Theorem signal_update_noop f n s d :
   g_nodes s !! n = Some d -> n_kind d = KSignal ->
@@ -2190,6 +2278,14 @@ Qed.
 **Reading a disposed memo keeps every node as it was and answers what it stored.**
 
 The read returns a failure when the memo's status is `StError`, otherwise the stored value. The failure is `n_failure`, or 0 when `n_failure` is `None`. This covers nodes only: a tracked read can still add an edge.
+
+- [f:] the fuel.
+- [n:] the disposed memo read.
+- [b:] whether the read is tracked.
+- [s:] the state before the read.
+- [s':] the state after the read.
+- [d:] the node `n` in `s`.
+- [o:] the outcome of the read.
 *)
 Theorem disposed_memo_no_refresh f n b s s' d o :
   g_nodes s !! n = Some d -> n_kind d = KMemo -> n_disposed d = true ->

@@ -7,8 +7,10 @@ Open Scope nat_scope.
 
 (** ** The monad *)
 
-(** A step of the engine. [None] is exhausted fuel or a stuck body, so a [Some] result means the
-    operation returned. *)
+(**md
+A step of the engine: a partial state transformer returning a value of type `A`. `None` is exhausted fuel
+or a stuck body, so a `Some` result means the operation returned.
+*)
 Definition M A := state -> option (state * A).
 
 Definition m_return {A} (a : A) : M A := fun s => Some (s, a).
@@ -16,6 +18,9 @@ Definition m_return {A} (a : A) : M A := fun s => Some (s, a).
 Definition m_bind {A B} (m : M A) (k : A -> M B) : M B :=
   fun s => match m s with Some (s', a) => k a s' | None => None end.
 
+(**md
+The step that always yields `None`.
+*)
 Definition stuck {A} : M A := fun _ => None.
 
 Notation "'let*' x ':=' m 'in' k" := (m_bind m (fun x => k))
@@ -618,8 +623,16 @@ Definition current_owner : M (option owner_id) :=
 
 (** ** The interpreter *)
 
-(** Each function follows the member of [Core.fs] it names. An F# exception inside a body is a [Fail]
-    outcome, so the [finally] paths are the code after the body returns. *)
+(**md
+Runs the command `c` as a step of the engine. This function and the functions defined with it
+(`read`, `refresh`, `recompute`, `run_memo`, `execute_effect`, `run_flush` and the rest) each follow the
+member of `Core.fs` that its comment names. An F# exception inside a body is a `Fail` outcome, so the
+`finally` paths are the code after the body returns.
+
+- [fuel:] the bound on nested steps. It reaching `0` gives `None`.
+- [e:] the local variable environment of the command.
+- [c:] the command run.
+*)
 Fixpoint exec (fuel : nat) (e : env) (c : cmd) {struct fuel} : M outcome :=
   match fuel with
   | 0 => stuck
@@ -1163,8 +1176,21 @@ Definition init (fl : flags) : state :=
      g_untracked := false; g_current_owner := Some root_owner_id; g_next_id := 0; g_trace := []; g_running := [];
      g_ghost := empty_ghost; g_registered := ∅ |}.
 
+(**md
+Runs the top-level command `c` in an empty environment.
+
+- [fuel:] the bound on nested steps.
+- [c:] the command run.
+*)
 Definition run_top (fuel : nat) (c : cmd) : M outcome := exec fuel [] c.
 
+(**md
+The event trace of running `c` on a new graph, or `None` when the run is stuck or runs out of fuel.
+
+- [fuel:] the bound on nested steps.
+- [fl:] the flags of the new graph.
+- [c:] the command run.
+*)
 Definition trace_of (fuel : nat) (fl : flags) (c : cmd) : option (list event) :=
   match run_top fuel c (init fl) with
   | Some (s, _) => Some (g_trace s)

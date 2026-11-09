@@ -55,3 +55,7 @@ proofs/engine.mli
 # proofs/docs.sh output and its rocqnavi clone
 proofs/docs/html/
 proofs/docs/.rocqnavi/
+
+# proofs/site.sh output and its captured facts
+proofs/site/output/
+proofs/site/.work/
