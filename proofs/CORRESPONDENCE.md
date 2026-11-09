@@ -62,7 +62,8 @@ choices come from.
 | `CMemo` under `erase` | `Pure` and `CmpEq`. A default-policy memo returning a new reference value each run, or `nan`, is `CmpNever` in the model and is not this form. The `cmp_never` rows in this file list which values those are. |
 | `input_cmd` of `RRead` | A `CTryRead`, so a failed read's failure is the host read's answer and the program goes on. |
 | `project` | Keeps effects' events, disposals and host reads, in the reference's ids. The reference discards a memo's logs (`node_value`), so an engine that runs a memo more or less often is not observed. The harness's trace still holds them. |
-| `engine_order` | The order of the live queue at a flush's start. Marking walks over observer positions, swap-removal included, build that queue. Marks during the flush append to it: `flush_queue` holds those too, and `engine_order_exact_except` relates the runs to both. |
+| `engine_order` | The order of the live queue at a flush's start. Marks during the flush append to it: `flush_queue` holds those too, and `engine_order_exact_except` relates the runs to both. It is not the order of a flush with a requeue: `engine_order_exact_falsified`. |
+| `history_order` | Each round's effects in the order of that round's runs in the engine, from `engine_rounds`. A history-wide order, and an argument the engine's run gives the reference. |
 | `dequeued`, `flush_queue` | The entries `RunFlush`'s loop over `_queue` takes, computed by running the model's `drain`. |
 
 ## Observer sets and source lists

@@ -2075,6 +2075,33 @@ Proof.
   - vm_compute. reflexivity.
 Qed.
 
+(**md
+**The premises of `engine_of_answers_on` are reachable.**
+
+*Check, not a guarantee.*
+
+`drain_order` meets `bodies_total`, and its history meets `inputs_total`.
+*)
+Theorem answers_reached : Refinement.bodies_total drain_order /\ Refinement.inputs_total drain_order drain_history.
+Proof.
+  assert (Hr0 : Refinement.Rdp drain_order 1).
+  { exists 0. split_and!; [done|vm_compute; lia|left; vm_compute; by eexists]. }
+  assert (Hr2 : Refinement.Rdp drain_order 3).
+  { exists 2. split_and!; [done|vm_compute; lia|right; split; vm_compute; [done|by eexists]]. }
+  assert (Hr3 : Refinement.Rdp drain_order 4).
+  { exists 3. split_and!; [done|vm_compute; lia|right; split; vm_compute; [done|by eexists]]. }
+  split; [split|].
+  - intros n c _ Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]]; [|apply lookup_singleton_Some in Hc as [<- <-]]; cbn [Refinement.rename Refinement.body_ends].
+    + split_and!; [reflexivity|by eexists|intros z Hz; vm_compute in Hz; injection Hz as <-; split; [lia|split; [vm_compute; lia|exact Hr0]]|].
+      intros v. split; [reflexivity|by eexists].
+    + split_and!; [reflexivity|by eexists|intros z Hz; vm_compute in Hz; injection Hz as <-; split; [lia|split; [vm_compute; lia|exact Hr2]]|].
+      intros v. split; [reflexivity|by eexists].
+  - intros n c _ _ Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]]; [|apply lookup_singleton_Some in Hc as [<- <-]]; cbn [Refinement.rename Refinement.body_ends].
+    all: split_and!; [reflexivity|by eexists|intros z Hz; vm_compute in Hz; injection Hz as <-; split; [lia|exact Hr3]|].
+    all: intros v; split_and!; [reflexivity|by eexists|reflexivity|by eexists].
+  - intros b i Hb Hi. apply list_elem_of_singleton in Hb as ->. apply list_elem_of_singleton in Hi as ->. vm_compute. by eexists.
+Qed.
+
 (** ** No fuel answers on [restored_source] *)
 
 Definition rs_setup : state := Eval vm_compute in

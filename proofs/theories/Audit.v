@@ -242,6 +242,9 @@ Print Assumptions exact_refinement_history.
 Print Assumptions notify_queues_observers_reversed.
 Print Assumptions notify_after_swap.
 Print Assumptions reads_end.
+Print Assumptions drain_ends.
+Print Assumptions engine_of_answers_on.
+Print Assumptions answers_reached.
 Print Assumptions weak_refinement.
 Print Assumptions exact_refinement.
 Print Assumptions engine_order_exact.
