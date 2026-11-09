@@ -1516,6 +1516,48 @@ Proof.
   vm_compute in Hb. discriminate Hb.
 Qed.
 
+(** The shape of [check_resolves_over_moved_source], with an effect reading memo [4]. *)
+Definition check_over_moved_read : cmd := check_over_moved (CEffect 9 (CRead 30 (V 4) (CLog (V 30) Nop)) Nop).
+
+Example check_over_moved_left_behind :
+  let s := final check_over_moved_read in
+  seen_of (g_ghost s) 5 4 = [(0%Z, StNone, None)] /\ den_all 8 s 4 = Some (Ok 1%Z) /\
+  n_freshness <$> g_nodes s !! (4 : node_id) = Some Clean.
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
+
+Local Lemma over_moved_reaches s d3 d2 :
+  g_nodes s !! (3 : node_id) = Some d3 -> g_nodes s !! (2 : node_id) = Some d2 -> n_kind d3 = KMemo -> n_kind d2 = KMemo ->
+  erase (n_mode d3) (n_body d3) = CRead 10 (V 2) (CRet (V 10)) -> erase (n_mode d2) (n_body d2) = CRead 10 (V 1) (CRet (V 10)) ->
+  ev (n_env d3) (V 2) = Some (Ok 2%Z) -> ev (n_env d2) (V 1) = Some (Ok 1%Z) -> reaches s 1 3.
+Proof.
+  intros H3 H2 K3 K2 E3 E2 V3 V2. exists 3. cbn [reaches_at]. right. rewrite H3. split; [exact K3|].
+  exists 2. rewrite E3. split; [left; exists 2%Z; split; [exact V3|reflexivity]|].
+  right. rewrite H2. split; [exact K2|]. exists 1. rewrite E2. split; [left; exists 1%Z; split; [exact V2|reflexivity]|]. left. reflexivity.
+Qed.
+
+Local Lemma over_moved_read_after_write s d (e : env) :
+  g_nodes s !! (4 : node_id) = Some d -> n_kind d = KMemo -> n_disposed d = false -> reaches s 1 3 ->
+  n_body d = CRead 10 (V 2) (CWrite (V 1) (K 1%Z) (CRead 11 (V 3) (CLog (V 10) (CRet (V 10))))) ->
+  n_env d = e -> env_lookup e 1 = Some 1%Z -> env_lookup e 3 = Some 3%Z -> ~ memos_read_before_write s.
+Proof.
+  intros Hd Hk Hl Hr Eb Ee L1 L3 H. pose proof (H 4 d Hd Hk Hl) as Hb. cbv beta in Hb. rewrite Eb, Ee in Hb. cbn [reads_before] in Hb.
+  destruct Hb as [_ Hb]. specialize (Hb 0%Z).
+  assert (Ev : ev ((10%nat, 0%Z) :: e) (V 1) = Some (Ok 1%Z)) by (unfold ev; cbn; rewrite L1; reflexivity).
+  destruct (Hb 1%Z Ev) as [Hb2 _].
+  assert (Ev3 : ev ((10%nat, 0%Z) :: e) (V 3) = Some (Ok 3%Z)) by (unfold ev; cbn; rewrite L3; reflexivity).
+  exact (Hb2 3%Z 1 Ev3 ltac:(left) Hr).
+Qed.
+
+Local Definition over_moved_node (n : node_id) : node := default (signal_node 0%Z) (g_nodes (final check_over_moved_read) !! n).
+
+Lemma check_over_moved_excluded : ~ memos_read_before_write (final check_over_moved_read).
+Proof.
+  refine (over_moved_read_after_write (final check_over_moved_read) (over_moved_node 4) [(4%nat, 4%Z); (3%nat, 3%Z); (2%nat, 2%Z); (1%nat, 1%Z)]
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) _ ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)).
+  refine (over_moved_reaches (final check_over_moved_read) (over_moved_node 3) (over_moved_node 2)
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)).
+Qed.
+
 (** The forms outside the premises of [convergence] with no entry of their own: a disposal in an effect, and a disposal or
     [EPrev] in a memo. *)
 Definition memo_disposes : cmd :=

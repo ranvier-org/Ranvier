@@ -228,6 +228,7 @@ Print Assumptions row_read_between_writes_excluded.
 Print Assumptions row_failing_write_holds.
 Print Assumptions row_memo_creates_excluded.
 Print Assumptions row_memo_prev_excluded.
+Print Assumptions check_over_moved_excluded.
 Print Assumptions effect_dispose_outside.
 Print Assumptions memo_dispose_outside.
 Print Assumptions memo_prev_outside.
