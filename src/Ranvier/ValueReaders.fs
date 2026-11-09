@@ -42,6 +42,7 @@ type internal ValueRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: V
 
         member this.MarkDirty() =
             touched this
+            false
 
         member this.MarkCheck() =
             touched this

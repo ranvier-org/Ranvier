@@ -59,6 +59,7 @@ let all =
             testList "Propagation.fs" [ Ranvier.Tests.Propagation.tests ]
             testList "Reads.fs" [ Ranvier.Tests.Reads.tests ]
             testList "Batching.fs" [ Ranvier.Tests.Batching.tests ]
+            testList "NotifySkip.fs" [ Ranvier.Tests.NotifySkip.tests ]
             testList "AsyncEdges.fs" [ Ranvier.Tests.AsyncEdges.tests ]
             testList
                 "Projections.fs"

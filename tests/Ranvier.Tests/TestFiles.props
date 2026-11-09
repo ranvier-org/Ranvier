@@ -38,6 +38,7 @@
         <Compile Include="$(MSBuildThisFileDirectory)Propagation.fs" Link="Propagation.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Reads.fs" Link="Reads.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Batching.fs" Link="Batching.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)NotifySkip.fs" Link="NotifySkip.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)AsyncEdges.fs" Link="AsyncEdges.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Projections.fs" Link="Projections.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)TrimmedPass.fs" Link="TrimmedPass.fs" />

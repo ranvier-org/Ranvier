@@ -184,7 +184,7 @@ type private DummyComputation(id: int) =
         member _.Status = Status.None
 
     interface IComputation with
-        member _.MarkDirty() = ()
+        member _.MarkDirty() = false
         member _.MarkCheck() = ()
         member _.AddSource _ = ()
         member _.MovedIn(_, _) = ()

@@ -507,6 +507,8 @@ type StreamMemo<'S>
                 unannounced <- false
                 observers.NotifyDirty ()
 
+            false
+
         member _.MarkCheck() =
             if freshness = Freshness.Clean then
                 freshness <- Freshness.Check

@@ -295,6 +295,8 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                 freshness <- Freshness.Dirty
                 this.Enqueue ()
 
+            false
+
         member this.MarkCheck() =
             if not disposed then
                 if freshness = Freshness.Clean then

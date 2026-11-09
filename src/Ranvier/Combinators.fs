@@ -691,6 +691,7 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
         member _.MarkDirty() =
             dirty <- true
             changed ()
+            false
 
         member _.MarkCheck() =
             check <- true
@@ -745,6 +746,7 @@ type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: Fo
 
         member this.MarkDirty() =
             touched this
+            false
 
         member this.MarkCheck() =
             touched this

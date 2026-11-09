@@ -98,9 +98,14 @@ type internal ISource =
 and internal IComputation =
     inherit INode
     /// <summary>
-    /// Noop if already <c>Dirty</c>.
+    /// Noop if already <c>Dirty</c>. Returns true when the node joins the graph epoch and is saturated after the mark:
+    /// a further <c>MarkDirty</c> will be a noop until the graph's epoch advances.
     /// </summary>
-    abstract MarkDirty: unit -> unit
+    /// <remarks>
+    /// Only <c>Memo</c> and <c>Effect</c> join the epoch. Every other implementor returns false, and a walk that visits
+    /// one records no stamp.
+    /// </remarks>
+    abstract MarkDirty: unit -> bool
 
     /// <summary>
     /// A <b>source</b> of this node may have changed. Does nothing if this node is
@@ -378,8 +383,33 @@ type internal ObserverSet() =
 
             if i >= 0 then
                 Tracer.Mark (this, (Platform.itemAt i items).Observer, true)
+
                 (Platform.itemAt i items).Observer.MarkDirty()
+                |> ignore
+
                 i <- i - 1
+
+    /// <summary>
+    /// <c>NotifyDirty</c>, returning true when every mark returned true: each visited observer joins the graph epoch
+    /// and was saturated by its mark.
+    /// </summary>
+    member this.NotifyDirtySaturating() =
+        let mutable saturated = true
+        let mutable i = count - 1
+
+        while i >= 0 do
+            if i >= count then
+                i <- count - 1
+
+            if i >= 0 then
+                Tracer.Mark (this, (Platform.itemAt i items).Observer, true)
+
+                if not ((Platform.itemAt i items).Observer.MarkDirty()) then
+                    saturated <- false
+
+                i <- i - 1
+
+        saturated
 
     /// <summary>
     /// <c>NotifyDirty</c>, skipping one observer.
@@ -404,7 +434,7 @@ type internal ObserverSet() =
 
                 if not (obj.ReferenceEquals (observer, running)) then
                     Tracer.Mark (this, observer, true)
-                    observer.MarkDirty ()
+                    observer.MarkDirty () |> ignore
                 else
                     Tracer.MarkSkip (this, observer)
 
@@ -460,7 +490,8 @@ type internal ForwardingEdge(target: IComputation) =
         member _.AddSource _ = ()
 
         member _.MarkDirty() =
-            target.MarkDirty ()
+            target.MarkDirty () |> ignore
+            false
 
         member _.MarkCheck() =
             target.MarkCheck ()
@@ -2076,6 +2107,12 @@ type internal JournalRecorder(journal: IInputJournal) =
 /// </summary>
 type Graph(options: GraphOptions) =
     let mutable nextId = 0
+
+    /// <summary>
+    /// Advanced with each write that can leave a saturated memo or effect unsaturated. A signal stamped with the
+    /// current epoch has only saturated observers.
+    /// </summary>
+    let mutable epoch = 0L
     /// <summary>
     /// Null rather than <c>IComputation option</c>. The option was 24 bytes of
     /// garbage per tracked run — allocated on the way in to every memo
@@ -3408,6 +3445,16 @@ type Graph(options: GraphOptions) =
     /// <summary>The last id <c>NextId</c> issued.</summary>
     member internal _.NodeCount = nextId
 
+    /// <summary>The current epoch. A signal whose stamp equals it skips its next write's walk.</summary>
+    member internal _.Epoch = epoch
+
+    /// <summary>
+    /// Starts a new epoch, leaving every signal's stamp stale. Called in the same step as each write that can leave
+    /// a saturated memo or effect unsaturated.
+    /// </summary>
+    member internal _.Advance() =
+        epoch <- epoch + 1L
+
     /// <summary>
     /// Links <c>source</c> into the computation currently being evaluated, if any.
     /// </summary>
@@ -3442,7 +3489,7 @@ type Graph(options: GraphOptions) =
     /// </remarks>
     member internal _.MarkReaderDirty() =
         if not (obj.ReferenceEquals (current, null)) then
-            current.MarkDirty ()
+            current.MarkDirty () |> ignore
 
     /// <summary>
     /// Marks the running computation <c>Check</c>, if any: <c>MarkReaderDirty</c> for a source that tells its readers
@@ -3729,6 +3776,16 @@ type Graph(options: GraphOptions) =
 /// <summary>
 /// A settable source.
 /// </summary>
+/// <summary>Signal stamp values that equal no epoch.</summary>
+module internal Stamp =
+    /// <summary>The stamp of a signal with no recorded walk, or with an observer added since.</summary>
+    [<Literal>]
+    let None = -1L
+
+    /// <summary>The stamp during a walk. An observer added during the walk replaces it with <c>None</c>.</summary>
+    [<Literal>]
+    let Walking = -2L
+
 type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
 #if RANVIER_TRACE
@@ -3739,6 +3796,13 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
     let mutable observers: ObserverSet = Unchecked.defaultof<_>
 #endif
     let mutable value = initial
+
+    /// <summary>
+    /// The graph epoch at the start of the latest walk that left every observer saturated. While it equals
+    /// <c>graph.Epoch</c>, a write skips the walk. <c>Stamp.Walking</c> during a walk, and <c>Stamp.None</c> after an
+    /// observer is added.
+    /// </summary>
+    let mutable stamp = Stamp.None
 
 #if RANVIER_COUNTERS
     do Counters.SignalCreated ()
@@ -3770,6 +3834,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             if Platform.isNull (box observers) then
                 observers <- ObserverSet ()
 #endif
+            stamp <- Stamp.None
             observers.Add (c, slot)
 
         member _.TryAddObserver(c, slot) =
@@ -3777,6 +3842,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             if Platform.isNull (box observers) then
                 observers <- ObserverSet ()
 #endif
+            stamp <- Stamp.None
             observers.TryAdd (c, slot)
 
         // A handle comes from an add, so the set exists.
@@ -3814,8 +3880,11 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                             value <- v
                             Tracer.Write (observers, true, box v)
 
-                            if not (Platform.isNull (box observers)) then
-                                observers.NotifyDirty ()
+                            if
+                                not (Platform.isNull (box observers))
+                                && stamp <> graph.Epoch
+                            then
+                                this.Notify ()
 
                             Tracer.Notified observers
 
@@ -3836,7 +3905,10 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                     value <- v
                     Tracer.Write (observers, true, box v)
 
-                    if not (Platform.isNull (box observers)) then
+                    if
+                        not (Platform.isNull (box observers))
+                        && stamp <> graph.Epoch
+                    then
                         observers.NotifyDirtyExcept running
 
                     Tracer.Notified observers
@@ -3844,6 +3916,23 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                 else
                     Tracer.Write (observers, false, box v)
         )
+
+    /// <summary>
+    /// Marks every observer dirty, and stamps the signal with the epoch at the walk's start when every mark left its
+    /// observer saturated and no observer was added during the walk.
+    /// </summary>
+    member private _.Notify() =
+        let start = graph.Epoch
+        stamp <- Stamp.Walking
+
+        if
+            observers.NotifyDirtySaturating ()
+            && stamp = Stamp.Walking
+        then
+            stamp <- start
+
+    /// <summary>Whether the signal's stamp is the current epoch, so its next write skips the walk.</summary>
+    member internal _.Stamped = stamp = graph.Epoch
 
     // Out of line, so the setter's body stays at one field load and a null check when the graph has no journal.
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
@@ -4189,6 +4278,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     member private this.RecomputeScoped() =
         let before = runs
         freshness <- Freshness.Clean
+        graph.Advance ()
         graph.Discharge scope
 
         if not disposed then
@@ -4206,6 +4296,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         // that reads itself from a stack overflow into a default value.
         freshness <- Freshness.Clean
         unannounced <- false
+        graph.Advance ()
         sources.BeginRun ()
 
         if
@@ -4288,6 +4379,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         if freshness <> Freshness.Clean then
             unannounced <- true
+            graph.Advance ()
 
     /// <summary>
     /// Resolves <c>Check</c> into <c>Clean</c> or <c>Dirty</c> by asking each source, in read
@@ -4503,6 +4595,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                 unannounced <- false
                 observers.NotifyCheck ()
 
+            // Saturated: `Dirty`, with no announcement due. A mark from `Clean` keeps a set `unannounced`.
+            not unannounced
+
         member _.MarkCheck() =
             if freshness = Freshness.Clean then
                 freshness <- Freshness.Check
@@ -4708,7 +4803,9 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
         // remember to collect.
         link <- graph.CurrentOwner.AttachLinked this
         Tracer.EffectNew (graph, id, link.Owner)
-        (this :> IComputation).MarkDirty()
+        // A new effect needs no advance: it is in no observer set until a run adds an edge, and adding an edge clears
+        // the source's stamp.
+        (this :> IComputation).MarkDirty() |> ignore
         graph.RequestFlush ()
 
     /// <summary>
@@ -4753,6 +4850,9 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                         graph.SchedulePass (this :> IScheduled)
                     else
                         graph.Schedule (this :> IScheduled)
+
+            // Saturated: `Dirty` and queued, disposed, or in cleanup.
+            true
 
         member this.MarkCheck() =
             if not disposed && not inCleanup then
@@ -4805,6 +4905,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                 // `Memo.Recompute`: an invalidation raised by the body itself
                 // has to survive the run that raised it.
                 freshness <- Freshness.Clean
+                graph.Advance ()
 
                 if shouldRun then
                     this.Run ()
@@ -4823,6 +4924,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                 graph.Discharge scope
             finally
                 inCleanup <- false
+                graph.Advance ()
 
         // A cleanup that disposes the effect, directly or through its owner,
         // ends the run here.
@@ -5013,7 +5115,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
     member private this.Start() =
         link <- graph.CurrentOwner.AttachLinked this
         Tracer.EffectNew (graph, id, link.Owner)
-        (this :> IComputation).MarkDirty()
+        (this :> IComputation).MarkDirty() |> ignore
         graph.RequestFlush ()
 
     /// <summary>Runs <c>compute</c>, then <c>act</c> on the first settled value and on each one unequal to <c>last</c>.</summary>
@@ -5164,6 +5266,8 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                 if not queued then
                     queued <- true
                     graph.Schedule (this :> IScheduled)
+
+            false
 
         member this.MarkCheck() =
             if not disposed then
@@ -5927,6 +6031,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 // has to re-read to start the flight at all.
                 observers.NotifyDirty ()
 
+            false
+
         member _.MarkCheck() =
             if freshness = Freshness.Clean then
                 freshness <- Freshness.Check
@@ -6546,6 +6652,8 @@ type Boundary<'T>
             elif unannounced then
                 unannounced <- false
                 observers.NotifyCheck ()
+
+            false
 
         member _.MarkCheck() =
             if freshness = Freshness.Clean then

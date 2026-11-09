@@ -55,6 +55,7 @@ type internal RowWatch(graph: Graph, refresh: unit -> unit, touched: unit -> uni
         member this.MarkDirty() =
             touched ()
             this.Request ()
+            false
 
         member this.MarkCheck() =
             touched ()
@@ -956,7 +957,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         // A source written by a rolled-back row's cleanup invalidates the failed pass.
         if sourceMoved then
-            (this :> IComputation).MarkDirty()
+            (this :> IComputation).MarkDirty() |> ignore
 
     /// <summary>
     /// Disposes removed keys, creates added rows, writes changed items and publishes the key set, in one batch. With
@@ -1082,7 +1083,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         if deferredDirty then
             deferredDirty <- false
-            (this :> IComputation).MarkDirty()
+            (this :> IComputation).MarkDirty() |> ignore
 
     member private this.ResolveCheck() =
         Tracer.CheckStart (graph, id)
@@ -1237,6 +1238,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                     if observed && not queued then
                         queued <- true
                         graph.SchedulePass (this :> IScheduled)
+
+            false
 
         member this.MarkCheck() =
             if not disposed then
