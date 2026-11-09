@@ -1,12 +1,27 @@
 From stdpp Require Import prelude.
 From Stdlib Require Import ZArith.
 
+(**md
+Identifier of a node in the graph.
+*)
 Definition node_id := nat.
+(**md
+Identifier of an owner in the ownership tree.
+*)
 Definition owner_id := nat.
+(**md
+The values nodes hold: integers.
+*)
 Definition val := Z.
 
+(**md
+A node's freshness mark: `Clean`, `Check` (some source may have changed) or `Dirty` (a source changed).
+*)
 Inductive freshness := Clean | Check | Dirty.
 
+(**md
+`true` for `Check` and `Dirty`.
+*)
 Definition stale (f : freshness) : bool :=
   match f with Clean => false | _ => true end.
 

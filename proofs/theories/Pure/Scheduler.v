@@ -7,6 +7,9 @@ Open Scope nat_scope.
 
 (** ** Counts over the trace and the owners *)
 
+(**md
+The number of `EvCleanup` events of host `h` in the trace `l`.
+*)
 Fixpoint count_cleanups (h : node_id) (l : list event) : nat :=
   match l with
   | [] => 0
@@ -14,6 +17,9 @@ Fixpoint count_cleanups (h : node_id) (l : list event) : nat :=
   | _ :: r => count_cleanups h r
   end.
 
+(**md
+The number of `EvRun` events of node `n` in the trace `l`.
+*)
 Fixpoint count_runs (n : node_id) (l : list event) : nat :=
   match l with
   | [] => 0
@@ -31,6 +37,9 @@ Proof. induction a as [|e a IH]; [done|]. destruct e; simpl; rewrite ?IH; lia. Q
 Definition owner_pending (h : node_id) (y : owner_state) : nat :=
   if decide (o_host y = h) then length (o_cleanups y) else 0.
 
+(**md
+The cleanups held by all owners of host `h` in `m`.
+*)
 Definition owners_pending (h : node_id) (m : gmap owner_id owner_state) : nat :=
   sum_list ((fun p => owner_pending h p.2) <$> map_to_list m).
 
@@ -71,6 +80,9 @@ Definition clean_le (w : node_id -> nat) (s s' : state) : Prop :=
 
 (** ** Acquisition order *)
 
+(**md
+Link `a` was acquired before link `b`.
+*)
 Definition link_before (a b : link) : Prop := l_acquired a < l_acquired b.
 
 (** An owner's children and cleanups in acquisition order: strictly increasing, each below the next count, and no
@@ -178,6 +190,13 @@ Record sched_data (x : option node_id) (s : state) : Prop := {
   sd_root : is_Some (g_owners s !! root_owner_id)
 }.
 
+(**md
+The context facts of `sched_inv`: an effect `x` in progress means a flush is running, an owed flush is not
+running, and a body or untracked read in progress has a stale read open or a flush running.
+
+- [x:] the effect between its dequeue and the end of its run, if any.
+- [s:] the state.
+*)
 Record sched_ctx (x : option node_id) (s : state) : Prop := {
   sc_x : is_Some x -> g_flushing s = true;
   sc_owed : g_flush_owed s = true -> g_flushing s = false;
@@ -221,6 +240,9 @@ Record data_rel (s s' : state) : Prop := {
 
 Definition zero (_ : node_id) : nat := 0.
 
+(**md
+What every call preserves: `sched_bal`, `data_rel` and a `clean_le` bound with weight zero for every host.
+*)
 Definition post (s s' : state) : Prop := sched_bal s s' /\ data_rel s s' /\ clean_le zero s s'.
 
 (** The fields [sched_data] and [data_rel] read. *)
@@ -296,11 +318,23 @@ Qed.
 
 (** ** Calls *)
 
+(**md
+From a state satisfying `sched_inv x` and `P`, a completed step `m` ends in a state satisfying `sched_inv y`,
+related to the start by `post`.
+
+- [x:] the effect in progress before the step.
+- [y:] the effect in progress after the step.
+- [P:] the premise on the starting state.
+- [m:] the step.
+*)
 Definition sok {A} (x y : option node_id) (P : state -> Prop) (m : M A) : Prop :=
   forall s s' a, sched_inv x s -> P s -> m s = Some (s', a) -> sched_inv y s' /\ post s s'.
 
 Local Notation T := (fun _ : state => True).
 
+(**md
+`P` survives every `post` step.
+*)
 Class SStable (P : state -> Prop) := sstable : forall s s', post s s' -> P s -> P s'.
 
 Global Instance sstable_true : SStable T.
@@ -319,11 +353,17 @@ Proof.
   intros s s' (H&_) Hc. unfold run_ctx in *. by rewrite (r_pull _ _ H), (r_flushing _ _ H).
 Qed.
 
+(**md
+A flush is running.
+*)
 Definition flushing_on (s : state) : Prop := g_flushing s = true.
 
 Global Instance sstable_flushing : SStable flushing_on.
 Proof. intros s s' (H&_) Hc. unfold flushing_on in *. by rewrite (r_flushing _ _ H). Qed.
 
+(**md
+Owner `o` exists in `s`.
+*)
 Definition owner_exists (o : owner_id) (s : state) : Prop := is_Some (g_owners s !! o).
 
 Global Instance sstable_owner o : SStable (owner_exists o).
@@ -452,6 +492,9 @@ Proof.
   destruct (g_current s), (g_current_owner s); simplify_eq; csame.
 Qed.
 
+(**md
+`false` for `EvCleanup` and `EvRun`, `true` for every other event.
+*)
 Definition plain_event (e : event) : bool :=
   match e with EvCleanup _ | EvRun _ => false | _ => true end.
 
@@ -823,6 +866,11 @@ Qed.
 
 (** ** Contexts *)
 
+(**md
+`post` with the cleanup weight `w`: `sched_bal`, `data_rel` and `clean_le w`.
+
+- [w:] the weight per host in the `clean_le` bound.
+*)
 Definition full (w : node_id -> nat) (s s' : state) : Prop := sched_bal s s' /\ data_rel s s' /\ clean_le w s s'.
 
 Lemma full_trans w1 w2 s1 s2 s3 : full w1 s1 s2 -> full w2 s2 s3 -> full (fun h => w1 h + w2 h) s1 s3.
@@ -1116,7 +1164,13 @@ Qed.
 
 Local Ltac nst' := unfold nstep; cbn; split_and!; intros; cbn in *; first [congruence|(try split; done)].
 
+(**md
+Node `n` is a memo and a stale read is open or a flush is running.
+*)
 Definition memo_ctx (n : node_id) (s : state) : Prop := has_kind n KMemo s /\ run_ctx s.
+(**md
+Node `n` is an effect and a flush is running.
+*)
 Definition eff_ctx (n : node_id) (s : state) : Prop := has_kind n KEffect s /\ flushing_on s.
 
 Global Instance sstable_memo_ctx n : SStable (memo_ctx n).
@@ -1204,6 +1258,11 @@ Proof.
   intros R [y Hy]. destruct (r_hosts _ _ R o y Hy) as (y'&Hy'&Hh). unfold hw. by rewrite Hy, Hy', Hh.
 Qed.
 
+(**md
+Every engine function at fuel `f` satisfies `sok` with the contexts and premises it needs.
+
+- [f:] the fuel.
+*)
 Record sched_ok (f : nat) : Prop := {
   Sexec : forall x e c, sok x x T (exec f e c);
   Sread : forall x n b, sok x x T (read f n b);
@@ -1845,6 +1904,8 @@ End Step.
 When a function returns, [the scheduler's invariant](#sched_inv) still holds with the same in-progress effect, except that `execute_effect` of `n` starts with `n` in progress and ends with none. The current computation, the untracked flag, the batch and pull depths and the flushing flag are back at their starting values. A flush newly owed was owed from batch depth 0. Nodes keep their kinds, a disposed node stays disposed, a disposed effect's run count and `EvRun` count stay put, the trace only extends, owners keep their hosts, and the cleanup events and held cleanups of a host rise by at most its registrations. `run_cleanup` and `teardown` are allowed one more per cleanup they were handed, which the detached list held before.
 
 Premises: the invariant holds at the start, and the function's own premise, as listed in `sched_ok`. A function that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
+
+- [f:] the fuel.
 *)
 Theorem sched_ok_all f : sched_ok f.
 Proof.
@@ -1945,6 +2006,8 @@ Qed.
 **A new graph satisfies the scheduler's invariant.**
 
 [The invariant](#sched_inv) holds of `init` under any flags, with no effect in progress.
+
+- [fl:] the flags of the new graph.
 *)
 Theorem sched_inv_init fl : sched_inv None (init fl).
 Proof.
@@ -1967,6 +2030,12 @@ Qed.
 **A whole program keeps the scheduler's invariant.**
 
 If [the invariant](#sched_inv) holds at the start, with no effect in progress, and `run_top` returns, it holds in the final state.
+
+- [f:] the fuel.
+- [c:] the command run.
+- [s:] the starting state.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
 *)
 Theorem sched_inv_run_top f c s s' r :
   sched_inv None s -> run_top f c s = Some (s', r) -> sched_inv None s'.
@@ -1991,6 +2060,8 @@ Qed.
 After a program, every node has at most one entry in the live part of `g_queue`, and its `queued` flag is set exactly when it has one. So `queue_once` holds of every node. During `resolve_walk` of an effect `n` in `Execute`, the same holds with one exception: `n`'s flag is set with no entry, since it has been dequeued. `execute_effect` ends with that exception gone.
 
 Premise: [the scheduler's invariant](#sched_inv) holds at the start, and for the second and third parts its in-progress effect is `n`. That invariant includes this conclusion, so the theorem is a preservation statement; `queued_at_most_once_new_graph` discharges the premise for a program on a new graph.
+
+- [f:] the fuel.
 *)
 Theorem queued_at_most_once f :
   (forall c s s' r, sched_inv None s -> run_top f c s = Some (s', r) ->
@@ -2012,6 +2083,12 @@ Qed.
 **On a new graph, an effect has at most one live queue entry, and its `queued` flag says whether it has one.**
 
 After a program run from `init` under any flags, every node has at most one entry in the live part of `g_queue`, and its `queued` flag is set exactly when it has one.
+
+- [f:] the fuel.
+- [fl:] the flags of the new graph.
+- [c:] the command run.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
 *)
 Corollary queued_at_most_once_new_graph f fl c s' r :
   run_top f c (init fl) = Some (s', r) -> queue_agrees None s' /\ forall n, queue_once s' n.
@@ -2023,6 +2100,9 @@ Proof. intros Hm. exact (proj1 (queued_at_most_once f) c _ s' r (sched_inv_init 
 **A flush entered during a flush changes nothing.**
 
 Given any positive fuel, `run_flush` with `g_flushing` set returns the state it was given.
+
+- [f:] the fuel, which `run_flush` runs at `S f`.
+- [s:] the state, in which a flush is running and which `run_flush` returns unchanged.
 *)
 Theorem flush_no_nest f s : g_flushing s = true -> run_flush (S f) s = Some (s, tt).
 Proof. intros H. cbn [run_flush]. rewrite bind_get, H. done. Qed.
@@ -2033,6 +2113,12 @@ Proof. intros H. cbn [run_flush]. rewrite bind_get, H. done. Qed.
 If `run_top` starts with no batch, no stale read and no current computation, and returns, then `g_flush_owed` is false at the end, whether or not an effect is queued.
 
 Premise: [the scheduler's invariant](#sched_inv) holds at the start, with no effect in progress. This says nothing of effects still queued: [`read_move_leaves_effect_queued`](Ranvier.Pure.Witnesses.html#read_move_leaves_effect_queued) and [`failed_batch_leaves_queue`](Ranvier.Pure.Witnesses.html#failed_batch_leaves_queue) each end with an effect queued and no flush owed.
+
+- [f:] the fuel.
+- [c:] the command run.
+- [s:] the starting state, outside any batch, pull or body.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
 *)
 Theorem owed_settled f c s s' r :
   sched_inv None s -> g_batch_depth s = 0 -> g_pull_depth s = 0 -> g_current s = None ->
@@ -2069,6 +2155,11 @@ When `run_flush` starts outside a flush and returns, `g_queue` is empty and its 
 `Clean` is a mark: the effect has none left to act on. It does not say the effect read up-to-date values, and this conclusion holds on three Confirmed lost wake-ups: `self_marking_wake_lost` ([`self_marking_cleanup_left_behind`](Ranvier.Pure.Witnesses.html#self_marking_cleanup_left_behind)), [`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) and [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source). It does not say a marked effect ran either: [`flush_reruns_dirty`](#flush_reruns_dirty) holds the rerun. A disposed effect can stay stale. A flush that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
 
 Premise: [the scheduler's invariant](#sched_inv) holds at the start, with no effect in progress.
+
+- [f:] the fuel.
+- [s:] the state before the flush, in which no flush is running.
+- [s':] the state after the flush.
+- [a:] the result of the flush.
 *)
 Theorem flush_returns_clean f s s' a :
   sched_inv None s -> g_flushing s = false -> run_flush f s = Some (s', a) ->
@@ -2179,6 +2270,9 @@ Qed.
 The disposal is a cleanup of its discharge or of a run in its walk: `run_effect` tests for it ahead of the body. This is the rerun guarantee beside [`flush_returns_clean`](#flush_returns_clean), which holds of an engine that clears marks and never runs. A walk that leaves the effect in `Check` is outside it: [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) resolves `Clean` with no run over a source that moved.
 
 Premises: [the scheduler's invariant](#sched_inv) holds with `n` in progress, `n` is an effect, and a flush is running.
+
+- [f:] the fuel.
+- [n:] the effect executed.
 *)
 Theorem flush_reruns_dirty f n :
   (forall d s s' a,
@@ -2230,6 +2324,14 @@ Proof. intros H. unfold m_bind, edges_opt. by rewrite H. Qed.
 When an effect's body ends in `Fail y`, `run_effect_body` returns, the effect's status is `StError` and its failure is `y`, and the only event after the body's is `EvFail n y`. The queue and its head are as the body left them. This answers `Effect.RunBody`'s handler (Core.fs 4866). [`drain_continues`](#drain_continues) is what happens next.
 
 Premises: the body's result is `Fail y`, from the state `run_effect_body` starts it in, and the effect exists at the body's end. The edges there are coherent, a premise this theorem takes and does not derive: `engine_settled` holds it at a function's return, and no theorem states it at a body's end.
+
+- [f:] the fuel.
+- [n:] the effect whose body fails.
+- [s:] the state before the body.
+- [s2:] the state when the body returns.
+- [d:] the node `n` in `s`.
+- [d2:] the node `n` in `s2`.
+- [y:] the failure the body returns.
 *)
 Theorem body_failure_contained f n s s2 d d2 y :
   g_nodes s !! n = Some d ->
@@ -2252,6 +2354,11 @@ Qed.
 **The flush goes on after an effect.**
 
 When the entry at the head of the queue is `n`, `drain` consumes it, and once `execute_effect` of `n` returns, the rest of `drain` is the same call on the state it returned. This holds of every result `execute_effect` returns, whatever the effect's body did: [`body_failure_contained`](#body_failure_contained) gives the return for a failing body.
+
+- [f:] the fuel, which `drain` runs at `S f`.
+- [n:] the effect at the queue head.
+- [s:] the state before the dequeue.
+- [s1:] the state after `n` executes.
 *)
 Theorem drain_continues f n s s1 :
   g_queue s !! g_queue_head s = Some n ->
@@ -2268,6 +2375,16 @@ Qed.
 When a cleanup's body ends in `Fail y`, `run_cleanup` returns, the failure is appended to the errors of the owner's sink, or of the owner when it has none, and the only event after the body's is `EvFail` of the host. This answers `Owner.DisposeScope`'s handler (Core.fs 1171-1184). [`teardown_continues`](#teardown_continues) is what happens next.
 
 Premises: [the scheduler's invariant](#sched_inv) holds, the owner exists, and the body's result is `Fail y`, from the state `run_cleanup` starts it in.
+
+- [f:] the fuel.
+- [x:] the effect in progress for `sched_inv`, if any.
+- [o:] the owner whose cleanup runs.
+- [b:] the cleanup body.
+- [e:] the cleanup's environment.
+- [z:] the owner state of `o` in `s`.
+- [y:] the failure the cleanup returns.
+- [s:] the state before the cleanup.
+- [s2:] the state when the cleanup body returns.
 *)
 Theorem cleanup_failure_contained f x o b e z y s s2 :
   sched_inv x s -> g_owners s !! o = Some z ->
@@ -2297,6 +2414,9 @@ Qed.
 **A teardown goes on after each step.**
 
 Once a cleanup or a child's release returns, the rest of `teardown` is the same call on the state it returned, with that step gone. Together with [`cleanup_failure_contained`](#cleanup_failure_contained), a failing cleanup leaves the steps behind it to run. A child's release has no outcome of its own: its failure is a cleanup of the child's scope, which the same theorem covers. The scenario `flush_child_release` runs that on the F#.
+
+- [f:] the fuel.
+- [o:] the owner being torn down.
 *)
 Theorem teardown_continues f o :
   (forall b e t cs s s1, run_cleanup f o b e s = Some (s1, tt) ->
@@ -2321,6 +2441,16 @@ Qed.
 A cleanup registered on a disposed scope runs under `detached`. When its body ends in `Fail y`, the `detached` call returns with the failure appended to the errors of the owner's sink, or of the owner when it has none. This answers `Owner.RunLate` (Core.fs 1025-1033). `exec` then goes on with the command after `CCleanup`, by [`late_registration_immediate`](Ranvier.Pure.Ownership.html#late_registration_immediate).
 
 Premises: as for [`cleanup_failure_contained`](#cleanup_failure_contained), from the state `detached` starts the cleanup in.
+
+- [f:] the fuel.
+- [x:] the effect in progress for `sched_inv`, if any.
+- [o:] the disposed owner a cleanup is registered with.
+- [b:] the cleanup body.
+- [e:] the cleanup's environment.
+- [z:] the owner state of `o` in `s`.
+- [y:] the failure the cleanup returns.
+- [s:] the state before the cleanup.
+- [s2:] the state when the cleanup body returns.
 *)
 Theorem late_cleanup_contained f x o b e z y s s2 :
   sched_inv x s -> g_owners s !! o = Some z ->
@@ -2379,6 +2509,15 @@ When a memo's run fails with `y`, `run_memo` returns and the memo's status is `S
 The run fails with `y` in two ways, both in the premise on `r`: the body's result is `Fail y`, or the body breached a pure memo's scope, which sets `n_violated` and makes `y` the fixed `pure_scope_failure` whatever the body returned (Core.fs 4248-4250). [`memo_scope_violation_returns`](#memo_scope_violation_returns) and [`memo_comparer_replaces_failure`](#memo_comparer_replaces_failure) run those two paths.
 
 Premises: `r` is the body's result, from the state `run_memo` starts it in, and the memo exists at the body's end. The edges there are coherent, and the fuel exceeds `mark_measure` there, so the notice has a result. This theorem takes both and does not derive them.
+
+- [f:] the fuel.
+- [n:] the memo whose body runs.
+- [s:] the state before the run.
+- [s2:] the state when the body returns.
+- [d:] the node `n` in `s`.
+- [d1:] the node `n` in `s2`.
+- [r:] the outcome of the body.
+- [y:] the failure of the body.
 *)
 Theorem memo_failure_contained f n s s2 d d1 r y :
   g_nodes s !! n = Some d ->
@@ -2442,6 +2581,15 @@ Qed.
 When a memo's comparer is consulted and throws `z`, `run_memo` returns, the memo's status is `StError`, its failure is `z`, and its value is the one from before the run. A reader takes the failure from the status. This answers `Memo.Run`'s handler of the comparison (Core.fs 4275-4279).
 
 Premises: the body's result is `Ok v`, from the state `run_memo` starts it in. The memo exists at the body's end with no scope violation, and with the status and failure it had before the run, since otherwise the comparer is not consulted. The edges there are coherent, and the fuel exceeds `mark_measure` there. This theorem takes both and does not derive them.
+
+- [f:] the fuel.
+- [n:] the memo whose comparer throws.
+- [s:] the state before the run.
+- [s2:] the state when the body returns.
+- [d:] the node `n` in `s`.
+- [d1:] the node `n` in `s2`.
+- [v:] the value the body returns.
+- [z:] the failure the comparer throws.
 *)
 Theorem comparer_throw_contained f n s s2 d d1 v z :
   g_nodes s !! n = Some d ->
@@ -2503,6 +2651,11 @@ When `run_flush` starts outside a flush and returns, `g_flushing` is false, `pen
 [`drain_continues`](#drain_continues) takes the drain on from there, and [`flush_survives_body`](#flush_survives_body) and the four examples after it run each failure with an effect behind it.
 
 `returns` excludes the fatal path: [`self_read_check_overflow`](Ranvier.Pure.Witnesses.html#self_read_check_resolves_itself) is a read with no result in the model, and a stack overflow that ends the process in the F#. This covers `Effect`. Other `IScheduled` items, such as a pass, are outside the model. `Effect.Execute` contains each of the command language's failures, so the comment at Core.fs 3140-3142, on an effect that throws, does not apply to `Effect` here.
+
+- [f:] the fuel.
+- [s:] the state before the flush, in which no flush is running.
+- [s':] the state after the flush.
+- [a:] the result of the flush.
 *)
 Theorem drain_no_escape f s s' a :
   g_flushing s = false -> run_flush f s = Some (s', a) ->

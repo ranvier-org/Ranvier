@@ -56,6 +56,15 @@ Qed.
 **The reference gives one trace for a program, a history and an effect order.**
 
 Two orders that agree at every round on every list, with any two fuels that both reach a result, give the same trace.
+
+- [f1:] the fuel of the first run.
+- [f2:] the fuel of the second run.
+- [o1:] the effect order of the first run.
+- [o2:] the effect order of the second run, which agrees with `o1` on every round and list.
+- [p:] the program.
+- [h:] the history.
+- [t1:] the trace of the first run.
+- [t2:] the trace of the second run.
 *)
 Theorem reference_trace_deterministic f1 f2 o1 o2 p h t1 t2 :
   (forall i l, o1 i l = o2 i l) ->
@@ -179,6 +188,13 @@ Qed.
 A memo's value over one set of signals is also its value over any other set that agrees on the signals in `memo_deps` of the first evaluation, with the same disposed memos' answers.
 
 Premise: the program is well formed.
+
+- [p:] a well-formed program.
+- [frz:] the answers of disposed memos.
+- [s1:] the signal values the memo is evaluated over.
+- [s2:] a second set of signal values.
+- [n:] the memo or signal read.
+- [o:] the outcome over `s1`.
 *)
 Theorem memo_value_extensional p frz s1 s2 n o :
   well_formed_program p ->
@@ -495,6 +511,14 @@ Qed.
 **The run holding a log, when it writes no signal, computes from one snapshot.**
 
 A trace is the concatenation of its records' events, and a given `EvLog` lies in some record for its node. When that record writes no signal, its reads and events are reproduced by replaying it with every read answered from one snapshot of the signals and the disposed memos' values. The guarantee is silent on a record that writes, and on every other record. A cleanup's environment, and so a value it logs, can date from the run that registered it. This describes the reference, not the engine.
+
+- [fuel:] the fuel of each settling.
+- [order:] the effect order.
+- [p:] the program.
+- [h:] the history.
+- [evs:] the reference trace.
+- [n:] the node that logs.
+- [v:] the value logged.
 *)
 Theorem glitch_free_by_definition fuel order p h evs n v :
   reference_trace fuel order p h = Some evs ->
@@ -524,6 +548,9 @@ Qed.
 **Equal full traces have equal settled views.**
 
 `observe_full` distinguishes at least as much as `observe_settled`.
+
+- [t1:] the first trace.
+- [t2:] the second trace.
 *)
 Theorem observe_settled_coarser t1 t2 :
   observe observe_full t1 = observe observe_full t2 ->
@@ -532,6 +559,8 @@ Proof. simpl. intros ->. reflexivity. Qed.
 
 (**md
 **An engine refining the full trace refines the settled view.**
+
+- [engine:] the engine, mapping a program and history to its trace.
 *)
 Theorem refines_full_implies_settled engine :
   refines observe_full engine -> refines observe_settled engine.
@@ -566,6 +595,13 @@ Qed.
 **A history's trace extends the trace of each batch prefix.**
 
 Under one order and fuel, if the history has a trace, each batch prefix has a trace that is a prefix of it.
+
+- [fuel:] the fuel of each settling.
+- [o:] the effect order.
+- [p:] the program.
+- [h:] the history.
+- [h':] a prefix of `h`.
+- [t:] the reference trace of `h`.
 *)
 Theorem reference_trace_extends fuel o p h h' t :
   prefix h' h ->
@@ -586,6 +622,9 @@ Qed.
 **The reference refines itself on the full trace.**
 
 Holds under each valid order and any fuel, at every batch prefix of a well-formed program. `refines` only constrains histories the reference answers at that fuel.
+
+- [fuel:] the fuel of each settling.
+- [ord:] the effect order, which is valid.
 *)
 Theorem reference_refines_itself fuel ord :
   is_effect_order ord -> refines observe_full (reference_trace fuel ord).
@@ -599,6 +638,8 @@ Qed.
 **The reference answers whenever it settles.**
 
 Under a valid order, some fuel gives a trace for a well-formed program and history, provided the reference settles under every valid order.
+
+- [ord:] the effect order, which is valid.
 *)
 Theorem reference_trace_answers ord : is_effect_order ord -> engine_answers (fun k => reference_trace k ord).
 Proof.
@@ -611,19 +652,31 @@ Qed.
 *Check, not a guarantee.*
 
 `refines` constrains only the answers an engine gives, so this is a caution about the definition. An engine proof also owes `engine_answers`, which rejects this engine: see [`none_engine_not_answers`](#none_engine_not_answers).
+
+- [O:] the observation.
 *)
 Theorem none_engine_refines O : refines O (fun _ _ => None).
 Proof. intros p h t _ Hn. discriminate Hn. Qed.
 
 (** * Examples *)
 
-(** One order for every round. *)
+(**md
+One order for every round.
+
+- [o:] the reordering applied to each round's effects.
+*)
 Definition const_order (o : list node_id -> list node_id) : effect_order := fun _ => o.
 
 Lemma const_order_valid o : (forall l, o l ≡ₚ l) -> is_effect_order (const_order o).
 Proof. intros Ho i l. apply Ho. Qed.
 
+(**md
+The effect order that keeps each round's order.
+*)
 Definition order_identity : effect_order := const_order (fun l => l).
+(**md
+The effect order that reverses each round.
+*)
 Definition order_reversed : effect_order := const_order (fun l => reverse l).
 
 Lemma order_identity_valid : is_effect_order order_identity.

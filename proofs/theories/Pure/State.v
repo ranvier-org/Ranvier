@@ -2,6 +2,9 @@ From stdpp Require Import prelude gmap.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList.
 
+(**md
+The kind of a node: a signal, a memo or an effect.
+*)
 Inductive kind := KSignal | KMemo | KEffect.
 
 (** A node's stored [Status]. [n_freshness] determines [Status.Stale]. *)
@@ -31,6 +34,13 @@ Record owner_state := {
   o_host : node_id
 }.
 
+(**md
+A node of the graph. `n_kind` selects signal, memo or effect. `n_value`, `n_failure` and `n_status` are
+what a read answers from, and `n_freshness` is the mark that decides whether a read must recompute.
+`n_body`, `n_env`, `n_mode` and `n_comparer` are the body of a memo or effect, its captured
+environment, its scope mode and its comparer. `n_scope` is the owner opened for the node's own
+creations, and `n_link` is the link by which the node's owner holds it. `n_runs` counts runs.
+*)
 Record node := { n_kind : kind; n_value : val; n_failure : option val; n_status : status;
                  n_freshness : freshness; n_unannounced : bool; n_runs : nat; n_published : bool;
                  n_disposed : bool; n_queued : bool; n_in_cleanup : bool; n_scope : option owner_id;
@@ -66,6 +76,12 @@ Definition empty_ghost : ghost :=
   {| gh_published := ∅; gh_seen := ∅; gh_unnoticed := ∅; gh_window := ∅; gh_reads := ∅; gh_passed := ∅; gh_over := ∅;
      gh_run_reads := ∅; gh_nested := ∅ |}.
 
+(**md
+The whole state of a graph: the edge world (`g_edges`), the nodes, the owners, the effect queue with its
+head, the flush and batch bookkeeping, the running computation and owner, the id counter, the event
+trace (`g_trace`), and the ghost fields `g_running`, `g_ghost` and `g_registered`, which no engine
+decision reads.
+*)
 Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id node;
                   g_owners : gmap owner_id owner_state; g_queue : list node_id; g_queue_head : nat;
                   g_flushing : bool; g_flush_owed : bool; g_batch_depth : nat; g_pull_depth : nat;
@@ -75,7 +91,13 @@ Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id n
                   g_ghost : ghost;
                   g_registered : gmap node_id nat (* ghost: the cleanups registered per host *) }.
 
-(** [c] observes [src]: a slot of [c] and a position of [src]'s observers each hold the other. *)
+(**md
+`c` observes `src`: a slot of `c` and a position of `src`'s observers each hold the other.
+
+- [s:] the state.
+- [src:] the observed source.
+- [c:] the observing computation.
+*)
 Definition edge (s : state) (src c : node_id) : Prop :=
   exists i h, slot_at (g_edges s) c i = Some (src, Some h) /\
               observer_items (observers_of (g_edges s) src) !! h = Some (c, i).

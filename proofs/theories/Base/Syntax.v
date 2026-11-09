@@ -23,8 +23,19 @@ Inductive outcome := Ok (v : val) | Fail (f : val).
 (** Comparer behaviours of a memo. *)
 Inductive comparer := CmpEq | CmpNever | CmpThrows (f : val).
 
+(**md
+Whether a memo body opens an owner of its own (`Owning`) or runs in the enclosing scope (`Pure`).
+*)
 Inductive scope_mode := Pure | Owning.
 
+(**md
+The command language of node bodies. Each constructor with a continuation `k` runs it after the
+command. `CRead` is a tracked read, `CTryRead` a tracked read that reports failure through a flag
+variable, `CReadUntracked` a read that records no edge, `CWrite` a write to a signal, and
+`CSignal`, `CMemo` and `CEffect` create a node and bind its id to a variable. `CCleanup`
+registers a cleanup, `CDispose` disposes a node, `CBatch` runs a block as a batch and `CLog` emits
+a log event.
+*)
 Inductive cmd :=
   | CRet (e : expr)
   | CThrow (f : val)
@@ -51,21 +62,39 @@ Arguments CSignal _%_nat _ _.
 Arguments CMemo _%_nat _ _ _ _.
 Arguments CEffect _%_nat _ _.
 
+(**md
+Local variable bindings, searched from the head.
+*)
 Definition env := list (var * val).
 
+(**md
+The value bound to the first entry for `x`, or `None` when unbound.
+
+- [g:] the environment searched.
+- [x:] the variable looked up.
+*)
 Fixpoint env_lookup (g : env) (x : var) : option val :=
   match g with
   | nil => None
   | cons (y, v) g' => if Nat.eqb x y then Some v else env_lookup g' x
   end.
 
+(**md
+`1` for `true` and `0` for `false`.
+*)
 Definition bool_val (b : bool) : val := if b then 1 else 0.
 
 (** The failure of a zero divisor. *)
 Definition div_zero_failure : val := -1.
 
-(** Operands evaluate left to right, and the first failure is the result. Integer division truncates
-    toward zero. [None] marks an unbound variable or an absent previous value. *)
+(**md
+Operands evaluate left to right, and the first failure is the result. Integer division truncates
+toward zero. `None` marks an unbound variable or an absent previous value.
+
+- [g:] the local variable environment.
+- [p:] the previous value that `EPrev` reads, when there is one.
+- [e:] the expression evaluated.
+*)
 Fixpoint eval_expr (g : env) (p : option val) (e : expr) : option outcome :=
   let bin f a b :=
     match eval_expr g p a with
@@ -89,6 +118,9 @@ Fixpoint eval_expr (g : env) (p : option val) (e : expr) : option outcome :=
   | EEq a b => bin (fun u v => Ok (bool_val (Z.eqb u v))) a b
   end.
 
+(**md
+The observable trace of a program: node runs, logs, cleanups, failures, disposals and host reads.
+*)
 Inductive event :=
   | EvRun (n : node_id)
   | EvLog (n : node_id) (v : val)
@@ -97,6 +129,9 @@ Inductive event :=
   | EvDispose (n : node_id)
   | EvHostRead (n : node_id) (o : outcome).
 
+(**md
+`true` when `e` contains no `EPrev`.
+*)
 Fixpoint expr_no_prev (e : expr) : bool :=
   match e with
   | EPrev => false

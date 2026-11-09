@@ -20,6 +20,9 @@ Qed.
 **Starting a run keeps the two ends of every edge in agreement.**
 
 `BeginRun` on a coherent world gives a coherent world.
+
+- [c:] the computation that starts a run.
+- [w:] the coherent world before the run.
 *)
 Theorem coherent_begin c w : coherent w -> coherent (sources_begin_run c w).
 Proof.
@@ -31,6 +34,10 @@ Qed.
 **A tracked read succeeds and keeps the two ends of every edge in agreement.**
 
 `Add` on a coherent world returns a world, and that world is coherent.
+
+- [self:] the computation reading.
+- [s:] the source read.
+- [w:] the coherent world before the read.
 *)
 Theorem coherent_add self s w :
   coherent w -> exists w', sources_add self s w = Some w' /\ coherent w'.
@@ -50,6 +57,9 @@ Qed.
 **Ending a run succeeds and keeps the two ends of every edge in agreement.**
 
 `EndRun` on a coherent world returns a world, and that world is coherent.
+
+- [self:] the computation ending its run.
+- [w:] the coherent world before the end.
 *)
 Theorem coherent_end self w :
   coherent w -> exists w', sources_end_run self w = Some w' /\ coherent w'.
@@ -59,6 +69,9 @@ Proof. intros Hm. destruct (sources_end_run_ok self w Hm) as (w' & Hr & Hm' & _)
 **Clearing a source list succeeds and keeps the two ends of every edge in agreement.**
 
 `Clear` on a coherent world returns a world, and that world is coherent.
+
+- [self:] the computation cleared.
+- [w:] the coherent world before the clear.
 *)
 Theorem coherent_clear self w :
   coherent w -> exists w', sources_clear self w = Some w' /\ coherent w'.
@@ -70,6 +83,12 @@ Proof. intros Hm. destruct (sources_clear_ok self w Hm) as (w' & Hr & Hm' & _). 
 The result is the removal, the blanked slot and, when the removal moved another observer, that observer's `MovedIn`. The moved observer's slot holds the source with the removed handle.
 
 Premises: a coherent world, and a slot holding the source with this handle.
+
+- [self:] the computation whose slot is removed.
+- [i:] the slot removed.
+- [s:] the source in slot `i`.
+- [h:] the handle in slot `i`.
+- [w:] the coherent world before the removal.
 *)
 Theorem coherent_moved self i s h w :
   coherent w ->
@@ -107,6 +126,13 @@ Qed.
 *Check, not a guarantee.*
 
 From a coherent world, removing the slot's observer entry and leaving the slot's handle in place gives a world that is not coherent. This marks a step the engine has to pair with another.
+
+- [self:] the computation whose slot holds the edge.
+- [i:] the slot holding the edge.
+- [s:] the source of the edge.
+- [h:] the handle of the edge.
+- [w:] the coherent world before the removal.
+- [w1:] the world after `remove_edge`.
 *)
 Theorem remove_edge_alone_breaks_coherent self i s h w w1 :
   coherent w ->
@@ -138,6 +164,13 @@ Qed.
 *Check, not a guarantee.*
 
 From a coherent world, giving a slot a different handle and leaving the observer set in place gives a world that is not coherent. This marks a step the engine has to pair with another.
+
+- [c:] the computation whose slot changes.
+- [slot:] the slot changed.
+- [s:] the source in the slot.
+- [h:] the slot's handle before the change.
+- [h':] the handle the slot is given, different from `h`.
+- [w:] the coherent world before the change.
 *)
 Theorem moved_alone_breaks_coherent c slot s h h' w :
   coherent w ->
@@ -158,6 +191,10 @@ Qed.
 **In a coherent world, either side of an edge implies the other.**
 
 `c` observes `src` exactly when `c` is in `src`'s observers, and exactly when a slot of `c` holds `src` with a handle.
+
+- [s:] the state, whose edges are coherent.
+- [src:] the source.
+- [c:] the observer.
 *)
 Theorem edge_iff_both_sides s src c :
   coherent (g_edges s) ->
@@ -177,6 +214,10 @@ Qed.
 **In a well-formed world, a computation observes exactly the sources in its slots.**
 
 A world is well formed when the two ends of every edge agree and a slot holds an edge exactly when no earlier slot of the computation names its source. Every source in a slot has an edge, whichever slot holds the handle.
+
+- [s:] the state, whose edges are well formed.
+- [src:] the source.
+- [c:] the observer.
 *)
 Theorem edge_iff_read s src c :
   world_well_formed (g_edges s) ->

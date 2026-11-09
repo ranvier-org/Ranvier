@@ -12,6 +12,9 @@ Inductive teardown_item :=
   | ItemChild (l : link)
   | ItemCleanup (c : cmd * env * nat).
 
+(**md
+The acquisition count of a teardown step: its link's, or its cleanup's.
+*)
 Definition item_acquired (i : teardown_item) : nat :=
   match i with ItemChild l => l_acquired l | ItemCleanup c => c.2 end.
 
@@ -135,6 +138,9 @@ Proof.
   by eapply Forall_forall in Hf.
 Qed.
 
+(**md
+The acquisition counts `os`, truncated to the shortest of the three parallel lists.
+*)
 Fixpoint zip_orders (bs : list cmd) (es : list env) (os : list nat) : list nat :=
   match bs, es, os with
   | _ :: bs', _ :: es', o :: os' => o :: zip_orders bs' es' os'
@@ -171,6 +177,11 @@ Proof. unfold owner_cleanups. rewrite fmap_rev. by rewrite zip_snd. Qed.
 `dispose_scope` detaches the owner's lists and then runs one merged list of steps. Each child and each cleanup held at that moment appears in it exactly once, and their acquisition counts strictly fall. So a later acquisition is torn down first, and a cleanup runs before the release of any child acquired ahead of it. This covers the lists detached at the start: a registration made during the teardown joins the emptied scope.
 
 Premise: the owner's lists are in acquisition order, `acq_ok`. [`owners_in_order`](#owners_in_order) holds that of every owner after a program. The fuel in the first clause is one step less than `dispose_scope` is given, and a step that runs out of fuel leaves the whole call with no result.
+
+- [f:] the fuel, which `dispose_scope` runs at `S f`.
+- [o:] the owner disposed.
+- [y:] the owner state of `o` in `s`.
+- [s:] the state before the disposal.
 *)
 Theorem dispose_reverse_order f o y s :
   g_owners s !! o = Some y -> acq_ok y ->
@@ -196,6 +207,14 @@ Qed.
 **After any program, every owner's children and cleanups are in acquisition order.**
 
 Premise: the program starts from a new graph.
+
+- [f:] the fuel.
+- [fl:] the flags of the new graph.
+- [c:] the command run.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
+- [o:] an owner of `s'`.
+- [y:] the owner state of `o`.
 *)
 Corollary owners_in_order f fl c s' r o y :
   run_top f c (init fl) = Some (s', r) -> g_owners s' !! o = Some y -> acq_ok y.
@@ -268,6 +287,8 @@ The count is structural, per list entry, because a registration carries no id. T
 - **The late path.** On a disposed current owner, `CCleanup` runs `run_cleanup` once under `detached`, with no write to the owners.
 
 Premises of the bound: [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) and the bound hold at the start. `cleanup_once_new_graph` discharges both for a program on a new graph. An entry's body can itself register or dispose, and those are further registrations and further steps.
+
+- [f:] the fuel.
 *)
 Theorem cleanup_once f :
   (forall c s s' r h, sched_inv None s -> cleanup_score h s <= registered h s ->
@@ -283,6 +304,9 @@ Qed.
 **On a new graph, each cleanup entry runs once, and a host's cleanup events never exceed its registrations.**
 
 The count is structural, per list entry, because a registration carries no id. The second part is `cleanup_entries`, as [`cleanup_once`](#cleanup_once) describes it.
+
+- [f:] the fuel.
+- [fl:] the flags of the new graph.
 *)
 Corollary cleanup_once_new_graph f fl :
   (forall c s' r h, run_top f c (init fl) = Some (s', r) -> count_cleanups h (g_trace s') <= registered h s') /\
@@ -305,6 +329,14 @@ Qed.
 After a program, a disposed node that is not on the running stack has no slots, no [`edge`](Ranvier.Pure.State.html#edge) from any source, and appears in no source's observers. A computation disposed mid-body links edges until its run ends: [`disposed_running_observer_stays_clean`](Ranvier.Pure.Witnesses.html#disposed_running_observer_stays_clean).
 
 Premise: `engine_settled` holds at the start. That invariant's `b_disposed` states the slots clause, so this is a preservation statement. `disposed_no_edges_new_graph` discharges the premise for a program on a new graph.
+
+- [f:] the fuel.
+- [c:] the command run.
+- [s:] the starting state, which satisfies `engine_settled`.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
+- [n:] a disposed node that is not running in `s'`.
+- [d:] the node `n` in `s'`.
 *)
 Theorem disposed_no_edges f c s s' r n d :
   engine_settled s -> run_top f c s = Some (s', r) ->
@@ -328,6 +360,13 @@ Qed.
 
 (**md
 **On a new graph, a disposed computation holds no source edges once its run has ended.**
+
+- [f:] the fuel.
+- [c:] the command run on a new graph with `current_flags`.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
+- [n:] a disposed node that is not running in `s'`.
+- [d:] the node `n` in `s'`.
 *)
 Corollary disposed_no_edges_new_graph f c s' r n d :
   run_top f c (init current_flags) = Some (s', r) ->
@@ -343,6 +382,10 @@ Proof. apply disposed_no_edges. apply engine_settled_init. Qed.
 From a state where the effect is disposed, a whole program, a flush or a `drain` that returns leaves it disposed, with `n_runs` unchanged and no new `EvRun n` in the trace. The `drain` clause covers a disposal mid-flush: from the loop head after the effect that disposed it, its own entry is dequeued with no run, as [`queued_effect_disposed_skipped`](#queued_effect_disposed_skipped) has it. The `execute_effect` clauses are that dequeue, which changes only `queued`, as Core.fs 4785 does. A body in progress at its disposal keeps running to its end: this is about later runs.
 
 Premises: [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) holds at the start, with no effect in progress, or for `execute_effect` with this effect in progress. A `drain` starts during a flush.
+
+- [f:] the fuel.
+- [n:] the disposed effect.
+- [d:] the node `n`, as stored in the starting states.
 *)
 Theorem disposed_effect_never_runs f n d :
   n_kind d = KEffect -> n_disposed d = true ->
@@ -392,6 +435,14 @@ Qed.
 A read of a disposed memo that returns leaves every node, the trace and the queue as they were, so no body ran and nothing was scheduled. It answers `Fail` of the stored failure when the status is `StError` (0 when `n_failure` is `None`), and otherwise `Ok` of the stored value. Core.fs 4372-4376 documents that a disposed memo "still answers reads, with the last value it computed".
 
 That stored value need not be a computed one, and need not be up to date. A memo disposed before its first run answers the default: [`disposed_unread_answers_default`](#disposed_unread_answers_default). The reference tier answers from the signals at the disposal, and `BUGS.md` holds that difference as `disposed_unread_memo_value` and `write_then_dispose_memo_current_value`, Suspected, for the owner's ruling. A tracked read can still add an edge from the disposed memo: [`disposed_stale_source_read`](Ranvier.Pure.Witnesses.html#disposed_stale_source_read).
+
+- [f:] the fuel.
+- [n:] the disposed memo read.
+- [b:] whether the read is tracked.
+- [s:] the state before the read.
+- [s':] the state after the read.
+- [d:] the node `n` in `s`.
+- [o:] the outcome of the read.
 *)
 Theorem disposed_memo_answers f n b s s' d o :
   g_nodes s !! n = Some d -> n_kind d = KMemo -> n_disposed d = true ->
@@ -427,6 +478,15 @@ Qed.
 On a disposed current owner, `CCleanup b k` counts the registration, runs the cleanup under `detached`, requests a flush, and only then continues with `k`, with no write to the owner's cleanup list. When the whole command returns, the trace starts with the starting trace followed by `EvCleanup` of the owner's host.
 
 Premises: the current owner is disposed, and for the second clause [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) holds and the fuel leaves the cleanup at least one step.
+
+- [f:] the fuel, which `exec` runs at `S f`.
+- [x:] the effect in progress for `sched_inv`, if any.
+- [e:] the environment of the command.
+- [b:] the cleanup registered.
+- [k:] the command that follows the registration.
+- [o:] the current owner, which is disposed.
+- [y:] the owner state of `o` in `s`.
+- [s:] the state before the registration.
 *)
 Theorem late_registration_immediate f x e b k o y s :
   g_current_owner s = Some o -> g_owners s !! o = Some y -> o_disposed y = true ->
@@ -462,6 +522,14 @@ Qed.
 `attach` on a disposed owner releases the node first. When it returns the node is disposed, and it holds a link with no generation. So an effect created on a disposed scope is disposed before the mark of its creation, and [`disposed_effect_never_runs`](#disposed_effect_never_runs) applies from there: [`late_registrations_run_at_once`](#late_registrations_run_at_once) has such a child.
 
 Premises: the owner is disposed, the node exists, and [the scheduler's invariant](Ranvier.Pure.Scheduler.html#sched_inv) holds.
+
+- [f:] the fuel, which `attach` runs at `S f`.
+- [x:] the effect in progress for `sched_inv`, if any.
+- [n:] the node attached.
+- [o:] the disposed owner it is attached to.
+- [y:] the owner state of `o` in `s`.
+- [s:] the state before the attach.
+- [s':] the state after the attach.
 *)
 Theorem late_attach_disposed f x n o y s s' :
   sched_inv x s -> g_owners s !! o = Some y -> o_disposed y = true -> is_Some (g_nodes s !! n) ->
@@ -488,6 +556,10 @@ Qed.
 This pins the model's check and no reachable behaviour. On reachable states `owner_without` matches on child and acquisition, and a later generation holds no such link, so the check is redundant there. The F#'s check guards `Prev` and `Next` of a detached list (Core.fs 1053-1072), which the model does not have.
 
 Premise: the owner exists.
+
+- [l:] a link from an earlier generation of its owner.
+- [x:] the owner state of the link's owner in `s`.
+- [s:] the state, which `unlink` returns unchanged.
 *)
 Theorem stale_link_detach_noop l x s :
   g_owners s !! l_owner l = Some x -> l_generation l <> Some (o_generation x) ->

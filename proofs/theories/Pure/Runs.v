@@ -7,18 +7,34 @@ Open Scope nat_scope.
 
 (** ** The wake-up statement *)
 
+(**md
+Node `n` exists in `s` and is `Check` or `Dirty`.
+*)
 Definition stale_of (s : state) (n : node_id) : Prop :=
   exists d, g_nodes s !! n = Some d /\ stale (n_freshness d) = true.
 
+(**md
+Node `n` is stale, or exists with its queued flag set.
+*)
 Definition stale_or_queued (s : state) (n : node_id) : Prop :=
   stale_of s n \/ exists d, g_nodes s !! n = Some d /\ n_queued d = true.
 
 Definition n_unannounced_of (s : state) (n : node_id) : bool :=
   default false (n_unannounced <$> g_nodes s !! n).
 
+(**md
+Node `n` exists in `s` and is not disposed.
+*)
 Definition live_of (s : state) (n : node_id) : Prop :=
   exists d, g_nodes s !! n = Some d /\ n_disposed d = false.
 
+(**md
+The observer `c` of `src` is stale or queued, is running, or `src` holds an announcement.
+
+- [s:] the state.
+- [src:] the observed source.
+- [c:] the observer.
+*)
 Definition observer_covered (s : state) (src c : node_id) : Prop :=
   stale_or_queued s c \/ In c (g_running s) \/ n_unannounced_of s src = true.
 
@@ -43,12 +59,18 @@ Definition wake_told (s : state) : Prop :=
 
 (** ** Reads *)
 
+(**md
+Appends the read `x` to `acc` unless `x` ends `acc`.
+*)
 Definition read_step (acc : list node_id) (x : node_id) : list node_id :=
   if decide (last acc = Some x) then acc else acc ++ [x].
 
 (** A run's tracked reads as [sources_add] stores them: a read of the source just read adds nothing. *)
 Definition read_list (reads : list node_id) : list node_id := foldl read_step [] reads.
 
+(**md
+The tracked reads of `c` since its latest run start, in order, from the ghost state.
+*)
 Definition reads_of (s : state) (c : node_id) : list node_id := default [] (gh_reads (g_ghost s) !! c).
 
 (** A computation's tracked reads since its outermost run start. *)
@@ -66,6 +88,16 @@ Definition in_window (s : state) (c : node_id) (dc : node) : Prop :=
 (** The two forms of the invariant: with the source's flag and [gh_passed], and without the flag and with [gh_over]. *)
 Definition resolved_set (b : bool) (g : ghost) : gset node_id := if b then gh_passed g else gh_over g.
 
+(**md
+The disjunction `told_on` requires of a computation `c` that read a live, stale source `e`: `c` is stale,
+the source is announced (in the form with the flag), `c` is in the resolved set, or `c` is in its window.
+
+- [b:] `true` for the form with the source's flag and `gh_passed`, `false` for the form with `gh_over`.
+- [s:] the state.
+- [c:] the computation.
+- [dc:] the node of `c`.
+- [e:] the node of the source.
+*)
 Definition told_cover (b : bool) (s : state) (c : node_id) (dc e : node) : Prop :=
   stale (n_freshness dc) = true \/ (b = true /\ n_unannounced e = true) \/ c ∈ resolved_set b (g_ghost s) \/ in_window s c dc.
 
@@ -76,8 +108,14 @@ Definition told_on (R : node_id -> node_id -> Prop) (s : state) : Prop :=
     src ∈ read_prefix (g_edges s) c -> stale (n_freshness e) = true -> n_disposed e = false ->
     n_disposed dc = false -> told_cover b s c dc e.
 
+(**md
+`told_on` for every pair of computation and source.
+*)
 Definition told : state -> Prop := told_on (fun _ _ => True).
 
+(**md
+Every node with its queued flag set is stale.
+*)
 Definition queued_ok (s : state) : Prop :=
   forall n d, g_nodes s !! n = Some d -> n_queued d = true -> stale (n_freshness d) = true.
 
@@ -387,8 +425,15 @@ Local Arguments read_prefix : simpl never.
 
 (** ** The invariant beside the check invariant *)
 
+(**md
+No element of `l` is followed by itself.
+*)
 Definition no_repeat (l : list node_id) : Prop := forall i x, l !! i = Some x -> l !! S i <> Some x.
 
+(**md
+The bookkeeping facts about flags, source lists, cursors, running nodes, cleanups and ghost reads that
+`check_invariant` does not state. Each field is one such fact.
+*)
 Record run_base (s : state) : Prop := {
   b_flag_u : f_unannounced (g_flags s) = true;
   b_flag_r : f_reader_mark (g_flags s) = true;
@@ -417,6 +462,9 @@ Record run_base (s : state) : Prop := {
     (forall c, c ∉ gh_nested (g_ghost s) -> run_reads_of s c = reads_of s c)
 }.
 
+(**md
+`run_base` and `told` hold.
+*)
 Definition run_extras (s : state) : Prop := run_base s /\ told s.
 
 (** What the engine holds of a whole call beside [frame]. *)
@@ -1514,7 +1562,13 @@ Qed.
 
 (** ** Triples over the monad *)
 
+(**md
+`check_invariant` and `run_extras` hold.
+*)
 Definition run_core (s : state) : Prop := check_invariant s /\ run_extras s.
+(**md
+`frame` and `ekept` relate `s` to `s'`.
+*)
 Definition run_kept (s s' : state) : Prop := frame s s' /\ ekept s s'.
 
 Lemma kept_refl s : run_kept s s.
@@ -1523,9 +1577,19 @@ Proof. split; [apply frame_refl|apply ekept_refl]. Qed.
 Lemma kept_trans s1 s2 s3 : run_kept s1 s2 -> run_kept s2 s3 -> run_kept s1 s3.
 Proof. intros [H1 H2] [J1 J2]. split; [by eapply frame_trans|by eapply ekept_trans]. Qed.
 
+(**md
+From a state satisfying `run_core` and `P`, a completed step `m` ends in a state satisfying `run_core`,
+related to the start by `run_kept`.
+
+- [P:] the premise on the starting state.
+- [m:] the step.
+*)
 Definition ok2 {A} (P : state -> Prop) (m : M A) : Prop :=
   forall s s' a, run_core s -> P s -> m s = Some (s', a) -> run_core s' /\ run_kept s s'.
 
+(**md
+`P` survives every `run_kept` step.
+*)
 Class Stable2 (P : state -> Prop) := stable2 : forall s s', run_kept s s' -> P s -> P s'.
 
 Global Instance stable2_true : Stable2 (fun _ => True).
@@ -1544,6 +1608,9 @@ Proof.
   intros c Hin. rewrite Hr in Hin. auto.
 Qed.
 
+(**md
+Node `n` is an effect and a flush loop is in progress.
+*)
 Definition effect_ctx (n : node_id) (s : state) : Prop := has_kind n KEffect s /\ flush_ctx s.
 
 Global Instance stable2_effect n : Stable2 (effect_ctx n).
@@ -1992,6 +2059,12 @@ Definition body_post (s : state) (n : node_id) : Prop :=
   (slot_view (g_edges s) n).2 = length (slot_view (g_edges s) n).1 /\
   forall d, g_nodes s !! n = Some d -> n_disposed d = true -> (slot_view (g_edges s) n).1 = [].
 
+(**md
+Every engine function at fuel `f` satisfies `ok2` with the premise it needs, so it keeps `run_core` and
+`run_kept`. `run_effect` and `run_effect_body` are stated with the narrower hypotheses they need.
+
+- [f:] the fuel.
+*)
 Record runs_ok (f : nat) : Prop := {
   Rexec : forall e c, ok2 (fun _ => True) (exec f e c);
   Rread : forall n b, ok2 (fun _ => True) (read f n b);
@@ -2828,6 +2901,13 @@ Proof.
   pose proof (H m d0 r0 Hd0 Hw0 Hl0). lia.
 Qed.
 
+(**md
+From a state satisfying `R` and `P`, a completed step `m` ends in a state satisfying `R`.
+
+- [R:] the property kept.
+- [P:] the premise on the starting state.
+- [m:] the step.
+*)
 Definition keeps {A} (R P : state -> Prop) (m : M A) : Prop :=
   forall s s' a, R s -> P s -> m s = Some (s', a) -> R s'.
 
@@ -2874,6 +2954,8 @@ Qed.
 `engine_settled` is the invariant run-level proofs carry: the [check invariant](Ranvier.Pure.Check.html#check_invariant), the stack discipline, source-list bookkeeping, equal-length owner cleanup lists, an effect in its cleanups being on the stack, and the record of what each computation has been told.
 
 Premises: the invariant holds at the start, and the function's own premise, as listed in `preserved_by`. A function that gets stuck or runs out of fuel returns nothing and is outside this guarantee. This is the form that holds on the present engine: `engine_inv_preserved_statement` adds `wake_ok`, and that form is false.
+
+- [f:] the fuel.
 *)
 Theorem engine_settled_preserved f : preserved_by engine_settled f.
 Proof.
@@ -2982,6 +3064,12 @@ This says nothing of whether an observer read a source's latest value. A skipped
 Premise: `engine_settled` holds at the start. A program that gets stuck or runs out of fuel returns nothing, and is outside this guarantee.
 
 [`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) reaches `gh_passed`, and `no_lost_wakeups_statement` without the exception is false.
+
+- [f:] the fuel.
+- [c:] the command run.
+- [s:] the starting state, which satisfies `engine_settled`.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
 *)
 Theorem no_lost_wakeups_unless_passed f c s s' r :
   engine_settled s -> run_top f c s = Some (s', r) -> wake_ok_unless_passed s'.
@@ -2995,6 +3083,12 @@ Qed.
 For any edge from a live, stale source to an observer, after a whole program: the observer is stale or queued, or on the running stack, or in `gh_over`, which holds the computations whose check walk ended and went `Clean` while a slot held a live, stale source, since their latest run start. The source's announcement flag is not a disjunct here, so a reader that read a memo left stale and took no `MarkReaderCheck` breaks this statement: [`reader_mark_off_fires`](Ranvier.Pure.Witnesses.html#reader_mark_off_fires).
 
 Premise: `engine_settled` holds at the start.
+
+- [f:] the fuel.
+- [c:] the command run.
+- [s:] the starting state, which satisfies `engine_settled`.
+- [s':] the state after the run.
+- [r:] the outcome of the run.
 *)
 Theorem no_wake_lost_unless_resolved f c s s' r :
   engine_settled s -> run_top f c s = Some (s', r) -> wake_told s'.
@@ -3008,6 +3102,12 @@ Qed.
 After a whole program whose final `gh_passed` is empty, every observer of a live, stale source is stale, queued or running, or the source holds its announcement flag. No theorem yet says which programs keep `gh_passed` empty.
 
 Premises: `engine_settled` holds at the start and `nothing_passed` holds at the end. The premise rules out one route to a lost wake-up by name, so this is a statement about every other route to an uncovered edge. It does not say a stale node's next run will happen.
+
+- [f:] the fuel.
+- [c:] the command run.
+- [s:] the starting state, which satisfies `engine_settled`.
+- [s':] the state after the run, in which nothing has passed.
+- [r:] the outcome of the run.
 *)
 Theorem no_lost_wakeups_when_nothing_passed f c s s' r :
   engine_settled s -> run_top f c s = Some (s', r) -> nothing_passed s' -> wake_ok s'.
@@ -3067,6 +3167,12 @@ Qed.
 From `wake_ok`, when `mark_check` or `mark_dirty` of a live memo returns, each computation with an edge from the memo is stale or queued, or on the running stack. An effect in its cleanups, or disposed mid-body, ignores the mark, and is on the running stack: `engine_settled` carries that.
 
 Premises: the [invariant with `wake_ok`](#engine_inv) holds, and the memo is live. `wake_ok` says nothing of a disposed source, whose reader can be uncovered: see `disposed_stale_source_read`.
+
+- [f:] the fuel.
+- [src:] the live memo marked.
+- [d:] the node `src` in `s`.
+- [s:] the state before the marking, which satisfies `engine_inv`.
+- [s':] the state after the marking.
 *)
 Theorem later_mark_forwarded f src d s s' :
   engine_inv s -> g_nodes s !! src = Some d -> n_kind d = KMemo -> n_disposed d = false ->
@@ -3107,16 +3213,33 @@ Qed.
 
 (** ** The end of a memo's run *)
 
+(**md
+The node `x` as `run_memo` leaves it at the start of a run: one more run counted, no failure, status
+`StNone`, no announcement and `Clean`.
+*)
 Definition run_node (x : node) : node :=
   node_with_runs (S (n_runs x)) (node_with_failure None (node_with_status StNone
     (node_with_unannounced false (node_with_freshness Clean x)))).
 
-(** The state a run's body starts from. *)
+(**md
+The state a run's body starts from: node `n` replaced by `run_node d`, its cursor at the start of its slots, its
+ghost run started, and `n` pushed onto the running list.
+
+- [n:] the memo that runs.
+- [d:] the node `n` before the run.
+- [s:] the state before the run.
+*)
 Definition run_start (n : node_id) (d : node) (s : state) : state :=
   let s1 := set_node n (run_node d) s in
   let s3 := ghost_run_start n (with_edges (sources_begin_run n (g_edges s1)) s1) in
   with_running (n :: g_running s3) s3.
 
+(**md
+The environment a memo's body runs in: the node's captured environment, with the previous value bound to
+`prev_var` when the node has published, and without any previous value otherwise.
+
+- [d:] the memo before the run.
+*)
 Definition run_env (d : node) : env :=
   if n_published d then (prev_var, n_value d) :: n_env d else without_prev (n_env d).
 
@@ -3324,6 +3447,14 @@ Admitted.
 This covers only the tail of a run, from the body's return to the run's. If the memo is stale at that point, it is still stale when `run_memo` returns, with `n_unannounced` set, so its next mark tells its observers again. A mark received earlier in the body can be cleared before the body returns: see `marks_survive_run_statement`.
 
 Premises: the [settled invariant](#engine_settled) holds at the start, the node is a memo, and `run_memo` returns.
+
+- [f:] the fuel, which `run_memo` runs at `S f`.
+- [n:] the memo that runs.
+- [s:] the state before the run, which satisfies `engine_settled`.
+- [s':] the state after the run.
+- [s2:] the state when the body returns.
+- [r:] the outcome of the body.
+- [d:] the node `n` in `s`.
 *)
 Theorem marks_survive_body_end f n s s' s2 r d :
   engine_settled s -> g_nodes s !! n = Some d -> n_kind d = KMemo ->
@@ -3357,6 +3488,15 @@ Qed.
 Each node's freshness and the effect queue are as they were when the body returned. Marks raised during the body, by writes in it or by other nodes' runs, are outside this statement, which covers what the end of the run adds. A memo with `CmpNever` or `CmpThrows` tells its observers whatever the value: that is what those comparers ask for.
 
 Premises: the node is a memo with the `CmpEq` comparer, its stored view at the return of `run_memo` equals the view before the run, and `run_memo` returns.
+
+- [f:] the fuel, which `run_memo` runs at `S f`.
+- [n:] the memo that runs.
+- [s:] the state before the run.
+- [s':] the state after the run.
+- [s2:] the state when the body returns.
+- [r:] the outcome of the body.
+- [d:] the node `n` in `s`.
+- [d':] the node `n` in `s'`, whose view equals that of `d`.
 *)
 Theorem cutoff f n s s' s2 r d d' :
   g_nodes s !! n = Some d ->
@@ -3401,6 +3541,13 @@ Qed.
 When `run_memo` returns with the memo's stored view changed, or a comparer other than `CmpEq`, each observer that takes marks ends `Dirty`. The exception is the computation current at the run's start: `NotifyDirtyExcept` skips it. On a memo that loses a read: [`check_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#check_resolves_over_moved_source). On an effect, the same skip loses a re-run: [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source).
 
 Premises: `run_memo` returns, and the observer is not the computation current at the start. An observer takes marks when it is a memo, or an effect outside its disposal and its cleanups.
+
+- [f:] the fuel, which `run_memo` runs at `S f`.
+- [n:] the memo that runs.
+- [s:] the state before the run.
+- [s':] the state after the run.
+- [d:] the node `n` in `s`.
+- [d':] the node `n` in `s'`, whose view or comparer shows it moved.
 *)
 Theorem moved_marks_except_running f n s s' d d' :
   g_nodes s !! n = Some d ->
@@ -3463,6 +3610,13 @@ Qed.
 **The notice of a moved run leaves the computation it skips short of `Dirty`.**
 
 `notify_dirty_except` of a source, with a computation to skip, leaves that computation short of `Dirty` if it was short of it. A memo among the other observers can still tell it `Check`. [`skip_removed_fires`](Ranvier.Pure.Witnesses.html#skip_removed_fires) shows this fails when the skip is removed.
+
+- [f:] the fuel.
+- [n:] the source whose observers are marked.
+- [c:] the current computation, skipped by the notice.
+- [s:] the state before the notice.
+- [s':] the state after the notice.
+- [e:] the node `c` in `s`, which is not `Dirty`.
 *)
 Theorem notice_skips_current f n c s s' e :
   notify_dirty_except f n (Some c) s = Some s' -> g_nodes s !! c = Some e -> n_freshness e <> Dirty ->
@@ -3482,6 +3636,16 @@ Qed.
 If the computation current when `run_memo` started is short of `Dirty` when the run's body returns, it is short of `Dirty` when the run returns. This is the skip of `NotifyDirtyExcept`, the half [`moved_marks_except_running`](#moved_marks_except_running) leaves out. A computation that is the memo itself is outside this statement.
 
 Premises: the current computation is another node, and `run_memo` returns.
+
+- [f:] the fuel, which `run_memo` runs at `S f`.
+- [n:] the memo that runs.
+- [s:] the state before the run.
+- [s':] the state after the run.
+- [s2:] the state when the body returns.
+- [r:] the outcome of the body.
+- [d:] the node `n` in `s`.
+- [c:] the current computation, different from `n`.
+- [e:] the node `c` in `s2`, which is not `Dirty`.
 *)
 Theorem moved_run_skips_current f n s s' s2 r d c e :
   g_nodes s !! n = Some d ->
@@ -3510,6 +3674,12 @@ Qed.
 The source list holds those reads in order, with a read of the source just read adding nothing, as `sources_add` stores them. A nested run of the same memo starts over: reads of the outer run ahead of it have no slot, as `nested_self_run_ends_clean_and_wrong` shows. So "the run" here is the latest to start, which is the reason this is not `run_end_edges_are_reads_statement`.
 
 Premises: the [settled invariant](#engine_settled) holds at the start, the computation is not on the running stack, `run_memo` or `run_effect` returns, and it is not disposed at the end.
+
+- [f:] the fuel.
+- [n:] the memo or effect that runs.
+- [s:] the state before the run, which satisfies `engine_settled`.
+- [s':] the state after the run.
+- [d':] the node `n` in `s'`, which is not disposed.
 *)
 Theorem run_end_edges_are_latest_reads f n s s' d' :
   engine_settled s -> n ∉ g_running s ->
@@ -3536,6 +3706,12 @@ Qed.
 The source list holds the run's tracked reads in order, with a read of the source just read adding nothing, as `sources_add` stores them. `gh_nested` holds a computation when a run of it started inside its own, so the premise says that did not happen.
 
 Premises: the [settled invariant](#engine_settled) holds at the start, the computation is not on the running stack, `run_memo` or `run_effect` returns, it is not disposed at the end, and it is not in `gh_nested` at the end.
+
+- [f:] the fuel.
+- [n:] the memo or effect that runs.
+- [s:] the state before the run, which satisfies `engine_settled`.
+- [s':] the state after the run.
+- [d':] the node `n` in `s'`, which is not disposed.
 *)
 Corollary run_end_edges_no_nested_run f n s s' d' :
   engine_settled s -> n ∉ g_running s ->
