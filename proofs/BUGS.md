@@ -5,24 +5,6 @@ intended, the entry closes as "spec corrected".
 
 ## Suspected
 
-- `disposed_unread_memo_value` (`theories/Reference/Properties.v`): which value a disposed memo keeps
-  when it has had no demand since its sources moved. By the owner's ruling, the reference keeps the
-  memo's value over the signals current at the disposal's position in the batch. From reading Core.fs,
-  not from running it: a memo starts `Dirty` and `Uninitialized` with a default value (4063-4065),
-  `Create` does not compute it (4144-4147), the read paths do not refresh a disposed memo (4323, 4335),
-  and `Value` then answers the stored value (4539-4548), as the doc at 4372 states. So in `unread_memo`
-  F# would answer the type's default where the reference answers 5. By the same reading,
-  `write_then_dispose_memo_current_value` also differs: F# leaves the written memo unpulled and keeps 1,
-  and its reader does not run, where the reference answers 6 and runs the reader. The question for the
-  owner: does the reference keep this engine-independent value, or does it model demand as Core.fs has
-  it? Modelling demand would put one engine's laziness in the tier every engine proves against. Task 13
-  runs it against the F#.
-  `disposed_memo_answers` (Task 10) states the behaviour of the doc at 4372: a read answers what the memo stored, with no run. `disposed_unread_answers_default` has `unread_memo`'s
-  shape in the model, answering 0. That doc's "the last value it computed" does not describe a memo that never computed one.
-- `batch_restored_value_reruns` (scenario `S07`): a batch writes 0, 1, 0 under an effect that reads the signal
-  directly. The first write marks the effect `Dirty`, a `Dirty` effect runs with no comparison of its reads, and
-  it logs the value of its previous run. F# trace: `[EvRun 2; EvLog 2 0; EvRun 2; EvLog 2 0]`. A redundant run
-  by `redundant`, for the owner's ruling at Task 12.
 - `self_writing_memo_ends_stale` (scenario `S14`): a memo writes its own source, and an effect reads it. The memo's
   value does not change, so the effect resolves its `Check` to `Clean` while the memo is `Dirty` with no further mark
   due. The flush ends with the signal at 2 and the memo's last run over 1, which the harness asserts. F# trace:
@@ -30,10 +12,6 @@ intended, the entry closes as "spec corrected".
   is the host read's pull, whose write queues the effect, and `EvLog 2 3` is the walk in the flush that pull settles.
   Here the memo's value stays 0, so the effect's read stays right. When the next run changes the value, the effect is
   left behind: `self_marking_wake_lost` under Confirmed.
-- `diamond_marks_running_effect` (scenario `S15`): the effect reads `[h, x, y]` and `x` reads `[h, y]`, and a batch
-  writes `h` and `y`'s source. Under the effect's run, `y`'s run moves and marks the effect through its old edge,
-  since `NotifyDirtyExcept` skips only `x`, the current computation. The effect runs again on equal reads. F# trace:
-  `[EvRun 5; EvLog 3 0; EvLog 4 0; EvLog 5 0; EvRun 5; EvLog 3 1; EvLog 4 2; EvLog 5 4; EvRun 5; EvLog 5 4]`.
 - `disposed_memo_keeps_observers` (from reading, no trace): `Memo.Dispose` clears the memo's sources and leaves its
   observers (Core.fs 4377-4398). A reader keeps an edge to the disposed memo, which marks no one again once its sources
   are gone, except for the marks of a run in progress when it was disposed.
@@ -209,6 +187,20 @@ intended, the entry closes as "spec corrected".
 
 ## Awaiting ruling
 
+Each entry of Task 12 is a difference between the engine and the reference, with a checked `Example` in `theories/Pure/Witnesses.v` holding both traces. `weak_refinement_except` or `exact_refinement_except` takes each as a named premise until the owner rules. All of them are outside `src/Ranvier`'s documents unless the entry says so.
+
+- `disposed_unread_memo_value` (scenario of the same name; `theories/Reference/Properties.v` and `theories/Pure/Witnesses.v`, same name): which value a disposed memo keeps when it has had no demand since its sources moved. By the owner's ruling, the reference keeps the memo's value over the signals current at the disposal's position in the batch.
+  **F#, ran:** a memo over `s`, written to 5 and disposed unread, then read by an effect. F# trace `[EvRun 4; EvDispose 2; EvRun 4; EvLog 4 0]`, and the harness asserts `m.Peek` 0. The reference's trace is `[EvRun 9; EvDispose 1; EvRun 9; EvLog 9 5]`. So F# answers the type's default where the reference answers 5. Core.fs: a memo starts `Dirty` and `Uninitialized` with a default value (4063-4065), `Create` does not compute it (4144-4147), the read paths do not refresh a disposed memo (4323, 4335), and `Value` answers the stored value (4539-4548), as the doc at 4372 states. That doc's "the last value it computed" does not describe a memo that never computed one. `disposed_memo_answers` and `disposed_unread_answers_default` state the engine's side.
+  **Theorem:** `weak_refinement_falsified` proves the unconditional statement false from this entry. `weak_refinement_except` takes `no_memo_disposal`.
+  **The question for the owner:** does the reference keep this engine-independent value, or does it model demand as Core.fs has it? Modelling demand would put one engine's laziness in the tier every engine proves against.
+- `write_then_dispose_memo_current_value` (scenario of the same name; same files, same name): a batch writes a memo's source and disposes the memo. **F#, ran:** `[EvRun 4; EvLog 4 1; EvDispose 2; EvRun 4; EvLog 4 1]`, and the harness asserts `m.Peek` 1 and that the reader did not run at the batch's flush. The reference answers 6 and runs the reader: `[EvRun 9; EvLog 9 1; EvDispose 1; EvRun 9; EvLog 9 6; EvRun 9; EvLog 9 6]`. The same question and the same premise as `disposed_unread_memo_value`.
+- `batch_restored_value_reruns` (scenario `S07`; `theories/Pure/Witnesses.v`, same name, and `batch_restored_redundant`): a batch writes 1 then 0 under an effect that reads the signal directly. The first write marks the effect `Dirty`, a `Dirty` effect runs with no comparison of its reads, and it logs the value of its previous run. F# trace: `[EvRun 2; EvLog 2 0; EvRun 2; EvLog 2 0]`. The reference's: `[EvRun 1; EvLog 1 0]`, with the ids of the reference program. The second run is `redundant`. It preserves `observe_settled` here, and `weak_refinement_except` holds across it. It breaks `observe_full`: `exact_refinement_falsified`.
+  **The question for the owner:** is a redundant run acceptable, as the cost of comparing nothing at `Dirty`?
+- `diamond_marks_running_effect` (scenario `S15`; `theories/Pure/Witnesses.v`, same name): the effect reads `[h, x, y]` and `x` reads `[h, y]`, and a batch writes `h` and `y`'s source. Under the effect's run, `y`'s run moves and marks the effect through its old edge, since `NotifyDirtyExcept` skips only `x`, the current computation. The effect runs again on equal reads. F# trace: `[EvRun 5; EvLog 3 0; EvLog 4 0; EvLog 5 0; EvRun 5; EvLog 3 1; EvLog 4 2; EvLog 5 4; EvRun 5; EvLog 5 4]`. The same question as `batch_restored_value_reruns`, and the same two theorems.
+- `redundant_run_reads_untracked` (scenario of the same name; `theories/Pure/Witnesses.v`, same name): a redundant run changes `observe_settled` when the body has an untracked read. A batch writes `u`, then restores `s`, under an effect reading `s` and logging `u` untracked. F# trace: `[EvRun 3; EvLog 3 0; EvRun 3; EvLog 3 5]`. The reference does not run the effect, since its tracked read holds: `[EvRun 2; EvLog 2 0]` with the reference's ids. This checks the reasoned carry from Task 11: `convergence` gives no log equality for such a body, and on this program no log equality holds. `weak_refinement_except` takes `effects_read_only`, which rejects an untracked read.
+  **The question for the owner:** does an untracked read owe a value at all when its effect runs for no other reason? A fix that stops redundant runs closes this entry.
+- `effect_restored_source_loop` (scenario `effect_restored_source_reruns`, with a budget; `theories/Pure/Witnesses.v`: `restored_source_no_answer`): an effect reads a source, writes it and restores it. The write marks the running effect, so it runs again and writes again. The reference compares reads, finds them equal, and settles after one run. Computed: `engine_of` has no answer at fuel 1000, and the reference answers `[EvRun 1]`. F#: the scenario's budget of 3 gives 4 runs with equal reads. Reasoned: with no budget neither side ends. So the unconditional `engine_answers` is false by reasoning, and no proof of "no answer at every fuel" exists: `engine_of_answers_statement` stays a `Definition`. The effect writes, which `effects_read_only` excludes.
+  **The question for the owner:** the ruling on effect writes decides this entry with `effect_resolves_over_moved_source`.
 - `read_settles_writer` (scenario of the same name; `theories/Pure/Witnesses.v`, same name): a read settles a flush and answers after it, so the answer reflects what the flush wrote. Program: a pure memo with a batch, and a writing effect left queued by `failed_batch_leaves_queue`, itself Awaiting ruling. F# trace: `[EvRun 4; EvLog 4 0; EvRun 4; EvLog 4 1; EvRun 4; EvLog 4 9; EvHostRead 3 (Ok 9)]`.
   **The documents.** Core.fs 3159-3161 says effects inside a body or stale read "run once the outermost body or read has finished", which documents when the flush runs. `Memo.Value` (4539-4548) reads the value after `TrackCurrent`'s `ExitPull`, ahead of the read's return. No document covers the answer. `quiescent_read_answers_past_flush` under Confirmed reaches the same answer with no failed batch.
   The answer agrees with neither end consistently. `read_before_flush_answer`, computed: with the writer reading no `n`, the read answers 1, and `n` denotes 9 after it.
@@ -340,6 +332,8 @@ Names of theorems that may contain `Admitted`, `admit` or an `Axiom`, one per li
   proves that. Use `marks_survive_body_end` until the fix.
 - `run_end_edges_are_reads` (`theories/Pure/Runs.v`): the same Confirmed bug, and `run_end_edges_are_reads_falsified` proves that. Use
   `run_end_edges_are_latest_reads` or `run_end_edges_no_nested_run` until the fix.
+- `weak_refinement` (`theories/Pure/Refinement.v`): `disposed_unread_memo_value` falsifies it on the present engine and reference, and `weak_refinement_falsified` proves that. A ruling on that entry, a fix of `redundant_run_reads_untracked` and of `effect_resolves_over_moved_source`, and the unattempted proofs for effect cleanups and child effects are what it needs. Use `weak_refinement_except` until then.
+- `exact_refinement` (`theories/Pure/Refinement.v`): `batch_restored_value_reruns` falsifies it, and `exact_refinement_falsified` proves that. Use `exact_refinement_except` until a ruling.
 - `read_quiescent` (`theories/Pure/WholeGraph.v`): `quiescent_read_answers_past_flush` falsifies it on the present engine, and `read_quiescent_falsified` proves that. Use `glitch_free_read` until the fix.
 - `convergence_all` (`theories/Pure/WholeGraph.v`): `self_marking_wake_lost` and the lost update of `cmp_never_passes_source` falsify it on the present engine, and `convergence_all_falsified` proves that, with each premise proved on both. Use `convergence` until the fix.
   **The fix phase's target.** Inside it, as the bugs the fix owes: effect writes, memo writes reaching no later read of the body, memo cleanups, `CmpNever`, and effect cleanups, child effects and disposals.

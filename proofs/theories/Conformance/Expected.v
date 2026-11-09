@@ -221,3 +221,20 @@ Definition exp_fresh_record_lost_update : list event := [
 Definition exp_failed_batch : list event := [
   EvRun 2; EvLog 2 0%Z; EvRun 2; EvLog 2 1%Z
 ].
+
+Definition exp_disposed_unread_memo_value : list event := [
+  EvRun 4; EvDispose 2; EvRun 4; EvLog 4 0%Z
+].
+
+Definition exp_write_then_dispose_memo_current_value : list event := [
+  EvRun 4; EvLog 4 1%Z; EvDispose 2; EvRun 4; EvLog 4 1%Z
+].
+
+Definition exp_redundant_run_reads_untracked : list event := [
+  EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 5%Z
+].
+
+Definition exp_effect_restored_source_reruns : list event := [
+  EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 0%Z;
+  EvRun 3; EvLog 3 0%Z
+].

@@ -6,7 +6,6 @@ theories/Reference/Semantics.v
 theories/Reference/Properties.v
 theories/Pure/ObserverSet.v
 theories/Pure/SourceList.v
-theories/Pure/Witnesses.v
 theories/Pure/State.v
 theories/Pure/Edges.v
 theories/Pure/Marking.v
@@ -16,6 +15,8 @@ theories/Pure/Runs.v
 theories/Pure/Scheduler.v
 theories/Pure/Ownership.v
 theories/Pure/WholeGraph.v
+theories/Pure/Refinement.v
+theories/Pure/Witnesses.v
 theories/Conformance/Expected.v
 theories/Conformance/Check.v
 theories/Audit.v

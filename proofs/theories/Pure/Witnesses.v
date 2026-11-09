@@ -3,6 +3,8 @@ From stdpp Require Import gmap.
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Base Require Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Check Runs WholeGraph.
+From Ranvier.Reference Require Semantics Properties.
+From Ranvier.Pure Require Refinement.
 
 (** ** Walks *)
 
@@ -1706,4 +1708,205 @@ Proof.
   assert (He : effects_only_read s) by (apply effects_only_read_of_shape; [exact Ha|vm_compute; reflexivity]).
   assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
   split_and!; try assumption; [exact (convergence 100000 _ s _ Hm Ha He Hq)|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
+Qed.
+
+(** ** The engine against the reference *)
+
+Local Notation eng := (Refinement.engine_of current_flags 20000).
+Local Notation rtrace := (fun p h => Semantics.reference_trace 5 Properties.order_identity p h).
+
+(** An order behaves on the empty list and on singletons as each valid order must. *)
+Definition small_order (ord : Semantics.effect_order) : Semantics.effect_order :=
+  fun i l => match l with [] => [] | [x] => [x] | _ => ord i l end.
+
+Lemma small_order_ext ord i l : Semantics.is_effect_order ord -> ord i l = small_order ord i l.
+Proof.
+  intros H. destruct l as [|x [|y l]]; simpl; [|apply Permutation_singleton_r, H|done].
+  apply Permutation_nil. symmetry. apply H.
+Qed.
+
+(** One signal and one effect that logs it. *)
+Definition restored : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z ]};
+  Semantics.program_memos := ∅;
+  Semantics.program_effects := {[ 1 := CRead 10 (K 0%Z) (CLog (V 10) Nop) ]};
+|}.
+
+Lemma restored_well_formed : Semantics.well_formed_program restored.
+Proof.
+  refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+  - intros x Hx H. rewrite dom_empty_L in H. by apply not_elem_of_empty in H.
+  - rewrite !dom_singleton_L. set_solver.
+  - rewrite dom_empty_L. set_solver.
+  - apply map_Forall_empty.
+  - apply map_Forall_singleton. reflexivity.
+  - exists (fun n => n). apply map_Forall_empty.
+Qed.
+
+(** A batch restores the signal. The engine runs the effect on the value of its previous run, and the reference does not. The
+    second run is [redundant], in the terms of the reference tier. *)
+Example batch_restored_value_reruns :
+  eng restored [[Semantics.RWrite 0 1%Z; Semantics.RWrite 0 0%Z]] = Some [EvRun 1; EvLog 1 0%Z; EvRun 1; EvLog 1 0%Z] /\
+  rtrace restored [[Semantics.RWrite 0 1%Z; Semantics.RWrite 0 0%Z]] = Some [EvRun 1; EvLog 1 0%Z].
+Proof. split; vm_compute; reflexivity. Qed.
+
+(** The engine's two runs, as records of the reference tier. *)
+Definition engine_run (reads : list (node_id * outcome)) : Semantics.run :=
+  {| Semantics.run_node := 1; Semantics.run_kind := Semantics.RkEffect; Semantics.run_snapshot := {[ 0 := 0%Z ]}; Semantics.run_frozen := ∅;
+     Semantics.run_ran_cleanups := []; Semantics.run_reads := reads; Semantics.run_all_reads := reads;
+     Semantics.run_events := [EvRun 1; EvLog 1 0%Z]; Semantics.run_writes := [] |}.
+
+Example batch_restored_redundant :
+  Semantics.redundant restored [engine_run [(0, Ok 0%Z)]; engine_run [(0, Ok 0%Z)]] 1 1.
+Proof.
+  split; [by eexists|]. exists 0, (engine_run [(0, Ok 0%Z)]), (engine_run [(0, Ok 0%Z)]). split_and!; reflexivity.
+Qed.
+
+(**md
+**The unconditional exact refinement is false: a batch restoring a signal reruns its effect.**
+
+`exact_refinement_statement` fails on `restored`, from `batch_restored_value_reruns`, scenario `S07`. The engine's trace has a run the reference's trace does not, under every valid order and fuel. Awaiting ruling in `BUGS.md`. F#: the trace of scenario `S07`.
+*)
+Theorem exact_refinement_falsified : ~ Refinement.exact_refinement_statement.
+Proof.
+  intros H. set (h := [[Semantics.RWrite 0 1%Z; Semantics.RWrite 0 0%Z]]).
+  assert (He : eng restored h = Some [EvRun 1; EvLog 1 0%Z; EvRun 1; EvLog 1 0%Z]) by (vm_compute; reflexivity).
+  destruct (H 20000 restored h _ restored_well_formed He) as (ord&Hord&Hall).
+  destruct (Hall h (Refinement.pfx_refl h)) as (te&fuel&tr&E1&_&E2&E3).
+  rewrite He in E1. injection E1 as <-.
+  assert (E4 : Semantics.reference_trace 5 (small_order ord) restored h = Some [EvRun 1; EvLog 1 0%Z]) by (vm_compute; reflexivity).
+  pose proof (Properties.reference_trace_deterministic _ _ _ _ _ _ _ _ (fun i l => small_order_ext ord i l Hord) E2 E4) as ->.
+  discriminate E3.
+Qed.
+
+(** The diamond of scenario [S15]: a memo's run marks the running effect through its old edge. *)
+Definition diamond_marks : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z; 1 := 0%Z ]};
+  Semantics.program_memos := {[ 2 := CRead 10 (K 1%Z) (CRet (V 10));
+                                3 := CRead 10 (K 0%Z) (CRead 11 (K 2%Z) (CRet (EAdd (V 10) (V 11)))) ]};
+  Semantics.program_effects := {[ 4 := CRead 10 (K 0%Z) (CRead 11 (K 3%Z) (CRead 12 (K 2%Z) (CLog (EAdd (EAdd (V 10) (V 11)) (V 12)) Nop))) ]};
+|}.
+
+Example diamond_marks_running_effect :
+  eng diamond_marks [[Semantics.RWrite 0 1%Z; Semantics.RWrite 1 2%Z]] =
+    Some [EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 6%Z; EvRun 4; EvLog 4 6%Z] /\
+  rtrace diamond_marks [[Semantics.RWrite 0 1%Z; Semantics.RWrite 1 2%Z]] =
+    Some [EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 6%Z].
+Proof. split; vm_compute; reflexivity. Qed.
+
+(** Nothing has read the memo when it is disposed. F#: scenario [disposed_unread_memo_value], whose reader logs 0. *)
+Example disposed_unread_memo_value :
+  eng Properties.unread_memo [[Semantics.RWrite 0 5%Z]; [Semantics.RDispose 1]; [Semantics.RWrite 2 1%Z]] =
+    Some [EvRun 9; EvDispose 1; EvRun 9; EvLog 9 0%Z] /\
+  rtrace Properties.unread_memo [[Semantics.RWrite 0 5%Z]; [Semantics.RDispose 1]; [Semantics.RWrite 2 1%Z]] =
+    Some [EvRun 9; EvDispose 1; EvRun 9; EvLog 9 5%Z].
+Proof. split; vm_compute; reflexivity. Qed.
+
+(** A batch writes the memo's source and disposes it. F#: scenario [write_then_dispose_memo_current_value], whose reader stays
+    idle and then logs 1. *)
+Example write_then_dispose_memo_current_value :
+  eng Properties.memo_and_signal [[Semantics.RWrite 0 5%Z; Semantics.RDispose 1]; [Semantics.RWrite 2 1%Z]] =
+    Some [EvRun 9; EvLog 9 1%Z; EvDispose 1; EvRun 9; EvLog 9 1%Z] /\
+  rtrace Properties.memo_and_signal [[Semantics.RWrite 0 5%Z; Semantics.RDispose 1]; [Semantics.RWrite 2 1%Z]] =
+    Some [EvRun 9; EvLog 9 1%Z; EvDispose 1; EvRun 9; EvLog 9 6%Z; EvRun 9; EvLog 9 6%Z].
+Proof. split; vm_compute; reflexivity. Qed.
+
+Lemma unread_memo_well_formed : Semantics.well_formed_program Properties.unread_memo.
+Proof.
+  refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - rewrite !dom_singleton_L. set_solver.
+  - apply map_Forall_singleton. reflexivity.
+  - apply map_Forall_singleton. reflexivity.
+  - exists (fun n => n). apply map_Forall_singleton. intros rd o st t v Hx Hin Hm.
+    vm_compute in Hx. destruct (rd 0) as [[?|?]|]; vm_compute in Hx; simplify_eq;
+      apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try discriminate).
+    all: exfalso; revert Hm; vm_compute; intros [? K]; discriminate K.
+Qed.
+
+(**md
+**The unconditional weak refinement is false: a memo disposed unread answers its default, and the reference answers its value.**
+
+`weak_refinement_statement` fails on `unread_memo`, from `disposed_unread_memo_value`, whose trace the F# scenario of the same name gives: the effect logs 0, where the reference logs 5. Awaiting ruling in `BUGS.md`. [`write_then_dispose_memo_current_value`](#write_then_dispose_memo_current_value) and [`redundant_run_reads_untracked`](#redundant_run_reads_untracked) are two more falsifiers.
+*)
+Theorem weak_refinement_falsified : ~ Refinement.weak_refinement_statement.
+Proof.
+  intros H. set (h := [[Semantics.RWrite 0 5%Z]; [Semantics.RDispose 1]; [Semantics.RWrite 2 1%Z]]).
+  assert (He : eng Properties.unread_memo h = Some [EvRun 9; EvDispose 1; EvRun 9; EvLog 9 0%Z]) by (vm_compute; reflexivity).
+  destruct (H 20000 Properties.unread_memo h _ unread_memo_well_formed He) as (ord&Hord&Hall).
+  destruct (Hall h (Refinement.pfx_refl h)) as (te&fuel&tr&E1&_&E2&E3).
+  rewrite He in E1. injection E1 as <-.
+  assert (E4 : Semantics.reference_trace 5 (small_order ord) Properties.unread_memo h = Some [EvRun 9; EvDispose 1; EvRun 9; EvLog 9 5%Z]) by (vm_compute; reflexivity).
+  pose proof (Properties.reference_trace_deterministic _ _ _ _ _ _ _ _ (fun i l => small_order_ext ord i l Hord) E2 E4) as ->.
+  vm_compute in E3. discriminate E3.
+Qed.
+
+(** A restored signal reruns an effect whose untracked read has moved. The settled views differ, so a run the reference does not
+    make changes [observe_settled] once the body has an untracked read. F#: scenario [redundant_run_reads_untracked]. *)
+Definition reads_untracked : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z; 1 := 0%Z ]};
+  Semantics.program_memos := ∅;
+  Semantics.program_effects := {[ 2 := CRead 10 (K 0%Z) (CReadUntracked 11 (K 1%Z) (CLog (V 11) Nop)) ]};
+|}.
+
+Example redundant_run_reads_untracked :
+  eng reads_untracked [[Semantics.RWrite 1 5%Z; Semantics.RWrite 0 1%Z; Semantics.RWrite 0 0%Z]] = Some [EvRun 2; EvLog 2 0%Z; EvRun 2; EvLog 2 5%Z] /\
+  rtrace reads_untracked [[Semantics.RWrite 1 5%Z; Semantics.RWrite 0 1%Z; Semantics.RWrite 0 0%Z]] = Some [EvRun 2; EvLog 2 0%Z].
+Proof. split; vm_compute; reflexivity. Qed.
+
+(** An effect reads a source, writes it and restores it. The reference settles after its first run, and the engine has no answer
+    at this fuel: each run marks the effect again. F#: scenario [effect_restored_source_reruns] runs the same body under a
+    budget. *)
+Definition restored_source : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z ]};
+  Semantics.program_memos := ∅;
+  Semantics.program_effects := {[ 1 := CRead 10 (K 0%Z) (CWrite (K 0%Z) (K 1%Z) (CWrite (K 0%Z) (K 0%Z) Nop)) ]};
+|}.
+
+Example restored_source_no_answer :
+  Refinement.engine_of current_flags 1000 restored_source [] = None /\ rtrace restored_source [] = Some [EvRun 1].
+Proof. split; vm_compute; reflexivity. Qed.
+
+(** A memo over a signal and an effect over the memo meet every premise of [weak_refinement_except], with a try-read and a
+    failure. *)
+Definition refinable_program : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z ]};
+  Semantics.program_memos := {[ 1 := CRead 10 (K 0%Z) (CIf (V 10) (CThrow 7%Z) (CRet (V 10))) ]};
+  Semantics.program_effects := {[ 2 := CTryRead 10 11 (K 1%Z) (CLog (V 11) Nop) ]};
+|}.
+
+(**md
+**The premises of the refinement are reachable.**
+
+*Check, not a guarantee.*
+
+`refinable_program` is well formed and refinable, under a history with a write, a host read and a disposal of its effect, and the engine's trace on it matches the reference at the full history.
+*)
+Theorem refinable_reached :
+  Semantics.well_formed_program refinable_program /\
+  Refinement.refinable refinable_program [[Semantics.RWrite 0 1%Z; Semantics.RRead 1; Semantics.RDispose 2]] /\
+  eng refinable_program [[Semantics.RWrite 0 1%Z; Semantics.RRead 1; Semantics.RDispose 2]] =
+    rtrace refinable_program [[Semantics.RWrite 0 1%Z; Semantics.RRead 1; Semantics.RDispose 2]].
+Proof.
+  split_and!.
+  - refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+    + rewrite !dom_singleton_L. set_solver.
+    + rewrite !dom_singleton_L. set_solver.
+    + rewrite !dom_singleton_L. set_solver.
+    + apply map_Forall_singleton. reflexivity.
+    + apply map_Forall_singleton. reflexivity.
+    + exists (fun n => n). apply map_Forall_singleton. intros rd o st t v Hx Hin Hm.
+      vm_compute in Hx. destruct (rd 0) as [[a|a]|]; vm_compute in Hx; repeat (case_match; vm_compute in Hx); simplify_eq;
+        apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try discriminate).
+      all: exfalso; revert Hm; vm_compute; intros [? K]; discriminate K.
+  - split_and!.
+    + intros m c Hc. simpl in Hc. apply lookup_singleton_Some in Hc as [<- <-]. cbn [Refinement.rename body_pureu].
+      split; [reflexivity|]. split.
+      * intros z Hz _ _. vm_compute in Hz. injection Hz as <-. vm_compute. lia.
+      * intros v. split; [reflexivity|]. intros z _. split; intros _; [reflexivity|exact I].
+    + intros n c Hc. simpl in Hc. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+    + intros b n Hb Hn. apply list_elem_of_singleton in Hb as ->. apply elem_of_cons in Hn as [Hn|Hn]; [done|].
+      apply elem_of_cons in Hn as [Hn|Hn]; [done|]. apply list_elem_of_singleton in Hn. injection Hn as ->. vm_compute. reflexivity.
+  - vm_compute. reflexivity.
 Qed.

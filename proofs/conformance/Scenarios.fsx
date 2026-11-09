@@ -1242,6 +1242,83 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check ((privateField e "freshness").ToString() = "Dirty") "the effect is not Dirty"
             c.Graph.Flush ()
             c.Check (e.Runs = 2) $"the flush leaves {e.Runs} runs"
+
+        // BUGS.md, disposed_unread_memo_value. Nothing has read the memo when it is disposed, and a later read answers the
+        // type's default.
+        "disposed_unread_memo_value",
+        fun c ->
+            let s = c.Signal 1 0
+            let m = c.Memo 2 (fun () -> s.Value)
+            let g = c.Signal 3 0
+
+            c.Effect 4 (fun () ->
+                if g.Value <> 0 then
+                    c.Log 4 m.Value)
+            |> ignore
+
+            s.Value <- 5
+            c.Dispose 2 (fun () -> m.Dispose ()) (box m)
+            g.Value <- 1
+            c.Check (m.Peek = 0) $"the disposed memo holds {m.Peek}"
+
+        // BUGS.md, write_then_dispose_memo_current_value. A batch writes the memo's source and disposes it unread. The memo
+        // keeps its value over the old signal, and its reader does not run.
+        "write_then_dispose_memo_current_value",
+        fun c ->
+            let s = c.Signal 1 0
+            let m = c.Memo 2 (fun () -> s.Value + 1)
+            let g = c.Signal 3 0
+
+            let e =
+                c.Effect 4 (fun () ->
+                    let x = m.Value
+                    g.Value |> ignore
+                    c.Log 4 x)
+
+            c.Batch (fun () ->
+                s.Value <- 5
+                c.Dispose 2 (fun () -> m.Dispose ()) (box m))
+
+            c.Check (m.Peek = 1) $"the disposed memo holds {m.Peek}"
+            c.Check (e.Runs = 1) $"the effect has {e.Runs} runs"
+            g.Value <- 1
+
+        // BUGS.md, redundant_run_reads_untracked. A restored signal reruns the effect, whose untracked read has moved. The
+        // tracked read did not move, so the reference does not run it.
+        "redundant_run_reads_untracked",
+        fun c ->
+            let s = c.Signal 1 0
+            let u = c.Signal 2 0
+
+            c.Effect 3 (fun () ->
+                s.Value |> ignore
+                c.Log 3 u.Peek)
+            |> ignore
+
+            c.Batch (fun () ->
+                u.Value <- 5
+                s.Value <- 1
+                s.Value <- 0)
+
+        // BUGS.md, effect_restored_source_reruns. An effect reads a source and restores it after a write, which marks the
+        // effect. It runs again on the value it read. A budget read untracked ends the runs here. With no budget, as in
+        // effect_restored_source_loop, they do not end.
+        "effect_restored_source_reruns",
+        fun c ->
+            let x = c.Signal 1 0
+            let b = c.Signal 2 3
+
+            let e =
+                c.Effect 3 (fun () ->
+                    c.Log 3 x.Value
+                    let left = b.Peek
+
+                    if left <> 0 then
+                        b.Value <- left - 1
+                        x.Value <- 1
+                        x.Value <- 0)
+
+            c.Check (e.Runs = 4) $"the effect has {e.Runs} runs"
     ]
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,

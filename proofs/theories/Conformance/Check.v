@@ -419,6 +419,34 @@ Example check_quiescent_read_answers_past_flush_by_cleanup :
   (r ← run_top 100000%nat read_past_flush_by_cleanup (init current_flags); r' ← read 1000%nat 5%nat true r.1; Some (g_trace r'.1 ++ [EvHostRead 5%nat r'.2])) = Some exp_quiescent_read_answers_past_flush_by_cleanup.
 Proof. vm_compute. reflexivity. Qed.
 
+Example check_disposed_unread_memo_value :
+  trace_of 100000 current_flags
+    (CSignal 1 (K 0) (CMemo 2 Pure CmpEq (R 10 (V 1) (CRet (V 10))) (CSignal 3 (K 0) (
+     CEffect 4 (R 10 (V 3) (CIf (EEq (V 10) (K 0)) Nop (R 11 (V 2) (L (V 11) Nop)))) (
+     W (V 1) (K 5) (CDispose (V 2) (W (V 3) (K 1) Nop))))))) = Some exp_disposed_unread_memo_value.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_write_then_dispose_memo_current_value :
+  trace_of 100000 current_flags
+    (CSignal 1 (K 0) (CMemo 2 Pure CmpEq (R 10 (V 1) (CRet (EAdd (V 10) (K 1)))) (CSignal 3 (K 0) (
+     CEffect 4 (R 10 (V 2) (R 11 (V 3) (L (V 10) Nop))) (
+     CBatch (W (V 1) (K 5) (CDispose (V 2) Nop)) (W (V 3) (K 1) Nop)))))) = Some exp_write_then_dispose_memo_current_value.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_redundant_run_reads_untracked :
+  trace_of 100000 current_flags
+    (CSignal 1 (K 0) (CSignal 2 (K 0) (
+     CEffect 3 (R 10 (V 1) (CReadUntracked 11 (V 2) (L (V 11) Nop))) (
+     CBatch (W (V 2) (K 5) (W (V 1) (K 1) (W (V 1) (K 0) Nop))) Nop)))) = Some exp_redundant_run_reads_untracked.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_effect_restored_source_reruns :
+  trace_of 100000 current_flags
+    (CSignal 1 (K 0) (CSignal 2 (K 3) (
+     CEffect 3 (R 10 (V 1) (L (V 10) (CReadUntracked 11 (V 2)
+       (CIf (V 11) (W (V 2) (ESub (V 11) (K 1)) (W (V 1) (K 1) (W (V 1) (K 0) Nop))) Nop)))) Nop))) = Some exp_effect_restored_source_reruns.
+Proof. vm_compute. reflexivity. Qed.
+
 (** The conformance programs with every memo outside the self-dirtying case and every effect only reading. *)
 Example conformance_programs_well_behaved :
   Forall (fun p => well_behaved_b (end_of p) = true /\ effects_only_read_b (end_of p) = true)
