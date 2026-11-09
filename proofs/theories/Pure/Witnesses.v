@@ -1558,6 +1558,99 @@ Proof.
     ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)).
 Qed.
 
+Local Definition branch (b : cmd) : cmd :=
+  CRead 10 (V 1) (CIf (ELt (V 10) (K 100%Z)) (CRet (V 10)) b).
+
+(** Memo [2] reads signal [1] and runs [b] at 100 or above. An effect reads the memo, and the signal is written to 5. *)
+Local Definition host (m : scope_mode) (c : comparer) (b : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (CMemo 2 m c (branch b) (
+  CEffect 3 (CRead 11 (V 2) (CLog (V 11) Nop)) (CWrite (V 1) (K 5%Z) Nop))).
+
+Definition dead_untracked : cmd := host Pure CmpEq (CReadUntracked 12 (V 1) (CRet (V 12))).
+Definition dead_prev : cmd := host Pure CmpEq (CRet EPrev).
+Definition dead_creation : cmd := host Owning CmpEq (CSignal 12 (K 0%Z) (CRet (K 0%Z))).
+
+(** A [CmpThrows] memo that runs once, read by an effect. *)
+Definition uncalled_comparer : cmd :=
+  CSignal 1 (K 0%Z) (CMemo 2 Pure (CmpThrows 7%Z) (CRead 10 (V 1) (CRet (V 10))) (
+  CEffect 3 (CTryRead 11 12 (V 2) (CLog (V 11) Nop)) Nop)).
+
+Local Definition dead_untracked_memo : node := default (signal_node 0%Z) (g_nodes (final dead_untracked) !! (2 : node_id)).
+
+(**md
+**An untracked read on a branch that never runs fails its premise, and the conclusion holds.**
+
+*Check, not a guarantee.*
+
+`memos_no_untracked` is checked over the whole body. On [`dead_untracked`](#dead_untracked) it is false, `den_all` answers `Ok 5`, and `converged_all` holds on the present engine.
+*)
+Theorem untracked_conservative :
+  ~ memos_no_untracked (final dead_untracked) /\ den_all 6 (final dead_untracked) 2 = Some (Ok 5%Z) /\ converged_all (final dead_untracked).
+Proof.
+  split_and!.
+  - intros H. pose proof (H 2 dead_untracked_memo ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+    vm_compute in Hb. discriminate Hb.
+  - vm_compute. reflexivity.
+  - apply (converged_all_of_b 6). vm_compute. reflexivity.
+Qed.
+
+Local Definition dead_prev_memo : node := default (signal_node 0%Z) (g_nodes (final dead_prev) !! (2 : node_id)).
+
+(**md
+**`EPrev` on a branch that never runs fails its premise, and the conclusion holds.**
+
+*Check, not a guarantee.*
+
+`memos_no_prev` is checked over the whole body. On [`dead_prev`](#dead_prev) it is false, `den_all` answers `Ok 5`, and `converged_all` holds on the present engine.
+*)
+Theorem prev_conservative :
+  ~ memos_no_prev (final dead_prev) /\ den_all 6 (final dead_prev) 2 = Some (Ok 5%Z) /\ converged_all (final dead_prev).
+Proof.
+  split_and!.
+  - intros H. pose proof (H 2 dead_prev_memo ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+    vm_compute in Hb. discriminate Hb.
+  - vm_compute. reflexivity.
+  - apply (converged_all_of_b 6). vm_compute. reflexivity.
+Qed.
+
+Local Definition dead_creation_memo : node := default (signal_node 0%Z) (g_nodes (final dead_creation) !! (2 : node_id)).
+
+(**md
+**A node created on a branch that never runs fails its premise, and the conclusion holds.**
+
+*Check, not a guarantee.*
+
+`memos_no_creation` is checked over the whole body. On [`dead_creation`](#dead_creation) it is false, `den_all` answers `Ok 5`, and `converged_all` holds on the present engine.
+*)
+Theorem creation_conservative :
+  ~ memos_no_creation (final dead_creation) /\ den_all 6 (final dead_creation) 2 = Some (Ok 5%Z) /\ converged_all (final dead_creation).
+Proof.
+  split_and!.
+  - intros H. pose proof (H 2 dead_creation_memo ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+    vm_compute in Hb. discriminate Hb.
+  - vm_compute. reflexivity.
+  - apply (converged_all_of_b 6). vm_compute. reflexivity.
+Qed.
+
+Local Definition uncalled_comparer_memo : node := default (signal_node 0%Z) (g_nodes (final uncalled_comparer) !! (2 : node_id)).
+
+(**md
+**A throwing comparer that is never called fails its premise, and the conclusion holds.**
+
+*Check, not a guarantee.*
+
+`memos_no_throwing_comparer` is checked on the comparer, whether or not it fires. On [`uncalled_comparer`](#uncalled_comparer) it is false, `den_all` answers `Ok 0`, and `converged_all` holds on the present engine.
+*)
+Theorem comparer_conservative :
+  ~ memos_no_throwing_comparer (final uncalled_comparer) /\ den_all 6 (final uncalled_comparer) 2 = Some (Ok 0%Z) /\ converged_all (final uncalled_comparer).
+Proof.
+  split_and!.
+  - intros H. pose proof (H 2 uncalled_comparer_memo ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+    apply (Hb 7%Z). vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - apply (converged_all_of_b 6). vm_compute. reflexivity.
+Qed.
+
 (** The forms outside the premises of [convergence] with no entry of their own: a disposal in an effect, and a disposal or
     [EPrev] in a memo. *)
 Definition memo_disposes : cmd :=
