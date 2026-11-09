@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph.
 From Ranvier.Conformance Require Check.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -199,3 +199,15 @@ Print Assumptions queued_effect_disposed_skipped.
 Print Assumptions late_cleanup_failure_recorded.
 Print Assumptions memo_scope_violation_returns.
 Print Assumptions memo_comparer_replaces_failure.
+Print Assumptions well_behaved_nothing_passed.
+Print Assumptions well_behaved_no_lost_wakeups.
+Print Assumptions glitch_free_read_stored.
+Print Assumptions convergence.
+Print Assumptions glitch_free_read.
+Print Assumptions glitch_free_read_falsified.
+Print Assumptions witness_302.
+Print Assumptions witness_290.
+Print Assumptions wake_predicates_miss_self_marking.
+Print Assumptions convergence_reached.
+Print Assumptions effects_only_read_needed.
+Print Assumptions cmp_never_passes_source.

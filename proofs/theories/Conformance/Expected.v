@@ -191,6 +191,10 @@ Definition exp_flush_comparer : list event := [
   EvRun 3; EvLog 3 1%Z
 ].
 
+Definition exp_cmp_never_passes_source : list event := [
+  EvRun 9; EvLog 9 1%Z; EvHostRead 5 (Ok 1%Z)
+].
+
 Definition exp_failed_batch : list event := [
   EvRun 2; EvLog 2 0%Z; EvRun 2; EvLog 2 1%Z
 ].

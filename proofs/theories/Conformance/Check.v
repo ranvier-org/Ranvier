@@ -1,7 +1,7 @@
 From stdpp Require Import prelude.
 From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Runs Witnesses Scheduler Ownership.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Runs Witnesses Scheduler Ownership WholeGraph.
 From Ranvier.Conformance Require Import Expected.
 
 Open Scope Z_scope.
@@ -27,25 +27,6 @@ Definition prog_S02 : cmd :=
   CMemo 2 Pure CmpEq (R 10 (V 1) (L (V 10) (CRet (ELt (V 10) (K 10))))) (
   CEffect 3 (R 10 (V 2) (L (V 10) Nop)) (
   W (V 1) (K 1) (W (V 1) (K 20) (W (V 1) (K 30) Nop))))).
-
-Local Definition s03_batch (i : val) : cmd :=
-  W (V 2) (K i) (W (V 3) (K i) (W (V 1) (K i) Nop)).
-
-Definition prog_S03 : cmd :=
-  CSignal 1 (K 0) (CSignal 2 (K 0) (CSignal 3 (K 0) (
-  CMemo 4 Pure CmpEq (R 10 (V 1) (CRet (V 10))) (
-  CMemo 5 Pure CmpEq (R 10 (V 3) (R 11 (V 4) (CRet (V 11)))) (
-  CMemo 6 Pure CmpEq
-    (R 10 (V 2) (R 11 (V 5) (R 12 (V 4) (L (V 12) (CRet (EDiv (V 12) (K 2))))))) (
-  CEffect 7 (R 10 (V 6) (L (V 10) Nop)) (
-  CBatch (s03_batch 1) (CBatch (s03_batch 2) (CBatch (s03_batch 3) (CBatch (s03_batch 4) Nop)))))))))).
-
-Definition prog_S04 : cmd :=
-  CSignal 1 (K 0) (CSignal 2 (K 0) (
-  CMemo 3 Pure CmpEq
-    (R 10 (V 1) (CIf (ELt (V 10) (K 3)) (W (V 1) (EAdd (V 10) (K 1)) (CRet (V 10))) (CRet (V 10)))) (
-  CEffect 4 (R 10 (V 2) (CIf (V 10) (R 11 (V 3) (L (V 11) Nop)) (L (K (-1)) Nop))) (
-  W (V 2) (K 1) (R 20 (V 1) Nop))))).
 
 Definition prog_S05 : cmd :=
   CSignal 1 (K 1) (CSignal 2 (K 10) (CSignal 3 (K 20) (
@@ -403,3 +384,15 @@ Example check_failed_batch :
   (r ← run_top 100000%nat failed_batch (init current_flags); r' ← run_flush 1000%nat r.1; Some (g_trace r'.1)) =
   Some exp_failed_batch.
 Proof. vm_compute. reflexivity. Qed.
+
+(** ** The whole graph *)
+
+Example check_cmp_never_passes_source :
+  trace_of 100000%nat current_flags (cmp_never_source (CRead 20 (V 5) Nop)) = Some exp_cmp_never_passes_source.
+Proof. vm_compute. reflexivity. Qed.
+
+(** The conformance programs with every memo outside the self-dirtying case and every effect only reading. *)
+Example conformance_programs_well_behaved :
+  Forall (fun p => well_behaved_b (end_of p) = true /\ effects_only_read_b (end_of p) = true)
+    [prog_S01; prog_S02; prog_S03; prog_S05; prog_S07; prog_S09a; prog_S15].
+Proof. repeat apply Forall_cons_2; try apply Forall_nil_2; split; vm_compute; reflexivity. Qed.

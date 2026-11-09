@@ -2,7 +2,7 @@ From stdpp Require Import prelude.
 From stdpp Require Import gmap.
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Base Require Syntax.
-From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Check Runs.
+From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Check Runs WholeGraph.
 
 (** ** Walks *)
 
@@ -874,3 +874,331 @@ Example failed_batch_leaves_queue :
   pending s = [2] /\ g_flush_owed s = false /\ n_runs <$> g_nodes s !! 2 = Some 1 /\
   (r ← run_flush 1000 s; Some (g_trace r.1)) = Some (g_trace s ++ [EvRun 2; EvLog 2 1%Z]).
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
+
+(** ** The whole graph *)
+
+Local Lemma pure_b s n : pure_at (shapes s) (Datatypes.S n) n = true -> ~ self_dirtying s n.
+Proof. intros H K. exact (K H). Qed.
+
+Local Lemma dirtying_b s n : pure_at (shapes s) (Datatypes.S n) n = false -> self_dirtying s n.
+Proof. intros H K. unfold pure_in in K. congruence. Qed.
+
+Local Lemma not_well_behaved s n d :
+  g_nodes s !! n = Some d -> n_kind d = KMemo -> self_dirtying s n -> ~ well_behaved_program s.
+Proof. intros Hd Hk H K. exact (H (K n d Hd Hk)). Qed.
+
+(** Every effect of the state has id [e]. *)
+Local Definition sole_effect (s : state) (e : node_id) : bool :=
+  forallb (fun x : node_id * node =>
+    match n_kind x.2 with KEffect => bool_decide (x.1 = e) | _ => true end) (map_to_list (g_nodes s)).
+
+Local Lemma sole_effect_is s e c d :
+  sole_effect s e = true -> g_nodes s !! c = Some d -> n_kind d = KEffect -> c = e.
+Proof.
+  intros H Hd Hk. unfold sole_effect in H. rewrite forallb_forall in H.
+  assert (Hin : In (c, d) (map_to_list (g_nodes s))) by (apply list_elem_of_In; apply elem_of_map_to_list; exact Hd).
+  specialize (H _ Hin). simpl in H. rewrite Hk in H. by apply bool_decide_eq_true in H.
+Qed.
+
+Local Lemma effect_missed_write s (e t : node_id) (l : val) (o : outcome) :
+  sole_effect s e = true -> (slot_view (g_edges s) e).1 = [t] -> last_log e (g_trace s) = Some l ->
+  denotes s t o -> o <> Ok l -> ~ effect_ran_for_last_write s.
+Proof.
+  intros Hs Hv Hl Ho Hne (c&d&t'&v&Hd&Hk&Ht&Hden&Hlog).
+  pose proof (sole_effect_is s e c d Hs Hd Hk) as ->.
+  rewrite Hv in Ht. apply list_elem_of_singleton in Ht as ->.
+  rewrite Hl in Hlog. injection Hlog as <-.
+  apply Hne. exact (denotes_unique s t o (Ok l) Ho Hden).
+Qed.
+
+(** Issue 302's program, from conformance scenario S03: three memos in a diamond with a logging memo, written in
+    four batches. *)
+Definition s03_batch (i : val) : cmd :=
+  CWrite (V 2) (K i) (CWrite (V 3) (K i) (CWrite (V 1) (K i) Nop)).
+
+Definition prog_S03 : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (CSignal 3 (K 0%Z) (
+  CMemo 4 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 5 Pure CmpEq (CRead 10 (V 3) (CRead 11 (V 4) (CRet (V 11)))) (
+  CMemo 6 Pure CmpEq
+    (CRead 10 (V 2) (CRead 11 (V 5) (CRead 12 (V 4) (CLog (V 12) (CRet (EDiv (V 12) (K 2%Z))))))) (
+  CEffect 7 (CRead 10 (V 6) (CLog (V 10) Nop)) (
+  CBatch (s03_batch 1%Z) (CBatch (s03_batch 2%Z) (CBatch (s03_batch 3%Z) (CBatch (s03_batch 4%Z) Nop)))))))))).
+
+(** Issue 290's program, from conformance scenario S04: a memo writes its own source, and a later write brings an
+    effect to read it. *)
+Definition prog_S04 : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq
+    (CRead 10 (V 1) (CIf (ELt (V 10) (K 3%Z)) (CWrite (V 1) (EAdd (V 10) (K 1%Z)) (CRet (V 10))) (CRet (V 10)))) (
+  CEffect 4 (CRead 10 (V 2) (CIf (V 10) (CRead 11 (V 3) (CLog (V 11) Nop)) (CLog (K (-1)%Z) Nop))) (
+  CWrite (V 2) (K 1%Z) (CRead 20 (V 1) Nop))))).
+
+(**md
+**Regression witness for #302: without the announcement flag, the effect is left behind.**
+
+*Check, not a guarantee.*
+
+`prog_S03` ends in a state where `wake_ok` fails with `f_unannounced` cleared and holds on the present engine, and only the present engine's effect logged what its source now denotes. Without the flag the effect logged 0 and is `Clean` over a `Dirty` memo, whose body answers 2. Every premise of [`well_behaved_nothing_passed`](Ranvier.Pure.WholeGraph.html#well_behaved_nothing_passed) holds on the state, and its conclusion fails: that theorem needs the flag.
+*)
+Theorem witness_302 :
+  exists s_bad s_good r_bad r_good,
+    run_top 100000 prog_S03 (init no_unannounced) = Some (s_bad, r_bad) /\
+    run_top 100000 prog_S03 (init current_flags) = Some (s_good, r_good) /\
+    ~ wake_ok s_bad /\ wake_ok s_good /\ effect_ran_for_last_write s_good /\ ~ effect_ran_for_last_write s_bad /\
+    well_behaved_program s_bad /\ effects_only_read s_bad /\ ~ nothing_passed s_bad.
+Proof.
+  exists (final_with no_unannounced prog_S03), (final_with current_flags prog_S03), (Ok 0%Z), (Ok 0%Z).
+  set (s_bad := final_with no_unannounced prog_S03). set (s_good := final_with current_flags prog_S03).
+  split_and!.
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - set (e := default (signal_node 0%Z) (g_nodes s_bad !! (6 : node_id))).
+    set (c := default (signal_node 0%Z) (g_nodes s_bad !! (7 : node_id))).
+    assert (He : g_nodes s_bad !! (6 : node_id) = Some e) by (vm_compute; reflexivity).
+    assert (Hc : g_nodes s_bad !! (7 : node_id) = Some c) by (vm_compute; reflexivity).
+    intros H. refine (not_covered s_bad 6 7 c e Hc _ _ _ He _ (H 6 7 _ _ _)).
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + exists 0, 0. split; vm_compute; reflexivity.
+    + exists e. split; [exact He|vm_compute; reflexivity].
+    + exists e. split; [exact He|vm_compute; reflexivity].
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+  - assert (Hd : g_nodes s_good !! (7 : node_id) = Some (default (signal_node 0%Z) (g_nodes s_good !! (7 : node_id)))) by (vm_compute; reflexivity).
+    exists 7, (default (signal_node 0%Z) (g_nodes s_good !! (7 : node_id))), 6, 2%Z. split_and!; [exact Hd|vm_compute; reflexivity| |exists 7; vm_compute; reflexivity|vm_compute; reflexivity].
+    apply list_elem_of_In. vm_compute. left. reflexivity.
+  - apply (effect_missed_write s_bad 7 6 0%Z (Ok 2%Z)).
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + vm_compute. reflexivity.
+    + exists 7. vm_compute. reflexivity.
+    + discriminate.
+  - apply well_behaved_of_b. vm_compute. reflexivity.
+  - apply effects_only_read_of_b. vm_compute. reflexivity.
+  - intros H. assert (Hin : bool_decide ((7 : node_id) ∈ gh_passed (g_ghost s_bad)) = true) by (vm_compute; reflexivity).
+    apply in_of_bool in Hin. unfold nothing_passed in H. rewrite H in Hin. exact (not_elem_of_empty _ Hin).
+Qed.
+
+(**md
+**Regression witness for #290: without `MarkReaderCheck`, a reader of a stale memo goes untold.**
+
+*Check, not a guarantee.*
+
+`prog_S04` ends in a state where `wake_told` fails with `f_reader_mark` cleared and holds on the present engine. `wake_ok` holds on both: the stale memo holds its flag. This witness has no `effect_ran_for_last_write` clause: a memo that writes its own source denotes nothing.
+*)
+Theorem witness_290 :
+  exists s_bad s_good r_bad r_good,
+    run_top 100000 prog_S04 (init no_reader_mark) = Some (s_bad, r_bad) /\
+    run_top 100000 prog_S04 (init current_flags) = Some (s_good, r_good) /\
+    ~ wake_told s_bad /\ wake_told s_good /\ wake_ok s_bad /\ wake_ok s_good.
+Proof.
+  exists (final_with no_reader_mark prog_S04), (final_with current_flags prog_S04), (Ok 0%Z), (Ok 0%Z).
+  set (s_bad := final_with no_reader_mark prog_S04). set (s_good := final_with current_flags prog_S04).
+  split_and!.
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - set (e := default (signal_node 0%Z) (g_nodes s_bad !! (3 : node_id))).
+    set (c := default (signal_node 0%Z) (g_nodes s_bad !! (4 : node_id))).
+    assert (He : g_nodes s_bad !! (3 : node_id) = Some e) by (vm_compute; reflexivity).
+    assert (Hc : g_nodes s_bad !! (4 : node_id) = Some c) by (vm_compute; reflexivity).
+    assert (Hcs : stale (n_freshness c) = false) by (vm_compute; reflexivity).
+    assert (Hcq : n_queued c = false) by (vm_compute; reflexivity).
+    clearbody c.
+    intros H. destruct (H 3 4) as [[(d&Hd&Hs)|(d&Hd&Hq)]|[Hr|Ho]].
+    + exists 1, 0. split; vm_compute; reflexivity.
+    + exists e. split; [exact He|vm_compute; reflexivity].
+    + exists e. split; [exact He|vm_compute; reflexivity].
+    + rewrite Hc in Hd. injection Hd as <-. congruence.
+    + rewrite Hc in Hd. injection Hd as <-. congruence.
+    + vm_compute in Hr. exact Hr.
+    + apply bool_of_in in Ho. vm_compute in Ho. discriminate Ho.
+  - refine (no_wake_lost_unless_resolved 100000 prog_S04 (init current_flags) s_good _ engine_settled_init _).
+    vm_compute. reflexivity.
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+Qed.
+
+(**md
+**`wake_ok` and `wake_told` both hold on the states `self_marking_wake_lost` leaves behind.**
+
+*Check, not a guarantee.*
+
+On [`self_marking_cleanup`](#self_marking_cleanup) and [`self_marking_through_memo`](#self_marking_through_memo) a reader is `Clean` and left behind a source whose next run moves, and both predicates hold. Neither detects this Confirmed bug. Both programs fall outside `well_behaved_program`, so [`convergence`](Ranvier.Pure.WholeGraph.html#convergence) does not reach them.
+*)
+Theorem wake_predicates_miss_self_marking :
+  let s1 := final (self_marking_cleanup Nop) in
+  let s2 := final (self_marking_through_memo Nop) in
+  left_behind s1 5 6 /\ wake_ok s1 /\ wake_told s1 /\ ~ well_behaved_program s1 /\
+  left_behind s2 2 3 /\ wake_ok s2 /\ wake_told s2 /\ ~ well_behaved_program s2.
+Proof.
+  intros s1 s2. destruct self_marking_cleanup_left_behind as [H1 _]. destruct self_marking_through_memo_left_behind as [H2 _].
+  split_and!.
+  - exact H1.
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+  - refine (no_wake_lost_unless_resolved 100000 (self_marking_cleanup Nop) (init current_flags) s1 _ engine_settled_init _).
+    vm_compute. reflexivity.
+  - apply (not_well_behaved s1 4 (default (signal_node 0%Z) (g_nodes s1 !! (4 : node_id)))); [vm_compute; reflexivity|vm_compute; reflexivity|].
+    apply dirtying_b. vm_compute. reflexivity.
+  - exact H2.
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+  - refine (no_wake_lost_unless_resolved 100000 (self_marking_through_memo Nop) (init current_flags) s2 _ engine_settled_init _).
+    vm_compute. reflexivity.
+  - apply (not_well_behaved s2 2 (default (signal_node 0%Z) (g_nodes s2 !! (2 : node_id)))); [vm_compute; reflexivity|vm_compute; reflexivity|].
+    apply dirtying_b. vm_compute. reflexivity.
+Qed.
+
+(** [self_dirtying] holds on each memo the Confirmed self-marking and self-reading bugs leave wrong: the memo that
+    writes its source, its reader, and each memo of a cycle. *)
+Example self_dirtying_covers_known_cases :
+  self_dirtying (final (nested_self_run Nop)) 4 /\
+  n_freshness <$> g_nodes (final (nested_self_run Nop)) !! (4 : node_id) = Some Clean /\
+  self_dirtying (final (self_marking_through_memo Nop)) 2 /\
+  self_dirtying (final (self_marking_through_memo Nop)) 3 /\
+  n_freshness <$> g_nodes (final (self_marking_through_memo Nop)) !! (3 : node_id) = Some Clean /\
+  self_dirtying (final (self_read_check Nop)) 3 /\
+  self_dirtying (final (mutual_read_check Nop)) 3 /\ self_dirtying (final (mutual_read_check Nop)) 4 /\
+  ~ self_dirtying (final (self_read_check Nop)) 2.
+Proof.
+  split_and!; try (apply dirtying_b; vm_compute; reflexivity); try (vm_compute; reflexivity).
+  apply pure_b. vm_compute. reflexivity.
+Qed.
+
+(** A live effect over a diamond of live memos. *)
+Definition live_diamond (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (EAdd (V 10) (K 1%Z)))) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (EMul (V 10) (K 2%Z)))) (
+  CMemo 4 Pure CmpEq (CRead 10 (V 2) (CRead 11 (V 3) (CRet (EAdd (V 10) (V 11))))) (
+  CEffect 5 (CRead 10 (V 4) (CLog (V 10) Nop)) (
+  CWrite (V 1) (K 1%Z) (CBatch (CWrite (V 1) (K 2%Z) (CWrite (V 1) (K 3%Z) Nop)) k)))))).
+
+(**md
+**The premises of `convergence` hold on a live effect over live memos, and the theorem answers the latest value.**
+
+*Check, not a guarantee.*
+
+[`live_diamond`](#live_diamond) reaches every premise of [`convergence`](Ranvier.Pure.WholeGraph.html#convergence) and [`well_behaved_nothing_passed`](Ranvier.Pure.WholeGraph.html#well_behaved_nothing_passed). The effect read the memo at 10, the value its body answers over the signal at 3.
+*)
+Theorem convergence_reached :
+  let s := final (live_diamond Nop) in
+  run_top 100000 (live_diamond Nop) (init current_flags) = Some (s, Ok 0%Z) /\
+  well_behaved_program s /\ effects_only_read s /\ quiescent s /\
+  (exists d, g_nodes s !! (5 : node_id) = Some d /\ n_kind d = KEffect /\ n_disposed d = false) /\
+  (exists d, g_nodes s !! (4 : node_id) = Some d /\ n_kind d = KMemo /\ n_disposed d = false) /\
+  read_prefix (g_edges s) 5 = [4] /\ denotes s 4 (Ok 10%Z) /\
+  forall v, v ∈ seen_of (g_ghost s) 5 4 -> view_answer v = Ok 10%Z.
+Proof.
+  intros s.
+  assert (Hm : run_top 100000 (live_diamond Nop) (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
+  assert (Ha : well_behaved_program s) by (apply well_behaved_of_b; vm_compute; reflexivity).
+  assert (He : effects_only_read s) by (apply effects_only_read_of_b; vm_compute; reflexivity).
+  assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
+  set (e := default (signal_node 0%Z) (g_nodes s !! (5 : node_id))).
+  assert (Hd5 : g_nodes s !! (5 : node_id) = Some e) by (vm_compute; reflexivity).
+  assert (Hk5 : n_kind e = KEffect) by (vm_compute; reflexivity).
+  assert (Hl5 : n_disposed e = false) by (vm_compute; reflexivity).
+  assert (Hpre : read_prefix (g_edges s) 5 = [4]) by (vm_compute; reflexivity).
+  assert (Hin : (4 : node_id) ∈ read_prefix (g_edges s) 5) by (rewrite Hpre; apply list_elem_of_singleton; reflexivity).
+  assert (Hden : denotes s 4 (Ok 10%Z)) by (exists 5; vm_compute; reflexivity).
+  split_and!; try assumption.
+  - exists e. split_and!; assumption.
+  - exists (default (signal_node 0%Z) (g_nodes s !! (4 : node_id))). split_and!; vm_compute; reflexivity.
+  - intros v Hv. destruct (convergence 100000 _ s _ Hm Ha He Hq 5 e 4 Hd5 Hk5 Hl5 Hin) as (_&_&Hall).
+    exact (denotes_unique s 4 _ _ (Hall v Hv) Hden).
+Qed.
+
+(**md
+**`effect_resolves_over_moved_source` breaks the conclusion of `convergence`, and `effects_only_read` is what excludes it.**
+
+*Check, not a guarantee.*
+
+On [`effect_over_moved`](#effect_over_moved) the program is well behaved and quiescent, and the effect's last run read 0 from a memo that denotes 1. `effects_only_read` fails on the effect that writes. Dropping the premise from `convergence` makes it false. The premise is provisional, pending the owner's ruling on the bug.
+*)
+Theorem effects_only_read_needed :
+  let s := final (effect_over_moved Nop) in
+  well_behaved_program s /\ quiescent s /\ ~ effects_only_read s /\
+  (2 : node_id) ∈ read_prefix (g_edges s) 4 /\
+  exists v, v ∈ seen_of (g_ghost s) 4 2 /\ ~ denotes s 2 (view_answer v).
+Proof.
+  intros s.
+  set (e := default (signal_node 0%Z) (g_nodes s !! (4 : node_id))).
+  assert (Hd : g_nodes s !! (4 : node_id) = Some e) by (vm_compute; reflexivity).
+  assert (Hk : n_kind e = KEffect) by (vm_compute; reflexivity).
+  split_and!.
+  - apply well_behaved_of_b. vm_compute. reflexivity.
+  - split; vm_compute; reflexivity.
+  - intros H. destruct (H 4 e Hd Hk) as [_ Hb]. vm_compute in Hb. discriminate Hb.
+  - apply list_elem_of_In. vm_compute. left. reflexivity.
+  - exists (0%Z, StNone, None). split.
+    + apply list_elem_of_In. vm_compute. left. reflexivity.
+    + intros Hx. assert (Hy : denotes s 2 (Ok 1%Z)) by (exists 3; vm_compute; reflexivity).
+      pose proof (denotes_unique s 2 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz.
+Qed.
+
+(**md
+**Falsified on the present engine: a read of a disposed memo answers what it stored, not what its body computes.**
+
+This is a counterexample, not a guarantee. It proves `glitch_free_read_statement` false, on [`disposed_stale_source_read`](#disposed_stale_source_read): the memo is disposed at 0 over a signal at 1, and its body answers 1. Core.fs 4372-4376 documents this answer.
+*)
+Theorem glitch_free_read_falsified : ~ glitch_free_read_statement.
+Proof.
+  intros H.
+  set (s := final (disposed_stale_read Nop)).
+  assert (Hm : run_top 100000 (disposed_stale_read Nop) (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
+  assert (Hr : read 1000 2 true s = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
+  destruct (H 100000 1000 _ s _ 2 s _ Hm (pure_b s 2 ltac:(vm_compute; reflexivity)) Hr) as [k Hk].
+  destruct k as [|[|k]]; vm_compute in Hk; discriminate Hk.
+Qed.
+
+(** A write queues effect [9]. Its walk runs memo [5], and memo [4]'s run inside it reads memo [3], whose move leaves
+    memo [4] stale. The walk reaches memo [8], whose chain runs memo [4] again. Under [CmpNever] that run counts as a move,
+    and marks memo [5] [Dirty] with no announcement. The effect ends [Clean]. Confirmed in [BUGS.md]. *)
+Definition cmp_never_source (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpNever (CRead 10 (V 2) Nop) (
+  CMemo 4 Pure CmpNever (CRead 10 (V 1) (CIf (V 10) (CRead 11 (V 3) Nop) (CRead 11 (V 2) Nop))) (
+  CMemo 5 Pure CmpEq (CRead 10 (V 1) (CRead 11 (V 4) (CRet (ELt (V 10) (K 100%Z))))) (
+  CMemo 6 Pure CmpEq (CRead 10 (V 4) Nop) (
+  CMemo 7 Pure CmpEq (CRead 10 (V 6) Nop) (
+  CMemo 8 Pure CmpEq (CRead 10 (V 7) Nop) (
+  CEffect 9 (CRead 10 (V 5) (CRead 11 (V 8) (CLog (V 10) Nop))) (
+  CWrite (V 1) (K 2%Z) k))))))))).
+
+(**md
+**A `CmpNever` comparer takes a program with no self-marking to a walk that passes a source.**
+
+*Check, not a guarantee.*
+
+No memo body writes, and every comparer other than `CmpNever` is `CmpEq`, yet the effect ends in `gh_passed`, `Clean` over a live `Dirty` memo with no announcement, and `wake_ok` fails. So [`well_behaved_nothing_passed`](Ranvier.Pure.WholeGraph.html#well_behaved_nothing_passed) needs its exclusion of `CmpNever`: `well_behaved_program` fails here on memo 3.
+*)
+Theorem cmp_never_passes_source :
+  let s := final (cmp_never_source Nop) in
+  edge s 5 9 /\ stale_of s 5 /\ live_of s 5 /\ ~ observer_covered s 5 9 /\
+  (9 : node_id) ∈ gh_passed (g_ghost s) /\ ~ nothing_passed s /\ ~ wake_ok s /\ ~ well_behaved_program s /\
+  pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt) /\
+  g_trace s = [EvRun 9; EvLog 9 1%Z].
+Proof.
+  intros s.
+  set (e := default (signal_node 0%Z) (g_nodes s !! (5 : node_id))).
+  set (c := default (signal_node 0%Z) (g_nodes s !! (9 : node_id))).
+  assert (He : g_nodes s !! (5 : node_id) = Some e) by (vm_compute; reflexivity).
+  assert (Hc : g_nodes s !! (9 : node_id) = Some c) by (vm_compute; reflexivity).
+  assert (Hedge : edge s 5 9) by (exists 0, 0; split; vm_compute; reflexivity).
+  assert (Hst : stale_of s 5) by (exists e; split; [exact He|vm_compute; reflexivity]).
+  assert (Hl : live_of s 5) by (exists e; split; [exact He|vm_compute; reflexivity]).
+  assert (Hn : ~ observer_covered s 5 9).
+  { apply (not_covered s 5 9 c e); [exact Hc|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity|exact He|vm_compute; reflexivity]. }
+  assert (Hp : (9 : node_id) ∈ gh_passed (g_ghost s)) by (apply in_of_bool; vm_compute; reflexivity).
+  split_and!; try assumption.
+  - intros H. unfold nothing_passed in H. rewrite H in Hp. exact (not_elem_of_empty _ Hp).
+  - intros H. exact (Hn (H 5 9 Hedge Hst Hl)).
+  - apply (not_well_behaved s 3 (default (signal_node 0%Z) (g_nodes s !! (3 : node_id)))); [vm_compute; reflexivity|vm_compute; reflexivity|].
+    apply dirtying_b. vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+Qed.

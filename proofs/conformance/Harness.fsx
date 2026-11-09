@@ -107,8 +107,8 @@ type Ctx() =
     member this.OwningMemo (label: int) (body: unit -> int) : Memo<int> =
         this.Labelled label (Memo<int>(g, Func<int voption, int>(fun _ -> this.Guarded body), true))
 
-    /// `CMemo` with a pure scope and `CmpThrows f`: a memo whose comparer raises `f` each time it is consulted.
-    member this.MemoThrowingComparer (label: int) (f: int) (body: unit -> int) : Memo<int> =
+    /// `CMemo` with a pure scope and the given comparer.
+    member private this.MemoWithComparer (label: int) (comparer: IEqualityComparer<int>) (body: unit -> int) : Memo<int> =
         let create =
             typeof<Memo<int>>
                 .GetMethod(
@@ -121,6 +121,12 @@ type Ctx() =
         let scopeMode =
             Enum.Parse (typeof<Graph>.Assembly.GetType "Ranvier.ScopeMode", "Pure")
 
+        let guarded: int voption -> int = fun _ -> this.Guarded body
+
+        this.Labelled label (create.Invoke (null, [| box g; box guarded; scopeMode; box comparer |]) :?> Memo<int>)
+
+    /// `CMemo` with a pure scope and `CmpThrows f`: a memo whose comparer raises `f` each time it is consulted.
+    member this.MemoThrowingComparer (label: int) (f: int) (body: unit -> int) : Memo<int> =
         let comparer =
             { new IEqualityComparer<int> with
                 member _.Equals(_, _) =
@@ -129,9 +135,17 @@ type Ctx() =
                 member _.GetHashCode v = v
             }
 
-        let guarded: int voption -> int = fun _ -> this.Guarded body
+        this.MemoWithComparer label comparer body
 
-        this.Labelled label (create.Invoke (null, [| box g; box guarded; scopeMode; box comparer |]) :?> Memo<int>)
+    /// `CMemo` with a pure scope and `CmpNever`: a memo whose every run counts as a move.
+    member this.MemoNeverEqual (label: int) (body: unit -> int) : Memo<int> =
+        let comparer =
+            { new IEqualityComparer<int> with
+                member _.Equals(_, _) = false
+                member _.GetHashCode v = v
+            }
+
+        this.MemoWithComparer label comparer body
 
     member this.Effect (label: int) (body: unit -> unit) : Effect =
         let run () =

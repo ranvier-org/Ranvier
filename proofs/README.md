@@ -64,6 +64,7 @@ copy, so it needs no Rocq.
 - `theories/Pure/ObserverSet.v`: `ObserverSet`, and the backward re-clamped walk.
 - `theories/Pure/SourceList.v`: `SourceList` over both ends of every edge, and the edge invariants.
 - `theories/Pure/Witnesses.v`: checked counterexamples and behaviour witnesses.
+- `theories/Pure/WholeGraph.v`: the behaviour of a whole program: `gh_passed`, reads and convergence, over the fragment of well-behaved programs.
 - `theories/Pure/State.v`: the graph state, and `edge`.
 - `theories/Pure/Edges.v`: edge coherence over the source-list operations.
 - `theories/Pure/Marking.v`: freshness marks and the walks that spread them.
@@ -239,6 +240,18 @@ copy, so it needs no Rocq.
 | `stale_link_detach_noop` | `Pure/Ownership.v` | `unlink` of a link from an earlier generation returns the state it was given, which pins the model's check and no reachable behaviour. `stale_link_reached` reaches it. |
 | `teardown_runs_in_reverse`, `late_registrations_run_at_once` | `Pure/Ownership.v` | The two orders on a program, against the F# scenarios of the same programs. |
 | `failed_batch_leaves_queue` | `Pure/Witnesses.v` | A batch whose body fails leaves its effect queued and `Dirty` with no flush owed. Awaiting ruling in `BUGS.md`. |
+| `well_behaved_nothing_passed`, `well_behaved_no_lost_wakeups` | `Pure/WholeGraph.v` | A program from a new graph with every memo outside the self-dirtying case and every effect only reading ends with `gh_passed` empty and `wake_ok`. |
+| `glitch_free_read_stored` | `Pure/WholeGraph.v` | In such a program, a read of a node outside the self-dirtying case answers what it denotes over the current signals, and a disposed memo what it stored. |
+| `glitch_free_read` | `Pure/WholeGraph.v` | **Open.** The same over the node's own premise alone, with a disposed memo answering its body. False: `glitch_free_read_falsified`. |
+| `convergence` | `Pure/WholeGraph.v` | In such a program at quiescence, each live effect is `Clean`, and each source of its last run has a recorded read answering what the source denotes. |
+| `witness_302`, `witness_290` | `Pure/Witnesses.v` | The regressions: with `f_unannounced` off `wake_ok` fails, and with `f_reader_mark` off `wake_told` fails, on the programs of scenarios S03 and S04. |
+| `wake_predicates_miss_self_marking` | `Pure/Witnesses.v` | `wake_ok` and `wake_told` both hold on the states `self_marking_wake_lost` leaves behind. |
+| `self_dirtying_covers_known_cases` | `Pure/Witnesses.v` | `self_dirtying` holds on the memos of the Confirmed self-marking and self-reading bugs. |
+| `convergence_reached` | `Pure/Witnesses.v` | A live effect over live memos reaches every premise of `convergence`. |
+| `conformance_programs_well_behaved` | `Conformance/Check.v` | Seven conformance programs satisfy both premises. |
+| `effects_only_read_needed` | `Pure/Witnesses.v` | `effect_resolves_over_moved_source` falsifies the conclusion of `convergence`, and fails `effects_only_read`. |
+| `glitch_free_read_falsified` | `Pure/Witnesses.v` | A read of a disposed memo answers what it stored, and its body answers otherwise. |
+| `cmp_never_passes_source` | `Pure/Witnesses.v` | With `CmpNever` memos and no write in a body, a walk passes a source and `wake_ok` fails. Confirmed in `BUGS.md`. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` falls to `wake_ok` and `marks_survive_body_end`, and removing `MarkReaderCheck` to `wake_told`: `unannounced_off_fires`, `reader_mark_off_fires`. `wake_ok` holds with `MarkReaderCheck` removed, since the source holds its flag.
 

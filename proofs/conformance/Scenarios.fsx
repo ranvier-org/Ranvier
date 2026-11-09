@@ -938,6 +938,63 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (statusOf e = "Error") $"the reader holds the failure: {statusOf e}"
             c.Check (c.QueueLength = 0) $"the queue holds {c.QueueLength}"
 
+        // BUGS.md, cmp_never_passes_source. No body writes. The walk of the effect passes `a`, and the runs of the memos
+        // behind `b` count as moves and mark `a` `Dirty`. The effect ends clean over `a`, with no announcement on `a`.
+        "cmp_never_passes_source",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m2 = c.Memo 2 (fun () -> s.Value)
+
+            let m3 =
+                c.MemoNeverEqual 3 (fun () ->
+                    m2.Value |> ignore
+                    0)
+
+            let m4 =
+                c.MemoNeverEqual 4 (fun () ->
+                    if s.Value <> 0 then
+                        m3.Value |> ignore
+                    else
+                        m2.Value |> ignore
+
+                    0)
+
+            let a =
+                c.Memo 5 (fun () ->
+                    let v = s.Value
+                    m4.Value |> ignore
+                    if v < 100 then 1 else 0)
+
+            let m6 =
+                c.Memo 6 (fun () ->
+                    m4.Value |> ignore
+                    0)
+
+            let m7 =
+                c.Memo 7 (fun () ->
+                    m6.Value |> ignore
+                    0)
+
+            let b =
+                c.Memo 8 (fun () ->
+                    m7.Value |> ignore
+                    0)
+
+            let e =
+                c.Effect 9 (fun () ->
+                    let x = a.Value
+                    b.Value |> ignore
+                    c.Log 9 x)
+
+            s.Value <- 2
+            c.Check (a.Peek = 1) $"the memo holds {a.Peek}"
+            c.Check (freshnessOf a = "Dirty") $"the memo is {freshnessOf a}"
+            c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
+            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (c.HostRead 5 (fun () -> a.Value) = 1) "the memo's body answers 1"
+
         // A batch whose body fails applies its write and requests no flush. The effect stays queued, nothing is owed,
         // and the next flush runs it.
         "failed_batch",

@@ -173,9 +173,15 @@ intended, the entry closes as "spec corrected".
   **Theorems.** `no_lost_wakeups_statement` and `engine_inv_preserved_statement` are false: `no_lost_wakeups_falsified`, `engine_inv_preserved_falsified`.
   `no_lost_wakeups_unless_passed` proves the exception is the only one: an observer outside `gh_passed` is covered. `gh_passed` is reached only by a walk
   ending over a live, stale source with no announcement, and it is per computation: once an observer has passed one source, the exception covers all its sources until its next run.
-  `ordinary_programs_nothing_passed` checks `gh_passed` empty on the ordinary conformance programs. Whether `well_behaved_memo` keeps it empty is unproved. `diamond_ends_memo_stale` ends a memo's
-  run stale with no write in any body, and a passed memo could then be marked by that memo's next run if it moved. A proof by "a run over equal reads answers an equal value" covers `CmpEq`
-  and not `CmpNever`, which moves on every run, so that hazard stays open for `CmpNever` memos. Task 11 owes a theorem or a counterexample.
+  `ordinary_programs_nothing_passed` checks `gh_passed` empty on the ordinary conformance programs. `well_behaved_nothing_passed` proves it empty on any program whose memos are outside the self-dirtying case and whose effects only read.
+  `diamond_ends_memo_stale` ends a memo's run stale with no write in any body. `CmpNever` is the counterexample on a program with no write: `cmp_never_passes_source`.
+
+- `cmp_never_passes_source` (scenario of the same name; `theories/Pure/Witnesses.v`, same name, on the program `cmp_never_source`): a walk passes a source with no body writing. Memos 3 and 4 hold `CmpNever`, and every run of them counts as a move. A write queues
+  the effect, which reads `a` (memo 5, over the signal and memo 4), then `b` (memo 8, at the end of a chain from memo 4). `Effect.Execute`'s walk (Core.fs 4792) runs `a`, which holds its value. Reaching `b` runs the chain, and memo 4's run counts as a move, so its notice marks `a` `Dirty` from `Clean`.
+  `a`'s notice finds the effect already in `Check`, and the effect goes `Clean`. F# trace: `[EvRun 9; EvLog 9 1; EvHostRead 5 (Ok 1)]`. Before the closing read the harness asserts `a` at 1 and `Dirty` with `unannounced` false, one effect run, status `None` for the effect, an empty queue, and an explicit `Flush` changing nothing.
+  No disjunct of `wake_ok` covers the edge. **No value is lost on this program:** `a`'s next run answers 1, and the next write reaches the effect through `b`. So this is the lost wake-up of `walk_passed_source_marked` by another route, and the entry claims no stale read.
+  `CmpNever` is the model's name for a comparer whose `Equals` answers false. The public `createMemoWithComparer` (`Api.fs` 257) takes such a comparer, and the harness calls the `Memo.CreateWithComparer` behind it by reflection, as for `CmpThrows`.
+  **Theorems.** `well_behaved_program` excludes `CmpNever`, so `well_behaved_nothing_passed` does not reach this program.
 
 - `effect_resolves_over_moved_source` (scenario of the same name; `theories/Pure/Witnesses.v`, same name): the effect form of
   `check_resolves_over_moved_source`. An effect reads `a`, writes `a`'s source, and reads `b`, a memo over `a`. The write marks `a` `Dirty` and the
@@ -184,8 +190,8 @@ intended, the entry closes as "spec corrected".
   asserts `a` at 1 and `Clean`, one effect run, status `None`, an empty queue and a `Flush` changing nothing: the effect's body used 0 and `a` holds 1. The next write of the source wakes it, and the harness asserts the runs that follow, three in all.
   **Same cause as `check_resolves_over_moved_source`:** one fix, a different victim.
   Against the documents: 386-393 give the skip's reason, that the computation "receives the new value from that very read", and this read is of `b`. Unlike a memo,
-  an effect that writes is inside the contract: `well_behaved_memo` restricts memos only. `wake_ok` holds, since `a` is `Clean`. So this falsifies no theorem of this layer,
-  and it does bear on Task 11's `convergence`: `well_behaved_program` has to exclude this effect, or the theorem is false.
+  an effect that writes is inside the contract: `well_behaved_memo` restricts memos only. `wake_ok` holds, since `a` is `Clean`. So this falsifies no theorem of this layer.
+  **`convergence`.** `effects_only_read_needed` proves the conclusion of `convergence` false on this program, whose memos are all well behaved. `convergence` takes `effects_only_read` as a named premise, which excludes every effect that writes. The premise is provisional: the ruling on this entry decides whether it stays or narrows.
   `moved_run_skips_current` states the skip, and `skip_removed_fires` shows it fails with the skip removed.
 
 ## Awaiting ruling
@@ -307,3 +313,5 @@ Names of theorems that may contain `Admitted`, `admit` or an `Axiom`, one per li
   proves that. Use `marks_survive_body_end` until the fix.
 - `run_end_edges_are_reads` (`theories/Pure/Runs.v`): the same Confirmed bug, and `run_end_edges_are_reads_falsified` proves that. Use
   `run_end_edges_are_latest_reads` or `run_end_edges_no_nested_run` until the fix.
+- `glitch_free_read` (`theories/Pure/WholeGraph.v`): a disposed memo answers what it stored, as Core.fs 4372-4376 documents, so the body's answer over the current signals is the wrong statement for it. `disposed_stale_source_read`
+  is the counterexample, and `glitch_free_read_falsified` proves that. This statement is a specification correction waiting for the owner to drop it or restate it, and no engine fix is owed. Use `glitch_free_read_stored`.
