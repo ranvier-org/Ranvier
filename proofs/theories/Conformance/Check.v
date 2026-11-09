@@ -15,6 +15,9 @@ Local Notation R := CRead.
 Local Notation W := CWrite.
 Local Notation L := CLog.
 
+(**md
+Diamond: two memos over one signal, and an effect reading both.
+*)
 Definition prog_S01 : cmd :=
   CSignal 1 (K 0) (
   CMemo 2 Pure CmpEq (R 10 (V 1) (L (V 10) (CRet (EAdd (V 10) (K 1))))) (
@@ -22,18 +25,27 @@ Definition prog_S01 : cmd :=
   CEffect 4 (R 10 (V 2) (R 11 (V 3) (L (EAdd (V 10) (V 11)) Nop))) (
   W (V 1) (K 1) (W (V 1) (K 1) (W (V 1) (K 2) Nop)))))).
 
+(**md
+Cutoff: writes that leave a memo's value unchanged, under an effect reading the memo.
+*)
 Definition prog_S02 : cmd :=
   CSignal 1 (K 0) (
   CMemo 2 Pure CmpEq (R 10 (V 1) (L (V 10) (CRet (ELt (V 10) (K 10))))) (
   CEffect 3 (R 10 (V 2) (L (V 10) Nop)) (
   W (V 1) (K 1) (W (V 1) (K 20) (W (V 1) (K 30) Nop))))).
 
+(**md
+A conditional branch flips and drops an edge, and a write to the old branch's signal follows.
+*)
 Definition prog_S05 : cmd :=
   CSignal 1 (K 1) (CSignal 2 (K 10) (CSignal 3 (K 20) (
   CEffect 4
     (R 10 (V 1) (CIf (V 10) (R 11 (V 2) (L (V 11) Nop)) (R 11 (V 3) (L (V 11) Nop)))) (
   W (V 1) (K 0) (W (V 2) (K 11) (W (V 3) (K 21) Nop)))))).
 
+(**md
+An effect reads A, B, A, and its re-run reads B untracked.
+*)
 Definition prog_S06 : cmd :=
   CSignal 1 (K 0) (CSignal 2 (K 0) (
   CEffect 3
@@ -43,17 +55,26 @@ Definition prog_S06 : cmd :=
        (CReadUntracked 11 (V 2) (L (EAdd (V 10) (V 11)) Nop)))) (
   W (V 1) (K 1) (W (V 2) (K 5) (W (V 1) (K 2) Nop))))).
 
+(**md
+A batch writes 1 then 0 to a signal an effect reads directly.
+*)
 Definition prog_S07 : cmd :=
   CSignal 1 (K 0) (
   CEffect 2 (R 10 (V 1) (L (V 10) Nop)) (
   CBatch (W (V 1) (K 1) (W (V 1) (K 0) Nop)) Nop)).
 
+(**md
+An effect's cleanup writes the effect's own source.
+*)
 Definition prog_S08 : cmd :=
   CSignal 1 (K 0) (
   CEffect 2
     (R 10 (V 1) (L (V 10) (CCleanup (W (V 1) (EAdd (V 10) (K 10)) Nop) Nop))) (
   W (V 1) (K 1) (W (V 1) (K 11) Nop))).
 
+(**md
+An effect body throws in a flush, between two effects over the same signal, and a later write recovers it.
+*)
 Definition prog_S09a : cmd :=
   CSignal 1 (K 0) (
   CEffect 2 (R 10 (V 1) (L (V 10) Nop)) (
@@ -61,12 +82,18 @@ Definition prog_S09a : cmd :=
   CEffect 4 (R 10 (V 1) (L (V 10) Nop)) (
   W (V 1) (K 1) (W (V 1) (K 0) Nop))))).
 
+(**md
+An effect's cleanup throws during each re-run, beside another effect over the same signal.
+*)
 Definition prog_S09b : cmd :=
   CSignal 1 (K 0) (
   CEffect 2 (R 10 (V 1) (L (V 10) Nop)) (
   CEffect 3 (R 10 (V 1) (CCleanup (CThrow 8) (L (V 10) Nop))) (
   W (V 1) (K 1) (W (V 1) (K 2) Nop)))).
 
+(**md
+An effect's body disposes the effect and keeps reading.
+*)
 Definition prog_S10 : cmd :=
   CSignal 1 (K 0) (
   CBatch
@@ -76,6 +103,9 @@ Definition prog_S10 : cmd :=
   CEffect 3 (R 10 (V 1) (L (V 10) Nop)) (
   W (V 1) (K 1) (W (V 1) (K 2) Nop)))).
 
+(**md
+An owning memo's cleanup writes the memo's source and reads the memo.
+*)
 Definition prog_S11 : cmd :=
   CSignal 1 (K 0) (
   CMemo 2 Owning CmpEq
@@ -88,6 +118,9 @@ Definition prog_S11 : cmd :=
   CEffect 3 (R 10 (V 2) (L (V 10) Nop)) (
   W (V 1) (K 1) (W (V 1) (K 5) Nop)))).
 
+(**md
+Owner disposal: an effect with interleaved cleanups and child effects, disposed twice, then a child disposed.
+*)
 Definition prog_S12 : cmd :=
   CEffect 1
     (CCleanup (L (K 1) Nop) (
@@ -97,11 +130,17 @@ Definition prog_S12 : cmd :=
      CCleanup (L (K 3) (CCleanup (L (K 4) Nop) Nop)) Nop))))) (
   CDispose (V 1) (CDispose (V 1) (CDispose (K 2) Nop))).
 
+(**md
+An effect writes the signal it reads, climbing to 3.
+*)
 Definition prog_S13 : cmd :=
   CSignal 1 (K 0) (
   CEffect 2
     (R 10 (V 1) (L (V 10) (CIf (ELt (V 10) (K 3)) (W (V 1) (EAdd (V 10) (K 1)) Nop) Nop))) Nop).
 
+(**md
+A memo writes the signal it reads, under an effect reading the memo, then host reads of the memo and the signal.
+*)
 Definition prog_S14 : cmd :=
   CSignal 1 (K 0) (
   CMemo 2 Pure CmpEq
@@ -109,6 +148,9 @@ Definition prog_S14 : cmd :=
   CEffect 3 (R 10 (V 2) (L (V 10) Nop)) (
   R 20 (V 2) (R 21 (V 1) Nop)))).
 
+(**md
+An effect reads `h`, `x` and `y`, `x` reads `h` and `y`, and a batch writes `h` and `y`'s source.
+*)
 Definition prog_S15 : cmd :=
   CSignal 1 (K 0) (CSignal 2 (K 0) (
   CMemo 3 Pure CmpEq (R 10 (V 2) (L (V 10) (CRet (V 10)))) (
@@ -146,6 +188,9 @@ Definition prog_walk_passed_source_marked : cmd := walk_passed (W (V 1) (K 2) (R
 Definition prog_walk_passed_source_cleanup : cmd := walk_passed_by_cleanup (W (V 1) (K 2) (R 22 (V 3) Nop)).
 Definition prog_effect_resolves_over_moved_source : cmd := effect_over_moved (W (V 1) (K 2) Nop).
 
+(**md
+A memo that answers its previous value plus 1, and an owning memo that creates a memo on one branch, with host reads before and after a write.
+*)
 Definition prog_previous_value : cmd :=
   CSignal 1 (K 0) (
   CMemo 2 Pure CmpEq
@@ -303,6 +348,9 @@ Proof. split; vm_compute; reflexivity. Qed.
 
 (** ** [gh_passed] on the conformance programs *)
 
+(**md
+The state a program ends in, under `current_flags`, or a new graph when the program has no result.
+*)
 Local Definition end_of (p : cmd) : state :=
   default (init current_flags) (fst <$> run_top 100000 p (init current_flags)).
 

@@ -25,9 +25,18 @@ Fixpoint expr_plain (x : expr) : bool :=
   | EAdd a b | ESub a b | EMul a b | EDiv a b | ELt a b | EEq a b => expr_plain a && expr_plain b
   end.
 
+(**md
+The value of `x` in `e`, with no previous value.
+
+- [e:] the environment of the body.
+- [x:] the expression evaluated.
+*)
 Definition ev (e : env) (x : expr) : option outcome := eval_expr e None x.
 
-(** The result of a body whose reads are answered by [ans]. [None] is a stuck body. *)
+(** The result of a body whose reads are answered by [ans]. [None] is a stuck body.
+    - [ans:] the answer of each node read.
+    - [e:] the environment of the body.
+    - [c:] the body. *)
 Fixpoint body_eval (ans : node_id -> option outcome) (e : env) (c : cmd) : option outcome :=
   match c with
   | CRet x => ev e x
@@ -70,7 +79,11 @@ Fixpoint body_eval (ans : node_id -> option outcome) (e : env) (c : cmd) : optio
   end.
 
 (** A body built from returns, failures, lets, branches, tracked reads, batches and logs, independent of the previous
-    value, whose reads satisfy [Q] for every answer the earlier reads can give. With [u], untracked reads too. *)
+    value, whose reads satisfy [Q] for every answer the earlier reads can give. With [u], untracked reads too.
+    - [u:] whether untracked reads are allowed.
+    - [Q:] the condition on each node read.
+    - [e:] the environment of the body.
+    - [c:] the body. *)
 Fixpoint body_pureu (u : bool) (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
   match c with
   | CRet x => expr_plain x = true
@@ -95,11 +108,19 @@ Fixpoint body_pureu (u : bool) (Q : node_id -> Prop) (e : env) (c : cmd) : Prop 
 
 Notation body_pure := (body_pureu false).
 
-(** A memo of the state. *)
+(** A memo of the state.
+    - [s:] the state.
+    - [t:] the node tested. *)
 Definition memo_at (s : state) (t : node_id) : Prop := exists d, g_nodes s !! t = Some d /\ n_kind d = KMemo.
 
 (** A body's run: result [r] and logs [l], with its tracked reads answered by [ans], and each untracked read by some value,
-    or, when [M] holds of its target, by some failure. *)
+    or, when [M] holds of its target, by some failure.
+    - [M:] the targets whose untracked read can fail.
+    - [ans:] the answer of each node read by a tracked read.
+    - [e:] the environment of the body.
+    - [c:] the body.
+    - [r:] the result of the run.
+    - [l:] the logs of the run, in order. *)
 Fixpoint body_run (M : node_id -> Prop) (ans : node_id -> option outcome) (e : env) (c : cmd) (r : outcome) (l : list val) : Prop :=
   match c with
   | CRet x => ev e x = Some r /\ l = []
@@ -168,7 +189,10 @@ Fixpoint has_untracked (c : cmd) : bool :=
   | _ => false
   end.
 
-(** The logs of a body whose reads are answered by [ans], up to its result. [None] is a stuck body. *)
+(** The logs of a body whose reads are answered by [ans], up to its result. [None] is a stuck body.
+    - [ans:] the answer of each node read.
+    - [e:] the environment of the body.
+    - [c:] the body. *)
 Fixpoint body_logs (ans : node_id -> option outcome) (e : env) (c : cmd) : option (list val) :=
   match c with
   | CRet x => match ev e x with Some _ => Some [] | None => None end
@@ -225,9 +249,14 @@ Fixpoint body_logs (ans : node_id -> option outcome) (e : env) (c : cmd) : optio
 (** The node fields constant across runs. *)
 Definition shape_of (d : node) : kind * comparer * env * cmd := (n_kind d, n_comparer d, n_env d, n_body d).
 
+(**md
+The `shape_of` of each node of `s`.
+*)
 Definition shapes (s : state) : gmap node_id (kind * comparer * env * cmd) := shape_of <$> g_nodes s.
 
-(** A signal or a memo: a read of anything else has no result. *)
+(** A signal or a memo: a read of anything else has no result.
+    - [S:] the shapes of the graph.
+    - [t:] the node tested. *)
 Definition readable (S : gmap node_id (kind * comparer * env * cmd)) (t : node_id) : Prop :=
   match S !! t with
   | Some (KSignal, _, _, _) | Some (KMemo, _, _, _) => True
@@ -244,7 +273,10 @@ Section Ranked.
 Context {Rk : Rank}.
 
 (** [k] bounds the depth of reads. A node is pure when it is a signal, or a memo with [CmpEq] and a pure body that reads,
-    for every answer of its earlier reads, only pure nodes of lower rank. *)
+    for every answer of its earlier reads, only pure nodes of lower rank.
+    - [S:] the shapes of the graph.
+    - [k:] the bound on the depth of reads.
+    - [n:] the node tested. *)
 Fixpoint pure_at (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n : node_id) : Prop :=
   match k with
   | 0 => False
@@ -256,8 +288,17 @@ Fixpoint pure_at (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n :
     end
   end.
 
+(**md
+`n` is pure in `S`, with one more level of reads than its rank.
+
+- [S:] the shapes of the graph.
+- [n:] the node tested.
+*)
 Definition pure_in (S : gmap node_id (kind * comparer * env * cmd)) (n : node_id) : Prop := pure_at S (Datatypes.S (rk n)) n.
 
+(**md
+A rank above the rank of every node of `s`.
+*)
 Definition rk_top (s : state) : nat := Datatypes.S (max_list (rk <$> (elements (dom (g_nodes s)) : list node_id))).
 
 Lemma rk_top_lt s m : is_Some (g_nodes s !! m) -> rk m < rk_top s.
@@ -267,7 +308,9 @@ Proof. intros H. apply Nat.lt_succ_r, max_list_elem_of_le, list_elem_of_fmap. ex
     of the same kind, of lower rank. A cycle, a self-read, a write, a cleanup, an untracked read, a node created in the
     body, the previous value, a read that can reach an impure or later node, or a comparer other than [CmpEq] anywhere [n]
     can read makes it self-dirtying. A default-policy memo returning a new reference value each run, or [nan], is
-    [CmpNever], so it is self-dirtying. An effect is self-dirtying: a read of an effect is stuck. *)
+    [CmpNever], so it is self-dirtying. An effect is self-dirtying: a read of an effect is stuck.
+    - [s:] the state.
+    - [n:] the node tested. *)
 Definition self_dirtying (s : state) (n : node_id) : Prop := ~ pure_in (shapes s) n.
 
 (** Every memo of the graph is outside the self-dirtying case. A default-policy memo returning a new record each run is not
@@ -284,7 +327,10 @@ Definition well_behaved_program (s : state) : Prop :=
   forall n d, g_nodes s !! n = Some d -> n_kind d = KMemo -> pure_in (shapes s) n.
 
 (** The body of an effect built from returns, failures, lets, branches, tracked and untracked reads, batches and logs, whose
-    reads reach only nodes outside the self-dirtying case. The targets can be computed. *)
+    reads reach only nodes outside the self-dirtying case. The targets can be computed.
+    - [s:] the state.
+    - [c:] the effect's id.
+    - [d:] the node of [c]. *)
 Definition quiet_effect (s : state) (c : node_id) (d : node) : Prop :=
   n_kind d = KEffect /\ body_pureu true (fun t => readable (shapes s) t -> pure_in (shapes s) t) (n_env d) (n_body d).
 
@@ -297,10 +343,16 @@ Definition quiet_effect (s : state) (c : node_id) (d : node) : Prop :=
 Definition effects_only_read (s : state) : Prop :=
   forall c d, g_nodes s !! c = Some d -> n_kind d = KEffect -> quiet_effect s c d.
 
+(**md
+The live queue is empty and nothing is running.
+*)
 Definition quiescent (s : state) : Prop := pending s = [] /\ g_running s = [].
 
 (** What a node answers from the current signals: a signal its value, a live memo its body, with the fuel as a bound
-    on the depth of reads, and a disposed memo what it stored, as Core.fs 4372-4376 documents. *)
+    on the depth of reads, and a disposed memo what it stored, as Core.fs 4372-4376 documents.
+    - [k:] the bound on the depth of reads.
+    - [s:] the state whose signals are read.
+    - [n:] the node. *)
 Fixpoint den (k : nat) (s : state) (n : node_id) : option outcome :=
   match k with
   | 0 => None
@@ -318,9 +370,18 @@ Fixpoint den (k : nat) (s : state) (n : node_id) : option outcome :=
     end
   end.
 
+(**md
+Node `n` answers `o` from the current signals of `s`, at some bound on the depth of reads.
+
+- [s:] the state whose signals are read.
+- [n:] the node.
+- [o:] the answer.
+*)
 Definition denotes (s : state) (n : node_id) (o : outcome) : Prop := exists k, den k s n = Some o.
 
-(** The latest [EvLog] of [n]. *)
+(** The latest [EvLog] of [n].
+    - [n:] the node whose logs are searched.
+    - [tr:] the trace. *)
 Definition last_log (n : node_id) (tr : list event) : option val :=
   foldl (fun acc ev => match ev with EvLog m v => if decide (m = n) then Some v else acc | _ => acc end) None tr.
 
@@ -330,18 +391,30 @@ Definition effect_ran_for_last_write (s : state) : Prop :=
   exists c d t v, g_nodes s !! c = Some d /\ n_kind d = KEffect /\
     t ∈ (slot_view (g_edges s) c).1 /\ denotes s t (Ok v) /\ last_log c (g_trace s) = Some v.
 
-(** A node's runs, logs and failures in a trace. *)
+(** A node's runs, logs and failures in a trace.
+    - [c:] the node.
+    - [ev:] the event tested. *)
 Definition view_ev (c : node_id) (ev : event) : bool :=
   match ev with EvRun m | EvLog m _ | EvFail m _ => bool_decide (m = c) | _ => false end.
 
-(** The event of a failed body. *)
+(** The event of a failed body.
+    - [n:] the node whose body ran.
+    - [r:] the result of the body. *)
 Definition fail_evs (n : node_id) (r : outcome) : list event :=
   match r with Ok _ => [] | Fail y => [EvFail n y] end.
 
+(**md
+The runs, logs and failures of `c` in `tr`, in trace order.
+
+- [c:] the node.
+- [tr:] the trace.
+*)
 Definition trace_view (c : node_id) (tr : list event) : list event :=
   filter (fun ev => view_ev c ev = true) tr.
 
-(** The logs of [c] since its latest [EvRun]. *)
+(** The logs of [c] since its latest [EvRun].
+    - [c:] the node.
+    - [tr:] the trace. *)
 Definition last_run_logs (c : node_id) (tr : list event) : list val :=
   foldl (fun acc ev => match ev with
     | EvRun m => if decide (m = c) then [] else acc
@@ -396,6 +469,9 @@ Proof.
   rewrite foldl_app, K. by destruct r.
 Qed.
 
+(**md
+A body's result holds when every answer of `A` is also an answer of `B`.
+*)
 Lemma body_eval_mono (A B : node_id -> option outcome) e c r :
   (forall t o, A t = Some o -> B t = Some o) -> body_eval A e c = Some r -> body_eval B e c = Some r.
 Proof.
@@ -410,6 +486,9 @@ Proof.
   - destruct (ev g e) as [[z|y]|]; [apply IHc|done|done].
 Qed.
 
+(**md
+A body's logs hold when every answer of `A` is also an answer of `B`.
+*)
 Lemma body_logs_mono (A B : node_id -> option outcome) e c r :
   (forall t o, A t = Some o -> B t = Some o) -> body_logs A e c = Some r -> body_logs B e c = Some r.
 Proof.
@@ -447,6 +526,9 @@ Proof.
   - destruct (ev g e) as [[z|y]|]; [apply IHc|congruence|done].
 Qed.
 
+(**md
+`body_pureu` holds under any weaker condition on the reads.
+*)
 Lemma body_pure_mono (P Q : node_id -> Prop) u e c :
   (forall t, P t -> Q t) -> body_pureu u P e c -> body_pureu u Q e c.
 Proof.
@@ -525,6 +607,9 @@ Qed.
 Lemma den_mono k k' s n o : k <= k' -> den k s n = Some o -> den k' s n = Some o.
 Proof. induction 1; [done|]. intros Hd. apply den_S. auto. Qed.
 
+(**md
+A node denotes at most one outcome.
+*)
 Lemma denotes_unique s n o o' : denotes s n o -> denotes s n o' -> o = o'.
 Proof.
   intros [k H] [k' H']. pose proof (den_mono k (k `max` k') s n o ltac:(lia) H) as A.
@@ -533,15 +618,27 @@ Qed.
 
 (** ** The environments of a run *)
 
+(**md
+The two environments bind every variable other than `prev_var` to the same value.
+
+- [e1:] the first environment.
+- [e2:] the second environment.
+*)
 Definition env_agree (e1 e2 : env) : Prop :=
   forall y, y <> prev_var -> env_lookup e1 y = env_lookup e2 y.
 
 Lemma env_agree_refl e : env_agree e e.
 Proof. intros ??. done. Qed.
 
+(**md
+`env_agree` holds after the same binding is added to both environments.
+*)
 Lemma env_agree_cons x v e1 e2 : env_agree e1 e2 -> env_agree ((x, v) :: e1) ((x, v) :: e2).
 Proof. intros H y Hy. simpl. destruct (Nat.eqb y x); [done|by apply H]. Qed.
 
+(**md
+An environment extended by a binding of `prev_var` agrees with the environment.
+*)
 Lemma env_agree_prev v e : env_agree ((prev_var, v) :: e) e.
 Proof.
   intros y Hy. simpl. destruct (Nat.eqb y prev_var) eqn:E; [|done]. apply Nat.eqb_eq in E. done.
@@ -559,12 +656,18 @@ Proof.
   - apply dec_stable in Hx. subst x. destruct (Nat.eqb y prev_var) eqn:E; [apply Nat.eqb_eq in E; done|apply IH].
 Qed.
 
+(**md
+An environment with its `prev_var` bindings removed agrees with the environment.
+*)
 Lemma env_agree_without e : env_agree (without_prev e) e.
 Proof. intros y Hy. by apply env_lookup_filter. Qed.
 
 Lemma env_agree_run d : env_agree (run_env d) (n_env d).
 Proof. unfold run_env. destruct (n_published d); [apply env_agree_prev|apply env_agree_without]. Qed.
 
+(**md
+An expression independent of the previous value has one value in two agreeing environments, whatever previous value each is given.
+*)
 Lemma eval_agree e1 e2 p1 p2 x :
   env_agree e1 e2 -> expr_plain x = true -> eval_expr e1 p1 x = eval_expr e2 p2 x.
 Proof.
@@ -573,6 +676,9 @@ Proof.
   all: apply andb_true_iff in Hp as [Ha Hb]; by rewrite (IHx1 Ha), (IHx2 Hb).
 Qed.
 
+(**md
+An expression independent of the previous value, evaluated in `e1` with its own previous value, has the value `ev` gives it in an agreeing `e2`.
+*)
 Lemma ev_of e1 e2 x :
   env_agree e1 e2 -> expr_plain x = true -> eval_expr e1 (env_lookup e1 prev_var) x = ev e2 x.
 Proof. intros. by apply eval_agree. Qed.
@@ -582,6 +688,9 @@ Proof. intros. by apply eval_agree. Qed.
 Lemma shapes_lookup s n d : g_nodes s !! n = Some d -> shapes s !! n = Some (shape_of d).
 Proof. intros H. unfold shapes. by rewrite lookup_fmap, H. Qed.
 
+(**md
+`memo_at` holds across two states with the same shapes.
+*)
 Lemma memo_at_shapes s s' t : shapes s' = shapes s -> memo_at s t -> memo_at s' t.
 Proof.
   intros H (d&Hd&Hk). pose proof (shapes_lookup s t d Hd) as E. rewrite <- H in E. unfold shapes in E. rewrite lookup_fmap in E.
@@ -594,6 +703,9 @@ Proof.
   intros H. unfold readable. destruct (S !! t) as [v|] eqn:E; [|done]. rewrite (H _ _ E). done.
 Qed.
 
+(**md
+A readable node exists in the state.
+*)
 Lemma readable_node s t : readable (shapes s) t -> is_Some (g_nodes s !! t).
 Proof.
   unfold readable, shapes. rewrite lookup_fmap. destruct (g_nodes s !! t) as [d|]; [by eexists|done].
@@ -616,6 +728,9 @@ Proof.
   revert H. apply body_pure_mono. intros t Ht Hr. destruct (Ht Hr) as [H1 H2]. split; [done|]. apply IH. exact H2.
 Qed.
 
+(**md
+`pure_at` holds at every larger bound on the depth of reads.
+*)
 Lemma pure_at_mono Sh k k' n : k <= k' -> pure_at Sh k n -> pure_at Sh k' n.
 Proof. induction 1 as [|k0 Hle IH]; [done|]. intros H0. apply pure_at_S. auto. Qed.
 
@@ -644,6 +759,9 @@ Proof.
   intros Hp Hd. exact (pure_body _ n _ _ _ _ Hp (shapes_lookup s n d Hd)).
 Qed.
 
+(**md
+A pure node exists in the state.
+*)
 Lemma pure_exists s n : pure_in (shapes s) n -> is_Some (g_nodes s !! n).
 Proof.
   unfold pure_in. rewrite pure_at_unfold. unfold shapes. rewrite lookup_fmap.
@@ -669,15 +787,26 @@ Proof. intros H1 H2. apply pure_at_sub; done. Qed.
     an answer. *)
 Definition static_env := list (var * option val).
 
+(**md
+The value of `x` known ahead of the run: the latest binding of `x` in `g`, or `None` when it is unbound or bound to an answer.
+
+- [g:] the static environment.
+- [x:] the variable.
+*)
 Fixpoint static_lookup (g : static_env) (x : var) : option val :=
   match g with
   | [] => None
   | (y, v) :: g' => if Nat.eqb x y then v else static_lookup g' x
   end.
 
+(**md
+A captured environment as a static environment, with every value known.
+*)
 Definition static_of (e : env) : static_env := (fun p : var * val => (p.1, Some p.2)) <$> e.
 
-(** The values an expression can take, when they can be listed ahead of the run. *)
+(** The values an expression can take, when they can be listed ahead of the run.
+    - [g:] what is known of the variables.
+    - [n:] the expression. *)
 Fixpoint targets (g : static_env) (n : expr) : option (list val) :=
   match n with
   | EConst z => Some [z]
@@ -691,7 +820,10 @@ Fixpoint targets (g : static_env) (n : expr) : option (list val) :=
   | _ => None
   end.
 
-(** A sufficient test of [body_pure]: each read's target lies in a list known ahead of the run, and [Q] holds of the list. *)
+(** A sufficient test of [body_pure]: each read's target lies in a list known ahead of the run, and [Q] holds of the list.
+    - [Q:] the test of each node read.
+    - [g:] what is known of the variables.
+    - [c:] the body. *)
 Fixpoint body_ok (Q : node_id -> bool) (g : static_env) (c : cmd) : bool :=
   match c with
   | CRet x => expr_plain x
@@ -716,6 +848,12 @@ Fixpoint body_ok (Q : node_id -> bool) (g : static_env) (c : cmd) : bool :=
   end.
 
 
+(**md
+Every value known in `g` is the value bound in `e`.
+
+- [g:] the static environment.
+- [e:] the environment of the run.
+*)
 Definition static_agrees (g : static_env) (e : env) : Prop :=
   forall x z, static_lookup g x = Some z -> env_lookup e x = Some z.
 
@@ -763,7 +901,10 @@ Proof.
   - apply andb_true_iff in H as [H1 H2]. split; [done|]. by eapply IHc.
 Qed.
 
-(** A sufficient test of [pure_at], over reads with constant or captured targets. *)
+(** A sufficient test of [pure_at], over reads with constant or captured targets.
+    - [S:] the shapes of the graph.
+    - [k:] the bound on the depth of reads.
+    - [n:] the node tested. *)
 Fixpoint pure_b (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n : node_id) : bool :=
   match k with
   | 0 => false
@@ -775,6 +916,9 @@ Fixpoint pure_b (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n : 
     end
   end.
 
+(**md
+`pure_b` is a sufficient test of `pure_at`.
+*)
 Lemma pure_b_sound S : forall k n, pure_b S k n = true -> pure_at S k n.
 Proof.
   induction k as [|k IH]; intros n; [done|]. simpl. destruct (S !! n) as [[[[[] [| |]] e] b]|]; try done.
@@ -784,23 +928,52 @@ Qed.
 
 (** ** The answer of a memo left quiet *)
 
+(**md
+The node is `Clean` or holds its announcement flag.
+*)
 Definition quiet (d : node) : Prop := n_freshness d = Clean \/ n_unannounced d = true.
 
 (** The node's stored view answers what its latest run read. *)
 Definition settled (d : node) : Prop := n_freshness d <> Dirty \/ n_unannounced d = true.
 
+(**md
+Node `t` exists in `s`, and is quiet or disposed.
+
+- [s:] the state.
+- [t:] the node.
+*)
 Definition quiet_or_gone (s : state) (t : node_id) : Prop :=
   exists e, g_nodes s !! t = Some e /\ (quiet e \/ n_disposed e = true).
 
+(**md
+`c` has a recorded read of `t`, and each recorded read of `t` by `c` is the read view `t` now stores.
+
+- [s:] the state.
+- [c:] the reader.
+- [t:] the source read.
+*)
 Definition rd_ok (s : state) (c t : node_id) : Prop :=
   seen_of (g_ghost s) c t <> [] /\
   exists e, g_nodes s !! t = Some e /\ forall v, v ∈ seen_of (g_ghost s) c t -> v = read_view_of e.
 
+(**md
+The answer of the latest recorded read of `t` by `c`, when `t` is in the read prefix of `c`.
+
+- [s:] the state.
+- [c:] the reader.
+- [t:] the source read.
+*)
 Definition seen_ans (s : state) (c t : node_id) : option outcome :=
   if decide (t ∈ read_prefix (g_edges s) c)
   then view_answer <$> head (seen_of (g_ghost s) c t)
   else None.
 
+(**md
+The node stores `r`: a value with no failure, or an error status with the failure.
+
+- [d:] the node.
+- [r:] the outcome stored.
+*)
 Definition view_matches (d : node) (r : outcome) : Prop :=
   match r with
   | Ok v => n_value d = v /\ n_status d = StNone /\ n_failure d = None
@@ -814,10 +987,20 @@ Proof.
   - intros (H1&H2). rewrite H1, H2. done.
 Qed.
 
+(**md
+The memo stores what its body answers over its recorded reads.
+
+- [s:] the state.
+- [c:] the memo.
+- [d:] the node of `c`.
+*)
 Definition value_ok (s : state) (c : node_id) (d : node) : Prop :=
   exists r, body_eval (seen_ans s c) (n_env d) (n_body d) = Some r /\ view_matches d r.
 
-(** A memo that is not self-dirtying, or an effect that only reads. *)
+(** A memo that is not self-dirtying, or an effect that only reads.
+    - [s:] the state.
+    - [c:] the computation.
+    - [d:] the node of [c]. *)
 Definition qc (s : state) (c : node_id) (d : node) : Prop :=
   (pure_in (shapes s) c /\ n_kind d = KMemo) \/ quiet_effect s c d.
 
@@ -890,7 +1073,9 @@ Qed.
 
 (** ** What marks change *)
 
-(** What a mark keeps of a node, and how it moves the node's freshness and flag. *)
+(** What a mark keeps of a node, and how it moves the node's freshness and flag.
+    - [d:] the node before the mark.
+    - [d':] the node after the mark. *)
 Definition rise_node (d d' : node) : Prop :=
   shape_of d' = shape_of d /\ read_view_of d' = read_view_of d /\ n_disposed d' = n_disposed d /\
   n_in_cleanup d' = n_in_cleanup d /\ n_runs d' = n_runs d /\ n_scope d' = n_scope d /\ n_violated d' = n_violated d /\
@@ -905,6 +1090,9 @@ Proof.
   split_and!; try congruence; [by eapply freshness_le_trans|auto].
 Qed.
 
+(**md
+A mark keeps a node's kind.
+*)
 Lemma rise_kind d d' : rise_node d d' -> n_kind d' = n_kind d.
 Proof. intros (H&_). unfold shape_of in H. by injection H. Qed.
 
@@ -923,7 +1111,9 @@ Proof.
   rewrite H in H8. destruct (n_freshness d); unfold freshness_le in H8; simpl in H8; try lia; done.
 Qed.
 
-(** The marks change the nodes and the queue, and the rest of the state stays. *)
+(** The marks change the nodes and the queue, and the rest of the state stays.
+    - [s:] the state before the marks.
+    - [s':] the state after the marks. *)
 Record rise (s s' : state) : Prop := {
   rs_edges : g_edges s' = g_edges s;
   rs_ghost : g_ghost s' = g_ghost s;
@@ -952,6 +1142,9 @@ Proof.
   - intros m d' Hd'. destruct (J12 m d' Hd') as [d2 Hd2]. exact (H12 m d2 Hd2).
 Qed.
 
+(**md
+Marks keep the shapes.
+*)
 Lemma rise_shapes s s' : rise s s' -> shapes s' = shapes s.
 Proof.
   intros [_ _ _ _ _ _ _ _ _ _ F B]. apply map_eq. intros m. unfold shapes. rewrite !lookup_fmap.
@@ -981,6 +1174,9 @@ Proof.
     split; try done.
 Qed.
 
+(**md
+Every sequence of mark steps is a `rise`.
+*)
 Lemma rtc_rise s s' : rtc mark_prim s s' -> rise s s'.
 Proof.
   induction 1 as [s|s1 s2 s3 Hp _ IH]; [apply rise_refl|]. eapply rise_trans; [|exact IH]. by apply prim_rise.
@@ -991,6 +1187,9 @@ Proof. intros H. by apply rtc_rise, (any_mark_rtc f n r). Qed.
 
 (** ** Marks from outside the quiet nodes *)
 
+(**md
+The node is stale and holds no announcement flag.
+*)
 Definition un (d : node) : Prop := stale (n_freshness d) = true /\ n_unannounced d = false.
 
 Lemma un_rises d d' : rise_node d d' -> un d -> un d'.
@@ -1002,12 +1201,29 @@ Qed.
 Lemma un_not_quiet d : un d -> quiet d -> False.
 Proof. intros [H1 H2] [H|H]; [by rewrite H in H1|congruence]. Qed.
 
-(** A node open to a mark from outside the quiet nodes: impure, in [T], or stale with no flag. *)
+(** A node open to a mark from outside the quiet nodes: impure or in [T].
+    - [T:] the running nodes that started stale with no flag.
+    - [s:] the state.
+    - [n:] the node tested. *)
 Definition ysrc (T : node_id -> Prop) (s : state) (n : node_id) : Prop := pure_in (shapes s) n -> T n.
 
+(**md
+`n` is impure, in `T`, or a node stale with no flag.
+
+- [T:] the running nodes that started stale with no flag.
+- [s:] the state.
+- [n:] the node tested.
+*)
 Definition iny (T : node_id -> Prop) (s : state) (n : node_id) : Prop :=
   pure_in (shapes s) n -> T n \/ exists d, g_nodes s !! n = Some d /\ un d.
 
+(**md
+`s0` is a `rise` of `s` that changes only impure nodes, nodes in `T`, and nodes stale with no flag.
+
+- [T:] the running nodes that started stale with no flag.
+- [s:] the state before the marks.
+- [s0:] the state after the marks.
+*)
 Definition ytouch (T : node_id -> Prop) (s s0 : state) : Prop :=
   rise s s0 /\ forall m, pure_in (shapes s) m -> ~ T m -> ~ (exists d, g_nodes s !! m = Some d /\ un d) ->
     g_nodes s0 !! m = g_nodes s !! m.
@@ -1121,12 +1337,19 @@ End Touch.
 
 (** ** Runs below a stack *)
 
-(** The computations in reach of a call below [lim]: pure nodes below [lim], and the current computation [x]. *)
+(** The computations in reach of a call below [lim]: pure nodes below [lim], and the current computation [x].
+    - [s:] the state.
+    - [lim:] the rank bound of the call.
+    - [x:] the current computation, or [None].
+    - [m:] the node tested. *)
 Definition rn (s : state) (lim : node_id) (x : option node_id) (m : node_id) : Prop :=
   (pure_in (shapes s) m /\ rk m < lim) \/ x = Some m.
 
 (** The stack around a call. [T] holds the running nodes that were stale with no flag when they started. Observers of
-    those are in [T] or stale with no flag. *)
+    those are in [T] or stale with no flag.
+    - [T:] the running nodes that started stale with no flag.
+    - [lim:] the rank bound of the call; every pure running node has a rank at or above it.
+    - [s:] the state. *)
 Record stk (T : node_id -> Prop) (lim : node_id) (s : state) : Prop := {
   st_low : forall m, m ∈ g_running s -> pure_in (shapes s) m -> lim <= rk m;
   st_T : forall x, T x -> x ∈ g_running s;
@@ -1141,7 +1364,12 @@ Record stk (T : node_id -> Prop) (lim : node_id) (s : state) : Prop := {
   st_dec : forall x, T x \/ ~ T x
 }.
 
-(** What a call below [lim] does to the rest of the state. *)
+(** What a call below [lim] does to the rest of the state.
+    - [T:] the running nodes that started stale with no flag.
+    - [lim:] the rank bound of the call.
+    - [x:] the current computation, whose slots the call can change, or [None].
+    - [s:] the state before the call.
+    - [s':] the state after the call. *)
 Record atom (T : node_id -> Prop) (lim : node_id) (x : option node_id) (s s' : state) : Prop := {
   at_shapes : shapes s' = shapes s;
   at_running : g_running s' = g_running s;
@@ -1235,6 +1463,12 @@ Proof. intros Hl [A B C D E F G H]. split; try done. intros m Hm Hp. pose proof 
 
 (** ** The same state, as the invariants read it *)
 
+(**md
+The two states share their nodes, edges, ghost state and running stack.
+
+- [s:] the first state.
+- [s':] the second state.
+*)
 Definition same4 (s s' : state) : Prop :=
   g_nodes s' = g_nodes s /\ g_edges s' = g_edges s /\ g_ghost s' = g_ghost s /\ g_running s' = g_running s.
 
@@ -1728,23 +1962,54 @@ Qed.
 
 (** ** A call below the stack *)
 
+(**md
+The invariant at a call below `lim`: `run_core`, `whole`, and the stack discipline `stk`.
+
+- [T:] the running nodes that started stale with no flag.
+- [lim:] the rank bound of the call.
+- [s:] the state.
+*)
 Definition aS (T : node_id -> Prop) (lim : node_id) (s : state) : Prop := run_core s /\ whole s /\ stk T lim s.
 
-(** Answers a guide holds: the current answers of quiet nodes. *)
+(** Answers a guide holds: the current answers of quiet nodes.
+    - [T:] the running nodes that started stale with no flag.
+    - [s:] the state.
+    - [A:] the answers of the guide. *)
 Definition guide (T : node_id -> Prop) (s : state) (A : node_id -> option outcome) : Prop :=
   forall t o, A t = Some o -> pure_in (shapes s) t /\ ~ T t /\
     exists e, g_nodes s !! t = Some e /\ (quiet e \/ n_disposed e = true) /\ view_answer (read_view_of e) = o.
 
-(** The node ends quiet or disposed, and a node that started quiet ends [Clean] or disposed. *)
+(** The node ends quiet or disposed, and a node that started quiet ends [Clean] or disposed.
+    - [t:] the node.
+    - [s:] the state before the call.
+    - [s':] the state after the call. *)
 Definition done_at (t : node_id) (s s' : state) : Prop :=
   quiet_or_gone s' t /\
   forall d, g_nodes s !! t = Some d -> quiet d -> exists d', g_nodes s' !! t = Some d' /\ (n_freshness d' = Clean \/ n_disposed d' = true).
 
+(**md
+The premise of a read of `t` below `lim`: the invariant `aS`, `t` pure and below `lim` and below a current memo, and a current computation open to a mark from outside the quiet nodes, or `t` quiet or disposed.
+
+- [T:] the running nodes that started stale with no flag.
+- [lim:] the rank bound of the call.
+- [t:] the node read.
+- [s:] the state before the read.
+*)
 Definition rd_pre (T : node_id -> Prop) (lim t : node_id) (s : state) : Prop :=
   aS T lim s /\ rk t < lim /\ pure_in (shapes s) t /\
   (forall c dc, g_current s = Some c -> g_nodes s !! c = Some dc -> qc s c dc -> n_kind dc = KMemo -> rk t < rk c) /\
   (forall c, g_current s = Some c -> ysrc T s c \/ quiet_or_gone s t).
 
+(**md
+The conclusion of a read of `t` below `lim`: the invariant `aS` holds after, the call is an `atom`, `t` ends quiet or disposed with `o` as its stored answer, a current quiet computation has recorded `t` in its read prefix, and the trace views of nodes outside the reach of the call stay.
+
+- [T:] the running nodes that started stale with no flag.
+- [lim:] the rank bound of the call.
+- [t:] the node read.
+- [s:] the state before the read.
+- [s':] the state after the read.
+- [o:] the answer of the read.
+*)
 Definition rd_post (T : node_id -> Prop) (lim t : node_id) (s s' : state) (o : outcome) : Prop :=
   aS T lim s' /\ atom T lim (g_current s) s s' /\
   (exists e, g_nodes s' !! t = Some e /\ o = view_answer (read_view_of e) /\ (quiet e \/ n_disposed e = true)) /\
@@ -1753,7 +2018,11 @@ Definition rd_post (T : node_id -> Prop) (lim t : node_id) (s s' : state) (o : o
     (forall y, y ∈ read_prefix (g_edges s) c -> y ∈ read_prefix (g_edges s') c)) /\
   forall m, ~ (pure_in (shapes s) m /\ rk m < lim) -> trace_view m (g_trace s') = trace_view m (g_trace s).
 
-(** A memo's reads reach nodes below it. An effect's reach every node, and [L] is above them all. *)
+(** A memo's reads reach nodes below it. An effect's reach every node, and [L] is above them all.
+    - [L:] the rank bound of the body's reads.
+    - [c:] the computation.
+    - [d:] the node of [c].
+    - [s:] the state. *)
 Definition below_or_all (L c : node_id) (d : node) (s : state) : Prop :=
   (n_kind d = KMemo /\ L = rk c) \/ (n_kind d = KEffect /\ forall m, is_Some (g_nodes s !! m) -> rk m < L).
 
@@ -1776,6 +2045,9 @@ Proof.
   simpl. unfold shape_of. destruct (n_kind d); done.
 Qed.
 
+(**md
+A tracked read that returns has read a signal or a memo.
+*)
 Lemma read_readable g t s s' o : read g t true s = Some (s', o) -> readable (shapes s) t.
 Proof. intros H. destruct g as [|g]; [done|]. cbn [read] in H. exact (read_node_readable _ _ _ _ _ H). Qed.
 
@@ -1785,6 +2057,9 @@ Proof.
   destruct (read_node g t _) as [[s2 r]|] eqn:E; [|done]. exact (read_node_readable _ _ _ _ _ E).
 Qed.
 
+(**md
+The statements of a call below the stack, one per engine function, at fuel `f`: each call from `aS` returns in `aS`, is an `atom`, and answers what the quiet nodes it reads store.
+*)
 Record A_ok (f : nat) : Prop := {
   Aexec : forall (T : node_id -> Prop) (u : bool) (L c : node_id) d e' e cm s s' r A r0,
     aS T L s -> g_current s = Some c -> g_nodes s !! c = Some d -> qc s c d -> env_agree e' e ->
@@ -3359,6 +3634,9 @@ Section Step.
   Qed.
 End Step.
 
+(**md
+`A_ok` holds at every fuel.
+*)
 Lemma A_ok_all f : A_ok f.
 Proof.
   induction f as [|f IH]; [exact A_ok_0|]. split.
@@ -3383,13 +3661,18 @@ Definition np (s : state) : Prop := forall m dm, m ∈ g_running s -> g_nodes s 
 (** A new effect, ahead of the mark that schedules its first run. *)
 Definition window (d : node) : Prop := n_status d = StUninitialized.
 
-(** The effect ran, and its latest run read and logged what its body answers over the recorded reads. *)
+(** The effect ran, and its latest run read and logged what its body answers over the recorded reads.
+    - [s:] the state.
+    - [c:] the effect.
+    - [d:] the node of [c]. *)
 Definition ran_ok (s : state) (c : node_id) (d : node) : Prop :=
   exists r l pre,
     body_run (memo_at s) (seen_ans s c) (n_env d) (n_body d) r l /\
     trace_view c (g_trace s) = pre ++ EvRun c :: (EvLog c <$> l) ++ fail_evs c r.
 
-(** [X] holds the effects whose scheduling mark is due. *)
+(** [X] holds the effects whose scheduling mark is due.
+    - [X:] the effects whose scheduling mark is due.
+    - [s:] the state. *)
 Definition ran (X : node_id -> Prop) (s : state) : Prop :=
   forall c d, g_nodes s !! c = Some d -> quiet_effect s c d -> n_disposed d = false -> n_freshness d <> Dirty ->
     (X c /\ window d) \/ ran_ok s c d.
@@ -3400,10 +3683,18 @@ Definition hosts (s : state) : Prop :=
   forall o y, g_owners s !! o = Some y ->
     (o_host y = 0 \/ is_Some (g_nodes s !! o_host y)) /\ forall d, g_nodes s !! o_host y = Some d -> ~ quiet_effect s (o_host y) d.
 
-(** The facts beside [whole] and [np]. *)
+(** The facts beside [whole] and [np].
+    - [X:] the effects whose scheduling mark is due.
+    - [s:] the state. *)
 Definition pd (X : node_id -> Prop) (s : state) : Prop :=
   (forall c, c ∈ gh_passed (g_ghost s) -> is_Some (g_nodes s !! c)) /\ ran X s /\ hosts s.
 
+(**md
+The invariant at a step of the engine outside every pure run: `whole`, `np` and `pd`.
+
+- [X:] the effects whose scheduling mark is due.
+- [s:] the state.
+*)
 Definition wkx (X : node_id -> Prop) (s : state) : Prop := whole s /\ np s /\ pd X s.
 
 Lemma seen_ans_ext s s' c :
@@ -3464,6 +3755,9 @@ Proof.
   - exact (Hn t d Hin Hd (or_introl (conj Hp Hk))).
 Qed.
 
+(**md
+Outside every pure run, with writes deferred or a flush running, `stk` holds with an empty `T` at any bound.
+*)
 Lemma stk_empty lim s :
   run_base s -> wk s -> (deferring s = true \/ g_flushing s = true) -> stk (fun _ => False) lim s.
 Proof.
@@ -3475,13 +3769,28 @@ Proof.
   - intros x. right. intros K; exact K.
 Qed.
 
-(** What the invariant reads of a pure node or a quiet effect. *)
+(** What the invariant reads of a pure node or a quiet effect.
+    - [d:] the node before the step.
+    - [d':] the node after the step. *)
 Definition wsame (d d' : node) : Prop :=
   shape_of d' = shape_of d /\ read_view_of d' = read_view_of d /\ (n_disposed d = true -> n_disposed d' = true) /\ n_scope d' = n_scope d /\
   n_violated d' = n_violated d /\ n_freshness d' = n_freshness d /\ n_unannounced d' = n_unannounced d.
 
+(**md
+`m` is a pure node or a quiet effect.
+
+- [s:] the state.
+- [m:] the node tested.
+- [d:] the node of `m`.
+*)
 Definition isq (s : state) (m : node_id) (d : node) : Prop := pure_in (shapes s) m \/ quiet_effect s m d.
 
+(**md
+What a step outside every pure run keeps of the pure nodes and quiet effects: their shapes, the fields `wsame` reads, their slots and recorded reads, their trace views, and the hosts of owners. A slot list can also end empty on a disposed node.
+
+- [s:] the state before the step.
+- [s':] the state after the step.
+*)
 Record wframe (s s' : state) : Prop := {
   wf_sh : shapes s' = shapes s;
   wf_fwd : forall m d, g_nodes s !! m = Some d -> isq s m d -> exists d', g_nodes s' !! m = Some d' /\ wsame d d';
@@ -3706,8 +4015,17 @@ End WX.
 
 (** ** What a call keeps of the older nodes *)
 
+(**md
+Every node id of `s` is at or below `g_next_id`.
+*)
 Definition ids_ok (s : state) : Prop := forall n : node_id, is_Some (g_nodes s !! n) -> n <= g_next_id s.
 
+(**md
+Every node of `s` stays with its shape, and keeps its scope when the later scope is `None`. A node new in `s'` has an id above the `g_next_id` of `s`, which does not decrease.
+
+- [s:] the state before the call.
+- [s':] the state after the call.
+*)
 Record kept (s s' : state) : Prop := {
   kp_fw : forall n d, g_nodes s !! n = Some d -> exists d', g_nodes s' !! n = Some d' /\ shape_of d' = shape_of d /\
     (n_scope d' = None -> n_scope d = None);
@@ -3726,6 +4044,9 @@ Proof.
   - destruct (B2 n d' Hd') as [[d2 Hd2]|H]; [|right; lia]. destruct (A2 n d2 Hd2) as [H|H]; [by left|right; lia].
 Qed.
 
+(**md
+A call of `m` that returns keeps `ids_ok`, and its end state is `kept` from its start.
+*)
 Definition ko {A} (m : M A) : Prop :=
   forall s s' a, ids_ok s -> m s = Some (s', a) -> ids_ok s' /\ kept s s'.
 
@@ -3800,6 +4121,9 @@ Qed.
 Lemma prim_next s s' : mark_prim s s' -> g_next_id s' = g_next_id s.
 Proof. by intros []. Qed.
 
+(**md
+Mark steps keep `g_next_id`.
+*)
 Lemma marks_next s s' : rtc mark_prim s s' -> g_next_id s' = g_next_id s.
 Proof. induction 1 as [s|s1 s2 s3 Hp _ IH]; [done|]. rewrite IH. by apply prim_next. Qed.
 
@@ -3935,6 +4259,9 @@ Proof.
   apply ko_bind; [apply ko_get_owner|intros y]. apply ko_put_owner.
 Qed.
 
+(**md
+Every engine function at fuel `f` satisfies `ko`.
+*)
 Record K_ok (f : nat) : Prop := {
   Kexec : forall e c, ko (exec f e c);
   Kread : forall n b, ko (read f n b);
@@ -4031,6 +4358,9 @@ Section WX1.
 Context {Xe : node_id -> Prop}.
 Local Notation wk := (wkx Xe).
 
+(**md
+The premises of the whole-graph theorems: `well_behaved_program` and `effects_only_read`.
+*)
 Definition good (s : state) : Prop := well_behaved_program s /\ effects_only_read s.
 
 Lemma good_back s s' : ids_ok s -> kept s s' -> good s' -> good s.
@@ -4055,10 +4385,23 @@ Qed.
 Lemma core_ids s : run_core s -> ids_ok s.
 Proof. intros [Hi _] n Hn. exact (ci_next _ _ _ Hi n Hn). Qed.
 
+(**md
+The two states share their nodes, edges, ghost state, running stack, trace and owners.
+
+- [s:] the first state.
+- [s':] the second state.
+*)
 Definition same6 (s s' : state) : Prop :=
   g_nodes s' = g_nodes s /\ g_edges s' = g_edges s /\ g_ghost s' = g_ghost s /\ g_running s' = g_running s /\
   g_trace s' = g_trace s /\ g_owners s' = g_owners s.
 
+(**md
+`m` satisfies `ok2 P` and `ko`, and a call of it from `run_core`, `wkx X` and `P` that ends `good` ends in `wkx X`.
+
+- [X:] the effects whose scheduling mark is due.
+- [P:] the premise of the call.
+- [m:] the engine function.
+*)
 Definition wokx (X : node_id -> Prop) {A} (P : state -> Prop) (m : M A) : Prop :=
   ok2 P m /\ ko m /\ forall s s' a, run_core s -> wkx X s -> P s -> m s = Some (s', a) -> good s' -> wkx X s'.
 Local Notation wok := (wokx Xe).
@@ -4130,6 +4473,9 @@ Proof.
   intros H. rewrite trace_view_app. unfold trace_view at 2. rewrite filter_cons_False, filter_nil, app_nil_r; [done|]. rewrite H. done.
 Qed.
 
+(**md
+Emitting an event outside the trace view of every node satisfies `wok`.
+*)
 Lemma wok_emit P e : (forall c, view_ev c e = false) -> wok P (emit e).
 Proof.
   intros He. apply wok_sameq; [apply ok2_emit|apply ko_emit|]. intros s s' b _ [=<- _]. split_and!; try done.
@@ -4467,6 +4813,9 @@ Proof.
       * intros m Hm. by rewrite H1.
 Qed.
 
+(**md
+`wk` holds across `same6`.
+*)
 Lemma wk_same s s' : same6 s s' -> wk s -> wk s'.
 Proof.
   intros (H1&H2&H3&H4&H5&H6). apply wk_own; [split_and!; done|done|].
@@ -4546,11 +4895,20 @@ Qed.
 
 (** ** A write *)
 
+(**md
+For each pair in `R`, a live pure memo outside the running stack is stale with no flag when its live memo source is.
+
+- [R:] the pairs of a computation and a source it holds.
+- [s:] the state.
+*)
 Definition qt_on (R : node_id -> node_id -> Prop) (s : state) : Prop :=
   forall c src dc e, R c src -> g_nodes s !! c = Some dc -> n_kind dc = KMemo -> pure_in (shapes s) c -> n_disposed dc = false ->
     c ∉ g_running s -> g_nodes s !! src = Some e -> n_kind e = KMemo -> src ∈ (slot_view (g_edges s) c).1 -> un e -> n_disposed e = false ->
     un dc.
 
+(**md
+`f_unannounced` is set, the edges are well formed, and every `Clean` pure memo holds no announcement flag.
+*)
 Definition cf_on (s : state) : Prop :=
   f_unannounced (g_flags s) = true /\ world_well_formed (g_edges s) /\
   forall c d, g_nodes s !! c = Some d -> n_kind d = KMemo -> pure_in (shapes s) c -> n_freshness d = Clean -> n_unannounced d = false.
@@ -4611,6 +4969,12 @@ Proof.
   destruct (mark_list_visit _ _ _ _ m Hr Hn (elem_rev _ _ Hin)) as (s1&s2&H1&H2&H3). eauto.
 Qed.
 
+(**md
+`cf_on` and `qt_on R` both hold.
+
+- [R:] the pairs of a computation and a source it holds.
+- [s:] the state.
+*)
 Definition mq (R : node_id -> node_id -> Prop) (s : state) : Prop := cf_on s /\ qt_on R s.
 
 Lemma qt_forward f R n d F u s s' :
@@ -5045,6 +5409,9 @@ Proof.
     destruct (decide (c = n)) as [->|Hcn]; [rewrite Ht1; by eexists|]. rewrite Hne1 by done. rewrite Hy. by eexists.
 Qed.
 
+(**md
+Under equal shapes, each node of the later state is a node of the earlier state with the same shape.
+*)
 Lemma shapes_node_back s s' (m : node_id) d' :
   shapes s' = shapes s -> g_nodes s' !! m = Some d' -> exists d, g_nodes s !! m = Some d /\ shape_of d' = shape_of d.
 Proof.
@@ -5052,7 +5419,9 @@ Proof.
   destruct (g_nodes s !! m) as [d|] eqn:E; [|done]. simpl in X. exists d. split; [done|]. congruence.
 Qed.
 
-(** A flush keeps the shapes, and every quiet or disposed pure node answers as it did. *)
+(** A flush keeps the shapes, and every quiet or disposed pure node answers as it did.
+    - [s:] the state before the flush.
+    - [s':] the state after the flush. *)
 Definition keepq (s s' : state) : Prop :=
   shapes s' = shapes s /\ forall t e, g_nodes s !! t = Some e -> pure_in (shapes s) t -> quiet e \/ n_disposed e = true ->
     exists e', g_nodes s' !! t = Some e' /\ read_view_of e' = read_view_of e /\ (quiet e' \/ n_disposed e' = true).
@@ -5074,6 +5443,9 @@ Proof.
   split_and!; [rewrite H by done; exact He|done|done].
 Qed.
 
+(**md
+A call below the stack is a `keepq` when `T` holds of no pure node.
+*)
 Lemma keepq_atom (T : node_id -> Prop) lim x s s' :
   atom T lim x s s' -> (forall t, pure_in (shapes s) t -> ~ T t) -> keepq s s'.
 Proof.
@@ -5081,6 +5453,9 @@ Proof.
   destruct (at_keep _ _ _ _ _ A t e He Hp (HT t Hp) Hq) as (e'&He'&V&Q&_). exists e'. done.
 Qed.
 
+(**md
+`good` holds across two states with the same shapes.
+*)
 Lemma good_shapes s s' : shapes s' = shapes s -> good s -> good s'.
 Proof.
   intros Sh [Ha He]. split.
@@ -5098,12 +5473,17 @@ Definition tk_inv (s : state) : Prop :=
   forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo ->
     n_scope d = None /\ body_pure (fun _ => True) (n_env d) (n_body d).
 
+(**md
+A flush is running or a batch is open.
+*)
 Definition tk_ctx (s : state) : Prop := g_flushing s = true \/ 0 < g_batch_depth s.
 
 #[local] Hint Extern 0 (_ `prefix_of` _) => reflexivity : core.
 
 (** A call keeps every node's shape and the context, extends the queue, and adds only logs of the current computation and of
-    memos. *)
+    memos.
+    - [s:] the state before the call.
+    - [s':] the state after the call. *)
 Record tk_step (s s' : state) : Prop := {
   tk_fw : forall m d, g_nodes s !! m = Some d -> exists d', g_nodes s' !! m = Some d' /\ shape_of d' = shape_of d /\ n_scope d' = n_scope d;
   tk_bk : forall m d', g_nodes s' !! m = Some d' -> is_Some (g_nodes s !! m);
@@ -5144,9 +5524,18 @@ Proof.
       * right. exact (tk_memo_back _ _ _ S12 K).
 Qed.
 
+(**md
+A call of `m` from `tk_inv`, `tk_ctx` and `P` that returns keeps `tk_inv`, and is a `tk_step`.
+
+- [P:] the premise of the call.
+- [m:] the engine function.
+*)
 Definition tkm {A} (P : state -> Prop) (m : M A) : Prop :=
   forall s s' a, tk_inv s -> tk_ctx s -> P s -> m s = Some (s', a) -> tk_inv s' /\ tk_step s s'.
 
+(**md
+`P` holds across every `tk_step`.
+*)
 Class TkStable (P : state -> Prop) := tk_stable : forall s s', tk_step s s' -> P s -> P s'.
 
 Global Instance tk_stable_true : TkStable (fun _ => True).
@@ -5158,6 +5547,9 @@ Proof.
   unfold shape_of in Hs. injection Hs as K _ _ _. congruence.
 Qed.
 
+(**md
+A computation is current.
+*)
 Definition cur_some (s : state) : Prop := exists c, g_current s = Some c.
 
 Global Instance tk_stable_cur : TkStable cur_some.
@@ -5190,7 +5582,9 @@ Proof.
   refine (H d _ s s' a Hi Hc HP E). exists s. done.
 Qed.
 
-(** A step changing no node, no trace and none of the context. *)
+(** A step changing no node, no trace and none of the context.
+    - [s:] the state before the step.
+    - [s':] the state after the step. *)
 Definition tk_same (s s' : state) : Prop :=
   g_nodes s' = g_nodes s /\ g_current s' = g_current s /\ g_flushing s' = g_flushing s /\ g_batch_depth s' = g_batch_depth s /\
   g_pull_depth s' = g_pull_depth s /\ g_trace s' = g_trace s /\ g_current_owner s' = g_current_owner s /\
@@ -5233,6 +5627,9 @@ Proof.
   apply tk_of_same; [|done]. split_and!; done.
 Qed.
 
+(**md
+Mark steps keep the current owner.
+*)
 Lemma marks_own s s' : rtc mark_prim s s' -> g_current_owner s' = g_current_owner s.
 Proof. induction 1 as [s|s1 s2 s3 Hp _ IH]; [done|]. rewrite IH. destruct Hp; done. Qed.
 
@@ -5336,6 +5733,9 @@ Proof.
   - right. exact K.
 Qed.
 
+(**md
+Every engine function a pure memo's run reaches satisfies `tkm` at fuel `f`, under its premise.
+*)
 Record T_ok (f : nat) : Prop := {
   Texec : forall e' e c, env_agree e' e -> body_pure (fun _ => True) e c -> tkm cur_some (exec f e' c);
   Tread : forall n, tkm (fun _ => True) (read f n true);
@@ -5495,6 +5895,9 @@ Proof.
     pose proof (tk_flush_noop _ _ _ _ Hfl E) as ->. split; [done|apply tk_step_refl].
 Qed.
 
+(**md
+`T_ok` holds at every fuel.
+*)
 Lemma T_ok_all f : T_ok f.
 Proof. induction f; [exact T_ok_0|by apply T_ok_S]. Qed.
 
@@ -5509,6 +5912,9 @@ Proof.
   - destruct H as [A B]. split; [done|auto].
 Qed.
 
+(**md
+A `whole`, well-behaved state satisfies `tk_inv`.
+*)
 Lemma tk_inv_of s : whole s -> well_behaved_program s -> tk_inv s.
 Proof.
   intros Hw Ha m d Hd Hk. pose proof (Ha m d Hd Hk) as Hp. split; [exact (proj1 (w_memo _ Hw m d Hd Hk Hp))|].
@@ -5517,25 +5923,47 @@ Qed.
 
 (** ** The trace of a flush *)
 
-(** Logs of memos. *)
+(** Logs of memos.
+    - [s:] the state whose memos log.
+    - [b:] the events. *)
 Definition memo_logs (s : state) (b : list event) : Prop :=
   forall ev, ev ∈ b -> exists m v, ev = EvLog m v /\ memo_at s m.
 
 (** A run of an effect with environment [e] and body [c]: its result and logs answer each read from a node that is quiet or
-    disposed in [s], and [b] holds the logs of its body and of the memos it ran. *)
+    disposed in [s], and [b] holds the logs of its body and of the memos it ran.
+    - [s:] the state whose quiet or disposed nodes answer the reads.
+    - [n:] the effect.
+    - [e:] the environment of the body.
+    - [c:] the body.
+    - [r:] the result of the run.
+    - [l:] the logs of the effect's body.
+    - [b:] the events of the run after its [EvRun]. *)
 Definition run_entry (s : state) (n : node_id) (e : env) (c : cmd) (r : outcome) (l : list val) (b : list event) : Prop :=
   trace_view n b = EvLog n <$> l /\ (forall ev, ev ∈ b -> exists m v, ev = EvLog m v /\ (m = n \/ memo_at s m)) /\
   exists A, guide (fun _ => False) s A /\ body_run (memo_at s) A e c r l.
 
-(** The queue only grows, and its head holds. *)
+(** The queue only grows, and its head holds.
+    - [s:] the state before the step.
+    - [s':] the state after the step. *)
 Definition qgrow (s s' : state) : Prop := g_queue s `prefix_of` g_queue s' /\ g_queue_head s' = g_queue_head s.
 
+(**md
+A step of a flush grows the queue and appends memo logs to the trace, then possibly one run of effect `n` whose events form a `run_entry` over the end state.
+
+- [n:] the effect the step can run.
+- [e:] the environment of the effect's body.
+- [c:] the effect's body.
+- [s:] the state before the step.
+- [s':] the state after the step.
+*)
 Definition step_log (n : node_id) (e : env) (c : cmd) (s s' : state) : Prop :=
   qgrow s s' /\ exists pre, memo_logs s' pre /\
     (g_trace s' = g_trace s ++ pre \/
      exists r l b, g_trace s' = g_trace s ++ pre ++ EvRun n :: b ++ fail_evs n r /\ run_entry s' n e c r l b).
 
-(** The disposal of every node holds. *)
+(** The disposal of every node holds.
+    - [s:] the state before the step.
+    - [s':] the state after the step. *)
 Definition keepd (s s' : state) : Prop :=
   forall t e, g_nodes s !! t = Some e -> exists e', g_nodes s' !! t = Some e' /\ n_disposed e' = n_disposed e.
 
@@ -5555,6 +5983,9 @@ Proof.
   - exists e. rewrite H by done. done.
 Qed.
 
+(**md
+A call below the stack keeps the disposal of every node.
+*)
 Lemma keepd_atom (T : node_id -> Prop) lim x s s' : atom T lim x s s' -> keepd s s'.
 Proof. intros A t e He. exact (at_any _ _ _ _ _ A t e He). Qed.
 
@@ -5842,12 +6273,31 @@ Qed.
 
 End WX1.
 
+(**md
+A call of `m` from `run_core`, `wkx X` and `P` that ends `good` ends in `wkx X`.
+
+- [X:] the effects whose scheduling mark is due.
+- [P:] the premise of the call.
+- [m:] the engine function.
+*)
 Definition wfx (X : node_id -> Prop) {A} (P : state -> Prop) (m : M A) : Prop :=
   forall s s' a, run_core s -> wkx X s -> P s -> m s = Some (s', a) -> good s' -> wkx X s'.
 
+(**md
+`n` is a live memo of `s`.
+
+- [n:] the node tested.
+- [s:] the state.
+*)
 Definition live_memo (n : node_id) (s : state) : Prop :=
   exists d, g_nodes s !! n = Some d /\ n_kind d = KMemo /\ n_disposed d = false.
 
+(**md
+Every engine function at fuel `f` satisfies `wfx X`, under its premise.
+
+- [X:] the effects whose scheduling mark is due.
+- [f:] the fuel.
+*)
 Record W_ok (X : node_id -> Prop) (f : nat) : Prop := {
   Wexec : forall e c, wfx X (fun _ => True) (exec f e c);
   Wread : forall n b, wfx X (fun _ => True) (read f n b);
@@ -6336,6 +6786,9 @@ Inductive flush_tr (s : state) : list event -> list (node_id * outcome * list va
       g_nodes s !! n = Some d -> n_kind d = KEffect -> run_entry s n (n_env d) (n_body d) r l b -> flush_tr s t rs ->
       flush_tr s (EvRun n :: b ++ fail_evs n r ++ t) ((n, r, l) :: rs).
 
+(**md
+A `flush_tr` over a state holds over a later state related to it by `keepq`.
+*)
 Lemma flush_tr_keep s s' t rs : keepq s s' -> flush_tr s t rs -> flush_tr s' t rs.
 Proof.
   intros K H. pose proof K as [Sh _]. induction H as [|pre t rs Hm _ IH|n d r l b t rs Hd Hk Hr _ IH].
@@ -6350,7 +6803,9 @@ Qed.
 Definition no_untracked (s : state) : Prop :=
   forall n d, g_nodes s !! n = Some d -> n_kind d = KEffect -> has_untracked (n_body d) = false.
 
-(** The queue entries a drain takes, each in the order taken. The entries include those added during the drain. *)
+(** The queue entries a drain takes, each in the order taken. The entries include those added during the drain.
+    - [f:] the fuel of the drain.
+    - [s:] the state the drain starts in. *)
 Fixpoint dequeued (f : nat) (s : state) : list node_id :=
   match f with
   | 0 => []
@@ -6368,6 +6823,9 @@ Fixpoint dequeued (f : nat) (s : state) : list node_id :=
 Lemma prefix_drop_mono n (q q' : list node_id) : q `prefix_of` q' -> n <= length q -> drop n q `prefix_of` drop n q'.
 Proof. intros [k ->] H. rewrite drop_app_le by done. by exists k. Qed.
 
+(**md
+A drain from `run_core` and `wk` in a flush, ending `good`, keeps `wk`, `keepq`, `keepd` and the current owner. With no untracked read in an effect, the events it adds form a `flush_tr` whose runs are a sublist of `dequeued`, and the live queue at its start is a prefix of `dequeued`.
+*)
 Lemma drain_fw f : forall s s' a, run_core s -> wk s -> flush_ctx s -> good s -> drain f s = Some (s', a) ->
   wk s' /\ keepq s s' /\ keepd s s' /\ g_current_owner s' = g_current_owner s /\
   (no_untracked s -> exists t rs, g_trace s' = g_trace s ++ t /\ flush_tr s' t rs /\
@@ -6803,6 +7261,9 @@ End WStep2.
 
 End WX2.
 
+(**md
+`W_ok X` holds at every fuel, for every `X`.
+*)
 Lemma W_ok_all f : forall X, W_ok X f.
 Proof.
   induction f as [|f IH]; intros X; [exact (W_ok_0 X)|]. split.
@@ -6830,6 +7291,9 @@ Qed.
 
 Notation wk0 := (wkx (fun _ => False)).
 
+(**md
+A new graph with the current flags satisfies `wk0`.
+*)
 Lemma whole_init : wk0 (init current_flags).
 Proof.
   split; [split|split].
@@ -6860,6 +7324,9 @@ Proof.
   intros Hm Hg. destruct engine_settled_init as [Hc0 _]. exact (Wexec _ (W_ok_all f _) [] c _ _ _ Hc0 whole_init I Hm Hg).
 Qed.
 
+(**md
+Under `run_core` and `wk0`, a pure node is off the running stack.
+*)
 Lemma pure_not_running s t : run_core s -> wk0 s -> pure_in (shapes s) t -> t ∉ g_running s.
 Proof. intros Hc Hw Hp. exact (np_pure s t (proj1 (proj2 Hc)) (proj1 (proj2 Hw)) Hp). Qed.
 
@@ -6869,6 +7336,11 @@ Proof. intros Hc Hw Hp. exact (np_pure s t (proj1 (proj2 Hc)) (proj1 (proj2 Hw))
 After a whole program from a new graph, `gh_passed` is empty: each computation that resolved `Clean` did so over sources that were clean, disposed or holding their flag. `wake_ok` follows: [`well_behaved_no_lost_wakeups`](#well_behaved_no_lost_wakeups).
 
 Premises: the program's end state has every memo outside the self-dirtying case, and every effect only reads. A `CmpNever` comparer falsifies the conclusion: [`cmp_never_passes_source`](Ranvier.Pure.Witnesses.html#cmp_never_passes_source). So does clearing `f_unannounced`: [`witness_302`](Ranvier.Pure.Witnesses.html#witness_302). An effect that writes or registers a cleanup is unproved either way.
+
+- [f:] the fuel.
+- [c:] the program run from a new graph.
+- [s:] the end state, which is well-behaved.
+- [r:] the outcome of the program.
 *)
 Theorem well_behaved_nothing_passed f c s r :
   run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> nothing_passed s.
@@ -6884,6 +7356,11 @@ Qed.
 Every observer of a live stale source is stale or queued, or on the running stack, or the source holds its announcement flag.
 
 Premises: as [`well_behaved_nothing_passed`](#well_behaved_nothing_passed).
+
+- [f:] the fuel.
+- [c:] the program run from a new graph.
+- [s:] the end state, which is well-behaved.
+- [r:] the outcome of the program.
 *)
 Corollary well_behaved_no_lost_wakeups f c s r :
   run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> wake_ok s.
@@ -6925,6 +7402,9 @@ Proof.
   all: try rewrite IHc1; try rewrite IHc2; try rewrite IHc; try rewrite H; repeat first [rewrite IHc | rewrite H | done | destruct (ev _ _) as [[?|?]|] | destruct (decide _) | destruct (B _) as [[?|?]|] | destruct (body_eval _ _ _) as [[?|?]|]].
 Qed.
 
+(**md
+Two states with equal nodes give each node the same `den`.
+*)
 Lemma den_nodes k s s' n : g_nodes s' = g_nodes s -> den k s' n = den k s n.
 Proof.
   intros H. revert n. induction k as [|k IH]; intros n; [done|]. cbn [den]. rewrite H.
@@ -7056,6 +7536,15 @@ Premises: the program's end state has every memo outside the self-dirtying case 
 The statement speaks at a program's end. A read in an open batch or a body is unstated. A read here can settle a flush, and the answer holds across it.
 
 The form over the node alone, with its other nodes free, is false in a state with a queue: [`read_settles_writer`](Ranvier.Pure.Witnesses.html#read_settles_writer). It is false at quiescence too: [`read_quiescent_falsified`](Ranvier.Pure.Witnesses.html#read_quiescent_falsified). The form with no exception for a disposed memo is false: [`glitch_free_read_falsified`](Ranvier.Pure.Witnesses.html#glitch_free_read_falsified).
+
+- [f:] the fuel of the program.
+- [f':] the fuel of the read.
+- [c:] the program run from a new graph.
+- [s:] the end state of the program, in which the read starts.
+- [r:] the outcome of the program.
+- [n:] the node read, outside the self-dirtying case.
+- [s':] the state after the read.
+- [o:] the answer of the read.
 *)
 Theorem glitch_free_read f f' c s r n s' o :
   run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> ~ self_dirtying s n ->
@@ -7101,6 +7590,11 @@ Exclusions from an effect's body:
 - A cleanup, a disposal, and an effect or other node created in the body rest on the proof's reach. They are unproved by choice of scope: no proof was attempted, no counterexample is known, and the owner has been told.
 
 `quiescent` excludes the queue `failed_batch_leaves_queue` leaves. [`convergence_reached`](Ranvier.Pure.Witnesses.html#convergence_reached) reaches every premise on a live effect over live memos. The form over all programs is the Open `convergence_all_statement`.
+
+- [f:] the fuel.
+- [c:] the program run from a new graph.
+- [s:] the end state, which is well-behaved and quiescent.
+- [r:] the outcome of the program.
 *)
 Theorem convergence f c s r :
   run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> quiescent s ->
@@ -7153,10 +7647,16 @@ Qed.
 
 (** ** Deciding the premises on a concrete state *)
 
+(**md
+A sufficient test of `well_behaved_program`: `pure_b` holds of every memo.
+*)
 Definition well_behaved_b (s : state) : bool :=
   forallb (fun x : node_id * node =>
     match n_kind x.2 with KMemo => pure_b (shapes s) (Datatypes.S x.1) x.1 | _ => true end) (map_to_list (g_nodes s)).
 
+(**md
+A sufficient test of `effects_only_read`: `body_ok` holds of every effect's body, with `pure_b` as the test of each node read.
+*)
 Definition effects_only_read_b (s : state) : bool :=
   forallb (fun x : node_id * node =>
     match n_kind x.2 with
@@ -7192,6 +7692,9 @@ Fixpoint body_shape (c : cmd) : bool :=
   | _ => false
   end.
 
+(**md
+A body in the grammar of `body_shape` satisfies `body_pureu true` under a condition that holds of every node.
+*)
 Lemma body_shape_pure (Q : node_id -> Prop) e c : (forall t, Q t) -> body_shape c = true -> body_pureu true Q e c.
 Proof.
   intros HQ. revert e. induction c; intros g; simpl; try done; rewrite ?andb_true_iff.
@@ -7204,6 +7707,9 @@ Proof.
   - intros [H1 H2]. split; auto.
 Qed.
 
+(**md
+In a well-behaved program, every readable node is pure.
+*)
 Lemma readable_pure s t : well_behaved_program s -> readable (shapes s) t -> pure_in (shapes s) t.
 Proof.
   intros Ha Hr. destruct (readable_node _ _ Hr) as [d Hd]. unfold readable in Hr. rewrite (shapes_lookup s t d Hd) in Hr.
@@ -7223,7 +7729,11 @@ Proof.
   intros t Hr. exact (readable_pure s t Ha Hr).
 Qed.
 
-(** A test that a body is not pure, trying a sample of answers for each read. With [u], untracked reads are allowed. *)
+(** A test that a body is not pure, trying a sample of answers for each read. With [u], untracked reads are allowed.
+    - [u:] whether untracked reads are allowed.
+    - [Q:] the test of a node read that makes the body impure.
+    - [e:] the environment of the body.
+    - [c:] the body. *)
 Fixpoint refute (u : bool) (Q : node_id -> bool) (e : env) (c : cmd) : bool :=
   match c with
   | CRet x => negb (expr_plain x)
@@ -7281,13 +7791,22 @@ Proof.
   - intros H [H1 H2]. destruct H as [H|H]; [rewrite H1 in H; done|exact (IHc _ H H2)].
 Qed.
 
+(**md
+`t` is a signal or a memo in `S`: the boolean form of `readable`.
+
+- [S:] the shapes of the graph.
+- [t:] the node tested.
+*)
 Definition readable_b (S : gmap node_id (kind * comparer * env * cmd)) (t : node_id) : bool :=
   match S !! t with
   | Some (KSignal, _, _, _) | Some (KMemo, _, _, _) => true
   | _ => false
   end.
 
-(** A sufficient test that a node is self-dirtying. *)
+(** A sufficient test that a node is self-dirtying.
+    - [S:] the shapes of the graph.
+    - [k:] the bound on the depth of reads.
+    - [n:] the node tested. *)
 Fixpoint bad_b (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n : node_id) : bool :=
   match k with
   | 0 => true
@@ -7310,12 +7829,21 @@ Proof.
   apply orb_true_iff in H2 as [H2|H2]; [apply bool_decide_eq_true_1 in H2; lia|exact (IH t H2 K2)].
 Qed.
 
+(**md
+`bad_b` at one more level than the node's rank is a sufficient test of `self_dirtying`.
+*)
 Lemma dirtying_b s n : bad_b (shapes s) (Datatypes.S (rk n)) n = true -> self_dirtying s n.
 Proof. intros H K. exact (bad_b_sound (shapes s) (Datatypes.S (rk n)) n H K). Qed.
 
+(**md
+`pure_b` at one more level than the node's id is a sufficient test that the node is outside the self-dirtying case.
+*)
 Lemma not_dirtying_b s n : pure_b (shapes s) (Datatypes.S n) n = true -> ~ self_dirtying s n.
 Proof. intros H K. exact (K (pure_at_least _ n _ (pure_b_sound (shapes s) (Datatypes.S n) n H))). Qed.
 
+(**md
+`refute`, with `bad_b` as the test of each readable target, is a sufficient test that a node is outside `quiet_effect`.
+*)
 Lemma not_quiet_b s c d :
   refute true (fun t => readable_b (shapes s) t && bad_b (shapes s) (Datatypes.S (rk t)) t) (n_env d) (n_body d) = true -> ~ quiet_effect s c d.
 Proof.
@@ -7325,7 +7853,10 @@ Qed.
 
 (** ** The read with no exception *)
 
-(** What a node's body computes over the current signals, disposed or not. *)
+(** What a node's body computes over the current signals, disposed or not.
+    - [k:] the bound on the depth of reads.
+    - [s:] the state whose signals are read.
+    - [n:] the node. *)
 Fixpoint body_den (k : nat) (s : state) (n : node_id) : option outcome :=
   match k with
   | 0 => None
@@ -7378,7 +7909,10 @@ Fixpoint no_batch (c : cmd) : bool :=
   | _ => true
   end.
 
-(** [n] is a signal, or a memo with no batch in its body or in any node its body can read. *)
+(** [n] is a signal, or a memo with no batch in its body or in any node its body can read.
+    - [S:] the shapes of the graph.
+    - [k:] the bound on the depth of reads.
+    - [n:] the node tested. *)
 Fixpoint batch_free_at (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n : node_id) : Prop :=
   match k with
   | 0 => False
@@ -7402,7 +7936,9 @@ Definition read_quiescent_batch_free_statement : Prop :=
 (** ** The statement over all programs *)
 
 (** A body's computation from the signals. A write and a disposal keep their expressions' failures. A cleanup is skipped under
-    [Owning], and a cleanup, effect or memo created under [Pure] is the body's [pure_scope_failure]. *)
+    [Owning], and a cleanup, effect or memo created under [Pure] is the body's [pure_scope_failure].
+    - [m:] the scope mode of the node.
+    - [c:] the body. *)
 Fixpoint erase (m : scope_mode) (c : cmd) : cmd :=
   match c with
   | CLet x v k => CLet x v (erase m k)
@@ -7418,7 +7954,10 @@ Fixpoint erase (m : scope_mode) (c : cmd) : cmd :=
   | _ => c
   end.
 
-(** What a node's erased body computes over the current signals, and a disposed memo's stored answer. *)
+(** What a node's erased body computes over the current signals, and a disposed memo's stored answer.
+    - [k:] the bound on the depth of reads.
+    - [s:] the state whose signals are read.
+    - [n:] the node. *)
 Fixpoint den_all (k : nat) (s : state) (n : node_id) : option outcome :=
   match k with
   | 0 => None
@@ -7436,6 +7975,13 @@ Fixpoint den_all (k : nat) (s : state) (n : node_id) : option outcome :=
     end
   end.
 
+(**md
+Node `n` answers `o` by `den_all` over the current signals of `s`, at some bound on the depth of reads.
+
+- [s:] the state whose signals are read.
+- [n:] the node.
+- [o:] the answer.
+*)
 Definition denotes_all (s : state) (n : node_id) (o : outcome) : Prop := exists k, den_all k s n = Some o.
 
 Lemma den_all_S k s n o : den_all k s n = Some o -> den_all (Datatypes.S k) s n = Some o.
@@ -7450,13 +7996,19 @@ Qed.
 Lemma den_all_mono k k' s n o : k <= k' -> den_all k s n = Some o -> den_all k' s n = Some o.
 Proof. induction 1 as [|k0 _ IH]; [done|]. intros H. apply den_all_S. auto. Qed.
 
+(**md
+A node denotes at most one outcome by `den_all`.
+*)
 Lemma denotes_all_unique s n o o' : denotes_all s n o -> denotes_all s n o' -> o = o'.
 Proof.
   intros [k H1] [k' H2]. assert (H1' : den_all (k + k') s n = Some o) by (eapply den_all_mono; [|exact H1]; lia).
   assert (H2' : den_all (k + k') s n = Some o') by (eapply den_all_mono; [|exact H2]; lia). congruence.
 Qed.
 
-(** [Q] holds of each target an erased body can read, for every answer of its earlier reads. *)
+(** [Q] holds of each target an erased body can read, for every answer of its earlier reads.
+    - [Q:] the condition on each target.
+    - [e:] the environment of the body.
+    - [c:] the erased body. *)
 Fixpoint body_reads (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
   match c with
   | CLet x v k => forall z, ev e v = Some (Ok z) -> body_reads Q ((x, z) :: e) k
@@ -7481,7 +8033,9 @@ Proof.
   - destruct H as [_ K]. exact (IHc _ K).
 Qed.
 
-(** The live memos of the graph. *)
+(** The live memos of the graph.
+    - [P:] the condition each live memo satisfies.
+    - [s:] the state. *)
 Definition live_memos (P : node -> Prop) (s : state) : Prop :=
   forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo -> n_disposed d = false -> P d.
 
@@ -7526,7 +8080,10 @@ Fixpoint body_nodes (c : cmd) : bool :=
     created node's id varies by run, so a path that reaches the creation has no value over the signals alone. *)
 Definition memos_no_creation : state -> Prop := live_memos (fun d => body_nodes (erase (n_mode d) (n_body d)) = false).
 
-(** [u] is a target an erased body can read, for some answers of its earlier reads. *)
+(** [u] is a target an erased body can read, for some answers of its earlier reads.
+    - [u:] the target.
+    - [e:] the environment of the body.
+    - [c:] the erased body. *)
 Fixpoint may_read (u : node_id) (e : env) (c : cmd) : Prop :=
   match c with
   | CLet x _ k => exists z, may_read u ((x, z) :: e) k
@@ -7540,7 +8097,11 @@ Fixpoint may_read (u : node_id) (e : env) (c : cmd) : Prop :=
   | _ => False
   end.
 
-(** A write of [w] can move [t]: [t] is [w], or a memo that can read a node [w] reaches. *)
+(** A write of [w] can move [t]: [t] is [w], or a memo that can read a node [w] reaches.
+    - [s:] the state.
+    - [k:] the bound on the length of the path.
+    - [w:] the node written.
+    - [t:] the node moved. *)
 Fixpoint reaches_at (s : state) (k : nat) (w t : node_id) : Prop :=
   match k with
   | 0 => False
@@ -7552,10 +8113,22 @@ Fixpoint reaches_at (s : state) (k : nat) (w t : node_id) : Prop :=
     end
   end.
 
+(**md
+A write of `w` can move `t`, along a path of some length.
+
+- [s:] the state.
+- [w:] the node written.
+- [t:] the node moved.
+*)
 Definition reaches (s : state) (w t : node_id) : Prop := exists k, reaches_at s k w t.
 
 (** Each read of a body, after the writes [W] of its path and for every answer of its earlier reads, targets a node reached
-    by no write in [W]. [K] states the same of what follows, over the writes of the whole path. *)
+    by no write in [W]. [K] states the same of what follows, over the writes of the whole path.
+    - [s:] the state.
+    - [W:] the writes of the path so far.
+    - [e:] the environment of the body.
+    - [c:] the body.
+    - [K:] the condition on what follows the body. *)
 Fixpoint reads_before (s : state) (W : list node_id) (e : env) (c : cmd) (K : list node_id -> Prop) : Prop :=
   match c with
   | CRet _ => K W
@@ -7662,6 +8235,9 @@ Definition memo_b (d : node) : bool :=
   negb (body_nodes (erase (n_mode d) (n_body d))) &&
   no_writes (n_body d).
 
+(**md
+A sufficient test of `fix_premises` at quiescence: `ranked_b`, and `memo_b` of every live memo.
+*)
 Definition fix_premises_b (s : state) : bool :=
   ranked_b s && forallb (fun x : node_id * node =>
     match n_kind x.2, n_disposed x.2 with KMemo, false => memo_b x.2 | _, _ => true end) (map_to_list (g_nodes s)).
@@ -7681,6 +8257,12 @@ Proof.
   - by apply reads_before_no_writes.
 Qed.
 
+(**md
+Equality of outcomes.
+
+- [a:] the first outcome.
+- [b:] the second outcome.
+*)
 Definition outcome_eqb (a b : outcome) : bool :=
   match a, b with
   | Ok x, Ok y | Fail x, Fail y => bool_decide (x = y)
@@ -7690,7 +8272,9 @@ Definition outcome_eqb (a b : outcome) : bool :=
 Lemma outcome_eqb_eq a b : outcome_eqb a b = true -> a = b.
 Proof. destruct a, b; simpl; try done; intros H; apply bool_decide_eq_true_1 in H; by subst. Qed.
 
-(** A sufficient test of [converged_all], with [k] the fuel of the denotations. *)
+(** A sufficient test of [converged_all], with [k] the fuel of the denotations.
+    - [k:] the fuel of the denotations.
+    - [s:] the state. *)
 Definition converged_all_b (k : nat) (s : state) : bool :=
   forallb (fun x : node_id * node =>
     let e := x.1 in let d := x.2 in
