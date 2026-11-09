@@ -9,6 +9,7 @@ commit `d701e6c5`.
 - Audit: `bash proofs/check.sh`
 - Differential check: `bash proofs/differential/run.sh [count] [seed]`
 - Documentation: `bash proofs/docs.sh`, which prints where the pages are. Start at the Guarantees page.
+- Navigator site: `bash proofs/site.sh`, which writes `site/output`. Published at `/proofs/` of the documentation site.
 
 All four run from any directory. See `VERSIONS.md` for the toolchain. The audit and the differential check also need the
 .NET SDK, since they rebuild `src/Ranvier`. Under WSL they run the Windows `dotnet.exe`.
@@ -84,6 +85,7 @@ copy, so it needs no Rocq.
 - `differential/run.sh`: the comparison.
 - `theories/Audit.v`: one `Print Assumptions` per theorem; `check.sh` reads it.
 - `docs.sh`, `docs/guarantees.py`, `docs/ranvier.css`, `docs/ranvier.js`: the pages, the Guarantees overview and their checks.
+- `site.sh`, `site/`: the Navigator site, built with `FSharp.Data.Rocq` and `Nacara.Plugin.Rocq`.
 - `BUGS.md`: defect ledger. `CORRESPONDENCE.md`: model-to-F# map.
 
 ## Theorem index
