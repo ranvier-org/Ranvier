@@ -2374,7 +2374,7 @@ Qed.
 (**md
 **A failing memo run returns, with a failure in the memo's status.**
 
-When a memo's run fails with `y`, `run_memo` returns and the memo's status is `StError`. Its failure is `y`, or `z` when its comparer throws `z`: a comparer consulted over an unchanged status and failure replaces it, as Core.fs 4275-4279 does. A reader takes the failure from the status. This answers `Memo.Run`'s handlers (Core.fs 4247-4261).
+When a memo's run fails with `y`, `run_memo` returns and the memo's status is `StError`. Its failure is `y`. The one exception is a memo that already held `StError` and `y`: Core.fs 4266-4274 then consults the comparer, and a comparer that throws `z` replaces the failure with `z`, as Core.fs 4275-4279 does. A reader takes the failure from the status. This answers `Memo.Run`'s handlers (Core.fs 4247-4261).
 
 The run fails with `y` in two ways, both in the premise on `r`: the body's result is `Fail y`, or the body breached a pure memo's scope, which sets `n_violated` and makes `y` the fixed `pure_scope_failure` whatever the body returned (Core.fs 4248-4250). [`memo_scope_violation_returns`](#memo_scope_violation_returns) and [`memo_comparer_replaces_failure`](#memo_comparer_replaces_failure) run those two paths.
 
@@ -2388,7 +2388,8 @@ Theorem memo_failure_contained f n s s2 d d1 r y :
   coherent (g_edges s2) -> mark_measure s2 < f ->
   exists s' d', run_memo (S f) n s = Some (s', tt) /\
     g_nodes s' !! n = Some d' /\ n_status d' = StError /\
-    (n_failure d' = Some y \/ exists z, n_comparer d1 = CmpThrows z /\ n_failure d' = Some z).
+    (n_failure d' = Some y \/
+     exists z, n_comparer d1 = CmpThrows z /\ n_status d = StError /\ n_failure d = Some y /\ n_failure d' = Some z).
 Proof.
   intros Hd Hb Hd1 Hres Hco Hfu.
   destruct (edges_total (n_disposed d1) n _ Hco) as (w&Hw).
@@ -2400,7 +2401,8 @@ Proof.
     unfold s9. rewrite (measure_set n (u d1) d1 _ Hd7 eq_refl). exact Hfu. }
   assert (Hshape : exists mv s10 d10, run_memo (S f) n s = run_finish f n mv s10 /\ g_nodes s10 !! n = Some d10 /\
       mark_measure s10 < f /\ n_status d10 = StError /\
-      (n_failure d10 = Some y \/ exists z, n_comparer d1 = CmpThrows z /\ n_failure d10 = Some z)).
+      (n_failure d10 = Some y \/
+       exists z, n_comparer d1 = CmpThrows z /\ n_status d = StError /\ n_failure d = Some y /\ n_failure d10 = Some z)).
   { cbn [run_memo]. rewrite (bind_get_node _ _ _ _ Hd), (bind_modify_node _ _ _ _ _ Hd).
     unfold edges, push_running. rewrite !bind_m_modify.
     erewrite bind_some; [|exact Hb]. cbv beta.
@@ -2423,7 +2425,11 @@ Proof.
         * simpl. apply lookup_insert_eq.
         * rewrite (measure_set n (t (u d1)) (u d1) _ Hd9 eq_refl). exact Hb9.
         * done.
-        * right. exists z. split; [exact Ec|done]. }
+        * right. exists z. split_and!; [exact Ec| | |done].
+          -- destruct (decide (n_status d = StError)) as [|N]; [done|].
+             exfalso. apply Hsame. left. intros E. apply N. symmetry. exact E.
+          -- destruct (decide (n_failure d = Some y)) as [|N]; [done|].
+             exfalso. apply Hsame. right. intros E. apply N. symmetry. exact E. }
   destruct Hshape as (mv&s10&d10&->&Hd10&Hb10&H4&H5).
   destruct (run_finish_some f n mv s10 d10 Hd10 Hb10) as (s'&d'&H1&H2&H3).
   exists s', d'. unfold read_view_of in H3. injection H3 as _ G1 G2. split_and!; [exact H1|exact H2|congruence|].
@@ -2435,7 +2441,7 @@ Qed.
 
 When a memo's comparer is consulted and throws `z`, `run_memo` returns, the memo's status is `StError`, its failure is `z`, and its value is the one from before the run. A reader takes the failure from the status. This answers `Memo.Run`'s handler of the comparison (Core.fs 4275-4279).
 
-Premises: the body's result is `Ok v`, from the state `run_memo` starts it in. The memo exists at the body's end with no scope violation, and with the status and failure it had before the run, since otherwise the comparer is not consulted. The edges there are coherent, and the fuel exceeds `mark_measure` there.
+Premises: the body's result is `Ok v`, from the state `run_memo` starts it in. The memo exists at the body's end with no scope violation, and with the status and failure it had before the run, since otherwise the comparer is not consulted. The edges there are coherent, and the fuel exceeds `mark_measure` there. This theorem takes both and does not derive them.
 *)
 Theorem comparer_throw_contained f n s s2 d d1 v z :
   g_nodes s !! n = Some d ->
@@ -2532,8 +2538,8 @@ Definition memo_case (q : comparer) (body : cmd) : cmd :=
   CEffect 4 (CRead 10 (V 2) (CLog (V 10) Nop)) (
   CWrite (V 1) (K 1%Z) Nop)))).
 
-(** A pure memo's body breaches its scope, and a read answers the fixed failure. The F# raises a new exception each
-    time, so this program stays outside the conformance scenarios: see [README.md]. *)
+(** A pure memo's body breaches its scope, and a read answers the fixed failure. Scenario [memo_scope_violation] checks
+    this trace on the F#, reporting its [InvalidOperationException] as [pure_scope_failure]. *)
 Definition memo_scope_violation : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CCleanup Nop Nop) (
@@ -2543,7 +2549,8 @@ Example memo_scope_violation_returns :
   trace_of 100000 current_flags memo_scope_violation = Some [EvHostRead 2 (Fail pure_scope_failure)].
 Proof. vm_compute. reflexivity. Qed.
 
-(** A memo fails with 7 on each run, and its throwing comparer is consulted on the second, over the unchanged failure. *)
+(** A memo fails with 7 on each run, and its throwing comparer is consulted on the second, over the unchanged failure.
+    Scenario [memo_comparer_failure] checks this trace on the F#. *)
 Definition memo_comparer_failure : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure (CmpThrows 9%Z) (CRead 10 (V 1) (CThrow 7%Z)) (
@@ -2556,6 +2563,9 @@ Proof. vm_compute. reflexivity. Qed.
 
 Definition flush_child_release : cmd :=
   flush_case (CRead 10 (V 1) (CEffect 11 (CCleanup (CThrow 8%Z) Nop) Nop)).
+
+Definition flush_comparer : cmd :=
+  memo_case (CmpThrows 9%Z) (CRead 10 (V 1) (CRet (K 0%Z))).
 
 Definition flush_memo_failure : cmd :=
   memo_case CmpEq (CRead 10 (V 1) (CIf (V 10) (CThrow 9%Z) (CRet (V 10)))).
@@ -2584,9 +2594,8 @@ Example flush_survives_memo_run :
     Some [EvRun 3; EvLog 3 0%Z; EvRun 4; EvLog 4 0%Z; EvRun 4; EvFail 4 9%Z; EvRun 3; EvLog 3 1%Z].
 Proof. vm_compute. reflexivity. Qed.
 
-(** A comparer throws, the memo's reader fails, and the effect behind it runs. This program does not run on the F#.
-    The differential check runs throwing comparers in generated programs. *)
+(** A comparer throws, the memo's reader fails, and the effect behind it runs. Scenario [flush_comparer]. *)
 Example flush_survives_comparer :
-  trace_of 100000 current_flags (memo_case (CmpThrows 9%Z) (CRead 10 (V 1) (CRet (K 0%Z)))) =
+  trace_of 100000 current_flags flush_comparer =
     Some [EvRun 3; EvLog 3 0%Z; EvRun 4; EvLog 4 0%Z; EvRun 4; EvFail 4 9%Z; EvRun 3; EvLog 3 1%Z].
 Proof. vm_compute. reflexivity. Qed.

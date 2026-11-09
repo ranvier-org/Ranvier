@@ -178,6 +178,19 @@ Definition exp_late_cleanup_failure : list event := [
   EvRun 1; EvDispose 1; EvCleanup 1; EvFail 1 8%Z; EvLog 1 7%Z
 ].
 
+Definition exp_memo_scope_violation : list event := [
+  EvHostRead 2 (Fail ((-2)%Z))
+].
+
+Definition exp_memo_comparer_failure : list event := [
+  EvHostRead 2 (Fail 7%Z); EvHostRead 2 (Fail 9%Z)
+].
+
+Definition exp_flush_comparer : list event := [
+  EvRun 3; EvLog 3 0%Z; EvRun 4; EvLog 4 0%Z; EvRun 4; EvFail 4 9%Z;
+  EvRun 3; EvLog 3 1%Z
+].
+
 Definition exp_failed_batch : list event := [
   EvRun 2; EvLog 2 0%Z; EvRun 2; EvLog 2 1%Z
 ].

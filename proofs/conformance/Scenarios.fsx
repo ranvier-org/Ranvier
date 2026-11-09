@@ -872,6 +872,72 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             c.Check (c.Graph.Root.ErrorCount = 1) $"Root.Errors: {c.Graph.Root.ErrorCount}"
 
+        // A pure memo's body breaches its scope. The core raises InvalidOperationException, and the trace reports it as
+        // pure_scope_failure, -2. A second read answers from the stored failure, with no second run.
+        "memo_scope_violation",
+        fun c ->
+            c.Signal 1 0 |> ignore
+
+            let m =
+                c.Labelled
+                    2
+                    (Memo<int>(
+                        c.Graph,
+                        Func<int voption, int>(fun _ ->
+                            c.Graph.OnCleanup (Action ignore)
+                            0)
+                    ))
+
+            let reading () =
+                try
+                    m.Value |> ignore
+                    None
+                with :? InvalidOperationException as ex ->
+                    Some ex
+
+            let first = reading ()
+            c.Check first.IsSome "the read answers InvalidOperationException"
+            c.Emit (HostRead (2, FailV -2))
+            let second = reading ()
+            c.Check (obj.ReferenceEquals (first.Value, second.Value)) "the second read answers another exception"
+            c.Check (m.Runs = 1) $"the memo has {m.Runs} runs"
+
+        // A memo fails with 7 on each run. Its throwing comparer is consulted on the second, over the unchanged failure.
+        "memo_comparer_failure",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m =
+                c.MemoThrowingComparer 2 9 (fun () ->
+                    s.Value |> ignore
+                    c.Throw 7)
+
+            let tryRead () =
+                try
+                    c.HostRead 2 (fun () -> m.Value) |> ignore
+                with Boom _ ->
+                    ()
+
+            tryRead ()
+            s.Value <- 1
+            tryRead ()
+
+        // A throwing comparer fails a memo's reader during a flush. The effect behind the reader runs.
+        "flush_comparer",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m =
+                c.MemoThrowingComparer 2 9 (fun () ->
+                    s.Value |> ignore
+                    0)
+
+            c.Effect 3 (fun () -> c.Log 3 s.Value) |> ignore
+            let e = c.Effect 4 (fun () -> c.Log 4 m.Value)
+            s.Value <- 1
+            c.Check (statusOf e = "Error") $"the reader holds the failure: {statusOf e}"
+            c.Check (c.QueueLength = 0) $"the queue holds {c.QueueLength}"
+
         // A batch whose body fails applies its write and requests no flush. The effect stays queued, nothing is owed,
         // and the next flush runs it.
         "failed_batch",
@@ -971,13 +1037,13 @@ match fsi.CommandLineArgs |> Array.toList with
     exit 3
 | _ -> ()
 
-let private renderOutcome =
-    function
-    | OkV v -> $"(Ok {v}%%Z)"
-    | FailV f -> $"(Fail {f}%%Z)"
-
 let private z (v: int) =
     if v < 0 then $"(({v})%%Z)" else $"{v}%%Z"
+
+let private renderOutcome =
+    function
+    | OkV v -> $"(Ok {z v})"
+    | FailV f -> $"(Fail {z f})"
 
 let private render (e: Ev) =
     match e with
