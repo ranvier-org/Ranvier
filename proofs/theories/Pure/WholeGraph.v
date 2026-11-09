@@ -6798,8 +6798,8 @@ Definition live_memos (P : node -> Prop) (s : state) : Prop :=
   forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo -> n_disposed d = false -> P d.
 
 (** A rank decreases along every read of a live memo's erased body, for every answer of its earlier reads: [memos_acyclic]
-    of the reference tier, over the end state. Excludes a memo cycle or self-read, which has no denotation, and a computed
-    target with no bound, which can name the memo. *)
+    of the reference tier, over the end state. Excludes a memo cycle or self-read, which has no denotation on a path that
+    reaches it, and a computed target with no bound, which can name the memo. *)
 Definition memos_ranked (s : state) : Prop :=
   exists rank : node_id -> nat, forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo -> n_disposed d = false ->
     body_reads (fun t => match g_nodes s !! t with Some dt => n_kind dt = KMemo -> rank t < rank m | None => True end)
@@ -6835,7 +6835,7 @@ Fixpoint body_nodes (c : cmd) : bool :=
   end.
 
 (** Excludes a node created in a live memo's erased body: a signal in any memo, and a memo or effect in an [Owning] memo. The
-    created node's id varies by run, so the body has no value over the signals alone. *)
+    created node's id varies by run, so a path that reaches the creation has no value over the signals alone. *)
 Definition memos_no_creation : state -> Prop := live_memos (fun d => body_nodes (erase (n_mode d) (n_body d)) = false).
 
 (** [u] is a target an erased body can read, for some answers of its earlier reads. *)
@@ -6916,9 +6916,9 @@ Definition convergence_all_statement : Prop :=
 
 This states what the fix phase owes, as `convergence_all_statement`. It covers effects that write, memos with cleanups, memos with a write reaching no later read of the body, and a `CmpNever` comparer: those are the bugs. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, and `effect_resolves_over_moved_source` falls under the statement, pending the owner's ruling on that entry.
 
-The premises are `quiescent` and one field per exclusion: `memos_ranked`, `memos_no_untracked`, `memos_no_throwing_comparer`, `memos_no_prev`, `memos_no_creation` and `memos_read_before_write`. `memos_ranked`, `memos_no_untracked`, `memos_no_prev` and `memos_no_creation` exclude a body form `den_all` has no answer for. `memos_no_throwing_comparer` excludes a failure `den_all` does not model. `memos_read_before_write` excludes a body whose runs can answer other than `den_all`.
+The premises are `quiescent` and one field per exclusion: `memos_ranked`, `memos_no_untracked`, `memos_no_throwing_comparer`, `memos_no_prev`, `memos_no_creation` and `memos_read_before_write`. On a path that reaches it, a memo cycle or self-read of `memos_ranked`, an untracked read, `EPrev` or a created node has no `den_all` answer. `memos_no_throwing_comparer` excludes a failure `den_all` does not model, once the comparer fires. `memos_read_before_write` excludes a body whose runs can answer other than `den_all`.
 
-Two fields are conservative, and also exclude programs a fix may reach. `memos_ranked` excludes a computed target with no bound. `memos_read_before_write` excludes the shape of `check_resolves_over_moved_source`: [`check_over_moved_excluded`](Ranvier.Pure.Witnesses.html#check_over_moved_excluded). That bug stays owed through the Open theorem of its entry in `BUGS.md`. `BUGS.md` lists each exclusion with its reason.
+Each field is checked over a memo's whole body, whichever path runs, and over every live memo of the program, so each one also excludes programs a fix may reach. `memos_no_throwing_comparer` is checked on the comparer, whether or not it fires. Two cases are notable. `memos_ranked` excludes a computed target with no bound. `memos_read_before_write` excludes the shape of `check_resolves_over_moved_source`: [`check_over_moved_excluded`](Ranvier.Pure.Witnesses.html#check_over_moved_excluded). That bug stays owed through the Open theorem of its entry in `BUGS.md`. `BUGS.md` lists each exclusion with its reason.
 
 [`convergence_all_falsified`](Ranvier.Pure.Witnesses.html#convergence_all_falsified) proves the statement false from `self_marking_wake_lost` and from the lost update of `cmp_never_passes_source`, with each premise proved on both. Use [`convergence`](#convergence) until the fix.
 *)
