@@ -159,7 +159,8 @@ Definition self_dirtying (s : state) (n : node_id) : Prop := ~ pure_in (shapes s
     a write or cleanup in a memo's body: [self_marking_wake_lost], [walk_passed_source_marked],
     [check_resolves_over_moved_source] and [nested_self_recompute_resets_cursor];
     a read reaching itself or a later node: [self_read_check_overflow];
-    a [CmpNever] comparer: [cmp_never_passes_source].
+    a [CmpNever] comparer, and so a memo returning a fresh record or other reference value under the default policy:
+    [cmp_never_passes_source].
     A [CmpThrows] comparer, an untracked read, a batch in a memo's body and a read of a node computed from an earlier read
     have no entry: the proof covers bodies without them. *)
 Definition well_behaved_program (s : state) : Prop :=

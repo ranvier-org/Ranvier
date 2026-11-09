@@ -211,3 +211,4 @@ Print Assumptions wake_predicates_miss_self_marking.
 Print Assumptions convergence_reached.
 Print Assumptions effects_only_read_needed.
 Print Assumptions cmp_never_passes_source.
+Print Assumptions never_lost_update.

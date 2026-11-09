@@ -195,6 +195,14 @@ Definition exp_cmp_never_passes_source : list event := [
   EvRun 9; EvLog 9 1%Z; EvHostRead 5 (Ok 1%Z)
 ].
 
+Definition exp_cmp_never_lost_update : list event := [
+  EvRun 10; EvLog 10 0%Z; EvHostRead 6 (Ok 8%Z); EvRun 10; EvLog 10 8%Z
+].
+
+Definition exp_fresh_record_lost_update : list event := [
+  EvRun 10; EvLog 10 0%Z; EvHostRead 6 (Ok 8%Z); EvRun 10; EvLog 10 8%Z
+].
+
 Definition exp_failed_batch : list event := [
   EvRun 2; EvLog 2 0%Z; EvRun 2; EvLog 2 1%Z
 ].

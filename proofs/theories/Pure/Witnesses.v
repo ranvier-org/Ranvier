@@ -1202,3 +1202,46 @@ Proof.
   - vm_compute. reflexivity.
   - vm_compute. reflexivity.
 Qed.
+
+(** The effect reads memo [6] and memo [9]. As in [cmp_never_source], the walk passes memo [6], and a later run of [CmpNever]
+    memo [5] leaves it [Dirty] with no announcement. A write then reaches memo [6] through signal [2], which only memo [6]
+    reads, and stops there. A memo returning a fresh record under the default policy maps to [CmpNever]. Confirmed in
+    [BUGS.md]. *)
+Definition never_lost (k : cmd) : cmd :=
+  CSignal 1 (K 0%Z) (
+  CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 4 Pure CmpNever (CRead 10 (V 3) Nop) (
+  CMemo 5 Pure CmpNever (CRead 10 (V 1) (CIf (V 10) (CRead 11 (V 4) Nop) (CRead 11 (V 3) Nop))) (
+  CMemo 6 Pure CmpEq (CRead 10 (V 1) (CRead 11 (V 5) (CRead 12 (V 2) (CRet (V 12))))) (
+  CMemo 7 Pure CmpEq (CRead 10 (V 5) Nop) (
+  CMemo 8 Pure CmpEq (CRead 10 (V 7) Nop) (
+  CMemo 9 Pure CmpEq (CRead 10 (V 8) Nop) (
+  CEffect 10 (CRead 10 (V 6) (CRead 11 (V 9) (CLog (V 10) Nop))) (
+  CWrite (V 1) (K 2%Z) (CWrite (V 2) (K 7%Z) k))))))))))).
+
+(**md
+**A memo that counts every run as a move can leave an effect `Clean` on a stale value, for good.**
+
+*Check, not a guarantee.*
+
+No body writes. After [`never_lost`](#never_lost) the effect's only log is 0, its source `6` denotes 7, the queue is empty, nothing is running, and a flush changes nothing. A second write of the signal leaves all of this in place, with the source denoting 8.
+*)
+Theorem never_lost_update :
+  let s := final (never_lost Nop) in
+  let s' := final (never_lost (CWrite (V 2) (K 8%Z) Nop)) in
+  g_trace s = [EvRun 10; EvLog 10 0%Z] /\ (6 : node_id) ∈ read_prefix (g_edges s) 10 /\
+  n_freshness <$> g_nodes s !! (10 : node_id) = Some Clean /\
+  seen_of (g_ghost s) 10 6 = [(0%Z, StNone, None)] /\ denotes s 6 (Ok 7%Z) /\
+  quiescent s /\ run_flush 1000 s = Some (s, tt) /\
+  g_trace s' = [EvRun 10; EvLog 10 0%Z] /\
+  n_freshness <$> g_nodes s' !! (10 : node_id) = Some Clean /\ denotes s' 6 (Ok 8%Z) /\
+  quiescent s' /\ run_flush 1000 s' = Some (s', tt).
+Proof.
+  intros s s'. split_and!; try (vm_compute; reflexivity).
+  - apply list_elem_of_In. vm_compute. left. reflexivity.
+  - exists 7. vm_compute. reflexivity.
+  - split; vm_compute; reflexivity.
+  - exists 7. vm_compute. reflexivity.
+  - split; vm_compute; reflexivity.
+Qed.

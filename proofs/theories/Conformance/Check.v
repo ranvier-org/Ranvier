@@ -391,6 +391,20 @@ Example check_cmp_never_passes_source :
   trace_of 100000%nat current_flags (cmp_never_source (CRead 20 (V 5) Nop)) = Some exp_cmp_never_passes_source.
 Proof. vm_compute. reflexivity. Qed.
 
+(** The two scenarios share a model program. The closing read queues the effect, and the F# scenario's explicit flush is the
+    [run_flush] here. *)
+Local Definition never_lost_trace : option (list event) :=
+  r ← run_top 100000%nat (never_lost (CWrite (V 2) (K 8) (CRead 20 (V 6) Nop))) (init current_flags);
+  r' ← run_flush 1000%nat r.1; Some (g_trace r'.1).
+
+Example check_cmp_never_lost_update :
+  never_lost_trace = Some exp_cmp_never_lost_update.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_fresh_record_lost_update :
+  never_lost_trace = Some exp_fresh_record_lost_update.
+Proof. vm_compute. reflexivity. Qed.
+
 (** The conformance programs with every memo outside the self-dirtying case and every effect only reading. *)
 Example conformance_programs_well_behaved :
   Forall (fun p => well_behaved_b (end_of p) = true /\ effects_only_read_b (end_of p) = true)

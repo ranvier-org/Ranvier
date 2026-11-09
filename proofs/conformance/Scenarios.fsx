@@ -995,6 +995,125 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
             c.Check (c.HostRead 5 (fun () -> a.Value) = 1) "the memo's body answers 1"
 
+        // BUGS.md, cmp_never_passes_source. `a` is passed and left `Dirty` with no announcement, so writes of a signal only
+        // `a` reads stop there. The effect stays clean on 0, and a flush changes nothing, until a host read of `a`.
+        "cmp_never_lost_update",
+        fun c ->
+            let s = c.Signal 1 0
+            let t = c.Signal 2 0
+            let m3 = c.Memo 3 (fun () -> s.Value)
+
+            let m4 =
+                c.MemoNeverEqual 4 (fun () ->
+                    m3.Value |> ignore
+                    0)
+
+            let m5 =
+                c.MemoNeverEqual 5 (fun () ->
+                    if s.Value <> 0 then
+                        m4.Value |> ignore
+                    else
+                        m3.Value |> ignore
+
+                    0)
+
+            let a =
+                c.Memo 6 (fun () ->
+                    s.Value |> ignore
+                    m5.Value |> ignore
+                    t.Value)
+
+            let m7 =
+                c.Memo 7 (fun () ->
+                    m5.Value |> ignore
+                    0)
+
+            let m8 =
+                c.Memo 8 (fun () ->
+                    m7.Value |> ignore
+                    0)
+
+            let b =
+                c.Memo 9 (fun () ->
+                    m8.Value |> ignore
+                    0)
+
+            let e =
+                c.Effect 10 (fun () ->
+                    let x = a.Value
+                    b.Value |> ignore
+                    c.Log 10 x)
+
+            s.Value <- 2
+            t.Value <- 7
+            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            t.Value <- 8
+            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (c.HostRead 6 (fun () -> a.Value) = 8) "the memo's body answers 8"
+            c.Graph.Flush ()
+            c.Check (e.Runs = 2) $"after the read and a flush the effect has run {e.Runs} times"
+
+        // BUGS.md, cmp_never_passes_source. The same with default options and no comparer: memos returning a new record.
+        "fresh_record_lost_update",
+        fun c ->
+            let s = c.Signal 1 0
+            let t = c.Signal 2 0
+            let m3 = c.Memo 3 (fun () -> s.Value)
+
+            let m4 =
+                c.FreshRecordMemo 4 (fun () ->
+                    m3.Value |> ignore
+                    0)
+
+            let m5 =
+                c.FreshRecordMemo 5 (fun () ->
+                    if s.Value <> 0 then
+                        m4.Value |> ignore
+                    else
+                        m3.Value |> ignore
+
+                    0)
+
+            let a =
+                c.Memo 6 (fun () ->
+                    s.Value |> ignore
+                    m5.Value |> ignore
+                    t.Value)
+
+            let m7 =
+                c.Memo 7 (fun () ->
+                    m5.Value |> ignore
+                    0)
+
+            let m8 =
+                c.Memo 8 (fun () ->
+                    m7.Value |> ignore
+                    0)
+
+            let b =
+                c.Memo 9 (fun () ->
+                    m8.Value |> ignore
+                    0)
+
+            let e =
+                c.Effect 10 (fun () ->
+                    let x = a.Value
+                    b.Value |> ignore
+                    c.Log 10 x)
+
+            s.Value <- 2
+            t.Value <- 7
+            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            t.Value <- 8
+            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (c.HostRead 6 (fun () -> a.Value) = 8) "the memo's body answers 8"
+            c.Graph.Flush ()
+            c.Check (e.Runs = 2) $"after the read and a flush the effect has run {e.Runs} times"
+
         // A batch whose body fails applies its write and requests no flush. The effect stays queued, nothing is owed,
         // and the next flush runs it.
         "failed_batch",

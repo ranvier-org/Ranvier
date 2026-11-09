@@ -57,6 +57,8 @@ let freshnessOf (node: obj) : string =
 /// A graph with a trace. `Effect`, `Memo` and `Signal` take the label a scenario expects. `Check` records a failure
 /// and returns, since a body's exception would end in the node's status, and the run of the script fails at the
 /// scenario's end on any recorded failure or any exception other than `Boom` escaping a body.
+type FreshRecord = { Held: int }
+
 type Ctx() =
     let g = new Graph ()
     let events = ResizeArray<Ev>()
@@ -103,6 +105,11 @@ type Ctx() =
 
     member this.Memo (label: int) (body: unit -> int) : Memo<int> =
         this.Labelled label (Memo<int>(g, Func<int voption, int>(fun _ -> this.Guarded body)))
+
+    /// A memo through the public constructor and the graph's default options, returning a new record per run. Its value
+    /// is `CmpNever`'s model: `JsIdentityPolicy` compares a reference type by reference.
+    member this.FreshRecordMemo (label: int) (body: unit -> int) : Memo<FreshRecord> =
+        this.Labelled label (Memo<FreshRecord>(g, Func<FreshRecord voption, FreshRecord>(fun _ -> { Held = this.Guarded body })))
 
     member this.OwningMemo (label: int) (body: unit -> int) : Memo<int> =
         this.Labelled label (Memo<int>(g, Func<int voption, int>(fun _ -> this.Guarded body), true))
