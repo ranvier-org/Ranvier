@@ -200,6 +200,16 @@ Definition exp_read_settles_writer : list event := [
   EvHostRead 3 (Ok 9%Z)
 ].
 
+Definition exp_quiescent_read_answers_past_flush : list event := [
+  EvRun 6; EvLog 6 0%Z; EvRun 6; EvLog 6 1%Z; EvRun 6; EvLog 6 9%Z;
+  EvHostRead 5 (Ok 9%Z)
+].
+
+Definition exp_quiescent_read_answers_past_flush_by_cleanup : list event := [
+  EvRun 6; EvLog 6 0%Z; EvCleanup 4; EvRun 6; EvLog 6 1%Z; EvRun 6;
+  EvLog 6 9%Z; EvHostRead 5 (Ok 9%Z)
+].
+
 Definition exp_cmp_never_lost_update : list event := [
   EvRun 10; EvLog 10 0%Z; EvHostRead 6 (Ok 8%Z); EvRun 10; EvLog 10 8%Z
 ].

@@ -1028,6 +1028,81 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
             c.Check (c.HostRead 3 (fun () -> a.Value) = 9) "the read answers past the flush"
 
+        // No batch failed and the queue is empty. The walk passes `a`, as in `walk_passed_source_marked`, so the effect
+        // sleeps on it. A read of `n` moves `a`, which queues the effect, `n`'s batch owes a flush, and the flush runs
+        // the effect before the read answers.
+        "quiescent_read_answers_past_flush",
+        fun c ->
+            let s = c.Signal 1 0
+            let t = c.Signal 2 0
+            let a = c.Memo 3 (fun () -> s.Value)
+
+            let b =
+                c.Memo 4 (fun () ->
+                    s.Value <- t.Value
+                    0)
+
+            let n =
+                c.Memo 5 (fun () ->
+                    let v = a.Value
+                    c.Batch (fun () -> ())
+                    v)
+
+            let e =
+                c.Effect 6 (fun () ->
+                    let x = a.Value
+                    let y = n.Value
+                    b.Value |> ignore
+
+                    if x <> 0 then
+                        s.Value <- 9
+
+                    c.Log 6 y)
+
+            t.Value <- 1
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
+            c.Check (s.Peek = 1) $"before the read the signal holds {s.Peek}"
+            c.Check (c.HostRead 5 (fun () -> n.Value) = 9) "the read answers past the flush"
+            c.Check (s.Peek = 9) $"after the read the signal holds {s.Peek}"
+
+        // The same with no memo body writing: `b`'s cleanup writes.
+        "quiescent_read_answers_past_flush_by_cleanup",
+        fun c ->
+            let s = c.Signal 1 0
+            let t = c.Signal 2 0
+            let a = c.Memo 3 (fun () -> s.Value)
+
+            let b =
+                c.OwningMemo 4 (fun () ->
+                    let v = t.Value
+                    c.Cleanup 4 (fun () -> s.Value <- 1)
+                    v * 0)
+
+            let n =
+                c.Memo 5 (fun () ->
+                    let v = a.Value
+                    c.Batch (fun () -> ())
+                    v)
+
+            let e =
+                c.Effect 6 (fun () ->
+                    let x = a.Value
+                    let y = n.Value
+                    b.Value |> ignore
+
+                    if x <> 0 then
+                        s.Value <- 9
+
+                    c.Log 6 y)
+
+            t.Value <- 1
+            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
+            c.Check (s.Peek = 1) $"before the read the signal holds {s.Peek}"
+            c.Check (c.HostRead 5 (fun () -> n.Value) = 9) "the read answers past the flush"
+            c.Check (s.Peek = 9) $"after the read the signal holds {s.Peek}"
+
         // BUGS.md, cmp_never_passes_source. `a` is passed and left `Dirty` with no announcement, so writes of a signal only
         // `a` reads stop there. The effect stays clean on 0, and a flush changes nothing, until a host read of `a`.
         "cmp_never_lost_update",

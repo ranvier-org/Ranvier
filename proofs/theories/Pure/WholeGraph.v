@@ -95,20 +95,24 @@ Fixpoint body_pureu (u : bool) (Q : node_id -> Prop) (e : env) (c : cmd) : Prop 
 
 Notation body_pure := (body_pureu false).
 
-(** A body's run: result [r] and logs [l], with its tracked reads answered by [ans] and each untracked read by some value. *)
-Fixpoint body_run (ans : node_id -> option outcome) (e : env) (c : cmd) (r : outcome) (l : list val) : Prop :=
+(** A memo of the state. *)
+Definition memo_at (s : state) (t : node_id) : Prop := exists d, g_nodes s !! t = Some d /\ n_kind d = KMemo.
+
+(** A body's run: result [r] and logs [l], with its tracked reads answered by [ans], and each untracked read by some value,
+    or, when [M] holds of its target, by some failure. *)
+Fixpoint body_run (M : node_id -> Prop) (ans : node_id -> option outcome) (e : env) (c : cmd) (r : outcome) (l : list val) : Prop :=
   match c with
   | CRet x => ev e x = Some r /\ l = []
   | CThrow y => r = Fail y /\ l = []
   | CLet x v k =>
     match ev e v with
-    | Some (Ok z) => body_run ans ((x, z) :: e) k r l
+    | Some (Ok z) => body_run M ans ((x, z) :: e) k r l
     | Some (Fail y) => r = Fail y /\ l = []
     | None => False
     end
   | CIf v a b =>
     match ev e v with
-    | Some (Ok z) => if decide (z = 0%Z) then body_run ans e b r l else body_run ans e a r l
+    | Some (Ok z) => if decide (z = 0%Z) then body_run M ans e b r l else body_run M ans e a r l
     | Some (Fail y) => r = Fail y /\ l = []
     | None => False
     end
@@ -117,7 +121,7 @@ Fixpoint body_run (ans : node_id -> option outcome) (e : env) (c : cmd) (r : out
     | Some (Ok z) =>
       (0 <= z)%Z /\
       match ans (Z.to_nat z) with
-      | Some (Ok v) => body_run ans ((x, v) :: e) k r l
+      | Some (Ok v) => body_run M ans ((x, v) :: e) k r l
       | Some (Fail y) => r = Fail y /\ l = []
       | None => False
       end
@@ -129,8 +133,8 @@ Fixpoint body_run (ans : node_id -> option outcome) (e : env) (c : cmd) (r : out
     | Some (Ok z) =>
       (0 <= z)%Z /\
       match ans (Z.to_nat z) with
-      | Some (Ok v) => body_run ans ((ok, 1%Z) :: (x, v) :: e) k r l
-      | Some (Fail y) => body_run ans ((ok, 0%Z) :: (x, y) :: e) k r l
+      | Some (Ok v) => body_run M ans ((ok, 1%Z) :: (x, v) :: e) k r l
+      | Some (Fail y) => body_run M ans ((ok, 0%Z) :: (x, y) :: e) k r l
       | None => False
       end
     | Some (Fail y) => r = Fail y /\ l = []
@@ -139,26 +143,26 @@ Fixpoint body_run (ans : node_id -> option outcome) (e : env) (c : cmd) (r : out
   | CReadUntracked x n k =>
     match ev e n with
     | Some (Ok z) =>
-      (0 <= z)%Z /\ ((exists v, body_run ans ((x, v) :: e) k r l) \/ (exists y, r = Fail y /\ l = []))
+      (0 <= z)%Z /\ ((exists v, body_run M ans ((x, v) :: e) k r l) \/ (M (Z.to_nat z) /\ exists y, r = Fail y /\ l = []))
     | Some (Fail y) => r = Fail y /\ l = []
     | None => False
     end
   | CLog v k =>
     match ev e v with
-    | Some (Ok z) => exists l', l = z :: l' /\ body_run ans e k r l'
+    | Some (Ok z) => exists l', l = z :: l' /\ body_run M ans e k r l'
     | Some (Fail y) => r = Fail y /\ l = []
     | None => False
     end
   | CBatch b k =>
-    (exists z l1 l2, body_run ans e b (Ok z) l1 /\ body_run ans e k r l2 /\ l = l1 ++ l2) \/
-    (exists y, r = Fail y /\ body_run ans e b (Fail y) l)
+    (exists z l1 l2, body_run M ans e b (Ok z) l1 /\ body_run M ans e k r l2 /\ l = l1 ++ l2) \/
+    (exists y, r = Fail y /\ body_run M ans e b (Fail y) l)
   | _ => False
   end.
 
 (** A body with an untracked read: its log can stay behind, and the state holds no record of what the read answered. *)
 Fixpoint has_untracked (c : cmd) : bool :=
   match c with
-  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CLog _ k | CWrite _ _ k | CCleanup _ k => has_untracked k
+  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CLog _ k | CWrite _ _ k | CCleanup _ k | CDispose _ k => has_untracked k
   | CIf _ a b | CBatch a b => has_untracked a || has_untracked b
   | CReadUntracked _ _ _ => true
   | _ => false
@@ -248,20 +252,20 @@ Definition pure_in (S : gmap node_id (kind * comparer * env * cmd)) (n : node_id
 (** [n] is a signal, or a memo with [CmpEq] and a pure body that reads, for every answer of its earlier reads, only nodes
     of the same kind, created earlier. A cycle, a self-read, a write, a cleanup, an untracked read, a node created in the
     body, the previous value, a read that can reach an impure or later node, or a comparer other than [CmpEq] anywhere [n]
-    can read makes it self-dirtying. A memo returning a fresh reference value under the default policy is [CmpNever], so
-    it is self-dirtying. An effect is self-dirtying: a read of an effect is stuck. *)
+    can read makes it self-dirtying. A default-policy memo returning a new reference value each run, or [nan], is
+    [CmpNever], so it is self-dirtying. An effect is self-dirtying: a read of an effect is stuck. *)
 Definition self_dirtying (s : state) (n : node_id) : Prop := ~ pure_in (shapes s) n.
 
-(** Every memo of the graph is outside the self-dirtying case. A default memo returning a record is not well behaved: it is a
-    [CmpNever] memo, as [CORRESPONDENCE.md] records.
+(** Every memo of the graph is outside the self-dirtying case. A default-policy memo returning a new record each run is not
+    well behaved: it is a [CmpNever] memo, and [CORRESPONDENCE.md] lists which values are.
 
     Exclusions resting on a counterexample, with the entry of [BUGS.md]: a write or cleanup in a memo's body:
     [self_marking_wake_lost], [walk_passed_source_marked], [check_resolves_over_moved_source] and
     [nested_self_recompute_resets_cursor]; a read reaching itself: [self_read_check_overflow]; a [CmpNever] comparer:
     [cmp_never_passes_source].
 
-    Exclusions resting on the proof's reach, each with no counterexample known: a [CmpThrows] comparer, an untracked read or
-    a node created in a memo's body, and a read of a later node that closes no cycle. *)
+    Exclusions resting on the proof's reach, each with no counterexample known: a [CmpThrows] comparer, an untracked read,
+    [EPrev], a disposal or a node created in a memo's body, and a read of a later node that closes no cycle. *)
 Definition well_behaved_program (s : state) : Prop :=
   forall n d, g_nodes s !! n = Some d -> n_kind d = KMemo -> pure_in (shapes s) n.
 
@@ -274,8 +278,8 @@ Definition quiet_effect (s : state) (c : node_id) (d : node) : Prop :=
 
     Resting on a counterexample: a write, by [effect_resolves_over_moved_source], pending the owner's ruling.
 
-    Resting on the proof's reach, unproved with no counterexample: a cleanup, and an effect or other node created in the
-    body. *)
+    Resting on the proof's reach, unproved by choice of scope, with no proof attempted and no counterexample known: a cleanup,
+    a disposal, and an effect or other node created in the body. *)
 Definition effects_only_read (s : state) : Prop :=
   forall c d, g_nodes s !! c = Some d -> n_kind d = KEffect -> quiet_effect s c d.
 
@@ -450,24 +454,24 @@ Proof.
   - intros [A B]. split; [done|]. apply IHc, B.
 Qed.
 
-Lemma body_run_mono (A B : node_id -> option outcome) e c r l :
-  (forall t o, A t = Some o -> B t = Some o) -> body_run A e c r l -> body_run B e c r l.
+Lemma body_run_mono (M N : node_id -> Prop) (A B : node_id -> option outcome) e c r l :
+  (forall t, M t -> N t) -> (forall t o, A t = Some o -> B t = Some o) -> body_run M A e c r l -> body_run N B e c r l.
 Proof.
-  intros H. revert e r l. induction c; intros g r0 l0; simpl; try done.
+  intros HM H. revert e r l. induction c; intros g r0 l0; simpl; try done.
   - destruct (ev g e) as [[z|y]|]; [apply IHc|done|done].
   - destruct (ev g e) as [[z|y]|]; [|done|done]. destruct (decide _); [apply IHc2|apply IHc1].
   - destruct (ev g n) as [[z|y]|]; [|done|done]. intros [Hz K]. split; [done|].
     destruct (A _) as [[v|y]|] eqn:E; [rewrite (H _ _ E); revert K; apply IHc|rewrite (H _ _ E); done|done].
   - destruct (ev g n) as [[z|y]|]; [|done|done]. intros [Hz K]. split; [done|].
     destruct (A _) as [[v|y]|] eqn:E; [rewrite (H _ _ E); revert K; apply IHc|rewrite (H _ _ E); revert K; apply IHc|done].
-  - destruct (ev g n) as [[z|y]|]; [|done|done]. intros [Hz [(v&K)|K]]; split; [done|left; exists v; revert K; apply IHc|done|by right].
+  - destruct (ev g n) as [[z|y]|]; [|done|done]. intros [Hz [(v&K)|[K1 K]]]; split; [done|left; exists v; revert K; apply IHc|done|right; split; [by apply HM|done]].
   - intros [(z&l1&l2&K1&K2&->)|(y&->&K)]; [left; exists z, l1, l2; split_and!; [by apply IHc1|by apply IHc2|done]|right; exists y; split; [done|by apply IHc1]].
   - destruct (ev g e) as [[z|y]|]; [|done|done]. intros (l'&->&K). exists l'. split; [done|]. revert K. apply IHc.
 Qed.
 
 (** With no untracked read on its way, a run is what [body_eval] and [body_logs] answer. *)
-Lemma body_run_eval (A : node_id -> option outcome) (Q : node_id -> Prop) u e c r l :
-  body_pureu u Q e c -> (u = true -> has_untracked c = false) -> body_run A e c r l -> body_eval A e c = Some r /\ body_logs A e c = Some l.
+Lemma body_run_eval (M : node_id -> Prop) (A : node_id -> option outcome) (Q : node_id -> Prop) u e c r l :
+  body_pureu u Q e c -> (u = true -> has_untracked c = false) -> body_run M A e c r l -> body_eval A e c = Some r /\ body_logs A e c = Some l.
 Proof.
   revert e r l. induction c; intros g r0 l0 Hp Hu; simpl in *; try done.
   - intros [H ->]. rewrite H. done.
@@ -560,6 +564,13 @@ Proof. intros. by apply eval_agree. Qed.
 Lemma shapes_lookup s n d : g_nodes s !! n = Some d -> shapes s !! n = Some (shape_of d).
 Proof. intros H. unfold shapes. by rewrite lookup_fmap, H. Qed.
 
+Lemma memo_at_shapes s s' t : shapes s' = shapes s -> memo_at s t -> memo_at s' t.
+Proof.
+  intros H (d&Hd&Hk). pose proof (shapes_lookup s t d Hd) as E. rewrite <- H in E. unfold shapes in E. rewrite lookup_fmap in E.
+  destruct (g_nodes s' !! t) as [d'|] eqn:Ed; [|done]. exists d'. split; [done|].
+  pose proof (shapes_lookup s' t d' Ed) as Y. rewrite H, (shapes_lookup s t d Hd) in Y. unfold shape_of in Y. injection Y as Y4 _ _ _. congruence.
+Qed.
+
 Lemma readable_sub S S' t : (forall x v, S !! x = Some v -> S' !! x = Some v) -> readable S t -> readable S' t.
 Proof.
   intros H. unfold readable. destruct (S !! t) as [v|] eqn:E; [|done]. rewrite (H _ _ E). done.
@@ -634,7 +645,7 @@ Qed.
 Lemma pure_in_sub S S' t : (forall x v, S !! x = Some v -> S' !! x = Some v) -> is_Some (S !! t) -> pure_in S' t -> pure_in S t.
 Proof. intros H1 H2. apply pure_at_sub; done. Qed.
 
-(** ** A decision for concrete states *)
+(** ** Sufficient tests for concrete states *)
 
 (** What is known of a body's variables ahead of its run: the captured environment, and [None] for a variable bound to
     an answer. *)
@@ -1766,12 +1777,13 @@ Record A_ok (f : nat) : Prop := {
     exec f e' cm s = Some (s', r) ->
     aS T L s' /\ atom T L (Some c) s s' /\ (~ T c -> r = r0) /\
     (forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) /\
-    (exists l, body_run (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l));
+    (exists l, body_run (memo_at s') (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l));
   Aunt : forall (T : node_id -> Prop) (L c t : node_id) s s1 o,
     aS T L s -> g_current s = Some c -> g_flushing s = true -> ~ pure_in (shapes s) c -> t < L -> pure_in (shapes s) t ->
     read f t false s = Some (s1, o) ->
     aS T L s1 /\ atom T L (Some c) s s1 /\ g_current s1 = Some c /\
-    (forall u, seen_ans s1 c u = seen_ans s c u) /\ trace_view c (g_trace s1) = trace_view c (g_trace s);
+    (forall u, seen_ans s1 c u = seen_ans s c u) /\ trace_view c (g_trace s1) = trace_view c (g_trace s) /\
+    (forall y, o = Fail y -> memo_at s1 t);
   Aread : forall (T : node_id -> Prop) (lim t : node_id) s s' o, rd_pre T lim t s -> read f t true s = Some (s', o) -> rd_post T lim t s s' o;
   Anode : forall (T : node_id -> Prop) (lim t : node_id) s s' o, rd_pre T lim t s -> read_node f t s = Some (s', o) -> rd_post T lim t s s' o;
   Aupd : forall (T : node_id -> Prop) (lim t : node_id) s s' a, aS T lim s -> t < lim -> pure_in (shapes s) t ->
@@ -2188,7 +2200,8 @@ Section Step.
     aS T L s -> g_current s = Some c -> g_flushing s = true -> ~ pure_in (shapes s) c -> t < L -> pure_in (shapes s) t ->
     read (S f) t false s = Some (s1, o) ->
     aS T L s1 /\ atom T L (Some c) s s1 /\ g_current s1 = Some c /\
-    (forall u, seen_ans s1 c u = seen_ans s c u) /\ trace_view c (g_trace s1) = trace_view c (g_trace s).
+    (forall u, seen_ans s1 c u = seen_ans s c u) /\ trace_view c (g_trace s1) = trace_view c (g_trace s) /\
+    (forall y, o = Fail y -> memo_at s1 t).
   Proof.
     intros T L c t s s1 o Ha Hcur Hfl Hnp Hlt Hp Hm. pose proof Hm as Hm0. pose proof Ha as (Hc&Hw&St).
     cbn [read] in Hm. unfold untracked, m_bind, m_modify in Hm. simpl in Hm. rewrite Hcur in Hm.
@@ -2227,6 +2240,13 @@ Section Step.
       assert (P1 : read_prefix (g_edges s2) c = read_prefix (g_edges s) c) by (rewrite !read_prefix_view; change (g_edges s) with (g_edges s0); by rewrite Sl).
       rewrite P1. assert (S1 : seen_of (g_ghost s2) c u = seen_of (g_ghost s) c u) by exact (Se u). rewrite S1. done.
     - change (g_trace s3) with (g_trace s2). change (g_trace s) with (g_trace s0). apply Vk. intros [K _]. apply Hnp. by rewrite <- Hsh0.
+    - intros y Hy. subst r. destruct (pure_exists s t Hp) as [dt Hdt]. destruct (n_kind dt) eqn:Ekt.
+      + exfalso. assert (Hd0 : g_nodes s0 !! t = Some dt) by exact Hdt. revert E. clear -Hd0 Ekt. intros E.
+        destruct f as [|f0]; [done|]. cbn [read_node] in E. rewrite (bind_get_node _ _ _ _ Hd0), Ekt in E.
+        apply bind_inv in E as (?&?&_&E). unfold m_return in E. discriminate E.
+      + refine (memo_at_shapes s s3 t _ _); [|by exists dt].
+        change (shapes s2 = shapes s). rewrite (at_shapes _ _ _ _ _ A0). exact Hsh0.
+      + exfalso. exact (pure_kind s t dt Hp Hdt Ekt).
   Qed.
 
   Lemma guide_atom (T : node_id -> Prop) lim x s s' A : atom T lim x s s' -> guide T s A -> guide T s' A.
@@ -2323,13 +2343,13 @@ Section Step.
     exec (S f) e' cm s = Some (s', r) ->
     aS T L s' /\ atom T L (Some c) s s' /\ (~ T c -> r = r0) /\
     (forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) /\
-    (exists l, body_run (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l)).
+    (exists l, body_run (memo_at s') (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l)).
   Proof.
     intros T u L c d e' e cm s s' r A r0 Ha Hcur Hd Hq Hag HL Hue Hbp Hg Hor Hm.
-    assert (Hdone : s' = s -> body_eval A e cm = Some r \/ T c -> body_run (seen_ans s c) e cm r [] ->
+    assert (Hdone : s' = s -> body_eval A e cm = Some r \/ T c -> body_run (memo_at s) (seen_ans s c) e cm r [] ->
               aS T L s' /\ atom T L (Some c) s s' /\ (~ T c -> r = r0) /\
               (forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) /\
-              (exists l, body_run (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l))).
+              (exists l, body_run (memo_at s') (seen_ans s' c) e cm r l /\ trace_view c (g_trace s') = trace_view c (g_trace s) ++ (EvLog c <$> l))).
     { intros -> Hr0 Hb. split_and!; [done|apply atom_refl| |done|].
       - intros HT. destruct (Hg HT) as [H1 _]. destruct Hr0 as [H2|H2]; [congruence|done].
       - exists []. split; [done|]. by rewrite app_nil_r. }
@@ -2440,7 +2460,7 @@ Section Step.
       assert (Hfl : g_flushing s = true).
       { refine (b_effect_flushing _ (proj1 (proj2 Hc0)) c _ _); [exists d; done|exact (b_current _ (proj1 (proj2 Hc0)) c Hcur)]. }
       assert (Hnpc : ~ pure_in (shapes s) c) by (intros K0; exact (pure_kind s c d K0 Hd Hkd)).
-      destruct (Aunt _ IH T L c t s s1 o Ha Hcur Hfl Hnpc Hlt Hpt Hrd) as (Ha1&A1&Hcur1&Hse&Hv1).
+      destruct (Aunt _ IH T L c t s s1 o Ha Hcur Hfl Hnpc Hlt Hpt Hrd) as (Ha1&A1&Hcur1&Hse&Hv1&Hfm).
       erewrite bind_some in Hm; [|exact (note_body t o s1 ltac:(eauto))].
       pose proof (at_shapes _ _ _ _ _ A1) as Hsh.
       destruct (at_any _ _ _ _ _ A1 c d Hd) as (d1&Hd1&_).
@@ -2457,7 +2477,7 @@ Section Step.
         split_and!; [done|eapply atom_trans; [exact A1|exact R2]|done|intros t0 o0 Ho; exact (R4 _ _ (Hup _ _ Ho))|].
         exists l. split; [|by rewrite R6, Hv1]. simpl. rewrite Ev. split; [done|]. left. exists v. exact R5.
       + unfold m_return in Hm. injection Hm as <- <-. split_and!; [done|done|intros K; done|done|].
-        exists []. split; [simpl; rewrite Ev; split; [done|]; right; exists y; done|by rewrite app_nil_r, Hv1].
+        exists []. split; [simpl; rewrite Ev; split; [done|]; right; split; [exact (Hfm y eq_refl)|exists y; done]|by rewrite app_nil_r, Hv1].
     - done.
     - done.
     - done.
@@ -2517,12 +2537,14 @@ Section Step.
                          [split; [exact X3|exact (guide_atom _ _ _ _ _ _ A4 X4)]|discriminate X5|discriminate X3])
                    ltac:(destruct Hor as [K|[K K']]; [by left|right; split; [done|by rewrite Sh4]]) Hm) as (Q1&Q2&Q4&Q5&(l2&Q6&Q7)).
         assert (Hup : forall t o, seen_ans s1 c t = Some o -> seen_ans s' c t = Some o) by (intros t o Ho; exact (Q5 _ _ (Hse3 _ _ (Hse2 _ _ Ho)))).
-        pose proof (body_run_mono _ _ _ _ _ _ Hup R6) as E1.
+        assert (Hms : shapes s' = shapes s1).
+        { rewrite (at_shapes _ _ _ _ _ Q2), Sh4, (at_shapes _ _ _ _ _ R2). exact (eq_sym (same4_shapes _ _ H0)). }
+        pose proof (body_run_mono _ _ _ _ _ _ _ _ (fun t => memo_at_shapes s1 s' t Hms) Hup R6) as E1.
         split_and!; [done|eapply atom_trans; [exact A4|exact Q2]|done|intros t o Ho; exact (Hup _ _ (R5 _ _ (Hse0 _ _ Ho)))|].
         exists (l1 ++ l2). split; [left; exists v, l1, l2; split_and!; done|].
         rewrite Q7, fmap_app, app_assoc. destruct Hs3 as [ -> | -> ]; exact (f_equal (fun x => x ++ (EvLog c <$> l2)) Hv2).
       + cbv iota in Hm. unfold m_return in Hm. injection Hm as <- <-.
-        pose proof (body_run_mono _ _ _ _ _ _ Hse2 R6) as E1.
+        pose proof (body_run_mono _ _ _ _ _ _ _ _ (fun t => memo_at_shapes s1 s2 t (same4_shapes _ _ H1)) Hse2 R6) as E1.
         split_and!; [done|done| |intros t o Ho; exact (Hse2 _ _ (R5 _ _ (Hse0 _ _ Ho)))|].
         * intros K. destruct (Hg K) as [X3 _]. simpl in X3. pose proof (R4 K) as X5. subst r01.
           destruct (body_eval A e b) as [[v0|y0]|]; simpl in X5; [discriminate X5|congruence|discriminate X3].
@@ -3098,7 +3120,7 @@ Section Step.
     assert (Hbp0 : body_pure (fun u => readable (shapes s0) u -> u < t /\ pure_in (shapes s0) u) (n_env d) (n_body d)) by (by rewrite Sh0).
     destruct (Aexec _ IH T' false t t (run_node d) (run_env d) (n_env d) (n_body d) s0 s1 r (seen_ans s t) r0 Ha0 Hcur0 Ht0 Hqc0
                 (env_agree_run d) (or_introl (conj Hk eq_refl)) ltac:(discriminate) Hbp0 Hguide Hor Ex) as ((Hc1&Hw1&St1)&A1&Hrr&_&(lr9&Hrun9&_)).
-    pose proof (proj1 (body_run_eval _ _ _ _ _ _ _ Hbp0 ltac:(discriminate) Hrun9)) as Hev.
+    pose proof (proj1 (body_run_eval _ _ _ _ _ _ _ _ Hbp0 ltac:(discriminate) Hrun9)) as Hev.
     assert (Hrnt : ~ rn s0 t None t) by (intros [[_ K]|K]; [lia|done]).
     destruct (at_rise _ _ _ _ _ A1 t (run_node d) Hrnt Ht0) as (d1&Hd1&R1).
     pose proof R1 as (Sh1&Vw1&Di1&_&_&Sc1&Vi1&Fr1&Fl1).
@@ -3346,7 +3368,7 @@ Definition window (d : node) : Prop := n_status d = StUninitialized.
 (** The effect ran, and its latest run read and logged what its body answers over the recorded reads. *)
 Definition ran_ok (s : state) (c : node_id) (d : node) : Prop :=
   exists r l pre,
-    body_run (seen_ans s c) (n_env d) (n_body d) r l /\
+    body_run (memo_at s) (seen_ans s c) (n_env d) (n_body d) r l /\
     trace_view c (g_trace s) = pre ++ EvRun c :: (EvLog c <$> l).
 
 (** [X] holds the effects whose scheduling mark is due. *)
@@ -3372,25 +3394,27 @@ Lemma seen_ans_ext s s' c :
 Proof. intros H1 H2 t. unfold seen_ans. rewrite H1, H2. done. Qed.
 
 Lemma ran_ok_ext s s' c d d' :
+  (forall t, memo_at s t -> memo_at s' t) ->
   read_prefix (g_edges s') c = read_prefix (g_edges s) c -> (forall y, seen_of (g_ghost s') c y = seen_of (g_ghost s) c y) ->
   n_env d' = n_env d -> n_body d' = n_body d -> trace_view c (g_trace s') = trace_view c (g_trace s) ->
   ran_ok s c d -> ran_ok s' c d'.
 Proof.
-  intros H1 H2 He Hb Hv (r&l&pre&A&C). exists r, l, pre. rewrite He, Hb, Hv.
+  intros H0 H1 H2 He Hb Hv (r&l&pre&A&C). exists r, l, pre. rewrite He, Hb, Hv.
   assert (Hm : forall t o, seen_ans s c t = Some o -> seen_ans s' c t = Some o) by (intros t o H; exact (eq_trans (seen_ans_ext s s' c H1 H2 t) H)).
-  split; [exact (body_run_mono _ _ _ _ _ _ Hm A)|exact C].
+  split; [exact (body_run_mono _ _ _ _ _ _ _ _ H0 Hm A)|exact C].
 Qed.
 
 Lemma ran_frame X s s' :
+  (forall t, memo_at s t -> memo_at s' t) ->
   (forall c d', g_nodes s' !! c = Some d' -> quiet_effect s' c d' -> n_disposed d' = false -> n_freshness d' <> Dirty ->
      exists d, g_nodes s !! c = Some d /\ quiet_effect s c d /\ n_disposed d = false /\ n_freshness d <> Dirty /\ (window d -> window d') /\
        n_env d' = n_env d /\ n_body d' = n_body d /\ read_prefix (g_edges s') c = read_prefix (g_edges s) c /\
        (forall y, seen_of (g_ghost s') c y = seen_of (g_ghost s) c y) /\ trace_view c (g_trace s') = trace_view c (g_trace s)) ->
   ran X s -> ran X s'.
 Proof.
-  intros F H c d' Hd Hq Hl Hf. destruct (F c d' Hd Hq Hl Hf) as (d&H1&H2&H3&H4&H5&H6&H7&H8&H9&H10).
+  intros Hmm F H c d' Hd Hq Hl Hf. destruct (F c d' Hd Hq Hl Hf) as (d&H1&H2&H3&H4&H5&H6&H7&H8&H9&H10).
   destruct (H c d H1 H2 H3 H4) as [[A B]|A]; [left; split; [done|auto]|right].
-  exact (ran_ok_ext s s' c d d' H8 H9 H6 H7 H10 A).
+  exact (ran_ok_ext s s' c d d' Hmm H8 H9 H6 H7 H10 A).
 Qed.
 
 Lemma hosts_frame s s' :
@@ -3558,7 +3582,7 @@ Proof.
     + rewrite Hd in Hd0. injection Hd0 as <-. exact (X (qc_isq _ _ _ Hq0)).
   - split_and!.
     + intros c Hc. destruct (Pa c Hc) as [K|(K&_)]; apply Hsom; [by apply Hp|done].
-    + apply (ran_frame _ s); [|exact Hran]. intros c d' Hd' Hq Hl Hf. destruct (Bk c d' Hd') as (d&Hd&Hsh&K).
+    + apply (ran_frame _ s); [exact (fun t => memo_at_shapes s _ t Sh)| |exact Hran]. intros c d' Hd' Hq Hl Hf. destruct (Bk c d' Hd') as (d&Hd&Hsh&K).
       pose proof (isq_shape _ _ _ _ _ Sh Hsh Hq) as Hq0. pose proof (K (or_intror Hq0)) as Hsm.
       destruct (Hlive c d d' Hd Hd' (or_intror Hq0) Hsm Hl) as [Hl0 V]. pose proof Hsm as (_&Vv&_&_&_&Fr&_).
       unfold shape_of in Hsh. injection Hsh as _ _ E B.
@@ -3635,7 +3659,7 @@ Proof.
     pose proof Hr as (Hshd&_). exact (qc_shape_back _ _ _ _ _ Hss Hshd Hq).
   - split_and!.
     + intros c Hc. rewrite A2 in Hc. destruct (Hpd c Hc) as [d Hd]. destruct (A11 c d Hd) as (d'&Hd'&_). by eexists.
-    + apply (ran_frame _ s); [|exact Hran]. intros c d' Hd' Hq Hl Hf. destruct (rise_back _ _ _ _ RR Hd') as (d&Hd&Hr).
+    + apply (ran_frame _ s); [exact (fun t => memo_at_shapes s _ t Hsh)| |exact Hran]. intros c d' Hd' Hq Hl Hf. destruct (rise_back _ _ _ _ RR Hd') as (d&Hd&Hr).
       pose proof Hr as (Hs0&Vv&Di&_&_&_&_&Fl&_).
       pose proof (isq_shape _ _ _ _ _ (rise_shapes _ _ RR) Hs0 Hq) as Hq0.
       unfold shape_of in Hs0. injection Hs0 as _ _ E B.
@@ -4346,7 +4370,7 @@ Proof.
       * left. destruct Hq as [Hk _]. destruct (HE2 Hk) as (A&B&_). done.
       * destruct (Hran c d H (Hqe c d Hlc Hq) Hl Hf) as [[A B]|A].
         -- left. split; [|done]. destruct HX as [->|Hk]; [done|]. exact (proj2 (proj2 (HE2 Hk)) c A).
-        -- right. refine (ran_ok_ext s s' c d d _ (Hse c) eq_refl eq_refl _ A); [by rewrite He'|]. subst s'. unfold ghost_publish. simpl. rewrite lookup_insert_eq. reflexivity.
+        -- right. refine (ran_ok_ext s s' c d d _ _ (Hse c) eq_refl eq_refl _ A); [intros t (x&Hx&Hkx); exists x; split; [rewrite Hne1; [exact Hx|pose proof (Hlt t (mk_is_Some _ _ Hx)); lia]|exact Hkx]|by rewrite He'|]. subst s'. unfold ghost_publish. simpl. rewrite lookup_insert_eq. reflexivity.
     + split.
       * rewrite Hne1 by lia. exact Hh0.
       * intros o y Hy.
@@ -4418,7 +4442,7 @@ Proof.
   - intros m dm Hm Hdm Hq. rewrite H4 in Hm. rewrite H1 in Hdm. exact (Hn m dm Hm Hdm (qc_same _ _ _ _ Hb Hq)).
   - split_and!.
     + intros c Hc. rewrite H3 in Hc. rewrite H1. auto.
-    + apply (ran_frame _ s); [|exact Hr]. intros c d' Hd' Hq Hl Hf. rewrite H1 in Hd'. exists d'.
+    + apply (ran_frame _ s); [exact (fun t => memo_at_shapes s _ t Hsh)| |exact Hr]. intros c d' Hd' Hq Hl Hf. rewrite H1 in Hd'. exists d'.
       split_and!; try done; [exact (isq_shape _ _ _ _ _ Hsh eq_refl Hq)|by rewrite H2|by rewrite H3|by rewrite H5].
     + apply (hosts_frame s); [| |exact Ho|exact Hh].
       * intros m d' Hd'. rewrite H1 in Hd'. exists d'. split; [done|exact (isq_shape _ _ _ _ _ Hsh eq_refl)].
@@ -4847,7 +4871,7 @@ Proof.
   - split_and!.
     + intros c Hc1. rewrite Hp2 in Hc1. destruct (Hpd c Hc1) as [e He]. destruct (decide (c = n)) as [->|Hcn]; [by eexists|].
       destruct (Hfw c e Hcn He) as (e'&He'&_). by eexists.
-    + apply (ran_frame _ s); [|exact Hran]. intros c d' Hd' Hq Hl Hf.
+    + apply (ran_frame _ s); [exact (fun t => memo_at_shapes s _ t Hsh)| |exact Hran]. intros c d' Hd' Hq Hl Hf.
       assert (Hcn : c <> n) by (intros ->; rewrite Hdn in Hd'; injection Hd' as <-; destruct Hq as [Hq _]; congruence).
       destruct (Hbk c d' Hcn Hd') as (d0&Hd0&Rd). pose proof Rd as (Hs0&Vv&Di&_&_&_&_&Fl&_).
       pose proof (isq_shape _ _ _ _ _ Hsh Hs0 Hq) as Hq0.
@@ -5215,7 +5239,7 @@ Proof.
       assert (Hsf : shape_of dF = shape_of (u5 (u d))) by (rewrite ShF; apply R8).
       unfold shape_of in Hsf. injection Hsf as _ _ E5 B5.
       exists r, l8, (trace_view n (g_trace s0)). rewrite E5, B5. split.
-      + exact (body_run_mono _ _ _ _ _ _ Hm5 Hrun8).
+      + exact (body_run_mono _ _ _ _ _ _ _ _ (fun t => memo_at_shapes s8 sE t (eq_trans ShE (eq_sym Sh8))) Hm5 Hrun8).
       + rewrite VE, Hview8, HtI, trace_view_app. unfold trace_view at 2. rewrite filter_cons_True, filter_nil; [|simpl; by apply bool_decide_eq_true_2].
         rewrite <- app_assoc. reflexivity.
     - destruct (shapes_node_back s0 sE c d' ShE Hd') as (x&Hx&Hsx).
@@ -5239,7 +5263,7 @@ Proof.
       { rewrite VE, (at_view _ _ _ _ _ A8 c (Hrn0 (Some n) (or_intror eq_refl))), HtI. apply trace_view_other. congruence. }
       destruct (proj1 (proj2 (proj2 (proj2 Hw))) c x Hx Hq0 ltac:(congruence) Hf0) as [[K1 K2]|K1].
       + left. split; [done|]. unfold window, read_view_of in *. injection Vv as _ S1 _. congruence.
-      + right. exact (ran_ok_ext s0 sE c x d' Hsl Hse0 E5 B5 Hvw K1). }
+      + right. exact (ran_ok_ext s0 sE c x d' (fun t => memo_at_shapes s0 sE t ShE) Hsl Hse0 E5 B5 Hvw K1). }
   assert (HhoE : hosts sE).
   { apply (hosts_frame s0); [| |intros o y Hy; rewrite OE in Hy; left; exists y; done|exact (proj2 (proj2 (proj2 (proj2 Hw))))].
     - intros m d' Hd'. destruct (shapes_node_back s0 sE m d' ShE Hd') as (x&Hx&Hsx). exists x. split; [done|exact (isq_shape _ _ _ _ _ ShE Hsx)].
@@ -5548,7 +5572,7 @@ Proof.
     exact (Hn m d Hm Hd (qc_shapes s s' m d dm Sh Hd Hdm Hq)).
   - split_and!.
     + intros c Hc. destruct (Hp c (at_passed _ _ _ _ _ A c Hc)) as [d Hd]. destruct (at_any _ _ _ _ _ A c d Hd) as (d'&Hd'&_). by eexists.
-    + apply (ran_frame _ s); [|exact Hran]. intros c d' Hd' Hq Hl Hf.
+    + apply (ran_frame _ s); [exact (fun t => memo_at_shapes s _ t Sh)| |exact Hran]. intros c d' Hd' Hq Hl Hf.
       destruct (shapes_node_back s s' c d' Sh Hd') as (d&Hd&Hsx). pose proof (isq_shape _ _ _ _ _ Sh Hsx Hq) as Hq0.
       assert (Hrn : ~ rn s lim None c).
       { intros [[K _]|K]; [exact (effect_not_pure s c d Hd (proj1 Hq0) K)|done]. }
@@ -5614,7 +5638,7 @@ Proof.
     exact (Hnp m dm Hm Hdm (qc_ext _ _ _ _ Hsh Hq0)).
   - split_and!.
     + intros c Hc. rewrite Hpa in Hc. destruct (Hpd c Hc) as [x Hx]. destruct (decide (c = n)) as [->|Hcn]; [rewrite Ht1; by eexists|]. rewrite Hne1 by done. rewrite Hx. by eexists.
-    + apply (ran_frame _ s); [|exact Hran]. intros c d' Hd' Hq0 Hl0 Hf0. destruct (Hback c d' Hd') as [[-> ->]|[Hcn H]].
+    + apply (ran_frame _ s); [exact (fun t => memo_at_shapes s _ t Hsh)| |exact Hran]. intros c d' Hd' Hq0 Hl0 Hf0. destruct (Hback c d' Hd') as [[-> ->]|[Hcn H]].
       * unfold shape_of in Hshd. injection Hshd as _ _ E5 B5. exists d. split_and!; [done|done|done| | |done|done|by rewrite He'|exact (Hse n)|by rewrite Htr].
         -- destruct Hset0 as [K|K]; [done|]. rewrite (proj2 (W3 n d Hd Hq)) in K. done.
         -- unfold window. rewrite Hst. done.
@@ -6258,20 +6282,9 @@ Proof.
   - congruence.
 Qed.
 
-(**md
-**A read answers from the current signals, in a well-behaved program.**
-
-After a whole program from a new graph, a read of a node outside the self-dirtying case answers what the node denotes over the current signals: a signal its value, a live memo its body, with each read in that body answered the same way, and a disposed memo what it stored, as Core.fs 4372-4376 documents.
-
-Premises: the program's end state has every memo outside the self-dirtying case and every effect only reading, and the read returns. `pure_in` is the positive form of `~ self_dirtying`: it quantifies over every answer of a read, so it has no decision, and the negated form gives no proof of it without an axiom.
-
-The statement speaks at a program's end. A read in an open batch or a body is unstated. A read here can settle a flush, and the answer holds across it.
-
-The form over the node alone, with its other nodes free, is false: [`read_settles_writer`](Ranvier.Pure.Witnesses.html#read_settles_writer). At quiescence that form, `read_quiescent_statement`, is unproved with no counterexample known. The form with no exception for a disposed memo is false: [`glitch_free_read_falsified`](Ranvier.Pure.Witnesses.html#glitch_free_read_falsified).
-*)
-Theorem glitch_free_read_stored f f' c s r n s' o :
+Lemma glitch_free_read_bounded f f' c s r n s' o :
   run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> pure_in (shapes s) n ->
-  read f' n true s = Some (s', o) -> denotes s n o.
+  read f' n true s = Some (s', o) -> den (S n) s n = Some o.
 Proof.
   intros Hm Ha He Hp Hrd.
   pose proof (reach_core f c s r Hm) as Hc. pose proof (reach_wk f c s r Hm (conj Ha He)) as Hw.
@@ -6284,7 +6297,7 @@ Proof.
   - rewrite (bind_some _ _ _ _ _ Htrack) in Hrd. unfold m_return in Hrd. injection Hrd as <- <-.
     destruct (b_window _ (proj1 (proj2 Hc))) as (_&_&Wsig&_).
     pose proof (quiet_denotes s (proj1 Hw) Hc Hnp n d Hd Hp (or_introl (or_introl (Wsig n d Hd Ek)))) as Hden.
-    exists (S n). rewrite Hden. unfold view_answer, read_view_of. simpl. rewrite (proj1 (w_signal _ (proj1 Hw) n d Hd Ek)). done.
+    rewrite Hden. unfold view_answer, read_view_of. simpl. rewrite (proj1 (w_signal _ (proj1 Hw) n d Hd Ek)). done.
   - apply bind_inv in Hrd as (s2' & [] & H1 & Hrd).
     destruct (stale_live d) eqn:El.
     + assert (Hl : n_disposed d = false) by (unfold stale_live in El; destruct (n_disposed d); [by rewrite andb_false_r in El|done]).
@@ -6328,7 +6341,7 @@ Proof.
       { intros m Hin. rewrite (at_shapes _ _ _ _ _ A). rewrite (at_running _ _ _ _ _ A) in Hin. exact (Hnp m Hin). }
       assert (Hpb2 : pure_in (shapes sb) n) by (rewrite (at_shapes _ _ _ _ _ A); exact Hp0).
       pose proof (quiet_denotes sb Hwb Hcb Hrnb n e He1 Hpb2 Qe) as Hden.
-      exists (S n). rewrite <- (den_nodes (S n) s s0 n eq_refl). exact (den_atom _ _ _ s0 sb Hc0 A (fun _ _ K => K) (S n) n _ Hp0 Hden).
+      rewrite <- (den_nodes (S n) s s0 n eq_refl). exact (den_atom _ _ _ s0 sb Hc0 A (fun _ _ K => K) (S n) n _ Hp0 Hden).
     + unfold stale_live in El.
       assert (Hq0 : quiet d \/ n_disposed d = true).
       { destruct (stale (n_freshness d)) eqn:Es; simpl in El.
@@ -6336,8 +6349,34 @@ Proof.
         - left. left. destruct (n_freshness d); done. }
       rewrite Htrack in H1. injection H1 as <-.
       rewrite (bind_get_node _ _ _ _ Hd) in Hrd. destruct (read_answer _ _ _ _ Hrd) as [_ ->].
-      exists (S n). exact (quiet_denotes s (proj1 Hw) Hc Hnp n d Hd Hp Hq0).
+      exact (quiet_denotes s (proj1 Hw) Hc Hnp n d Hd Hp Hq0).
   - done.
+Qed.
+
+
+Global Instance outcome_eqdec : EqDecision outcome.
+Proof. solve_decision. Defined.
+
+(** The brief's premise, `~ self_dirtying s n`. No axiom: the bounded conclusion is decidable. *)
+
+(**md
+**A read answers from the current signals, in a well-behaved program.**
+
+After a whole program from a new graph, a read of a node outside the self-dirtying case answers what the node denotes over the current signals: a signal its value, a live memo its body, with each read in that body answered the same way, and a disposed memo what it stored, as Core.fs 4372-4376 documents.
+
+Premises: the program's end state has every memo outside the self-dirtying case and every effect only reading, and the read returns.
+
+The statement speaks at a program's end. A read in an open batch or a body is unstated. A read here can settle a flush, and the answer holds across it.
+
+The form over the node alone, with its other nodes free, is false in a state with a queue: [`read_settles_writer`](Ranvier.Pure.Witnesses.html#read_settles_writer). It is false at quiescence too: [`read_quiescent_falsified`](Ranvier.Pure.Witnesses.html#read_quiescent_falsified). The form with no exception for a disposed memo is false: [`glitch_free_read_falsified`](Ranvier.Pure.Witnesses.html#glitch_free_read_falsified).
+*)
+Theorem glitch_free_read f f' c s r n s' o :
+  run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> ~ self_dirtying s n ->
+  read f' n true s = Some (s', o) -> denotes s n o.
+Proof.
+  intros Hm Ha He Hn Hrd. exists (S n).
+  destruct (decide (den (S n) s n = Some o)) as [E|E]; [exact E|].
+  exfalso. apply Hn. intros Hp. exact (E (glitch_free_read_bounded f f' c s r n s' o Hm Ha He Hp Hrd)).
 Qed.
 
 Lemma count_runs_view c pre l tr : trace_view c tr = pre ++ EvRun c :: l -> 0 < count_runs c tr.
@@ -6355,7 +6394,7 @@ Definition converged (s : state) : Prop :=
     n_freshness d = Clean /\ 0 < count_runs e (g_trace s) /\
     (forall t, t ∈ read_prefix (g_edges s) e -> seen_of (g_ghost s) e t <> [] /\
        forall v, v ∈ seen_of (g_ghost s) e t -> denotes s t (view_answer v)) /\
-    (exists r' k, body_run (den k s) (n_env d) (n_body d) r' (last_run_logs e (g_trace s))) /\
+    (exists r' k, body_run (memo_at s) (den k s) (n_env d) (n_body d) r' (last_run_logs e (g_trace s))) /\
     (has_untracked (n_body d) = false -> exists r' k,
       body_eval (seen_ans s e) (n_env d) (n_body d) = Some r' /\ body_eval (den k s) (n_env d) (n_body d) = Some r' /\
       body_logs (seen_ans s e) (n_env d) (n_body d) = Some (last_run_logs e (g_trace s)) /\
@@ -6364,14 +6403,14 @@ Definition converged (s : state) : Prop :=
 (**md
 **Convergence: at quiescence, every effect ran, and its last run read and logged what its sources now denote.**
 
-After a whole program from a new graph that leaves no live queue entry and nothing running, each live effect is `Clean` and has an `EvRun` in the trace. Each source of a tracked read in its last run has a recorded read, each answering what the source denotes over the current signals. Its last run's `EvLog`s are the logs of a run of its body with each tracked read answered by the denotation and each untracked read by some value. An untracked read is entitled to no more: its source can move with no run. With no untracked read in the body, the body gives one result over its recorded reads and over the denotation, with the logs of its last run.
+After a whole program from a new graph that leaves no live queue entry and nothing running, each live effect is `Clean` and has an `EvRun` in the trace. Each source of a tracked read in its last run has a recorded read, each answering what the source denotes over the current signals. Its last run's `EvLog`s are the logs of a run of its body with each tracked read answered by the denotation and each untracked read by some value, or, when its target is a memo, by some failure. An untracked read is entitled to no more: its source can move with no run, and the state records no answer, so a log of the read's value can hold any value. With no untracked read in the body, the body gives one result over its recorded reads and over the denotation, with the logs of its last run.
 
 Premises: the program's end state has every memo outside the self-dirtying case, and every effect only reads. Batches and computed read targets, in memos and in effects, and an effect's untracked reads are inside the premises: [`widened_forms_reached`](Ranvier.Pure.Witnesses.html#widened_forms_reached), [`untracked_read_reached`](Ranvier.Pure.Witnesses.html#untracked_read_reached).
 
 Exclusions from an effect's body:
 
 - A write rests on a counterexample: [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) falsifies the conclusion ([`effects_only_read_needed`](Ranvier.Pure.Witnesses.html#effects_only_read_needed)). This premise is provisional, pending the owner's ruling on that entry.
-- A cleanup, and an effect or other node created in the body, rest on the proof's reach: unproved with no counterexample.
+- A cleanup, a disposal, and an effect or other node created in the body rest on the proof's reach. They are unproved by choice of scope: no proof was attempted, no counterexample is known, and the owner has been told.
 
 `quiescent` excludes the queue `failed_batch_leaves_queue` leaves. [`convergence_reached`](Ranvier.Pure.Witnesses.html#convergence_reached) reaches every premise on a live effect over live memos. The form over all programs is the Open `convergence_all_statement`.
 *)
@@ -6417,10 +6456,10 @@ Proof.
     unfold seen_ans in Ho. rewrite decide_True in Ho by done. destruct (seen_of (g_ghost s) e t) as [|v l0] eqn:Es; [done|].
     simpl in Ho. injection Ho as <-. rewrite (H1 v) by left. eapply den_mono; [|exact H2].
     pose proof (core_ids s Hc t (mk_is_Some _ _ Hx)). lia. }
-  split_and!; [done|exact (count_runs_view _ _ _ _ C)| |exists r0, (S (g_next_id s)); exact (body_run_mono _ _ _ _ _ _ Hm5 A)|].
+  split_and!; [done|exact (count_runs_view _ _ _ _ C)| |exists r0, (S (g_next_id s)); exact (body_run_mono _ _ _ _ _ _ _ _ (fun _ H => H) Hm5 A)|].
   - intros t Ht. destruct (Hsrc t Ht) as [A1 (x&Hx&B&D)]. split; [done|]. intros v Hv. rewrite (B v Hv). by exists (S t).
   - intros Hnu. destruct (He e d Hd Hk) as [_ Hbp].
-    destruct (body_run_eval _ _ _ _ _ _ _ Hbp (fun _ => Hnu) A) as [E1 E2].
+    destruct (body_run_eval _ _ _ _ _ _ _ _ Hbp (fun _ => Hnu) A) as [E1 E2].
     exists r0, (S (g_next_id s)). split_and!; [done|exact (body_eval_mono _ _ _ _ _ Hm5 E1)|done|exact (body_logs_mono _ _ _ _ _ Hm5 E2)].
 Qed.
 
@@ -6628,26 +6667,66 @@ Definition read_per_node_statement : Prop :=
     run_top f c (init current_flags) = Some (s, r) -> pure_in (shapes s) n ->
     read f' n true s = Some (s', o) -> denotes s n o.
 
-(** The same at quiescence. Unproved, and no counterexample is known. *)
+(** The same at quiescence. False on the present engine: [read_quiescent_falsified]. *)
 Definition read_quiescent_statement : Prop :=
   forall f f' c s r n s' o,
     run_top f c (init current_flags) = Some (s, r) -> quiescent s -> pure_in (shapes s) n ->
     read f' n true s = Some (s', o) -> denotes s n o.
 
+(**md
+**Open, and false on the present engine: at quiescence, a read of a pure node answers what the node denotes.**
+
+This states what the fix owes, as `read_quiescent_statement`. [`read_quiescent_falsified`](Ranvier.Pure.Witnesses.html#read_quiescent_falsified) proves it false: an effect left asleep over a stale memo wakes during the read, and the flush it owes runs before the read answers. Use [`glitch_free_read`](#glitch_free_read) until the fix.
+*)
+Theorem read_quiescent : read_quiescent_statement.
+Proof. Admitted.
+
+(** A body with no batch. *)
+Fixpoint no_batch (c : cmd) : bool :=
+  match c with
+  | CBatch _ _ => false
+  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CReadUntracked _ _ k | CLog _ k => no_batch k
+  | CIf _ a b => no_batch a && no_batch b
+  | _ => true
+  end.
+
+(** [n] is a signal, or a memo with no batch in its body or in any node its body can read. *)
+Fixpoint batch_free_at (S : gmap node_id (kind * comparer * env * cmd)) (k : nat) (n : node_id) : Prop :=
+  match k with
+  | 0 => False
+  | Datatypes.S k' =>
+    match S !! n with
+    | Some (KSignal, _, _, _) => True
+    | Some (KMemo, _, e, b) => no_batch b = true /\ body_pure (fun t => readable S t -> batch_free_at S k' t) e b
+    | _ => False
+    end
+  end.
+
+(** The read at quiescence for a pure node with a batch-free cone. Unproved, with no proof attempted, by the ruling in
+    [BUGS.md]. On the generator of the lost wake-up's shape, the fuzz harness reports 0 wrong answers with batch-free cones,
+    and 640 in 3000 programs with batches allowed. *)
+Definition read_quiescent_batch_free_statement : Prop :=
+  forall f f' c s r n s' o,
+    run_top f c (init current_flags) = Some (s, r) -> quiescent s -> pure_in (shapes s) n ->
+    batch_free_at (shapes s) (Datatypes.S n) n ->
+    read f' n true s = Some (s', o) -> denotes s n o.
+
 (** ** The statement over all programs *)
 
-(** A memo's body with its writes and cleanups erased and its untracked reads as reads: what it computes from the signals. *)
-Fixpoint erase (c : cmd) : cmd :=
+(** A body's computation from the signals. A write and a disposal keep their expressions' failures. A cleanup is skipped under
+    [Owning], and a cleanup, effect or memo created under [Pure] is the body's [pure_scope_failure]. *)
+Fixpoint erase (m : scope_mode) (c : cmd) : cmd :=
   match c with
-  | CLet x v k => CLet x v (erase k)
-  | CIf v a b => CIf v (erase a) (erase b)
-  | CRead x n k => CRead x n (erase k)
-  | CTryRead x ok n k => CTryRead x ok n (erase k)
-  | CReadUntracked x n k => CRead x n (erase k)
-  | CWrite _ _ k => erase k
-  | CCleanup _ k => erase k
-  | CBatch b k => CBatch (erase b) (erase k)
-  | CLog v k => CLog v (erase k)
+  | CLet x v k => CLet x v (erase m k)
+  | CIf v a b => CIf v (erase m a) (erase m b)
+  | CRead x n k => CRead x n (erase m k)
+  | CTryRead x ok n k => CTryRead x ok n (erase m k)
+  | CWrite n v k => let k' := erase m k in CIf n (CIf v k' k') (CIf v k' k')
+  | CDispose n k => let k' := erase m k in CIf n k' k'
+  | CCleanup _ k => match m with Pure => CThrow pure_scope_failure | Owning => erase m k end
+  | CMemo _ _ _ _ _ | CEffect _ _ _ => match m with Pure => CThrow pure_scope_failure | Owning => c end
+  | CBatch b k => CBatch (erase m b) (erase m k)
+  | CLog v k => CLog v (erase m k)
   | _ => c
   end.
 
@@ -6664,7 +6743,7 @@ Fixpoint den_all (k : nat) (s : state) (n : node_id) : option outcome :=
       | KEffect => None
       | KMemo =>
         if n_disposed d then Some (view_answer (read_view_of d))
-        else body_eval (den_all k' s) (n_env d) (erase (n_body d))
+        else body_eval (den_all k' s) (n_env d) (erase (n_mode d) (n_body d))
       end
     end
   end.
@@ -6689,47 +6768,269 @@ Proof.
   assert (H2' : den_all (k + k') s n = Some o') by (eapply den_all_mono; [|exact H2]; lia). congruence.
 Qed.
 
-(** Each memo reads, for every answer of its earlier reads, only memos of lower rank: the premise [memos_acyclic] of the
-    reference tier, over the end state. *)
-Definition acyclic_at (s : state) : Prop :=
-  exists rank : node_id -> nat, forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo ->
-    body_pure (fun t => match g_nodes s !! t with Some dt => n_kind dt = KMemo -> rank t < rank m | None => True end)
-      (n_env d) (erase (n_body d)).
+(** [Q] holds of each target an erased body can read, for every answer of its earlier reads. *)
+Fixpoint body_reads (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
+  match c with
+  | CLet x v k => forall z, ev e v = Some (Ok z) -> body_reads Q ((x, z) :: e) k
+  | CIf v a b => forall z, ev e v = Some (Ok z) -> (z = 0%Z -> body_reads Q e b) /\ (z <> 0%Z -> body_reads Q e a)
+  | CRead x n k => (forall z, ev e n = Some (Ok z) -> (0 <= z)%Z -> Q (Z.to_nat z)) /\ forall v, body_reads Q ((x, v) :: e) k
+  | CTryRead x ok n k =>
+    (forall z, ev e n = Some (Ok z) -> (0 <= z)%Z -> Q (Z.to_nat z)) /\
+    (forall v, body_reads Q ((ok, 1%Z) :: (x, v) :: e) k) /\ (forall y, body_reads Q ((ok, 0%Z) :: (x, y) :: e) k)
+  | CLog _ k => body_reads Q e k
+  | CBatch b k => body_reads Q e b /\ body_reads Q e k
+  | _ => True
+  end.
 
-(** A sufficient test of [acyclic_at]: each memo reads only nodes with lower ids, by targets known ahead of the run. *)
-Definition acyclic_b (s : state) : bool :=
-  forallb (fun x : node_id * node =>
-    match n_kind x.2 with
-    | KMemo => body_ok (fun t => bool_decide (t < x.1)) (static_of (n_env x.2)) (erase (n_body x.2))
-    | _ => true
-    end) (map_to_list (g_nodes s)).
-
-Lemma acyclic_of_b s : acyclic_b s = true -> acyclic_at s.
+Lemma body_pure_reads Q e c : body_pure Q e c -> body_reads Q e c.
 Proof.
-  intros H. exists (fun t => t). intros m d Hd Hk. unfold acyclic_b in H. rewrite forallb_forall in H.
-  assert (Hin : In (m, d) (map_to_list (g_nodes s))) by (apply list_elem_of_In; apply elem_of_map_to_list; exact Hd).
-  specialize (H _ Hin). simpl in H. rewrite Hk in H. eapply body_ok_pure; [|apply static_agrees_of|exact H].
-  intros t Ht. apply bool_decide_eq_true_1 in Ht. destruct (g_nodes s !! t); [intros _; exact Ht|done].
+  revert e. induction c; intros g H; simpl in *; try done.
+  - destruct H as [_ K]. intros z Hz. exact (IHc _ (K z Hz)).
+  - destruct H as [_ K]. intros z Hz. destruct (K z Hz) as [K1 K2]. split; [intros H0; exact (IHc2 _ (K1 H0))|intros H0; exact (IHc1 _ (K2 H0))].
+  - destruct H as (_&K1&K2). split; [done|]. intros v. exact (IHc _ (K2 v)).
+  - destruct H as (_&K1&K2&K3). split_and!; [done|intros v; exact (IHc _ (K2 v))|intros y; exact (IHc _ (K3 y))].
+  - destruct H as [K1 K2]. split; [exact (IHc1 _ K1)|exact (IHc2 _ K2)].
+  - destruct H as [_ K]. exact (IHc _ K).
 Qed.
 
-(** Each live effect is [Clean] and ran, each source of its last run answered what its erased body computes now, and,
-    with no untracked read in the effect, its last run logged what its erased body logs over those answers. *)
+(** The live memos of the graph. *)
+Definition live_memos (P : node -> Prop) (s : state) : Prop :=
+  forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo -> n_disposed d = false -> P d.
+
+(** A rank decreases along every read of a live memo's erased body, for every answer of its earlier reads: [memos_acyclic]
+    of the reference tier, over the end state. Excludes a memo cycle or self-read, which has no denotation. *)
+Definition memos_ranked (s : state) : Prop :=
+  exists rank : node_id -> nat, forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo -> n_disposed d = false ->
+    body_reads (fun t => match g_nodes s !! t with Some dt => n_kind dt = KMemo -> rank t < rank m | None => True end)
+      (n_env d) (erase (n_mode d) (n_body d)).
+
+(** Excludes a memo's untracked read. A reader of the memo keeps the value from the read's run, as an untracked read means. *)
+Definition memos_no_untracked : state -> Prop := live_memos (fun d => has_untracked (n_body d) = false).
+
+(** Excludes [CmpThrows]. The failure of a throwing comparer lies outside a body's computation. *)
+Definition memos_no_throwing_comparer : state -> Prop := live_memos (fun d => forall y, n_comparer d <> CmpThrows y).
+
+(** The expressions of a body, without [EPrev] or the variable behind it. *)
+Fixpoint body_plain (c : cmd) : bool :=
+  match c with
+  | CRet x => expr_plain x
+  | CLet _ v k | CLog v k => expr_plain v && body_plain k
+  | CIf v a b => expr_plain v && body_plain a && body_plain b
+  | CRead _ n k | CTryRead _ _ n k | CReadUntracked _ n k => expr_plain n && body_plain k
+  | CBatch b k => body_plain b && body_plain k
+  | _ => true
+  end.
+
+(** Excludes [EPrev] in a memo's erased body, whose answer depends on the memo's history. *)
+Definition memos_no_prev : state -> Prop := live_memos (fun d => body_plain (erase (n_mode d) (n_body d)) = true).
+
+(** A body that creates or disposes a node, outside its cleanups. *)
+Fixpoint body_nodes (c : cmd) : bool :=
+  match c with
+  | CSignal _ _ _ | CMemo _ _ _ _ _ | CEffect _ _ _ | CDispose _ _ => true
+  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CReadUntracked _ _ k | CWrite _ _ k | CCleanup _ k | CLog _ k => body_nodes k
+  | CIf _ a b | CBatch a b => body_nodes a || body_nodes b
+  | _ => false
+  end.
+
+(** Excludes a node created in a live memo's erased body: a signal in any memo, and a memo or effect in an [Owning] memo. The
+    created node's id varies by run, so the body has no value over the signals alone. *)
+Definition memos_no_creation : state -> Prop := live_memos (fun d => body_nodes (erase (n_mode d) (n_body d)) = false).
+
+(** [u] is a target an erased body can read, for some answers of its earlier reads. *)
+Fixpoint may_read (u : node_id) (e : env) (c : cmd) : Prop :=
+  match c with
+  | CLet x _ k => exists z, may_read u ((x, z) :: e) k
+  | CIf _ a b => may_read u e a \/ may_read u e b
+  | CRead x n k => (exists z, ev e n = Some (Ok z) /\ Z.to_nat z = u) \/ exists v, may_read u ((x, v) :: e) k
+  | CTryRead x ok n k =>
+    (exists z, ev e n = Some (Ok z) /\ Z.to_nat z = u) \/
+    (exists v, may_read u ((ok, 1%Z) :: (x, v) :: e) k) \/ (exists y, may_read u ((ok, 0%Z) :: (x, y) :: e) k)
+  | CLog _ k => may_read u e k
+  | CBatch a b => may_read u e a \/ may_read u e b
+  | _ => False
+  end.
+
+(** A write of [w] can move [t]: [t] is [w], or a memo that can read a node [w] reaches. *)
+Fixpoint reaches_at (s : state) (k : nat) (w t : node_id) : Prop :=
+  match k with
+  | 0 => False
+  | Datatypes.S k' =>
+    w = t \/
+    match g_nodes s !! t with
+    | Some d => n_kind d = KMemo /\ exists u, may_read u (n_env d) (erase (n_mode d) (n_body d)) /\ reaches_at s k' w u
+    | None => False
+    end
+  end.
+
+Definition reaches (s : state) (w t : node_id) : Prop := exists k, reaches_at s k w t.
+
+(** Each read of a body, after the writes [W] of its path and for every answer of its earlier reads, targets a node reached
+    by no write in [W]. [K] states the same of what follows, over the writes of the whole path. *)
+Fixpoint reads_before (s : state) (W : list node_id) (e : env) (c : cmd) (K : list node_id -> Prop) : Prop :=
+  match c with
+  | CRet _ => K W
+  | CLet x v k => forall z, ev e v = Some (Ok z) -> reads_before s W ((x, z) :: e) k K
+  | CIf v a b =>
+    forall z, ev e v = Some (Ok z) -> (z = 0%Z -> reads_before s W e b K) /\ (z <> 0%Z -> reads_before s W e a K)
+  | CRead x n k | CReadUntracked x n k =>
+    (forall z w, ev e n = Some (Ok z) -> w ∈ W -> ~ reaches s w (Z.to_nat z)) /\ forall v, reads_before s W ((x, v) :: e) k K
+  | CTryRead x ok n k =>
+    (forall z w, ev e n = Some (Ok z) -> w ∈ W -> ~ reaches s w (Z.to_nat z)) /\
+    (forall v, reads_before s W ((ok, 1%Z) :: (x, v) :: e) k K) /\ (forall y, reads_before s W ((ok, 0%Z) :: (x, y) :: e) k K)
+  | CWrite n _ k => forall z, ev e n = Some (Ok z) -> reads_before s (Z.to_nat z :: W) e k K
+  | CCleanup _ k | CDispose _ k | CLog _ k => reads_before s W e k K
+  | CBatch b k => reads_before s W e b (fun W' => reads_before s W' e k K)
+  | _ => True
+  end.
+
+(** Excludes a read in a memo's body after a write that reaches its target. Each run of such a body answers from a value the
+    same run replaces, so the answer differs from the body's computation over the signals. *)
+Definition memos_read_before_write (s : state) : Prop :=
+  live_memos (fun d => reads_before s [] (n_env d) (n_body d) (fun _ => True)) s.
+
+(** The programs of [convergence_all_statement]. *)
+Definition fix_premises (s : state) : Prop :=
+  quiescent s /\ memos_ranked s /\ memos_no_untracked s /\ memos_no_throwing_comparer s /\ memos_no_prev s /\
+  memos_no_creation s /\ memos_read_before_write s.
+
+(** Each live effect with an owner is [Clean] and ran, and each source of its last run answered what its erased body computes
+    now. With no untracked read, and no node created or disposed outside its cleanups, its last run logged what its erased
+    body logs over those answers. An effect created under a [Pure] memo has no owner: [exec] adds its node and fails, where
+    F# raises before the effect exists. *)
 Definition converged_all (s : state) : Prop :=
-  forall e d, g_nodes s !! e = Some d -> n_kind d = KEffect -> n_disposed d = false ->
+  forall e d, g_nodes s !! e = Some d -> n_kind d = KEffect -> n_disposed d = false -> n_link d <> None ->
     n_freshness d = Clean /\ 0 < count_runs e (g_trace s) /\
     (forall t, t ∈ read_prefix (g_edges s) e -> seen_of (g_ghost s) e t <> [] /\
        forall v, v ∈ seen_of (g_ghost s) e t -> denotes_all s t (view_answer v)) /\
-    (has_untracked (n_body d) = false -> exists k,
-       body_logs (den_all k s) (n_env d) (erase (n_body d)) = Some (last_run_logs e (g_trace s))).
+    (has_untracked (n_body d) = false -> body_nodes (n_body d) = false -> exists k,
+       body_logs (den_all k s) (n_env d) (erase (n_mode d) (n_body d)) = Some (last_run_logs e (g_trace s))).
 
-(** Over all programs, with memo cycles and self-reads excluded and nothing else. *)
+(** The target of the fix phase. Effect writes, memo writes and cleanups, and [CmpNever] are inside it. *)
 Definition convergence_all_statement : Prop :=
-  forall f c s r, run_top f c (init current_flags) = Some (s, r) -> acyclic_at s -> quiescent s -> converged_all s.
+  forall f c s r, run_top f c (init current_flags) = Some (s, r) -> fix_premises s -> converged_all s.
 
 (**md
-**Open, and false on the present engine: at quiescence, every effect ran and read what its sources compute, in every program without a memo cycle.**
+**Open, and false on the present engine: at quiescence, every effect ran and read what its sources compute, in each program whose memo bodies compute from the signals.**
 
-This states what the fix phase owes, as `convergence_all_statement`. The only premises are `quiescent` and `acyclic_at`, as a memo cycle or self-read is outside the contract. A disposed memo answers what it stored, as Core.fs 4372-4376 documents. An effect that writes is inside the statement, and `effect_resolves_over_moved_source` falls under it, pending the owner's ruling on that entry. [`convergence_all_falsified`](Ranvier.Pure.Witnesses.html#convergence_all_falsified) proves the statement false from `self_marking_wake_lost` and from the lost update of `cmp_never_passes_source`. Use [`convergence`](#convergence) until the fix.
+This states what the fix phase owes, as `convergence_all_statement`. It covers memos and effects that write, memos with cleanups, and a `CmpNever` comparer: those are the bugs. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, and `effect_resolves_over_moved_source` falls under the statement, pending the owner's ruling on that entry.
+
+The premises are `quiescent` and one field per exclusion: `memos_ranked`, `memos_no_untracked`, `memos_no_throwing_comparer`, `memos_no_prev`, `memos_no_creation` and `memos_read_before_write`. Each exclusion is a memo with no value over the signals alone, which no change to the engine can give one. `BUGS.md` lists them with their reasons.
+
+[`convergence_all_falsified`](Ranvier.Pure.Witnesses.html#convergence_all_falsified) proves the statement false from `self_marking_wake_lost` and from the lost update of `cmp_never_passes_source`, with each premise proved on both. Use [`convergence`](#convergence) until the fix.
 *)
 Theorem convergence_all : convergence_all_statement.
 Proof. Admitted.
+
+(** ** Sufficient tests for the statement's premises *)
+
+(** A sufficient test of [memos_ranked]: each live memo reads only nodes with lower ids, by targets known ahead of the run. *)
+Definition ranked_b (s : state) : bool :=
+  forallb (fun x : node_id * node =>
+    match n_kind x.2, n_disposed x.2 with
+    | KMemo, false => body_ok (fun t => bool_decide (t < x.1)) (static_of (n_env x.2)) (erase (n_mode x.2) (n_body x.2))
+    | _, _ => true
+    end) (map_to_list (g_nodes s)).
+
+Lemma ranked_of_b s : ranked_b s = true -> memos_ranked s.
+Proof.
+  intros H. exists (fun t => t). intros m d Hd Hk Hl. unfold ranked_b in H. rewrite forallb_forall in H.
+  assert (Hin : In (m, d) (map_to_list (g_nodes s))) by (apply list_elem_of_In; apply elem_of_map_to_list; exact Hd).
+  specialize (H _ Hin). simpl in H. rewrite Hk, Hl in H. apply body_pure_reads. eapply body_ok_pure; [|apply static_agrees_of|exact H].
+  intros t Ht. apply bool_decide_eq_true_1 in Ht. destruct (g_nodes s !! t); [intros _; exact Ht|done].
+Qed.
+
+(** A body with no write outside its cleanups. *)
+Fixpoint no_writes (c : cmd) : bool :=
+  match c with
+  | CWrite _ _ _ => false
+  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CReadUntracked _ _ k | CCleanup _ k | CDispose _ k | CLog _ k => no_writes k
+  | CIf _ a b | CBatch a b => no_writes a && no_writes b
+  | _ => true
+  end.
+
+Lemma reads_before_no_writes s e c (K : list node_id -> Prop) : no_writes c = true -> K [] -> reads_before s [] e c K.
+Proof.
+  revert e K. induction c; intros g K0 Hn HK; simpl in *; try done.
+  - intros z _. by apply IHc.
+  - apply andb_true_iff in Hn as [H1 H2]. intros z _. split; intros _; [by apply IHc2|by apply IHc1].
+  - split; [intros z w _ Hw; by apply not_elem_of_nil in Hw|intros v; by apply IHc].
+  - split_and!; [intros z w _ Hw; by apply not_elem_of_nil in Hw|intros v; by apply IHc|intros y; by apply IHc].
+  - split; [intros z w _ Hw; by apply not_elem_of_nil in Hw|intros v; by apply IHc].
+  - by apply IHc2.
+  - by apply IHc.
+  - apply andb_true_iff in Hn as [H1 H2]. apply IHc1; [done|]. by apply IHc2.
+  - by apply IHc.
+Qed.
+
+(** The premises other than [quiescent] and [memos_ranked], tested on a live memo with no write outside a cleanup. *)
+Definition memo_b (d : node) : bool :=
+  negb (has_untracked (n_body d)) &&
+  match n_comparer d with CmpThrows _ => false | _ => true end &&
+  body_plain (erase (n_mode d) (n_body d)) &&
+  negb (body_nodes (erase (n_mode d) (n_body d))) &&
+  no_writes (n_body d).
+
+Definition fix_premises_b (s : state) : bool :=
+  ranked_b s && forallb (fun x : node_id * node =>
+    match n_kind x.2, n_disposed x.2 with KMemo, false => memo_b x.2 | _, _ => true end) (map_to_list (g_nodes s)).
+
+Lemma fix_premises_of_b s : quiescent s -> fix_premises_b s = true -> fix_premises s.
+Proof.
+  intros Hq H. apply andb_true_iff in H as [Hr H]. rewrite forallb_forall in H.
+  assert (Hm : forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo -> n_disposed d = false -> memo_b d = true).
+  { intros m d Hd Hk Hl. assert (Hin : In (m, d) (map_to_list (g_nodes s))) by (apply list_elem_of_In; apply elem_of_map_to_list; exact Hd).
+    specialize (H _ Hin). simpl in H. by rewrite Hk, Hl in H. }
+  split_and!; [done|by apply ranked_of_b|..]; intros m d Hd Hk Hl; pose proof (Hm m d Hd Hk Hl) as Hb; unfold memo_b in Hb;
+    apply andb_true_iff in Hb as [Hb H5]; apply andb_true_iff in Hb as [Hb H4]; apply andb_true_iff in Hb as [Hb H3]; apply andb_true_iff in Hb as [H1 H2].
+  - by apply negb_true_iff.
+  - intros y Hy. rewrite Hy in H2. done.
+  - done.
+  - by apply negb_true_iff.
+  - by apply reads_before_no_writes.
+Qed.
+
+Definition outcome_eqb (a b : outcome) : bool :=
+  match a, b with
+  | Ok x, Ok y | Fail x, Fail y => bool_decide (x = y)
+  | _, _ => false
+  end.
+
+Lemma outcome_eqb_eq a b : outcome_eqb a b = true -> a = b.
+Proof. destruct a, b; simpl; try done; intros H; apply bool_decide_eq_true_1 in H; by subst. Qed.
+
+(** A sufficient test of [converged_all], with [k] the fuel of the denotations. *)
+Definition converged_all_b (k : nat) (s : state) : bool :=
+  forallb (fun x : node_id * node =>
+    let e := x.1 in let d := x.2 in
+    match n_kind d, n_disposed d, n_link d with
+    | KEffect, false, Some _ =>
+      match n_freshness d with Clean => true | _ => false end &&
+      Nat.ltb 0 (count_runs e (g_trace s)) &&
+      forallb (fun t =>
+        match seen_of (g_ghost s) e t with [] => false | _ => true end &&
+        forallb (fun v => match den_all k s t with Some o => outcome_eqb o (view_answer v) | None => false end) (seen_of (g_ghost s) e t))
+        (read_prefix (g_edges s) e) &&
+      (has_untracked (n_body d) || body_nodes (n_body d) ||
+       match body_logs (den_all k s) (n_env d) (erase (n_mode d) (n_body d)) with
+       | Some l => bool_decide (l = last_run_logs e (g_trace s))
+       | None => false
+       end)
+    | _, _, _ => true
+    end) (map_to_list (g_nodes s)).
+
+Lemma converged_all_of_b k s : converged_all_b k s = true -> converged_all s.
+Proof.
+  intros H e d Hd Hk Hl Hn0. unfold converged_all_b in H. rewrite forallb_forall in H.
+  assert (Hin : In (e, d) (map_to_list (g_nodes s))) by (apply list_elem_of_In; apply elem_of_map_to_list; exact Hd).
+  specialize (H _ Hin). simpl in H. rewrite Hk, Hl in H. destruct (n_link d) as [l0|]; [|done].
+  apply andb_true_iff in H as [H H4]. apply andb_true_iff in H as [H H3]. apply andb_true_iff in H as [H1 H2].
+  split_and!.
+  - by destruct (n_freshness d).
+  - by apply Nat.ltb_lt in H2.
+  - intros t Ht. rewrite forallb_forall in H3. apply list_elem_of_In in Ht. specialize (H3 t Ht). apply andb_true_iff in H3 as [A B].
+    split; [by destruct (seen_of (g_ghost s) e t)|]. intros v Hv. rewrite forallb_forall in B. apply list_elem_of_In in Hv. specialize (B v Hv).
+    destruct (den_all k s t) as [o|] eqn:E; [|done]. exists k. rewrite E. f_equal. exact (outcome_eqb_eq _ _ B).
+  - intros Hu Hn. rewrite Hu, Hn in H4. simpl in H4. exists k.
+    destruct (body_logs _ _ _) as [l|] eqn:E; [|done]. apply bool_decide_eq_true_1 in H4. by subst.
+Qed.

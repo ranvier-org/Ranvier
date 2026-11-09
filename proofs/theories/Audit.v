@@ -201,7 +201,7 @@ Print Assumptions memo_scope_violation_returns.
 Print Assumptions memo_comparer_replaces_failure.
 Print Assumptions well_behaved_nothing_passed.
 Print Assumptions well_behaved_no_lost_wakeups.
-Print Assumptions glitch_free_read_stored.
+Print Assumptions glitch_free_read.
 Print Assumptions convergence.
 Print Assumptions glitch_free_read_falsified.
 Print Assumptions witness_302.
@@ -216,3 +216,18 @@ Print Assumptions untracked_read_reached.
 Print Assumptions read_settles_writer.
 Print Assumptions convergence_all.
 Print Assumptions convergence_all_falsified.
+Print Assumptions read_quiescent.
+Print Assumptions read_quiescent_falsified.
+Print Assumptions row_child_effect_holds.
+Print Assumptions row_effect_disposes_holds.
+Print Assumptions row_memo_untracked_excluded.
+Print Assumptions row_throwing_comparer_excluded.
+Print Assumptions row_pure_cleanup_holds.
+Print Assumptions row_pure_creation_holds.
+Print Assumptions row_read_between_writes_excluded.
+Print Assumptions row_failing_write_holds.
+Print Assumptions row_memo_creates_excluded.
+Print Assumptions row_memo_prev_excluded.
+Print Assumptions effect_dispose_outside.
+Print Assumptions memo_dispose_outside.
+Print Assumptions memo_prev_outside.

@@ -1287,7 +1287,7 @@ Definition read_flush : cmd :=
 (**md
 **Falsified: a read of a pure node can answer past what the node denotes at the read's start.**
 
-This is a counterexample, not a guarantee. It proves `read_per_node_statement` false. Memo `3` is pure and denotes 1, the effect left queued writes its source, and the read answers 9. The read settles a flush, which is not a defect, so the statement needs `quiescent`: `read_quiescent_statement` is unproved with no counterexample known.
+This is a counterexample, not a guarantee. It proves `read_per_node_statement` false. Memo `3` is pure and denotes 1, the effect left queued writes its source, and the read answers 9. The read settles a flush and answers after it. `BUGS.md` holds the question for the owner, Awaiting ruling.
 *)
 Theorem read_settles_writer : ~ read_per_node_statement.
 Proof.
@@ -1300,37 +1300,248 @@ Proof.
   pose proof (denotes_unique s 3 _ _ Hd Hd2) as Hz. discriminate Hz.
 Qed.
 
+(** The walk passes memo [3], as in [walk_passed], so effect [6] sleeps on it with the queue empty. Memo [5] is pure, with a
+    batch. *)
+Definition read_past_flush : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 4 Pure CmpEq (CRead 10 (V 2) (CWrite (V 1) (V 10) Nop)) (
+  CMemo 5 Pure CmpEq (CRead 10 (V 3) (CBatch Nop (CRet (V 10)))) (
+  CEffect 6 (CRead 10 (V 3) (CRead 12 (V 5) (CRead 11 (V 4) (CIf (V 10) (CWrite (V 1) (K 9%Z) (CLog (V 12) Nop)) (CLog (V 12) Nop))))) (
+  CWrite (V 2) (K 1%Z) Nop)))))).
+
+(** The same with memo [4]'s cleanup writing, and no memo body writing. *)
+Definition read_past_flush_by_cleanup : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 4 Owning CmpEq (CRead 10 (V 2) (CCleanup (CWrite (V 1) (K 1%Z) Nop) (CRet (EMul (V 10) (K 0%Z))))) (
+  CMemo 5 Pure CmpEq (CRead 10 (V 3) (CBatch Nop (CRet (V 10)))) (
+  CEffect 6 (CRead 10 (V 3) (CRead 12 (V 5) (CRead 11 (V 4) (CIf (V 10) (CWrite (V 1) (K 9%Z) (CLog (V 12) Nop)) (CLog (V 12) Nop))))) (
+  CWrite (V 2) (K 1%Z) Nop)))))).
+
+(** The effect has passed a stale source, by [gh_passed]: the state [walk_passed_source_marked] leaves. *)
+Example read_past_flush_passed :
+  let s := final read_past_flush in
+  bool_decide ((6 : node_id) ∈ gh_passed (g_ghost s)) = true /\ n_freshness <$> g_nodes s !! (3 : node_id) = Some Dirty /\
+  n_value <$> g_nodes s !! (3 : node_id) = Some 0%Z /\ n_value <$> g_nodes s !! (1 : node_id) = Some 1%Z.
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
+
+(**md
+**Falsified on the present engine: at quiescence, a read of a pure node can answer past what the node denotes.**
+
+This is a counterexample, not a guarantee. It proves `read_quiescent_statement` false on [`read_past_flush`](#read_past_flush). The queue is empty and nothing runs, memo `5` is pure and denotes 1, and the read answers 9. Effect `6` sleeps on stale memo `3`, the read moves it and queues the effect, memo `5`'s batch owes a flush, and the flush writes 9 before the read answers. Scenarios `quiescent_read_answers_past_flush` and `quiescent_read_answers_past_flush_by_cleanup` reproduce it on the F#.
+*)
+Theorem read_quiescent_falsified : ~ read_quiescent_statement.
+Proof.
+  intros H. set (s := final read_past_flush).
+  assert (Hm : run_top 100000 read_past_flush (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
+  assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
+  assert (Hr : read 1000 5 true s = Some (default s (fst <$> read 1000 5 true s), Ok 9%Z)) by (vm_compute; reflexivity).
+  assert (Hp : pure_in (shapes s) 5) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : pure_b (shapes s) 6 5 = true))).
+  pose proof (H 100000 1000 _ s _ 5 _ _ Hm Hq Hp Hr) as Hd.
+  assert (Hd2 : denotes s 5 (Ok 1%Z)) by (exists 5; vm_compute; reflexivity).
+  pose proof (denotes_unique s 5 _ _ Hd Hd2) as Hz. discriminate Hz.
+Qed.
+
+(** The writer of [read_past_flush] with no read of memo [5]. The read answers 1, and the memo denotes 9 after it. *)
+Definition read_before_flush : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 4 Pure CmpEq (CRead 10 (V 2) (CWrite (V 1) (V 10) Nop)) (
+  CMemo 5 Pure CmpEq (CRead 10 (V 3) (CBatch Nop (CRet (V 10)))) (
+  CEffect 6 (CRead 10 (V 3) (CRead 11 (V 4) (CIf (V 10) (CWrite (V 1) (K 9%Z) (CLog (V 10) Nop)) (CLog (V 10) Nop)))) (
+  CWrite (V 2) (K 1%Z) Nop)))))).
+
+Example read_before_flush_answer :
+  let s := final read_before_flush in
+  let r := read 1000 5 true s in
+  (snd <$> r = Some (Ok 1%Z)) /\ den 10 (default s (fst <$> r)) 5 = Some (Ok 9%Z).
+Proof. intros s r. split; vm_compute; reflexivity. Qed.
+
 (**md
 **Falsified on the present engine: at quiescence an effect can hold a read its source no longer answers.**
 
-This is a counterexample, not a guarantee. It proves `convergence_all_statement` false, twice: on [`self_marking_cleanup`](#self_marking_cleanup), where the effect's memo computes 50 and the effect read 0, and on [`never_lost`](#never_lost), where no body writes, the memo computes 7 and the effect read 0. Both programs are free of memo cycles.
+This is a counterexample, not a guarantee. It proves `convergence_all_statement` false, twice: on [`self_marking_cleanup`](#self_marking_cleanup), where the effect's memo computes 50 and the effect read 0, and on [`never_lost`](#never_lost), where no body writes, the memo computes 7 and the effect read 0. Each premise of the statement holds on both.
 *)
 Theorem convergence_all_falsified :
-  (acyclic_at (final (self_marking_cleanup Nop)) /\ quiescent (final (self_marking_cleanup Nop)) /\
-   ~ converged_all (final (self_marking_cleanup Nop))) /\
-  (acyclic_at (final (never_lost Nop)) /\ quiescent (final (never_lost Nop)) /\ ~ converged_all (final (never_lost Nop))) /\
+  (fix_premises (final (self_marking_cleanup Nop)) /\ ~ converged_all (final (self_marking_cleanup Nop))) /\
+  (fix_premises (final (never_lost Nop)) /\ ~ converged_all (final (never_lost Nop))) /\
   ~ convergence_all_statement.
 Proof.
-  assert (A1 : acyclic_at (final (self_marking_cleanup Nop))) by (apply acyclic_of_b; vm_compute; reflexivity).
-  assert (A2 : acyclic_at (final (never_lost Nop))) by (apply acyclic_of_b; vm_compute; reflexivity).
-  assert (Q1 : quiescent (final (self_marking_cleanup Nop))) by (split; vm_compute; reflexivity).
-  assert (Q2 : quiescent (final (never_lost Nop))) by (split; vm_compute; reflexivity).
+  assert (P1 : fix_premises (final (self_marking_cleanup Nop))).
+  { apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]. }
+  assert (P2 : fix_premises (final (never_lost Nop))).
+  { apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]. }
   assert (N1 : ~ converged_all (final (self_marking_cleanup Nop))).
   { intros H. set (s := final (self_marking_cleanup Nop)) in *. set (d := default (signal_node 0%Z) (g_nodes s !! (6 : node_id))).
-    destruct (H 6 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as (_&_&Hsrc&_).
+    destruct (H 6 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; discriminate)) as (_&_&Hsrc&_).
     destruct (Hsrc 5 ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as [_ Hall].
     pose proof (Hall (0%Z, StNone, None) ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as Hx.
     assert (Hy : denotes_all s 5 (Ok 50%Z)) by (exists 6; vm_compute; reflexivity).
     pose proof (denotes_all_unique s 5 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz. }
   assert (N2 : ~ converged_all (final (never_lost Nop))).
   { intros H. set (s := final (never_lost Nop)) in *. set (d := default (signal_node 0%Z) (g_nodes s !! (10 : node_id))).
-    destruct (H 10 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as (_&_&Hsrc&_).
+    destruct (H 10 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; discriminate)) as (_&_&Hsrc&_).
     destruct (Hsrc 6 ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as [_ Hall].
     pose proof (Hall (0%Z, StNone, None) ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as Hx.
     assert (Hy : denotes_all s 6 (Ok 7%Z)) by (exists 7; vm_compute; reflexivity).
     pose proof (denotes_all_unique s 6 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz. }
   split_and!; try assumption.
-  intros H. apply N2. refine (H 100000 (never_lost Nop) _ (Ok 0%Z) _ A2 Q2). vm_compute. reflexivity.
+  intros H. apply N2. refine (H 100000 (never_lost Nop) _ (Ok 0%Z) _ P2). vm_compute. reflexivity.
+Qed.
+
+(** ** The exclusions of the statement over all programs
+
+    A program per form with a behaviour no fix changes. A row outside the premises states the premise excluding it. A row
+    inside them states that the present engine satisfies the conclusion. *)
+
+Definition row_child_effect : cmd :=
+  CSignal 1 (K 0%Z) (CEffect 2 (CRead 10 (V 1) (CEffect 11 (CLog (K 1%Z) Nop) (CLog (V 10) Nop))) Nop).
+
+Lemma row_child_effect_holds : fix_premises (final row_child_effect) /\ converged_all (final row_child_effect).
+Proof.
+  split; [apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]|].
+  apply (converged_all_of_b 10). vm_compute. reflexivity.
+Qed.
+
+Definition row_effect_disposes : cmd :=
+  CSignal 1 (K 0%Z) (CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CEffect 3 (CRead 11 (V 1) (CDispose (V 2) (CLog (V 11) Nop))) (CWrite (V 1) (K 4%Z) Nop))).
+
+Lemma row_effect_disposes_holds : fix_premises (final row_effect_disposes) /\ converged_all (final row_effect_disposes).
+Proof.
+  split; [apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]|].
+  apply (converged_all_of_b 10). vm_compute. reflexivity.
+Qed.
+
+Definition row_memo_untracked : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CReadUntracked 10 (V 1) (CRet (V 10))) (
+  CEffect 3 (CRead 11 (V 2) (CLog (V 11) Nop)) (CWrite (V 1) (K 5%Z) Nop))).
+
+Lemma row_memo_untracked_excluded : ~ memos_no_untracked (final row_memo_untracked).
+Proof.
+  intros H.
+  set (d := default (signal_node 0%Z) (g_nodes (final row_memo_untracked) !! (2 : node_id))).
+  pose proof (H 2 d
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+  vm_compute in Hb. discriminate Hb.
+Qed.
+
+Definition row_throwing_comparer : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure (CmpThrows 7%Z) (CRead 10 (V 1) (CRet (V 10))) (
+  CEffect 3 (CTryRead 11 12 (V 2) (CLog (V 11) Nop)) (CWrite (V 1) (K 5%Z) Nop))).
+
+Lemma row_throwing_comparer_excluded : ~ memos_no_throwing_comparer (final row_throwing_comparer).
+Proof.
+  intros H.
+  set (d := default (signal_node 0%Z) (g_nodes (final row_throwing_comparer) !! (2 : node_id))).
+  pose proof (H 2 d
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+  apply (Hb 7%Z). vm_compute. reflexivity.
+Qed.
+
+Definition row_pure_cleanup : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CCleanup Nop (CRead 10 (V 1) (CRet (V 10)))) (
+  CEffect 3 (CTryRead 11 12 (V 2) (CLog (V 11) Nop)) Nop)).
+
+Lemma row_pure_cleanup_holds : fix_premises (final row_pure_cleanup) /\ converged_all (final row_pure_cleanup).
+Proof.
+  split; [apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]|].
+  apply (converged_all_of_b 10). vm_compute. reflexivity.
+Qed.
+
+Definition row_pure_creation : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CEffect 11 Nop (CRet (V 10)))) (
+  CEffect 3 (CTryRead 11 12 (V 2) (CLog (V 11) Nop)) Nop)).
+
+Lemma row_pure_creation_holds : fix_premises (final row_pure_creation) /\ converged_all (final row_pure_creation).
+Proof.
+  split; [apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]|].
+  apply (converged_all_of_b 10). vm_compute. reflexivity.
+Qed.
+
+Definition row_read_between_writes : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Pure CmpEq (CWrite (V 1) (K 1%Z) (CRead 10 (V 1) (CWrite (V 1) (K 2%Z) (CRet (V 10))))) (
+  CEffect 3 (CRead 11 (V 2) (CLog (V 11) Nop)) Nop)).
+
+Lemma row_read_between_writes_excluded : ~ memos_read_before_write (final row_read_between_writes).
+Proof.
+  intros H. set (s := final row_read_between_writes) in *.
+  set (d := default (signal_node 0%Z) (g_nodes s !! (2 : node_id))).
+  pose proof (H 2 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+  assert (Eb : n_body d = CWrite (V 1) (K 1%Z) (CRead 10 (V 1) (CWrite (V 1) (K 2%Z) (CRet (V 10))))) by (vm_compute; reflexivity).
+  cbv beta in Hb. rewrite Eb in Hb. cbn [reads_before] in Hb. specialize (Hb 1%Z ltac:(vm_compute; reflexivity)). destruct Hb as [Hb _].
+  refine (Hb 1%Z 1 ltac:(vm_compute; reflexivity) _ _); [by left|]. exists 1. simpl. by left.
+Qed.
+
+Definition row_failing_write : cmd :=
+  CSignal 1 (K 0%Z) (CEffect 2 (CRead 10 (V 1) (CWrite (V 1) (EDiv (K 1%Z) (EMul (V 10) (K 0%Z))) (CLog (K 7%Z) Nop))) Nop).
+
+Lemma row_failing_write_holds : fix_premises (final row_failing_write) /\ converged_all (final row_failing_write).
+Proof.
+  split; [apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]|].
+  apply (converged_all_of_b 10). vm_compute. reflexivity.
+Qed.
+
+Definition row_memo_creates : cmd :=
+  CSignal 1 (K 0%Z) (
+  CMemo 2 Owning CmpEq (CMemo 11 Pure CmpEq (CRead 12 (V 1) (CRet (V 12))) (CRead 13 (V 11) (CRet (V 13)))) (
+  CEffect 3 (CRead 11 (V 2) (CLog (V 11) Nop)) (CWrite (V 1) (K 5%Z) Nop))).
+
+Lemma row_memo_creates_excluded : ~ memos_no_creation (final row_memo_creates).
+Proof.
+  intros H.
+  set (d := default (signal_node 0%Z) (g_nodes (final row_memo_creates) !! (2 : node_id))).
+  pose proof (H 2 d
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+  vm_compute in Hb. discriminate Hb.
+Qed.
+
+Definition row_memo_prev : cmd :=
+  CSignal 1 (K 1%Z) (
+  CMemo 2 Pure CmpEq (CRead 10 (V 1) (CIf (ELt (V 10) (K 3%Z)) (CRet (V 10)) (CRet EPrev))) (
+  CEffect 3 (CTryRead 11 12 (V 2) (CLog (V 11) Nop)) (CWrite (V 1) (K 5%Z) Nop))).
+
+Lemma row_memo_prev_excluded : ~ memos_no_prev (final row_memo_prev).
+Proof.
+  intros H.
+  set (d := default (signal_node 0%Z) (g_nodes (final row_memo_prev) !! (2 : node_id))).
+  pose proof (H 2 d
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as Hb.
+  vm_compute in Hb. discriminate Hb.
+Qed.
+
+(** The forms outside the premises of [convergence] with no entry of their own: a disposal in an effect, and a disposal or
+    [EPrev] in a memo. *)
+Definition memo_disposes : cmd :=
+  CSignal 1 (K 0%Z) (CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq (CDispose (V 2) Nop) (CEffect 4 (CRead 11 (V 3) (CLog (V 11) Nop)) Nop))).
+
+Lemma effect_dispose_outside : ~ effects_only_read (final row_effect_disposes).
+Proof.
+  intros H. set (s := final row_effect_disposes) in *. set (d := default (signal_node 0%Z) (g_nodes s !! (3 : node_id))).
+  destruct (H 3 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as [_ Kb].
+  assert (Eb : n_body d = CRead 11 (V 1) (CDispose (V 2) (CLog (V 11) Nop))) by (vm_compute; reflexivity).
+  rewrite Eb in Kb. destruct Kb as (_&_&Kb). exact (Kb 0%Z).
+Qed.
+
+Lemma memo_dispose_outside : ~ well_behaved_program (final memo_disposes).
+Proof.
+  intros H. set (d := default (signal_node 0%Z) (g_nodes (final memo_disposes) !! (3 : node_id))).
+  refine (dirtying_b _ 3 _ (H 3 d
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity))). vm_compute. reflexivity.
+Qed.
+
+Lemma memo_prev_outside : ~ well_behaved_program (final row_memo_prev).
+Proof.
+  intros H. set (d := default (signal_node 0%Z) (g_nodes (final row_memo_prev) !! (2 : node_id))).
+  refine (dirtying_b _ 2 _ (H 2 d
+    ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity))). vm_compute. reflexivity.
 Qed.
 
 (** An effect that reads signal [1], and signal [2] untracked. A write of signal [2] wakes nothing. *)

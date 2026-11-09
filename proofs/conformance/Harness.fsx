@@ -54,11 +54,11 @@ let statusOf (node: obj) : string =
 let freshnessOf (node: obj) : string =
     (privateField node "freshness").ToString()
 
+type FreshRecord = { Held: int }
+
 /// A graph with a trace. `Effect`, `Memo` and `Signal` take the label a scenario expects. `Check` records a failure
 /// and returns, since a body's exception would end in the node's status, and the run of the script fails at the
 /// scenario's end on any recorded failure or any exception other than `Boom` escaping a body.
-type FreshRecord = { Held: int }
-
 type Ctx() =
     let g = new Graph ()
     let events = ResizeArray<Ev>()

@@ -410,6 +410,15 @@ Example check_read_settles_writer :
   (r ← run_top 100000%nat read_flush (init current_flags); r' ← read 1000%nat 3%nat true r.1; Some (g_trace r'.1 ++ [EvHostRead 3%nat r'.2])) = Some exp_read_settles_writer.
 Proof. vm_compute. reflexivity. Qed.
 
+(** The host read is the [read] here, as for [read_settles_writer]. *)
+Example check_quiescent_read_answers_past_flush :
+  (r ← run_top 100000%nat read_past_flush (init current_flags); r' ← read 1000%nat 5%nat true r.1; Some (g_trace r'.1 ++ [EvHostRead 5%nat r'.2])) = Some exp_quiescent_read_answers_past_flush.
+Proof. vm_compute. reflexivity. Qed.
+
+Example check_quiescent_read_answers_past_flush_by_cleanup :
+  (r ← run_top 100000%nat read_past_flush_by_cleanup (init current_flags); r' ← read 1000%nat 5%nat true r.1; Some (g_trace r'.1 ++ [EvHostRead 5%nat r'.2])) = Some exp_quiescent_read_answers_past_flush_by_cleanup.
+Proof. vm_compute. reflexivity. Qed.
+
 (** The conformance programs with every memo outside the self-dirtying case and every effect only reading. *)
 Example conformance_programs_well_behaved :
   Forall (fun p => well_behaved_b (end_of p) = true /\ effects_only_read_b (end_of p) = true)
