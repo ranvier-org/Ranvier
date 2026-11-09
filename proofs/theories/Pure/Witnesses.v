@@ -877,12 +877,6 @@ Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (** ** The whole graph *)
 
-Local Lemma pure_b s n : pure_at (shapes s) (Datatypes.S n) n = true -> ~ self_dirtying s n.
-Proof. intros H K. exact (K H). Qed.
-
-Local Lemma dirtying_b s n : pure_at (shapes s) (Datatypes.S n) n = false -> self_dirtying s n.
-Proof. intros H K. unfold pure_in in K. congruence. Qed.
-
 Local Lemma not_well_behaved s n d :
   g_nodes s !! n = Some d -> n_kind d = KMemo -> self_dirtying s n -> ~ well_behaved_program s.
 Proof. intros Hd Hk H K. exact (H (K n d Hd Hk)). Qed.
@@ -1062,7 +1056,7 @@ Example self_dirtying_covers_known_cases :
   ~ self_dirtying (final (self_read_check Nop)) 2.
 Proof.
   split_and!; try (apply dirtying_b; vm_compute; reflexivity); try (vm_compute; reflexivity).
-  apply pure_b. vm_compute. reflexivity.
+  apply not_dirtying_b. vm_compute. reflexivity.
 Qed.
 
 (** A live effect over a diamond of live memos. *)
@@ -1130,7 +1124,7 @@ Proof.
   split_and!.
   - apply well_behaved_of_b. vm_compute. reflexivity.
   - split; vm_compute; reflexivity.
-  - intros H. destruct (H 4 e Hd Hk) as [_ Hb]. vm_compute in Hb. discriminate Hb.
+  - intros H. refine (not_quiet_b s 4 e _ (H 4 e Hd Hk)). vm_compute. reflexivity.
   - apply list_elem_of_In. vm_compute. left. reflexivity.
   - exists (0%Z, StNone, None). split.
     + apply list_elem_of_In. vm_compute. left. reflexivity.
@@ -1149,7 +1143,7 @@ Proof.
   set (s := final (disposed_stale_read Nop)).
   assert (Hm : run_top 100000 (disposed_stale_read Nop) (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
   assert (Hr : read 1000 2 true s = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
-  destruct (H 100000 1000 _ s _ 2 s _ Hm (pure_b s 2 ltac:(vm_compute; reflexivity)) Hr) as [k Hk].
+  destruct (H 100000 1000 _ s _ 2 s _ Hm (not_dirtying_b s 2 ltac:(vm_compute; reflexivity)) Hr) as [k Hk].
   destruct k as [|[|k]]; vm_compute in Hk; discriminate Hk.
 Qed.
 
@@ -1245,4 +1239,35 @@ Proof.
   - split; vm_compute; reflexivity.
   - exists 7. vm_compute. reflexivity.
   - split; vm_compute; reflexivity.
+Qed.
+
+(** A batch and a computed target in a memo, and the same in an effect. Memo [3]'s second read reaches signal [1] or signal
+    [2], by the value of the signal it read first. The effect's last read reaches the node signal [1] names. *)
+Definition widened_forms (k : cmd) : cmd :=
+  CSignal 1 (K 2%Z) (CSignal 2 (K 7%Z) (
+  CMemo 3 Pure CmpEq
+    (CBatch (CRead 10 (V 2) Nop) (CRead 10 (V 2) (CRead 11 (EAdd (K 1%Z) (ELt (V 10) (K 5%Z))) (CRet (V 11))))) (
+  CEffect 4
+    (CBatch (CRead 10 (V 3) (CLog (V 10) Nop)) (CRead 11 (V 1) (CRead 12 (V 11) (CLog (V 12) Nop)))) (
+  CWrite (V 2) (K 3%Z) k)))).
+
+(**md
+**Batches and computed read targets, in memos and effects, reach every premise of `convergence`.**
+
+*Check, not a guarantee.*
+
+[`widened_forms`](#widened_forms) has a batch and a computed target in a memo, and the same in an effect. After the write the memo reads signal `2`, and the effect's last run logs what the memo and the node named by signal `1` denote.
+*)
+Theorem widened_forms_reached :
+  let s := final (widened_forms Nop) in
+  run_top 100000 (widened_forms Nop) (init current_flags) = Some (s, Ok 0%Z) /\
+  well_behaved_program s /\ effects_only_read s /\ quiescent s /\ converged s /\
+  last_run_logs 4 (g_trace s) = [3%Z; 3%Z].
+Proof.
+  intros s.
+  assert (Hm : run_top 100000 (widened_forms Nop) (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
+  assert (Ha : well_behaved_program s) by (apply well_behaved_of_b; vm_compute; reflexivity).
+  assert (He : effects_only_read s) by (apply effects_only_read_of_shape; [exact Ha|vm_compute; reflexivity]).
+  assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
+  split_and!; try assumption; [exact (convergence 100000 _ s _ Hm Ha He Hq)|vm_compute; reflexivity].
 Qed.
