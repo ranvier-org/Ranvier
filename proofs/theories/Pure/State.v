@@ -92,7 +92,7 @@ The whole state of a graph: the edge world (`g_edges`), the nodes, the owners, t
 head, the flush and batch bookkeeping, the running computation and owner, the id counter, the event
 trace (`g_trace`), the ghost fields `g_running`, `g_ghost` and `g_registered`, which no engine
 decision reads, and the fields of the saturated-write skip: its mode (`g_skip`), the graph epoch
-(`g_epoch`) and each signal's stamp (`g_stamps`). The engine of `Pure/Engine.v` reads none of the last three.
+(`g_epoch`) and each signal's stamp (`g_stamps`). The last three are read only by the optimised engine of `Pure/Optimised.v`.
 *)
 Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id node;
                   g_owners : gmap owner_id owner_state; g_queue : list node_id; g_queue_head : nat;

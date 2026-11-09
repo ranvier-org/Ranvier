@@ -173,7 +173,7 @@ Each row's symbols are in `theories/Pure/Engine.v`, and `theories/Conformance/Ch
 - The closing is a host read of each memo existing when it starts, in id order, then `Graph.Flush`, as `run_flush`. It sits in the trace and is the same command on both sides. The end state before it keeps stale nodes visible, so the closing masks nothing.
 - Known limits of the skip rules. Model `None` conflates exhausted fuel and a stuck body, so a model-only stuck goes unseen when the F# is at `budget` or `fatal`. A program that diverges on both sides has no comparison of the trace prefix before the divergence. `excluded` is judged on the F# alone, so what the model does on an excluded program is not compared. The model driver has no watchdog, and the workflow's `timeout-minutes` bounds it.
 - `EPrev` reads the previous value from the environment, as `prev_var` does, and the interpreter sets it from the argument `Memo` passes to the body.
-- `RANVIER_SKIP_MODE` (`off` by default, `leave-dirty` or `all`) selects the skip mode of the model side, through `observed_mode`. Mode `off` is `observed` (`observed_mode_off`). The view leaves out the epoch and the stamps.
+- `RANVIER_SKIP_MODE` (`off` by default, `leave-dirty`, `unchecked` or `all`) selects the skip mode of the model side, through `observed_mode`. Mode `off` is `observed` (`observed_mode_off`). The view leaves out the epoch and the stamps.
 
 ## The saturated-write skip
 

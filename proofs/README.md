@@ -291,7 +291,7 @@ copy, so it needs no Rocq.
 | `walk_record_sound`, `checked_record_withheld`, `prog_window_checked` | `Pure/Optimised.v` | The checked record keeps `stamp_ok`, withholds the stamp in the 4191 case, and `prog_window` ends in `sim`. |
 | `optimised_simulates`, `stamp_ok_preserved` | `Pure/Optimised.v` | From `sim` with bounded stamps, the optimised engine's runs end as the present engine's, in `sim`, at every fuel; `stamp_ok` holds throughout. |
 | `optimised_trace_eq`, `engine_of_optimised_eq` | `Pure/Optimised.v` | The optimised engine's trace is the present engine's, at every fuel and flags. |
-| `optimised_refines`, `optimised_exact_except`, `optimised_order_exact_except`, `engine_of_optimised_answers_on`, `witness_302_optimised` | `Pure/Optimised.v` | The present engine's refinement, order, answer and #302 results hold of the optimised engine. |
+| `optimised_refines`, `optimised_exact_except`, `optimised_order_exact_except`, `engine_of_optimised_answers_on`, `witness_302_optimised` | `Pure/Optimised.v` | The present engine's refinement, answer and #302 results hold of the optimised engine. The order result holds at a present-engine state equal to the optimised one apart from the skip's fields. |
 | `optimised_cleanups`, `cleanup_registered_in_teardown_runs_late` | `Pure/Optimised.v` | The optimised engine's cleanup events are the present engine's, at most one per registration; a cleanup registered during its host's teardown runs after the host's next run, as Core.fs documents. |
 | `leave_dirty_cleanup_skip`, `leave_dirty_unannounced_skip` | `Pure/Optimised.v` | Without the advances at 4825 and 4290 a write skips a walk it owes: each trace differs from `SkipOff`'s, and `SkipAll` agrees with `SkipOff`. |
 

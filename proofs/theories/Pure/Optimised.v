@@ -29,7 +29,7 @@ Definition effect_saturated (d : node) : Prop :=
   n_disposed d = true \/ n_in_cleanup d = true \/ (n_freshness d = Dirty /\ n_queued d = true).
 
 (**md
-Node `n` takes nothing from a `Dirty` mark. A signal and an absent node take no mark.
+A `Dirty` mark leaves node `n` unchanged. Signals and absent nodes count as saturated.
 *)
 Definition saturated (s : state) (n : node_id) : Prop :=
   match g_nodes s !! n with
@@ -43,7 +43,7 @@ The stamp of `src` holds the graph's present epoch.
 *)
 Definition stamp_current (s : state) (src : node_id) : Prop := g_stamps s !! src = Some (g_epoch s).
 
-(** [c] is an item of the observers [notify_with] walks for [src]. *)
+(** [c] is one of the observers of [src] visited by [notify_with]. *)
 Definition observer_of (s : state) (src c : node_id) : Prop :=
   c ∈ observer_view (observers_of (g_edges s) src).
 
