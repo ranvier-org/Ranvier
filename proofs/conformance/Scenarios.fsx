@@ -1300,7 +1300,7 @@ let scenarios: (string * (Ctx -> unit)) list =
                 s.Value <- 1
                 s.Value <- 0)
 
-        // BUGS.md, effect_restored_source_reruns. An effect reads a source and restores it after a write, which marks the
+        // BUGS.md, effect_restored_source_loop. An effect reads a source and restores it after a write, which marks the
         // effect. It runs again on the value it read. A budget read untracked ends the runs here. With no budget, as in
         // effect_restored_source_loop, they do not end.
         "effect_restored_source_reruns",
@@ -1319,6 +1319,31 @@ let scenarios: (string * (Ctx -> unit)) list =
                         x.Value <- 0)
 
             c.Check (e.Runs = 4) $"the effect has {e.Runs} runs"
+
+        // BUGS.md, requeue_runs_after_later_entry. S15's diamond, with a second effect over `h` created first. The walk
+        // queues the diamond's effect first. Under its run `y`'s run marks it again, so it runs before and after the other.
+        "requeue_runs_after_later_entry",
+        fun c ->
+            let h = c.Signal 1 0
+            let u = c.Signal 2 0
+            let y = c.Memo 3 (fun () -> u.Value)
+
+            let x =
+                c.Memo 4 (fun () ->
+                    let w = h.Value
+                    w + y.Value)
+
+            c.Effect 5 (fun () -> c.Log 5 h.Value) |> ignore
+
+            c.Effect 6 (fun () ->
+                let w = h.Value
+                let v = x.Value
+                c.Log 6 (w + v + y.Value))
+            |> ignore
+
+            c.Batch (fun () ->
+                h.Value <- 1
+                u.Value <- 2)
     ]
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,

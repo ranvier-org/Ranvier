@@ -238,3 +238,8 @@ Definition exp_effect_restored_source_reruns : list event := [
   EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 0%Z;
   EvRun 3; EvLog 3 0%Z
 ].
+
+Definition exp_requeue_runs_after_later_entry : list event := [
+  EvRun 5; EvLog 5 0%Z; EvRun 6; EvLog 6 0%Z; EvRun 6; EvLog 6 6%Z;
+  EvRun 5; EvLog 5 1%Z; EvRun 6; EvLog 6 6%Z
+].

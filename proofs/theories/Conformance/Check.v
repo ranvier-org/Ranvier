@@ -440,6 +440,16 @@ Example check_redundant_run_reads_untracked :
      CBatch (W (V 2) (K 5) (W (V 1) (K 1) (W (V 1) (K 0) Nop))) Nop)))) = Some exp_redundant_run_reads_untracked.
 Proof. vm_compute. reflexivity. Qed.
 
+Example check_requeue_runs_after_later_entry :
+  trace_of 100000 current_flags
+    (CSignal 1 (K 0) (CSignal 2 (K 0) (
+     CMemo 3 Pure CmpEq (R 10 (V 2) (CRet (V 10))) (
+     CMemo 4 Pure CmpEq (R 10 (V 1) (R 11 (V 3) (CRet (EAdd (V 10) (V 11))))) (
+     CEffect 5 (R 10 (V 1) (L (V 10) Nop)) (
+     CEffect 6 (R 10 (V 1) (R 11 (V 4) (R 12 (V 3) (L (EAdd (EAdd (V 10) (V 11)) (V 12)) Nop)))) (
+     CBatch (W (V 1) (K 1) (W (V 2) (K 2) Nop)) Nop))))))) = Some exp_requeue_runs_after_later_entry.
+Proof. vm_compute. reflexivity. Qed.
+
 Example check_effect_restored_source_reruns :
   trace_of 100000 current_flags
     (CSignal 1 (K 0) (CSignal 2 (K 3) (

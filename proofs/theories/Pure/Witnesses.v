@@ -1911,7 +1911,8 @@ Proof.
   - vm_compute. reflexivity.
 Qed.
 
-(** The diamond of scenario [S15] beside a second effect over its source. The marking walk queues the diamond's effect first. *)
+(** The diamond of scenario [S15] beside a second effect over its source. The marking walk queues the diamond's effect first.
+    F#: scenario [requeue_runs_after_later_entry]. *)
 Definition requeue_order : Semantics.program := {|
   Semantics.program_signals := {[ 0 := 0%Z; 1 := 0%Z ]};
   Semantics.program_memos := {[ 2 := CRead 10 (K 1%Z) (CRet (V 10));
@@ -1974,9 +1975,9 @@ Proof.
 Qed.
 
 (**md
-**A flush's `EvRun`s can leave the order of the queue at its start: an effect marked during its own run runs after a later entry.**
+**The queue at a flush's start does not give the flush's order: an effect marked during its own run runs after a later entry.**
 
-`engine_order_exact_statement` fails on `requeue_order`, a program meeting `refinable`: the queue at the flush's start is `[5; 4]`, and the flush runs `5`, `4`, `5`. The requeue is the class of `diamond_marks_running_effect` (S15), whose F# scenario gives the redundant run. The order with a second effect is computed on the model.
+`engine_order_exact_statement` defines the order by `engine_order`, the queue at the flush's start, and it fails on `requeue_order`, a program meeting `refinable`: that queue is `[5; 4]`, and the flush runs `5`, `4`, `5`. F#: scenario `requeue_runs_after_later_entry`. The theorem refutes this definition of the order. `history_order` is a different one, and this theorem does not reach it.
 *)
 Theorem engine_order_exact_falsified : ~ Refinement.engine_order_exact_statement.
 Proof.
@@ -1986,4 +1987,208 @@ Proof.
   assert (E2 : request_flush 20000 (with_batch_depth 0 requeue_s1) = Some (requeue_s2, tt)) by (vm_compute; reflexivity).
   pose proof (H 20000 requeue_order [] requeue_batch _ _ _ _ _ _ _ requeue_order_well_formed requeue_order_refinable E0 E1 E2 (proj1 requeue_runs_after_later_entry)) as E.
   vm_compute in E. discriminate E.
+Qed.
+
+(** ** The engine's order on a program where creation order fails *)
+
+(** Two effects over a memo over a memo. The walk reaches the later effect first. *)
+Definition drain_order : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z ]};
+  Semantics.program_memos := {[ 2 := CRead 10 (K 0%Z) (CRet (V 10));
+                                3 := CRead 10 (K 2%Z) (CRet (V 10)) ]};
+  Semantics.program_effects := {[ 4 := CRead 10 (K 3%Z) (CLog (V 10) Nop);
+                                  5 := CRead 10 (K 3%Z) (CLog (V 10) Nop) ]};
+|}.
+
+Definition drain_history : Semantics.history := [[Semantics.RWrite 0 1%Z]].
+
+Definition drain_order_identity : Semantics.effect_order := fun _ l => l.
+
+Lemma drain_order_well_formed : Semantics.well_formed_program drain_order.
+Proof.
+  refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - rewrite !dom_insert_L, !dom_singleton_L. set_solver.
+  - intros m c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[_ <-]|[_ Hc]]; [reflexivity|]. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+  - intros m c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[_ <-]|[_ Hc]]; [reflexivity|]. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+  - exists (fun n => n). intros m c Hc rd o st t v Hx Hin Hm.
+    simpl in Hc; apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]]; [|apply lookup_singleton_Some in Hc as [<- <-]].
+    + vm_compute in Hx. destruct (rd 0) as [[a|a]|]; vm_compute in Hx; simplify_eq;
+        apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try lia).
+    + vm_compute in Hx. destruct (rd 2) as [[a|a]|]; vm_compute in Hx; simplify_eq;
+        apply list_elem_of_In in Hin; simpl in Hin; intuition (simplify_eq; simpl in *; try lia).
+Qed.
+
+Lemma drain_order_refinable : Refinement.refinable drain_order drain_history.
+Proof.
+  split_and!.
+  - intros m c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]]; [|apply lookup_singleton_Some in Hc as [<- <-]]; cbn [Refinement.rename body_pureu].
+    all: split; [reflexivity|]; split; [intros z Hz _ _; vm_compute in Hz; injection Hz as <-; vm_compute; lia|intros v; reflexivity].
+  - intros n c Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[_ <-]|[_ Hc]]; [reflexivity|]. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+  - intros b n Hb Hn. apply list_elem_of_singleton in Hb as ->. apply list_elem_of_singleton in Hn. done.
+Qed.
+
+Lemma prefix_of_one {A} (h0 : list A) (b : A) : h0 `prefix_of` [b] -> h0 = [] \/ h0 = [b].
+Proof.
+  intros [x Hx]. destruct h0 as [|b0 h1]; [by left|right]. destruct h1 as [|b1 h2]; [|done]. injection Hx as ->. reflexivity.
+Qed.
+
+Definition drain_flush : state :=
+  with_batch_depth 0
+    (match exec 20000 [] (foldr (Refinement.input_cmd drain_order) Refinement.done_cmd [Semantics.RWrite 0 1%Z])
+             (with_batch_depth 1 (match run_top 20000 (Refinement.erase drain_order []) (init current_flags) with Some (s, _) => s | None => init current_flags end)) with
+     | Some (s, _) => s
+     | None => init current_flags
+     end).
+
+(**md
+**`runs_agree` and `queue_steady` are met on a program whose order is not creation order.**
+
+*Check, not a guarantee.*
+
+On `drain_order`, the flush after the write runs `5` then `4`. The history-wide order meets `runs_agree`, so `exact_refinement_history` applies and the engine's trace is the reference's under it. The identity order does not meet `runs_agree`. The batch's flush also meets `queue_steady`, with start queue `[5; 4]`.
+*)
+Theorem history_order_reached :
+  Refinement.runs_agree drain_order (Refinement.history_order 20000 drain_order drain_history) 20000 drain_history /\
+  ~ Refinement.runs_agree drain_order drain_order_identity 20000 drain_history /\
+  Refinement.queue_steady 20000 drain_flush /\
+  Refinement.live_queue_of drain_flush = [5; 4] /\
+  Semantics.reference_trace 1 (Refinement.history_order 20000 drain_order drain_history) drain_order drain_history =
+    Refinement.engine_of current_flags 20000 drain_order drain_history.
+Proof.
+  split_and!.
+  - intros h0 s0 r0 st0 rs0 Hp E1 E2. apply prefix_of_one in Hp as [->| ->].
+    + vm_compute in E1. injection E1 as <- <-. vm_compute in E2. injection E2 as <- <-. vm_compute. reflexivity.
+    + vm_compute in E1. injection E1 as <- <-. vm_compute in E2. injection E2 as <- <-. vm_compute. reflexivity.
+  - intros H.
+    assert (E1 : run_top 20000 (Refinement.erase drain_order drain_history) (init current_flags) =
+                 match run_top 20000 (Refinement.erase drain_order drain_history) (init current_flags) with Some (s, r) => Some (s, r) | None => None end).
+    { vm_compute. reflexivity. }
+    assert (Hs : exists s r, run_top 20000 (Refinement.erase drain_order drain_history) (init current_flags) = Some (s, r)) by (vm_compute; eexists _, _; reflexivity).
+    assert (Hr : exists st rs, Refinement.ref_all drain_order_identity drain_order drain_history = Some (st, rs)) by (vm_compute; eexists _, _; reflexivity).
+    destruct Hs as (s & r & Es). destruct Hr as (st & rs & Er).
+    pose proof (H drain_history s r st rs (Refinement.pfx_refl _) Es Er) as Hag. clear E1.
+    vm_compute in Es. injection Es as <- <-. vm_compute in Er. injection Er as <- <-. vm_compute in Hag. discriminate Hag.
+  - split; vm_compute; [repeat constructor; set_solver|reflexivity].
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+Qed.
+
+(** ** No fuel answers on [restored_source] *)
+
+Definition rs_setup : state := Eval vm_compute in
+  match exec 100 [] (Refinement.setup_cmd restored_source) (with_batch_depth 1 (init current_flags)) with
+  | Some (s, _) => s
+  | None => init current_flags
+  end.
+
+Definition rs_first : state := Eval vm_compute in
+  match execute_effect 100 2 (with_queue_head 1 (with_flush_owed false (with_flushing true (with_batch_depth 0 rs_setup)))) with
+  | Some (s, _) => s
+  | None => rs_setup
+  end.
+
+Definition rs_node (r : nat) : node :=
+  match g_nodes rs_first !! 2 with Some d => node_with_runs r d | None => signal_node 0%Z end.
+
+(** The drain's state from the effect's first run on, with its one live entry first: the trace and the run count move. *)
+Definition rs_at (t : list event) (r : nat) : state :=
+  with_queue [2] (with_queue_head 0 (with_trace t (set_node 2 (rs_node r) rs_first))).
+
+Lemma rs_at_flushing t r : g_flushing (rs_at t r) = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma rs_first_at : rs_first = Refinement.shift [2] (rs_at [EvRun 2] 1).
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma rs_step m t r s2 a :
+  execute_effect (40 + m) 2 (with_queue_head 1 (rs_at t r)) = Some (s2, a) -> s2 = Refinement.shift [2] (rs_at (t ++ [EvRun 2]) (S r)).
+Proof.
+  intros E. vm_compute in E. injection E as <- _. vm_compute. reflexivity.
+Qed.
+
+Lemma shift_app x y s : Refinement.shift x (Refinement.shift y s) = Refinement.shift (x ++ y) s.
+Proof.
+  unfold Refinement.shift. simpl. rewrite app_assoc, length_app, Nat.add_assoc. reflexivity.
+Qed.
+
+Lemma rs_drain m : forall x t r s' a, drain m (Refinement.shift x (rs_at t r)) = Some (s', a) -> False.
+Proof.
+  induction m as [|m IH]; intros x t r s' a E; [done|]. cbn [drain] in E. rewrite bind_get in E.
+  assert (Hq : g_queue (Refinement.shift x (rs_at t r)) !! g_queue_head (Refinement.shift x (rs_at t r)) = Some 2).
+  { change ((x ++ [2]) !! (length x + 0) = Some 2). rewrite Nat.add_0_r. apply list_lookup_middle. reflexivity. }
+  match type of E with context [match ?q with Some _ => _ | None => _ end] => destruct q as [n|] eqn:Eq end.
+  2: { pose proof (eq_trans (eq_sym Eq) Hq) as K. discriminate K. }
+  pose proof (eq_trans (eq_sym Eq) Hq) as K. injection K as ->.
+  rewrite bind_m_modify in E. cbv beta in E. apply bind_inv in E as (s2 & [] & Ex & Ed).
+  assert (Hst : with_queue_head (S (g_queue_head (Refinement.shift x (rs_at t r)))) (Refinement.shift x (rs_at t r)) = Refinement.shift x (with_queue_head 1 (rs_at t r))).
+  { assert (Hh : S (g_queue_head (Refinement.shift x (rs_at t r))) = length x + 1) by (change (S (length x + 0) = length x + 1); clear -x; lia). rewrite Hh. reflexivity. }
+  rewrite Hst in Ex.
+  destruct (Refinement.co_execute _ _ (Refinement.cm_all x m) 2 (with_queue_head 1 (rs_at t r)) (rs_at_flushing t r)) as [Hc _].
+  rewrite Hc in Ex. destruct (execute_effect m 2 (with_queue_head 1 (rs_at t r))) as [[s3 c]|] eqn:E3; [|done].
+  injection Ex as <- _.
+  pose proof (Refinement.fl_execute _ _ (Refinement.fuel_le_all m (40 + m) ltac:(lia)) 2 _ _ E3) as E3'.
+  pose proof (rs_step _ _ _ _ _ E3') as ->.
+  apply (IH (x ++ [2]) (t ++ [EvRun 2]) (S r) s' a). rewrite <- shift_app. exact Ed.
+Qed.
+
+Lemma restored_source_never k s r : run_top k (Refinement.erase restored_source []) (init current_flags) = Some (s, r) -> False.
+Proof.
+  intros E. destruct k as [|k]; [done|]. unfold run_top, Refinement.erase in E. cbn [exec] in E. rewrite bind_m_modify in E. cbv beta in E.
+  apply bind_inv in E as (s2 & r2 & Eb & E).
+  pose proof (Refinement.fl_exec _ _ (Refinement.fuel_le_all k (100 + k) ltac:(lia)) _ _ _ _ Eb) as Eb'.
+  assert (Hs : s2 = rs_setup /\ r2 = Ok 0%Z).
+  { vm_compute in Eb'. injection Eb' as <- <-. split; [vm_compute; reflexivity|reflexivity]. }
+  destruct Hs as [-> ->]. rewrite bind_m_modify in E. cbv beta iota in E. apply bind_inv in E as (s4 & [] & Ef & _).
+  assert (Hdp : g_batch_depth rs_setup = 1) by (vm_compute; reflexivity).
+  rewrite Hdp in Ef. change (pred 1) with 0 in Ef.
+  destruct k as [|[|g]]; [done|done|]. cbn [request_flush run_flush] in Ef. rewrite bind_get in Ef.
+  match type of Ef with context [if ?b then _ else _] =>
+    assert (A : b = true) by (vm_compute; reflexivity); rewrite A in Ef end.
+  match type of Ef with context [if ?b then _ else _] =>
+    assert (B : b = true) by (vm_compute; reflexivity); rewrite B in Ef end.
+  rewrite bind_get in Ef.
+  match type of Ef with context [if ?b then _ else _] =>
+    assert (C : b = false) by (vm_compute; reflexivity); rewrite C in Ef end.
+  rewrite bind_m_modify in Ef. cbv beta in Ef. apply bind_inv in Ef as (s5 & [] & Ed & _).
+  destruct g as [|g]; [done|]. cbn [drain] in Ed. rewrite bind_get in Ed.
+  match type of Ed with context [match ?q with Some _ => _ | None => _ end] =>
+    assert (Q : q = Some 2) by (vm_compute; reflexivity); rewrite Q in Ed end.
+  rewrite bind_m_modify in Ed. cbv beta in Ed. apply bind_inv in Ed as (s6 & [] & Ex & Ed).
+  pose proof (Refinement.fl_execute _ _ (Refinement.fuel_le_all g (100 + g) ltac:(lia)) _ _ _ Ex) as Ex'.
+  assert (Hf : s6 = rs_first) by (vm_compute in Ex'; injection Ex' as <-; vm_compute; reflexivity).
+  subst s6. rewrite rs_first_at in Ed. exact (rs_drain _ [2] _ _ _ _ Ed).
+Qed.
+
+Lemma restored_source_well_formed : Semantics.well_formed_program restored_source.
+Proof.
+  refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+  - intros x Hx H. rewrite dom_empty_L in H. by apply not_elem_of_empty in H.
+  - rewrite !dom_singleton_L. set_solver.
+  - rewrite dom_empty_L. set_solver.
+  - apply map_Forall_empty.
+  - apply map_Forall_singleton. reflexivity.
+  - exists (fun n => n). apply map_Forall_empty.
+Qed.
+
+Lemma restored_source_settles ord : Semantics.is_effect_order ord -> exists fuel t, Semantics.reference_trace fuel ord restored_source [] = Some t.
+Proof.
+  intros Hord. destruct (Semantics.reference_runs 5 (small_order ord) restored_source []) as [rs|] eqn:E.
+  - exists 5, (concat (Semantics.run_events <$> rs)). unfold Semantics.reference_trace.
+    rewrite (Properties.reference_runs_mono _ _ _ 5 5 _ _ (fun i l => eq_sym (small_order_ext ord i l Hord)) (le_n 5) E). reflexivity.
+  - exfalso. vm_compute in E. discriminate E.
+Qed.
+
+(**md
+**The engine has no answer on a well-formed program where the reference settles: no fuel ends `restored_source`.**
+
+The effect reads a source, writes it and restores it. Each run marks the effect and enqueues it, so the drain takes one more entry for each entry it takes. The reference compares reads, finds them equal, and settles after one run under every order. `effect_restored_source_loop` in `BUGS.md`, whose F# scenario runs the same body until a budget ends it.
+*)
+Theorem engine_of_answers_falsified : ~ Refinement.engine_of_answers_statement.
+Proof.
+  intros H. destruct (H restored_source [] restored_source_well_formed restored_source_settles) as (k&t&E).
+  unfold Refinement.engine_of, trace_of in E.
+  destruct (run_top k (Refinement.erase restored_source []) (init current_flags)) as [[s r]|] eqn:Er; [|done].
+  exact (restored_source_never k s r Er).
 Qed.
