@@ -2184,7 +2184,7 @@ End Sim.
 
 (** ** The refinements *)
 
-(** [Semantics.refines] over the programs and histories [P] admits. *)
+(** [Semantics.refines] over the programs and histories satisfying [P]. *)
 Definition refines_on (P : Semantics.program -> Semantics.history -> Prop) (O : Semantics.observation)
     (engine : Semantics.program -> Semantics.history -> option (list event)) : Prop :=
   forall p h t, Semantics.well_formed_program p -> P p h -> engine p h = Some t ->
@@ -2197,7 +2197,7 @@ Lemma project_prefix p a b : a `prefix_of` b -> project p a `prefix_of` project 
 Proof. intros [x ->]. exists (project p x). apply project_app. Qed.
 
 (**md
-**Weak refinement: on the programs the premises admit, the engine's settled view is the reference's, at every batch prefix.**
+**Weak refinement: on a refinable program, the engine's settled view is the reference's, at every batch prefix.**
 
 For each fuel, each trace `engine_of` gives on a refinable program extends to each batch prefix of the history, and the prefix's trace has the `observe_settled` of the reference's trace at that prefix.
 
@@ -2257,6 +2257,28 @@ Proof.
   - exact (project_prefix p _ _ Pf).
   - exact (ref_all_trace ord p h' st rs Ra).
   - apply Fx. intros h0 s1 r1 st1 rs1 [x ->]. apply Hag. exists (x ++ k0). by rewrite <- app_assoc.
+Qed.
+
+(**md
+**A refinable program meets the premises of `convergence` at every batch.**
+
+This is the link between `well_formed_program` and `well_behaved_program`, `effects_only_read` and `quiescent`. Each gap between them, and what closes it:
+
+- **Rank to id.** `memos_acyclic` gives some rank over the paths that return. `pure_at` asks that reads reach lower ids, since nodes are created in id order. `erase` keeps ids, shifted by one so that node 0 exists, and it cannot renumber a computed target. `memos_below` is the named premise. A memo reading a higher id is outside the theorems, by the proof's reach, with no counterexample known.
+- **Stuck paths.** `memo_reads_below` says nothing of a path with no result, and `body_pure` covers every path. `memos_below` asks for every path, so a memo reading a higher id on a stuck path is outside the theorems, conservatively. Such a read has no effect on either side's answer.
+- **`EVar 4096`.** `expr_no_prev` accepts it and `expr_plain` rejects it. `rename` closes this gap with no premise: `rv` moves a body's variables off `prev_var`, so a renamed body's expressions are plain ([`plain_rename`](#plain_rename)) and the engine's binding of the previous value is out of reach of every body.
+- **`CmpEq`.** `erase` chooses it for every memo. A default-policy memo returning a new reference value each run, or `nan`, is `CmpNever` in the model, so neither this theorem nor the refinements cover such a memo. `cmp_never_passes_source` shows that memo losing updates.
+- **Memo logs.** `well_behaved_memo` allows `CLog`, and the reference discards a memo's logs. `engine_of` projects them out of the trace, which is what the reference's semantics asks for, so the refinements say nothing about how often a memo's body runs.
+- **Effects.** `well_behaved_effect` allows writes, cleanups and untracked reads. `effects_read_only` rejects them, as the docs of [`weak_refinement_except`](#weak_refinement_except) say.
+*)
+Theorem refinable_meets_convergence p h f s r :
+  Semantics.well_formed_program p -> refinable p h -> run_top f (erase p h) (init current_flags) = Some (s, r) ->
+  well_behaved_program s /\ effects_only_read s /\ quiescent s.
+Proof.
+  intros Hwf (Hmb&Hro&Hnd) E.
+  destruct (sim_all p Hwf Hmb Hro (fun _ l => l) (fun _ _ => reflexivity _) h f s r Hnd E) as (st&rs&sigs&D&_&_&Si&_).
+  pose proof (si_host _ _ _ _ _ _ Si) as Hh. destruct (tbl_good' p Hwf Hmb Hro s (ho_tbl _ _ _ _ Hh)) as [[A B] _].
+  split_and!; [exact A|exact B|]. split; [exact (si_quiet _ _ _ _ _ _ Si)|exact (ho_run _ _ _ _ Hh)].
 Qed.
 
 (** ** The statements with no premise *)

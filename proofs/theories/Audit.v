@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement.
 From Ranvier.Conformance Require Check.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -233,6 +233,14 @@ Print Assumptions untracked_conservative.
 Print Assumptions prev_conservative.
 Print Assumptions creation_conservative.
 Print Assumptions comparer_conservative.
+Print Assumptions weak_refinement_except.
+Print Assumptions exact_refinement_except.
+Print Assumptions refinable_meets_convergence.
+Print Assumptions weak_refinement.
+Print Assumptions exact_refinement.
+Print Assumptions weak_refinement_falsified.
+Print Assumptions exact_refinement_falsified.
+Print Assumptions refinable_reached.
 Print Assumptions effect_dispose_outside.
 Print Assumptions memo_dispose_outside.
 Print Assumptions memo_prev_outside.

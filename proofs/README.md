@@ -65,6 +65,7 @@ copy, so it needs no Rocq.
 - `theories/Pure/SourceList.v`: `SourceList` over both ends of every edge, and the edge invariants.
 - `theories/Pure/Witnesses.v`: checked counterexamples and behaviour witnesses.
 - `theories/Pure/WholeGraph.v`: the behaviour of a whole program: `gh_passed`, reads and convergence, over the fragment of well-behaved programs.
+- `theories/Pure/Refinement.v`: the engine program of a reference program, and refinement to the reference semantics.
 - `theories/Pure/State.v`: the graph state, and `edge`.
 - `theories/Pure/Edges.v`: edge coherence over the source-list operations.
 - `theories/Pure/Marking.v`: freshness marks and the walks that spread them.
@@ -262,6 +263,13 @@ copy, so it needs no Rocq.
 | `widened_forms_reached` | `Pure/Witnesses.v` | Batches and computed read targets, in memos and effects, reach every premise of `convergence`. |
 | `untracked_read_reached` | `Pure/Witnesses.v` | An effect's untracked read reaches every premise of `convergence`, and its log stays behind until a tracked read wakes the effect. |
 | `cmp_never_passes_source`, `never_lost_update` | `Pure/Witnesses.v` | With `CmpNever` memos and no write in a body, a walk passes a source, and an effect stays `Clean` on a stale value with an empty queue. A default memo returning a fresh record reaches this. Confirmed in `BUGS.md`. |
+| `weak_refinement_except` | `Pure/Refinement.v` | On a well-formed program that is `refinable`, the engine's trace has the reference's `observe_settled` at every batch prefix, and its traces extend. Not covered: effect writes, cleanups, child effects, untracked reads, a memo reading a higher id, a memo disposal, a memo with `CmpNever`. |
+| `exact_refinement_except` | `Pure/Refinement.v` | On those programs, with the same `EvRun`s at every prefix, the traces are equal, under the order those runs follow. |
+| `refinable_meets_convergence` | `Pure/Refinement.v` | Those programs reach every premise of `convergence`, at every batch. Its comment names each gap between `well_formed_program` and those premises. |
+| `weak_refinement` | `Pure/Refinement.v` | **Open.** Every engine trace on a well-formed program has the reference's settled view. False: `weak_refinement_falsified`. |
+| `exact_refinement` | `Pure/Refinement.v` | **Open.** Every engine trace on a well-formed program is the reference's. False: `exact_refinement_falsified`. |
+| `weak_refinement_falsified`, `exact_refinement_falsified` | `Pure/Witnesses.v` | Both Open statements are false, from `disposed_unread_memo_value` and `batch_restored_value_reruns`. |
+| `refinable_reached` | `Pure/Witnesses.v` | A program with a memo, a try-read and a failure reaches the premises, under a history with a write, a read and a disposal. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` falls to `wake_ok` and `marks_survive_body_end`, and removing `MarkReaderCheck` to `wake_told`: `unannounced_off_fires`, `reader_mark_off_fires`. `wake_ok` holds with `MarkReaderCheck` removed, since the source holds its flag.
 
@@ -324,3 +332,14 @@ Nothing here is claimed about the PLDI text's theorem numbering or wording.
 | Thm B.13 | A written proof, and the parts read mention no mechanisation. | Proofs are checked by Rocq. | Kept. |
 
 No literature result here is used to weaken a statement.
+
+**Compared at Task 12: `convergence` and `refines observe_settled`.** The sources are those read above. The PLDI 2014 text stays unread, so nothing here is claimed about it.
+
+| Source | Difference | Here | Decision |
+|---|---|---|---|
+| Thm B.13 | The invariant is whole-graph: a from-scratch consistent `H1` goes in and a consistent `H2` comes out, over a satisfactory derivation. | `convergence` states the end of a whole program, per effect, from a whole-graph invariant (`whole`). It is stated over the end state, and the invariant is the proof's own. | Kept. Stating the invariant as the theorem would add nothing a caller uses. The factoring suggested at Task 3a is what `whole`'s `w_value` and `w_reads` hold. |
+| Thm 4.3 | Both directions: incremental reduction if and only if basic reduction. | `weak_refinement_except` is one direction, and `engine_answers` the other. `engine_of_answers_statement` is unproved, and false by reasoning on a program that writes: `effect_restored_source_loop`. | Kept as the two statements. The second direction needs a termination argument that no layer here provides. |
+| Thm 4.3 | The final store is compared. | `observe_settled` compares per-effect views and host reads. `convergence` adds each effect's recorded reads. | `convergence` is the stronger of the two on the store: every source read by a live effect answers its denotation. |
+| Thm 3.2, Section 2.1 | The inner layer cannot write. | `refinable` keeps effects read-only as well, a stronger restriction than the papers' on the outer layer, which writes between evaluations. Here the host is the outer layer. | Provisional, by the owner's scope. It is not justified by the papers. |
+
+The refinement statements are not better factored by adopting a statement from these sources. None was adopted.

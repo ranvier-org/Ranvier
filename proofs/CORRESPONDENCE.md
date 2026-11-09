@@ -49,6 +49,21 @@ choices come from.
 | `fuel` | none | Bounds the rounds of each settling. A flush that keeps waking effects has no reference meaning: `reference_trace` returns `None`, and the spec states flush theorems conditionally on a returned flush. |
 | `None` from `exec` | none | A stuck body: an unbound variable, a negative node id, a read of an unknown node or an effect, a write to a non-signal. These have no F# counterpart, since F# bodies hold variables by scope and nodes by reference. A zero divisor is a failure, not a stuck body. |
 
+### The engine program of a reference program
+
+`theories/Pure/Refinement.v` has no Core.fs symbol: it translates a reference program, and F# has no such form.
+
+| Model symbol | Simplification and reason |
+|---|---|
+| `erase` | Every node is created in one batch, in id order, and each batch of the history follows. The first flush runs each effect in creation order, as `reference_runs`' initial round runs each in the order given. A host building nodes outside a batch runs each effect at its creation: the same runs for a program with no writes. |
+| `rename_target` | Reference node `n` is engine node `S n`: `next_id`'s first id is 1 and a reference program can use 0. A computed target shifts in place. Target `-1` reaches node 0, which answers nothing, as the reference's `node_of` does. |
+| `rv` | Moves a body's variables off `prev_var`. In F# a variable is a binding, so the collision has no counterpart. |
+| `node_cmd` of an id with no node | A memo with no result, so a read has no result, as the reference's unknown node. A disposal or a write of it has no result either. |
+| `CMemo` under `erase` | `Pure` and `CmpEq`. A default-policy memo returning a new reference value each run, or `nan`, is `CmpNever` in the model and is not this form. The `cmp_never` rows in this file list which values those are. |
+| `input_cmd` of `RRead` | A `CTryRead`, so a failed read's failure is the host read's answer and the program goes on. |
+| `project` | Keeps effects' events, disposals and host reads, in the reference's ids. The reference discards a memo's logs (`node_value`), so an engine that runs a memo more or less often is not observed. The harness's trace still holds them. |
+| `engine_order` | The order of the live queue at a flush's start. Marking walks over observer positions, swap-removal included, build that queue. |
+
 ## Observer sets and source lists
 
 | Model symbol | Core.fs symbol | Simplification and reason |
