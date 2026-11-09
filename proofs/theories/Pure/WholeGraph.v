@@ -6912,7 +6912,7 @@ Definition convergence_all_statement : Prop :=
   forall f c s r, run_top f c (init current_flags) = Some (s, r) -> fix_premises s -> converged_all s.
 
 (**md
-**Open, and false on the present engine: at quiescence, every effect ran and read what its sources compute, in each program the premises admit.**
+**Open, and false on the present engine: at quiescence, every effect ran and read what its sources compute, in each program satisfying the premises.**
 
 This states what the fix phase owes, as `convergence_all_statement`. It covers effects that write, memos with cleanups, memos with a write reaching no later read of the body, and a `CmpNever` comparer: those are the bugs. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, and `effect_resolves_over_moved_source` falls under the statement, pending the owner's ruling on that entry.
 
