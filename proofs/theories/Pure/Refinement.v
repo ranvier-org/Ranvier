@@ -489,7 +489,9 @@ Qed.
 
 End Shift.
 
-(** A read-only body that does not stick on any path. [Q] holds of each read's target. *)
+(** A body of returns, failures, lets, branches, tracked and try reads, logs and batches, where for every answer to a read and
+    both arms of a branch reachable from those answers, each expression evaluates and each read's target is non-negative and
+    meets [Q]. The answers range over all values, so a path no run takes counts. *)
 Fixpoint body_ends (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
   match c with
   | CRet x => expr_plain x = true /\ is_Some (ev e x)
@@ -505,22 +507,24 @@ Fixpoint body_ends (Q : node_id -> Prop) (e : env) (c : cmd) : Prop :=
     expr_plain n = true /\ is_Some (ev e n) /\ (forall z, ev e n = Some (Ok z) -> (0 <= z)%Z /\ Q (Z.to_nat z)) /\
     (forall v, body_ends Q ((ok, 1%Z) :: (x, v) :: e) k) /\ (forall y, body_ends Q ((ok, 0%Z) :: (x, y) :: e) k)
   | CLog v k => expr_plain v = true /\ is_Some (ev e v) /\ body_ends Q e k
+  | CBatch b k => body_ends Q e b /\ body_ends Q e k
   | _ => False
   end.
 
-Lemma body_ends_pure Q e c : body_ends Q e c -> body_pure (fun _ => True) e c.
+Lemma body_ends_pure Q e c : body_ends Q e c -> body_pure Q e c.
 Proof.
   revert e. induction c; intros g H; simpl in *; try done; try tauto.
   - destruct H as (A&_&B). split; [done|]. intros z Hz. auto.
   - destruct H as (A&_&B). split; [done|]. intros z Hz. destruct (B z Hz) as [C D]. split; auto.
-  - destruct H as (A&_&_&B). split_and!; [done|done|]. intros v. auto.
-  - destruct H as (A&_&_&B&C). split_and!; [done|done|intros v; auto|intros y; auto].
+  - destruct H as (A&_&Q0&B). split_and!; [done|intros z Hz _; exact (proj2 (Q0 z Hz))|]. intros v. auto.
+  - destruct H as (A&_&Q0&B&C). split_and!; [done|intros z Hz _; exact (proj2 (Q0 z Hz))|intros v; auto|intros y; auto].
+  - destruct H as [A B]. split; auto.
   - destruct H as (A&_&B). split; auto.
 Qed.
 
 Section Total.
 Variable Sh : gmap node_id (kind * comparer * env * cmd).
-(** The nodes a body may read: signals and memos with a body that does not stick. *)
+(** The nodes a body may read. *)
 Variable Rd : node_id -> Prop.
 Hypothesis Hrdr : forall t, Rd t -> readable Sh t.
 Hypothesis Hbm : forall m q e b, Rd m -> Sh !! m = Some (KMemo, q, e, b) -> body_ends (fun t => t < m /\ Rd t) e b.
@@ -528,7 +532,8 @@ Hypothesis Hbe : forall m q e b, Sh !! m = Some (KEffect, q, e, b) -> body_ends 
 Variable lim : nat.
 Hypothesis Hlim : forall t x, Sh !! t = Some x -> t < lim.
 
-(** A memo of [Sh] below [lim]: a call on nodes up to there moves the slots of these alone. *)
+(** A memo of [Sh] with an id below [lim]. A call on a node below [lim] changes the slots of these memos and of the current
+    computation, and of no other node. *)
 Definition xl (lim c : node_id) : Prop := c < lim /\ exists q e b, Sh !! c = Some (KMemo, q, e, b).
 
 Record gd (s : state) : Prop := {
@@ -1107,6 +1112,32 @@ Proof.
     apply tot_bind; [apply _|exact (Hrd' _ HQ)|intros o]. apply tot_bind; [apply _|apply tot_note|intros _]. destruct o as [v|y].
     + apply (IHc _ ((ok, 1%Z) :: (x, v) :: g)); [by do 2 apply env_agree_cons|apply D1].
     + apply (IHc _ ((ok, 0%Z) :: (x, y) :: g)); [by do 2 apply env_agree_cons|apply D2].
+  - destruct Hb as [B1 B2]. intros s G C Hc. change (g_current s = Some cur) in Hc.
+    set (s1 := with_batch_depth (S (g_batch_depth s)) s).
+    assert (G1 : gd s1) by (destruct G; split; done).
+    assert (C1 : tk_ctx s1) by (right; unfold s1; simpl; lia).
+    destruct (IHc1 _ g Ha B1 s1 G1 C1 Hc) as (s2&r&[N2 E2]&G2&K2).
+    set (s3 := with_batch_depth (pred (g_batch_depth s2)) s2).
+    assert (B3 : g_batch_depth s3 = g_batch_depth s) by (unfold s3; simpl; rewrite (kp_bat _ _ _ _ K2); reflexivity).
+    assert (G3 : gd s3) by (destruct G2; split; done).
+    assert (K3 : kept 0 X s s3).
+    { destruct K2 as [A1 A2 A3 A4 A5]. split; try done. }
+    assert (C3 : tk_ctx s3) by (unfold tk_ctx in *; rewrite B3, (kp_flu _ _ _ _ K3); exact C).
+    assert (P3 : g_current s3 = Some cur) by (rewrite (kp_cur _ _ _ _ K3); exact Hc).
+    destruct r as [v|y].
+    + assert (Hrq : forall f, request_flush (S f) s3 = Some (s3, tt)).
+      { intros f. cbn [request_flush]. rewrite bind_get. destruct (live_queue s3 && _) eqn:El; [|reflexivity].
+        apply andb_prop in El as [_ El]. apply bool_decide_eq_true_1 in El.
+        assert (Hfl : g_flushing s3 = true) by (destruct C3 as [H0|H0]; [done|lia]).
+        assert (Ho : outside_bodies s3 = false) by (unfold outside_bodies; rewrite P3, andb_false_r; reflexivity).
+        rewrite Ho, Hfl. reflexivity. }
+      destruct (IHc2 _ g Ha B2 s3 G3 C3 P3) as (s4&r4&[N4 E4]&G4&K4).
+      exists s4, r4. split_and!; [|done|exact (kept_trans _ _ _ _ _ _ K3 K4)].
+      exists (S (N2 `max` N4)). intros f Hf. rewrite bind_m_modify. cbv beta. fold s1.
+      rewrite (bind_some _ _ _ _ _ (E2 f ltac:(lia))), bind_m_modify. cbv beta iota. fold s3.
+      destruct f as [|f]; [lia|]. rewrite (bind_some _ _ _ _ _ (Hrq f)). apply E4. lia.
+    + exists s3, (Fail y). split_and!; [|done|exact K3]. exists N2. intros f Hf. rewrite bind_m_modify. cbv beta. fold s1.
+      rewrite (bind_some _ _ _ _ _ (E2 f Hf)), bind_m_modify. reflexivity.
   - destruct Hb as (A&B&D). apply (tot_on_value _ _ _ g); [done|done|done|]. intros z _.
     apply tot_bind; [apply _|apply tot_const; intros s G _ Hc; unfold log_label; rewrite Hc; exists s, cur; split_and!; [done|done|apply kept_refl]|intros l].
     apply tot_bind; [apply _|apply tot_emit|intros _]. apply (IHc _ g); done.
@@ -3846,26 +3877,26 @@ Qed.
 
 End Sim.
 
-(** ** The refinements *)
-
-(** [Semantics.refines] over the programs and histories satisfying [P]. *)
 (** ** The engine answers on a read-only program *)
 
 (** A node a body or a host may read: a signal, or a memo of the program. An id the program does not use holds a memo with no
-    result, so a read of it has no answer. *)
+    result: [refinable_alone_no_answer]. *)
 Definition Rdp (p : Semantics.program) (t : node_id) : Prop :=
   exists n, t = S n /\ n < node_bound p /\
     (is_Some (Semantics.program_signals p !! (n : node_id)) \/
      (Semantics.program_signals p !! (n : node_id) = None /\ is_Some (Semantics.program_memos p !! (n : node_id)))).
 
-(** No body sticks on any path, and each body reads nodes of the program, a memo only below itself. *)
+(** Every memo and effect body of the program meets [body_ends], over all answers to its reads. A read's target is a signal or a
+    memo of the program, and a memo's read has a target below the memo. So an effect's write or cleanup, an untracked read, a
+    read of an effect or an unused id, an unbound variable and a possibly negative target all fail it, on a path no run takes as
+    well. [bodies_conservative] is such a program, and the engine answers on it. *)
 Definition bodies_total (p : Semantics.program) : Prop :=
   (forall (n : node_id) c, Semantics.program_signals p !! n = None -> Semantics.program_memos p !! n = Some c ->
      body_ends (fun t => t < S n /\ Rdp p t) [] (rename c)) /\
   (forall (n : node_id) c, Semantics.program_signals p !! n = None -> Semantics.program_memos p !! n = None -> Semantics.program_effects p !! n = Some c ->
      body_ends (Rdp p) [] (rename c)).
 
-(** Each input of the history has a target of its kind. *)
+(** Each input of the history has a target of its kind. A reference run of the history gives this: [inputs_total_of_runs]. *)
 Definition inputs_total (p : Semantics.program) (h : Semantics.history) : Prop :=
   forall b i, b ∈ h -> i ∈ b ->
     match i with
@@ -3890,6 +3921,7 @@ Proof.
   - destruct H as (A&B&D&F1&F2). rewrite <- (ev_same _ _ _ Ha A). split_and!; [done|done|done| |].
     + intros v. apply (IHc ((ok, 1%Z) :: (x, v) :: g)); [by do 2 apply env_agree_cons|apply F1].
     + intros y. apply (IHc ((ok, 0%Z) :: (x, y) :: g)); [by do 2 apply env_agree_cons|apply F2].
+  - destruct H as [B1 B2]. split; [exact (IHc1 g g' Ha B1)|exact (IHc2 g g' Ha B2)].
   - destruct H as (A&B&D). rewrite <- (ev_same _ _ _ Ha A). split_and!; [done|done|]. apply (IHc g); done.
 Qed.
 
@@ -4243,16 +4275,7 @@ Proof.
   rewrite !elem_of_union, !elem_of_dom. tauto.
 Qed.
 
-(**md
-**The engine answers on a read-only program whose bodies and inputs do not stick.**
-
-For a well-formed program meeting `refinable`, `bodies_total` and `inputs_total`, some fuel gives a trace at the whole history.
-
-The measure of the drain is `mu`: the weights of the stale memos and the live queue entries. A run of a memo pays for its own marks and for a read's mark of its reader, and each entry the drain takes lowers `mu`. See [`drain_ends`](#drain_ends) and [`reads_end`](#reads_end).
-
-`bodies_total` and `inputs_total` exclude a program with a body or an input that sticks on a path. `engine_answers` asks for an answer only where the reference settles, and the reference evaluates fewer memos than `bodies_total` covers, so this statement is narrower than the one the premises would allow. No counterexample backs those two premises: they are the proof's reach. With `effects_read_only` gone the statement is false: [`engine_of_answers_falsified`](Ranvier.Pure.Witnesses.html#engine_of_answers_falsified).
-*)
-Theorem engine_of_answers_on p h :
+Lemma answers_of_inputs p h :
   Semantics.well_formed_program p -> refinable p h -> bodies_total p -> inputs_total p h ->
   exists k t, engine_of current_flags k p h = Some t.
 Proof.
@@ -4346,6 +4369,141 @@ Proof.
   exists (S g), (project p (g_trace s)). unfold engine_of, trace_of. rewrite Er. reflexivity.
 Qed.
 
+(** What a reference state keeps of its history, with no disposal of a memo. *)
+Definition ref_inv (p : Semantics.program) (st : Semantics.reference_state) : Prop :=
+  Semantics.rs_frozen st = ∅ /\ forall n, n ∈ Semantics.rs_disposed st -> is_Some (Semantics.program_effects p !! (n : node_id)).
+
+Lemma run_round_inv p ns : forall st st' r, Semantics.run_round p ns st = Some (st', r) -> ref_inv p st -> ref_inv p st'.
+Proof.
+  induction ns as [|n ns IH]; intros st st' r E Hi; simpl in E; [by injection E as <- _|].
+  destruct (Semantics.program_effects p !! n); simpl in E; [|done].
+  destruct (Semantics.run_effect _ _ _ _ _ _) as [bs|]; simpl in E; [|done].
+  destruct (Semantics.run_round p ns _) as [[st1 r1]|] eqn:Er; simpl in E; [|done]. injection E as <- _. exact (IH _ _ _ Er Hi).
+Qed.
+
+#[local] Arguments Semantics.settle : simpl nomatch.
+
+Lemma settle_inv p ord fuel : forall st st' r, Semantics.settle fuel ord p st = Some (st', r) -> ref_inv p st -> ref_inv p st'.
+Proof.
+  induction fuel as [|fuel IH]; intros st st' r E Hi; cbn [Semantics.settle] in E; destruct (Semantics.run_set p st (Semantics.effect_ids p)) as [[|n ns]|]; simpl in E; try done.
+  - by injection E as <- _.
+  - by injection E as <- _.
+  - destruct (Semantics.run_round p _ st) as [[st1 r1]|] eqn:Er; simpl in E; [|done].
+    destruct (Semantics.settle fuel ord p _) as [[st2 r2]|] eqn:Es; simpl in E; [|done]. injection E as <- _.
+    refine (IH _ _ _ Es _). exact (run_round_inv _ _ _ _ _ Er Hi).
+Qed.
+
+#[local] Arguments Semantics.settle : simpl never.
+
+Lemma node_value_some k p frz sigs (n : node_id) o :
+  Semantics.node_value (S k) p frz sigs n = Some o ->
+  is_Some (frz !! n) \/ is_Some (Semantics.program_signals p !! n) \/ is_Some (Semantics.program_memos p !! n).
+Proof.
+  intros E. simpl in E. destruct (frz !! n) as [x|]; [left; by eexists|right].
+  destruct (Semantics.program_signals p !! n) as [x|]; [left; by eexists|right].
+  destruct (Semantics.program_memos p !! n) as [x|]; [by eexists|done].
+Qed.
+
+(** One input the reference takes has a target of its kind. *)
+Definition input_ok (p : Semantics.program) (i : Semantics.host_input) : Prop :=
+  match i with
+  | Semantics.RWrite t _ => is_Some (Semantics.program_signals p !! (t : node_id))
+  | Semantics.RRead n => Rdp p (S n)
+  | Semantics.RDispose n =>
+    Semantics.program_signals p !! (n : node_id) = None /\ Semantics.program_memos p !! (n : node_id) = None /\ is_Some (Semantics.program_effects p !! (n : node_id))
+  end.
+
+Lemma apply_input_ok p i st st' r :
+  Semantics.well_formed_program p -> (forall n, i = Semantics.RDispose n -> Semantics.program_memos p !! n = None) ->
+  Semantics.apply_input p i st = Some (st', r) -> ref_inv p st -> input_ok p i /\ ref_inv p st'.
+Proof.
+  intros Hwf Hm E [Hf Hd]. destruct i as [t v|n|n]; simpl in E.
+  - destruct (decide _) as [Hs|]; [|done]. injection E as <- _. split; [exact Hs|by split].
+  - pose proof (Hm n eq_refl) as Hmn.
+    assert (Hdis : is_Some (Semantics.program_effects p !! n) -> Semantics.program_signals p !! n = None).
+    { intros [c Hc]. destruct (Semantics.program_signals p !! n) as [v|] eqn:Es; [|done]. exfalso.
+      refine (proj1 (proj2 Hwf) n _ _); apply elem_of_dom; by eexists. }
+    unfold Semantics.apply_dispose in E. destruct (decide _) as [Hin|Hnin].
+    + injection E as <- _. split; [|by split]. pose proof (Hd n Hin) as He. split_and!; [exact (Hdis He)|done|done].
+    + destruct (Semantics.program_effects p !! n) as [c|] eqn:Ee.
+      * destruct (Semantics.dispose_node _ _ _ _ _) as [bs|]; simpl in E; [|done]. injection E as <- _.
+        split; [split_and!; [apply Hdis|done|]; by eexists|]. split; [done|]. simpl. intros y Hy. apply elem_of_union in Hy as [Hy|Hy].
+        -- apply elem_of_singleton in Hy as ->. rewrite Ee. by eexists.
+        -- exact (Hd y Hy).
+      * rewrite Hmn in E. done.
+  - unfold Semantics.host_read, Semantics.live_read, Semantics.memo_value in E. destruct (Semantics.node_value _ _ _ _ _) as [o|] eqn:Ev; simpl in E; [|done].
+    injection E as <- _. split; [|by split].
+    destruct (node_value_some _ _ _ _ _ _ Ev) as [[x Hx]|[H1|H1]]; [rewrite Hf in Hx; by rewrite lookup_empty in Hx| |].
+    + exists n. split_and!; [done|apply below_bound; by left|by left].
+    + exists n. split_and!; [done|apply below_bound; right; by left|].
+      destruct (Semantics.program_signals p !! n) as [v|] eqn:Es; [left; by eexists|right; done].
+Qed.
+
+Lemma apply_batch_ok p b : forall st st' r,
+  Semantics.well_formed_program p -> (forall n, Semantics.RDispose n ∈ b -> Semantics.program_memos p !! n = None) ->
+  Semantics.apply_batch p b st = Some (st', r) -> ref_inv p st -> (forall i, i ∈ b -> input_ok p i) /\ ref_inv p st'.
+Proof.
+  induction b as [|i b IH]; intros st st' r Hwf Hm E Hi; simpl in E.
+  { injection E as <- _. split; [intros j Hj; by apply not_elem_of_nil in Hj|done]. }
+  destruct (Semantics.apply_input p i st) as [[st1 r1]|] eqn:Ea; simpl in E; [|done].
+  destruct (Semantics.apply_batch p b st1) as [[st2 r2]|] eqn:Eb; simpl in E; [|done]. injection E as <- _.
+  destruct (apply_input_ok p i st st1 r1 Hwf (fun n Hn => Hm n ltac:(subst; left)) Ea Hi) as [H1 I1].
+  destruct (IH st1 st2 r2 Hwf (fun n Hn => Hm n ltac:(by right)) Eb I1) as [H2 I2].
+  split; [|done]. intros j Hj. apply elem_of_cons in Hj as [->|Hj]; [done|by apply H2].
+Qed.
+
+Lemma history_ok p fuel ord h : forall st r,
+  Semantics.well_formed_program p -> (forall b n, b ∈ h -> Semantics.RDispose n ∈ b -> Semantics.program_memos p !! n = None) ->
+  Semantics.run_history fuel ord p h st = Some r -> ref_inv p st -> inputs_total p h.
+Proof.
+  induction h as [|b h IH]; intros st r Hwf Hm E Hi.
+  { intros b i Hb. by apply not_elem_of_nil in Hb. }
+  simpl in E. destruct (Semantics.apply_batch p b st) as [[st0 r0]|] eqn:Ea; simpl in E; [|done].
+  destruct (Semantics.settle fuel ord p st0) as [[st1 r1]|] eqn:Es; simpl in E; [|done].
+  destruct (Semantics.run_history fuel ord p h st1) as [[st2 r2]|] eqn:Eh; simpl in E; [|done].
+  destruct (apply_batch_ok p b st st0 r0 Hwf (fun n => Hm b n ltac:(left)) Ea Hi) as [H1 I1].
+  pose proof (IH st1 (st2, r2) Hwf (fun b0 n Hb => Hm b0 n ltac:(by right)) Eh (settle_inv _ _ _ _ _ _ Es I1)) as H2.
+  intros b0 i Hb0 Hj. apply elem_of_cons in Hb0 as [->|Hb0]; [exact (H1 i Hj)|exact (H2 b0 i Hb0 Hj)].
+Qed.
+
+(** The reference's success gives the inputs' targets. *)
+Lemma inputs_total_of_runs p h fuel ord rs :
+  Semantics.well_formed_program p -> no_memo_disposal p h -> Semantics.reference_runs fuel ord p h = Some rs -> inputs_total p h.
+Proof.
+  intros Hwf Hnd E. unfold Semantics.reference_runs in E.
+  destruct (Semantics.run_round p _ _) as [[st1 r1]|] eqn:E1; simpl in E; [|done].
+  destruct (Semantics.settle fuel ord p _) as [[st2 r2]|] eqn:E2; simpl in E; [|done].
+  destruct (Semantics.run_history fuel ord p h st2) as [[st3 r3]|] eqn:E3; simpl in E; [|done].
+  assert (I0 : ref_inv p (Semantics.reference_start p)) by (split; [done|intros n Hn; by apply not_elem_of_empty in Hn]).
+  pose proof (run_round_inv _ _ _ _ _ E1 I0) as I1.
+  assert (I2 : ref_inv p st2) by (refine (settle_inv _ _ _ _ _ _ E2 _); exact I1).
+  exact (history_ok p fuel ord h st2 _ Hwf Hnd E3 I2).
+Qed.
+
+(**md
+**The engine answers on a refinable program where the reference settles, when every body meets `body_ends`.**
+
+For a well-formed, refinable program with `bodies_total`, if the reference gives a trace of the history under some order, some fuel gives the engine's trace.
+
+The measure of the drain is `mu`: the weights of the stale memos and the live queue entries. A run of a memo pays for its own marks and for a read's mark of its reader, and each entry the drain takes lowers `mu`: [`drain_ends`](#drain_ends) and [`reads_end`](#reads_end). The reference's success gives each input's target: [`inputs_total_of_runs`](#inputs_total_of_runs).
+
+`bodies_total` reads a body over all answers to its reads, so it fails on a path no run takes, and no counterexample backs it on such a program: [`bodies_conservative`](Ranvier.Pure.Witnesses.html#bodies_conservative). Deriving it from the reference's success is open: `answers_where_reference_settles` in `BUGS.md`.
+
+`refinable` alone is not enough: [`refinable_alone_no_answer`](Ranvier.Pure.Witnesses.html#refinable_alone_no_answer). There the reference has no answer either, so that theorem does not refute the form with the reference's success. [`engine_of_answers_falsified`](Ranvier.Pure.Witnesses.html#engine_of_answers_falsified) refutes the statement with no `refinable`, on an effect that writes.
+*)
+Theorem engine_of_answers_on p h ord fuel t0 :
+  Semantics.well_formed_program p -> refinable p h -> bodies_total p ->
+  Semantics.reference_trace fuel ord p h = Some t0 ->
+  exists k t, engine_of current_flags k p h = Some t.
+Proof.
+  intros Hwf Hr Hbt E. unfold Semantics.reference_trace in E.
+  destruct (Semantics.reference_runs fuel ord p h) as [rs|] eqn:Er; [|done].
+  exact (answers_of_inputs p h Hwf Hr Hbt (inputs_total_of_runs p h fuel ord rs Hwf (proj2 (proj2 Hr)) Er)).
+Qed.
+
+(** ** The refinements *)
+
+(** [Semantics.refines] over the programs and histories satisfying [P]. *)
 Definition refines_on (P : Semantics.program -> Semantics.history -> Prop) (O : Semantics.observation)
     (engine : Semantics.program -> Semantics.history -> option (list event)) : Prop :=
   forall p h t, Semantics.well_formed_program p -> P p h -> engine p h = Some t ->
@@ -4566,7 +4724,9 @@ Fixpoint batch_rounds (k : nat) (p : Semantics.program) (pre h : Semantics.histo
 Definition engine_rounds (k : nat) (p : Semantics.program) (h : Semantics.history) : list (list node_id) :=
   engine_runs k p [] :: batch_rounds k p [] h.
 
-(** Each round's effects in the order of that round's runs in the engine. *)
+(** Each round's effects in the order of that round's runs in the engine. The order is read from the engine's run, so that the
+    engine follows it holds by construction. No theorem computes it from observer positions: [queue_order_through_memos] in
+    [BUGS.md]. *)
 Definition history_order (k : nat) (p : Semantics.program) (h : Semantics.history) : Semantics.effect_order :=
   fun i l => order_by (default [] (engine_rounds k p h !! i)) l.
 
@@ -4581,7 +4741,7 @@ Proof. intros i l. apply order_by_perm. Qed.
 (**md
 **Exact refinement under the engine's own order.**
 
-`exact_refinement_except` at `history_order`: on a refinable program, with the engine's rounds agreeing with the reference's under that order at every prefix, the traces are equal. `runs_agree` stays a premise. [`history_order_reached`](Ranvier.Pure.Witnesses.html#history_order_reached) meets it on a program where the order of creation does not.
+`exact_refinement_except` at `history_order`. The order conclusion holds by construction, since `history_order` is read from the engine's runs. The content is at the level of values: under `runs_agree`, logs, failures, disposals and host reads agree event for event. `runs_agree` has content: [`runs_agree_has_content`](Ranvier.Pure.Witnesses.html#runs_agree_has_content) has it fail at `history_order` on a program with a redundant run, and [`history_order_reached`](Ranvier.Pure.Witnesses.html#history_order_reached) meets it on a program where the order of creation does not.
 *)
 Corollary exact_refinement_history k p h t :
   Semantics.well_formed_program p -> refinable p h ->
@@ -4595,7 +4755,7 @@ Qed.
 
 (** ** What a marking walk does to the queue *)
 
-(** Each entry at or below position [n] of the source's observers is an effect ready to enqueue. *)
+(** Each of [ids] is an effect ready to enqueue: live, unqueued and outside a cleanup. *)
 Definition walk_ready (s : state) (ids : list node_id) : Prop :=
   forall c, c ∈ ids -> exists d, g_nodes s !! c = Some d /\ n_kind d = KEffect /\ n_disposed d = false /\ n_in_cleanup d = false /\ n_queued d = false.
 
@@ -4653,19 +4813,33 @@ Proof.
 Qed.
 
 (**md
-**After a swap-removal, the walk queues the moved observer in the removed one's place.**
+**A swap-removal moves the last observer from first in the walk's queue to the removed observer's place.**
 
-`observers_remove_at_swap` moves the last observer `m` into the removed position. On the result, the order of `notify_queues_observers_reversed` has `m` between the observers below that position and those above it, where it was first before.
+The source's observers are `pre`, `c`, `mid`, `m`. Before the removal, the walk appends `m`, `mid` reversed, `c`, `pre` reversed. `observers_remove_at_swap` removes `c` and moves `m` into its position, and over the resulting observer set the walk appends `mid` reversed, `m`, `pre` reversed.
 *)
-Corollary notify_after_swap f src s pre (m : node_id) (ms : nat) mid :
-  observer_items (observers_of (g_edges s) src) = pre ++ (m, ms) :: mid ->
-  NoDup (pre.*1 ++ m :: mid.*1) -> walk_ready s (pre.*1 ++ m :: mid.*1) ->
-  exists s', notify_dirty (S f) src s = Some s' /\ g_queue s' = g_queue s ++ rev mid.*1 ++ m :: rev pre.*1.
+Corollary notify_after_swap f src s s2 pre c cs (m : node_id) (ms : nat) mid latest o' :
+  observers_of (g_edges s) src = {| observer_items := pre ++ (c, cs) :: mid ++ [(m, ms)]; observer_latest := latest |} ->
+  NoDup (pre.*1 ++ c :: mid.*1 ++ [m]) -> walk_ready s (pre.*1 ++ c :: mid.*1 ++ [m]) ->
+  observers_remove_at c (length pre) (observers_of (g_edges s) src) = Some (o', Some (m, ms, length pre)) ->
+  observers_of (g_edges s2) src = o' ->
+  NoDup (pre.*1 ++ m :: mid.*1) -> walk_ready s2 (pre.*1 ++ m :: mid.*1) ->
+  (exists s', notify_dirty (S f) src s = Some s' /\ g_queue s' = g_queue s ++ m :: rev mid.*1 ++ c :: rev pre.*1) /\
+  (exists s', notify_dirty (S f) src s2 = Some s' /\ g_queue s' = g_queue s2 ++ rev mid.*1 ++ m :: rev pre.*1).
 Proof.
-  intros Hi Hn Hr. destruct (notify_queues_observers_reversed f src s) as (s' & W & Q).
-  - rewrite Hi, fmap_app. exact Hn.
-  - rewrite Hi, fmap_app. exact Hr.
-  - exists s'. split; [exact W|]. rewrite Q, Hi, fmap_app. simpl. rewrite rev_app_distr. simpl. rewrite <- app_assoc. reflexivity.
+  intros Ho Hn Hr Hrm Ho2 Hn2 Hr2.
+  assert (Hit : observer_items (observers_of (g_edges s2) src) = pre ++ (m, ms) :: mid).
+  { rewrite Ho2. rewrite Ho in Hrm. rewrite (proj1 (observers_remove_at_swap c cs m ms pre mid latest)) in Hrm.
+    injection Hrm as <-. reflexivity. }
+  assert (Hit0 : observer_items (observers_of (g_edges s) src) = pre ++ (c, cs) :: mid ++ [(m, ms)]) by (by rewrite Ho).
+  split.
+  - destruct (notify_queues_observers_reversed f src s) as (s' & W & Q).
+    + rewrite Hit0, fmap_app. simpl. rewrite fmap_app. exact Hn.
+    + rewrite Hit0, fmap_app. simpl. rewrite fmap_app. exact Hr.
+    + exists s'. split; [exact W|]. rewrite Q, Hit0, fmap_app. simpl. rewrite fmap_app, rev_app_distr. simpl. rewrite rev_app_distr. simpl. rewrite <- !app_assoc. reflexivity.
+  - destruct (notify_queues_observers_reversed f src s2) as (s' & W & Q).
+    + rewrite Hit, fmap_app. exact Hn2.
+    + rewrite Hit, fmap_app. exact Hr2.
+    + exists s'. split; [exact W|]. rewrite Q, Hit, fmap_app. simpl. rewrite rev_app_distr. simpl. rewrite <- app_assoc. reflexivity.
 Qed.
 
 (** ** The statements with no premise *)

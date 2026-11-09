@@ -2080,9 +2080,11 @@ Qed.
 
 *Check, not a guarantee.*
 
-`drain_order` meets `bodies_total`, and its history meets `inputs_total`.
+`drain_order` meets `bodies_total`, its history meets `inputs_total`, and the reference answers on that history.
 *)
-Theorem answers_reached : Refinement.bodies_total drain_order /\ Refinement.inputs_total drain_order drain_history.
+Theorem answers_reached :
+  Refinement.bodies_total drain_order /\ Refinement.inputs_total drain_order drain_history /\
+  (exists t0, Semantics.reference_trace 1 drain_order_identity drain_order drain_history = Some t0).
 Proof.
   assert (Hr0 : Refinement.Rdp drain_order 1).
   { exists 0. split_and!; [done|vm_compute; lia|left; vm_compute; by eexists]. }
@@ -2090,7 +2092,7 @@ Proof.
   { exists 2. split_and!; [done|vm_compute; lia|right; split; vm_compute; [done|by eexists]]. }
   assert (Hr3 : Refinement.Rdp drain_order 4).
   { exists 3. split_and!; [done|vm_compute; lia|right; split; vm_compute; [done|by eexists]]. }
-  split; [split|].
+  split_and!; [split| |vm_compute; by eexists].
   - intros n c _ Hc. simpl in Hc; apply lookup_insert_Some in Hc as [[<- <-]|[_ Hc]]; [|apply lookup_singleton_Some in Hc as [<- <-]]; cbn [Refinement.rename Refinement.body_ends].
     + split_and!; [reflexivity|by eexists|intros z Hz; vm_compute in Hz; injection Hz as <-; split; [lia|split; [vm_compute; lia|exact Hr0]]|].
       intros v. split; [reflexivity|by eexists].
@@ -2101,6 +2103,114 @@ Proof.
     all: intros v; split_and!; [reflexivity|by eexists|reflexivity|by eexists].
   - intros b i Hb Hi. apply list_elem_of_singleton in Hb as ->. apply list_elem_of_singleton in Hi as ->. vm_compute. by eexists.
 Qed.
+
+(**md
+**`runs_agree` fails on a redundant run, at the order read from the engine, and `queue_steady` fails on a reachable program.**
+
+*Check, not a guarantee.*
+
+`order_by` keeps the copies of a value together, so `[5; 4; 5]` as a round's list gives `5`, `4` to the reference. That does not meet the premise: the engine's runs at the whole history hold one more `5` than the reference's. Taking the queue at the flush's start, `flush_queue` holds `[6; 5; 6]`, so `queue_steady` fails too.
+*)
+Theorem runs_agree_has_content :
+  ~ Refinement.runs_agree requeue_order (Refinement.history_order 20000 requeue_order [requeue_batch]) 20000 [requeue_batch] /\
+  ~ Refinement.queue_steady 20000 (with_batch_depth 0 requeue_s1).
+Proof.
+  split.
+  - intros H.
+    assert (Hs : exists s r, run_top 20000 (Refinement.erase requeue_order [requeue_batch]) (init current_flags) = Some (s, r)) by (vm_compute; eexists _, _; reflexivity).
+    assert (Hr : exists st rs, Refinement.ref_all (Refinement.history_order 20000 requeue_order [requeue_batch]) requeue_order [requeue_batch] = Some (st, rs)) by (vm_compute; eexists _, _; reflexivity).
+    destruct Hs as (s & r & Es). destruct Hr as (st & rs & Er).
+    pose proof (H [requeue_batch] s r st rs (Refinement.pfx_refl _) Es Er) as Hag.
+    vm_compute in Es. injection Es as <- <-. vm_compute in Er. injection Er as <- <-. vm_compute in Hag. discriminate Hag.
+  - intros [_ He]. vm_compute in He. discriminate He.
+Qed.
+
+(** A program with a gap in its ids, and an effect reading the gap. *)
+Definition reads_unused : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z ]};
+  Semantics.program_memos := ∅;
+  Semantics.program_effects := {[ 2 := CRead 10 (K 1%Z) Nop ]};
+|}.
+
+(**md
+**`refinable` alone does not give an answer: an effect reading an id the program does not use has none at any fuel.**
+
+`reads_unused` is well formed and refinable, and no fuel gives an engine trace. The reference has no answer either, so the theorem refutes the form with no premise on the reference, and it does not refute `engine_of_answers_on` without `bodies_total`.
+*)
+Theorem refinable_alone_no_answer :
+  Semantics.well_formed_program reads_unused /\ Refinement.refinable reads_unused [] /\
+  (forall k, Refinement.engine_of current_flags k reads_unused [] = None) /\ rtrace reads_unused [] = None.
+Proof.
+  split_and!.
+  - refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+    + intros x Hx H. rewrite dom_empty_L in H. by apply not_elem_of_empty in H.
+    + rewrite !dom_singleton_L. set_solver.
+    + rewrite dom_empty_L. set_solver.
+    + apply map_Forall_empty.
+    + apply map_Forall_singleton. reflexivity.
+    + exists (fun n => n). apply map_Forall_empty.
+  - split_and!.
+    + intros m c Hc. simpl in Hc. by rewrite lookup_empty in Hc.
+    + intros n c Hc. simpl in Hc. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+    + intros b n Hb. by apply not_elem_of_nil in Hb.
+  - intros k. unfold Refinement.engine_of, trace_of. destruct (run_top k _ _) as [[s r]|] eqn:E; [|reflexivity]. exfalso.
+    pose proof (Refinement.fl_exec _ _ (Refinement.fuel_le_all k (100 + k) ltac:(lia)) _ _ _ _ E) as E'.
+    vm_compute in E'. discriminate E'.
+  - vm_compute. reflexivity.
+Qed.
+
+(** An effect whose failing arm has an unbound variable, under a signal that never makes that arm run. *)
+Definition dead_stuck_arm : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z ]};
+  Semantics.program_memos := ∅;
+  Semantics.program_effects := {[ 1 := CRead 10 (K 0%Z) (CIf (V 10) (CRet (V 99)) (CLog (V 10) Nop)) ]};
+|}.
+
+(**md
+**`bodies_total` fails on a stuck arm no run takes, and the engine and the reference both answer.**
+
+*Check, not a guarantee.*
+
+`bodies_total` reads a body over all answers to its reads. On `dead_stuck_arm` it is false, and the two traces are equal, so that premise is conservative on this program.
+*)
+Theorem bodies_conservative :
+  ~ Refinement.bodies_total dead_stuck_arm /\
+  Semantics.well_formed_program dead_stuck_arm /\ Refinement.refinable dead_stuck_arm [] /\
+  eng dead_stuck_arm [] = Some [EvRun 1; EvLog 1 0%Z] /\ rtrace dead_stuck_arm [] = Some [EvRun 1; EvLog 1 0%Z].
+Proof.
+  split_and!.
+  - intros [_ H]. pose proof (H 1 _ eq_refl eq_refl eq_refl) as Hb. cbn [Refinement.rename Refinement.body_ends] in Hb.
+    destruct Hb as (_&_&_&Hk). pose proof (Hk 1%Z) as Hb. destruct Hb as (_&_&Hif).
+    destruct (Hif 1%Z ltac:(vm_compute; reflexivity)) as [_ Ha]. destruct (Ha ltac:(lia)) as [_ [x Hx]]. vm_compute in Hx. discriminate Hx.
+  - refine (conj _ (conj _ (conj _ (conj _ (conj _ _))))); simpl.
+    + intros x Hx H. rewrite dom_empty_L in H. by apply not_elem_of_empty in H.
+    + rewrite !dom_singleton_L. set_solver.
+    + rewrite dom_empty_L. set_solver.
+    + apply map_Forall_empty.
+    + apply map_Forall_singleton. reflexivity.
+    + exists (fun n => n). apply map_Forall_empty.
+  - split_and!.
+    + intros m c Hc. simpl in Hc. by rewrite lookup_empty in Hc.
+    + intros n c Hc. simpl in Hc. apply lookup_singleton_Some in Hc as [_ <-]. reflexivity.
+    + intros b n Hb. by apply not_elem_of_nil in Hb.
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+Qed.
+
+(** A memo reading a memo with a higher id. *)
+Definition reads_higher : Semantics.program := {|
+  Semantics.program_signals := {[ 0 := 0%Z ]};
+  Semantics.program_memos := {[ 1 := CRead 10 (K 2%Z) (CRet (V 10)); 2 := CRead 10 (K 0%Z) (CRet (V 10)) ]};
+  Semantics.program_effects := {[ 3 := CRead 10 (K 1%Z) (CLog (V 10) Nop) ]};
+|}.
+
+(** The engine and the reference agree on a memo reading a higher id, over two batches. *)
+Example memo_reads_higher_id :
+  eng reads_higher [[Semantics.RWrite 0 1%Z]; [Semantics.RWrite 0 2%Z]] =
+    Some [EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 1%Z; EvRun 3; EvLog 3 2%Z] /\
+  rtrace reads_higher [[Semantics.RWrite 0 1%Z]; [Semantics.RWrite 0 2%Z]] =
+    Some [EvRun 3; EvLog 3 0%Z; EvRun 3; EvLog 3 1%Z; EvRun 3; EvLog 3 2%Z].
+Proof. split; vm_compute; reflexivity. Qed.
 
 (** ** No fuel answers on [restored_source] *)
 
