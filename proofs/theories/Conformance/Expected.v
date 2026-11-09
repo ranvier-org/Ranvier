@@ -195,6 +195,11 @@ Definition exp_cmp_never_passes_source : list event := [
   EvRun 9; EvLog 9 1%Z; EvHostRead 5 (Ok 1%Z)
 ].
 
+Definition exp_read_settles_writer : list event := [
+  EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 1%Z; EvRun 4; EvLog 4 9%Z;
+  EvHostRead 3 (Ok 9%Z)
+].
+
 Definition exp_cmp_never_lost_update : list event := [
   EvRun 10; EvLog 10 0%Z; EvHostRead 6 (Ok 8%Z); EvRun 10; EvLog 10 8%Z
 ].

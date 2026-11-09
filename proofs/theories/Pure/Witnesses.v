@@ -980,13 +980,15 @@ Qed.
 
 *Check, not a guarantee.*
 
-`prog_S04` ends in a state where `wake_told` fails with `f_reader_mark` cleared and holds on the present engine. `wake_ok` holds on both: the stale memo holds its flag. This witness has no `effect_ran_for_last_write` clause: a memo that writes its own source denotes nothing.
+`prog_S04` ends in a state where `wake_told` fails with `f_reader_mark` cleared and holds on the present engine. `wake_ok` holds on both: the stale memo holds its flag. With the mark the effect logs -1, 0, 2, 3 and the signal ends at 3. Without it the log stops at -1, 0 and the signal ends at 1. The flag on with the mark off is a model configuration: `2e8f9690` predates the flag. This witness has no `effect_ran_for_last_write` clause: a memo that writes its own source denotes nothing.
 *)
 Theorem witness_290 :
   exists s_bad s_good r_bad r_good,
     run_top 100000 prog_S04 (init no_reader_mark) = Some (s_bad, r_bad) /\
     run_top 100000 prog_S04 (init current_flags) = Some (s_good, r_good) /\
-    ~ wake_told s_bad /\ wake_told s_good /\ wake_ok s_bad /\ wake_ok s_good.
+    ~ wake_told s_bad /\ wake_told s_good /\ wake_ok s_bad /\ wake_ok s_good /\
+    g_trace s_bad = [EvRun 4; EvLog 4 (-1)%Z; EvRun 4; EvLog 4 0%Z; EvHostRead 1 (Ok 1%Z)] /\
+    g_trace s_good = [EvRun 4; EvLog 4 (-1)%Z; EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 2%Z; EvRun 4; EvLog 4 3%Z; EvHostRead 1 (Ok 3%Z)].
 Proof.
   exists (final_with no_reader_mark prog_S04), (final_with current_flags prog_S04), (Ok 0%Z), (Ok 0%Z).
   set (s_bad := final_with no_reader_mark prog_S04). set (s_good := final_with current_flags prog_S04).
@@ -1012,6 +1014,8 @@ Proof.
     vm_compute. reflexivity.
   - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
   - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
 Qed.
 
 (**md
@@ -1270,4 +1274,61 @@ Proof.
   assert (He : effects_only_read s) by (apply effects_only_read_of_shape; [exact Ha|vm_compute; reflexivity]).
   assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
   split_and!; try assumption; [exact (convergence 100000 _ s _ Hm Ha He Hq)|vm_compute; reflexivity].
+Qed.
+
+(** A batch that fails leaves a memo stale and a writing effect queued. A read runs the memo, whose batch owes a flush, and the
+    flush runs the effect before the read answers. *)
+Definition read_flush : cmd :=
+  CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
+  CMemo 3 Pure CmpEq (CBatch Nop (CRead 10 (V 1) (CRet (V 10)))) (
+  CEffect 4 (CRead 10 (V 2) (CRead 11 (V 3) (CIf (V 10) (CWrite (V 1) (K 9%Z) (CLog (V 11) Nop)) (CLog (V 11) Nop)))) (
+  CBatch (CWrite (V 1) (K 1%Z) (CWrite (V 2) (K 1%Z) (CThrow 5%Z))) Nop)))).
+
+(**md
+**Falsified: a read of a pure node can answer past what the node denotes at the read's start.**
+
+This is a counterexample, not a guarantee. It proves `read_per_node_statement` false. Memo `3` is pure and denotes 1, the effect left queued writes its source, and the read answers 9. The read settles a flush, which is not a defect, so the statement needs `quiescent`: `read_quiescent_statement` is unproved with no counterexample known.
+*)
+Theorem read_settles_writer : ~ read_per_node_statement.
+Proof.
+  intros H. set (s := final read_flush).
+  assert (Hm : run_top 100000 read_flush (init current_flags) = Some (s, Fail 5%Z)) by (vm_compute; reflexivity).
+  assert (Hr : read 1000 3 true s = Some (default s (fst <$> read 1000 3 true s), Ok 9%Z)) by (vm_compute; reflexivity).
+  assert (Hp : pure_in (shapes s) 3) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : pure_b (shapes s) 4 3 = true))).
+  pose proof (H 100000 1000 _ s _ 3 _ _ Hm Hp Hr) as Hd.
+  assert (Hd2 : denotes s 3 (Ok 1%Z)) by (exists 5; vm_compute; reflexivity).
+  pose proof (denotes_unique s 3 _ _ Hd Hd2) as Hz. discriminate Hz.
+Qed.
+
+(**md
+**Falsified on the present engine: at quiescence an effect can hold a read its source no longer answers.**
+
+This is a counterexample, not a guarantee. It proves `convergence_all_statement` false, twice: on [`self_marking_cleanup`](#self_marking_cleanup), where the effect's memo computes 50 and the effect read 0, and on [`never_lost`](#never_lost), where no body writes, the memo computes 7 and the effect read 0. Both programs are free of memo cycles.
+*)
+Theorem convergence_all_falsified :
+  (acyclic_at (final (self_marking_cleanup Nop)) /\ quiescent (final (self_marking_cleanup Nop)) /\
+   ~ converged_all (final (self_marking_cleanup Nop))) /\
+  (acyclic_at (final (never_lost Nop)) /\ quiescent (final (never_lost Nop)) /\ ~ converged_all (final (never_lost Nop))) /\
+  ~ convergence_all_statement.
+Proof.
+  assert (A1 : acyclic_at (final (self_marking_cleanup Nop))) by (apply acyclic_of_b; vm_compute; reflexivity).
+  assert (A2 : acyclic_at (final (never_lost Nop))) by (apply acyclic_of_b; vm_compute; reflexivity).
+  assert (Q1 : quiescent (final (self_marking_cleanup Nop))) by (split; vm_compute; reflexivity).
+  assert (Q2 : quiescent (final (never_lost Nop))) by (split; vm_compute; reflexivity).
+  assert (N1 : ~ converged_all (final (self_marking_cleanup Nop))).
+  { intros H. set (s := final (self_marking_cleanup Nop)) in *. set (d := default (signal_node 0%Z) (g_nodes s !! (6 : node_id))).
+    destruct (H 6 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as (_&_&Hsrc&_).
+    destruct (Hsrc 5 ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as [_ Hall].
+    pose proof (Hall (0%Z, StNone, None) ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as Hx.
+    assert (Hy : denotes_all s 5 (Ok 50%Z)) by (exists 6; vm_compute; reflexivity).
+    pose proof (denotes_all_unique s 5 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz. }
+  assert (N2 : ~ converged_all (final (never_lost Nop))).
+  { intros H. set (s := final (never_lost Nop)) in *. set (d := default (signal_node 0%Z) (g_nodes s !! (10 : node_id))).
+    destruct (H 10 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)) as (_&_&Hsrc&_).
+    destruct (Hsrc 6 ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as [_ Hall].
+    pose proof (Hall (0%Z, StNone, None) ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as Hx.
+    assert (Hy : denotes_all s 6 (Ok 7%Z)) by (exists 7; vm_compute; reflexivity).
+    pose proof (denotes_all_unique s 6 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz. }
+  split_and!; try assumption.
+  intros H. apply N2. refine (H 100000 (never_lost Nop) _ (Ok 0%Z) _ A2 Q2). vm_compute. reflexivity.
 Qed.

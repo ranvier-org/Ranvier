@@ -242,7 +242,7 @@ copy, so it needs no Rocq.
 | `failed_batch_leaves_queue` | `Pure/Witnesses.v` | A batch whose body fails leaves its effect queued and `Dirty` with no flush owed. Awaiting ruling in `BUGS.md`. |
 | `well_behaved_nothing_passed`, `well_behaved_no_lost_wakeups` | `Pure/WholeGraph.v` | A program from a new graph with every memo outside the self-dirtying case and every effect only reading ends with `gh_passed` empty and `wake_ok`. `self_dirtying` covers `CmpNever`, so a default memo returning a fresh record is outside this. |
 | `glitch_free_read_stored` | `Pure/WholeGraph.v` | In such a program, a read of a node outside the self-dirtying case answers what it denotes over the current signals, and a disposed memo what it stored. |
-| `glitch_free_read` | `Pure/WholeGraph.v` | **Open.** The same over the node's own premise alone, with a disposed memo answering its body. False: `glitch_free_read_falsified`. |
+| `convergence_all` | `Pure/WholeGraph.v` | **Open.** At quiescence, every effect ran and read what its sources compute, in every program without a memo cycle. False: `convergence_all_falsified`. The fix phase's target. |
 | `convergence`, `converged` | `Pure/WholeGraph.v` | In such a program at quiescence, each live effect is `Clean` and has an `EvRun`. Each source of its last run has a recorded read answering what the source denotes, its body gives one result over those reads and over the denotation, and its logs over the denotation are its last run's `EvLog`s. |
 | `witness_302`, `witness_290` | `Pure/Witnesses.v` | The regressions: with `f_unannounced` off `wake_ok` fails, and with `f_reader_mark` off `wake_told` fails, on the programs of scenarios S03 and S04. |
 | `wake_predicates_miss_self_marking` | `Pure/Witnesses.v` | `wake_ok` and `wake_told` both hold on the states `self_marking_wake_lost` leaves behind. |
@@ -251,6 +251,8 @@ copy, so it needs no Rocq.
 | `conformance_programs_well_behaved` | `Conformance/Check.v` | Seven conformance programs satisfy both premises. |
 | `effects_only_read_needed` | `Pure/Witnesses.v` | `effect_resolves_over_moved_source` falsifies the conclusion of `convergence`, and fails `effects_only_read`. |
 | `glitch_free_read_falsified` | `Pure/Witnesses.v` | A read of a disposed memo answers what it stored, and its body answers otherwise. |
+| `read_settles_writer` | `Pure/Witnesses.v` | A read in a state with a queue can settle a flush, and answer past what its node denoted at the start. |
+| `widened_forms_reached` | `Pure/Witnesses.v` | Batches and computed read targets, in memos and effects, reach every premise of `convergence`. |
 | `cmp_never_passes_source`, `never_lost_update` | `Pure/Witnesses.v` | With `CmpNever` memos and no write in a body, a walk passes a source, and an effect stays `Clean` on a stale value with an empty queue. A default memo returning a fresh record reaches this. Confirmed in `BUGS.md`. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` falls to `wake_ok` and `marks_survive_body_end`, and removing `MarkReaderCheck` to `wake_told`: `unannounced_off_fires`, `reader_mark_off_fires`. `wake_ok` holds with `MarkReaderCheck` removed, since the source holds its flag.

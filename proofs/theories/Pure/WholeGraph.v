@@ -178,23 +178,33 @@ Definition pure_in (S : gmap node_id (kind * comparer * env * cmd)) (n : node_id
     it is self-dirtying. An effect is self-dirtying: a read of an effect is stuck. *)
 Definition self_dirtying (s : state) (n : node_id) : Prop := ~ pure_in (shapes s) n.
 
-(** Every memo of the graph is outside the self-dirtying case. The exclusions, with the entry of [BUGS.md] behind each:
-    a write or cleanup in a memo's body: [self_marking_wake_lost], [walk_passed_source_marked],
-    [check_resolves_over_moved_source] and [nested_self_recompute_resets_cursor];
-    a read reaching itself or a later node: [self_read_check_overflow];
-    a [CmpNever] comparer, and so a memo returning a fresh record or other reference value under the default policy:
+(** Every memo of the graph is outside the self-dirtying case. A default memo returning a record is not well behaved: it is a
+    [CmpNever] memo, as [CORRESPONDENCE.md] records.
+
+    Exclusions resting on a counterexample, with the entry of [BUGS.md]: a write or cleanup in a memo's body:
+    [self_marking_wake_lost], [walk_passed_source_marked], [check_resolves_over_moved_source] and
+    [nested_self_recompute_resets_cursor]; a read reaching itself: [self_read_check_overflow]; a [CmpNever] comparer:
     [cmp_never_passes_source].
-    A [CmpThrows] comparer, an untracked read, a batch in a memo's body and a read of a node computed from an earlier read
-    have no entry: the proof covers bodies without them. *)
+
+    Exclusions resting on the proof's reach, each with no counterexample known: a [CmpThrows] comparer, an untracked read or
+    a node created in a memo's body, and a read of a later node that closes no cycle. *)
 Definition well_behaved_program (s : state) : Prop :=
   forall n d, g_nodes s !! n = Some d -> n_kind d = KMemo -> pure_in (shapes s) n.
 
 (** The body of an effect built from returns, failures, lets, branches, tracked reads, batches and logs, whose reads reach
-    only nodes outside the self-dirtying case. The write it rules out is [effect_resolves_over_moved_source]. *)
+    only nodes outside the self-dirtying case. The targets can be computed. *)
 Definition quiet_effect (s : state) (c : node_id) (d : node) : Prop :=
   n_kind d = KEffect /\ body_pure (fun t => readable (shapes s) t -> pure_in (shapes s) t) (n_env d) (n_body d).
 
-(** Named premise of [convergence], pending the owner's ruling on [effect_resolves_over_moved_source]. *)
+(** Named premise of [convergence]. The exclusions from an effect's body:
+
+    Resting on a counterexample: a write, by [effect_resolves_over_moved_source], pending the owner's ruling.
+
+    An untracked read: the logs clause of [converged] is false over it, since the source can move with no run, and what it
+    is entitled to is unstated. Unproved in a weaker form, with no counterexample.
+
+    Resting on the proof's reach, unproved with no counterexample: a cleanup, and an effect or other node created in the
+    body. *)
 Definition effects_only_read (s : state) : Prop :=
   forall c d, g_nodes s !! c = Some d -> n_kind d = KEffect -> quiet_effect s c d.
 
@@ -225,7 +235,8 @@ Definition denotes (s : state) (n : node_id) (o : outcome) : Prop := exists k, d
 Definition last_log (n : node_id) (tr : list event) : option val :=
   foldl (fun acc ev => match ev with EvLog m v => if decide (m = n) then Some v else acc | _ => acc end) None tr.
 
-(** An effect's latest log is what a source it observes computes from the current signals. *)
+(** An effect's latest log is what a source it observes computes from the current signals. It is existential, naming one
+    effect and one source, so it fits a witness with a single source. [converged] is the statement over every effect. *)
 Definition effect_ran_for_last_write (s : state) : Prop :=
   exists c d t v, g_nodes s !! c = Some d /\ n_kind d = KEffect /\
     t ∈ (slot_view (g_edges s) c).1 /\ denotes s t (Ok v) /\ last_log c (g_trace s) = Some v.
@@ -485,7 +496,7 @@ Proof.
   destruct (g_nodes s !! n); [by eexists|done].
 Qed.
 
-(** A larger graph leaves the purity of a node both graphs hold no stronger. *)
+(** A node pure in a larger graph is pure in the smaller. *)
 Lemma pure_at_sub S S' : (forall x v, S !! x = Some v -> S' !! x = Some v) ->
   forall k (t : node_id), is_Some (S !! t) -> pure_at S' k t -> pure_at S k t.
 Proof.
@@ -656,6 +667,7 @@ Definition value_ok (s : state) (c : node_id) (d : node) : Prop :=
 Definition qc (s : state) (c : node_id) (d : node) : Prop :=
   (pure_in (shapes s) c /\ n_kind d = KMemo) \/ quiet_effect s c d.
 
+(** The name of [well_behaved_program] in the invariant's [w_passed]. *)
 Definition all_pure (s : state) : Prop := well_behaved_program s.
 
 (** The invariant of the whole-graph theorems. Besides the memos' fields:
@@ -836,7 +848,7 @@ Qed.
 Lemma un_not_quiet d : un d -> quiet d -> False.
 Proof. intros [H1 H2] [H|H]; [by rewrite H in H1|congruence]. Qed.
 
-(** A node a mark from outside the quiet nodes can touch: impure, in [T], or stale with no flag. *)
+(** A node open to a mark from outside the quiet nodes: impure, in [T], or stale with no flag. *)
 Definition ysrc (T : node_id -> Prop) (s : state) (n : node_id) : Prop := pure_in (shapes s) n -> T n.
 
 Definition iny (T : node_id -> Prop) (s : state) (n : node_id) : Prop :=
@@ -955,7 +967,7 @@ End Touch.
 
 (** ** Runs below a stack *)
 
-(** The computations a call below [lim] can run or track for: pure nodes below [lim], and the current computation [x]. *)
+(** The computations in reach of a call below [lim]: pure nodes below [lim], and the current computation [x]. *)
 Definition rn (s : state) (lim : node_id) (x : option node_id) (m : node_id) : Prop :=
   (pure_in (shapes s) m /\ m < lim) \/ x = Some m.
 
@@ -3128,13 +3140,13 @@ Definition ran (X : node_id -> Prop) (s : state) : Prop :=
   forall c d, g_nodes s !! c = Some d -> quiet_effect s c d -> n_disposed d = false -> n_freshness d <> Dirty ->
     (X c /\ window d) \/ ran_ok s c d.
 
-(** Owners are hosted by nodes outside the quiet effects, so a log in a cleanup carries another label. *)
+(** The hosts of owners lie outside the quiet effects. *)
 Definition hosts (s : state) : Prop :=
   g_nodes s !! (0 : node_id) = None /\
   forall o y, g_owners s !! o = Some y ->
     (o_host y = 0 \/ is_Some (g_nodes s !! o_host y)) /\ forall d, g_nodes s !! o_host y = Some d -> ~ quiet_effect s (o_host y) d.
 
-(** Members of [gh_passed] exist. *)
+(** The facts beside [whole] and [np]. *)
 Definition pd (X : node_id -> Prop) (s : state) : Prop :=
   (forall c, c ∈ gh_passed (g_ghost s) -> is_Some (g_nodes s !! c)) /\ ran X s /\ hosts s.
 
@@ -5996,7 +6008,7 @@ Proof.
   by rewrite (body_eval_ext (den k s') (den k s)) by exact IH.
 Qed.
 
-(** A call below a stack leaves what a pure node denotes. *)
+(** What a pure node denotes after a call below a stack, it denoted before the call. *)
 Lemma den_atom (T : node_id -> Prop) lim x s s' :
   run_core s -> atom T lim x s s' -> (forall t, pure_in (shapes s) t -> ~ T t) ->
   forall k t o, pure_in (shapes s) t -> den k s' t = Some o -> den k s t = Some o.
@@ -6038,7 +6050,11 @@ Qed.
 
 After a whole program from a new graph, a read of a node outside the self-dirtying case answers what the node denotes over the current signals: a signal its value, a live memo its body, with each read in that body answered the same way, and a disposed memo what it stored, as Core.fs 4372-4376 documents.
 
-Premises: the program's end state has every memo outside the self-dirtying case and every effect only reading, and the read returns. These are whole-program premises. The node's own `~ self_dirtying` premise alone is the Open `glitch_free_read_statement`, which also drops the exception for a disposed memo, and that form is false: [`glitch_free_read_falsified`](Ranvier.Pure.Witnesses.html#glitch_free_read_falsified).
+Premises: the program's end state has every memo outside the self-dirtying case and every effect only reading, and the read returns. `pure_in` is the positive form of `~ self_dirtying`: it quantifies over every answer of a read, so it has no decision, and the negated form gives no proof of it without an axiom.
+
+The statement speaks at a program's end. A read in an open batch or a body is unstated. A read here can settle a flush, and the answer holds across it.
+
+The form over the node alone, with its other nodes free, is false: [`read_settles_writer`](Ranvier.Pure.Witnesses.html#read_settles_writer). At quiescence that form, `read_quiescent_statement`, is unproved with no counterexample known. The form with no exception for a disposed memo is false: [`glitch_free_read_falsified`](Ranvier.Pure.Witnesses.html#glitch_free_read_falsified).
 *)
 Theorem glitch_free_read_stored f f' c s r n s' o :
   run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> pure_in (shapes s) n ->
@@ -6136,7 +6152,15 @@ Definition converged (s : state) : Prop :=
 
 After a whole program from a new graph that leaves no live queue entry and nothing running, each live effect is `Clean` and has an `EvRun` in the trace. Each source read in its last run has a recorded read, each answering what the source denotes over the current signals. The effect's body, with each read answered from its recorded reads, gives the same result as with each read answered by the denotation, and its logs over the denotation are the `EvLog`s of its last run.
 
-Premises: the program's end state has every memo outside the self-dirtying case, and every effect only reads. `effects_only_read` excludes [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source), which falsifies the conclusion ([`effects_only_read_needed`](Ranvier.Pure.Witnesses.html#effects_only_read_needed)), and is provisional, pending the owner's ruling on that entry. It also excludes an effect's cleanup, which is unproved either way. `quiescent` excludes the queue `failed_batch_leaves_queue` leaves. [`convergence_reached`](Ranvier.Pure.Witnesses.html#convergence_reached) reaches every premise on a live effect over live memos.
+Premises: the program's end state has every memo outside the self-dirtying case, and every effect only reads. Batches and computed read targets are inside the premises, in memos and in effects: [`widened_forms_reached`](Ranvier.Pure.Witnesses.html#widened_forms_reached).
+
+Exclusions from an effect's body:
+
+- A write rests on a counterexample: [`effect_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#effect_resolves_over_moved_source) falsifies the conclusion ([`effects_only_read_needed`](Ranvier.Pure.Witnesses.html#effects_only_read_needed)). This premise is provisional, pending the owner's ruling on that entry.
+- An untracked read: the logs clause is false over it, since the source can move with no run. A weaker form is unproved with no counterexample.
+- A cleanup, and an effect or other node created in the body, rest on the proof's reach: unproved with no counterexample.
+
+`quiescent` excludes the queue `failed_batch_leaves_queue` leaves. [`convergence_reached`](Ranvier.Pure.Witnesses.html#convergence_reached) reaches every premise on a live effect over live memos. The form over all programs is the Open `convergence_all_statement`.
 *)
 Theorem convergence f c s r :
   run_top f c (init current_flags) = Some (s, r) -> well_behaved_program s -> effects_only_read s -> quiescent s ->
@@ -6246,7 +6270,7 @@ Proof.
   unfold pure_in. rewrite pure_at_unfold, (shapes_lookup s t d Hd). unfold shape_of. rewrite Ek. done.
 Qed.
 
-(** In a well-behaved program, an effect reads only pure nodes whatever its targets compute, so the premise is its grammar. *)
+(** In a well-behaved program, the premise on effects is their grammar: their reads reach pure nodes whatever the targets compute. *)
 Lemma effects_only_read_of_shape s :
   well_behaved_program s ->
   forallb (fun x : node_id * node => match n_kind x.2 with KEffect => body_shape (n_body x.2) | _ => true end) (map_to_list (g_nodes s)) = true ->
@@ -6367,17 +6391,131 @@ Fixpoint body_den (k : nat) (s : state) (n : node_id) : option outcome :=
     end
   end.
 
-(** The unqualified statement of the read: a read of a node outside the self-dirtying case answers what its body
-    computes over the current signals. [disposed_stale_source_read] in [BUGS.md] is its counterexample. *)
+(** The first statement of the read: a read of a node outside the self-dirtying case answers what its body computes over
+    the current signals. [disposed_stale_source_read] is its counterexample, and Core.fs 4372-4376 documents that answer. *)
 Definition glitch_free_read_statement : Prop :=
   forall f f' c s r n s' o,
     run_top f c (init current_flags) = Some (s, r) -> ~ self_dirtying s n ->
     read f' n true s = Some (s', o) -> exists k, body_den k s n = Some o.
 
-(**md
-**Open, and false on the present engine: a read outside the self-dirtying case answers what the node's body computes.**
+(** The read for a pure node, over a program whose other nodes are free. A read can settle a flush, and an effect in it can
+    write a source of the node, so this needs a state with nothing queued: [read_settles_writer] is the counterexample. *)
+Definition read_per_node_statement : Prop :=
+  forall f f' c s r n s' o,
+    run_top f c (init current_flags) = Some (s, r) -> pure_in (shapes s) n ->
+    read f' n true s = Some (s', o) -> denotes s n o.
 
-This states the unqualified read, as `glitch_free_read_statement`. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, so [`glitch_free_read_falsified`](Ranvier.Pure.Witnesses.html#glitch_free_read_falsified) proves it false. Use [`glitch_free_read_stored`](#glitch_free_read_stored).
+(** The same at quiescence. Unproved, and no counterexample is known. *)
+Definition read_quiescent_statement : Prop :=
+  forall f f' c s r n s' o,
+    run_top f c (init current_flags) = Some (s, r) -> quiescent s -> pure_in (shapes s) n ->
+    read f' n true s = Some (s', o) -> denotes s n o.
+
+(** ** The statement over all programs *)
+
+(** A memo's body with its writes and cleanups erased and its untracked reads as reads: what it computes from the signals. *)
+Fixpoint erase (c : cmd) : cmd :=
+  match c with
+  | CLet x v k => CLet x v (erase k)
+  | CIf v a b => CIf v (erase a) (erase b)
+  | CRead x n k => CRead x n (erase k)
+  | CTryRead x ok n k => CTryRead x ok n (erase k)
+  | CReadUntracked x n k => CRead x n (erase k)
+  | CWrite _ _ k => erase k
+  | CCleanup _ k => erase k
+  | CBatch b k => CBatch (erase b) (erase k)
+  | CLog v k => CLog v (erase k)
+  | _ => c
+  end.
+
+(** What a node's erased body computes over the current signals, and a disposed memo's stored answer. *)
+Fixpoint den_all (k : nat) (s : state) (n : node_id) : option outcome :=
+  match k with
+  | 0 => None
+  | Datatypes.S k' =>
+    match g_nodes s !! n with
+    | None => None
+    | Some d =>
+      match n_kind d with
+      | KSignal => Some (view_answer (read_view_of d))
+      | KEffect => None
+      | KMemo =>
+        if n_disposed d then Some (view_answer (read_view_of d))
+        else body_eval (den_all k' s) (n_env d) (erase (n_body d))
+      end
+    end
+  end.
+
+Definition denotes_all (s : state) (n : node_id) (o : outcome) : Prop := exists k, den_all k s n = Some o.
+
+Lemma den_all_S k s n o : den_all k s n = Some o -> den_all (Datatypes.S k) s n = Some o.
+Proof.
+  revert n o. induction k as [|k IH]; intros n o; [done|]. simpl (den_all (Datatypes.S k)). intros Hd.
+  remember (Datatypes.S k) as k0. simpl. rewrite Heqk0 in *. simpl in Hd.
+  destruct (g_nodes s !! n) as [d|]; [|done].
+  destruct (n_kind d); try done. destruct (n_disposed d); [done|].
+  revert Hd. apply body_eval_mono. intros t x. apply IH.
+Qed.
+
+Lemma den_all_mono k k' s n o : k <= k' -> den_all k s n = Some o -> den_all k' s n = Some o.
+Proof. induction 1 as [|k0 _ IH]; [done|]. intros H. apply den_all_S. auto. Qed.
+
+Lemma denotes_all_unique s n o o' : denotes_all s n o -> denotes_all s n o' -> o = o'.
+Proof.
+  intros [k H1] [k' H2]. assert (H1' : den_all (k + k') s n = Some o) by (eapply den_all_mono; [|exact H1]; lia).
+  assert (H2' : den_all (k + k') s n = Some o') by (eapply den_all_mono; [|exact H2]; lia). congruence.
+Qed.
+
+(** Each memo reads, for every answer of its earlier reads, only memos of lower rank: the premise [memos_acyclic] of the
+    reference tier, over the end state. *)
+Definition acyclic_at (s : state) : Prop :=
+  exists rank : node_id -> nat, forall m d, g_nodes s !! m = Some d -> n_kind d = KMemo ->
+    body_pure (fun t => match g_nodes s !! t with Some dt => n_kind dt = KMemo -> rank t < rank m | None => True end)
+      (n_env d) (erase (n_body d)).
+
+(** A sufficient test of [acyclic_at]: each memo reads only nodes with lower ids, by targets known ahead of the run. *)
+Definition acyclic_b (s : state) : bool :=
+  forallb (fun x : node_id * node =>
+    match n_kind x.2 with
+    | KMemo => body_ok (fun t => bool_decide (t < x.1)) (static_of (n_env x.2)) (erase (n_body x.2))
+    | _ => true
+    end) (map_to_list (g_nodes s)).
+
+Lemma acyclic_of_b s : acyclic_b s = true -> acyclic_at s.
+Proof.
+  intros H. exists (fun t => t). intros m d Hd Hk. unfold acyclic_b in H. rewrite forallb_forall in H.
+  assert (Hin : In (m, d) (map_to_list (g_nodes s))) by (apply list_elem_of_In; apply elem_of_map_to_list; exact Hd).
+  specialize (H _ Hin). simpl in H. rewrite Hk in H. eapply body_ok_pure; [|apply static_agrees_of|exact H].
+  intros t Ht. apply bool_decide_eq_true_1 in Ht. destruct (g_nodes s !! t); [intros _; exact Ht|done].
+Qed.
+
+(** A body with an untracked read: its log can stay behind, and the program holds no record of what the read answered. *)
+Fixpoint has_untracked (c : cmd) : bool :=
+  match c with
+  | CLet _ _ k | CRead _ _ k | CTryRead _ _ _ k | CLog _ k | CWrite _ _ k | CCleanup _ k => has_untracked k
+  | CIf _ a b | CBatch a b => has_untracked a || has_untracked b
+  | CReadUntracked _ _ _ => true
+  | _ => false
+  end.
+
+(** Each live effect is [Clean] and ran, each source of its last run answered what its erased body computes now, and,
+    with no untracked read in the effect, its last run logged what its erased body logs over those answers. *)
+Definition converged_all (s : state) : Prop :=
+  forall e d, g_nodes s !! e = Some d -> n_kind d = KEffect -> n_disposed d = false ->
+    n_freshness d = Clean /\ 0 < count_runs e (g_trace s) /\
+    (forall t, t ∈ read_prefix (g_edges s) e -> seen_of (g_ghost s) e t <> [] /\
+       forall v, v ∈ seen_of (g_ghost s) e t -> denotes_all s t (view_answer v)) /\
+    (has_untracked (n_body d) = false -> exists k,
+       body_logs (den_all k s) (n_env d) (erase (n_body d)) = Some (last_run_logs e (g_trace s))).
+
+(** Over all programs, with memo cycles and self-reads excluded and nothing else. *)
+Definition convergence_all_statement : Prop :=
+  forall f c s r, run_top f c (init current_flags) = Some (s, r) -> acyclic_at s -> quiescent s -> converged_all s.
+
+(**md
+**Open, and false on the present engine: at quiescence, every effect ran and read what its sources compute, in every program without a memo cycle.**
+
+This states what the fix phase owes, as `convergence_all_statement`. The only premises are `quiescent` and `acyclic_at`, as a memo cycle or self-read is outside the contract. A disposed memo answers what it stored, as Core.fs 4372-4376 documents. An effect that writes is inside the statement, and `effect_resolves_over_moved_source` falls under it, pending the owner's ruling on that entry. [`convergence_all_falsified`](Ranvier.Pure.Witnesses.html#convergence_all_falsified) proves the statement false from `self_marking_wake_lost` and from the lost update of `cmp_never_passes_source`. Use [`convergence`](#convergence) until the fix.
 *)
-Theorem glitch_free_read : glitch_free_read_statement.
+Theorem convergence_all : convergence_all_statement.
 Proof. Admitted.

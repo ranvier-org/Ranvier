@@ -203,7 +203,6 @@ Print Assumptions well_behaved_nothing_passed.
 Print Assumptions well_behaved_no_lost_wakeups.
 Print Assumptions glitch_free_read_stored.
 Print Assumptions convergence.
-Print Assumptions glitch_free_read.
 Print Assumptions glitch_free_read_falsified.
 Print Assumptions witness_302.
 Print Assumptions witness_290.
@@ -213,3 +212,6 @@ Print Assumptions effects_only_read_needed.
 Print Assumptions cmp_never_passes_source.
 Print Assumptions never_lost_update.
 Print Assumptions widened_forms_reached.
+Print Assumptions read_settles_writer.
+Print Assumptions convergence_all.
+Print Assumptions convergence_all_falsified.

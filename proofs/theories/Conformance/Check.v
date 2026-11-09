@@ -405,6 +405,11 @@ Example check_fresh_record_lost_update :
   never_lost_trace = Some exp_fresh_record_lost_update.
 Proof. vm_compute. reflexivity. Qed.
 
+(** The host read is the [read] here, and the F# scenario records its answer once the read returns. *)
+Example check_read_settles_writer :
+  (r ← run_top 100000%nat read_flush (init current_flags); r' ← read 1000%nat 3%nat true r.1; Some (g_trace r'.1 ++ [EvHostRead 3%nat r'.2])) = Some exp_read_settles_writer.
+Proof. vm_compute. reflexivity. Qed.
+
 (** The conformance programs with every memo outside the self-dirtying case and every effect only reading. *)
 Example conformance_programs_well_behaved :
   Forall (fun p => well_behaved_b (end_of p) = true /\ effects_only_read_b (end_of p) = true)

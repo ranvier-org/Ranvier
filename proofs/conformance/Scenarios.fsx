@@ -995,6 +995,39 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
             c.Check (c.HostRead 5 (fun () -> a.Value) = 1) "the memo's body answers 1"
 
+        // A batch that fails leaves `a` stale and a writing effect queued. A read of `a` runs it, its batch owes a flush, and
+        // the flush runs the effect before the read answers.
+        "read_settles_writer",
+        fun c ->
+            let s = c.Signal 1 0
+            let t = c.Signal 2 0
+
+            let a =
+                c.Memo 3 (fun () ->
+                    c.Batch (fun () -> ())
+                    s.Value)
+
+            c.Effect 4 (fun () ->
+                let v = t.Value
+                let x = a.Value
+
+                if v <> 0 then
+                    s.Value <- 9
+
+                c.Log 4 x)
+            |> ignore
+
+            try
+                c.Batch (fun () ->
+                    s.Value <- 1
+                    t.Value <- 1
+                    c.Throw 5)
+            with Boom _ ->
+                ()
+
+            c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
+            c.Check (c.HostRead 3 (fun () -> a.Value) = 9) "the read answers past the flush"
+
         // BUGS.md, cmp_never_passes_source. `a` is passed and left `Dirty` with no announcement, so writes of a signal only
         // `a` reads stop there. The effect stays clean on 0, and a flush changes nothing, until a host read of `a`.
         "cmp_never_lost_update",

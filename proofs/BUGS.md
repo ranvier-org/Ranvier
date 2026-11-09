@@ -66,8 +66,8 @@ intended, the entry closes as "spec corrected".
   queue and nothing running, every effect's last run read, from each source, the value that source's body computes from the
   current signals. A form over each source's stored value passes on these witnesses, since the effect read the stored 0.
   These programs are outside the well-behaved fragment, since `well_behaved_memo` rejects `CWrite` and `CCleanup`, so the
-  fragment's convergence theorem and refinement are not falsified. Task 11 owns the statement of that property over all
-  programs. `resolve_clean_no_stale_source` (Task 8) is the Open form at a single resolution, falsified through `stale_source_reader`: the
+  fragment's convergence theorem and refinement are not falsified. `convergence_all_statement` (`theories/Pure/WholeGraph.v`) is the statement of that property over all
+  programs, the fix phase's target, and `convergence_all_falsified` proves it false on `self_marking_cleanup`. `resolve_clean_no_stale_source` (Task 8) is the Open form at a single resolution, falsified through `stale_source_reader`: the
   reader answers 0 with the signal at 2 and its source `Dirty`, and the source's next run answers 2. The harness asserts each of these.
   **Contrary evidence, by shape.** `tests/Ranvier.Tests/Invalidation.fs:33-35` says "A memo that writes is outside the
   contract" and "The same shape arises legitimately from a source that settles inline". `self_marking_body` and
@@ -120,9 +120,7 @@ intended, the entry closes as "spec corrected".
   catch." That test reads through `Peek`, so it takes no edge to itself and does not reach this path.
   **The contract is the owner's call.** A self-reading memo may be outside the contract, and the owner decides that. No document
   found says this outcome is intended, which is why the entry is Confirmed and not closed as spec corrected.
-  **Theorems.** `glitch_free_read` (Task 11) is affected: for a node that is not `self_dirtying`, a read returns what its body
-  computes, and this read returns nothing. Task 11's `self_dirtying` or `well_behaved_program` must exclude memo cycles, self-reads
-  included, or this program falsifies the theorem. The plan's Task 11 carries that. No proved theorem is falsified, and none is
+  **Theorems.** `glitch_free_read_stored` (Task 11) and `self_dirtying` exclude this program: a read of a node, or of itself, later than the reader makes the reader self-dirtying, for every answer of its earlier reads: `self_dirtying_covers_known_cases`. `convergence_all_statement` takes `acyclic_at` for the same reason. No proved theorem is falsified, and none is
   weakened. `well_formed_program` includes `memos_acyclic`, which rejects this program, so Task 12's `engine_of_answers` and `weak_refinement` keep
   their form with that premise. `well_behaved_memo` alone accepts a self-read and is no substitute for it. Any statement that `read`
   or `update_if_necessary` returns needs `memos_acyclic` as a premise, and Task 8's `resolve_clean_no_move` and Task 9's
@@ -188,6 +186,7 @@ intended, the entry closes as "spec corrected".
   **Confirmed, with no documentation behind it.** The guide documents the comparison and says an equal copy propagates. No document found says a propagating memo can leave a reader asleep. 4301-4302 says "Reaching the end still in `Check` means nothing above moved", and here something above moved.
   **Same cause as `walk_passed_source_marked`:** a walk passes a source, a later source's run marks it, the notice finds the effect in `Check`, and the walk ends. Here the mark comes from a move of a fresh value and not from a write, so one fix can close both, and a fix that only guards body writes closes neither route here.
   **Theorems.** A memo returning a fresh reference value maps to `CmpNever`, and `well_behaved_program` excludes `CmpNever`: `well_behaved_nothing_passed` and `convergence` do not reach this program, and "well-behaved" does not cover a default memo returning a record.
+  `never_lost_update` is the second falsifier of `convergence_all_statement`, the fix phase's target: `convergence_all_falsified`.
 
 - `effect_resolves_over_moved_source` (scenario of the same name; `theories/Pure/Witnesses.v`, same name): the effect form of
   `check_resolves_over_moved_source`. An effect reads `a`, writes `a`'s source, and reads `b`, a memo over `a`. The write marks `a` `Dirty` and the
@@ -198,6 +197,7 @@ intended, the entry closes as "spec corrected".
   Against the documents: 386-393 give the skip's reason, that the computation "receives the new value from that very read", and this read is of `b`. Unlike a memo,
   an effect that writes is inside the contract: `well_behaved_memo` restricts memos only. `wake_ok` holds, since `a` is `Clean`. So this falsifies no theorem of this layer.
   **`convergence`.** `effects_only_read_needed` proves the conclusion of `convergence` false on this program, whose memos are all well behaved. `convergence` takes `effects_only_read` as a named premise, which excludes every effect that writes. The premise is provisional: the ruling on this entry decides whether it stays or narrows.
+  **What `effects_only_read` excludes.** A write rests on this counterexample. An untracked read makes the logs clause of `converged` false, since the source can move with no run; a weaker form is unproved with no counterexample. A cleanup and a node created in the body rest on the proof's reach: unproved with no counterexample. Batches and computed read targets are inside it. `convergence_all_statement` has none of these premises, and this entry falls under it.
   `moved_run_skips_current` states the skip, and `skip_removed_fires` shows it fails with the skip removed.
 
 ## Awaiting ruling
@@ -278,6 +278,12 @@ intended, the entry closes as "spec corrected".
   effect's status and an empty queue. Core.fs 4372-4376 documents it: a disposed memo "still answers reads, with the last value it computed" and "stops being woken". No wake-up
   is owed, so `wake_ok`, `wake_told` and `later_mark_forwarded` cover live sources, and `resolve_over_disposed_dirty_source` is the same case through a walk.
 
+- `glitch_free_read_statement` (`theories/Pure/WholeGraph.v`), closed as spec corrected. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, as `disposed_stale_source_read` closed the same form of `wake_ok`. `glitch_free_read_falsified` is the record. `glitch_free_read_stored` is the form proved. The form over the node alone is false in a state with a queue, since a read can settle a flush, and that is no defect: `read_settles_writer`, scenario of the same name, F# trace `[EvRun 4; EvLog 4 0; EvRun 4; EvLog 4 1; EvRun 4; EvLog 4 9; EvHostRead 3 (Ok 9)]`. At quiescence that form, `read_quiescent_statement`, is unproved with no counterexample known.
+
+## Rulings
+
+- Scaffolding (M6, Task 11 fix round 1): `theories/Pure/WholeGraph.v` keeps its internal names public this round. Task 12 uses qualified imports if a name collides.
+
 ## Definition changes
 
 Changes to `redundant` from its first statement in the plan.
@@ -319,5 +325,4 @@ Names of theorems that may contain `Admitted`, `admit` or an `Axiom`, one per li
   proves that. Use `marks_survive_body_end` until the fix.
 - `run_end_edges_are_reads` (`theories/Pure/Runs.v`): the same Confirmed bug, and `run_end_edges_are_reads_falsified` proves that. Use
   `run_end_edges_are_latest_reads` or `run_end_edges_no_nested_run` until the fix.
-- `glitch_free_read` (`theories/Pure/WholeGraph.v`): a disposed memo answers what it stored, as Core.fs 4372-4376 documents, so the body's answer over the current signals is the wrong statement for it. `disposed_stale_source_read`
-  is the counterexample, and `glitch_free_read_falsified` proves that. This statement is a specification correction waiting for the owner to drop it or restate it, and no engine fix is owed. Use `glitch_free_read_stored`.
+- `convergence_all` (`theories/Pure/WholeGraph.v`): `self_marking_wake_lost` and the lost update of `cmp_never_passes_source` falsify it on the present engine, and `convergence_all_falsified` proves that. It states what the fix owes, over every program without a memo cycle. Use `convergence` until the fix.
