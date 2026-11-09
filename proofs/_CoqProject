@@ -17,6 +17,7 @@ theories/Pure/Ownership.v
 theories/Pure/WholeGraph.v
 theories/Pure/Refinement.v
 theories/Pure/Witnesses.v
+theories/Pure/Optimised.v
 theories/Pure/Ledger.v
 theories/Conformance/Expected.v
 theories/Conformance/Check.v

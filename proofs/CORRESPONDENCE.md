@@ -173,3 +173,20 @@ Each row's symbols are in `theories/Pure/Engine.v`, and `theories/Conformance/Ch
 - The closing is a host read of each memo existing when it starts, in id order, then `Graph.Flush`, as `run_flush`. It sits in the trace and is the same command on both sides. The end state before it keeps stale nodes visible, so the closing masks nothing.
 - Known limits of the skip rules. Model `None` conflates exhausted fuel and a stuck body, so a model-only stuck goes unseen when the F# is at `budget` or `fatal`. A program that diverges on both sides has no comparison of the trace prefix before the divergence. `excluded` is judged on the F# alone, so what the model does on an excluded program is not compared. The model driver has no watchdog, and the workflow's `timeout-minutes` bounds it.
 - `EPrev` reads the previous value from the environment, as `prev_var` does, and the interpreter sets it from the argument `Memo` passes to the body.
+- `RANVIER_SKIP_MODE` (`off` by default, `leave-dirty` or `all`) selects the skip mode of the model side, through `observed_mode`. Mode `off` is `observed` (`observed_mode_off`). The view leaves out the epoch and the stamps.
+
+## The saturated-write skip
+
+`Pure/Optimised.v` models the optimisation of Task 13a as its own transitions (`oexec` and the functions defined with it),
+each its namesake of `Pure/Engine.v` with three changes. The F# side is not written: `src/Ranvier` has no diff.
+
+| Model symbol | Core.fs symbol | Simplification and reason |
+|---|---|---|
+| `g_skip`, `skip_mode` | none | The mode is model-only. `SkipOff` is the present engine, `SkipAll` the design, and `SkipLeaveDirty` advances only at 4191, 4207 and 4807, for the counterexamples. The engine of `Pure/Engine.v` reads none of the three fields. |
+| `g_epoch`, `advance`, `advance_point` | a graph `epoch : int64` | `nat`, so no wrap. Each `advance` sits in the step of its write: 4191 in `orecompute`, 4207 in `orun_memo`, 4290 in `oannounce`, 4802/4807 in `oexecute_effect` after the `Clean` and unqueued write, 4825 in `orun_effect` after `in_cleanup <- false`. 4786 has none. |
+| `g_stamps`, `record`, `notify_write` | a `Signal` field `stamp` | The setter's walk (3817-3818) records the epoch on the signal when it returns. `notify_write` skips the walk while the stamp is current, at positive fuel, and keeps the value write, the events and `RequestFlush`. `WriteExcept` has no model command. |
+| `unstamp`, `links`, `otrack` | `AddObserver`, `TryAddObserver` (3767-3780) | A tracked read clears the stamp exactly when `sources_add` takes its miss branch, the branch that calls `AddObserver` or `TryAddObserver`. |
+| `saturated`, `memo_saturated`, `effect_saturated` | `Memo.MarkDirty` (4483-4504), `Effect.MarkDirty` (4742-4755) | A node a `Dirty` mark leaves unchanged (`mark_dirty_saturated_id`). A signal and an absent node count as saturated. |
+
+The table of helpers to `keeps_or_advances` lemmas of the plan is not written: the record is unsound under the advance
+table (`saturated_record_unsound`), so Step 3 stopped at the design gate. See `README.md`, Task 13a.

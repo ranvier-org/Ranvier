@@ -144,6 +144,10 @@ type ('k, 'a, 'm) insert = 'k -> 'a -> 'm -> 'm
 
 val insert0 : ('a1, 'a2, 'a3) insert -> 'a1 -> 'a2 -> 'a3 -> 'a3
 
+type ('k, 'm) delete = 'k -> 'm -> 'm
+
+val delete0 : ('a1, 'a2) delete -> 'a1 -> 'a2 -> 'a2
+
 type ('k, 'a, 'm) alter = ('a -> 'a) -> 'k -> 'm -> 'm
 
 val alter0 : ('a1, 'a2, 'a3) alter -> ('a2 -> 'a2) -> 'a1 -> 'a3 -> 'a3
@@ -423,6 +427,8 @@ val map_fold :
   ('a1, 'a2, 'a3) mapFold -> ('a1 -> 'a2 -> 'a4 -> 'a4) -> 'a4 -> 'a3 -> 'a4
 
 val map_insert : ('a1, 'a2, 'a3) partialAlter -> ('a1, 'a2, 'a3) insert
+
+val map_delete : ('a1, 'a2, 'a3) partialAlter -> ('a1, 'a3) delete
 
 val map_singleton :
   ('a1, 'a2, 'a3) partialAlter -> 'a3 empty -> ('a1, 'a2, 'a3) singletonM
@@ -764,6 +770,11 @@ type ghost = { gh_published : (node_id, read_view) gmap;
 
 val empty_ghost : ghost
 
+type skip_mode =
+| SkipOff
+| SkipLeaveDirty
+| SkipAll
+
 type state = { g_flags : flags; g_edges : edgeWorld;
                g_nodes : (node_id, node) gmap;
                g_owners : (owner_id, owner_state) gmap;
@@ -773,7 +784,8 @@ type state = { g_flags : flags; g_edges : edgeWorld;
                g_untracked : bool; g_current_owner : owner_id option;
                g_next_id : nat; g_trace : event list;
                g_running : node_id list; g_ghost : ghost;
-               g_registered : (node_id, nat) gmap }
+               g_registered : (node_id, nat) gmap; g_skip : skip_mode;
+               g_epoch : nat; g_stamps : (node_id, nat) gmap }
 
 val node_marked : freshness -> bool -> bool -> node -> node
 
@@ -850,6 +862,12 @@ val with_running : node_id list -> state -> state
 val with_ghost : ghost -> state -> state
 
 val with_registered : (node_id, nat) gmap -> state -> state
+
+val with_skip : skip_mode -> state -> state
+
+val with_epoch : nat -> state -> state
+
+val with_stamps : (node_id, nat) gmap -> state -> state
 
 val node_with_value : val0 -> node -> node
 
@@ -1050,6 +1068,86 @@ val run_top : nat -> cmd -> outcome m
 
 val trace_of : nat -> flags -> cmd -> event list option
 
+type advance_point =
+| A4191
+| A4207
+| A4290
+| A4807
+| A4825
+
+val advances : skip_mode -> advance_point -> bool
+
+val advance : advance_point -> unit0 m
+
+val skip_on : skip_mode -> bool
+
+val skip_due : nat -> node_id -> state -> bool
+
+val record : node_id -> state -> state
+
+val notify_write : nat -> node_id -> state -> state option
+
+val unstamp : node_id -> state -> state
+
+val links : node_id -> node_id -> edgeWorld -> bool
+
+val otrack : node_id -> unit0 m
+
+val oannounce : node_id -> unit0 m
+
+val oexec : nat -> env -> cmd -> outcome m
+
+val oread : nat -> node_id -> bool -> outcome m
+
+val oread_node : nat -> node_id -> outcome m
+
+val oupdate_if_necessary : nat -> node_id -> unit0 m
+
+val orefresh_or_pull : nat -> node_id -> unit0 m
+
+val opull : nat -> node_id -> unit0 m
+
+val orefresh : nat -> node_id -> unit0 m
+
+val oresolve_walk : nat -> node_id -> nat -> unit0 m
+
+val orecompute : nat -> node_id -> unit0 m
+
+val orun_memo : nat -> node_id -> unit0 m
+
+val oexecute_effect : nat -> node_id -> unit0 m
+
+val orun_effect : nat -> node_id -> unit0 m
+
+val orun_effect_body : nat -> node_id -> unit0 m
+
+val odischarge : nat -> owner_id -> unit0 m
+
+val oretire : nat -> owner_id -> unit0 m
+
+val odispose_scope : nat -> owner_id -> unit0 m
+
+val oteardown :
+  nat -> owner_id -> link list -> ((cmd, env) prod, nat) prod list -> unit0 m
+
+val orun_cleanup : nat -> owner_id -> cmd -> env -> unit0 m
+
+val orelease : nat -> node_id -> unit0 m
+
+val odispose_node : nat -> node_id -> unit0 m
+
+val oattach : nat -> node_id -> owner_id -> unit0 m
+
+val owrite_signal : nat -> node_id -> val0 -> unit0 m
+
+val orequest_flush : nat -> unit0 m
+
+val osettle_flush : nat -> unit0 m
+
+val orun_flush : nat -> unit0 m
+
+val odrain : nat -> unit0 m
+
 type node_view = { v_id : node_id; v_kind : kind; v_value : val0;
                    v_status : status; v_failure : val0 option;
                    v_freshness : freshness; v_unannounced : bool;
@@ -1071,3 +1169,9 @@ val closing : nat -> unit0 m
 val observed :
   nat -> flags -> cmd -> ((event list, state_view) prod, state_view) prod
   option
+
+val oclosing : nat -> unit0 m
+
+val observed_mode :
+  nat -> flags -> skip_mode -> cmd -> ((event list, state_view) prod,
+  state_view) prod option

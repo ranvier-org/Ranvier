@@ -26,6 +26,8 @@ fi
 count="${1:-200}"
 seed="${2:-1}"
 fuel="${RANVIER_DIFF_FUEL:-2000}"
+# The skip mode of the model side: off (the default, and CI's), leave-dirty or all. See theories/Pure/Optimised.v.
+mode="${RANVIER_SKIP_MODE:-off}"
 
 if ! command -v ocamlopt >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
@@ -61,7 +63,7 @@ ulimit -s unlimited 2>/dev/null || ulimit -s "$(ulimit -Hs)"
 
 run_model() {
   [ -f "$work/ocaml.txt" ] && return 0
-  "$work/driver" "$fuel" <"$work/programs.txt" >"$work/ocaml.txt" \
+  "$work/driver" "$fuel" "$mode" <"$work/programs.txt" >"$work/ocaml.txt" \
     || { echo "run.sh: the driver failed at seed $seed" >&2; exit 1; }
 }
 

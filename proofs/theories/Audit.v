@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Ledger.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger.
 From Ranvier.Conformance Require Check.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -263,3 +263,13 @@ Print Assumptions effect_dispose_outside.
 Print Assumptions memo_dispose_outside.
 Print Assumptions memo_prev_outside.
 Print Assumptions disposed_memo_keeps_observers.
+Print Assumptions trace_of_mode_off.
+Print Assumptions engine_of_mode_off.
+Print Assumptions mark_dirty_saturated_id.
+Print Assumptions marks_keep_saturated.
+Print Assumptions notify_dirty_stamped_id.
+Print Assumptions mark_dirty_saturates_falsified.
+Print Assumptions saturated_record_unsound.
+Print Assumptions optimised_simulates_falsified.
+Print Assumptions leave_dirty_cleanup_skip.
+Print Assumptions leave_dirty_unannounced_skip.

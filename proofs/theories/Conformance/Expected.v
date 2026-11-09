@@ -247,3 +247,12 @@ Definition exp_requeue_runs_after_later_entry : list event := [
   EvRun 5; EvLog 5 0%Z; EvRun 6; EvLog 6 0%Z; EvRun 6; EvLog 6 6%Z;
   EvRun 5; EvLog 5 1%Z; EvRun 6; EvLog 6 6%Z
 ].
+
+Definition exp_S16_cleanup_rewrite : list event := [
+  EvRun 2; EvLog 2 0%Z; EvCleanup 2; EvRun 2; EvLog 2 100%Z; EvCleanup 2;
+  EvRun 2; EvLog 2 100%Z
+].
+
+Definition exp_S17_self_write_announce : list event := [
+  EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 2%Z)
+].

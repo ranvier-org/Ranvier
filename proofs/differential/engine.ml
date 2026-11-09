@@ -324,6 +324,13 @@ type ('k, 'a, 'm) insert = 'k -> 'a -> 'm -> 'm
 let insert0 insert1 =
   insert1
 
+type ('k, 'm) delete = 'k -> 'm -> 'm
+
+(** val delete0 : ('a1, 'a2) delete -> 'a1 -> 'a2 -> 'a2 **)
+
+let delete0 delete1 =
+  delete1
+
 type ('k, 'a, 'm) alter = ('a -> 'a) -> 'k -> 'm -> 'm
 
 (** val alter0 :
@@ -1269,6 +1276,11 @@ let map_fold mapFold0 x x0 x1 =
 
 let map_insert h i x =
   partial_alter h (fun _ -> Some x) i
+
+(** val map_delete : ('a1, 'a2, 'a3) partialAlter -> ('a1, 'a3) delete **)
+
+let map_delete h =
+  partial_alter h (fun _ -> None)
 
 (** val map_singleton :
     ('a1, 'a2, 'a3) partialAlter -> 'a3 empty -> ('a1, 'a2, 'a3) singletonM **)
@@ -2312,6 +2324,11 @@ let empty_ghost =
     (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); gh_nested =
     (empty0 (gset_empty Coq_Nat.eq_dec nat_countable)) }
 
+type skip_mode =
+| SkipOff
+| SkipLeaveDirty
+| SkipAll
+
 type state = { g_flags : flags; g_edges : edgeWorld;
                g_nodes : (node_id, node) gmap;
                g_owners : (owner_id, owner_state) gmap;
@@ -2321,7 +2338,8 @@ type state = { g_flags : flags; g_edges : edgeWorld;
                g_untracked : bool; g_current_owner : owner_id option;
                g_next_id : nat; g_trace : event list;
                g_running : node_id list; g_ghost : ghost;
-               g_registered : (node_id, nat) gmap }
+               g_registered : (node_id, nat) gmap; g_skip : skip_mode;
+               g_epoch : nat; g_stamps : (node_id, nat) gmap }
 
 (** val node_marked : freshness -> bool -> bool -> node -> node **)
 
@@ -2345,7 +2363,8 @@ let set_node n0 d s =
     g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
     s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
     g_running = s.g_running; g_ghost = s.g_ghost; g_registered =
-    s.g_registered }
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val enqueue : node_id -> state -> state **)
 
@@ -2357,7 +2376,8 @@ let enqueue n0 s =
     g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
     s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
     g_running = s.g_running; g_ghost = s.g_ghost; g_registered =
-    s.g_registered }
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val walk_marks :
     (node_id -> state -> state option) -> node_id -> nat -> state -> state
@@ -2539,7 +2559,8 @@ let with_edges v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered }
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_owners : (owner_id, owner_state) gmap -> state -> state **)
 
@@ -2550,7 +2571,8 @@ let with_owners v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered }
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_queue : node_id list -> state -> state **)
 
@@ -2561,7 +2583,8 @@ let with_queue v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered }
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_queue_head : nat -> state -> state **)
 
@@ -2572,7 +2595,8 @@ let with_queue_head v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered }
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_flushing : bool -> state -> state **)
 
@@ -2583,7 +2607,8 @@ let with_flushing v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered }
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_flush_owed : bool -> state -> state **)
 
@@ -2594,7 +2619,8 @@ let with_flush_owed v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered }
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_batch_depth : nat -> state -> state **)
 
@@ -2605,7 +2631,8 @@ let with_batch_depth v s =
     v; g_pull_depth = s.g_pull_depth; g_current = s.g_current; g_untracked =
     s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered }
+    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_pull_depth : nat -> state -> state **)
 
@@ -2616,7 +2643,8 @@ let with_pull_depth v s =
     s.g_batch_depth; g_pull_depth = v; g_current = s.g_current; g_untracked =
     s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered }
+    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_current : node_id option -> state -> state **)
 
@@ -2627,7 +2655,8 @@ let with_current v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = v;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered }
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_untracked : bool -> state -> state **)
 
@@ -2638,7 +2667,8 @@ let with_untracked v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = v; g_current_owner = s.g_current_owner; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered }
+    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_current_owner : owner_id option -> state -> state **)
 
@@ -2649,7 +2679,8 @@ let with_current_owner v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = v; g_next_id =
     s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered }
+    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_next_id : nat -> state -> state **)
 
@@ -2660,7 +2691,8 @@ let with_next_id v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = v; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered }
+    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_trace : event list -> state -> state **)
 
@@ -2671,7 +2703,8 @@ let with_trace v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = v; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered }
+    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_running : node_id list -> state -> state **)
 
@@ -2682,7 +2715,8 @@ let with_running v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = v; g_ghost =
-    s.g_ghost; g_registered = s.g_registered }
+    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_ghost : ghost -> state -> state **)
 
@@ -2693,7 +2727,8 @@ let with_ghost v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = v; g_registered = s.g_registered }
+    g_ghost = v; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_registered : (node_id, nat) gmap -> state -> state **)
 
@@ -2704,7 +2739,44 @@ let with_registered v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = v }
+    g_ghost = s.g_ghost; g_registered = v; g_skip = s.g_skip; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
+
+(** val with_skip : skip_mode -> state -> state **)
+
+let with_skip v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = v; g_epoch =
+    s.g_epoch; g_stamps = s.g_stamps }
+
+(** val with_epoch : nat -> state -> state **)
+
+let with_epoch v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = v; g_stamps = s.g_stamps }
+
+(** val with_stamps : (node_id, nat) gmap -> state -> state **)
+
+let with_stamps v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
+    g_epoch = s.g_epoch; g_stamps = v }
 
 (** val node_with_value : val0 -> node -> node **)
 
@@ -4383,6 +4455,8 @@ let init fl =
     False; g_batch_depth = O; g_pull_depth = O; g_current = None;
     g_untracked = False; g_current_owner = (Some root_owner_id); g_next_id =
     O; g_trace = Nil; g_running = Nil; g_ghost = empty_ghost; g_registered =
+    (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); g_skip = SkipOff;
+    g_epoch = O; g_stamps =
     (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
 
 (** val run_top : nat -> cmd -> outcome m **)
@@ -4396,6 +4470,806 @@ let trace_of fuel fl c =
   match run_top fuel c (init fl) with
   | Some p -> let Pair (s, _) = p in Some s.g_trace
   | None -> None
+
+type advance_point =
+| A4191
+| A4207
+| A4290
+| A4807
+| A4825
+
+(** val advances : skip_mode -> advance_point -> bool **)
+
+let advances m0 p =
+  match m0 with
+  | SkipOff -> False
+  | SkipLeaveDirty ->
+    (match p with
+     | A4290 -> False
+     | A4825 -> False
+     | _ -> True)
+  | SkipAll -> True
+
+(** val advance : advance_point -> unit0 m **)
+
+let advance p =
+  m_modify (fun s ->
+    match advances s.g_skip p with
+    | True -> with_epoch (S s.g_epoch) s
+    | False -> s)
+
+(** val skip_on : skip_mode -> bool **)
+
+let skip_on = function
+| SkipOff -> False
+| _ -> True
+
+(** val skip_due : nat -> node_id -> state -> bool **)
+
+let skip_due fuel src s =
+  match fuel with
+  | O -> False
+  | S _ ->
+    (match skip_on s.g_skip with
+     | True ->
+       bool_decide
+         (decide_rel (option_eq_dec Coq_Nat.eq_dec)
+           (lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) src s.g_stamps)
+           (Some s.g_epoch))
+     | False -> False)
+
+(** val record : node_id -> state -> state **)
+
+let record src s =
+  match skip_on s.g_skip with
+  | True ->
+    with_stamps
+      (insert0 (map_insert (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+        src s.g_epoch s.g_stamps)
+      s
+  | False -> s
+
+(** val notify_write : nat -> node_id -> state -> state option **)
+
+let notify_write fuel src s =
+  match skip_due fuel src s with
+  | True -> Some s
+  | False ->
+    fmap (Obj.magic (fun _ _ -> option_fmap)) (record src)
+      (notify_dirty fuel src s)
+
+(** val unstamp : node_id -> state -> state **)
+
+let unstamp src s =
+  match skip_on s.g_skip with
+  | True ->
+    with_stamps
+      (delete0 (map_delete (gmap_partial_alter Coq_Nat.eq_dec nat_countable))
+        src s.g_stamps)
+      s
+  | False -> s
+
+(** val links : node_id -> node_id -> edgeWorld -> bool **)
+
+let links self s w =
+  let l = sources_of w self in
+  let cur = l.source_cursor in
+  (match negb
+           (bool_decide
+             (decide_rel (Obj.magic option_eq_dec Coq_Nat.eq_dec)
+               (fmap (Obj.magic (fun _ _ -> option_fmap)) fst
+                 (lookup0 Coq_list.list_lookup cur l.source_slots))
+               (Some s))) with
+   | True ->
+     negb
+       (bool_decide
+         (and_dec (decide_rel Coq_Nat.lt_dec O cur)
+           (decide_rel (Obj.magic option_eq_dec Coq_Nat.eq_dec)
+             (fmap (Obj.magic (fun _ _ -> option_fmap)) fst
+               (lookup0 Coq_list.list_lookup (pred cur) l.source_slots))
+             (Some s))))
+   | False -> False)
+
+(** val otrack : node_id -> unit0 m **)
+
+let otrack n0 s =
+  match s.g_current with
+  | Some c ->
+    (match sources_add c n0 s.g_edges with
+     | Some w ->
+       let s' = ghost_read c n0 (read_prefix s.g_edges c) (with_edges w s) in
+       Some (Pair
+       ((match links c n0 s.g_edges with
+         | True -> unstamp n0 s'
+         | False -> s'),
+       Tt))
+     | None -> None)
+  | None -> Some (Pair (s, Tt))
+
+(** val oannounce : node_id -> unit0 m **)
+
+let oannounce n0 s =
+  match s.g_flags.f_unannounced with
+  | True ->
+    m_bind (modify_node n0 (node_with_unannounced True)) (fun _ ->
+      advance A4290) s
+  | False -> Some (Pair (s, Tt))
+
+(** val oexec : nat -> env -> cmd -> outcome m **)
+
+let rec oexec fuel e c =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    (match c with
+     | CRet x -> on_value e x (fun v -> m_return (Ok v))
+     | CThrow y -> m_return (Fail y)
+     | CLet (x, v, k) ->
+       on_value e v (fun z0 -> oexec f (Cons ((Pair (x, z0)), e)) k)
+     | CIf (v, a, b) ->
+       on_value e v (fun z0 ->
+         match decide (decide_rel Coq_Z.eq_dec z0 Z0) with
+         | Left -> oexec f e b
+         | Right -> oexec f e a)
+     | CRead (x, n0, k) ->
+       on_node e n0 (fun t ->
+         m_bind (oread f t True) (fun o ->
+           m_bind (note_host_read t o) (fun _ ->
+             match o with
+             | Ok v -> oexec f (Cons ((Pair (x, v)), e)) k
+             | Fail y -> m_return (Fail y))))
+     | CTryRead (x, ok, n0, k) ->
+       on_node e n0 (fun t ->
+         m_bind (oread f t True) (fun o ->
+           m_bind (note_host_read t o) (fun _ ->
+             match o with
+             | Ok v ->
+               oexec f (Cons ((Pair (ok, (Zpos XH))), (Cons ((Pair (x, v)),
+                 e)))) k
+             | Fail y ->
+               oexec f (Cons ((Pair (ok, Z0)), (Cons ((Pair (x, y)), e)))) k)))
+     | CReadUntracked (x, n0, k) ->
+       on_node e n0 (fun t ->
+         m_bind (oread f t False) (fun o ->
+           m_bind (note_host_read t o) (fun _ ->
+             match o with
+             | Ok v -> oexec f (Cons ((Pair (x, v)), e)) k
+             | Fail y -> m_return (Fail y))))
+     | CWrite (n0, v, k) ->
+       on_node e n0 (fun t ->
+         on_value e v (fun z0 ->
+           m_bind (owrite_signal f t z0) (fun _ -> oexec f e k)))
+     | CSignal (x, v, k) ->
+       on_value e v (fun z0 ->
+         m_bind next_id (fun n0 ->
+           m_bind (add_node n0 (signal_node z0)) (fun _ ->
+             oexec f (Cons ((Pair (x, (Z.of_nat n0))), e)) k)))
+     | CMemo (x, m0, q, b, k) ->
+       m_bind next_id (fun n0 ->
+         let e' = Cons ((Pair (x, (Z.of_nat n0))), e) in
+         m_bind (add_node n0 (memo_node m0 q b e')) (fun _ ->
+           m_bind current_owner (fun owner ->
+             match owner with
+             | Some o -> m_bind (oattach f n0 o) (fun _ -> oexec f e' k)
+             | None -> m_return (Fail pure_scope_failure))))
+     | CEffect (x, b, k) ->
+       m_bind next_id (fun n0 ->
+         let e' = Cons ((Pair (x, (Z.of_nat n0))), e) in
+         m_bind (add_node n0 (effect_node b e')) (fun _ ->
+           m_bind current_owner (fun owner ->
+             match owner with
+             | Some o ->
+               m_bind (oattach f n0 o) (fun _ ->
+                 m_bind (m_step (mark_dirty f n0)) (fun _ ->
+                   m_bind (orequest_flush f) (fun _ -> oexec f e' k)))
+             | None -> m_return (Fail pure_scope_failure))))
+     | CCleanup (b, k) ->
+       m_bind current_owner (fun owner ->
+         match owner with
+         | Some o ->
+           m_bind (get_owner o) (fun x ->
+             m_bind (m_modify (ghost_registered x.o_host)) (fun _ ->
+               m_bind
+                 (match x.o_disposed with
+                  | True ->
+                    m_bind (detached o (orun_cleanup f o b e)) (fun _ ->
+                      orequest_flush f)
+                  | False -> put_owner o (owner_with_cleanup b e x))
+                 (fun _ -> oexec f e k)))
+         | None -> m_return (Fail pure_scope_failure))
+     | CDispose (n0, k) ->
+       on_node e n0 (fun t ->
+         m_bind (get_node t) (fun d ->
+           match d.n_kind with
+           | KSignal -> stuck
+           | _ ->
+             m_bind (odispose_node f t) (fun _ ->
+               m_bind
+                 (match d.n_disposed with
+                  | True -> m_return Tt
+                  | False -> emit (EvDispose t))
+                 (fun _ -> oexec f e k))))
+     | CBatch (b, k) ->
+       m_bind (m_modify (fun s -> with_batch_depth (S s.g_batch_depth) s))
+         (fun _ ->
+         m_bind (oexec f e b) (fun r ->
+           m_bind
+             (m_modify (fun s -> with_batch_depth (pred s.g_batch_depth) s))
+             (fun _ ->
+             match r with
+             | Ok _ -> m_bind (orequest_flush f) (fun _ -> oexec f e k)
+             | Fail y -> m_return (Fail y))))
+     | CLog (v, k) ->
+       on_value e v (fun z0 ->
+         m_bind log_label (fun l ->
+           m_bind (emit (EvLog (l, z0))) (fun _ -> oexec f e k))))
+
+(** val oread : nat -> node_id -> bool -> outcome m **)
+
+and oread fuel n0 tracked =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    (match tracked with
+     | True -> oread_node f n0
+     | False -> untracked (oread_node f n0))
+
+(** val oread_node : nat -> node_id -> outcome m **)
+
+and oread_node fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      match d.n_kind with
+      | KSignal -> m_bind (otrack n0) (fun _ -> m_return (Ok d.n_value))
+      | KMemo ->
+        m_bind
+          (match stale_live d with
+           | True ->
+             m_bind (orefresh_or_pull f n0) (fun _ ->
+               m_bind (otrack n0) (fun _ ->
+                 m_bind (get_node n0) (fun d' ->
+                   match stale_live d' with
+                   | True -> mark_reader f
+                   | False -> m_return Tt)))
+           | False -> otrack n0)
+          (fun _ ->
+          m_bind (get_node n0) (fun d' ->
+            match d'.n_status with
+            | StError ->
+              m_return (Fail (from_option (Obj.magic id) Z0 d'.n_failure))
+            | _ -> m_return (Ok d'.n_value)))
+      | KEffect -> stuck)
+
+(** val oupdate_if_necessary : nat -> node_id -> unit0 m **)
+
+and oupdate_if_necessary fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      match d.n_kind with
+      | KMemo ->
+        (match stale_live d with
+         | True -> orefresh_or_pull f n0
+         | False -> m_return Tt)
+      | _ -> m_return Tt)
+
+(** val orefresh_or_pull : nat -> node_id -> unit0 m **)
+
+and orefresh_or_pull fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind m_get (fun s ->
+      match deferring s with
+      | True -> orefresh f n0
+      | False -> opull f n0)
+
+(** val opull : nat -> node_id -> unit0 m **)
+
+and opull fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (m_modify (fun s -> with_pull_depth (S s.g_pull_depth) s))
+      (fun _ ->
+      m_bind (orefresh f n0) (fun _ ->
+        m_bind (m_modify (fun s -> with_pull_depth (pred s.g_pull_depth) s))
+          (fun _ ->
+          m_bind m_get (fun s ->
+            match match bool_decide
+                          (decide_rel Coq_Nat.eq_dec s.g_pull_depth O) with
+                  | True -> s.g_flush_owed
+                  | False -> False with
+            | True -> osettle_flush f
+            | False -> m_return Tt))))
+
+(** val orefresh : nat -> node_id -> unit0 m **)
+
+and orefresh fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      m_bind
+        (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
+         | Left ->
+           m_bind (oresolve_walk f n0 O) (fun _ ->
+             m_bind (get_node n0) (fun d' ->
+               match decide (decide_rel freshness_eq_dec d'.n_freshness Check) with
+               | Left ->
+                 m_bind (m_modify (ghost_resolved n0)) (fun _ ->
+                   modify_node n0 (fun x ->
+                     node_with_unannounced False (node_with_freshness Clean x)))
+               | Right -> m_return Tt))
+         | Right -> m_return Tt)
+        (fun _ ->
+        m_bind (get_node n0) (fun d' ->
+          match decide (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
+          | Left -> orecompute f n0
+          | Right -> m_return Tt)))
+
+(** val oresolve_walk : nat -> node_id -> nat -> unit0 m **)
+
+and oresolve_walk fuel n0 i =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      m_bind m_get (fun s ->
+        match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
+        | Left ->
+          (match lookup0 Coq_list.list_lookup i
+                   (sources_of s.g_edges n0).source_slots with
+           | Some y ->
+             let Pair (src, _) = y in
+             m_bind (oupdate_if_necessary f src) (fun _ ->
+               oresolve_walk f n0 (S i))
+           | None -> m_return Tt)
+        | Right -> m_return Tt))
+
+(** val orecompute : nat -> node_id -> unit0 m **)
+
+and orecompute fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      match d.n_scope with
+      | Some o ->
+        m_bind (modify_node n0 (node_with_freshness Clean)) (fun _ ->
+          m_bind (advance A4191) (fun _ ->
+            m_bind (m_modify (ghost_dirty_cleared n0 d.n_runs)) (fun _ ->
+              m_bind (odischarge f o) (fun _ ->
+                m_bind (get_node n0) (fun d' ->
+                  match d'.n_disposed with
+                  | True -> m_return Tt
+                  | False ->
+                    (match decide
+                             (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
+                     | Left -> orun_memo f n0
+                     | Right ->
+                       (match decide
+                                (decide_rel freshness_eq_dec d'.n_freshness
+                                  Dirty) with
+                        | Left -> orecompute f n0
+                        | Right -> m_return Tt)))))))
+      | None -> orun_memo f n0)
+
+(** val orun_memo : nat -> node_id -> unit0 m **)
+
+and orun_memo fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      let previous = d.n_value in
+      let previous_status = d.n_status in
+      let previous_failure = d.n_failure in
+      m_bind
+        (modify_node n0 (fun x ->
+          node_with_runs (S x.n_runs)
+            (node_with_failure None
+              (node_with_status StNone
+                (node_with_unannounced False (node_with_freshness Clean x))))))
+        (fun _ ->
+        m_bind (advance A4207) (fun _ ->
+          m_bind (edges (sources_begin_run n0)) (fun _ ->
+            m_bind (m_modify (ghost_run_start n0)) (fun _ ->
+              m_bind (push_running n0) (fun _ ->
+                let body_env =
+                  match d.n_published with
+                  | True -> Cons ((Pair (prev_var, previous)), d.n_env)
+                  | False -> without_prev d.n_env
+                in
+                m_bind (hosted n0 (oexec f body_env d.n_body)) (fun r ->
+                  m_bind (get_node n0) (fun d1 ->
+                    let result =
+                      match d1.n_violated with
+                      | True -> Fail pure_scope_failure
+                      | False -> r
+                    in
+                    m_bind
+                      (match result with
+                       | Ok v ->
+                         modify_node n0 (fun x ->
+                           node_with_published True (node_with_value v x))
+                       | Fail _ -> m_return Tt)
+                      (fun _ ->
+                      m_bind
+                        (edges_opt
+                          (match d1.n_disposed with
+                           | True -> sources_clear n0
+                           | False -> sources_end_run n0))
+                        (fun _ ->
+                        m_bind pop_running (fun _ ->
+                          m_bind
+                            (match result with
+                             | Ok _ -> m_return Tt
+                             | Fail y ->
+                               modify_node n0 (fun x ->
+                                 node_with_violated False
+                                   (node_with_status StError
+                                     (node_with_failure (Some y) x))))
+                            (fun _ ->
+                            m_bind (get_node n0) (fun d2 ->
+                              m_bind
+                                (match decide
+                                         (or_dec
+                                           (not_dec
+                                             (decide_rel status_eq_dec
+                                               d2.n_status previous_status))
+                                           (not_dec
+                                             (decide_rel
+                                               (option_eq_dec Coq_Z.eq_dec)
+                                               d2.n_failure previous_failure))) with
+                                 | Left -> m_return True
+                                 | Right ->
+                                   (match d2.n_comparer with
+                                    | CmpEq ->
+                                      m_return
+                                        (bool_decide
+                                          (not_dec
+                                            (decide_rel Coq_Z.eq_dec
+                                              d2.n_value previous)))
+                                    | CmpNever -> m_return True
+                                    | CmpThrows y ->
+                                      m_bind
+                                        (modify_node n0 (fun x ->
+                                          node_with_status StError
+                                            (node_with_failure (Some y)
+                                              (node_with_value previous x))))
+                                        (fun _ -> m_return True)))
+                                (fun moved ->
+                                m_bind m_get (fun s ->
+                                  m_bind
+                                    (m_modify
+                                      (ghost_run_end n0 s.g_current moved))
+                                    (fun _ ->
+                                    m_bind
+                                      (match moved with
+                                       | True ->
+                                         m_step
+                                           (notify_dirty_except f n0
+                                             s.g_current)
+                                       | False -> m_return Tt)
+                                      (fun _ ->
+                                      m_bind (get_node n0) (fun d3 ->
+                                        match decide
+                                                (decide_rel freshness_eq_dec
+                                                  d3.n_freshness Clean) with
+                                        | Left -> m_return Tt
+                                        | Right -> oannounce n0))))))))))))))))))
+
+(** val oexecute_effect : nat -> node_id -> unit0 m **)
+
+and oexecute_effect fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      match d.n_disposed with
+      | True -> modify_node n0 (node_with_queued False)
+      | False ->
+        m_bind
+          (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
+           | Left ->
+             m_bind (oresolve_walk f n0 O) (fun _ ->
+               m_bind (get_node n0) (fun d' ->
+                 match decide
+                         (decide_rel freshness_eq_dec d'.n_freshness Check) with
+                 | Left ->
+                   m_bind (m_modify (ghost_resolved n0)) (fun _ ->
+                     modify_node n0 (node_with_freshness Clean))
+                 | Right -> m_return Tt))
+           | Right -> m_return Tt)
+          (fun _ ->
+          m_bind (get_node n0) (fun d' ->
+            m_bind
+              (modify_node n0 (fun x ->
+                node_with_freshness Clean (node_with_queued False x)))
+              (fun _ ->
+              m_bind (advance A4807) (fun _ ->
+                match decide
+                        (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
+                | Left -> orun_effect f n0
+                | Right -> m_return Tt)))))
+
+(** val orun_effect : nat -> node_id -> unit0 m **)
+
+and orun_effect fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (push_running n0) (fun _ ->
+      m_bind (edges (sources_begin_run n0)) (fun _ ->
+        m_bind (m_modify (ghost_effect_start n0)) (fun _ ->
+          m_bind (get_node n0) (fun d ->
+            m_bind
+              (match d.n_scope with
+               | Some o ->
+                 m_bind (modify_node n0 (node_with_in_cleanup True))
+                   (fun _ ->
+                   m_bind (odischarge f o) (fun _ ->
+                     m_bind (modify_node n0 (node_with_in_cleanup False))
+                       (fun _ -> advance A4825)))
+               | None -> m_return Tt)
+              (fun _ ->
+              m_bind (get_node n0) (fun d' ->
+                m_bind
+                  (match d'.n_disposed with
+                   | True -> m_return Tt
+                   | False -> orun_effect_body f n0)
+                  (fun _ -> pop_running)))))))
+
+(** val orun_effect_body : nat -> node_id -> unit0 m **)
+
+and orun_effect_body fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      m_bind
+        (modify_node n0 (fun x ->
+          node_with_runs (S x.n_runs)
+            (node_with_failure None (node_with_status StNone x))))
+        (fun _ ->
+        m_bind (emit (EvRun n0)) (fun _ ->
+          m_bind (hosted n0 (oexec f d.n_env d.n_body)) (fun r ->
+            m_bind (get_node n0) (fun d' ->
+              m_bind
+                (edges_opt
+                  (match d'.n_disposed with
+                   | True -> sources_clear n0
+                   | False -> sources_end_run n0))
+                (fun _ ->
+                match r with
+                | Ok _ -> m_return Tt
+                | Fail y ->
+                  m_bind
+                    (modify_node n0 (fun x ->
+                      node_with_status StError (node_with_failure (Some y) x)))
+                    (fun _ -> emit (EvFail (n0, y)))))))))
+
+(** val odischarge : nat -> owner_id -> unit0 m **)
+
+and odischarge fuel o =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (detached o (odispose_scope f o)) (fun _ ->
+      m_bind m_get (fun s ->
+        match match match bool_decide
+                            (decide_rel Coq_Nat.eq_dec s.g_batch_depth O) with
+                    | True -> negb s.g_flushing
+                    | False -> False with
+              | True -> live_queue s
+              | False -> False with
+        | True -> m_modify (with_flush_owed True)
+        | False -> m_return Tt))
+
+(** val oretire : nat -> owner_id -> unit0 m **)
+
+and oretire fuel o =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind
+      (detached o
+        (m_bind (get_owner o) (fun x ->
+          match x.o_disposed with
+          | True -> m_return Tt
+          | False ->
+            m_bind (put_owner o (owner_retired x)) (fun _ ->
+              odispose_scope f o))))
+      (fun _ ->
+      m_bind m_get (fun s ->
+        match live_queue s with
+        | True -> orequest_flush f
+        | False -> m_return Tt))
+
+(** val odispose_scope : nat -> owner_id -> unit0 m **)
+
+and odispose_scope fuel o =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_owner o) (fun x ->
+      m_bind (put_owner o (owner_detached x)) (fun _ ->
+        oteardown f o (rev x.o_children) (owner_cleanups x)))
+
+(** val oteardown :
+    nat -> owner_id -> link list -> ((cmd, env) prod, nat) prod list -> unit0
+    m **)
+
+and oteardown fuel o ls cs =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    (match ls with
+     | Nil ->
+       (match cs with
+        | Nil -> m_return Tt
+        | Cons (p, cs') ->
+          let Pair (p0, _) = p in
+          let Pair (b, e) = p0 in
+          m_bind (orun_cleanup f o b e) (fun _ -> oteardown f o Nil cs'))
+     | Cons (l, ls') ->
+       (match cs with
+        | Nil ->
+          m_bind (orelease f l.l_child) (fun _ -> oteardown f o ls' Nil)
+        | Cons (p, cs') ->
+          let Pair (p0, a) = p in
+          let Pair (b, e) = p0 in
+          (match decide (decide_rel Coq_Nat.lt_dec a l.l_acquired) with
+           | Left ->
+             m_bind (orelease f l.l_child) (fun _ -> oteardown f o ls' cs)
+           | Right ->
+             m_bind (orun_cleanup f o b e) (fun _ -> oteardown f o ls cs'))))
+
+(** val orun_cleanup : nat -> owner_id -> cmd -> env -> unit0 m **)
+
+and orun_cleanup fuel o b e =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_owner o) (fun x ->
+      m_bind (emit (EvCleanup x.o_host)) (fun _ ->
+        m_bind (oexec f e b) (fun r ->
+          match r with
+          | Ok _ -> m_return Tt
+          | Fail y ->
+            m_bind (record_error o y) (fun _ -> emit (EvFail (x.o_host, y))))))
+
+(** val orelease : nat -> node_id -> unit0 m **)
+
+and orelease fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (modify_node n0 (node_with_link None)) (fun _ ->
+      odispose_node f n0)
+
+(** val odispose_node : nat -> node_id -> unit0 m **)
+
+and odispose_node fuel n0 =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      match d.n_disposed with
+      | True -> m_return Tt
+      | False ->
+        m_bind
+          (modify_node n0 (fun x ->
+            node_with_link None (node_with_disposed True x)))
+          (fun _ ->
+          m_bind
+            (match d.n_link with
+             | Some l -> unlink l
+             | None -> m_return Tt)
+            (fun _ ->
+            m_bind (edges_opt (sources_clear n0)) (fun _ ->
+              match d.n_scope with
+              | Some o -> oretire f o
+              | None -> m_return Tt))))
+
+(** val oattach : nat -> node_id -> owner_id -> unit0 m **)
+
+and oattach fuel n0 o =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_owner o) (fun x ->
+      match x.o_disposed with
+      | True ->
+        m_bind (orelease f n0) (fun _ ->
+          modify_node n0
+            (node_with_link (Some { l_child = n0; l_owner = o; l_generation =
+              None; l_acquired = O })))
+      | False ->
+        let l = { l_child = n0; l_owner = o; l_generation = (Some
+          x.o_generation); l_acquired = x.o_acquisitions }
+        in
+        m_bind (put_owner o (owner_with_child l x)) (fun _ ->
+          modify_node n0 (node_with_link (Some l))))
+
+(** val owrite_signal : nat -> node_id -> val0 -> unit0 m **)
+
+and owrite_signal fuel n0 v =
+  match fuel with
+  | O -> stuck
+  | S f ->
+    m_bind (get_node n0) (fun d ->
+      match d.n_kind with
+      | KSignal ->
+        (match decide (decide_rel Coq_Z.eq_dec d.n_value v) with
+         | Left -> m_return Tt
+         | Right ->
+           m_bind (modify_node n0 (node_with_value v)) (fun _ ->
+             m_bind (m_modify (ghost_publish n0)) (fun _ ->
+               m_bind (m_step (notify_write f n0)) (fun _ -> orequest_flush f))))
+      | _ -> stuck)
+
+(** val orequest_flush : nat -> unit0 m **)
+
+and orequest_flush = function
+| O -> stuck
+| S f ->
+  m_bind m_get (fun s ->
+    match match live_queue s with
+          | True -> bool_decide (decide_rel Coq_Nat.eq_dec s.g_batch_depth O)
+          | False -> False with
+    | True ->
+      (match outside_bodies s with
+       | True -> orun_flush f
+       | False ->
+         (match s.g_flushing with
+          | True -> m_return Tt
+          | False -> m_modify (with_flush_owed True)))
+    | False -> m_return Tt)
+
+(** val osettle_flush : nat -> unit0 m **)
+
+and osettle_flush = function
+| O -> stuck
+| S f ->
+  m_bind m_get (fun s ->
+    match match match s.g_flush_owed with
+                | True ->
+                  bool_decide (decide_rel Coq_Nat.eq_dec s.g_batch_depth O)
+                | False -> False with
+          | True -> outside_bodies s
+          | False -> False with
+    | True -> orun_flush f
+    | False -> m_return Tt)
+
+(** val orun_flush : nat -> unit0 m **)
+
+and orun_flush = function
+| O -> stuck
+| S f ->
+  m_bind m_get (fun s ->
+    match s.g_flushing with
+    | True -> m_return Tt
+    | False ->
+      m_bind
+        (m_modify (fun s0 -> with_flush_owed False (with_flushing True s0)))
+        (fun _ -> m_bind (odrain f) (fun _ -> m_modify (with_flushing False))))
+
+(** val odrain : nat -> unit0 m **)
+
+and odrain = function
+| O -> stuck
+| S f ->
+  m_bind m_get (fun s ->
+    match lookup0 Coq_list.list_lookup s.g_queue_head s.g_queue with
+    | Some n0 ->
+      m_bind (m_modify (with_queue_head (S s.g_queue_head))) (fun _ ->
+        m_bind (oexecute_effect f n0) (fun _ -> odrain f))
+    | None -> m_modify (fun s0 -> with_queue Nil (with_queue_head O s0)))
 
 type node_view = { v_id : node_id; v_kind : kind; v_value : val0;
                    v_status : status; v_failure : val0 option;
@@ -4469,6 +5343,34 @@ let observed fuel fl c =
   | Some p ->
     let Pair (s, _) = p in
     (match closing fuel s with
+     | Some p0 ->
+       let Pair (s', _) = p0 in
+       Some (Pair ((Pair (s'.g_trace, (view_of s))), (view_of s')))
+     | None -> None)
+  | None -> None
+
+(** val oclosing : nat -> unit0 m **)
+
+let oclosing fuel s =
+  match fold_left (fun m0 n0 ->
+          m_bind m0 (fun _ ->
+            m_bind
+              (oexec fuel Nil (CTryRead (O, (S O), (EConst (Z.of_nat n0)),
+                (CRet (EConst Z0)))))
+              (fun _ -> m_return Tt)))
+          (memo_ids s) (m_return Tt) s with
+  | Some p -> let Pair (s', _) = p in orun_flush fuel s'
+  | None -> None
+
+(** val observed_mode :
+    nat -> flags -> skip_mode -> cmd -> ((event list, state_view) prod,
+    state_view) prod option **)
+
+let observed_mode fuel fl m0 c =
+  match oexec fuel Nil c (with_skip m0 (init fl)) with
+  | Some p ->
+    let Pair (s, _) = p in
+    (match oclosing fuel s with
      | Some p0 ->
        let Pair (s', _) = p0 in
        Some (Pair ((Pair (s'.g_trace, (view_of s))), (view_of s')))

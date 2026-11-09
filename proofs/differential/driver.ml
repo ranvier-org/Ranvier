@@ -1,9 +1,10 @@
 (* The OCaml half of the differential check. Reads programs from stdin, one S-expression per line, runs the extracted
-   [observed] under [current_flags], and writes one line per program, tab-separated: index, status, trace, end state and
-   closed state. The status
-   is [ok], or [none] when [observed] has no result: exhausted fuel or a stuck body.
+   [observed_mode] under [current_flags] in the skip mode of the second argument ([off], the default, [leave-dirty] or
+   [all]), and writes one line per program, tab-separated: index, status, trace, end state and closed state. The status
+   is [ok], or [none] when [observed_mode] has no result: exhausted fuel or a stuck body. In mode [off],
+   [observed_mode] is [observed] ([observed_mode_off]).
 
-     driver <fuel> < programs.txt > ocaml.txt *)
+     driver <fuel> [mode] < programs.txt > ocaml.txt *)
 
 open Engine
 
@@ -162,14 +163,22 @@ let render_view (v : state_view) : string =
   let tail = Printf.sprintf "queue=%d errors=%d" (int_of_nat v.v_queue) (int_of_nat v.v_errors) in
   Stdlib.String.concat ", " (nodes [] v.v_nodes @ [ tail ])
 
+let read_mode (s : string) : skip_mode =
+  match s with
+  | "off" -> SkipOff
+  | "leave-dirty" -> SkipLeaveDirty
+  | "all" -> SkipAll
+  | _ -> failwith "the skip mode is off, leave-dirty or all"
+
 let () =
   let fuel = nat_of_int (int_of_string Sys.argv.(1)) in
+  let mode = read_mode (if Array.length Sys.argv > 2 then Sys.argv.(2) else "off") in
   let index = ref 0 in
   try
     while true do
       let line = input_line stdin in
       let program = read_cmd (parse_sexp line) in
-      (match observed fuel current_flags program with
+      (match observed_mode fuel current_flags mode program with
        | Some (Pair (Pair (trace, ended), closed)) ->
          Printf.printf "%d\tok\t%s\t%s\t%s\n" !index
            (Stdlib.String.concat "; " (events trace))

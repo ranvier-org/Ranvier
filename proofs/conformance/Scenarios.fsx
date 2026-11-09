@@ -1361,6 +1361,44 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Batch (fun () ->
                 h.Value <- 1
                 u.Value <- 2)
+
+        // Pure/Optimised.v, leave_dirty_cleanup_skip. An effect's cleanup writes the signal the effect reads, and the
+        // host writes it twice.
+        "S16_cleanup_rewrite",
+        fun c ->
+            let s = c.Signal 1 0
+
+            c.Effect 2 (fun () ->
+                c.Cleanup 2 (fun () -> s.Value <- 100)
+                c.Log 2 s.Value)
+            |> ignore
+
+            s.Value <- 1
+            s.Value <- 2
+
+        // Pure/Optimised.v, leave_dirty_unannounced_skip. A memo writes its own source while it is below 1, and a second
+        // memo reads it. The host reads the second memo between writes.
+        "S17_self_write_announce",
+        fun c ->
+            let s = c.Signal 1 0
+
+            let m =
+                c.Memo 2 (fun () ->
+                    let v = s.Value
+
+                    if v < 1 then
+                        s.Value <- v + 1
+                        0
+                    else
+                        v / 10)
+
+            let n = c.Memo 3 (fun () -> m.Value)
+            c.HostRead 3 (fun () -> n.Value) |> ignore
+            c.HostRead 3 (fun () -> n.Value) |> ignore
+            s.Value <- 0
+            c.HostRead 3 (fun () -> n.Value) |> ignore
+            s.Value <- 20
+            c.HostRead 3 (fun () -> n.Value) |> ignore
     ]
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,

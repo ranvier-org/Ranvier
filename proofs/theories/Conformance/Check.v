@@ -3,6 +3,7 @@ From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine Runs Witnesses Scheduler Ownership WholeGraph.
 From Ranvier.Pure Require Import Ledger.
+From Ranvier.Pure Require Optimised.
 From Ranvier.Conformance Require Import Expected.
 
 Open Scope Z_scope.
@@ -235,6 +236,14 @@ Proof. vm_compute. reflexivity. Qed.
 Example check_S14 : trace_of 100000 current_flags prog_S14 = Some exp_S14.
 Proof. vm_compute. reflexivity. Qed.
 Example check_S15 : trace_of 100000 current_flags prog_S15 = Some exp_S15.
+Proof. vm_compute. reflexivity. Qed.
+(** The programs of [Optimised.leave_dirty_cleanup_skip] and [Optimised.leave_dirty_unannounced_skip]. Their
+    variables are not the node ids. *)
+Example check_S16_cleanup_rewrite :
+  trace_of 100000 current_flags Optimised.prog_cleanup_rewrite = Some exp_S16_cleanup_rewrite.
+Proof. vm_compute. reflexivity. Qed.
+Example check_S17_self_write_announce :
+  trace_of 100000 current_flags Optimised.prog_self_write_announce = Some exp_S17_self_write_announce.
 Proof. vm_compute. reflexivity. Qed.
 Example check_in_cleanup_observer_stays_clean :
   trace_of 100000 current_flags prog_in_cleanup_observer_stays_clean =

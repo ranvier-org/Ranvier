@@ -283,6 +283,12 @@ copy, so it needs no Rocq.
 | `refinable_reached` | `Pure/Witnesses.v` | A program with a memo, a try-read and a failure reaches the premises, under a history with a write, a read and a disposal. |
 | `reads_higher_refinable` | `Pure/Witnesses.v` | A memo reading a memo with a higher id is refinable under a rank that swaps the two, and not under the ids. |
 | `disposed_memo_keeps_observers` | `Pure/Ledger.v` | A disposed memo keeps its reader's edge, and the reader stays clean on the stored value after a write to the memo's former source. Closed in `BUGS.md`. |
+| `trace_of_mode_off`, `engine_of_mode_off` | `Pure/Optimised.v` | Under `SkipOff` the optimised engine's trace is `trace_of`'s, at every fuel and flags. |
+| `observed_mode_off` | `Extract.v` | Under `SkipOff` the differential check's model side is `observed`. |
+| `mark_dirty_saturated_id`, `marks_keep_saturated`, `notify_dirty_stamped_id` | `Pure/Optimised.v` | A `Dirty` mark of a saturated node is the identity, marks keep saturation, and under `stamp_ok` a stamped signal's walk is the identity. |
+| `mark_dirty_saturates_falsified` | `Pure/Optimised.v` | A `Dirty` mark of a `Clean` memo holding an announcement leaves it unsaturated. |
+| `saturated_record_unsound`, `optimised_simulates_falsified` | `Pure/Optimised.v` | The record after such a walk breaks `stamp_ok`, and on the reachable `prog_window` the optimised engine ends outside `sim` with an equal trace. |
+| `leave_dirty_cleanup_skip`, `leave_dirty_unannounced_skip` | `Pure/Optimised.v` | Without the advances at 4825 and 4290 a write skips a walk it owes: each trace differs from `SkipOff`'s, and `SkipAll` agrees with `SkipOff`. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` falls to `wake_ok` and `marks_survive_body_end`, and removing `MarkReaderCheck` to `wake_told`: `unannounced_off_fires`, `reader_mark_off_fires`. `wake_ok` holds with `MarkReaderCheck` removed, since the source holds its flag.
 
@@ -394,6 +400,21 @@ discharges the same runs.
 **Heap obligations.** The epoch and the per-signal record. A walk that visits an implementor of `IComputation` other than
 the core `Memo` and `Effect`, such as `Binding`, records nothing, because those implementors clear their own staleness with
 no epoch advance. The differential check covers `Signal`, `Memo` and `Effect` only.
+
+### Task 13a: the design gate
+
+`Pure/Optimised.v` models the optimised engine as its own transitions beside `Pure/Engine.v`, with the advance table
+of design D2 (4191, 4207, 4290, 4807, 4825), the record after a setter's walk, the skip, and the clear on
+`AddObserver` and `TryAddObserver`. Under `SkipOff` it is the present engine (`trace_of_mode_off`).
+
+The record is unsound under D2. `RecomputeScoped` (4191) writes `Clean` and leaves `unannounced` set, and `MarkDirty`
+(4483-4498) of a `Clean` memo keeps the flag: the memo ends `Dirty` with its announcement due, which is not saturated
+(`mark_dirty_saturates_falsified`). A cleanup that writes a source of its memo inside that memo's discharge therefore
+records a stamp `stamp_ok` rejects (`saturated_record_unsound`), and a second write in the same discharge skips the walk
+that spends the announcement. On `prog_window` the traces agree and the end states differ in the disposed memo's
+`unannounced` (`optimised_simulates_falsified`), so the simulation and `stamp_ok_preserved` of the plan are false.
+`optimised_trace_eq` is unproved. The examples `leave_dirty_cleanup_skip` and `leave_dirty_unannounced_skip` show the
+advances at 4825 and 4290 are each needed.
 
 ## Literature
 
