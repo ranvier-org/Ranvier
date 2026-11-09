@@ -5,17 +5,6 @@ intended, the entry closes as "spec corrected".
 
 ## Suspected
 
-- `self_writing_memo_ends_stale` (scenario `S14`): a memo writes its own source, and an effect reads it. The memo's
-  value does not change, so the effect resolves its `Check` to `Clean` while the memo is `Dirty` with no further mark
-  due. The flush ends with the signal at 2 and the memo's last run over 1, which the harness asserts. F# trace:
-  `[EvRun 3; EvLog 2 0; EvLog 3 0; EvLog 2 1; EvLog 2 2; EvLog 2 3; EvHostRead 2 (Ok 0); EvHostRead 1 (Ok 3)]`. `EvLog 2 2`
-  is the host read's pull, whose write queues the effect, and `EvLog 2 3` is the walk in the flush that pull settles.
-  Here the memo's value stays 0, so the effect's read stays right. When the next run changes the value, the effect is
-  left behind: `self_marking_wake_lost` under Confirmed.
-- `disposed_memo_keeps_observers` (from reading, no trace): `Memo.Dispose` clears the memo's sources and leaves its
-  observers (Core.fs 4377-4398). A reader keeps an edge to the disposed memo, which marks no one again once its sources
-  are gone, except for the marks of a run in progress when it was disposed.
-
 ## Modelled
 
 ## Confirmed
@@ -284,6 +273,25 @@ Each entry of Task 12 is a difference between the engine and the reference, with
   effect's status and an empty queue. Core.fs 4372-4376 documents it: a disposed memo "still answers reads, with the last value it computed" and "stops being woken". No wake-up
   is owed, so `wake_ok`, `wake_told` and `later_mark_forwarded` cover live sources, and `resolve_over_disposed_dirty_source` is the same case through a walk.
 
+- `self_writing_memo_ends_stale` (scenario `S14`), reproduced and closed as spec corrected (Task 13). A memo writes its own
+  source, and an effect reads it. The memo's run ends `Dirty` holding `n_unannounced`, and the effect resolves its `Check` to
+  `Clean`. The memo's body answers 0 for every value of the signal, so the effect's 0 is what the memo computes. The harness
+  asserts the signal at 2, the memo `Stale` and the effect clear. F# trace:
+  `[EvRun 3; EvLog 2 0; EvLog 3 0; EvLog 2 1; EvLog 2 2; EvLog 2 3; EvHostRead 2 (Ok 0); EvHostRead 1 (Ok 3)]`, and `check_S14`
+  (`theories/Conformance/Check.v`) gives the model the same trace. `ordinary_programs_nothing_passed` has `gh_passed` empty at
+  the end, so `no_lost_wakeups_when_nothing_passed` covers every edge from the stale memo: the memo holds its announcement.
+  Core.fs 4200-4204 documents a run that invalidates its own source ending `Dirty`, and 4071-4072 documents the flag as the
+  next mark's notice. The form with a wrong value is a memo whose next run changes its value: `self_marking_wake_lost` under
+  Confirmed.
+- `disposed_memo_keeps_observers` (`theories/Pure/Ledger.v`, same name), reproduced and closed as spec corrected (Task 13).
+  `Memo.Dispose` clears the memo's sources and leaves its observers (Core.fs 4377-4398), so a reader keeps its edge to the
+  disposed memo. Program: an effect reads memo `m` over `s`, the host disposes `m`, then writes `s <- 5`. The model ends with
+  `m` disposed at 0 and observed by the effect, and the effect `Clean`, unqueued, with one run; trace
+  `[EvRun 3; EvLog 3 0; EvDispose 2]`. F#, run by a harness script outside `Scenarios.fsx` (the script and its output are in
+  the Task 13 report): `m.Peek` 0, `ObserverCount` 1, one effect run, `queued` false, `Clean`, and the same events. Core.fs
+  4372-4376 documents both halves: a disposed memo "still answers reads, with the last value it computed" and "stops being
+  woken". The reader holds that value, which no later write moves, so no mark is owed. A run in progress at the disposal can
+  still end with a move, and its notice then reaches these readers, which read the new stored value.
 - `glitch_free_read_statement` (`theories/Pure/WholeGraph.v`), closed as spec corrected. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, as `disposed_stale_source_read` closed the same form of `wake_ok`. `glitch_free_read_falsified` is the record. `glitch_free_read` is the form proved. The form over the node alone is `read_settles_writer` under Awaiting ruling, and at quiescence `quiescent_read_answers_past_flush` under Confirmed.
 
 ## Rulings
