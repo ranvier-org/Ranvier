@@ -565,9 +565,19 @@ Definition outside_bodies (s : state) : bool :=
   negb (g_untracked s).
 
 (** [Graph.Track]. *)
+Definition live_current (s : state) : option node_id :=
+  match g_current s with
+  | Some c =>
+    match g_nodes s !! c with
+    | Some d => if n_disposed d then None else Some c
+    | None => None
+    end
+  | None => None
+  end.
+
 Definition track (n : node_id) : M unit :=
   fun s =>
-    match g_current s with
+    match live_current s with
     | Some c =>
       match sources_add c n (g_edges s) with
       | Some w => Some (ghost_read c n (read_prefix (g_edges s) c) (with_edges w s), tt)
@@ -899,7 +909,8 @@ with recompute (fuel : nat) (n : node_id) {struct fuel} : M unit :=
       let* _ := m_modify (ghost_dirty_cleared n (n_runs d)) in
       let* _ := discharge f o in
       let* d' := get_node n in
-      if n_disposed d' then m_return tt
+      if n_disposed d' then
+        (if decide (n_freshness d' = Clean) then modify_node n (node_with_unannounced false) else m_return tt)
       else if decide (n_runs d' = n_runs d) then run_memo f n
       else if decide (n_freshness d' = Dirty) then recompute f n
       else m_return tt

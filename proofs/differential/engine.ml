@@ -3636,10 +3636,22 @@ let outside_bodies s =
      | None -> negb s.g_untracked)
   | False -> False
 
+(** val live_current : state -> node_id option **)
+
+let live_current s =
+  match s.g_current with
+  | Some c ->
+    (match lookup0 (gmap_lookup Coq_Nat.eq_dec nat_countable) c s.g_nodes with
+     | Some d -> (match d.n_disposed with
+                  | True -> None
+                  | False -> Some c)
+     | None -> None)
+  | None -> None
+
 (** val track : node_id -> unit0 m **)
 
 let track n0 s =
-  match s.g_current with
+  match live_current s with
   | Some c ->
     (match sources_add c n0 s.g_edges with
      | Some w ->
@@ -4049,7 +4061,11 @@ and recompute fuel n0 =
             m_bind (discharge f o) (fun _ ->
               m_bind (get_node n0) (fun d' ->
                 match d'.n_disposed with
-                | True -> m_return Tt
+                | True ->
+                  (match decide
+                           (decide_rel freshness_eq_dec d'.n_freshness Clean) with
+                   | Left -> modify_node n0 (node_with_unannounced False)
+                   | Right -> m_return Tt)
                 | False ->
                   (match decide (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
                    | Left -> run_memo f n0
@@ -4647,7 +4663,7 @@ let links self s w =
 (** val otrack : node_id -> unit0 m **)
 
 let otrack n0 s =
-  match s.g_current with
+  match live_current s with
   | Some c ->
     (match sources_add c n0 s.g_edges with
      | Some w ->
@@ -4917,7 +4933,11 @@ and orecompute fuel n0 =
             m_bind (odischarge f o) (fun _ ->
               m_bind (get_node n0) (fun d' ->
                 match d'.n_disposed with
-                | True -> m_return Tt
+                | True ->
+                  (match decide
+                           (decide_rel freshness_eq_dec d'.n_freshness Clean) with
+                   | Left -> modify_node n0 (node_with_unannounced False)
+                   | Right -> m_return Tt)
                 | False ->
                   (match decide (decide_rel Coq_Nat.eq_dec d'.n_runs d.n_runs) with
                    | Left -> orun_memo f n0

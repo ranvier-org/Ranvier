@@ -1730,7 +1730,7 @@ Proof. intros H Ha n d Hd Hk. assert (Hs : shapes s = shapes s') by (unfold shap
 
 Lemma track_trace n s s' : track n s = Some (s', tt) -> g_trace s' = g_trace s.
 Proof.
-  unfold track. destruct (g_current s) as [c|]; [|by intros [=<-]].
+  unfold track. destruct (live_current s) as [c|]; [|by intros [=<-]].
   destruct (sources_add c n (g_edges s)); [|done]. intros H. injection H as <-. unfold ghost_read. repeat case_match; reflexivity.
 Qed.
 
@@ -1745,8 +1745,13 @@ Lemma A_track (T : node_id -> Prop) (lim t : node_id) s s' e :
     (forall y, y ∈ read_prefix (g_edges s) c -> y ∈ read_prefix (g_edges s') c).
 Proof.
   intros Hx Hw St Hlt Hp He Hq Hbelow Hm. unfold track in Hm.
-  destruct (g_current s) as [c|] eqn:Ec.
-  2: { simplify_eq. split_and!; [apply Hx|done|done|apply atom_refl|done]. }
+  destruct (live_current s) as [c|] eqn:Elc.
+  2: { simplify_eq. split_and!; [apply Hx|done|done|apply atom_refl|].
+       intros c dc Hcur Hdc Hqc. exfalso.
+       pose proof (b_current _ (proj1 Hx) c Hcur) as Hrunc.
+       pose proof (st_live _ _ _ St c dc Hrunc Hdc Hqc) as Hl.
+       unfold live_current in Elc. rewrite Hcur, Hdc, Hl in Elc. done. }
+  destruct (live_current_some _ _ Elc) as [Ec _].
   destruct (sources_add c t (g_edges s)) as [w|] eqn:Ea; [|done]. simplify_eq.
   assert (Hkne : n_kind e <> KEffect) by exact (pure_kind s t e Hp He).
   destruct (extras_track s c t w e Hx Ec Ea He Hkne) as (Hb' & _ & Hinw).
@@ -1801,7 +1806,7 @@ Proof.
     + intros c0 d Hd Hk. apply (W3 c0 d Hd). unfold quiet_effect in *. done.
     + intros c0 d Hd Hk y Hy. destruct (decide (c0 = c)) as [->|Hne].
       * destruct (Hsl y Hy) as [H| ->]; [exact (W4 c d Hd (qc_ext _ s1 _ _ Hsh Hk) y H)|].
-        split; [intros Kk; exact (Hbelow c d eq_refl Hd (qc_ext _ s1 _ _ Hsh Hk) Kk)|done].
+        split; [intros Kk; exact (Hbelow c d Ec Hd (qc_ext _ s1 _ _ Hsh Hk) Kk)|done].
       * rewrite Hoth in Hy by done. exact (W4 c0 d Hd (qc_ext _ s1 _ _ Hsh Hk) y Hy).
     + intros c0 d Hd Hk Hl Hnr Hse y Hy Hny. assert (Hne : c0 <> c) by (by intros ->).
       rewrite Hoth in Hy by done. apply Hrd; [done|]. exact (W5 c0 d Hd (qc_ext _ s1 _ _ Hsh Hk) Hl Hnr Hse y Hy Hny).
@@ -1833,7 +1838,7 @@ Proof.
     + intros c0 Hc0. assert (Hne : c0 <> c) by (intros ->; apply Hc0; by right).
       split; [by rewrite Hoth|]. intros y. apply Hso. congruence.
     + intros n d Hd _ _ Hq0. exists d. split_and!; done.
-  - intros c0 dc Hc0 Hdc Hqc. injection Hc0 as <-. split_and!.
+  - intros c0 dc Hc0 Hdc Hqc. rewrite Ec in Hc0. injection Hc0 as <-. split_and!.
     + exact Hinw.
     + exact (Hrdt dc Hdc Hqc).
     + intros y Hy. rewrite Hw1.
@@ -4213,7 +4218,7 @@ Qed.
 
 Lemma ko_track n : ko (track n).
 Proof.
-  intros s s' a Hi E. unfold track in E. destruct (g_current s) as [c|].
+  intros s s' a Hi E. unfold track in E. destruct (live_current s) as [c|].
   - destruct (sources_add c n (g_edges s)) as [w|]; [|done]. injection E as <- _.
     unfold ghost_read. destruct (g_nodes (with_edges w s) !! n); (split; [done|split; [|intros m d' Hd'; left; by eexists|done]]); intros m d Hd; exists d; done.
   - injection E as <- _. split; [done|apply kept_refl'].
@@ -4857,8 +4862,9 @@ Qed.
 Lemma wk_track s n d s' :
   run_extras s -> wk s -> g_nodes s !! n = Some d -> n_kind d <> KEffect -> track n s = Some (s', tt) -> run_base s' /\ wk s'.
 Proof.
-  intros Hx Hw Hd Hk E. pose proof (proj1 Hx) as Hb. unfold track in E. destruct (g_current s) as [c|] eqn:Ec.
+  intros Hx Hw Hd Hk E. pose proof (proj1 Hx) as Hb. unfold track in E. destruct (live_current s) as [c|] eqn:Elc.
   2: { injection E as <-. done. }
+  destruct (live_current_some _ _ Elc) as [Ec _].
   destruct (sources_add c n (g_edges s)) as [w|] eqn:Ea; [|done]. injection E as <-.
   destruct (extras_track s c n w d Hx Ec Ea Hd Hk) as (Hb'&_&_). split; [done|].
   destruct (slot_view_add _ _ _ _ (b_cursor _ Hb c) Ea) as (Hoth&_).
@@ -5666,7 +5672,7 @@ Qed.
 
 Lemma tkm_track P n : tkm P (track n).
 Proof.
-  intros s s' a Hi _ _ E. unfold track in E. destruct (g_current s) as [c|].
+  intros s s' a Hi _ _ E. unfold track in E. destruct (live_current s) as [c|].
   - destruct (sources_add c n (g_edges s)) as [w|]; [|done]. injection E as <- _.
     apply tk_of_same; [|done]. unfold ghost_read. destruct (g_nodes (with_edges w s) !! n); split_and!; done.
   - injection E as <- _. split; [done|apply tk_step_refl].
@@ -7459,7 +7465,7 @@ Proof.
   assert (Hnp : forall m, m ∈ g_running s -> ~ pure_in (shapes s) m) by (intros m Hin K; exact (pure_not_running s m Hc Hw K Hin)).
   destruct f' as [|f']; [done|]. cbn [read] in Hrd. destruct f' as [|f']; [done|]. cbn [read_node] in Hrd.
   destruct (pure_exists s n Hp) as [d Hd]. rewrite (bind_get_node _ _ _ _ Hd) in Hrd.
-  assert (Htrack : track n s = Some (s, tt)) by (unfold track; by rewrite Hcur).
+  assert (Htrack : track n s = Some (s, tt)) by (unfold track, live_current; by rewrite Hcur).
   destruct (n_kind d) eqn:Ek.
   - rewrite (bind_some _ _ _ _ _ Htrack) in Hrd. unfold m_return in Hrd. injection Hrd as <- <-.
     destruct (b_window _ (proj1 (proj2 Hc))) as (_&_&Wsig&_).
@@ -7499,7 +7505,7 @@ Proof.
       assert (Hsi : sched_inv None s) by exact (sched_inv_run_top f c _ s r (sched_inv_init current_flags) Hm).
       assert (Hc1cur : g_current s1 = None).
       { destruct (Srop _ (sched_ok_all _) None n _ _ _ Hsi (ex_intro _ d (conj Hd Ek)) Hrp0) as [_ ([R1 _ _ _ _ _]&_)]. rewrite R1. exact Hcur. }
-      assert (Ht1 : track n s1 = Some (s1, tt)) by (unfold track; by rewrite Hc1cur).
+      assert (Ht1 : track n s1 = Some (s1, tt)) by (unfold track, live_current; by rewrite Hc1cur).
       rewrite (bind_some _ _ _ _ _ Ht1), (bind_get_node _ _ _ _ He2) in H1.
       assert (Hs2 : s2' = s1).
       { destruct (stale_live e1); [unfold mark_reader in H1; rewrite Hc1cur in H1|]; unfold m_return in H1; by injection H1 as <-. }

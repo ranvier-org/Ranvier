@@ -184,24 +184,11 @@ Each entry of Task 12 is a difference between the engine and the reference, with
   **The documents.** Core.fs 3159-3162 says effects inside a body or stale read "run once the outermost body or read has finished", which documents when the flush runs. `Memo.Value` (4539-4548) reads the value after `TrackCurrent`'s `ExitPull`, ahead of the read's return. No document covers the answer. `quiescent_read_answers_past_flush` under Confirmed reaches the same answer with no failed batch.
   The answer agrees with neither end consistently. `read_before_flush_answer`, computed: with the writer reading no `n`, the read answers 1, and `n` denotes 9 after it.
   **The question for the owner:** does a read answer before or after the flush it settles?
-- `disposed_window_keeps_unannounced` (scenario `disposed_self_window`; `theories/Pure/Witnesses.v`, same name): `RecomputeScoped`
-  sets `Clean` before `Discharge` (Core.fs 4191-4192) and does not clear `unannounced`. A nested run ends stale, so the flag is set,
-  and registers a cleanup that disposes the memo. An untracked self-read then enters the window, and the cleanup disposes the memo:
-  it ends `Clean`, disposed, with the flag set, from a read that started in `Check`. F# trace:
-  `[EvHostRead 4 (Ok 0); EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0)]`, and the harness asserts `Clean`, the flag and the disposal
-  from the private fields. Only private fields differ, Core.fs 4071-4073 is honoured, and no document covers the flag on a disposed
-  memo. `resolve_clears_unannounced` takes `n_disposed d' = false` for this witness, and proves every path of a live memo. The question
-  for the owner: should disposal or the window clear the flag?
-- `disposed_running_observer_stays_clean` (`theories/Pure/Witnesses.v`, scenario of the same name): an effect that disposes
-  itself mid-body keeps running, a later read links an edge, its write leaves it clean and unqueued, and the `finally` at
-  Core.fs 4854-4855 clears the edge. The harness asserts each step inside the body: the memo has 0 observers after the
-  disposal and 1 after the read, the effect's status is `None` with `queued` false after the write, and 0 observers at the
-  end. `check_disposed_window` states the window of the model. No Core.fs doc covers this window. `Memo.Dispose`'s doc at 4373 ("stops
-  tracking and stops being woken") and `Effect.Dispose`'s at 4882 ("Detaches from every source") lean the other way. Nothing is lost: the effect is
-  disposed, so no later run owes a value, and the edge ends with the run. The question for the owner: is the window intended?
-  The case falls under the running disjunct of `later_mark_forwarded`, not under `takes_marks`.
 
 ## Closed
+
+- `disposed_window_keeps_unannounced` (`#317`; scenario `disposed_self_window`; `theories/Pure/Witnesses.v`, same name), closed as fixed (`Memo.RecomputeScoped`, `AsyncMemo.Start`, `Boundary.Recompute` in Core.fs, and `recompute` / `orecompute` in `theories/Pure/Engine.v` and `Optimised.v`). When `Discharge` disposes the computation and leaves `freshness = Clean`, the window clears `unannounced <- false` before returning, so `ci_unannounced` and `resolve_clears_unannounced` (`theories/Pure/Check.v`) hold unconditionally without a liveness premise.
+- `disposed_running_observer_stays_clean` (`#318`; scenario of the same name; `theories/Pure/Witnesses.v`, same name, and `check_disposed_window` in `theories/Conformance/Check.v`), closed as fixed (`IComputation.AddSource` in Core.fs, and `track` / `otrack` via `live_current` in `theories/Pure/Engine.v` and `Optimised.v`). A disposed computation ignores `AddSource`, so a body that disposes its own computation and keeps reading links no transient source edges during the remainder of the run.
 
 - `disposed_unread_memo_value` (`#309`; scenario of the same name; `theories/Reference/Properties.v` and `theories/Pure/Witnesses.v`, same name), closed as accepted and documented (`Memo.Dispose`, Core.fs 4372-4373). A disposed memo answers reads with its last computed outcome, or the type's default when it has never run (`disposed_memo_answers`, `disposed_unread_answers_default`), while the engine-independent reference evaluates over the signals at disposal. `weak_refinement_except` carries `no_memo_disposal` for this difference, and `weak_refinement_falsified` records it.
 - `write_then_dispose_memo_current_value` (`#310`; scenario of the same name; `theories/Reference/Properties.v` and `theories/Pure/Witnesses.v`, same name), closed as accepted and documented under the same ruling as `disposed_unread_memo_value` (Core.fs 4372-4373). Disposing a memo does not pull it, so a memo disposed after a source write in a batch keeps its last computed outcome and does not wake its readers.

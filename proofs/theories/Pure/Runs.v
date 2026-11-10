@@ -1965,7 +1965,8 @@ Proof.
   - intros s (d&Hd&Hk&_). exists (n_kind d). split; [done|by exists d].
   - intros s s' a Hi (k&Hk&Hn) Hm. exact (ok_track n k Hk s s' a Hi Hn Hm).
   - intros s s' a _ Hx (d&Hd&Hk&Hq) Hm. unfold track in Hm.
-    destruct (g_current s) as [c|] eqn:Ec; [|simplify_eq; split; [done|apply ekept_refl]].
+    destruct (live_current s) as [c|] eqn:Elc; [|simplify_eq; split; [done|apply ekept_refl]].
+    destruct (live_current_some _ _ Elc) as [Ec _].
     destruct (sources_add c n (g_edges s)) as [w|] eqn:Ea; [|done]. simplify_eq.
     destruct (extras_track s c n w d Hx Ec Ea Hd Hk) as (Hb&Ht&_).
     split; [split; [done|]|].
@@ -1986,8 +1987,9 @@ Proof.
     apply ok_bind; [apply _|apply ok_get_node|intros d'].
     destruct (stale_live d'); [apply ok_mark_reader|apply ok_return]. }
   intros s s' a Hi Hx (d&Hd&Hk) Hm. unfold m_bind in Hm. unfold track in Hm.
-  destruct (g_current s) as [c|] eqn:Ec.
-  - destruct (sources_add c n (g_edges s)) as [w|] eqn:Ea; [|done].
+  destruct (live_current s) as [c|] eqn:Elc.
+  - destruct (live_current_some _ _ Elc) as [Ec _].
+    destruct (sources_add c n (g_edges s)) as [w|] eqn:Ea; [|done].
     assert (Hkne : n_kind d <> KEffect) by congruence.
     destruct (extras_track s c n w d Hx Ec Ea Hd Hkne) as (Hb&Ht&Hin).
     set (s1 := ghost_read c n (read_prefix (g_edges s) c) (with_edges w s)) in *.
@@ -2021,7 +2023,11 @@ Proof.
       destruct (decide (c' = c /\ y = n)) as [[-> ->]|Hne]; [|exact (Ht b c' y dc e Hne Hc' He Hin' Hst Hde Hdc)].
       rewrite Hd1 in He. injection He as <-. unfold stale_live in El. rewrite Hst, Hde in El. done.
   - unfold get_node in Hm. rewrite Hd in Hm. destruct (stale_live d).
-    + unfold mark_reader in Hm. rewrite Ec in Hm. simplify_eq. split; [done|apply ekept_refl].
+    + unfold mark_reader in Hm.
+      destruct (g_current s) as [c|] eqn:Ec; [|simplify_eq; split; [done|apply ekept_refl]].
+      rewrite (b_flag_r _ (proj1 Hx)) in Hm.
+      destruct (mark_check f c s) as [s2|] eqn:Em; [|done]. simplify_eq.
+      apply (extras_marks f c None s s' Hx). by left.
     + unfold m_return in Hm. simplify_eq. split; [done|apply ekept_refl].
 Qed.
 
@@ -2228,7 +2234,23 @@ Section Step.
     destruct Hk2 as (d2 & Hd2 & Hk2). unfold get_node in Hm. rewrite Hd2 in Hm.
     assert (Hout : run_extras s' /\ ekept s2 s').
     { destruct (n_disposed d2) eqn:Edis.
-      - unfold m_return in Hm. simplify_eq. split; [apply Hc2|apply ekept_refl].
+      - destruct (decide (n_freshness d2 = Clean)) as [Hc2'|Hc2'].
+        + unfold modify_node in Hm. rewrite Hd2 in Hm. simplify_eq.
+          destruct Hc2 as [_ [Hb2 Ht2]].
+          split; [split|].
+          * apply (base_set n (node_with_unannounced false) d2); try done.
+            -- simpl. intros Hq. by eapply (b_queued _ Hb2).
+            -- simpl. intros H1 H2. by eapply (b_disposed _ Hb2).
+            -- simpl. intros Hk. by eapply (b_memo _ Hb2).
+            -- simpl. intros Hcl. split_and!.
+               ++ by eapply (b_cleanup_running _ Hb2).
+               ++ by eapply (me_cleanup _ (b_env _ Hb2)).
+               ++ intros H1. by eapply (b_cleanup_disposed _ Hb2).
+               ++ intros Hcur. pose proof (b_cleanup_current _ Hb2 n d2 Hcur Hd2). congruence.
+          * apply (told_set (fun _ _ => True) n (node_with_unannounced false) d2 s2 Ht2 Hd2); simpl; try done; [|by left].
+            rewrite Hc2'. done.
+          * apply (ekept_set n (node_with_unannounced false) d2 s2 Hd2); done.
+        + unfold m_return in Hm. simplify_eq. split; [apply Hc2|apply ekept_refl].
       - destruct (decide (n_runs d2 = n_runs d)) as [Heq|Hne].
         + destruct (Rrun_memo _ IH n _ _ _ Hc2 ltac:(by exists d2) Hm) as [[_ ?] [_ ?]]. by split.
         + destruct (decide (n_freshness d2 = Dirty)).
@@ -2246,7 +2268,7 @@ Section Step.
         { change (<[n := node_with_freshness Clean d]> (g_nodes s) !! c = Some dc). by rewrite lookup_insert_ne. }
         exact (k_cleanup _ _ E12 c dc Hdc1).
     - intros m dm r Hdm Hw Hl Hle. destruct (decide (m = n)) as [->|Hne].
-      + exfalso. rewrite He in Hdm. injection Hdm as <-. destruct Hp as [Hp|Hp]; [|congruence].
+      + exfalso. rewrite He in Hdm. injection Hdm as <-. destruct Hp as [Hp|[Hp _]]; [|congruence].
         pose proof (Hp e r He Hw). lia.
       + destruct (k_window _ _ E12 m dm r Hdm Hw Hl Hle) as (d0&r0&Hd0&Hw0&Hl0&Hr0).
         exists d0, r0. split_and!; [| |done|done].

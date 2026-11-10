@@ -166,7 +166,7 @@ Definition links (self s : node_id) (w : EdgeWorld) : bool :=
 (** [Graph.Track], clearing the stamp of [n] when the read adds an observer. *)
 Definition otrack (n : node_id) : M unit :=
   fun s =>
-    match g_current s with
+    match live_current s with
     | Some c =>
       match sources_add c n (g_edges s) with
       | Some w =>
@@ -411,7 +411,8 @@ with orecompute (fuel : nat) (n : node_id) {struct fuel} : M unit :=
       let* _ := m_modify (ghost_dirty_cleared n (n_runs d)) in
       let* _ := odischarge f o in
       let* d' := get_node n in
-      if n_disposed d' then m_return tt
+      if n_disposed d' then
+        if decide (n_freshness d' = Clean) then modify_node n (node_with_unannounced false) else m_return tt
       else if decide (n_runs d' = n_runs d) then orun_memo f n
       else if decide (n_freshness d' = Dirty) then orecompute f n
       else m_return tt
@@ -888,7 +889,7 @@ Qed.
 Lemma eqM_track n : eqM (track n) (otrack n).
 Proof.
   split; [|apply keeps_track]. intros s Hs. unfold track, otrack.
-  destruct (g_current s) as [c|]; [|done]. destruct (sources_add _ _ _) as [w|]; [|done].
+  destruct (live_current s) as [c|]; [|done]. destruct (sources_add _ _ _) as [w|]; [|done].
   assert (Hg : g_skip (ghost_read c n (read_prefix (g_edges s) c) (with_edges w s)) = SkipOff).
   { unfold ghost_read. case_match; done. }
   destruct (links _ _ _); [|done]. unfold unstamp. by rewrite Hg.
@@ -1754,7 +1755,7 @@ Qed.
 
 Local Ltac keep_tac :=
   let fl := fresh "fl" in let d := fresh "d" in
-  intros fl d; unfold node_sat, effect_saturated; simpl; destruct (n_kind d); intuition (auto || congruence).
+  intros fl d; unfold node_sat, effect_saturated; simpl; destruct (n_kind d); rewrite ?andb_false_r; intuition (auto || congruence).
 
 (** *** Each node write keeps saturation or advances *)
 
@@ -1987,11 +1988,16 @@ Proof.
   split_and!; [done|done|done|intros c Hy; exact Hy|intros src c; unfold observer_of; by apply Hu].
 Qed.
 
+Lemma strip_live_current s o : strip s = strip o -> live_current s = live_current o.
+Proof.
+  intros E. unfold live_current. by rewrite (strip_current _ _ E), (strip_nodes _ _ E).
+Qed.
+
 Lemma simM_track n : simM (track n) (otrack n).
 Proof.
   intros s o R. pose proof R as (E & Hk & Hok & Hle). unfold track, otrack.
-  rewrite (strip_current _ _ E), (strip_edges _ _ E).
-  destruct (g_current o) as [c|]; [|by split].
+  rewrite (strip_live_current _ _ E), (strip_edges _ _ E).
+  destruct (live_current o) as [c|]; [|by split].
   destruct (sources_add c n (g_edges o)) as [w|] eqn:Ew; [|done]. split; [done|].
   set (g := fun x => ghost_read c n (read_prefix (g_edges o) c) (with_edges w x)).
   assert (Hg : forall x, strip (g x) = strip (g (strip x)))

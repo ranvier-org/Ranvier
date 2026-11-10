@@ -350,7 +350,7 @@ Example nested_memo_prev_stuck :
 Proof. vm_compute. reflexivity. Qed.
 
 (** The window of [disposed_running_observer_stays_clean], from a body running for effect 3 after its
-    disposal: the read links an edge, and the write leaves the effect clean and unqueued. *)
+    disposal: the read links no edge, and the write leaves the effect clean and unqueued. *)
 Example check_disposed_window :
   let setup :=
     CSignal 1 (K 0) (CMemo 2 Pure CmpEq (R 10 (V 1) (CRet (V 10))) (CEffect 3 Nop Nop)) in
@@ -359,7 +359,7 @@ Example check_disposed_window :
     r ← run_top 100000%nat setup (init current_flags);
     r' ← hosted 3%nat (exec 100000%nat e (CDispose (V 3) b)) r.1;
     Some r'.1 in
-  (s ← run (R 10 (V 2) Nop); Some (observer_items (observers_of (g_edges s) 2%nat))) = Some [(3%nat, 0%nat)] /\
+  (s ← run (R 10 (V 2) Nop); Some (observer_items (observers_of (g_edges s) 2%nat))) = Some [] /\
   (s ← run (R 10 (V 2) (W (V 1) (K 1) Nop)); d ← g_nodes s !! 3%nat;
    Some (n_freshness d, n_queued d, length (pending s))) = Some (Clean, false, 0%nat).
 Proof. split; vm_compute; reflexivity. Qed.

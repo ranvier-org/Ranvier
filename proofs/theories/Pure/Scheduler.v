@@ -481,7 +481,7 @@ Qed.
 
 Lemma sok_track x P n : sok x x P (track n).
 Proof.
-  apply sok_same. intros s s' a Hm. unfold track in Hm. destruct (g_current s) as [c|]; [|simplify_eq; csame].
+  apply sok_same. intros s s' a Hm. unfold track in Hm. destruct (live_current s) as [c|]; [|simplify_eq; csame].
   destruct (sources_add _ _ _); simplify_eq. unfold ghost_read. simpl.
   destruct (g_nodes s !! n); csame.
 Qed.

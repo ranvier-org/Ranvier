@@ -319,7 +319,7 @@ Proof. intros s Hf. unfold edges_opt. change (g_edges (shift s)) with (g_edges s
 
 Lemma cm_track n : cm (track n).
 Proof.
-  intros s Hf. unfold track. change (g_current (shift s)) with (g_current s). change (g_edges (shift s)) with (g_edges s). destruct (g_current s) as [c|].
+  intros s Hf. unfold track. change (live_current (shift s)) with (live_current s). change (g_edges (shift s)) with (g_edges s). destruct (live_current s) as [c|].
   - destruct (sources_add c n (g_edges s)) as [w|]; [|done]. unfold ghost_read. split.
     + change (g_nodes (with_edges w (shift s))) with (g_nodes s). change (g_nodes (with_edges w s)) with (g_nodes s). destruct (g_nodes s !! n); reflexivity.
     + intros s' a E. injection E as <- _. case_match; exact Hf.
@@ -1110,8 +1110,9 @@ Qed.
 
 Lemma tot_track X t (Hr : Rd t) : tot X (pt t) (fun _ => track t).
 Proof.
-  apply tot_const. intros s G _ Hp. unfold track. destruct (g_current s) as [c|] eqn:Hc.
+  apply tot_const. intros s G _ Hp. unfold track. destruct (live_current s) as [c|] eqn:Hlc.
   2: { exists s, tt. split_and!; [done|done|apply kept_refl]. }
+  destruct (live_current_some _ _ Hlc) as [Hc _].
   pose proof (gd_reach _ G) as Hre. pose proof (proj1 (reachable_well_formed _ Hre)) as Hem.
   assert (Ha : exists w, sources_add c t (g_edges s) = Some w).
   { unfold sources_add. destruct (decide _); [by eexists|]. destruct (decide _); [by eexists|]. unfold sources_end_run.
@@ -1142,7 +1143,7 @@ Qed.
 
 Lemma track_nodes t s s' a : track t s = Some (s', a) -> g_nodes s' = g_nodes s /\ g_queue s' = g_queue s /\ g_queue_head s' = g_queue_head s.
 Proof.
-  unfold track. destruct (g_current s) as [c|]; [|intros E; by injection E as <- _].
+  unfold track. destruct (live_current s) as [c|]; [|intros E; by injection E as <- _].
   destruct (sources_add c t (g_edges s)) as [w|]; [|done]. intros E. injection E as <- _. unfold ghost_read.
   destruct (g_nodes (with_edges w s) !! t); split_and!; reflexivity.
 Qed.
@@ -2759,7 +2760,7 @@ Proof.
   assert (Hnp : forall m, m ∈ g_running s -> ~ pure_in (shapes s) m) by (intros m Hin K; exact (pure_not_running s m Hc Hw K Hin)).
   destruct f' as [|f']; [done|]. cbn [read] in Hrd. destruct f' as [|f']; [done|]. cbn [read_node] in Hrd.
   destruct (pure_exists s n Hp) as [d Hd]. rewrite (bind_get_node _ _ _ _ Hd) in Hrd.
-  assert (Htrack : track n s = Some (s, tt)) by (unfold track; by rewrite Hcur).
+  assert (Htrack : track n s = Some (s, tt)) by (unfold track, live_current; by rewrite Hcur).
   destruct (n_kind d) eqn:Ek.
   - rewrite (bind_some _ _ _ _ _ Htrack) in Hrd. unfold m_return in Hrd. injection Hrd as <- <-.
     destruct (b_window _ (proj1 (proj2 Hc))) as (_&_&Wsig&_).
@@ -2793,7 +2794,7 @@ Proof.
         - unfold m_return in Hrp. by injection Hrp as <-. }
       subst s1.
       assert (Hc1cur : g_current s2 = None) by (change (g_current sb = None); rewrite (at_current _ _ _ _ _ A); exact Hcur).
-      assert (Ht1 : track n s2 = Some (s2, tt)) by (unfold track; by rewrite Hc1cur).
+      assert (Ht1 : track n s2 = Some (s2, tt)) by (unfold track, live_current; by rewrite Hc1cur).
       assert (He2 : g_nodes s2 !! n = Some e) by exact He1.
       rewrite (bind_some _ _ _ _ _ Ht1), (bind_get_node _ _ _ _ He2) in H1.
       assert (Hs2 : s2' = s2).
