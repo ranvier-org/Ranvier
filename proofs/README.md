@@ -14,6 +14,17 @@ commit `d701e6c5`.
 All four run from any directory. See `VERSIONS.md` for the toolchain. The audit and the differential check also need the
 .NET SDK, since they rebuild `src/Ranvier`. Under WSL they run the Windows `dotnet.exe`.
 
+## Status
+
+The reference and pure tiers are complete, including the optimisation result `optimised_trace_eq`. The heap tier holds
+its foundation: `Heap/ObserverSet.v`, `Heap/SourceList.v` and `Heap/Ghost.v`, every specification closed under the
+global context.
+
+The heap layers above the foundation (marking, runs, the scheduler, ownership) and heap adequacy are deferred until the
+rulings on the bugs in `BUGS.md` are made and applied, since each ruling that changes the engine changes what those
+layers prove. Their obligations are listed in `Heap/Ghost.v`'s header. Each Awaiting-ruling item in `BUGS.md` is tracked
+as a GitHub issue labelled `proofs`.
+
 ## The link to the F#
 
 Rocq cannot read F#. The theorems are about the model, and they reach `Core.fs` only through `CORRESPONDENCE.md`. The

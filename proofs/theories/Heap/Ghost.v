@@ -23,8 +23,17 @@ The graph value is a location holding the resolver closure. A new node extends t
 [resolver_extend], and its locations join the monotone location map, so a location read at one state is the
 node's location at every later one ([graph_loc_agree]).
 
-Obligation left open: the node fields and the effect queue are not yet held in the heap. They join
-[is_graph_at] with the heap marking proofs, which wait for the algorithm fixes. *)
+Obligations of the heap layers above this file (marking, runs, scheduler, ownership):
+
+1. The node fields and the effect queue join [is_graph_at].
+2. [is_graph_at] is sealed, with [is_graph_open] and [graph_add_node_spec] the only lemmas that change
+   freshness codes, so the epoch protocol holds by construction.
+3. Every freshness write that can fall steps the ghost state. [epoch_rule] compares the freshness at
+   [is_graph_open] with the freshness at its close, so a fall and a rise between the two advance no epoch.
+4. The walk has a specification indexed by its cursor, giving each visit's place in the order, for an exact
+   specification against [mark_check].
+5. If node disposal or id reuse is modelled, the epochs of ids outside the domain are constrained, or a lower
+   bound on an absent id is excluded. *)
 
 Definition edge_entry : Type := observer_set * source_list.
 
@@ -291,8 +300,7 @@ Proof.
   apply Some_included_total, max_nat_included in Hle. simpl in Hle. iPureIntro. eauto.
 Qed.
 
-(** The codes [m] grow to [m']. Only [is_graph_open] and [graph_add_node_spec] apply it, each under the epoch
-    protocol. *)
+(** The codes [m] grow to [m']. *)
 Local Lemma graph_fresh_grow γ m m' :
   (forall n k, m !! n = Some (MaxNat k) -> exists k', m' !! n = Some (MaxNat k') /\ k <= k') ->
   graph_fresh_auth γ m ==∗ graph_fresh_auth γ m'.
