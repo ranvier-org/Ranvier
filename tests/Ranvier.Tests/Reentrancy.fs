@@ -173,7 +173,7 @@ let tests =
                 Expect.equal s.Value 2 "with the last write winning"
             }
 
-            test "a batch that throws still flushes the writes it made" {
+            test "a batch that throws leaves the graph able to flush later writes" {
                 let g = new Graph ()
                 let s = Signal (g, 0)
                 let runs = ref 0

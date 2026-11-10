@@ -3156,9 +3156,10 @@ type Graph(options: GraphOptions) =
                     journal.Boundary ()
 
     /// <summary>
-    /// Runs the queued effects. Inside a batch they run when the batch ends.
-    /// Inside a computation's body, including <c>untrack</c> within one, or a
-    /// stale read, they run once the outermost body or read has finished.
+    /// Runs the queued effects. Inside a batch they run when the batch returns;
+    /// a batch that throws leaves them queued until the next flush. Inside a
+    /// computation's body, including <c>untrack</c> within one, or a stale
+    /// read, they run once the outermost body or read has finished.
     /// </summary>
     member internal this.RequestFlush() =
         if queueHead < queueCount && batchDepth = 0 then
@@ -4369,10 +4370,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// the enclosing owner.
     /// </summary>
     /// <remarks>
-    /// A disposed memo still answers reads, with the last value it computed.
-    /// It stops tracking and stops being woken, which is the whole point: a
-    /// memo nothing reads is otherwise kept alive by the sources it reads, and
-    /// goes on being marked dirty for the lifetime of the graph.
+    /// A disposed memo answers reads with its last computed outcome, or the
+    /// type's default when it has never run. It stops tracking and stops being
+    /// woken, so the sources it read no longer retain or invalidate it.
     /// </remarks>
     member this.Dispose() =
         graph.Entered (
@@ -4636,8 +4636,8 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
     /// <summary>
     /// An effect is scheduled, not read, so it carries freshness separately
-    /// from <c>queued</c>: being on the queue says it has something to consider,
-    /// and this says whether that something is a certainty or a maybe.
+    /// from <c>queued</c>: <c>Check</c> walks its sources first, and <c>Dirty</c>
+    /// runs the body without comparing its previous reads.
     /// </summary>
     let mutable freshness = Freshness.Clean
 

@@ -363,7 +363,8 @@ Fixpoint reads_moved (p : program) (frz : gmap node_id outcome) (sigs : gmap nod
 Definition effect_ids (p : program) : list node_id := (map_to_list (program_effects p)).*1.
 
 (** The effects a round runs: those whose last-run reads differ from the graph at the round's
-    start. A disposed effect has no entry, and so no reads to differ. *)
+    start. The set is fixed at the round's start ([reference_run_redundant]). A disposed effect has
+    no entry, and so no reads to differ. *)
 Fixpoint run_set (p : program) (st : reference_state) (ns : list node_id) : option (list node_id) :=
   match ns with
   | [] => Some []
@@ -608,7 +609,9 @@ Definition host_reads : list event -> list (node_id * outcome) :=
   omap (fun e => match e with EvHostRead n o => Some (n, o) | _ => None end).
 
 (** Per node: the values of its last run, its failures and its disposal. For the whole trace: every
-    host read, in order. *)
+    host read, in order. Non-failing cleanup logs before a re-run's [EvRun] are cleared by that
+    [EvRun] ([logging_cleanup_drop_unobserved]), and a redundant run that discharges a failing
+    cleanup is observed through [sv_failures] ([redundant_failing_cleanup_changes_settled]). *)
 Definition observe_settled : observation :=
   {| observed_type := gmap node_id settled_view * list (node_id * outcome);
      observe := fun t => (foldl settled_step ∅ t, host_reads t) |}.
