@@ -709,7 +709,7 @@ Definition engine_of_optimised (k : nat) (p : program) (h : history) : option (l
   - [ ] **5a.** Build Release on both branches. Confirm optimisation from the assembly, not from BenchmarkDotNet's runtime line, which can show `DEBUG` for a Release F# build. Read `DebuggableAttribute` on `bench/Ranvier.Benchmarks/bin/Release/*/Ranvier.dll` with a scratchpad `.fsx` that loads it by `Assembly.LoadFrom`. Expected: `IsJITOptimizerDisabled = false`. Record the output.
   - [ ] **5b.** Run on each branch, at the same seed set and on the same machine, with `--inProcess` while the nested-worktree project clash persists: `rtk dotnet run --project bench/Ranvier.Benchmarks -c Release --no-build -- --inProcess --filter "*SignalBenchmarks.Write" "*SignalBenchmarks.WriteAndPropagate" "*EffectBenchmarks.*" "*BindingUpdateBenchmarks.WriteAndFlush"`. Restore any tracked file under `docs/.ai/benchmarks/results` that the run overwrites.
   - [ ] **5c.** Report gains and regressions side by side, before and after, with error columns. Expected gains are on `Write` with dirty unread memos and on `BatchOfTenWrites`. Expected regressions are on `WriteAndFlush`, `WriteAndPropagate`, and the `signal-binding` case of `BindingUpdateBenchmarks.WriteAndFlush`, where the skip never fires and the advance, stamp test and joining test only add cost. Signals observed by bindings, the shape Ranvier's UI produces most, gain nothing. Drop the optimisation if any regression on those shapes exceeds its benchmark's error bars, or if `BatchOfTenWrites` gains less than its error bars.
-- [ ] **Step 6: Report to the owner**, and ask them to review the heap scope in Tasks 14-16 in light of it.
+- [x] **Step 6: Report to the owner**, and ask them to review the heap scope in Tasks 14-16 in light of it.
   - [ ] **6a.** The report gives the theorems, the differential counts, the benchmark table and these heap obligations for Tasks 14-16:
     - `is_graph` carries `g_epoch`, each signal's stamp, and `stamp_ok`.
     - Each advance point is one step together with its field write: no step between them can run a walk.
@@ -719,7 +719,9 @@ Definition engine_of_optimised (k : nat) (p : program) (h : history) : option (l
     - The epoch is an unbounded `Z` in HeapLang. The F# `int64` assumes no wrap, and a Fable build's `int64` cost needs measuring.
     - Under `RANVIER_TRACE` (Debug builds), a skipped walk emits no `Tracer.Mark` events (Core.fs 380). This observation lies outside the model, so trace-log tests may change.
     - UI `Binding`s and other non-joining `IComputation` implementors record nothing and gain nothing.
-  - [ ] **6b.** Ask the owner whether Tasks 14-16 take these obligations on, or keep the heap tier at the present engine.
+  - [x] **6b.** Ask the owner whether Tasks 14-16 take these obligations on, or keep the heap tier at the present engine.
+
+**Outcome.** Steps 2-6 done. Proofs on `claude/iris-rocq-ranvier-project-f3d6ae` (`optimised_trace_eq`); F# on `claude/notify-skip-epoch` (`0e5fa0b3`, `8d37379d`, unpushed); benchmark verdict keep (`BatchOfTenWrites` 0.36-0.40, `Write` at 64 saturated observers 0.03; no consistent regression, resolution about 5%). **Owner ruling (2026-11-10): keep the heap tier at the present engine.** Tasks 14-16 prove `Engine.v`'s engine and take on none of the obligations in 6a. If `claude/notify-skip-epoch` merges, its heap correspondence rests on `optimised_trace_eq` and the differential, not on Tasks 14-16.
 
 ---
 
