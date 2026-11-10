@@ -326,3 +326,12 @@ Print Assumptions Ranvier.Heap.Ghost.is_graph_edge.
 Print Assumptions Ranvier.Heap.Ghost.is_graph_fresh_lb.
 Print Assumptions Ranvier.Heap.Ghost.is_graph_fresh_valid.
 Print Assumptions Ranvier.Heap.Ghost.is_graph_alloc.
+Print Assumptions Ranvier.Heap.Ghost.epoch_rule_rise.
+Print Assumptions Ranvier.Heap.Ghost.fresh_map_grows.
+Print Assumptions Ranvier.Heap.Ghost.graph_loc_agree.
+Print Assumptions Ranvier.Heap.Ghost.resolver_extend_spec.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_edge_match.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_loc.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_fresh_epoch.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_open.
+Print Assumptions Ranvier.Heap.Ghost.graph_add_node_spec.

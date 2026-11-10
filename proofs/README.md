@@ -302,6 +302,9 @@ copy, so it needs no Rocq.
 | `sources_add_spec`, `sources_end_run_spec`, `sources_clear_spec`, `sources_begin_run_spec` | `Heap/SourceList.v` | On a world whose edge ends agree, the heap operations leave the world `sources_add`, `sources_end_run`, `sources_clear` and `sources_begin_run` give. |
 | `moved_past_list_clears`, `moved_past_list_incoherent` | `Heap/SourceList.v` | An incoherent world the pure trim completes by a `MovedIn` past the end: the reason the heap specifications take `edge_match`. |
 | `is_graph_agree`, `is_graph_edge`, `is_graph_fresh_lb`, `is_graph_fresh_valid`, `is_graph_alloc` | `Heap/Ghost.v` | The heap graph agrees with the pure state and its edge fragments, a freshness lower bound stays below the node's code, and a heap edge world starts a graph. |
+| `epoch_rule_rise`, `fresh_map_grows`, `is_graph_fresh_epoch` | `Heap/Ghost.v` | Under the epoch protocol every freshness code grows, a step that only raises freshness keeps the epochs, and at an unchanged epoch a lower bound bounds the freshness. |
+| `is_graph_open`, `is_graph_edge_match`, `is_graph_loc`, `graph_loc_agree` | `Heap/Ghost.v` | A graph opens to its heap and closes at a later state with the same nodes under the epoch protocol, moving the edge fragments it is given; its edge world is coherent, and a node's locations are stable. |
+| `graph_add_node_spec`, `resolver_extend_spec` | `Heap/Ghost.v` | A new node joins the graph with empty edge structures, through a resolver extended by one closure. |
 
 `Pure/Marking.v` guards the forwarding half of #302 only: a memo holding an announcement tells its observers. Never setting `unannounced` falls to `wake_ok` and `marks_survive_body_end`, and removing `MarkReaderCheck` to `wake_told`: `unannounced_off_fires`, `reader_mark_off_fires`. `wake_ok` holds with `MarkReaderCheck` removed, since the source holds its flag.
 
