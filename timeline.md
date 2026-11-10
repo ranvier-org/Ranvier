@@ -145,6 +145,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 83,472 | 127,084 | 1,751,069 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 83,471 | 127,087 | 1,751,032 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 83,471 | 127,068 | 1,751,058 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 83,473 | 127,032 | 1,750,996 |
 
 ## app-table
 
@@ -291,6 +292,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 4,436,348 | 9,347,627 | 108,097,497 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 4,436,445 | 9,526,290 | 108,517,280 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 4,436,422 | 9,348,590 | 108,288,776 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 4,436,377 | 9,388,575 | 108,233,524 |
 
 ## async-recover
 
@@ -437,6 +439,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 139,123 | 41,390 | 435,919 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 139,123 | 41,388 | 435,927 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 139,123 | 41,382 | 435,923 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 139,123 | 41,392 | 435,925 |
 
 ## async-resolve
 
@@ -583,6 +586,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,789,438 | 1,002,337 | 12,002,065 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,789,437 | 1,002,195 | 12,001,347 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,789,437 | 1,002,399 | 12,001,673 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,789,438 | 1,002,234 | 12,001,732 |
 
 ## chain
 
@@ -729,6 +733,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 
 ## chain-affinity
 
@@ -875,6 +880,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,578 | 3,096 | 2,525 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,578 | 3,096 | 2,525 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,578 | 3,096 | 2,525 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,578 | 3,096 | 2,525 |
 
 ## control
 
@@ -1021,6 +1027,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 74,710 | 839,893 | 2,601,797 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 74,710 | 839,889 | 2,599,697 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 74,710 | 839,893 | 2,601,829 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 74,710 | 839,897 | 2,599,701 |
 
 ## create
 
@@ -1167,6 +1174,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 13,448,318 | 2,861,677 | 2,570,368 | 2,127,980 | 4,045,222 | 34,034,907 | 50,427,616 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 13,448,235 | 2,861,677 | 2,570,369 | 2,127,896 | 4,045,340 | 34,034,535 | 50,427,600 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 13,448,371 | 2,861,677 | 2,570,384 | 2,127,933 | 4,045,421 | 34,034,770 | 50,427,664 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 13,464,238 | 2,861,678 | 2,570,369 | 2,127,974 | 4,045,544 | 34,034,732 | 50,427,466 |
 
 ## create-on
 
@@ -1313,6 +1321,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,949,500 | 4,179,668 | 55,228,688 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,949,484 | 4,179,655 | 55,228,770 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,949,484 | 4,179,449 | 55,228,828 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,949,484 | 4,179,636 | 55,228,828 |
 
 ## cutoff
 
@@ -1459,6 +1468,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1605,6 +1615,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 781 | 751 | 16,520 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 781 | 751 | 16,520 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 781 | 751 | 16,520 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1751,6 +1762,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 751 | 802 | 16,543 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 751 | 802 | 16,543 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 751 | 802 | 16,543 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1897,6 +1909,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,707,641 | 806,291 | 367,497 | 475,439 | 495,019 | 13,205,970 | 9,105,717 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,706,240 | 806,291 | 367,497 | 476,056 | 495,047 | 13,205,460 | 9,105,771 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,707,644 | 806,291 | 367,497 | 475,863 | 495,433 | 13,205,880 | 9,106,153 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,707,643 | 806,290 | 367,497 | 476,134 | 495,150 | 13,206,176 | 9,105,709 |
 
 ## dispose-on
 
@@ -2043,6 +2056,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 346,497 | 487,563 | 8,902,389 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 346,497 | 487,790 | 8,902,258 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 346,497 | 487,901 | 8,902,441 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 346,497 | 487,699 | 8,902,633 |
 
 ## editable-edit
 
@@ -2189,6 +2203,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 182,106 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 182,106 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 182,106 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 182,106 |
 
 ## editable-upstream
 
@@ -2335,6 +2350,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 233,855 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 233,855 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 233,855 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 233,855 |
 
 ## fail-recompute
 
@@ -2481,6 +2497,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 64,895 | 1,383 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 64,895 | 1,383 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 64,895 | 1,383 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 64,895 | 1,383 |
 
 ## flight
 
@@ -2627,6 +2644,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 
 ## keyed-insert
 
@@ -2773,6 +2791,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,925,731 | 53,917 | 54,954 | 3,280,054 | 660,436 | 243,376 | 45,303,004 | 2,634,651 | 2,655,687 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,925,733 | 53,917 | 54,954 | 3,280,052 | 660,295 | 243,395 | 45,302,978 | 2,634,677 | 2,655,658 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,925,739 | 53,917 | 54,964 | 3,279,998 | 660,315 | 243,397 | 45,302,963 | 2,634,695 | 2,655,742 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,925,731 | 53,917 | 54,954 | 3,279,960 | 660,367 | 243,382 | 45,302,976 | 2,634,673 | 2,655,680 |
 
 ## keyed-remove
 
@@ -2919,6 +2938,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,924,662 | 43,600 | 45,303 | 3,284,070 | 596,038 | 602,219 | 45,268,286 | 1,924,655 | 1,960,393 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,924,658 | 43,600 | 45,303 | 3,284,068 | 596,013 | 602,239 | 45,268,298 | 1,924,554 | 1,960,266 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,924,672 | 43,600 | 45,312 | 3,284,079 | 595,990 | 602,298 | 45,280,283 | 1,924,722 | 1,960,317 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,924,662 | 43,600 | 45,303 | 3,284,052 | 596,035 | 602,209 | 45,268,289 | 1,924,736 | 1,960,377 |
 
 ## keyed-swap
 
@@ -3065,6 +3085,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,977,355 | 46,205 | 46,927 | 3,650,178 | 147,989 | 508,899 | 46,428,929 | 915,671 | 935,776 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,977,356 | 46,205 | 46,928 | 3,647,892 | 147,965 | 508,833 | 46,429,254 | 915,643 | 935,778 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,977,355 | 46,205 | 46,927 | 3,648,330 | 147,937 | 508,810 | 46,429,283 | 915,633 | 935,805 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,977,355 | 46,205 | 46,927 | 3,648,001 | 147,897 | 508,939 | 46,429,315 | 915,682 | 935,786 |
 
 ## mvu-dispatch
 
@@ -3211,6 +3232,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 58,548 | 788 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 58,548 | 788 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 58,548 | 788 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 58,548 | 788 |
 
 ## persist-write
 
@@ -3357,6 +3379,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — |
 
 ## project-chain
 
@@ -3503,6 +3526,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,077,349 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,077,382 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,077,343 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,077,260 |
 
 ## project-churn
 
@@ -3649,6 +3673,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 36,386 | 34,251 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 36,404 | 34,281 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 36,388 | 34,281 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 36,386 | 34,251 |
 
 ## project-edit
 
@@ -3795,6 +3820,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 50,497 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 50,496 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 50,495 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 50,496 |
 
 ## project-reorder
 
@@ -3941,6 +3967,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 780,085 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 780,084 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 780,083 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 780,084 |
 
 ## server-render
 
@@ -4087,6 +4114,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — | — |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — | — |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — | — |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — | — |
 
 ## shape-diamond
 
@@ -4233,6 +4261,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 60,816 | 82,845 | 1,802,884 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 60,816 | 82,845 | 1,802,884 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 60,816 | 82,845 | 1,802,884 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 60,816 | 82,845 | 1,802,884 |
 
 ## shape-dynamic
 
@@ -4379,6 +4408,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 84,378 | 108,947 | 2,038,136 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 84,378 | 108,944 | 2,038,136 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 84,378 | 108,947 | 2,038,136 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4525,6 +4555,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,954 | 1,552 | 2,509 | 5,034 | 7,376 | 14,050 | 47,794 | 46,003 | 55,598 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,051 | 47,792 | 46,003 | 55,600 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,954 | 1,552 | 2,525 | 5,034 | 7,372 | 14,048 | 47,796 | 46,003 | 55,600 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,051 | 47,796 | 46,003 | 55,600 |
 
 ## stream-burst-16
 
@@ -4671,6 +4702,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 5,056 | 24,682 | 5,719 | 9,817 | 49,281 | 8,193 | 124,965 | 723,617 | 113,950 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 5,056 | 24,682 | 5,719 | 9,814 | 49,281 | 8,194 | 124,968 | 723,620 | 113,946 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 5,056 | 24,682 | 5,735 | 9,816 | 49,281 | 8,193 | 124,965 | 723,620 | 113,950 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 5,056 | 24,682 | 5,719 | 9,815 | 49,281 | 8,194 | 124,965 | 723,620 | 113,950 |
 
 ## stream-burst-256
 
@@ -4817,6 +4849,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 54,676 | 394,726 | 57,058 | 133,545 | 800,308 | 45,152 | 1,359,968 | 11,564,282 | 1,046,981 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 54,676 | 394,726 | 57,058 | 133,524 | 800,308 | 45,154 | 1,359,925 | 11,564,280 | 1,046,969 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 54,676 | 394,726 | 57,074 | 133,531 | 800,308 | 45,152 | 1,359,966 | 11,564,280 | 1,046,979 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 54,676 | 394,726 | 57,058 | 133,565 | 800,311 | 45,152 | 1,359,966 | 11,564,234 | 1,046,981 |
 
 ## stream-restart
 
@@ -4963,6 +4996,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 4,216 | 5,040 | 5,736 | 5,334 | 43,390 | 72,510 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 4,216 | 5,040 | 5,731 | 5,331 | 43,387 | 72,505 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 4,216 | 5,056 | 5,734 | 5,330 | 43,390 | 72,510 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 4,216 | 5,040 | 5,737 | 5,336 | 43,389 | 72,513 |
 
 ## timed-admit-both
 
@@ -5109,6 +5143,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 117,709 | 130,037 | 2,693,850 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 117,709 | 130,036 | 2,693,876 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 117,709 | 130,037 | 2,693,850 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 117,709 | 130,034 | 2,693,850 |
 
 ## timed-admit-debounce
 
@@ -5255,6 +5290,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 116,614 | 128,626 | 2,654,132 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 116,614 | 128,621 | 2,654,132 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 116,614 | 128,630 | 2,654,132 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 116,614 | 128,632 | 2,654,119 |
 
 ## timed-admit-first
 
@@ -5401,6 +5437,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 69,621 | 79,565 | 1,620,678 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 69,621 | 79,565 | 1,620,678 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 69,621 | 79,565 | 1,620,678 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 69,621 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -5547,6 +5584,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 116,876 | 128,938 | 2,663,988 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 116,876 | 128,948 | 2,663,987 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 116,876 | 128,939 | 2,663,975 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 116,876 | 128,939 | 2,663,986 |
 
 ## timed-capture-both
 
@@ -5693,6 +5731,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,740 | 44,936 | 847,273 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,740 | 44,936 | 847,273 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,740 | 44,936 | 847,274 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,740 | 44,934 | 847,273 |
 
 ## timed-capture-debounce
 
@@ -5839,6 +5878,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,612 | 44,232 | 847,657 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,612 | 44,232 | 847,657 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,612 | 44,232 | 847,657 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,612 | 44,233 | 847,657 |
 
 ## timed-capture-first
 
@@ -5985,6 +6025,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 32,092 | 36,741 | 745,652 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 32,092 | 36,741 | 745,651 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 32,092 | 36,741 | 745,651 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -6131,6 +6172,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,548 | 44,169 | 839,785 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,548 | 44,169 | 839,785 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,548 | 44,168 | 839,785 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -6277,6 +6319,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,820 | 3,351,294 | 2,545,082 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,087,790 | 38,805 | 84,105 | 263,205 | 145,792 | 3,351,174 | 2,544,985 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,087,783 | 38,805 | 84,105 | 263,194 | 145,785 | 3,351,290 | 2,545,077 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,089,390 | 38,805 | 84,105 | 263,447 | 145,832 | 3,351,256 | 2,545,054 |
 
 ## update-on
 
@@ -6423,6 +6466,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 94,605 | 169,056 | 2,872,456 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 94,605 | 169,037 | 2,872,354 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 94,605 | 169,006 | 2,872,461 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 94,605 | 169,049 | 2,872,416 |
 
 ## work-form
 
@@ -6569,6 +6613,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 172,679 | 165,150 | 308,833 | 296,954 | 5,421,833 | 5,334,886 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 172,679 | 165,150 | 308,860 | 297,021 | 5,421,859 | 5,334,885 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 172,679 | 165,150 | 308,861 | 296,942 | 5,421,859 | 5,334,882 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 172,679 | 165,150 | 308,861 | 297,000 | 5,421,851 | 5,334,847 |
 
 ## work-status
 
@@ -6715,6 +6760,7 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 102,045 | 80,235 | 269,313 | 156,127 | 2,659,274 | 2,391,280 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 102,045 | 80,235 | 269,257 | 156,110 | 2,659,289 | 2,391,294 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 102,045 | 80,235 | 269,328 | 156,112 | 2,659,264 | 2,391,332 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 102,045 | 80,235 | 269,326 | 156,117 | 2,659,264 | 2,391,265 |
 
 ## work-value
 
@@ -6861,4 +6907,5 @@
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 109,169 | 121,071 | 269,600 | 283,395 | 2,643,905 | 2,968,446 |
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 109,170 | 121,069 | 269,626 | 283,396 | 2,643,901 | 2,968,464 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 109,169 | 121,071 | 269,608 | 283,396 | 2,643,937 | 2,968,467 |
+| `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 109,171 | 121,070 | 269,615 | 283,399 | 2,643,902 | 2,968,467 |
 
