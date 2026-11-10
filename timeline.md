@@ -142,6 +142,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 83,472 | 127,076 | 1,751,049 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 83,472 | 127,069 | 1,751,109 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 83,471 | 127,080 | 1,751,085 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 83,472 | 127,084 | 1,751,069 |
 
 ## app-table
 
@@ -285,6 +286,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 4,436,368 | 9,346,352 | 107,994,402 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 4,436,376 | 9,349,633 | 107,995,750 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 4,436,383 | 9,349,181 | 108,350,650 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 4,436,348 | 9,347,627 | 108,097,497 |
 
 ## async-recover
 
@@ -428,6 +430,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 139,123 | 41,385 | 435,918 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 139,123 | 41,358 | 435,913 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 139,123 | 41,390 | 435,918 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 139,123 | 41,390 | 435,919 |
 
 ## async-resolve
 
@@ -571,6 +574,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,789,437 | 1,002,119 | 12,001,293 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,789,437 | 1,002,322 | 12,001,541 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,789,437 | 1,002,208 | 12,002,003 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,789,438 | 1,002,337 | 12,002,065 |
 
 ## chain
 
@@ -714,6 +718,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,779 | 67,991 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 13,163 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 
 ## chain-affinity
 
@@ -857,6 +862,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,578 | 3,096 | 2,525 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,578 | 3,096 | 2,525 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,578 | 3,096 | 2,525 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,578 | 3,096 | 2,525 |
 
 ## control
 
@@ -1000,6 +1006,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 74,710 | 839,916 | 2,599,746 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 74,710 | 839,917 | 2,601,846 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 74,710 | 839,878 | 2,596,615 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 74,710 | 839,893 | 2,601,797 |
 
 ## create
 
@@ -1143,6 +1150,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 13,448,320 | 2,861,677 | 2,570,368 | 2,127,029 | 4,045,288 | 34,034,540 | 50,427,542 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 13,560,214 | 2,861,677 | 2,570,368 | 2,127,977 | 4,045,504 | 34,034,781 | 50,427,563 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 13,448,339 | 2,861,678 | 2,570,368 | 2,127,940 | 4,045,522 | 34,034,706 | 50,427,743 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 13,448,318 | 2,861,677 | 2,570,368 | 2,127,980 | 4,045,222 | 34,034,907 | 50,427,616 |
 
 ## create-on
 
@@ -1286,6 +1294,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,965,484 | 4,179,738 | 55,228,826 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,949,500 | 4,179,927 | 55,228,848 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,949,500 | 4,179,716 | 55,228,832 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,949,500 | 4,179,668 | 55,228,688 |
 
 ## cutoff
 
@@ -1429,6 +1438,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1572,6 +1582,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 781 | 751 | 16,520 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 781 | 751 | 16,520 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 781 | 751 | 16,520 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1715,6 +1726,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 767 | 802 | 16,543 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 751 | 802 | 16,543 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 751 | 802 | 16,543 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1858,6 +1870,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 2,706,242 | 806,291 | 367,497 | 475,912 | 495,063 | 13,207,421 | 9,105,864 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,707,643 | 806,291 | 367,497 | 475,885 | 494,904 | 13,206,203 | 9,106,127 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,707,646 | 806,290 | 367,497 | 475,728 | 495,018 | 13,205,645 | 9,106,230 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,707,641 | 806,291 | 367,497 | 475,439 | 495,019 | 13,205,970 | 9,105,717 |
 
 ## dispose-on
 
@@ -2001,6 +2014,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 346,497 | 488,010 | 8,902,473 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 346,497 | 487,899 | 8,902,696 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 346,497 | 487,772 | 8,902,689 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 346,497 | 487,563 | 8,902,389 |
 
 ## editable-edit
 
@@ -2144,6 +2158,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 182,106 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 182,106 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 182,106 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 182,106 |
 
 ## editable-upstream
 
@@ -2287,6 +2302,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 233,855 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 233,855 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 233,855 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 233,855 |
 
 ## fail-recompute
 
@@ -2430,6 +2446,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 64,895 | 1,383 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 64,895 | 1,383 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 64,895 | 1,383 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 64,895 | 1,383 |
 
 ## flight
 
@@ -2573,6 +2590,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 
 ## keyed-insert
 
@@ -2716,6 +2734,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,925,731 | 53,917 | 54,960 | 3,280,002 | 660,378 | 243,099 | 45,313,167 | 2,634,661 | 2,655,749 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,925,731 | 53,917 | 54,957 | 3,279,982 | 660,645 | 243,398 | 45,302,976 | 2,634,617 | 2,655,689 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,925,763 | 53,949 | 54,987 | 3,279,968 | 660,380 | 243,032 | 45,302,969 | 2,634,654 | 2,655,739 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,925,731 | 53,917 | 54,954 | 3,280,054 | 660,436 | 243,376 | 45,303,004 | 2,634,651 | 2,655,687 |
 
 ## keyed-remove
 
@@ -2859,6 +2878,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,924,662 | 43,600 | 45,304 | 3,284,123 | 595,995 | 602,228 | 45,268,308 | 1,924,733 | 1,960,386 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,924,656 | 43,600 | 45,304 | 3,284,095 | 596,028 | 602,225 | 45,268,271 | 1,924,738 | 1,960,304 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,924,688 | 43,632 | 45,335 | 3,284,134 | 596,134 | 602,246 | 45,280,310 | 1,924,740 | 1,960,427 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,924,662 | 43,600 | 45,303 | 3,284,070 | 596,038 | 602,219 | 45,268,286 | 1,924,655 | 1,960,393 |
 
 ## keyed-swap
 
@@ -3002,6 +3022,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,977,355 | 46,205 | 46,927 | 3,650,183 | 147,932 | 508,942 | 46,429,291 | 915,636 | 935,766 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,977,355 | 46,205 | 46,927 | 3,649,794 | 147,934 | 509,120 | 46,429,306 | 915,662 | 935,759 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,977,387 | 46,238 | 46,959 | 3,649,956 | 148,225 | 508,907 | 46,429,259 | 915,664 | 935,781 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,977,355 | 46,205 | 46,927 | 3,650,178 | 147,989 | 508,899 | 46,428,929 | 915,671 | 935,776 |
 
 ## mvu-dispatch
 
@@ -3145,6 +3166,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 58,548 | 788 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 58,548 | 788 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 58,548 | 788 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 58,548 | 788 |
 
 ## persist-write
 
@@ -3288,6 +3310,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — |
 
 ## project-chain
 
@@ -3431,6 +3454,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,077,312 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,077,356 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,077,292 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,077,349 |
 
 ## project-churn
 
@@ -3574,6 +3598,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 36,386 | 34,251 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 36,402 | 34,269 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 36,386 | 34,251 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 36,386 | 34,251 |
 
 ## project-edit
 
@@ -3717,6 +3742,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 50,495 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 50,496 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 50,527 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 50,497 |
 
 ## project-reorder
 
@@ -3860,6 +3886,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 780,083 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 780,084 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 780,116 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 780,085 |
 
 ## server-render
 
@@ -4003,6 +4030,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | — | — | — |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — | — |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — | — |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — | — |
 
 ## shape-diamond
 
@@ -4146,6 +4174,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 60,816 | 82,845 | 1,802,883 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 60,816 | 82,845 | 1,802,884 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 60,816 | 82,845 | 1,802,884 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 60,816 | 82,845 | 1,802,884 |
 
 ## shape-dynamic
 
@@ -4289,6 +4318,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 84,378 | 108,947 | 2,038,136 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 84,378 | 108,947 | 2,038,136 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 84,378 | 108,947 | 2,038,136 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 84,378 | 108,947 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4432,6 +4462,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,048 | 47,796 | 46,003 | 55,600 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,047 | 47,796 | 46,003 | 55,599 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,954 | 1,552 | 2,509 | 5,030 | 7,372 | 14,047 | 47,796 | 46,003 | 55,599 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,954 | 1,552 | 2,509 | 5,034 | 7,376 | 14,050 | 47,794 | 46,003 | 55,598 |
 
 ## stream-burst-16
 
@@ -4575,6 +4606,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 5,056 | 24,682 | 5,719 | 9,818 | 49,282 | 8,192 | 124,966 | 723,620 | 113,950 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 5,056 | 24,682 | 5,719 | 9,816 | 49,281 | 8,194 | 124,968 | 723,620 | 113,950 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 5,056 | 24,682 | 5,719 | 9,816 | 49,281 | 8,194 | 124,969 | 723,620 | 113,950 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 5,056 | 24,682 | 5,719 | 9,817 | 49,281 | 8,193 | 124,965 | 723,617 | 113,950 |
 
 ## stream-burst-256
 
@@ -4718,6 +4750,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 54,676 | 394,726 | 57,058 | 133,543 | 800,308 | 45,152 | 1,359,966 | 11,564,280 | 1,046,887 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 54,676 | 394,726 | 57,058 | 133,585 | 800,313 | 45,152 | 1,359,880 | 11,564,280 | 1,046,979 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 54,676 | 394,726 | 57,058 | 133,576 | 800,308 | 45,152 | 1,359,974 | 11,564,280 | 1,046,979 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 54,676 | 394,726 | 57,058 | 133,545 | 800,308 | 45,152 | 1,359,968 | 11,564,282 | 1,046,981 |
 
 ## stream-restart
 
@@ -4861,6 +4894,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 4,216 | 5,040 | 5,740 | 5,334 | 43,390 | 72,512 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 4,216 | 5,040 | 5,740 | 5,335 | 43,388 | 72,509 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 4,216 | 5,040 | 5,739 | 5,333 | 43,387 | 72,513 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 4,216 | 5,040 | 5,736 | 5,334 | 43,390 | 72,510 |
 
 ## timed-admit-both
 
@@ -5004,6 +5038,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 117,709 | 130,037 | 2,693,850 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 117,709 | 130,035 | 2,693,850 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 117,709 | 130,037 | 2,693,850 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 117,709 | 130,037 | 2,693,850 |
 
 ## timed-admit-debounce
 
@@ -5147,6 +5182,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 116,614 | 128,619 | 2,654,132 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 116,614 | 128,630 | 2,654,132 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 116,614 | 128,619 | 2,654,132 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 116,614 | 128,626 | 2,654,132 |
 
 ## timed-admit-first
 
@@ -5290,6 +5326,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 69,621 | 79,565 | 1,620,678 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 69,621 | 79,565 | 1,620,678 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 69,621 | 79,565 | 1,620,678 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 69,621 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -5433,6 +5470,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 116,876 | 128,939 | 2,663,988 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 116,876 | 128,937 | 2,663,988 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 116,876 | 128,951 | 2,663,988 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 116,876 | 128,938 | 2,663,988 |
 
 ## timed-capture-both
 
@@ -5576,6 +5614,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,740 | 44,936 | 847,271 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,740 | 44,936 | 847,273 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,740 | 44,935 | 847,273 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,740 | 44,936 | 847,273 |
 
 ## timed-capture-debounce
 
@@ -5719,6 +5758,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,612 | 44,232 | 847,657 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,612 | 44,232 | 847,657 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,612 | 44,232 | 847,657 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5862,6 +5902,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 32,092 | 36,741 | 745,651 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 32,092 | 36,741 | 745,651 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 32,092 | 36,741 | 745,651 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 32,092 | 36,741 | 745,652 |
 
 ## timed-capture-last
 
@@ -6005,6 +6046,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 35,548 | 44,169 | 839,785 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,548 | 44,168 | 839,785 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,548 | 44,168 | 839,785 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,548 | 44,169 | 839,785 |
 
 ## update
 
@@ -6148,6 +6190,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 1,087,783 | 38,805 | 84,105 | 263,101 | 145,791 | 3,351,293 | 2,545,076 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,087,790 | 38,805 | 84,105 | 263,375 | 145,799 | 3,351,253 | 2,545,074 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,087,790 | 38,805 | 84,105 | 263,378 | 145,804 | 3,351,294 | 2,545,083 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,820 | 3,351,294 | 2,545,082 |
 
 ## update-on
 
@@ -6291,6 +6334,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 96,205 | 169,022 | 2,872,468 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 94,605 | 169,024 | 2,872,469 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 94,605 | 169,026 | 2,872,447 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 94,605 | 169,056 | 2,872,456 |
 
 ## work-form
 
@@ -6434,6 +6478,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 172,679 | 165,150 | 308,860 | 296,991 | 5,421,847 | 5,334,916 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 172,679 | 165,150 | 308,844 | 296,977 | 5,421,848 | 5,334,914 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 172,679 | 165,150 | 308,825 | 296,956 | 5,421,849 | 5,334,915 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 172,679 | 165,150 | 308,833 | 296,954 | 5,421,833 | 5,334,886 |
 
 ## work-status
 
@@ -6577,6 +6622,7 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 102,045 | 81,835 | 269,342 | 156,127 | 2,659,268 | 2,391,317 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 102,045 | 80,235 | 269,340 | 156,111 | 2,659,292 | 2,391,318 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 102,045 | 80,235 | 269,299 | 156,136 | 2,659,293 | 2,391,318 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 102,045 | 80,235 | 269,313 | 156,127 | 2,659,274 | 2,391,280 |
 
 ## work-value
 
@@ -6720,4 +6766,5 @@
 | `d701e6c` | 2026-11-08 | fix(core): a node marked during its own run wakes its readers on its next mark (#303) | 109,169 | 122,671 | 269,603 | 283,402 | 2,643,913 | 2,968,473 |
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 109,169 | 121,071 | 269,611 | 283,430 | 2,643,903 | 2,968,463 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 109,169 | 121,069 | 269,542 | 283,397 | 2,643,937 | 2,968,473 |
+| `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 109,169 | 121,071 | 269,600 | 283,395 | 2,643,905 | 2,968,446 |
 
