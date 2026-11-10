@@ -2095,12 +2095,10 @@ Definition resolve_clean_no_move_statement : Prop :=
     ~ moved_since_last_run s' n.
 
 (**md
-**Open, and false on the present engine: a memo resolved `Clean` has read what each source now stores, without the `reads_settled` premise.**
+**Open statement, false on the present engine: a memo resolved `Clean` has read what each source now stores, without the `reads_settled` premise.**
 
-This states the behaviour the fix phase owes, as `resolve_clean_no_move_statement`. The Confirmed bug [`check_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#check_resolves_over_moved_source) falsifies it, and [`resolve_clean_no_move_falsified`](Ranvier.Pure.Witnesses.html#resolve_clean_no_move_falsified) proves that. Until the fix, later layers use [`resolve_clean_unmoved`](#resolve_clean_unmoved).
+`resolve_clean_no_move_statement` is the behaviour the fix phase owes. The Confirmed bug [`check_resolves_over_moved_source`](Ranvier.Pure.Witnesses.html#check_resolves_over_moved_source) falsifies it, and [`resolve_clean_no_move_falsified`](Ranvier.Pure.Witnesses.html#resolve_clean_no_move_falsified) proves that. Until the fix, later layers use [`resolve_clean_unmoved`](#resolve_clean_unmoved).
 *)
-Theorem resolve_clean_no_move : resolve_clean_no_move_statement.
-Admitted.
 
 (** A memo that [update_if_necessary] resolves [Clean] has no live stale source, which the fix phase owes.
     [self_marking_wake_lost] in [BUGS.md] is its counterexample on the present engine. A disposed source stays
@@ -2115,12 +2113,10 @@ Definition resolve_clean_no_stale_source_statement : Prop :=
       n_disposed e = false -> stale (n_freshness e) = false.
 
 (**md
-**Open, and false on the present engine: a memo resolved `Clean` has no live stale source.**
+**Open statement, false on the present engine: a memo resolved `Clean` has no live stale source.**
 
-This states the behaviour the fix phase owes, as `resolve_clean_no_stale_source_statement`. The Confirmed bug `self_marking_wake_lost` falsifies it, and [`resolve_clean_no_stale_source_falsified`](Ranvier.Pure.Witnesses.html#resolve_clean_no_stale_source_falsified) proves that. The statement covers live sources only, since a disposed source stays stale: see [`resolve_over_disposed_dirty_source`](Ranvier.Pure.Witnesses.html#resolve_over_disposed_dirty_source).
+`resolve_clean_no_stale_source_statement` is the behaviour the fix phase owes. The Confirmed bug `self_marking_wake_lost` falsifies it, and [`resolve_clean_no_stale_source_falsified`](Ranvier.Pure.Witnesses.html#resolve_clean_no_stale_source_falsified) proves that. The statement covers live sources only, since a disposed source stays stale: see [`resolve_over_disposed_dirty_source`](Ranvier.Pure.Witnesses.html#resolve_over_disposed_dirty_source).
 *)
-Theorem resolve_clean_no_stale_source : resolve_clean_no_stale_source_statement.
-Admitted.
 
 (**md
 **The check walk stops as soon as the node leaves `Check`.**

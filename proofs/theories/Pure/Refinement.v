@@ -5214,12 +5214,10 @@ Definition engine_order_exact_statement : Prop :=
     pred <$> runs_in t = engine_order (with_batch_depth 0 s1) 0%nat (pred <$> runs_in t).
 
 (**md
-**Open, and false on the present engine: the `EvRun`s of a flush on a refinable program are in the order of the queue at its start.**
+**Open statement, false on the present engine: the `EvRun`s of a flush on a refinable program are in the order of the queue at its start.**
 
 [`engine_order_exact_falsified`](Ranvier.Pure.Witnesses.html#engine_order_exact_falsified) proves `engine_order_exact_statement` false from a requeue of the `S15` class. Use [`engine_order_exact_except`](#engine_order_exact_except).
 *)
-Theorem engine_order_exact : engine_order_exact_statement.
-Proof. Admitted.
 
 (**md
 At every fuel, `engine_of` refines the reference under `observe_settled`, on every well-formed program.
@@ -5228,12 +5226,10 @@ Definition weak_refinement_statement : Prop :=
   forall k, Semantics.refines Semantics.observe_settled (engine_of current_flags k).
 
 (**md
-**Open, and false on the present engine: every trace of the engine on a well-formed program has the reference's settled view.**
+**Open statement, false on the present engine: every trace of the engine on a well-formed program has the reference's settled view.**
 
-This states what a fix owes, or what the owner's rulings on the reference would have to change, as `weak_refinement_statement`. [`weak_refinement_falsified`](Ranvier.Pure.Witnesses.html#weak_refinement_falsified) proves it false from `disposed_unread_memo_value`. Use [`weak_refinement_except`](#weak_refinement_except) until then.
+`weak_refinement_statement` is what a fix owes, or what the owner's rulings on the reference would have to change. [`weak_refinement_falsified`](Ranvier.Pure.Witnesses.html#weak_refinement_falsified) proves it false from `disposed_unread_memo_value`. Use [`weak_refinement_except`](#weak_refinement_except) until then.
 *)
-Theorem weak_refinement : weak_refinement_statement.
-Proof. Admitted.
 
 (**md
 At every fuel, `engine_of` refines the reference under `observe_full`, on every well-formed program.
@@ -5242,12 +5238,10 @@ Definition exact_refinement_statement : Prop :=
   forall k, Semantics.refines Semantics.observe_full (engine_of current_flags k).
 
 (**md
-**Open, and false on the present engine: every trace of the engine on a well-formed program is the reference's, event for event.**
+**Open statement, false on the present engine: every trace of the engine on a well-formed program is the reference's, event for event.**
 
 [`exact_refinement_falsified`](Ranvier.Pure.Witnesses.html#exact_refinement_falsified) proves `exact_refinement_statement` false from `batch_restored_value_reruns` (S07). Use [`exact_refinement_except`](#exact_refinement_except).
 *)
-Theorem exact_refinement : exact_refinement_statement.
-Proof. Admitted.
 
 (**md
 `engine_answers` of the engine under the current flags.
@@ -5255,11 +5249,9 @@ Proof. Admitted.
 Definition engine_of_answers_statement : Prop := Semantics.engine_answers (engine_of current_flags).
 
 (**md
-**Open, and false on the present engine: the engine answers wherever the reference settles.**
+**Open statement, false on the present engine: the engine answers wherever the reference settles.**
 
 [`engine_of_answers_falsified`](Ranvier.Pure.Witnesses.html#engine_of_answers_falsified) proves `engine_of_answers_statement` false at every fuel, on `restored_source`, whose effect writes.
 *)
-Theorem engine_of_answers : engine_of_answers_statement.
-Proof. Admitted.
 
 End Ranked.

@@ -33,7 +33,10 @@ Obligations of the heap layers above this file (marking, runs, scheduler, owners
 4. The walk has a specification indexed by its cursor, giving each visit's place in the order, for an exact
    specification against [mark_check].
 5. If node disposal or id reuse is modelled, the epochs of ids outside the domain are constrained, or a lower
-   bound on an absent id is excluded. *)
+   bound on an absent id is excluded.
+
+The adequacy obligations are in Task 16 (Adequacy) of the plan,
+docs/superpowers/plans/2026-11-08-iris-rocq-core-proofs.md. *)
 
 Definition edge_entry : Type := observer_set * source_list.
 

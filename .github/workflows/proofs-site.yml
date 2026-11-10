@@ -13,6 +13,8 @@ on:
   pull_request:
     paths:
       - 'proofs/**'
+      - 'src/Ranvier/**'
+      - 'global.json'
       - '.github/workflows/proofs-site.yml'
   # An artifact expires after 90 days, and a monthly build keeps one available to Docs through a quiet period.
   schedule:
@@ -39,7 +41,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.opam
-          key: rocq-toolchain-${{ runner.os }}-${{ hashFiles('proofs/VERSIONS.md') }}
+          key: rocq-toolchain-${{ runner.os }}-${{ hashFiles('proofs/VERSIONS.md', '.github/workflows/proofs-site.yml') }}
       # The versions match the table in proofs/VERSIONS.md. build.sh selects the switch by this name.
       - name: Install the Rocq toolchain
         if: steps.opam-cache.outputs.cache-hit != 'true'

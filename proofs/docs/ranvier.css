@@ -243,5 +243,4 @@ ul.guarantees code.name { display: block; color: var(--muted); font-size: 12px; 
   vertical-align: 1px;
 }
 .label.falsified { background: #fbe9e7; color: #a33a1f; }
-.label.open { background: #fff4d6; color: #8a6100; }
 .label.check { background: #e8eef6; color: #24527a; }

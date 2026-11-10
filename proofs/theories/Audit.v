@@ -3,6 +3,7 @@ From Ranvier.Reference Require Import Properties.
 From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger.
 From Ranvier.Conformance Require Check.
 From Ranvier.Heap Require ObserverSet SourceList Ghost.
+From Ranvier Require Extract.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
 
@@ -104,7 +105,6 @@ Print Assumptions check_invariant_init.
 Print Assumptions check_invariant_final.
 Print Assumptions resolve_over_disposed_dirty_source.
 Print Assumptions resolve_walk_check_clears.
-Print Assumptions resolve_clean_no_stale_source.
 Print Assumptions resolve_clean_no_stale_source_falsified.
 Print Assumptions check_two_reads_over_moved_source.
 Print Assumptions disposed_window_keeps_unannounced.
@@ -112,7 +112,6 @@ Print Assumptions check_invariant_run_top.
 Print Assumptions check_invariant_update.
 Print Assumptions unmoved_short_of_dirty.
 Print Assumptions resolve_clean_unmoved.
-Print Assumptions resolve_clean_no_move.
 Print Assumptions resolve_dirty_stops_walk.
 Print Assumptions resolve_walk_step.
 Print Assumptions resolve_clears_unannounced.
@@ -130,10 +129,7 @@ Print Assumptions engine_inv_init.
 Print Assumptions no_lost_wakeups_unless_passed.
 Print Assumptions no_wake_lost_unless_resolved.
 Print Assumptions no_lost_wakeups_when_nothing_passed.
-Print Assumptions no_lost_wakeups.
-Print Assumptions engine_inv_preserved.
 Print Assumptions later_mark_forwarded.
-Print Assumptions marks_survive_run.
 Print Assumptions marks_survive_run_falsified.
 Print Assumptions marks_survive_body_end.
 Print Assumptions notice_skips_current.
@@ -141,7 +137,6 @@ Print Assumptions moved_run_skips_current.
 Print Assumptions skip_removed_fires.
 Print Assumptions cutoff.
 Print Assumptions moved_marks_except_running.
-Print Assumptions run_end_edges_are_reads.
 Print Assumptions run_end_edges_are_reads_falsified.
 Print Assumptions run_end_edges_are_latest_reads.
 Print Assumptions run_end_edges_no_nested_run.
@@ -206,6 +201,8 @@ Print Assumptions glitch_free_read.
 Print Assumptions convergence.
 Print Assumptions glitch_free_read_falsified.
 Print Assumptions witness_302.
+Print Assumptions self_dirtying_covers_known_cases.
+Print Assumptions Ranvier.Conformance.Check.conformance_programs_well_behaved.
 Print Assumptions witness_290.
 Print Assumptions wake_predicates_miss_self_marking.
 Print Assumptions convergence_reached.
@@ -215,9 +212,7 @@ Print Assumptions never_lost_update.
 Print Assumptions widened_forms_reached.
 Print Assumptions untracked_read_reached.
 Print Assumptions read_settles_writer.
-Print Assumptions convergence_all.
 Print Assumptions convergence_all_falsified.
-Print Assumptions read_quiescent.
 Print Assumptions read_quiescent_falsified.
 Print Assumptions row_child_effect_holds.
 Print Assumptions row_effect_disposes_holds.
@@ -250,10 +245,6 @@ Print Assumptions refinable_alone_no_answer.
 Print Assumptions bodies_conservative.
 Print Assumptions reads_higher_refinable.
 Print Assumptions runs_agree_has_content.
-Print Assumptions weak_refinement.
-Print Assumptions exact_refinement.
-Print Assumptions engine_order_exact.
-Print Assumptions engine_of_answers.
 Print Assumptions weak_refinement_falsified.
 Print Assumptions exact_refinement_falsified.
 Print Assumptions engine_order_exact_falsified.
@@ -266,6 +257,7 @@ Print Assumptions memo_prev_outside.
 Print Assumptions disposed_memo_keeps_observers.
 Print Assumptions trace_of_mode_off.
 Print Assumptions engine_of_mode_off.
+Print Assumptions Ranvier.Extract.observed_mode_off.
 Print Assumptions mark_dirty_saturated_id.
 Print Assumptions marks_keep_saturated.
 Print Assumptions notify_dirty_stamped_id.

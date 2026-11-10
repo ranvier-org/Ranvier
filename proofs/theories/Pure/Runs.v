@@ -3122,24 +3122,20 @@ Definition no_lost_wakeups_statement : Prop :=
   forall f c s s' r, engine_inv s -> run_top f c s = Some (s', r) -> wake_ok s'.
 
 (**md
-**Open, and false on the present engine: every program keeps every observer of a live stale source covered.**
+**Open statement, false on the present engine: every program keeps every observer of a live stale source covered.**
 
-This states what the fix phase owes, as `no_lost_wakeups_statement`. The Confirmed bug [`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) falsifies it, and [`no_lost_wakeups_falsified`](Ranvier.Pure.Witnesses.html#no_lost_wakeups_falsified) proves that. Until the fix, later layers use [`no_lost_wakeups_when_nothing_passed`](#no_lost_wakeups_when_nothing_passed).
+`no_lost_wakeups_statement` is what the fix phase owes. The Confirmed bug [`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) falsifies it, and [`no_lost_wakeups_falsified`](Ranvier.Pure.Witnesses.html#no_lost_wakeups_falsified) proves that. Until the fix, later layers use [`no_lost_wakeups_when_nothing_passed`](#no_lost_wakeups_when_nothing_passed).
 *)
-Theorem no_lost_wakeups : no_lost_wakeups_statement.
-Admitted.
 
 (** The invariant of the design across every engine function, which the fix phase owes. It fails where the
     headline fails. *)
 Definition engine_inv_preserved_statement : Prop := forall f, preserved_by engine_inv f.
 
 (**md
-**Open, and false on the present engine: every engine function keeps the invariant with `wake_ok`.**
+**Open statement, false on the present engine: every engine function keeps the invariant with `wake_ok`.**
 
-This states what the fix phase owes, as `engine_inv_preserved_statement`. [`engine_inv_preserved_falsified`](Ranvier.Pure.Witnesses.html#engine_inv_preserved_falsified) proves it false. Until the fix, later layers use [`engine_settled_preserved`](#engine_settled_preserved).
+`engine_inv_preserved_statement` is what the fix phase owes. [`engine_inv_preserved_falsified`](Ranvier.Pure.Witnesses.html#engine_inv_preserved_falsified) proves it false. Until the fix, later layers use [`engine_settled_preserved`](#engine_settled_preserved).
 *)
-Theorem engine_inv_preserved : engine_inv_preserved_statement.
-Admitted.
 
 (**md
 **A new graph with the current flags satisfies the invariant with `wake_ok`.**
@@ -3434,12 +3430,10 @@ Definition marks_survive_run_statement : Prop :=
     stale_of s' n /\ n_unannounced_of s' n = true.
 
 (**md
-**Open, and false on the present engine: a mark received during a run leaves the memo stale at the run's end, holding its announcement.**
+**Open statement, false on the present engine: a mark received during a run leaves the memo stale at the run's end, holding its announcement.**
 
-A point in the run is a point in the body's commands, stated by running a `body_prefix` of the body. This states what the fix phase owes, as `marks_survive_run_statement`. A mark set and cleared inside one command, such as a batch body, a nested call or the discharge window, is outside the statement. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`marks_survive_run_falsified`](Ranvier.Pure.Witnesses.html#marks_survive_run_falsified) proves that: a later self-read runs the memo again inside its run, and that nested run clears the mark. Until the fix, later layers use [`marks_survive_body_end`](#marks_survive_body_end).
+A point in the run is a point in the body's commands, stated by running a `body_prefix` of the body. `marks_survive_run_statement` is what the fix phase owes. A mark set and cleared inside one command, such as a batch body, a nested call or the discharge window, is outside the statement. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`marks_survive_run_falsified`](Ranvier.Pure.Witnesses.html#marks_survive_run_falsified) proves that: a later self-read runs the memo again inside its run, and that nested run clears the mark. Until the fix, later layers use [`marks_survive_body_end`](#marks_survive_body_end).
 *)
-Theorem marks_survive_run : marks_survive_run_statement.
-Admitted.
 
 (**md
 **A memo stale when its body returns is stale when its run returns, holding its announcement.**
@@ -3739,9 +3733,7 @@ Definition run_end_edges_are_reads_statement : Prop :=
     fst <$> source_slots (sources_of (g_edges s') n) = read_list (run_reads_of s' n).
 
 (**md
-**Open, and false on the present engine: after a run, a live computation's source list is the reads of that run.**
+**Open statement, false on the present engine: after a run, a live computation's source list is the reads of that run.**
 
-The reads are all the tracked reads since the outermost run start, nested runs included. This states what the fix phase owes, as `run_end_edges_are_reads_statement`. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`run_end_edges_are_reads_falsified`](Ranvier.Pure.Witnesses.html#run_end_edges_are_reads_falsified) proves that. Until the fix, later layers use [`run_end_edges_are_latest_reads`](#run_end_edges_are_latest_reads) or [`run_end_edges_no_nested_run`](#run_end_edges_no_nested_run).
+The reads are all the tracked reads since the outermost run start, nested runs included. `run_end_edges_are_reads_statement` is what the fix phase owes. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`run_end_edges_are_reads_falsified`](Ranvier.Pure.Witnesses.html#run_end_edges_are_reads_falsified) proves that. Until the fix, later layers use [`run_end_edges_are_latest_reads`](#run_end_edges_are_latest_reads) or [`run_end_edges_no_nested_run`](#run_end_edges_no_nested_run).
 *)
-Theorem run_end_edges_are_reads : run_end_edges_are_reads_statement.
-Admitted.

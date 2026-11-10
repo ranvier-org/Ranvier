@@ -11,19 +11,20 @@ commit `d701e6c5`.
 - Documentation: `bash proofs/docs.sh`, which prints where the pages are. Start at the Guarantees page.
 - Navigator site: `bash proofs/site.sh`, which writes `site/output`. Published at `/proofs/` of the documentation site.
 
-All four run from any directory. See `VERSIONS.md` for the toolchain. The audit and the differential check also need the
+All five run from any directory. See `VERSIONS.md` for the toolchain. The audit and the differential check also need the
 .NET SDK, since they rebuild `src/Ranvier`. Under WSL they run the Windows `dotnet.exe`.
 
 ## Status
 
-The reference and pure tiers are complete, including the optimisation result `optimised_trace_eq`. The heap tier holds
+The reference and pure tiers are complete apart from the unproved obligations under `## Unproved obligations` in
+`BUGS.md`, and include the optimisation result `optimised_trace_eq`. The heap tier holds
 its foundation: `Heap/ObserverSet.v`, `Heap/SourceList.v` and `Heap/Ghost.v`, every specification closed under the
 global context.
 
 The heap layers above the foundation (marking, runs, the scheduler, ownership) and heap adequacy are deferred until the
 rulings on the bugs in `BUGS.md` are made and applied, since each ruling that changes the engine changes what those
-layers prove. Their obligations are listed in `Heap/Ghost.v`'s header. Each Awaiting-ruling item in `BUGS.md` is tracked
-as a GitHub issue labelled `proofs`.
+layers prove. Their obligations are listed in `Heap/Ghost.v`'s header. Each Awaiting-ruling item in `BUGS.md` will be
+tracked as a GitHub issue labelled `proofs`.
 
 ## The link to the F#
 
@@ -172,8 +173,8 @@ copy, so it needs no Rocq.
 | `check_invariant_init`, `check_invariant_run_top`, `check_invariant_update` | `Pure/Check.v` | `check_invariant` holds of a new graph and after every function of the engine, for all programs and fuel. `engine_ok_all` is the induction. |
 | `unmoved_short_of_dirty` | `Pure/Check.v` | Under `check_invariant` and `reads_settled`, a memo in `Clean` or `Check` has `moved_since_last_run` false. |
 | `resolve_clean_unmoved` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` leaves no moved source, under `reads_settled`. It follows from `check_invariant`'s preservation and `unmoved_short_of_dirty`, without using the walk. |
-| `resolve_clean_no_move` | `Pure/Check.v` | **Open.** The unqualified statement, false on the present engine: `resolve_clean_no_move_falsified`. |
-| `resolve_clean_no_stale_source` | `Pure/Check.v` | **Open.** A memo resolved `Clean` has no live stale source, false on the present engine: `resolve_clean_no_stale_source_falsified`. A disposed source stays stale: `resolve_over_disposed_dirty_source`. |
+| `resolve_clean_no_move_statement` | `Pure/Check.v` | **Open statement.** The unqualified statement, false on the present engine: `resolve_clean_no_move_falsified`. |
+| `resolve_clean_no_stale_source_statement` | `Pure/Check.v` | **Open statement.** A memo resolved `Clean` has no live stale source, false on the present engine: `resolve_clean_no_stale_source_falsified`. A disposed source stays stale: `resolve_over_disposed_dirty_source`. |
 | `resolve_dirty_stops_walk`, `resolve_walk_step` | `Pure/Check.v` | A node out of `Check` ends the walk with the state unchanged. In `Check`, the walk updates the slot's source and moves to the next slot. |
 | `resolve_clears_unannounced` | `Pure/Check.v` | `update_if_necessary` taking a memo from `Check` to `Clean` ends a live memo's `n_unannounced`, on every path. A disposed memo can keep it: `disposed_window_keeps_unannounced`. |
 | `resolve_walk_check_clears` | `Pure/Check.v` | A walk ending in `Check` makes `refresh` return the node `Clean` with `n_unannounced` false and no run. |
@@ -215,15 +216,15 @@ copy, so it needs no Rocq.
 | `no_lost_wakeups_unless_passed` | `Pure/Runs.v` | After a program, an observer of a live stale source is covered or in `gh_passed`, the record of a walk ending over a stale source with no announcement. |
 | `no_lost_wakeups_when_nothing_passed` | `Pure/Runs.v` | With `gh_passed` empty at the end, `wake_ok` holds. |
 | `no_wake_lost_unless_resolved` | `Pure/Runs.v` | After a program, an observer of a live stale source is stale, queued, running or in `gh_over`: the source's flag excuses nothing. |
-| `no_lost_wakeups` | `Pure/Runs.v` | **Open.** The unqualified statement, false on the present engine: `no_lost_wakeups_falsified`. |
-| `engine_inv_preserved` | `Pure/Runs.v` | **Open.** Every engine function keeps the invariant with `wake_ok`, false on the present engine: `engine_inv_preserved_falsified`. |
+| `no_lost_wakeups_statement` | `Pure/Runs.v` | **Open statement.** The unqualified statement, false on the present engine: `no_lost_wakeups_falsified`. |
+| `engine_inv_preserved_statement` | `Pure/Runs.v` | **Open statement.** Every engine function keeps the invariant with `wake_ok`, false on the present engine: `engine_inv_preserved_falsified`. |
 | `later_mark_forwarded` | `Pure/Runs.v` | From `wake_ok`, a later `mark_check` or `mark_dirty` of a live memo leaves every observer stale, queued or running. |
-| `marks_survive_run` | `Pure/Runs.v` | **Open.** A memo stale at a point in its body is stale at its run's end, holding `n_unannounced`, false on the present engine: `marks_survive_run_falsified`. |
+| `marks_survive_run_statement` | `Pure/Runs.v` | **Open statement.** A memo stale at a point in its body is stale at its run's end, holding `n_unannounced`, false on the present engine: `marks_survive_run_falsified`. |
 | `marks_survive_body_end` | `Pure/Runs.v` | The tail of a run: a memo stale when its body returns is stale when its run returns, holding `n_unannounced`. |
 | `cutoff` | `Pure/Runs.v` | A `CmpEq` run whose stored view holds still adds no mark to any node and nothing to the queue. |
 | `moved_marks_except_running` | `Pure/Runs.v` | A moved run leaves every observer that takes marks `Dirty`, apart from the computation current at its start. |
 | `notice_skips_current`, `moved_run_skips_current` | `Pure/Runs.v` | That computation stays short of `Dirty` if it was. |
-| `run_end_edges_are_reads` | `Pure/Runs.v` | **Open.** After a run, a live computation's source list is `read_list` of all its run's reads, false on the present engine: `run_end_edges_are_reads_falsified`. |
+| `run_end_edges_are_reads_statement` | `Pure/Runs.v` | **Open statement.** After a run, a live computation's source list is `read_list` of all its run's reads, false on the present engine: `run_end_edges_are_reads_falsified`. |
 | `run_end_edges_are_latest_reads` | `Pure/Runs.v` | The same over the reads since its latest run start. |
 | `run_end_edges_no_nested_run` | `Pure/Runs.v` | The same over the run's reads, when no nested self-run started. |
 | `disposed_stale_source_read` | `Pure/Witnesses.v` | A disposed stale memo's reader is uncovered, which `wake_ok`'s live premise excepts. Closed in `BUGS.md`. |
@@ -260,8 +261,8 @@ copy, so it needs no Rocq.
 | `failed_batch_leaves_queue` | `Pure/Witnesses.v` | A batch whose body fails leaves its effect queued and `Dirty` with no flush owed. Awaiting ruling in `BUGS.md`. |
 | `well_behaved_nothing_passed`, `well_behaved_no_lost_wakeups` | `Pure/WholeGraph.v` | A program from a new graph with every memo outside the self-dirtying case and every effect only reading ends with `gh_passed` empty and `wake_ok`. `self_dirtying` covers `CmpNever`, so a default memo returning a fresh record is outside this. |
 | `glitch_free_read` | `Pure/WholeGraph.v` | In such a program, a read of a node outside the self-dirtying case answers what it denotes over the current signals, and a disposed memo what it stored. |
-| `read_quiescent` | `Pure/WholeGraph.v` | **Open.** At quiescence, a read of a pure node answers what the node denotes. False: `read_quiescent_falsified`. `read_quiescent_batch_free_statement` is the form with a batch-free cone, unproved with no proof attempted, by the ruling in `BUGS.md`. |
-| `convergence_all` | `Pure/WholeGraph.v` | **Open.** At quiescence, every effect with an owner ran and read what its sources compute, in each program satisfying the premises. False: `convergence_all_falsified`. The fix phase's target, with effect writes, memo cleanups, `CmpNever`, and memo writes reaching no later read of the body inside it. `BUGS.md` lists the exclusions, each of which also excludes programs a fix may reach. |
+| `read_quiescent_statement` | `Pure/WholeGraph.v` | **Open statement.** At quiescence, a read of a pure node answers what the node denotes. False: `read_quiescent_falsified`. `read_quiescent_batch_free_statement` is the form with a batch-free cone, unproved with no proof attempted, by the ruling in `BUGS.md`. |
+| `convergence_all_statement` | `Pure/WholeGraph.v` | **Open statement.** At quiescence, every effect with an owner ran and read what its sources compute, in each program satisfying the premises. False: `convergence_all_falsified`. The fix phase's target, with effect writes, memo cleanups, `CmpNever`, and memo writes reaching no later read of the body inside it. `BUGS.md` lists the exclusions, each of which also excludes programs a fix may reach. |
 | `convergence`, `converged` | `Pure/WholeGraph.v` | In such a program at quiescence, each live effect is `Clean` and has an `EvRun`. Each source of a tracked read in its last run has a recorded read answering what the source denotes. Its last run's `EvLog`s are a run of its body over the denotation, with each untracked read answered by some value, or by some failure when its target is a memo. With no untracked read, the body gives one result over those reads and the denotation, with those logs. |
 | `witness_302`, `witness_290` | `Pure/Witnesses.v` | The regressions: with `f_unannounced` off `wake_ok` fails, and with `f_reader_mark` off `wake_told` fails, on the programs of scenarios S03 and S04. |
 | `wake_predicates_miss_self_marking` | `Pure/Witnesses.v` | `wake_ok` and `wake_told` both hold on the states `self_marking_wake_lost` leaves behind. |
@@ -288,10 +289,10 @@ copy, so it needs no Rocq.
 | `notify_queues_observers_reversed`, `notify_after_swap` | `Pure/Refinement.v` | A walk over effect observers queues them from the last position to the first, and after a swap-removal the moved observer takes the removed one's place. Open through memos: `queue_order_through_memos` in `BUGS.md`. |
 | `reads_end`, `drain_ends` | `Pure/Refinement.v` | Reads end and raise no `mu`, the weights of stale memos and the live queue entries. Each entry the drain takes lowers `mu`. |
 | `engine_of_answers_on` | `Pure/Refinement.v` | On a well-formed program meeting `refinable` and `bodies_total`, where the reference gives a trace under some order, some fuel gives the engine's trace. `bodies_total` reads each body over all answers to its reads: on a path reached by values, no unbound variable, a non-negative target naming a signal or memo of the program, a memo's below itself, batches allowed, on paths no run takes as well. After an expression that fails it constrains nothing, so a write, cleanup or untracked read there meets it, and `refinable` stays. It is the proof's reach: `bodies_conservative`, and `answers_where_reference_settles` in `BUGS.md`. `refinable_alone_no_answer` shows `refinable` alone is not enough, on a program where the reference has no answer at fuel 5 under `order_identity` (computed). |
-| `weak_refinement` | `Pure/Refinement.v` | **Open.** Every engine trace on a well-formed program has the reference's settled view. False: `weak_refinement_falsified`. |
-| `exact_refinement` | `Pure/Refinement.v` | **Open.** Every engine trace on a well-formed program is the reference's. False: `exact_refinement_falsified`. |
-| `engine_order_exact` | `Pure/Refinement.v` | **Open.** A flush's `EvRun`s on those programs follow the queue at its start. False: `engine_order_exact_falsified`. |
-| `engine_of_answers` | `Pure/Refinement.v` | **Open.** The engine answers wherever the reference settles. False: `engine_of_answers_falsified`. |
+| `weak_refinement_statement` | `Pure/Refinement.v` | **Open statement.** Every engine trace on a well-formed program has the reference's settled view. False: `weak_refinement_falsified`. |
+| `exact_refinement_statement` | `Pure/Refinement.v` | **Open statement.** Every engine trace on a well-formed program is the reference's. False: `exact_refinement_falsified`. |
+| `engine_order_exact_statement` | `Pure/Refinement.v` | **Open statement.** A flush's `EvRun`s on those programs follow the queue at its start. False: `engine_order_exact_falsified`. |
+| `engine_of_answers_statement` | `Pure/Refinement.v` | **Open statement.** The engine answers wherever the reference settles. False: `engine_of_answers_falsified`. |
 | `weak_refinement_falsified`, `exact_refinement_falsified`, `engine_order_exact_falsified`, `engine_of_answers_falsified` | `Pure/Witnesses.v` | The four Open statements are false: from `disposed_unread_memo_value`, from `batch_restored_value_reruns`, from a requeue of the `S15` class against the queue at a flush's start, and from `restored_source` at every fuel. |
 | `history_order_reached`, `answers_reached` | `Pure/Witnesses.v` | `drain_order` reaches `runs_agree` at `history_order`, where the identity order fails, and `queue_steady`, `bodies_total` and `inputs_total`. |
 | `refinable_reached` | `Pure/Witnesses.v` | A program with a memo, a try-read and a failure reaches the premises, under a history with a write, a read and a disposal. |
@@ -344,13 +345,15 @@ Task 13a.
 
 ### What it does not establish
 
-- **Four unproved obligations**, under `## Unproved obligations` in `BUGS.md`: `runs_agree_bridge` (no theorem derives
+- **Five unproved obligations**, under `## Unproved obligations` in `BUGS.md`: `runs_agree_bridge` (no theorem derives
   `runs_agree` from the absence of redundant runs, so `exact_refinement_except` keeps it as a premise),
   `queue_order_through_memos` (the queue order through a memo's forwarding walk), `answers_where_reference_settles`
-  (`engine_of_answers_on` without `bodies_total`), and `memos_below_stuck_paths` (`refinable`'s rank premise on paths with
-  no result).
-- **Twelve Open theorems**, each false on the present engine by a checked counterexample, listed under `## Open theorems`
-  in `BUGS.md`. Eleven have a proved weaker form named there; `resolve_clean_no_stale_source` has only its witness.
+  (`engine_of_answers_on` without `bodies_total`), `memos_below_stuck_paths` (`refinable`'s rank premise on paths with
+  no result), and `cleanups_before_replacement` (Task 13a: each cleanup registered outside its host's teardown runs before
+  the host's next run or its disposal).
+- **Twelve Open statements**, each a `Definition` the present engine falsifies by a checked counterexample, listed
+  under `## Open statements` in `BUGS.md`. Eleven have a proved weaker form named there;
+  `resolve_clean_no_stale_source_statement` has only its witness.
 - **The fragment's edges.** `refinable` excludes effect writes, effect cleanups, child effects, untracked reads, memo
   disposal and `CmpNever`. A default memo returning a fresh record each run is `CmpNever`.
 - **Ranvier itself.** Every claim reaches `Core.fs` through `CORRESPONDENCE.md`, with the differential check as testing
@@ -358,7 +361,7 @@ Task 13a.
 
 ### The ledger
 
-Suspected 0, Modelled 0, Confirmed 9, Awaiting ruling 14, Closed 7, Unproved obligations 4, Open theorems 12. Task 13 closed
+Suspected 0, Modelled 0, Confirmed 9, Awaiting ruling 14, Closed 9, Unproved obligations 5, Open statements 12. Task 13 closed
 the two Suspected entries as spec corrected: `self_writing_memo_ends_stale` (the S14 program, whose memo answers 0 for every
 signal, so its reader's value is right; the wrong-value form is Confirmed as `self_marking_wake_lost`) and
 `disposed_memo_keeps_observers` (`disposed_memo_keeps_observers` in `Pure/Ledger.v`, and the F# by a harness script, with
@@ -402,14 +405,14 @@ Reasons:
 - **A measured cost.** In `SignalBenchmarks.Write`, every write after the first walks memos that are already `Dirty`, and
   each mark is a no-op: 65.80 ns at 64 observers against 2.54 ns at none. In a batch, the nine writes after the first walk
   queued `Dirty` effects: 2976 ns for `BatchOfTenWrites` against 1179 ns for `WriteAndFlush` at 64 effects. The saving is
-  bounded by these differences, and the optimisation's own overhead, an epoch increment per run and a compare per write, is
-  for Task 13a's benchmark to measure.
+  bounded by these differences. The optimisation's own overhead is an epoch increment per run and a compare per write;
+  Task 13a's measurement is below.
 - **Nontrivial to prove.** The obligation is an invariant over every engine function: a signal whose record equals the
   epoch has only saturated observers, so `mark_dirty` is the identity on each. Every transition out of saturation has to
   advance the epoch or clear the record. `n_unannounced`, set at a stale run's end, makes a `Dirty` memo unsaturated, and
   this is the #302 path, so `witness_302`'s failure with `f_unannounced` off has to carry over to the optimised engine.
-- **Checkable by the differential test.** The skip is a transition of the model, and the extracted optimised engine runs
-  against the optimised F#. The end-state view compares source and observer counts as it does now.
+- **Checkable by the differential test.** The skip is a transition of the model, extracted with the present engine as
+  `observed_mode`. The end-state view compares source and observer counts as it does now.
 - **No ruling needed.** It changes no event, so no Awaiting entry bears on it.
 
 **Observation.** The optimisation changes no run count, so it needs no move from `observe_full` to `observe_settled`
@@ -446,6 +449,18 @@ and an advance at an effect's creation, the optimised engine simulates the prese
 order, answer and #302 results carry over. The examples `leave_dirty_cleanup_skip` and `leave_dirty_unannounced_skip`
 show the advances at 4825 and 4290 are each needed. `cleanups_before_replacement` is false over every registration, as
 Core.fs documents (`cleanup_registered_in_teardown_runs_late`); its corrected form is an unproved obligation in `BUGS.md`.
+
+**Outcome: keep.** The F# implementation is on the separate branch `claude/notify-skip-epoch` (commit `8d37379d`), not on
+this branch. Its benchmarks ran against this branch's F#, interleaved, in 3x3 fresh processes. Real
+gains: `EffectBenchmarks.BatchOfTenWrites` at 8 effects (ratio 0.40) and 64 (0.36), and `SignalBenchmarks.Write` at 64
+observers, Guarded (0.03). No real regression on the binding shapes, `Effect.WriteAndFlush` or `WriteAndPropagate`. The
+resolution is about 5%, since the machine moved between states about 1.5 times apart, so a smaller regression is
+undetectable. `WriteAndPropagate` at 8 and 64 observers is unresolved, and no out-of-process run was made.
+
+The differential check on this branch runs against the present F#, without the skip. Its model side is `observed_mode`
+in the mode `RANVIER_SKIP_MODE` names: `off` by default and in CI, where it is `observed` (`observed_mode_off`). `all` runs
+the optimised model against the same F#, and `leave-dirty` and `unchecked` run the two rejected designs of
+`Pure/Optimised.v`.
 
 ## Literature
 

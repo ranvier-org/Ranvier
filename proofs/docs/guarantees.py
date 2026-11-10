@@ -79,25 +79,13 @@ def check_outline(out):
     return ok
 
 
-def open_theorems():
-    """The names under `## Open theorems` in BUGS.md, read as check.sh reads them."""
-    names, inside = set(), False
-    for line in Path("BUGS.md").read_text(encoding="utf-8").splitlines():
-        if line.startswith("## "):
-            inside = line == "## Open theorems"
-        elif inside and line.startswith("- "):
-            names.add(line[2:].split()[0].strip("`"))
-    return names
-
-
 def inline(text):
     escaped = html.escape(text, quote=False)
     return re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
 
 
 def overview_body():
-    opened = open_theorems()
-    parts, total, falsified, open_count, checks = [], 0, 0, 0, 0
+    parts, total, falsified, checks = [], 0, 0, 0
     for path in source_files():
         found = theorems(path)
         if not found:
@@ -116,9 +104,6 @@ def overview_body():
             if name.endswith("_falsified"):
                 labels += ' <span class="label falsified">falsified</span>'
                 falsified += 1
-            if name in opened:
-                labels += ' <span class="label open">open</span>'
-                open_count += 1
             if is_check:
                 labels += ' <span class="label check">check</span>'
                 checks += 1
@@ -128,8 +113,7 @@ def overview_body():
         parts.append("</ul>")
     intro = (f'<p class="overview-intro">{total} theorems and what each states, generated from the comments in '
              f'the source. {falsified} marked <span class="label falsified">falsified</span> prove a counterexample. '
-             f'{open_count} marked <span class="label open">open</span> are false on the present engine and state '
-             f'what the fix owes. {checks} marked <span class="label check">check</span> test a definition or a '
+             f'{checks} marked <span class="label check">check</span> test a definition or a '
              f"single step, and are not guarantees.</p>")
     return '<h1 class="title">Guarantees</h1>\n' + intro + "\n" + "\n".join(parts) + "\n"
 

@@ -3,12 +3,9 @@
 #
 # Exits 0 when
 #   1. the build is clean;
-#   2. every `Print Assumptions` in theories/Audit.v lists only allowlisted assumptions, an Open theorem
-#      appears only on its own line, and no file under theories/ names an Open theorem apart from its
-#      declaration and that line;
-#   3. `Admitted`, `admit`, `give_up`, `Admit Obligations` and top-level `Axiom`, `Parameter` and
-#      `Conjecture` occur only in declarations named under `## Open theorems` in BUGS.md.
-#      A failure of the scan itself fails the check.
+#   2. every `Print Assumptions` in theories/Audit.v lists only allowlisted assumptions;
+#   3. no file under theories/ contains `Admitted`, `admit`, `give_up`, `Admit Obligations` or a top-level
+#      `Axiom`, `Parameter` or `Conjecture`. A failure of the scan itself fails the check.
 #   4. each `exp_NAME` in theories/Conformance/Expected.v has a `check_NAME` in Check.v stated over it;
 #   5. regenerating theories/Conformance/Expected.v from the F# leaves it unchanged. Under WSL this runs
 #      the Windows `dotnet.exe` through interop, with a relative path resolved from the Windows view of
@@ -35,16 +32,10 @@ ALLOWED_ASSUMPTIONS=()
 fail=0
 note() { echo "check.sh: $*" >&2; fail=1; }
 
-# Names listed as `- name` under `## Open theorems`.
-open_theorems() {
-  awk '/^## /{in_s = ($0 == "## Open theorems"); next}
-       in_s && /^- /{ s=$0; sub(/^- +/, "", s); sub(/[ \t].*$/, "", s); gsub(/`/, "", s); print s }' BUGS.md
-}
-is_open() { local names; names="$(open_theorems)"; grep -qxF -- "$1" <<<"$names"; }
 is_allowed() {
   local n="$1" a
   for a in "${ALLOWED_ASSUMPTIONS[@]+"${ALLOWED_ASSUMPTIONS[@]}"}"; do [ "$a" = "$n" ] && return 0; done
-  is_open "$n"
+  return 1
 }
 
 # 1. Build.
@@ -70,31 +61,6 @@ while IFS= read -r name; do
   [ -n "$name" ] || continue
   is_allowed "$name" || note "assumption not allowlisted: $name"
 done <<<"$assumption_names"
-
-# An Open theorem is false on the present engine, so a theorem resting on it proves nothing. Its name may
-# appear only under its own `Print Assumptions`. Blocks of the output follow the lines of Audit.v in order.
-audit_names="$(sed -n 's/^[[:space:]]*Print Assumptions \(.*\)\.[[:space:]]*$/\1/p' theories/Audit.v)" \
-  || { echo "check.sh: could not read the Print Assumptions lines of Audit.v" >&2; exit 1; }
-assumption_owners="$(awk '/^Closed under/{k++; a=0; next} /^Axioms:/{k++; a=1; next}
-              a && /^[^[:space:]]/{ print k, $1 }' "$out")" \
-  || { echo "check.sh: could not assign the assumptions to their Audit.v lines" >&2; exit 1; }
-while read -r k name; do
-  [ -n "${k:-}" ] || continue
-  is_open "${name##*.}" || continue
-  owner="$(sed -n "${k}p" <<<"$audit_names")"
-  [ "${owner##*.}" = "${name##*.}" ] || note "$owner rests on the Open theorem $name"
-done <<<"$assumption_owners"
-
-# A theorem that uses an Open theorem has to name it, so a text scan also covers theorems Audit.v does not list.
-# `-w` leaves the `_statement` and `_falsified` forms unmatched. A comment has to name the statement form.
-while IFS= read -r name; do
-  [ -n "$name" ] || continue
-  rc=0
-  refs="$(grep -rnw --include='*.v' -- "$name" theories)" || rc=$?
-  [ "$rc" -le 1 ] || { echo "check.sh: the scan for $name failed" >&2; exit 1; }
-  hits="$(grep -vE "Audit\.v:[0-9]+:Print Assumptions $name\.\$|:Theorem $name " <<<"$refs" || true)"
-  [ -z "$hits" ] || note "Open theorem $name is referenced: $hits"
-done <<<"$(open_theorems)"
 
 # 3. Admitted / admit / give_up / Admit Obligations / Axiom / Parameter / Conjecture.
 # Section `Variable` and `Hypothesis` are not scanned: they are named premises, not assumptions of the
@@ -149,9 +115,7 @@ done <<<"$v_files"
 
 while IFS=$'\t' read -r loc name; do
   [ -n "$loc" ] || continue
-  if [ -z "$name" ] || ! is_open "$name"; then
-    note "$loc: Admitted/admit/give_up/Admit Obligations/Axiom/Parameter/Conjecture in '${name:-<unknown declaration>}' is not listed under '## Open theorems' in BUGS.md"
-  fi
+  note "$loc: Admitted/admit/give_up/Admit Obligations/Axiom/Parameter/Conjecture in '${name:-<unknown declaration>}'"
 done <<<"$scan_hits"
 
 # 4. Each scenario has its Example.

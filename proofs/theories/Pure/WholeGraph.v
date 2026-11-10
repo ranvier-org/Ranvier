@@ -7893,12 +7893,10 @@ Definition read_quiescent_statement : Prop :=
     read f' n true s = Some (s', o) -> denotes s n o.
 
 (**md
-**Open, and false on the present engine: at quiescence, a read of a pure node answers what the node denotes.**
+**Open statement, false on the present engine: at quiescence, a read of a pure node answers what the node denotes.**
 
-This states what the fix owes, as `read_quiescent_statement`. [`read_quiescent_falsified`](Ranvier.Pure.Witnesses.html#read_quiescent_falsified) proves it false: an effect left asleep over a stale memo wakes during the read, and the flush it owes runs before the read answers. Use [`glitch_free_read`](#glitch_free_read) until the fix.
+`read_quiescent_statement` is what the fix owes. [`read_quiescent_falsified`](Ranvier.Pure.Witnesses.html#read_quiescent_falsified) proves it false: an effect left asleep over a stale memo wakes during the read, and the flush it owes runs before the read answers. Use [`glitch_free_read`](#glitch_free_read) until the fix.
 *)
-Theorem read_quiescent : read_quiescent_statement.
-Proof. Admitted.
 
 (** A body with no batch. *)
 Fixpoint no_batch (c : cmd) : bool :=
@@ -8173,18 +8171,16 @@ Definition convergence_all_statement : Prop :=
   forall f c s r, run_top f c (init current_flags) = Some (s, r) -> fix_premises s -> converged_all s.
 
 (**md
-**Open, and false on the present engine: at quiescence, every effect ran and read what its sources compute, in each program satisfying the premises.**
+**Open statement, false on the present engine: at quiescence, every effect ran and read what its sources compute, in each program satisfying the premises.**
 
-This states what the fix phase owes, as `convergence_all_statement`. It covers effects that write, memos with cleanups, memos with a write reaching no later read of the body, and a `CmpNever` comparer: those are the bugs. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, and `effect_resolves_over_moved_source` falls under the statement, pending the owner's ruling on that entry.
+`convergence_all_statement` is what the fix phase owes. It covers effects that write, memos with cleanups, memos with a write reaching no later read of the body, and a `CmpNever` comparer: those are the bugs. A disposed memo answers what it stored, as Core.fs 4372-4376 documents, and `effect_resolves_over_moved_source` falls under the statement, pending the owner's ruling on that entry.
 
 The premises are `quiescent` and one field per exclusion: `memos_ranked`, `memos_no_untracked`, `memos_no_throwing_comparer`, `memos_no_prev`, `memos_no_creation` and `memos_read_before_write`. On a path that reaches it, a memo cycle or self-read of `memos_ranked`, an untracked read, `EPrev` or an excluded created node has no `den_all` answer. `memos_no_throwing_comparer` excludes a failure `den_all` does not model, once the comparer fires. `memos_read_before_write` excludes a body whose runs can answer other than `den_all`.
 
-Each field is checked over a memo's whole body, whichever path runs, and over every live memo of the program, so each one also excludes programs a fix may reach. `memos_no_throwing_comparer` is checked on the comparer, whether or not it fires. Two cases are notable. `memos_ranked` excludes a computed target with no bound. `memos_read_before_write` excludes the shape of `check_resolves_over_moved_source`: [`check_over_moved_excluded`](Ranvier.Pure.Witnesses.html#check_over_moved_excluded). That bug stays owed through the Open theorem of its entry in `BUGS.md`. `BUGS.md` lists each exclusion with its reason.
+Each field is checked over a memo's whole body, whichever path runs, and over every live memo of the program, so each one also excludes programs a fix may reach. `memos_no_throwing_comparer` is checked on the comparer, whether or not it fires. Two cases are notable. `memos_ranked` excludes a computed target with no bound. `memos_read_before_write` excludes the shape of `check_resolves_over_moved_source`: [`check_over_moved_excluded`](Ranvier.Pure.Witnesses.html#check_over_moved_excluded). That bug stays owed through the Open statement of its entry in `BUGS.md`. `BUGS.md` lists each exclusion with its reason.
 
 [`convergence_all_falsified`](Ranvier.Pure.Witnesses.html#convergence_all_falsified) proves the statement false from `self_marking_wake_lost` and from the lost update of `cmp_never_passes_source`, with each premise proved on both. Use [`convergence`](#convergence) until the fix.
 *)
-Theorem convergence_all : convergence_all_statement.
-Proof. Admitted.
 
 (** ** Sufficient tests for the statement's premises *)
 

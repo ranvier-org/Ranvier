@@ -762,7 +762,7 @@ Arrays with grow and blanking per Core.fs; `first`/`rest` is kept in `SourceList
 
 > **Deferred (owner ruling, 2026-11-10: "Merge now, fix bugs").** The branch merges after Task 14 and the
 > engine-independent ghost obligations (`ec1fee93`). Tasks 15-16 resume against the engine as fixed by the bug
-> rulings, which are tracked as GitHub issues; their obligations are in `proofs/theories/Heap/Ghost.v`'s header.
+> rulings, which will be tracked as GitHub issues labelled `proofs`; their obligations are in `proofs/theories/Heap/Ghost.v`'s header.
 > Task 17 ran in short form: the Status section of `proofs/README.md`.
 
 Split into one commit per layer. A stall here triggers the spec's cut order: heap 8, then 7, then 6.
