@@ -32,7 +32,7 @@ Definition moved_val (m : option (node_id * nat * nat)) : val :=
   | Some (c, s, h) => SOMEV (#(Z.of_nat c), #(Z.of_nat s), #(Z.of_nat h))
   end.
 
-(** [new ObserverSet ()]: the empty array of capacity 0, which no cell holds. *)
+(** [new ObserverSet ()]: an array of capacity 0, with the record's own location in the array field. *)
 Definition observers_new_code : val :=
   λ: <>, let: "l" := AllocN #4 #0 in "l" <- "l";; "l".
 
@@ -447,7 +447,8 @@ Qed.
 (** ** The walk *)
 
 (**md
-The visitor of a walk over the set at `l`. Each call receives the set and the resource `I`, may mutate the
+The visitor of a walk over the set at `l`. Each call receives the set, the resource `I`, and the position and
+slot at which the set holds the observer visited. It may mutate the
 set by `observers_add` and `observers_remove_at`, keeps `P` at every point it passes through, and returns
 `V` of the observer visited.
 
@@ -459,8 +460,8 @@ set by `observers_add` and `observers_remove_at`, keeps `P` at every point it pa
 *)
 Definition visitor_spec (l : loc) (visit : val) (I : observer_set -> iProp Σ) (P : observer_set -> Prop)
     (V : node_id -> iProp Σ) : iProp Σ :=
-  ∀ (o : observer_set) (d : node_id),
-    {{{ is_observers l o ∗ I o ∗ ⌜P o⌝ }}} visit #(Z.of_nat d)
+  ∀ (o : observer_set) (d : node_id) (i slot : nat),
+    {{{ is_observers l o ∗ I o ∗ ⌜P o⌝ ∗ ⌜observer_items o !! i = Some (d, slot)⌝ }}} visit #(Z.of_nat d)
     {{{ ms o1, RET #(); ⌜apply_mutations ms o = Some o1⌝ ∗ ⌜Forall P (mutation_points ms o)⌝ ∗
         is_observers l o1 ∗ I o1 ∗ V d }}}.
 
@@ -497,7 +498,7 @@ Proof.
     wp_load. wp_pures. wp_apply (wp_load_offset with "Hcells"); [by apply item_cells_lookup_some|].
     iIntros "Hcells". wp_pures.
     wp_apply ("Hvis" with "[Ha Hn Hlt Hc Hcells HI]").
-    { iFrame "HI". iSplitL; [iExists a, cap; by iFrame|done]. }
+    { iFrame "HI". iSplitL; [iExists a, cap; by iFrame|]. iSplit; [done|]. iPureIntro. exact Hd. }
     iIntros (ms o1) "(%Hms & %HPms & Ho1 & HI1 & HV)". wp_pures.
     assert (HP1 : P o1).
     { clear -Hms HPms. revert o Hms HPms. induction ms as [|m r IH]; intros o Hms HPms; simpl in *.

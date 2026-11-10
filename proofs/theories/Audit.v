@@ -296,6 +296,12 @@ Print Assumptions Ranvier.Heap.ObserverSet.observers_grow_spec.
 Print Assumptions Ranvier.Heap.ObserverSet.observers_add_spec.
 Print Assumptions Ranvier.Heap.ObserverSet.observers_try_add_spec.
 Print Assumptions Ranvier.Heap.ObserverSet.observers_remove_at_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_scan_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_walk_loop_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_held_before_spec.
+Print Assumptions Ranvier.Heap.SourceList.held_build_spec.
+Print Assumptions Ranvier.Heap.SourceList.held_mem_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_index_add_spec.
 Print Assumptions Ranvier.Heap.ObserverSet.walk_trace_spec.
 Print Assumptions Ranvier.Heap.ObserverSet.walk_spec.
 Print Assumptions Ranvier.Heap.SourceList.moved_past_list_clears.

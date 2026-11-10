@@ -14,7 +14,16 @@ of each node; and the agreement with the pure [state].
 
 Freshness is monotone through a ghost epoch per node. The code of a node is [3 * epoch + rank], where the
 rank is [Clean] 0, [Check] 1 or [Dirty] 2, and the epoch advances when the freshness falls. The code only
-grows, so a lower bound taken at one state holds at every later one. *)
+grows, so a lower bound taken at one state holds at every later one.
+
+Obligations of Task 15:
+- The epoch protocol. The epoch is existential in [is_graph] and [graph_fresh_raise] lets any holder raise a
+  code, so a lower bound carries no information yet. Task 15 fixes that the epoch advances only at a freshness
+  fall ([Dirty] or [Check] to [Clean]), with the ranks [Clean] 0 < [Check] 1 < [Dirty] 2.
+- [is_graph]-level lemmas: a combined update of the heap and the ghost state; node allocation, extending the
+  table, [is_world], the edge fragments and the freshness entries; [resolver] over a growing table, through an
+  invariant with a monotone map; and [edge_match (g_edges s)] with [dom tbl = dom (g_nodes s)], held in
+  [is_graph_at] or proved from the engine invariant. *)
 
 Definition edge_entry : Type := observer_set * source_list.
 

@@ -266,7 +266,7 @@ Proof.
 Qed.
 
 (** A world can be incoherent and still have its trim succeed in the pure model: here observer 2 is recorded
-    at slot 3, and 2 has no slots. The removal moves it, and [MovedIn] past the end changes nothing. The heap
+    at slot 3, and 2 has no slots. The removal moves it, and [MovedIn] past the end leaves the world as it is. The heap
     [MovedIn] writes the cell, as F# does, so the specifications below take [edge_match]. *)
 Definition moved_past_list_world : EdgeWorld :=
   set_sources 1 {| source_slots := [(5, Some 0)]; source_cursor := 1 |}
@@ -752,7 +752,7 @@ Proof. rewrite /trim_fun decide_False //. lia. Qed.
 (**md
 **The loop of `trimFrom` removes slot by slot, as `trim_loop` does.**
 
-The positions from `from` up to `i` are already blank and hold no edge. Each later position's handle is read
+The positions from `from` up to `i` are blank, and their slots in `w` are unlinked. Each later position's handle is read
 when the loop reaches it, its edge is removed with the `MovedIn` of the moved observer delivered, and the
 position is blanked.
 
@@ -1155,6 +1155,16 @@ Proof.
     apply world_in_set_observers; try done; by apply world_in_set_sources.
 Qed.
 
+Lemma sources_add_edge_match self s w w' :
+  edge_match w -> sources_add self s w = Some w' -> edge_match w'.
+Proof.
+  intros Hm. rewrite /sources_add. cbv zeta. case_decide.
+  - intros [= <-] c i s' h. rewrite slot_at_advance observers_of_set_sources. apply Hm.
+  - case_decide; [by intros [= <-]|].
+    destruct (sources_end_run_ok self w Hm) as (w1 & -> & Hm1 & _). simpl.
+    intros [= <-]. by apply edge_match_link.
+Qed.
+
 Lemma world_join tbl w self lo ls held :
   tbl !! self = Some (lo, ls) -> world_in tbl w ->
   obs_part tbl w ∗ src_part (delete self tbl) w ∗ is_source_list ls (sources_of w self) held ⊢ is_world tbl w.
@@ -1166,8 +1176,7 @@ Qed.
 (**md
 **`EndRun` trims as `sources_end_run` does.**
 
-Premise: the two ends of every edge agree (`edge_match`). The heap `MovedIn` writes the moved observer's slot
-cell without a bounds test, as F# does, so an incoherent world such as `moved_past_list_world` can differ.
+Premise: the two ends of every edge agree (`edge_match`). The two ends still agree afterwards.
 
 - [res:] the resolver.
 - [tbl:] the node table.
@@ -1177,9 +1186,13 @@ cell without a bounds test, as F# does, so an incoherent world such as `moved_pa
 *)
 Lemma sources_end_run_spec (res : val) tbl (self : node_id) (w w' : EdgeWorld) :
   edge_match w -> self ∈ dom tbl -> sources_end_run self w = Some w' ->
-  {{{ resolver tbl res ∗ is_world tbl w }}} sources_end_run_code res #(Z.of_nat self) {{{ RET #(); is_world tbl w' }}}.
+  {{{ resolver tbl res ∗ is_world tbl w }}} sources_end_run_code res #(Z.of_nat self)
+  {{{ RET #(); ⌜edge_match w'⌝ ∗ is_world tbl w' }}}.
 Proof.
-  intros Hm Hself Hr. iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
+  intros Hm Hself Hr.
+  assert (Hm' : edge_match w').
+  { destruct (sources_end_run_ok self w Hm) as (w'' & Hr' & Hm'' & _). rewrite Hr in Hr'. by injection Hr' as ->. }
+  iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
   pose proof Hself as [[lo ls] Ht]%elem_of_dom.
   wp_lam. wp_pures. wp_bind (App (Val res) _). iApply (wp_wand with "[]"); [by iApply "Hres"|]. iIntros (v ->). wp_pures.
   iDestruct (src_part_split _ _ self (lo, ls) Ht with "Hsrc") as "[(%held & %Hc & %cap & %hv & %Hcap & %Hheld & Hrep) Hsrc]".
@@ -1194,18 +1207,18 @@ Proof.
     wp_apply (sources_trim_from_spec res tbl self lo ls _ w held Ht Hm Hin with "[$Hres $Hobs $Hsrc $Hl]"); [lia|].
     iIntros (w1) "(%Ht1 & %Hm1 & %Hin1 & %Hlen1 & %Hcur1 & Hobs & Hsrc & Hl)".
     rewrite Ht1 in Hr. injection Hr as <-.
-    iApply "HΦ". iApply (world_join _ _ self lo ls ∅ Ht Hin1). iFrame. iPureIntro. lia.
+    iApply "HΦ". iSplit; [done|]. iApply (world_join _ _ self lo ls ∅ Ht Hin1). iFrame. iPureIntro. lia.
   - rewrite (bool_decide_eq_false_2 (Z.of_nat (source_cursor (sources_of w self)) <
                                       Z.of_nat (length (source_slots (sources_of w self))))%Z); [|lia].
     wp_pures. iModIntro. injection Hr as <-.
-    iApply "HΦ". iApply (world_join _ _ self lo ls held Ht Hin). iFrame "Hobs Hsrc". iSplit; [done|].
+    iApply "HΦ". iSplit; [done|]. iApply (world_join _ _ self lo ls held Ht Hin). iFrame "Hobs Hsrc". iSplit; [done|].
     iExists cap, hv. iSplit; [done|]. iSplit; [done|]. iExists a. iFrame.
 Qed.
 
 (**md
 **`Clear` removes every edge as `sources_clear` does.**
 
-Premise: `edge_match`, as for `EndRun`.
+Premise and result: `edge_match`, as for `EndRun`.
 
 - [res:] the resolver.
 - [tbl:] the node table.
@@ -1215,9 +1228,13 @@ Premise: `edge_match`, as for `EndRun`.
 *)
 Lemma sources_clear_spec (res : val) tbl (self : node_id) (w w' : EdgeWorld) :
   edge_match w -> self ∈ dom tbl -> sources_clear self w = Some w' ->
-  {{{ resolver tbl res ∗ is_world tbl w }}} sources_clear_code res #(Z.of_nat self) {{{ RET #(); is_world tbl w' }}}.
+  {{{ resolver tbl res ∗ is_world tbl w }}} sources_clear_code res #(Z.of_nat self)
+  {{{ RET #(); ⌜edge_match w'⌝ ∗ is_world tbl w' }}}.
 Proof.
-  intros Hm Hself Hr. iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
+  intros Hm Hself Hr.
+  assert (Hm' : edge_match w').
+  { destruct (sources_clear_ok self w Hm) as (w'' & Hr' & Hm'' & _). rewrite Hr in Hr'. by injection Hr' as ->. }
+  iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
   pose proof Hself as [[lo ls] Ht]%elem_of_dom.
   wp_lam. wp_pures. wp_bind (App (Val res) _). iApply (wp_wand with "[]"); [by iApply "Hres"|]. iIntros (v ->). wp_pures.
   iDestruct (src_part_split _ _ self (lo, ls) Ht with "Hsrc") as "[(%held & %Hc & Hl) Hsrc]".
@@ -1225,7 +1242,7 @@ Proof.
   iIntros (w1) "(%Ht1 & %Hm1 & %Hin1 & %Hlen1 & %Hcur1 & Hobs & Hsrc & (%cap & %hv & %Hcap & %Hheld & Hrep))".
   wp_pures. iDestruct "Hrep" as (a) "(H0 & H1 & H2 & H3 & H4 & H5 & Ha)". wp_store. iModIntro.
   rewrite /sources_clear Ht1 /= in Hr. injection Hr as <-.
-  iApply "HΦ". iApply (world_join _ _ self lo ls ∅ Ht).
+  iApply "HΦ". iSplit; [done|]. iApply (world_join _ _ self lo ls ∅ Ht).
   { by apply world_in_set_sources. }
   rewrite sources_of_set_sources decide_True //= src_part_delete_set. iFrame "Hobs Hsrc".
   iSplit; [iPureIntro; simpl; lia|]. iExists cap, hv. iSplit; [done|]. iSplit; [done|]. iExists a. iFrame.
@@ -1258,7 +1275,7 @@ Qed.
 (**md
 **`Add` follows `sources_add`: a match at the cursor, a repeat of the source just matched, or a trim and a link.**
 
-Premise: `edge_match`, as for `EndRun`.
+Premise and result: `edge_match`, as for `EndRun`.
 
 - [res:] the resolver.
 - [tbl:] the node table.
@@ -1270,9 +1287,11 @@ Premise: `edge_match`, as for `EndRun`.
 Lemma sources_add_spec (res : val) tbl (self s : node_id) (w w' : EdgeWorld) :
   edge_match w -> self ∈ dom tbl -> s ∈ dom tbl -> sources_add self s w = Some w' ->
   {{{ resolver tbl res ∗ is_world tbl w }}} sources_add_code res #(Z.of_nat self) #(Z.of_nat s)
-  {{{ RET #(); is_world tbl w' }}}.
+  {{{ RET #(); ⌜edge_match w'⌝ ∗ is_world tbl w' }}}.
 Proof.
-  intros Hm Hself Hs Hadd. iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
+  intros Hm Hself Hs Hadd.
+  assert (Hm' : edge_match w') by (eapply sources_add_edge_match; eauto).
+  iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
   pose proof Hself as [[lo ls] Ht]%elem_of_dom.
   wp_lam. wp_pures. wp_bind (App (Val res) _). iApply (wp_wand with "[]"); [by iApply "Hres"|].
   iIntros (v ->). wp_pures.
@@ -1304,7 +1323,7 @@ Proof.
     subst w'. iDestruct "Hrep" as (a') "(H0 & H1 & H2 & H3 & H4 & H5 & Ha)". wp_store. iModIntro.
     assert (Hcl : cur < length sl).
     { destruct (sl !! cur) eqn:E; [by apply lookup_lt_Some in E|done]. }
-    iApply "HΦ". iApply (world_join _ _ self lo ls held Ht); [by apply world_in_set_sources|].
+    iApply "HΦ". iSplit; [done|]. iApply (world_join _ _ self lo ls held Ht); [by apply world_in_set_sources|].
     rewrite sources_of_set_sources decide_True //= src_part_delete_set. iFrame "Hobs Hsrc".
     iSplit; [iPureIntro; simpl; lia|]. iExists cap, hv. iSplit; [done|]. iSplit; [done|]. iExists a'.
     rewrite (_ : (Z.of_nat cur + 1)%Z = Z.of_nat (S cur)); [|lia]. iFrame. }
@@ -1330,7 +1349,7 @@ Proof.
     assert (w' = w) as ->.
     { revert Hadd. rewrite /sources_add. cbv zeta. rewrite -/sl -/cur.
       case_decide; [contradiction|]. case_decide; [|contradiction]. by intros [= <-]. }
-    iApply "HΦ". iApply (world_join _ _ self lo ls held Ht Hin). iFrame "Hobs Hsrc".
+    iApply "HΦ". iSplit; [done|]. iApply (world_join _ _ self lo ls held Ht Hin). iFrame "Hobs Hsrc".
     iSplit; [done|]. iExists cap, hv. iSplit; [done|]. iSplit; [done|]. done. }
   rewrite bool_decide_eq_false_2 //. wp_pures.
   (* A miss: [Append]. *)
@@ -1348,14 +1367,14 @@ Proof.
     iIntros (w1) "(%Ht1 & %Hm1 & %Hin1 & %Hlen1 & %Hcur1 & Hobs & Hsrc & Hl)". wp_pures.
     rewrite Ht1 /= in Hadd'. injection Hadd' as <-.
     wp_apply (sources_link_spec res tbl self s lo ls w1 ∅ Ht Hs with "[$Hres $Hobs $Hsrc $Hl]").
-    iIntros "(Hobs & Hsrc & [%held' Hl])". iApply "HΦ".
+    iIntros "(Hobs & Hsrc & [%held' Hl])". iApply "HΦ". iSplit; [done|].
     iApply (world_join _ _ self lo ls held' Ht); [apply world_in_link; done|]. iFrame.
   - rewrite (bool_decide_eq_false_2 (Z.of_nat cur < Z.of_nat (length sl))%Z); [|lia]. wp_pures.
     simpl in Hadd'. injection Hadd' as <-.
     iAssert (source_list_rep ls (sources_of w self) held) with "[H0 H1 H2 H3 H4 H5 Ha]" as "Hl";
       [iExists cap, hv; iSplit; [done|]; iSplit; [done|]; iExists a'; iFrame|].
     wp_apply (sources_link_spec res tbl self s lo ls w held Ht Hs with "[$Hres $Hobs $Hsrc $Hl]").
-    iIntros "(Hobs & Hsrc & [%held' Hl])". iApply "HΦ".
+    iIntros "(Hobs & Hsrc & [%held' Hl])". iApply "HΦ". iSplit; [done|].
     iApply (world_join _ _ self lo ls held' Ht); [apply world_in_link; done|]. iFrame.
 Qed.
 
