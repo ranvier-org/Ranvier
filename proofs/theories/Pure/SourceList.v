@@ -30,6 +30,10 @@ Slot `i` of computation `c` in `w`: its source and edge handle, or `None` past t
 Definition slot_at (w : EdgeWorld) (c : node_id) (i : nat) : option (node_id * option nat) :=
   source_slots (sources_of w c) !! i.
 
+(** The sources of [c] read in its latest run: the slots before the cursor. *)
+Definition read_prefix (w : EdgeWorld) (c : node_id) : list node_id :=
+  fst <$> take (source_cursor (sources_of w c)) (source_slots (sources_of w c)).
+
 (**md
 `w` with the observer set of `s` replaced by `o`.
 *)

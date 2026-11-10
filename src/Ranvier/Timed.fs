@@ -136,7 +136,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
     member private _.Notify() =
         Tracer.TimedMoved (graph, id, Failure.Payload (failure, box value))
-        observers.NotifyDirtyExcept graph.CurrentComputation
+        graph.NotifyMoved observers
         Tracer.Notified graph
 
     member private this.Fail(ex: exn) =
@@ -283,12 +283,17 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
         member _.UpdateIfNecessary() = ()
 
+        member _.IsStale = false
+
     interface IComputation with
         member this.AddSource source =
             sources.Add (this :> IComputation, source)
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
+
+        member _.HasReadSlot slot =
+            slot < sources.Cursor
 
         member this.MarkDirty() =
             if not disposed then
@@ -302,6 +307,23 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
                 this.Enqueue ()
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
+
     interface IScheduled with
         member this.Execute() =
             if disposed then
@@ -309,11 +331,18 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             else
                 if freshness = Freshness.Check then
                     Tracer.CheckStart (graph, id)
+                    let before = graph.StaleTransitions
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
                         sources.SourceAt(i).UpdateIfNecessary()
                         i <- i + 1
+
+                    if
+                        freshness = Freshness.Check
+                        && graph.StaleTransitions <> before
+                    then
+                        this.ResolveCheckAgain ()
 
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 

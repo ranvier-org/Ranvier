@@ -1684,13 +1684,10 @@ Section Step.
         { apply (invariant_told n d3 s10 G); [done|done|done|done|done|simpl; set_solver| |].
           - eapply (any_mark_rtc f n (g_current s10)). right; right; right; right. done.
           - intros c dc Hc Hkc Hpre.
-            destruct (decide (g_current s10 = Some c)) as [Hr|Hr].
-            + right. right. subst G. simpl. unfold run_end_unnoticed. rewrite Hr.
-              rewrite decide_True by done. set_solver.
-            + right. left. eapply (notify_dirty_ends_dirty f n (g_current s10) (with_ghost G s10)).
-              * by apply prefix_observer.
-              * exists dc. split; [done|by left].
-              * right. split; [exact Hn|done]. }
+            right. left. eapply (notify_dirty_ends_dirty f n (g_current s10) (with_ghost G s10)).
+            + by apply prefix_observer.
+            + exists dc. split; [done|by left].
+            + right. split; [exact Hn|by right]. }
         destruct H11a as [Hi11a F11a].
         destruct (bool_decide (g_batch_depth s11a = 0) && negb (g_flushing s11a) && live_queue s11a).
         + rewrite bind_m_modify in Hm11. exists (with_flush_owed true s11a). split; [exact Hm11|].
@@ -2198,6 +2195,36 @@ Theorem resolve_walk_step f n i s d src mh :
 Proof.
   intros Hd Hc Hs. cbn [resolve_walk]. rewrite (bind_get_node _ _ _ _ Hd), bind_get.
   rewrite decide_True by done. by rewrite Hs.
+Qed.
+
+(**md
+**A check walk that ends with the node still in `Check` leaves no live stale source in its slots.**
+
+With `fl_walk_recheck` enabled, `resolve_walk` re-walks from slot 0 whenever a slot still holds a live stale source at the end of the pass, and only returns in `Check` when no slot does.
+
+- [f:] the fuel.
+- [n:] the node walked.
+- [i:] the slot the walk starts from.
+- [s:] the state before the walk.
+- [s':] the state after the walk.
+- [d':] the node `n` in `s'`, which is in `Check`.
+*)
+Theorem resolve_walk_no_stale_source f n i s s' d' :
+  resolve_walk f n i s = Some (s', tt) ->
+  g_nodes s' !! n = Some d' -> n_freshness d' = Check ->
+  slot_holds stale_live s' n = false.
+Proof.
+  revert i s. induction f as [|f IH]; intros i s Hw Hd' Hc'; [by cbn in Hw|].
+  cbn [resolve_walk] in Hw.
+  destruct (g_nodes s !! n) as [d|] eqn:Hd; [|by unfold m_bind, get_node in Hw; rewrite Hd in Hw].
+  rewrite (bind_get_node _ _ _ _ Hd), bind_get in Hw.
+  destruct (decide (n_freshness d = Check)) as [Hc|Hc].
+  - destruct (source_slots (sources_of (g_edges s) n) !! i) as [[src mh]|].
+    + unfold m_bind in Hw. destruct (update_if_necessary f src s) as [[s1 []]|]; [eapply IH; eauto|done].
+    + destruct (slot_holds stale_live s n) eqn:Esh.
+      * eapply IH; eauto.
+      * unfold m_return in Hw. by simplify_eq.
+  - unfold m_return in Hw. by simplify_eq.
 Qed.
 
 (**md

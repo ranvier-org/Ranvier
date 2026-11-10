@@ -85,8 +85,8 @@ Proof. unfold read_list. by rewrite foldl_app. Qed.
 Definition in_window (s : state) (c : node_id) (dc : node) : Prop :=
   exists r, gh_window (g_ghost s) !! c = Some r /\ n_runs dc <= r.
 
-(** The two forms of the invariant: with the source's flag and [gh_passed], and without the flag and with [gh_over]. *)
-Definition resolved_set (b : bool) (g : ghost) : gset node_id := if b then gh_passed g else gh_over g.
+(** The two forms of the invariant: with the source's flag, and without the flag. *)
+Definition resolved_set (b : bool) (g : ghost) : gset node_id := ∅.
 
 (**md
 The disjunction `told_on` requires of a computation `c` that read a live, stale source `e`: `c` is stale,
@@ -1201,14 +1201,14 @@ Proof. simpl. set_solver. Qed.
 Lemma add_if_keeps b (x : gset node_id) n m : m ∈ x -> m ∈ add_if b n x.
 Proof. destruct b; simpl; set_solver. Qed.
 
-(** A walk ending in [Check], then [Clean] for [n]: an observer of a stale, unannounced source joins [gh_passed]. *)
+(** A walk ending in [Check], then [Clean] for [n]: no live stale source remains in [n]'s slots. *)
 Lemma extras_resolved n u d s :
-  run_extras s -> g_nodes s !! n = Some d ->
+  run_extras s -> g_nodes s !! n = Some d -> slot_holds stale_live s n = false ->
   n_kind (u d) = n_kind d -> n_freshness (u d) = Clean -> n_disposed (u d) = n_disposed d ->
   n_queued (u d) = false -> n_in_cleanup (u d) = n_in_cleanup d -> n_runs (u d) = n_runs d ->
   run_extras (set_node n (u d) (ghost_resolved n s)) /\ ekept s (set_node n (u d) (ghost_resolved n s)).
 Proof.
-  intros [Hb Ht] Hd Hk Hc HD HQ HC HR.
+  intros [Hb Ht] Hd Hsh Hk Hc HD HQ HC HR.
   destruct (ghost_resolved_fields n s) as (F1&F2&F3&F4&F5&F6&F7&F8&F9).
   assert (Hb1 : run_base (ghost_resolved n s)) by (eapply base_passed; [exact F1|exact F2|exact F3|exact F4|exact F5|exact F6|exact F7|exact F8|exact F9|reflexivity|reflexivity|exact Hb]).
   assert (Hd1 : g_nodes (ghost_resolved n s) !! n = Some d) by (by rewrite F2).
@@ -1228,25 +1228,18 @@ Proof.
     destruct (decide (src = n)) as [->|Hsn].
     { rewrite lookup_insert_eq in He. injection He as <-. rewrite Hc in Hst. done. }
     rewrite lookup_insert_ne in He by done. rewrite F2 in He.
-    assert (Hkeep : forall m, m ∈ resolved_set b (g_ghost s) ->
-              m ∈ (if b then gh_passed (g_ghost (ghost_resolved n s)) else gh_over (g_ghost (ghost_resolved n s)))).
-    { intros m Hm. destruct b; simpl; by apply add_if_keeps. }
     destruct (decide (c = n)) as [->|Hcn].
-    + rewrite lookup_insert_eq in Hc1. injection Hc1 as <-.
+    + exfalso.
       assert (Hslot : src ∈ fst <$> source_slots (sources_of (g_edges s) n)) by (by apply read_prefix_in).
-      destruct b.
-      * destruct (n_unannounced e) eqn:Eu; [by right; left|].
-        right; right; left. simpl.
-        rewrite (slot_holds_in (fun e => stale_live e && negb (n_unannounced e)) s n src e); [apply add_if_in|done|done|].
-        unfold stale_live. rewrite Hst, Hde, Eu. done.
-      * right; right; left. simpl.
-        rewrite (slot_holds_in stale_live s n src e); [apply add_if_in|done|done|].
-        unfold stale_live. rewrite Hst, Hde. done.
+      assert (Hsh' : slot_holds stale_live s n = true).
+      { eapply (slot_holds_in stale_live s n src e); [exact Hslot|exact He|].
+        unfold stale_live. by rewrite Hst, Hde. }
+      congruence.
     + rewrite lookup_insert_ne in Hc1 by done. rewrite F2 in Hc1.
       destruct (Ht b c src dc e I Hc1 He Hin Hst Hde Hdc) as [C|[C|[C|C]]].
       * by left.
       * by right; left.
-      * right; right; left. by apply Hkeep.
+      * by right; right; left.
       * right; right; right. destruct C as (r&Hw&Hle). exists r. rewrite F8. done.
   - split.
     + gsimp. done.
@@ -2038,12 +2031,12 @@ Proof. unfold set_node. simpl. by rewrite insert_insert_eq. Qed.
 
 Lemma ok2_resolved_memo n d' :
   n_freshness d' = Check ->
-  ok2 (fun s => has_kind n KMemo s /\ g_nodes s !! n = Some d')
+  ok2 (fun s => has_kind n KMemo s /\ g_nodes s !! n = Some d' /\ slot_holds stale_live s n = false)
     (let* _ := m_modify (ghost_resolved n) in
      modify_node n (fun x => node_with_unannounced false (node_with_freshness Clean x))).
 Proof.
   intros Hcheck.
-  apply (ok2_of (fun s => g_nodes s !! n = Some d')); [by intros s [_ ?]|..].
+  apply (ok2_of (fun s => g_nodes s !! n = Some d')); [by intros s (_ & ? & _)|..].
   - intros s s' a Hi Hd Hm. rewrite bind_m_modify in Hm.
     destruct (resolved_reads_only n s) as (R & A & O & L & N & Hg). rewrite Hg in Hm. simpl in Hm.
     assert (Hd1 : g_nodes (with_run_ghost R A O L N s) !! n = Some d') by exact Hd.
@@ -2051,12 +2044,12 @@ Proof.
     destruct (ok_modify_at (fun _ => True) n (fun x => node_with_unannounced false (node_with_freshness Clean x)) d'
                ltac:(ns) _ _ _ Hi1 (conj I Hd1) Hm) as [Hi2 F2].
     split; [done|]. eapply frame_trans; [|exact F2]. by apply frame_same.
-  - intros s s' a _ Hx [(e&He&Hk) Hd] Hm. rewrite bind_m_modify in Hm. cbv beta in Hm. unfold modify_node in Hm.
+  - intros s s' a _ Hx ((e&He&Hk) & Hd & Hsh) Hm. rewrite bind_m_modify in Hm. cbv beta in Hm. unfold modify_node in Hm.
     destruct (ghost_resolved_fields n s) as (F1&F2&_).
     rewrite F2, Hd in Hm. injection Hm as <- <-.
     rewrite Hd in He. injection He as <-.
     destruct (b_memo _ (proj1 Hx) n d' Hd Hk) as [Hq Hc].
-    apply (extras_resolved n (fun x => node_with_unannounced false (node_with_freshness Clean x)) d' s Hx Hd); done.
+    apply (extras_resolved n (fun x => node_with_unannounced false (node_with_freshness Clean x)) d' s Hx Hd Hsh); done.
 Qed.
 
 (** ** The engine keeps the invariant *)
@@ -2206,10 +2199,21 @@ Section Step.
     cbn [refresh]. apply ok2_bind; [apply _|apply ok2_get_node|intros d].
     apply ok2_bind; [apply _| |intros _].
     - destruct (decide (n_freshness d = Check)); [|apply ok2_return].
-      apply ok2_bind; [apply _|apply ok2_any; rih IH|intros _].
-      apply ok2_get_node_at. intros d'.
-      destruct (decide (n_freshness d' = Check)) as [Hc|_]; [|apply ok2_return].
-      by apply ok2_resolved_memo.
+      intros s s' a Hc Hk Hm. unfold m_bind in Hm.
+      destruct (resolve_walk f n 0 s) as [[s1 []]|] eqn:Hw; [|done].
+      destruct (Rwalk _ IH n 0 s s1 tt Hc I Hw) as [Hc1 K1].
+      assert (Hk1 : has_kind n KMemo s1) by exact (stable2 _ _ K1 Hk).
+      fold (m_bind (get_node n) (fun d' =>
+        if decide (n_freshness d' = Check) then
+          let* _ := m_modify (ghost_resolved n) in
+          modify_node n (fun x => node_with_unannounced false (node_with_freshness Clean x))
+        else m_return tt) s1) in Hm.
+      unfold m_bind, get_node in Hm. destruct (g_nodes s1 !! n) as [d'|] eqn:Hd'; [|done].
+      destruct (decide (n_freshness d' = Check)) as [Hc'|_].
+      + pose proof (resolve_walk_no_stale_source f n 0 s s1 d' Hw Hd' Hc') as Hsh.
+        destruct (ok2_resolved_memo n d' Hc' s1 s' a Hc1 (conj Hk1 (conj Hd' Hsh)) Hm) as [Hc2 K2].
+        split; [done|by eapply kept_trans].
+      + unfold m_return in Hm. simplify_eq. split; done.
     - apply ok2_bind; [apply _|apply ok2_get_node|intros d'].
       destruct (decide (n_freshness d' = Dirty)); [rih IH|apply ok2_return].
   Qed.
@@ -2471,7 +2475,7 @@ Section Step.
       unfold neutral. simpl. split_and!; done. }
     destruct (decide (n_freshness d = Check)) as [Hc|Hc].
     - rewrite bind_bind in Hm.
-      destruct (run2_bind _ _ _ _ _ _ (Rwalk _ IH n 0) (conj Hi Hx) I Hm) as (s1 & [] & _ & Hc1 & K1 & Hm1).
+      destruct (run2_bind _ _ _ _ _ _ (Rwalk _ IH n 0) (conj Hi Hx) I Hm) as (s1 & [] & Hw & Hc1 & K1 & Hm1).
       assert (Hctx1 : effect_ctx n s1) by (exact (stable2 _ _ K1 Hctx)).
       destruct (proj1 Hctx1) as (d1&Hd1&Hkd1).
       rewrite bind_bind, (bind_get_node _ _ _ _ Hd1) in Hm1.
@@ -2486,7 +2490,8 @@ Section Step.
         rewrite (bind_modify_node _ _ _ _ _ Hd2) in Hm1.
         rewrite decide_False in Hm1 by (simpl; done).
         unfold m_return in Hm1. simplify_eq. rewrite set_node_twice.
-        destruct (extras_resolved n (fun x => node_with_freshness Clean (node_with_queued false (node_with_freshness Clean x))) d1 s1 (proj2 Hc1) Hd1
+        pose proof (resolve_walk_no_stale_source f n 0 s s1 d1 Hw Hd1 Hc2) as Hsh1.
+        destruct (extras_resolved n (fun x => node_with_freshness Clean (node_with_queued false (node_with_freshness Clean x))) d1 s1 (proj2 Hc1) Hd1 Hsh1
                     eq_refl eq_refl eq_refl eq_refl eq_refl eq_refl) as [H1 H2].
         split; [done|]. eapply ekept_trans; [apply K1|exact H2].
       + rewrite bind_m_return, (bind_get_node _ _ _ _ Hd1) in Hm1.
@@ -3062,16 +3067,21 @@ Proof.
   destruct C as (r&Hwr&Hle). pose proof (Hw c dc r Hdc Hwr Edc). lia.
 Qed.
 
-Lemma wake_of_settled s : engine_settled s -> wake_ok_unless_passed s.
+Lemma settled_wake_ok s : engine_settled s -> wake_ok s.
 Proof.
   intros Hs src c He (e&He1&Hst) (e'&He2&Hl).
   rewrite He1 in He2. injection He2 as <-.
   destruct (decide (c ∈ g_running s)) as [Hrun|Hnr].
-  { left. right. left. by apply list_elem_of_In. }
+  { right. left. by apply list_elem_of_In. }
   destruct (settled_cover true s src c e Hs He He1 Hst Hl Hnr) as (dc&Hdc&[C|[C|C]]).
-  - left. left. left. by exists dc.
-  - left. right. right. unfold n_unannounced_of. rewrite He1. simpl. apply C.
-  - by right.
+  - left. left. by exists dc.
+  - right. right. unfold n_unannounced_of. rewrite He1. simpl. apply C.
+  - set_solver.
+Qed.
+
+Lemma wake_of_settled s : engine_settled s -> wake_ok_unless_passed s.
+Proof.
+  intros Hs src c He Hst Hl. left. by apply settled_wake_ok.
 Qed.
 
 Lemma told_of_settled s : engine_settled s -> wake_told s.
@@ -3083,7 +3093,7 @@ Proof.
   destruct (settled_cover false s src c e Hs He He1 Hst Hl Hnr) as (dc&Hdc&[C|[C|C]]).
   - left. left. by exists dc.
   - by destruct C.
-  - by right; right.
+  - set_solver.
 Qed.
 
 (**md
@@ -3148,26 +3158,41 @@ Proof.
   rewrite Hn in H. set_solver.
 Qed.
 
-(** The headline statement, which the fix phase owes. [walk_passed_source_marked] in [BUGS.md] is its counterexample
-    on the present engine. *)
+(** The headline statement: every program keeps every observer of a live stale source covered. *)
 Definition no_lost_wakeups_statement : Prop :=
   forall f c s s' r, engine_inv s -> run_top f c s = Some (s', r) -> wake_ok s'.
 
 (**md
-**Open statement, false on the present engine: every program keeps every observer of a live stale source covered.**
+**Headline statement: every program keeps every observer of a live stale source covered.**
 
-`no_lost_wakeups_statement` is what the fix phase owes. The Confirmed bug [`walk_passed_source_marked`](Ranvier.Pure.Witnesses.html#walk_passed_source_marked) falsifies it, and [`no_lost_wakeups_falsified`](Ranvier.Pure.Witnesses.html#no_lost_wakeups_falsified) proves that. Until the fix, later layers use [`no_lost_wakeups_when_nothing_passed`](#no_lost_wakeups_when_nothing_passed).
+After any whole program starting from `engine_inv`, every observer with an edge from a live, stale source is itself stale, queued or running, or the source holds its announcement flag.
 *)
+Theorem no_lost_wakeups : no_lost_wakeups_statement.
+Proof.
+  intros f c s s' r [Hs _ _] Hm. apply settled_wake_ok.
+  exact (Pexec _ _ (engine_settled_preserved f) [] c _ _ _ Hs I Hm).
+Qed.
 
-(** The invariant of the design across every engine function, which the fix phase owes. It fails where the
-    headline fails. *)
+(** The invariant of the design across every engine function. *)
 Definition engine_inv_preserved_statement : Prop := forall f, preserved_by engine_inv f.
 
-(**md
-**Open statement, false on the present engine: every engine function keeps the invariant with `wake_ok`.**
+Lemma keeps_inv {A} P (m : M A) : keeps engine_settled P m -> keeps engine_inv P m.
+Proof.
+  intros H s s' a [Hs _ _] HP Hm.
+  pose proof (H s s' a Hs HP Hm) as Hs'.
+  apply engine_inv_of_settled; [exact Hs'|by apply settled_wake_ok].
+Qed.
 
-`engine_inv_preserved_statement` is what the fix phase owes. [`engine_inv_preserved_falsified`](Ranvier.Pure.Witnesses.html#engine_inv_preserved_falsified) proves it false. Until the fix, later layers use [`engine_settled_preserved`](#engine_settled_preserved).
+(**md
+**Every engine function keeps the invariant with `wake_ok`.**
+
+`engine_inv` holds across `run_top`, `update_if_necessary`, `mark_check`, `mark_dirty`, `notify_check`, `notify_dirty`, and every step of a run.
 *)
+Theorem engine_inv_preserved : engine_inv_preserved_statement.
+Proof.
+  intros f. destruct (engine_settled_preserved f).
+  split; intros; apply keeps_inv; auto.
+Qed.
 
 (**md
 **A new graph with the current flags satisfies the invariant with `wake_ok`.**
@@ -3598,7 +3623,8 @@ Theorem moved_marks_except_running f n s s' d d' :
   g_nodes s !! n = Some d ->
   run_memo (S f) n s = Some (s', tt) ->
   g_nodes s' !! n = Some d' -> (read_view_of d' <> read_view_of d \/ n_comparer d' <> CmpEq) ->
-  forall c, c ∈ observer_view (observers_of (g_edges s') n) -> g_current s <> Some c -> takes_marks s' c ->
+  forall c, c ∈ observer_view (observers_of (g_edges s') n) ->
+    (g_current s <> Some c \/ n ∈ read_prefix (g_edges s') c) -> takes_marks s' c ->
     ends_dirty s' c.
 Proof.
   intros Hd Hm Hd' Hne c Hobs Hcur Ht.
@@ -3622,8 +3648,8 @@ Proof.
   destruct Hn as [[Hx _]|[_ [Hn _]]]; [congruence|].
   assert (HE : g_edges s' = g_edges sg).
   { rewrite <- (mf_edges _ _ Hfx), <- Hs12e. destruct Hend as [->|[_ ->]]; done. }
-  rewrite HE in Hobs.
-  assert (Hcur10 : g_current s10 <> Some c).
+  rewrite HE in Hobs, Hcur.
+  assert (Hcur10 : g_current s10 <> Some c \/ n ∈ read_prefix (g_edges sg) c).
   { rewrite (rs_current _ _ _ R10), (hosted_current _ _ _ _ _ Eh). exact Hcur. }
   assert (Ht11 : takes_marks s11 c).
   { destruct Ht as (e&He&Hke). destruct Hend as [->|[_ ->]].
@@ -3659,7 +3685,7 @@ Qed.
 (**md
 **The notice of a moved run leaves the computation it skips short of `Dirty`.**
 
-`notify_dirty_except` of a source, with a computation to skip, leaves that computation short of `Dirty` if it was short of it. A memo among the other observers can still tell it `Check`. [`skip_removed_fires`](Ranvier.Pure.Witnesses.html#skip_removed_fires) shows this fails when the skip is removed.
+`notify_dirty_except` of a source, with a computation to skip that has not yet read the source in its current run, leaves that computation short of `Dirty` if it was short of it. A memo among the other observers can still tell it `Check`. [`skip_removed_fires`](Ranvier.Pure.Witnesses.html#skip_removed_fires) shows this fails when the skip is removed.
 
 - [f:] the fuel.
 - [n:] the source whose observers are marked.
@@ -3669,23 +3695,32 @@ Qed.
 - [e:] the node `c` in `s`, which is not `Dirty`.
 *)
 Theorem notice_skips_current f n c s s' e :
-  notify_dirty_except f n (Some c) s = Some s' -> g_nodes s !! c = Some e -> n_freshness e <> Dirty ->
+  notify_dirty_except f n (Some c) s = Some s' -> n ∉ read_prefix (g_edges s) c ->
+  g_nodes s !! c = Some e -> n_freshness e <> Dirty ->
   exists e', g_nodes s' !! c = Some e' /\ n_freshness e' <> Dirty.
 Proof.
-  intros Hn He Hf.
-  refine (walk_keeps (mark_except f (Some c)) (fun s0 => exists e', g_nodes s0 !! c = Some e' /\ n_freshness e' <> Dirty) n _ s s' _ _ Hn).
-  - intros m s0 s1 (e0&He0&Hf0) Hm. unfold mark_except in Hm. destruct (decide (Some c = Some m)) as [Heq|Hne].
-    + injection Hm as <-. eauto.
-    + eapply mark_dirty_other; [|exact Hm|exact He0|exact Hf0]. intros ->. done.
-  - eauto.
+  intros Hn Hnp He Hf.
+  assert (H : g_edges s' = g_edges s /\ exists e', g_nodes s' !! c = Some e' /\ n_freshness e' <> Dirty).
+  { refine (walk_keeps (mark_except f n (Some c))
+      (fun s0 => g_edges s0 = g_edges s /\ exists e', g_nodes s0 !! c = Some e' /\ n_freshness e' <> Dirty)
+      n _ s s' _ _ Hn).
+    - intros m s0 s1 (HE & e0 & He0 & Hf0) Hm. unfold mark_except in Hm.
+      destruct (decide (Some c = Some m /\ n ∉ read_prefix (g_edges s0) m)) as [Heq|Hne].
+      + injection Hm as <-. eauto.
+      + assert (Hmc : m <> c) by (intros ->; apply Hne; rewrite HE; done).
+        destruct (mark_dirty_other f m c s0 s1 e0 Hmc Hm He0 Hf0) as (e1 & He1 & Hf1).
+        pose proof (marks_fixed _ _ (mark_dirty_rtc f m s0 s1 Hm)) as Hfx.
+        split; [rewrite (mf_edges _ _ Hfx); exact HE|eauto].
+    - eauto. }
+  exact (proj2 H).
 Qed.
 
 (**md
-**A moved run's end leaves the computation current at its start short of `Dirty`.**
+**A moved run's end leaves the computation current at its start short of `Dirty` when it has not read the memo.**
 
-If the computation current when `run_memo` started is short of `Dirty` when the run's body returns, it is short of `Dirty` when the run returns. This is the skip of `NotifyDirtyExcept`, the half [`moved_marks_except_running`](#moved_marks_except_running) leaves out. A computation that is the memo itself is outside this statement.
+If the computation current when `run_memo` started has not read `n` in its current run and is short of `Dirty` when the run's body returns, it is short of `Dirty` when the run returns. This is the skip of `NotifyDirtyExcept`, the half [`moved_marks_except_running`](#moved_marks_except_running) leaves out. A computation that is the memo itself is outside this statement.
 
-Premises: the current computation is another node, and `run_memo` returns.
+Premises: the current computation is another node that has not read `n` in its current run, and `run_memo` returns.
 
 - [f:] the fuel, which `run_memo` runs at `S f`.
 - [n:] the memo that runs.
@@ -3701,23 +3736,29 @@ Theorem moved_run_skips_current f n s s' s2 r d c e :
   g_nodes s !! n = Some d ->
   hosted n (exec f (run_env d) (n_body d)) (run_start n d s) = Some (s2, r) ->
   run_memo (S f) n s = Some (s', tt) ->
-  g_current s = Some c -> c <> n ->
+  g_current s = Some c -> c <> n -> n ∉ read_prefix (g_edges s') c ->
   g_nodes s2 !! c = Some e -> n_freshness e <> Dirty ->
   exists e', g_nodes s' !! c = Some e' /\ n_freshness e' <> Dirty.
 Proof.
-  intros Hd Eh Hm Hcur Hne He Hf.
+  intros Hd Eh Hm Hcur Hne Hnp He Hf.
   destruct (run_memo_shape f n s s' d Hd Hm) as (s2' & r' & s10 & mv & Eh' & [R10 _] & Hfin).
   rewrite Eh in Eh'. injection Eh' as <- <-.
   destruct (run_finish_shape f n mv s10 s' Hfin) as (sg & s11 & s12 & d4 & G1 & G2 & G3 & G4 & G5 & Hn & Hd4 & Hend & _).
-  assert (Hs12 : g_nodes s12 = g_nodes s11).
-  { destruct Hn as [[_ [_ ->]]|[_ [_ [->| ->]]]]; reflexivity. }
+  assert (Hfx : mark_fixed sg s11).
+  { destruct Hn as [[_ [-> _]]|[_ [Hn _]]]; [apply mark_fixed_refl|by eapply notify_except_fixed]. }
+  assert (Hs12 : g_nodes s12 = g_nodes s11 /\ g_edges s12 = g_edges s11).
+  { destruct Hn as [[_ [_ ->]]|[_ [_ [->| ->]]]]; split; reflexivity. }
+  destruct Hs12 as [Hs12n Hs12e].
+  assert (HE : g_edges s' = g_edges sg).
+  { rewrite <- (mf_edges _ _ Hfx), <- Hs12e. destruct Hend as [->|[_ ->]]; done. }
+  rewrite HE in Hnp.
   assert (Hcur10 : g_current s10 = Some c).
   { rewrite (rs_current _ _ _ R10), (hosted_current _ _ _ _ _ Eh). exact Hcur. }
   assert (Heg : g_nodes sg !! c = Some e) by (by rewrite G2, (rs_others _ _ _ R10 c Hne)).
   assert (H11 : exists e', g_nodes s11 !! c = Some e' /\ n_freshness e' <> Dirty).
-  { destruct Hn as [[_ [-> _]]|[_ [Hn _]]]; [eauto|]. rewrite Hcur10 in Hn. exact (notice_skips_current f n c sg s11 e Hn Heg Hf). }
+  { destruct Hn as [[_ [-> _]]|[_ [Hn _]]]; [eauto|]. rewrite Hcur10 in Hn. exact (notice_skips_current f n c sg s11 e Hn Hnp Heg Hf). }
   destruct H11 as (e'&He'&Hf'). exists e'. split; [|done].
-  rewrite <- Hs12 in He'.
+  rewrite <- Hs12n in He'.
   destruct Hend as [->|[_ ->]]; [done|]. simpl. by rewrite lookup_insert_ne.
 Qed.
 

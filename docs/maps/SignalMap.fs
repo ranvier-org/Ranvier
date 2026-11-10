@@ -4,7 +4,7 @@ open System
 open System.Collections.Generic
 open Fable.Core
 open global.Ranvier
-open Ranvier.Anime
+open Fable.Ranvier.Anime
 open Ranvier.View
 open Ranvier.View.Sugar
 

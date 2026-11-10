@@ -257,12 +257,12 @@ type StreamMemo<'S>
 #endif
 
     member private _.Notify() =
-        observers.NotifyDirtyExcept graph.CurrentComputation
+        graph.NotifyMoved observers
         Tracer.Notified graph
         graph.RequestFlush ()
 
     member private _.NotifyInFlush() =
-        observers.NotifyDirtyExcept graph.CurrentComputation
+        graph.NotifyMoved observers
         Tracer.Notified graph
 
     /// <summary>Closes the open stream and cancels its token.</summary>
@@ -411,6 +411,7 @@ type StreamMemo<'S>
 
         if freshness <> Freshness.Clean then
             unannounced <- true
+            graph.NoteStaleTransition ()
 
     member private this.EnsureCurrent() =
         if freshness <> Freshness.Clean && not disposed then
@@ -430,17 +431,41 @@ type StreamMemo<'S>
         else
             graph.Track (this :> ISource)
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
+
     member private this.Pull() =
         graph.EnterPull ()
 
         try
             if freshness = Freshness.Check then
                 Tracer.CheckStart (graph, id)
+                let before = graph.StaleTransitions
                 let mutable i = 0
 
                 while freshness = Freshness.Check && i < sources.Count do
                     sources.SourceAt(i).UpdateIfNecessary()
                     i <- i + 1
+
+                if
+                    freshness = Freshness.Check
+                    && graph.StaleTransitions <> before
+                then
+                    this.ResolveCheckAgain ()
 
                 Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
@@ -494,6 +519,8 @@ type StreamMemo<'S>
         member this.UpdateIfNecessary() =
             this.EnsureCurrent ()
 
+        member _.IsStale = freshness <> Freshness.Clean && not disposed
+
     interface IComputation with
         member this.AddSource source =
             sources.Add (this :> IComputation, source)
@@ -501,8 +528,14 @@ type StreamMemo<'S>
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
 
+        member _.HasReadSlot slot =
+            slot < sources.Cursor
+
         member _.MarkDirty() =
             if freshness <> Freshness.Dirty || unannounced then
+                if freshness = Freshness.Clean || unannounced then
+                    graph.NoteStaleTransition ()
+
                 freshness <- Freshness.Dirty
                 unannounced <- false
                 observers.NotifyDirty ()
@@ -514,6 +547,7 @@ type StreamMemo<'S>
                 observers.NotifyCheck ()
             elif unannounced then
                 unannounced <- false
+                graph.NoteStaleTransition ()
                 observers.NotifyCheck ()
 
     interface IScheduled with
@@ -526,11 +560,18 @@ type StreamMemo<'S>
 
                     try
                         Tracer.CheckStart (graph, id)
+                        let before = graph.StaleTransitions
                         let mutable i = 0
 
                         while freshness = Freshness.Check && i < sources.Count do
                             sources.SourceAt(i).UpdateIfNecessary()
                             i <- i + 1
+
+                        if
+                            freshness = Freshness.Check
+                            && graph.StaleTransitions <> before
+                        then
+                            this.ResolveCheckAgain ()
 
                         Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 

@@ -436,6 +436,8 @@ type private Probe(id: int) =
         member this.MovedIn(_, handle) =
             this.Handle <- handle
 
+        member _.HasReadSlot _ = false
+
 let private link (set: ObserverSet) (p: Probe) =
     p.Handle <- set.Add (p, 0)
 

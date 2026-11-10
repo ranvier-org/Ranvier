@@ -16,9 +16,9 @@ Definition exp_S02 : list event := [
 ].
 
 Definition exp_S03 : list event := [
-  EvRun 7; EvLog 6 0%Z; EvLog 7 0%Z; EvLog 6 1%Z; EvLog 6 2%Z; EvRun 7;
-  EvLog 6 2%Z; EvLog 7 1%Z; EvLog 6 3%Z; EvLog 6 4%Z; EvRun 7; EvLog 6 4%Z;
-  EvLog 7 2%Z
+  EvRun 7; EvLog 6 0%Z; EvLog 7 0%Z; EvLog 6 1%Z; EvLog 6 1%Z; EvLog 6 2%Z;
+  EvRun 7; EvLog 6 2%Z; EvLog 7 1%Z; EvLog 6 3%Z; EvLog 6 3%Z; EvLog 6 4%Z;
+  EvRun 7; EvLog 6 4%Z; EvLog 7 2%Z
 ].
 
 Definition exp_S04 : list event := [
@@ -102,11 +102,12 @@ Definition exp_self_marking_cleanup : list event := [
 
 Definition exp_self_marking_body : list event := [
   EvRun 3; EvLog 2 0%Z; EvLog 3 0%Z; EvLog 2 1%Z; EvLog 2 2%Z; EvRun 3;
-  EvLog 2 3%Z; EvLog 3 3%Z; EvHostRead 2 (Ok 2%Z)
+  EvLog 2 3%Z; EvLog 3 3%Z; EvHostRead 2 (Ok 3%Z)
 ].
 
 Definition exp_self_marking_through_memo : list event := [
-  EvRun 4; EvLog 2 0%Z; EvLog 4 0%Z; EvLog 2 1%Z; EvHostRead 3 (Ok 0%Z)
+  EvRun 4; EvLog 2 0%Z; EvLog 4 0%Z; EvLog 2 1%Z; EvLog 2 2%Z; EvLog 2 3%Z;
+  EvRun 4; EvLog 4 3%Z; EvHostRead 3 (Ok 3%Z)
 ].
 
 Definition exp_nested_self_run : list event := [
@@ -114,16 +115,16 @@ Definition exp_nested_self_run : list event := [
 ].
 
 Definition exp_check_over_moved : list event := [
-  EvHostRead 3 (Ok 0%Z); EvLog 4 0%Z; EvHostRead 4 (Ok 0%Z); EvHostRead 4 (Ok 0%Z)
+  EvHostRead 3 (Ok 0%Z); EvLog 4 0%Z; EvHostRead 4 (Ok 0%Z); EvLog 4 1%Z; EvHostRead 4 (Ok 1%Z)
 ].
 
 Definition exp_check_two_reads : list event := [
-  EvHostRead 2 (Ok 0%Z); EvLog 3 0%Z; EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z)
+  EvHostRead 2 (Ok 0%Z); EvLog 3 0%Z; EvHostRead 3 (Ok 0%Z); EvLog 3 1%Z; EvHostRead 3 (Ok 1%Z)
 ].
 
 Definition exp_stale_source_reader : list event := [
-  EvLog 2 0%Z; EvHostRead 3 (Ok 0%Z); EvLog 2 1%Z; EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvLog 2 2%Z;
-  EvHostRead 2 (Ok 2%Z)
+  EvLog 2 0%Z; EvHostRead 3 (Ok 0%Z); EvLog 2 1%Z; EvLog 2 2%Z; EvLog 2 3%Z; EvHostRead 3 (Ok 3%Z);
+  EvHostRead 3 (Ok 3%Z); EvHostRead 2 (Ok 3%Z)
 ].
 
 Definition exp_disposed_memo_keeps_observers : list event := [
@@ -143,16 +144,18 @@ Definition exp_disposed_stale_source_read : list event := [
 ].
 
 Definition exp_walk_passed_source_marked : list event := [
-  EvRun 5; EvLog 5 0%Z; EvRun 5; EvLog 5 2%Z; EvHostRead 3 (Ok 2%Z)
+  EvRun 5; EvLog 5 0%Z; EvRun 5; EvLog 5 1%Z; EvRun 5; EvLog 5 2%Z;
+  EvHostRead 3 (Ok 2%Z)
 ].
 
 Definition exp_walk_passed_source_cleanup : list event := [
-  EvRun 5; EvLog 5 0%Z; EvCleanup 4; EvRun 5; EvLog 5 2%Z; EvHostRead 3 (Ok 2%Z)
+  EvRun 5; EvLog 5 0%Z; EvCleanup 4; EvRun 5; EvLog 5 1%Z; EvRun 5;
+  EvLog 5 2%Z; EvHostRead 3 (Ok 2%Z)
 ].
 
 Definition exp_effect_resolves_over_moved_source : list event := [
-  EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 2%Z; EvRun 4;
-  EvLog 4 1%Z
+  EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 1%Z; EvRun 4;
+  EvLog 4 2%Z; EvRun 4; EvLog 4 1%Z
 ].
 
 Definition exp_teardown_order : list event := [
@@ -206,20 +209,22 @@ Definition exp_read_settles_writer : list event := [
 
 Definition exp_quiescent_read_answers_past_flush : list event := [
   EvRun 6; EvLog 6 0%Z; EvRun 6; EvLog 6 1%Z; EvRun 6; EvLog 6 9%Z;
-  EvHostRead 5 (Ok 1%Z)
+  EvHostRead 5 (Ok 9%Z)
 ].
 
 Definition exp_quiescent_read_answers_past_flush_by_cleanup : list event := [
   EvRun 6; EvLog 6 0%Z; EvCleanup 4; EvRun 6; EvLog 6 1%Z; EvRun 6;
-  EvLog 6 9%Z; EvHostRead 5 (Ok 1%Z)
+  EvLog 6 9%Z; EvHostRead 5 (Ok 9%Z)
 ].
 
 Definition exp_cmp_never_lost_update : list event := [
-  EvRun 10; EvLog 10 0%Z; EvRun 10; EvLog 10 8%Z; EvHostRead 6 (Ok 8%Z)
+  EvRun 10; EvLog 10 0%Z; EvRun 10; EvLog 10 7%Z; EvRun 10; EvLog 10 8%Z;
+  EvHostRead 6 (Ok 8%Z)
 ].
 
 Definition exp_fresh_record_lost_update : list event := [
-  EvRun 10; EvLog 10 0%Z; EvRun 10; EvLog 10 8%Z; EvHostRead 6 (Ok 8%Z)
+  EvRun 10; EvLog 10 0%Z; EvRun 10; EvLog 10 7%Z; EvRun 10; EvLog 10 8%Z;
+  EvHostRead 6 (Ok 8%Z)
 ].
 
 Definition exp_failed_batch : list event := [

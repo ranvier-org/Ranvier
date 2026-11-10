@@ -649,14 +649,45 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
     let mutable dirty = false
     let mutable check = false
 
-    /// <summary>Whether a read source moved since the last call. Brings each read source current first.</summary>
-    member _.Moved() =
-        if check && not dirty then
+    /// <summary>Whether any recorded source is currently stale.</summary>
+    member private _.HasStaleSource() =
+        let mutable i = 0
+
+        while i < order.Count
+              && not (Platform.entryAt i order).IsStale do
+            i <- i + 1
+
+        i < order.Count
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.MovedAgain() =
+        let mutable again = this.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
             let mutable i = 0
 
             while not dirty && i < order.Count do
                 (Platform.entryAt i order).UpdateIfNecessary()
                 i <- i + 1
+
+            again <-
+                not dirty
+                && graph.StaleTransitions <> before
+                && this.HasStaleSource ()
+
+    /// <summary>Whether a read source moved since the last call. Brings each read source current first.</summary>
+    member this.Moved() =
+        if check && not dirty then
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while not dirty && i < order.Count do
+                (Platform.entryAt i order).UpdateIfNecessary()
+                i <- i + 1
+
+            if not dirty && graph.StaleTransitions <> before then
+                this.MovedAgain ()
 
         let moved = dirty
         check <- false
@@ -687,6 +718,8 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
 
         member _.MovedIn(slot, handle) =
             Platform.setEntryAt slot handles handle
+
+        member _.HasReadSlot _ = false
 
         member _.MarkDirty() =
             dirty <- true
@@ -742,6 +775,8 @@ type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: Fo
 
         member this.MovedIn(_, handle) =
             this.Handle <- handle
+
+        member _.HasReadSlot _ = false
 
         member this.MarkDirty() =
             touched this
@@ -1079,6 +1114,8 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 
                 if moved then
                     observers.NotifyDirty ()
+
+        member _.IsStale = false
 
     interface IOwned with
         member this.Release() =

@@ -2098,6 +2098,13 @@ let sources_of w c =
 let slot_at w c i =
   lookup0 Coq_list.list_lookup i (sources_of w c).source_slots
 
+(** val read_prefix : edgeWorld -> node_id -> node_id list **)
+
+let read_prefix w c =
+  fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
+    (firstn (sources_of w c).source_cursor
+      (Obj.magic (sources_of w c).source_slots))
+
 (** val set_observers : node_id -> observer_set -> edgeWorld -> edgeWorld **)
 
 let set_observers s o w =
@@ -2521,10 +2528,14 @@ let notify_dirty fuel src s =
   notify_with (mark_dirty fuel) src s
 
 (** val mark_except :
-    nat -> node_id option -> node_id -> state -> state option **)
+    nat -> node_id -> node_id option -> node_id -> state -> state option **)
 
-let mark_except fuel r c s =
-  match decide (decide_rel (option_eq_dec Coq_Nat.eq_dec) r (Some c)) with
+let mark_except fuel src r c s =
+  match decide
+          (and_dec (decide_rel (option_eq_dec Coq_Nat.eq_dec) r (Some c))
+            (not_dec
+              (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) src
+                (read_prefix s.g_edges c)))) with
   | Left -> Some s
   | Right -> mark_dirty fuel c s
 
@@ -2532,7 +2543,7 @@ let mark_except fuel r c s =
     nat -> node_id -> node_id option -> state -> state option **)
 
 let notify_dirty_except fuel src r s =
-  notify_with (mark_except fuel r) src s
+  notify_with (mark_except fuel src r) src s
 
 (** val pending : state -> node_id list **)
 
@@ -3010,13 +3021,6 @@ let stale_live d =
   | True -> negb d.n_disposed
   | False -> False
 
-(** val read_prefix : edgeWorld -> node_id -> node_id list **)
-
-let read_prefix w c =
-  fmap (Obj.magic (fun _ _ -> Coq0_list.list_fmap)) fst
-    (firstn (sources_of w c).source_cursor
-      (Obj.magic (sources_of w c).source_slots))
-
 (** val ghost_read : node_id -> node_id -> node_id list -> state -> state **)
 
 let ghost_read c n0 pre s =
@@ -3149,17 +3153,9 @@ let ghost_publish n0 s =
 (** val run_end_unnoticed :
     node_id -> node_id option -> bool -> node -> state -> node_id gset **)
 
-let run_end_unnoticed n0 r moved d s =
+let run_end_unnoticed n0 _ moved d s =
   match moved with
-  | True ->
-    (match r with
-     | Some c ->
-       (match decide
-                (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
-                  (read_prefix s.g_edges c)) with
-        | Left -> singleton0 (gset_singleton Coq_Nat.eq_dec nat_countable) c
-        | Right -> empty0 (gset_empty Coq_Nat.eq_dec nat_countable))
-     | None -> empty0 (gset_empty Coq_Nat.eq_dec nat_countable))
+  | True -> empty0 (gset_empty Coq_Nat.eq_dec nat_countable)
   | False ->
     (match decide
              (decide_rel
@@ -4049,7 +4045,10 @@ and resolve_walk fuel n0 i =
              let Pair (src, _) = y in
              m_bind (update_if_necessary f src) (fun _ ->
                resolve_walk f n0 (S i))
-           | None -> m_return Tt)
+           | None ->
+             (match slot_holds stale_live s n0 with
+              | True -> resolve_walk f n0 O
+              | False -> m_return Tt))
         | Right -> m_return Tt))
 
 (** val recompute : nat -> node_id -> unit0 m **)
@@ -4941,7 +4940,10 @@ and oresolve_walk fuel n0 i =
              let Pair (src, _) = y in
              m_bind (oupdate_if_necessary f src) (fun _ ->
                oresolve_walk f n0 (S i))
-           | None -> m_return Tt)
+           | None ->
+             (match slot_holds stale_live s n0 with
+              | True -> oresolve_walk f n0 O
+              | False -> m_return Tt))
         | Right -> m_return Tt))
 
 (** val orecompute : nat -> node_id -> unit0 m **)

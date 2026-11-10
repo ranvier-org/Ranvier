@@ -205,9 +205,11 @@ Definition self_marking_cleanup (k : cmd) : cmd :=
 
 Example self_marking_cleanup_left_behind :
   let s := final (self_marking_cleanup Nop) in
-  left_behind s 5 6 /\ node_view s 5 = Some (Dirty, true, false, StNone, 0%Z) /\
+  node_view s 5 = Some (Clean, false, false, StNone, 50%Z) /\
+  node_view s 6 = Some (Clean, false, false, StNone, 0%Z) /\
+  last_run_logs 6 (g_trace s) = [50%Z] /\
   n_value <$> g_nodes s !! 3 = Some 50%Z.
-Proof. intros s. split_and!; [left_behind_proof 0 0|vm_compute; reflexivity|vm_compute; reflexivity]. Qed.
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (**md
 A memo body that reads and logs signal 1, writes the read plus 1 to signal 1 while the read is below 3, and answers 0 for a read below 2 and the read otherwise.
@@ -218,7 +220,7 @@ Definition self_marking_memo_body : cmd :=
     (CWrite (V 1) (EAdd (V 10) (K 1%Z)) (CIf (ELt (V 10) (K 2%Z)) Nop (CRet (V 10))))
     (CIf (ELt (V 10) (K 2%Z)) Nop (CRet (V 10))))).
 
-(** A memo writes its own source. Its next run answers 2, and the effect saw 0. *)
+(** A memo writes its own source, notifies its observers while remaining [Dirty], and converges at 3. Closed in [BUGS.md]. *)
 Definition self_marking_body (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq self_marking_memo_body (
@@ -226,12 +228,13 @@ Definition self_marking_body (k : cmd) : cmd :=
 
 Example self_marking_body_left_behind :
   let s := final (self_marking_body Nop) in
-  left_behind s 2 3 /\ n_value <$> g_nodes s !! 1 = Some 2%Z /\
-  node_view s 2 = Some (Dirty, true, false, StNone, 0%Z).
-Proof. intros s. split_and!; [left_behind_proof 0 0|vm_compute; reflexivity|vm_compute; reflexivity]. Qed.
+  n_value <$> g_nodes s !! 1 = Some 3%Z /\
+  node_view s 2 = Some (Clean, false, false, StNone, 3%Z) /\
+  node_view s 3 = Some (Clean, false, false, StNone, 0%Z) /\
+  last_run_logs 3 (g_trace s) = [3%Z].
+Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
-(** The read of the left-behind memo moves it, which queues the effect, owes a flush, and settles that flush on [ExitPull]
-    before the read returns. Closed in [BUGS.md]. *)
+(** The flush already settles the self-marked memo before the host read runs, so the read observes the settled state. Closed in [BUGS.md]. *)
 Example read_move_leaves_effect_queued :
   let s := final (self_marking_cleanup (CRead 20 (V 5) Nop)) in
   node_view s 6 = Some (Clean, false, false, StNone, 0%Z) /\
@@ -239,7 +242,7 @@ Example read_move_leaves_effect_queued :
   (r ← run_flush 1000 s; Some (g_trace r.1)) = Some (g_trace s).
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
-(** The same memo through a reading memo, whose [ResolveCheck] goes clean. *)
+(** The same memo through a reading memo, which converges to [Clean] at 3. Closed in [BUGS.md]. *)
 Definition self_marking_through_memo (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq self_marking_memo_body (
@@ -248,14 +251,15 @@ Definition self_marking_through_memo (k : cmd) : cmd :=
 
 Example self_marking_through_memo_left_behind :
   let s := final (self_marking_through_memo Nop) in
-  left_behind s 2 3 /\ edge s 3 4 /\
-  node_view s 2 = Some (Dirty, true, false, StNone, 0%Z) /\
-  node_view s 3 = Some (Clean, false, false, StNone, 0%Z) /\
-  node_view s 4 = Some (Clean, false, false, StNone, 0%Z).
+  edge s 2 3 /\ edge s 3 4 /\
+  node_view s 2 = Some (Clean, false, false, StNone, 3%Z) /\
+  node_view s 3 = Some (Clean, false, false, StNone, 3%Z) /\
+  node_view s 4 = Some (Clean, false, false, StNone, 0%Z) /\
+  last_run_logs 4 (g_trace s) = [3%Z].
 Proof.
   intros s. split_and!;
-    [left_behind_proof 0 0|exists 0, 0; split; vm_compute; reflexivity
-    |vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
+    [exists 0, 0; split; vm_compute; reflexivity|exists 0, 0; split; vm_compute; reflexivity
+    |vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
 Qed.
 
 (** A run reads [a], marks itself and reads itself. The nested run's branch trims [a]'s edge, and the
@@ -372,39 +376,38 @@ Local Definition over_moved_start : state := final (check_over_moved Nop).
 Local Definition over_moved_end : state :=
   default over_moved_start (fst <$> update_if_necessary 1000 4 over_moved_start).
 
-(** [x] goes from [Check] to [Clean] with no run, holding the value of its read of 0, and [a] holds 1.
-    Confirmed in [BUGS.md]. *)
+(** [x] ends its first read as [Dirty] with its announcement set because [a]'s run moved [a]'s version during [b]'s check walk,
+    and [update_if_necessary] recomputes [x] to [Clean] at 1. Closed in [BUGS.md]. *)
 Example check_resolves_over_moved_source :
-  node_view over_moved_start 4 = Some (Check, true, false, StNone, 0%Z) /\
+  node_view over_moved_start 4 = Some (Dirty, true, false, StNone, 0%Z) /\
   n_kind <$> g_nodes over_moved_start !! 4 = Some KMemo /\
   update_if_necessary 1000 4 over_moved_start = Some (over_moved_end, tt) /\
-  node_view over_moved_end 4 = Some (Clean, false, false, StNone, 0%Z) /\
+  node_view over_moved_end 4 = Some (Clean, false, false, StNone, 1%Z) /\
   node_view over_moved_end 2 = Some (Clean, false, false, StNone, 1%Z) /\
-  n_runs <$> g_nodes over_moved_end !! 4 = Some 1 /\
-  moved_since_last_run over_moved_end 4 /\
-  gh_unnoticed (g_ghost over_moved_end) = {[4]}.
+  n_runs <$> g_nodes over_moved_end !! 4 = Some 2 /\
+  ~ moved_since_last_run over_moved_end 4 /\
+  gh_unnoticed (g_ghost over_moved_end) = ∅.
 Proof.
+  assert (Hset : reads_settled over_moved_end 4).
+  { apply settled_of; vm_compute; reflexivity. }
   split_and!; try (vm_compute; reflexivity).
-  exists 2, 0, (Some 1), (default (signal_node 0%Z) (g_nodes over_moved_end !! 2)).
-  split_and!; [vm_compute; reflexivity|vm_compute; reflexivity|].
-  right. exists (0%Z, StNone, None). split.
-  - vm_compute. left.
-  - vm_compute. intros H. discriminate H.
+  destruct (g_nodes over_moved_end !! 4) as [d'|] eqn:Hd'; [|vm_compute in Hd'; discriminate Hd'].
+  assert (Hu : update_if_necessary 1000 4 over_moved_start = Some (over_moved_end, tt)) by (vm_compute; reflexivity).
+  destruct (Eupdate _ (engine_ok_all 1000) 4 over_moved_start over_moved_end tt (check_invariant_final _) I Hu) as [Hi _].
+  refine (unmoved_short_of_dirty over_moved_end 4 d' Hi Hd' _ _ Hset).
+  all: vm_compute in Hd'; injection Hd' as <-; first [reflexivity|discriminate].
 Qed.
 
 (**md
-**Falsified on the present engine: a memo can resolve `Clean` over a moved source.**
-
-This is a counterexample, not a guarantee. It proves `resolve_clean_no_move_statement` false, using the Confirmed bug [`check_resolves_over_moved_source`](#check_resolves_over_moved_source): a memo reads a memo, writes that memo's source, then reads another memo over it, and later resolves `Clean` holding the old value.
+**Counterexample [`check_resolves_over_moved_source`](#check_resolves_over_moved_source) is now resolved: the memo stays `Dirty` and recomputes to `Clean` with no moved source.**
 *)
-Theorem resolve_clean_no_move_falsified : ~ resolve_clean_no_move_statement.
+Theorem resolve_clean_no_move_falsified :
+  node_view over_moved_start 4 = Some (Dirty, true, false, StNone, 0%Z) /\
+  node_view over_moved_end 4 = Some (Clean, false, false, StNone, 1%Z) /\
+  ~ moved_since_last_run over_moved_end 4.
 Proof.
-  intros H.
-  destruct check_resolves_over_moved_source as (_ & _ & Hu & _ & _ & _ & Hm & _).
-  destruct (g_nodes over_moved_start !! 4) as [d|] eqn:Hd; [|vm_compute in Hd; discriminate Hd].
-  destruct (g_nodes over_moved_end !! 4) as [d'|] eqn:Hd'; [|vm_compute in Hd'; discriminate Hd'].
-  refine (H 1000 4 over_moved_start over_moved_end d d' (check_invariant_final _) Hd _ _ Hu Hd' _ Hm).
-  all: vm_compute in Hd; vm_compute in Hd'; injection Hd as <-; injection Hd' as <-; reflexivity.
+  destruct check_resolves_over_moved_source as (H1 & _ & _ & H2 & _ & _ & H3 & _).
+  exact (conj H1 (conj H2 H3)).
 Qed.
 
 (** The usual resolution: a memo reads a memo whose value holds. It goes from [Check] to [Clean] with no
@@ -437,11 +440,10 @@ Proof.
   all: vm_compute in Hd; vm_compute in Hd'; injection Hd as <-; injection Hd' as <-; reflexivity.
 Qed.
 
-(** [self_marking_wake_lost] does not reach [moved_since_last_run]: the reader goes clean over a [Dirty]
-    source whose stored value it read. *)
+(** [self_marking_wake_lost] is now resolved: both the source and the reader converge to [Clean] at 3, with no moved source. *)
 Example self_marking_through_memo_unmoved :
   let s := final (self_marking_through_memo Nop) in
-  n_freshness <$> g_nodes s !! 2 = Some Dirty /\ n_freshness <$> g_nodes s !! 3 = Some Clean /\
+  n_freshness <$> g_nodes s !! 2 = Some Clean /\ n_freshness <$> g_nodes s !! 3 = Some Clean /\
   reads_settled s 3 /\ ~ moved_since_last_run s 3.
 Proof.
   intros s.
@@ -453,8 +455,8 @@ Proof.
   all: subst s; vm_compute in Hd; injection Hd as <-; first [reflexivity|discriminate].
 Qed.
 
-(** The same skip through a second read of the source: [x] reads [a], writes [a]'s source, reads [a] again,
-    and answers the first read. Its latest read of [a] holds what [a] now stores, and its first does not. *)
+(** The same through a second read of the source: [x] reads [a], writes [a]'s source, reads [a] again,
+    and ends [Dirty] because [a]'s version moved during [x]'s run. Its next [update_if_necessary] recomputes [x] to [Clean] at 1. *)
 Definition check_two_reads (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -468,24 +470,26 @@ Local Definition two_reads_end : state :=
   default two_reads_start (fst <$> update_if_necessary 1000 3 two_reads_start).
 
 Example check_two_reads_over_moved_source :
-  node_view two_reads_start 3 = Some (Check, true, false, StNone, 0%Z) /\
+  node_view two_reads_start 3 = Some (Dirty, true, false, StNone, 0%Z) /\
   update_if_necessary 1000 3 two_reads_start = Some (two_reads_end, tt) /\
-  node_view two_reads_end 3 = Some (Clean, false, false, StNone, 0%Z) /\
+  node_view two_reads_end 3 = Some (Clean, false, false, StNone, 1%Z) /\
   node_view two_reads_end 2 = Some (Clean, false, false, StNone, 1%Z) /\
-  seen_of (g_ghost two_reads_end) 3 2 = [(1%Z, StNone, None); (0%Z, StNone, None)] /\
-  moved_since_last_run two_reads_end 3 /\
-  gh_unnoticed (g_ghost two_reads_end) = {[3]}.
+  seen_of (g_ghost two_reads_end) 3 2 = [(1%Z, StNone, None); (1%Z, StNone, None)] /\
+  ~ moved_since_last_run two_reads_end 3 /\
+  gh_unnoticed (g_ghost two_reads_end) = ∅.
 Proof.
+  assert (Hset : reads_settled two_reads_end 3).
+  { apply settled_of; vm_compute; reflexivity. }
   split_and!; try (vm_compute; reflexivity).
-  exists 2, 0, (Some 0), (default (signal_node 0%Z) (g_nodes two_reads_end !! 2)).
-  split_and!; [vm_compute; reflexivity|vm_compute; reflexivity|].
-  right. exists (0%Z, StNone, None). split.
-  - vm_compute. right. left.
-  - vm_compute. intros H. discriminate H.
+  destruct (g_nodes two_reads_end !! 3) as [d'|] eqn:Hd'; [|vm_compute in Hd'; discriminate Hd'].
+  assert (Hu : update_if_necessary 1000 3 two_reads_start = Some (two_reads_end, tt)) by (vm_compute; reflexivity).
+  destruct (Eupdate _ (engine_ok_all 1000) 3 two_reads_start two_reads_end tt (check_invariant_final _) I Hu) as [Hi _].
+  refine (unmoved_short_of_dirty two_reads_end 3 d' Hi Hd' _ _ Hset).
+  all: vm_compute in Hd'; injection Hd' as <-; first [reflexivity|discriminate].
 Qed.
 
-(** The memo of [self_marking_body] under a reading memo, with no effect. The reader's walk runs the memo,
-    which ends [Dirty] with its value unchanged, and the reader goes [Clean] over it. *)
+(** The memo of [self_marking_body] under a reading memo, with no effect. The reader's second update brings both the source
+    and the reader to [Clean] at 3. Closed in [BUGS.md]. *)
 Definition stale_source_reader (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq self_marking_memo_body (
@@ -498,24 +502,14 @@ Local Definition stale_end : state :=
   default stale_start (fst <$> update_if_necessary 1000 3 stale_start).
 
 (**md
-**Falsified on the present engine: a memo can resolve `Clean` over a live stale source.**
-
-This is a counterexample, not a guarantee. It proves `resolve_clean_no_stale_source_statement` false, on the program [`stale_source_reader`](#stale_source_reader), an instance of the Confirmed bug `self_marking_wake_lost`: the source's own run leaves it `Dirty` with its value unchanged, and its reader goes `Clean` over it.
+**Counterexample [`stale_source_reader`](#stale_source_reader) is now resolved: both the source and the reader finish `Clean` at 3.**
 *)
-Theorem resolve_clean_no_stale_source_falsified : ~ resolve_clean_no_stale_source_statement.
-Proof.
-  intros H.
-  assert (Hu : update_if_necessary 1000 3 stale_start = Some (stale_end, tt)) by (vm_compute; reflexivity).
-  destruct (g_nodes stale_start !! 3) as [d|] eqn:Hd; [|vm_compute in Hd; discriminate Hd].
-  destruct (g_nodes stale_end !! 3) as [d'|] eqn:Hd'; [|vm_compute in Hd'; discriminate Hd'].
-  destruct (g_nodes stale_end !! 2) as [e|] eqn:He; [|vm_compute in He; discriminate He].
-  assert (Hin : 2 ∈ fst <$> source_slots (sources_of (g_edges stale_end) 3)) by (vm_compute; left).
-  assert (Hst : stale (n_freshness e) = false).
-  { assert (Hlive : n_disposed e = false) by (vm_compute in He; injection He as <-; reflexivity).
-    refine (H 1000 3 stale_start stale_end d d' (check_invariant_final _) Hd _ _ Hu Hd' _ 2 e Hin He Hlive).
-    all: vm_compute in Hd; vm_compute in Hd'; injection Hd as <-; injection Hd' as <-; reflexivity. }
-  vm_compute in He. injection He as <-. discriminate Hst.
-Qed.
+Theorem resolve_clean_no_stale_source_falsified :
+  node_view stale_start 3 = Some (Check, true, false, StNone, 0%Z) /\
+  update_if_necessary 1000 3 stale_start = Some (stale_end, tt) /\
+  node_view stale_end 3 = Some (Clean, false, false, StNone, 3%Z) /\
+  node_view stale_end 2 = Some (Clean, false, false, StNone, 3%Z).
+Proof. split_and!; vm_compute; reflexivity. Qed.
 
 (** A reader's source is disposed while [Dirty]. The walk leaves it stale, since a disposed memo has nothing to
     bring current, and the reader goes [Clean] over it. *)
@@ -631,26 +625,25 @@ Definition walk_passed_by_cleanup (k : cmd) : cmd :=
   CEffect 5 (CRead 10 (V 3) (CRead 11 (V 4) (CLog (V 10) Nop))) (
   CWrite (V 2) (K 1%Z) k))))).
 
-(** What both programs end in: the effect is clean, unqueued and idle over a live, [Dirty] [a] with no
-    announcement, the signal holds 1, [a] holds 0, and a flush changes nothing. *)
+(** What both programs end in: the check walk restarts when [a] is marked [Dirty], so [a] and the effect both converge
+    to [Clean] at 1, [gh_passed] and [gh_over] are empty, and a flush changes nothing. Closed in [BUGS.md]. *)
 Local Definition passed_over (s : state) : Prop :=
-  edge s 3 5 /\ stale_of s 3 /\ live_of s 3 /\ ~ observer_covered s 3 5 /\
-  (5 : node_id) ∈ gh_passed (g_ghost s) /\ (5 : node_id) ∈ gh_over (g_ghost s) /\
-  n_value <$> g_nodes s !! (1 : node_id) = Some 1%Z /\ n_value <$> g_nodes s !! (3 : node_id) = Some 0%Z /\
+  edge s 3 5 /\ live_of s 3 /\
+  gh_passed (g_ghost s) = ∅ /\ gh_over (g_ghost s) = ∅ /\
+  n_value <$> g_nodes s !! (1 : node_id) = Some 1%Z /\ n_value <$> g_nodes s !! (3 : node_id) = Some 1%Z /\
+  n_freshness <$> g_nodes s !! (3 : node_id) = Some Clean /\ n_freshness <$> g_nodes s !! (5 : node_id) = Some Clean /\
   pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt).
 
 Local Ltac passed_over_proof s :=
   unfold passed_over; set (e := default (signal_node 0%Z) (g_nodes s !! (3 : node_id)));
-  set (c := default (signal_node 0%Z) (g_nodes s !! (5 : node_id)));
   assert (He : g_nodes s !! (3 : node_id) = Some e) by (vm_compute; reflexivity);
-  assert (Hc : g_nodes s !! (5 : node_id) = Some c) by (vm_compute; reflexivity);
   split_and!;
     [ exists 0, 0; split; vm_compute; reflexivity
     | exists e; split; [done|vm_compute; reflexivity]
-    | exists e; split; [done|vm_compute; reflexivity]
-    | apply (not_covered s 3 5 c e); [done|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity|done|vm_compute; reflexivity]
-    | apply in_of_bool; vm_compute; reflexivity | apply in_of_bool; vm_compute; reflexivity
-    | vm_compute; reflexivity | vm_compute; reflexivity | vm_compute; reflexivity | vm_compute; reflexivity | vm_compute; reflexivity ].
+    | vm_compute; reflexivity | vm_compute; reflexivity
+    | vm_compute; reflexivity | vm_compute; reflexivity
+    | vm_compute; reflexivity | vm_compute; reflexivity
+    | vm_compute; reflexivity | vm_compute; reflexivity | vm_compute; reflexivity ].
 
 Example walk_passed_source_marked : passed_over (final (walk_passed Nop)).
 Proof. set (s := final (walk_passed Nop)). passed_over_proof s. Qed.
@@ -658,44 +651,28 @@ Proof. set (s := final (walk_passed Nop)). passed_over_proof s. Qed.
 Example walk_passed_source_cleanup : passed_over (final (walk_passed_by_cleanup Nop)).
 Proof. set (s := final (walk_passed_by_cleanup Nop)). passed_over_proof s. Qed.
 
-(** After the walk, another write of [a]'s source wakes nothing: [a] is [Dirty] with no announcement, so it tells no
-    observer, and the effect stays at its one run. *)
+(** After the walk, another write of [a]'s source wakes [a] and the effect, which runs a third time and logs 2. *)
 Example walk_passed_stays_deaf :
   let s := final (walk_passed (CWrite (V 1) (K 2%Z) Nop)) in
-  n_value <$> g_nodes s !! (1 : node_id) = Some 2%Z /\ n_runs <$> g_nodes s !! (5 : node_id) = Some 1 /\
-  g_trace s = [EvRun 5; EvLog 5 0%Z] /\ pending s = [].
+  n_value <$> g_nodes s !! (1 : node_id) = Some 2%Z /\ n_runs <$> g_nodes s !! (5 : node_id) = Some 3 /\
+  g_trace s = [EvRun 5; EvLog 5 0%Z; EvRun 5; EvLog 5 1%Z; EvRun 5; EvLog 5 2%Z] /\ pending s = [].
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (**md
-**Falsified on the present engine: a program can leave an observer of a live stale source uncovered.**
-
-This is a counterexample, not a guarantee. It proves `no_lost_wakeups_statement` false, using the Confirmed bug [`walk_passed_source_marked`](#walk_passed_source_marked): an effect's check walk passes a memo, a later source's run writes that memo's source, and the walk ends with the effect `Clean` over the memo, now `Dirty` with no announcement.
+**`no_lost_wakeups_statement` now holds on the engine (`no_lost_wakeups`).**
 *)
-Theorem no_lost_wakeups_falsified : ~ no_lost_wakeups_statement.
-Proof.
-  intros H.
-  destruct walk_passed_source_marked as (He & Hs & Hl & Hn & _).
-  apply Hn. refine (H 100000 (walk_passed Nop) (init current_flags) (final (walk_passed Nop)) _ engine_inv_init _ 3 5 He Hs Hl).
-  vm_compute. reflexivity.
-Qed.
+Theorem no_lost_wakeups_falsified : no_lost_wakeups_statement.
+Proof. exact no_lost_wakeups. Qed.
 
 (**md
-**Falsified on the present engine: `run_top` need not keep the invariant with `wake_ok`.**
-
-This is a counterexample, not a guarantee. It proves `engine_inv_preserved_statement` false, on the same program as [`no_lost_wakeups_falsified`](#no_lost_wakeups_falsified).
+**`engine_inv_preserved_statement` now holds on the engine (`engine_inv_preserved`).**
 *)
-Theorem engine_inv_preserved_falsified : ~ engine_inv_preserved_statement.
-Proof.
-  intros H.
-  destruct walk_passed_source_marked as (He & Hs & Hl & Hn & _).
-  apply Hn.
-  refine (ei_wake _ (Pexec _ _ (H 100000) [] (walk_passed Nop) (init current_flags) (final (walk_passed Nop)) _ engine_inv_init I _) 3 5 He Hs Hl).
-  vm_compute. reflexivity.
-Qed.
+Theorem engine_inv_preserved_falsified : engine_inv_preserved_statement.
+Proof. exact engine_inv_preserved. Qed.
 
 (** An effect reads [a], writes its source and reads [b], a memo over [a]. [b]'s walk runs [a] with the effect
-    current, and the notice of that run skips the effect. The effect's next execution walks two clean sources and
-    goes [Clean], with its body's first read at 0 and [a] at 1. Confirmed in [BUGS.md]. *)
+    current, and the notice of that run skips the effect, leaving the effect's slot on [a] stale so the effect's next
+    check walk detects the version mismatch and reruns the effect at 1. Closed in [BUGS.md]. *)
 Definition effect_over_moved (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -705,15 +682,15 @@ Definition effect_over_moved (k : cmd) : cmd :=
 
 Example effect_resolves_over_moved_source :
   let s := final (effect_over_moved Nop) in
-  g_trace s = [EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z] /\
+  g_trace s = [EvHostRead 3 (Ok 0%Z); EvRun 4; EvLog 4 0%Z; EvRun 4; EvLog 4 1%Z] /\
   node_view s 2 = Some (Clean, false, false, StNone, 1%Z) /\
-  n_freshness <$> g_nodes s !! (4 : node_id) = Some Clean /\ n_runs <$> g_nodes s !! (4 : node_id) = Some 1 /\
+  n_freshness <$> g_nodes s !! (4 : node_id) = Some Clean /\ n_runs <$> g_nodes s !! (4 : node_id) = Some 2 /\
   pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt).
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (** The notice with its skip removed is [notify_dirty]: [mark_except] with no test is [mark_dirty]. *)
 Local Definition skip_state : state :=
-  with_current (Some 2) (mark_state linked_world
+  with_current (Some 2) (mark_state (sources_begin_run 2 linked_world)
     (<[1 := clean_node KMemo false false]> (<[2 := clean_node KEffect false false]> ∅)) [] 0 [2]).
 
 (**md
@@ -872,28 +849,28 @@ Proof.
 Qed.
 
 (**md
-**Never setting `n_unannounced` breaks `wake_ok`.**
+**Never setting `n_unannounced` without `MarkReaderCheck` breaks `wake_ok`.**
 
 *Check, not a guarantee.*
 
-With `f_unannounced` cleared, a run ending stale sets no flag and a mark forwards no announcement. On [`self_marking_cleanup`](#self_marking_cleanup) the final state has an effect clean and idle over a live stale memo with no flag, so `wake_ok` fails. With the flag on, `wake_ok` holds on that program.
+With both `f_unannounced` and `f_reader_mark` cleared, a run ending stale sets no flag and the reader stays `Clean` over a live stale memo with no flag, so `wake_ok` fails on [`stale_late_reader`](#stale_late_reader). With `f_unannounced` on (`no_reader_mark`) or `current_flags`, `wake_ok` holds.
 *)
 Theorem unannounced_off_fires :
-  let s_bad := final_with no_unannounced (self_marking_cleanup Nop) in
+  let s_bad := final_with {| f_unannounced := false; f_reader_mark := false |} stale_late_reader in
   let s_good := final_with current_flags (self_marking_cleanup Nop) in
   ~ wake_ok s_bad /\ wake_ok s_good.
 Proof.
   intros s_bad s_good. split.
-  - set (e := default (signal_node 0%Z) (g_nodes s_bad !! (5 : node_id))).
-    set (c := default (signal_node 0%Z) (g_nodes s_bad !! (6 : node_id))).
-    assert (He : g_nodes s_bad !! (5 : node_id) = Some e) by (vm_compute; reflexivity).
-    assert (Hc : g_nodes s_bad !! (6 : node_id) = Some c) by (vm_compute; reflexivity).
-    intros H. refine (not_covered s_bad 5 6 c e Hc _ _ _ He _ (H 5 6 _ _ _)).
+  - set (e := default (signal_node 0%Z) (g_nodes s_bad !! (3 : node_id))).
+    set (c := default (signal_node 0%Z) (g_nodes s_bad !! (4 : node_id))).
+    assert (He : g_nodes s_bad !! (3 : node_id) = Some e) by (vm_compute; reflexivity).
+    assert (Hc : g_nodes s_bad !! (4 : node_id) = Some c) by (vm_compute; reflexivity).
+    intros H. refine (not_covered s_bad 3 4 c e Hc _ _ _ He _ (H 3 4 _ _ _)).
     + vm_compute. reflexivity.
     + vm_compute. reflexivity.
     + vm_compute. reflexivity.
     + vm_compute. reflexivity.
-    + exists 0, 0. split; vm_compute; reflexivity.
+    + exists 1, 0. split; vm_compute; reflexivity.
     + exists e. split; [exact He|vm_compute; reflexivity].
     + exists e. split; [exact He|vm_compute; reflexivity].
   - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
@@ -973,50 +950,31 @@ Definition prog_S04 : cmd :=
   CWrite (V 2) (K 1%Z) (CRead 20 (V 1) Nop))))).
 
 (**md
-**Regression witness for #302: without the announcement flag, the effect is left behind.**
-
-*Check, not a guarantee.*
-
-`prog_S03` ends in a state where `wake_ok` fails with `f_unannounced` cleared and holds on the present engine, and only the present engine's effect logged what its source now denotes. Without the flag the effect logged 0 and is `Clean` over a `Dirty` memo, whose body answers 2. Every premise of [`well_behaved_nothing_passed`](Ranvier.Pure.WholeGraph.html#well_behaved_nothing_passed) holds on the state, and its conclusion fails: that theorem needs the flag.
+**Regression witness for #302: with the check-walk and self-marking fixes, `prog_S03` converges with or without `f_unannounced`.**
 *)
 Theorem witness_302 :
   exists s_bad s_good r_bad r_good,
     run_top 100000 prog_S03 (init no_unannounced) = Some (s_bad, r_bad) /\
     run_top 100000 prog_S03 (init current_flags) = Some (s_good, r_good) /\
-    ~ wake_ok s_bad /\ wake_ok s_good /\ effect_ran_for_last_write s_good /\ ~ effect_ran_for_last_write s_bad /\
-    well_behaved_program s_bad /\ effects_only_read s_bad /\ ~ nothing_passed s_bad.
+    wake_ok s_bad /\ wake_ok s_good /\ effect_ran_for_last_write s_good /\ effect_ran_for_last_write s_bad /\
+    well_behaved_program s_bad /\ effects_only_read s_bad /\ nothing_passed s_bad.
 Proof.
   exists (final_with no_unannounced prog_S03), (final_with current_flags prog_S03), (Ok 0%Z), (Ok 0%Z).
   set (s_bad := final_with no_unannounced prog_S03). set (s_good := final_with current_flags prog_S03).
   split_and!.
   - vm_compute. reflexivity.
   - vm_compute. reflexivity.
-  - set (e := default (signal_node 0%Z) (g_nodes s_bad !! (6 : node_id))).
-    set (c := default (signal_node 0%Z) (g_nodes s_bad !! (7 : node_id))).
-    assert (He : g_nodes s_bad !! (6 : node_id) = Some e) by (vm_compute; reflexivity).
-    assert (Hc : g_nodes s_bad !! (7 : node_id) = Some c) by (vm_compute; reflexivity).
-    intros H. refine (not_covered s_bad 6 7 c e Hc _ _ _ He _ (H 6 7 _ _ _)).
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
-    + exists 0, 0. split; vm_compute; reflexivity.
-    + exists e. split; [exact He|vm_compute; reflexivity].
-    + exists e. split; [exact He|vm_compute; reflexivity].
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
   - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
   - assert (Hd : g_nodes s_good !! (7 : node_id) = Some (default (signal_node 0%Z) (g_nodes s_good !! (7 : node_id)))) by (vm_compute; reflexivity).
     exists 7, (default (signal_node 0%Z) (g_nodes s_good !! (7 : node_id))), 6, 2%Z. split_and!; [exact Hd|vm_compute; reflexivity| |exists 7; vm_compute; reflexivity|vm_compute; reflexivity].
     apply list_elem_of_In. vm_compute. left. reflexivity.
-  - apply (effect_missed_write s_bad 7 6 0%Z (Ok 2%Z)).
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
-    + vm_compute. reflexivity.
-    + exists 7. vm_compute. reflexivity.
-    + discriminate.
+  - assert (Hd : g_nodes s_bad !! (7 : node_id) = Some (default (signal_node 0%Z) (g_nodes s_bad !! (7 : node_id)))) by (vm_compute; reflexivity).
+    exists 7, (default (signal_node 0%Z) (g_nodes s_bad !! (7 : node_id))), 6, 2%Z. split_and!; [exact Hd|vm_compute; reflexivity| |exists 7; vm_compute; reflexivity|vm_compute; reflexivity].
+    apply list_elem_of_In. vm_compute. left. reflexivity.
   - apply well_behaved_of_b. vm_compute. reflexivity.
   - apply effects_only_read_of_b. vm_compute. reflexivity.
-  - intros H. assert (Hin : bool_decide ((7 : node_id) ∈ gh_passed (g_ghost s_bad)) = true) by (vm_compute; reflexivity).
-    apply in_of_bool in Hin. unfold nothing_passed in H. rewrite H in Hin. exact (not_elem_of_empty _ Hin).
+  - vm_compute. reflexivity.
 Qed.
 
 (**md
@@ -1063,27 +1021,23 @@ Proof.
 Qed.
 
 (**md
-**`wake_ok` and `wake_told` both hold on the states `self_marking_wake_lost` leaves behind.**
-
-*Check, not a guarantee.*
-
-On [`self_marking_cleanup`](#self_marking_cleanup) and [`self_marking_through_memo`](#self_marking_through_memo) a reader is `Clean` and left behind a source whose next run moves, and both predicates hold. Neither detects this Confirmed bug. Both programs fall outside `well_behaved_program`, so [`convergence`](Ranvier.Pure.WholeGraph.html#convergence) does not reach them.
+**`wake_ok`, `wake_told`, and `converged_all` hold on [`self_marking_cleanup`](#self_marking_cleanup) and [`self_marking_through_memo`](#self_marking_through_memo).**
 *)
 Theorem wake_predicates_miss_self_marking :
   let s1 := final (self_marking_cleanup Nop) in
   let s2 := final (self_marking_through_memo Nop) in
-  left_behind s1 5 6 /\ wake_ok s1 /\ wake_told s1 /\ ~ well_behaved_program s1 /\
-  left_behind s2 2 3 /\ wake_ok s2 /\ wake_told s2 /\ ~ well_behaved_program s2.
+  converged_all s1 /\ wake_ok s1 /\ wake_told s1 /\ ~ well_behaved_program s1 /\
+  converged_all s2 /\ wake_ok s2 /\ wake_told s2 /\ ~ well_behaved_program s2.
 Proof.
-  intros s1 s2. destruct self_marking_cleanup_left_behind as [H1 _]. destruct self_marking_through_memo_left_behind as [H2 _].
+  intros s1 s2.
   split_and!.
-  - exact H1.
+  - apply (converged_all_of_b 10). vm_compute. reflexivity.
   - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
   - refine (no_wake_lost_unless_resolved 100000 (self_marking_cleanup Nop) (init current_flags) s1 _ engine_settled_init _).
     vm_compute. reflexivity.
   - apply (not_well_behaved s1 4 (default (signal_node 0%Z) (g_nodes s1 !! (4 : node_id)))); [vm_compute; reflexivity|vm_compute; reflexivity|].
     apply dirtying_b. vm_compute. reflexivity.
-  - exact H2.
+  - apply (converged_all_of_b 10). vm_compute. reflexivity.
   - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
   - refine (no_wake_lost_unless_resolved 100000 (self_marking_through_memo Nop) (init current_flags) s2 _ engine_settled_init _).
     vm_compute. reflexivity.
@@ -1091,7 +1045,7 @@ Proof.
     apply dirtying_b. vm_compute. reflexivity.
 Qed.
 
-(** [self_dirtying] holds on each memo the Confirmed self-marking and self-reading bugs leave wrong: the memo that
+(** [self_dirtying] holds on each memo the self-marking and self-reading programs exercise: the memo that
     writes its source, its reader, and each memo of a cycle. *)
 Example self_dirtying_covers_known_cases :
   self_dirtying (final (nested_self_run Nop)) 4 /\
@@ -1153,17 +1107,13 @@ Proof.
 Qed.
 
 (**md
-**`effect_resolves_over_moved_source` breaks the conclusion of `convergence`, and `effects_only_read` is what excludes it.**
-
-*Check, not a guarantee.*
-
-On [`effect_over_moved`](#effect_over_moved) the program is well behaved and quiescent, and the effect's last run read 0 from a memo that denotes 1. `effects_only_read` fails on the effect that writes. Dropping the premise from `convergence` makes it false. The premise is provisional, pending the owner's ruling on the bug.
+**`effect_resolves_over_moved_source` is now resolved: on [`effect_over_moved`](#effect_over_moved), the effect reruns and reads what its source denotes.**
 *)
 Theorem effects_only_read_needed :
   let s := final (effect_over_moved Nop) in
   well_behaved_program s /\ quiescent s /\ ~ effects_only_read s /\
   (2 : node_id) ∈ read_prefix (g_edges s) 4 /\
-  exists v, v ∈ seen_of (g_ghost s) 4 2 /\ ~ denotes s 2 (view_answer v).
+  seen_of (g_ghost s) 4 2 = [(1%Z, StNone, None)] /\ denotes s 2 (Ok 1%Z).
 Proof.
   intros s.
   set (e := default (signal_node 0%Z) (g_nodes s !! (4 : node_id))).
@@ -1174,10 +1124,8 @@ Proof.
   - split; vm_compute; reflexivity.
   - intros H. refine (not_quiet_b s 4 e _ (H 4 e Hd Hk)). vm_compute. reflexivity.
   - apply list_elem_of_In. vm_compute. left. reflexivity.
-  - exists (0%Z, StNone, None). split.
-    + apply list_elem_of_In. vm_compute. left. reflexivity.
-    + intros Hx. assert (Hy : denotes s 2 (Ok 1%Z)) by (exists 3; vm_compute; reflexivity).
-      pose proof (denotes_unique s 2 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz.
+  - vm_compute. reflexivity.
+  - exists 3. vm_compute. reflexivity.
 Qed.
 
 (**md
@@ -1197,7 +1145,8 @@ Qed.
 
 (** A write queues effect [9]. Its walk runs memo [5], and memo [4]'s run inside it reads memo [3], whose move leaves
     memo [4] stale. The walk reaches memo [8], whose chain runs memo [4] again. Under [CmpNever] that run counts as a move,
-    and marks memo [5] [Dirty] with no announcement. The effect ends [Clean]. Confirmed in [BUGS.md]. *)
+    and marks memo [5] [Dirty] with no announcement. The effect's walk restarts on stale memo [5] and ends [Clean] over
+    a [Clean] memo [5]. Closed in [BUGS.md]. *)
 Definition cmp_never_source (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -1211,33 +1160,25 @@ Definition cmp_never_source (k : cmd) : cmd :=
   CWrite (V 1) (K 2%Z) k))))))))).
 
 (**md
-**A `CmpNever` comparer takes a program with no self-marking to a walk that passes a source.**
-
-*Check, not a guarantee.*
-
-No memo body writes, and every comparer other than `CmpNever` is `CmpEq`, yet the effect ends in `gh_passed`, `Clean` over a live `Dirty` memo with no announcement, and `wake_ok` fails. So [`well_behaved_nothing_passed`](Ranvier.Pure.WholeGraph.html#well_behaved_nothing_passed) needs its exclusion of `CmpNever`: `well_behaved_program` fails here on memo 3.
+**With the check-walk fix, `cmp_never_source` restarts its walk on memo 5 and ends with `nothing_passed` and `wake_ok` holding.**
 *)
 Theorem cmp_never_passes_source :
   let s := final (cmp_never_source Nop) in
-  edge s 5 9 /\ stale_of s 5 /\ live_of s 5 /\ ~ observer_covered s 5 9 /\
-  (9 : node_id) ∈ gh_passed (g_ghost s) /\ ~ nothing_passed s /\ ~ wake_ok s /\ ~ well_behaved_program s /\
+  edge s 5 9 /\ live_of s 5 /\
+  n_freshness <$> g_nodes s !! (5 : node_id) = Some Clean /\
+  nothing_passed s /\ wake_ok s /\ ~ well_behaved_program s /\
   pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt) /\
   g_trace s = [EvRun 9; EvLog 9 1%Z].
 Proof.
   intros s.
   set (e := default (signal_node 0%Z) (g_nodes s !! (5 : node_id))).
-  set (c := default (signal_node 0%Z) (g_nodes s !! (9 : node_id))).
   assert (He : g_nodes s !! (5 : node_id) = Some e) by (vm_compute; reflexivity).
-  assert (Hc : g_nodes s !! (9 : node_id) = Some c) by (vm_compute; reflexivity).
   assert (Hedge : edge s 5 9) by (exists 0, 0; split; vm_compute; reflexivity).
-  assert (Hst : stale_of s 5) by (exists e; split; [exact He|vm_compute; reflexivity]).
   assert (Hl : live_of s 5) by (exists e; split; [exact He|vm_compute; reflexivity]).
-  assert (Hn : ~ observer_covered s 5 9).
-  { apply (not_covered s 5 9 c e); [exact Hc|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity|exact He|vm_compute; reflexivity]. }
-  assert (Hp : (9 : node_id) ∈ gh_passed (g_ghost s)) by (apply in_of_bool; vm_compute; reflexivity).
   split_and!; try assumption.
-  - intros H. unfold nothing_passed in H. rewrite H in Hp. exact (not_elem_of_empty _ Hp).
-  - intros H. exact (Hn (H 5 9 Hedge Hst Hl)).
+  - vm_compute. reflexivity.
+  - vm_compute. reflexivity.
+  - apply wake_ok_of_all, stale_all_unannounced_of_list. vm_compute. reflexivity.
   - apply (not_well_behaved s 3 (default (signal_node 0%Z) (g_nodes s !! (3 : node_id)))); [vm_compute; reflexivity|vm_compute; reflexivity|].
     apply dirtying_b. vm_compute. reflexivity.
   - vm_compute. reflexivity.
@@ -1246,10 +1187,8 @@ Proof.
   - vm_compute. reflexivity.
 Qed.
 
-(** The effect reads memo [6] and memo [9]. As in [cmp_never_source], the walk passes memo [6], and a later run of [CmpNever]
-    memo [5] leaves it [Dirty] with no announcement. A write then reaches memo [6] through signal [2], which only memo [6]
-    reads, and stops there. A memo returning a fresh record under the default policy maps to [CmpNever]. Confirmed in
-    [BUGS.md]. *)
+(** The effect reads memo [6] and memo [9]. With the check-walk fix, the walk restarts when memo [6] is marked [Dirty],
+    bringing memo [6] to [Clean] so the subsequent writes to signal [2] wake the effect and log 7 and 8. Closed in [BUGS.md]. *)
 Definition never_lost (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CSignal 2 (K 0%Z) (
@@ -1264,20 +1203,16 @@ Definition never_lost (k : cmd) : cmd :=
   CWrite (V 1) (K 2%Z) (CWrite (V 2) (K 7%Z) k))))))))))).
 
 (**md
-**A memo that counts every run as a move can leave an effect `Clean` on a stale value, for good.**
-
-*Check, not a guarantee.*
-
-No body writes. After [`never_lost`](#never_lost) the effect's only log is 0, its source `6` denotes 7, the queue is empty, nothing is running, and a flush changes nothing. A second write of the signal leaves all of this in place, with the source denoting 8.
+**With the check-walk fix, [`never_lost`](#never_lost) wakes the effect on both writes to signal 2, logging 7 and then 8.**
 *)
 Theorem never_lost_update :
   let s := final (never_lost Nop) in
   let s' := final (never_lost (CWrite (V 2) (K 8%Z) Nop)) in
-  g_trace s = [EvRun 10; EvLog 10 0%Z] /\ (6 : node_id) ∈ read_prefix (g_edges s) 10 /\
+  g_trace s = [EvRun 10; EvLog 10 0%Z; EvRun 10; EvLog 10 7%Z] /\ (6 : node_id) ∈ read_prefix (g_edges s) 10 /\
   n_freshness <$> g_nodes s !! (10 : node_id) = Some Clean /\
-  seen_of (g_ghost s) 10 6 = [(0%Z, StNone, None)] /\ denotes s 6 (Ok 7%Z) /\
+  seen_of (g_ghost s) 10 6 = [(7%Z, StNone, None)] /\ denotes s 6 (Ok 7%Z) /\
   quiescent s /\ run_flush 1000 s = Some (s, tt) /\
-  g_trace s' = [EvRun 10; EvLog 10 0%Z] /\
+  g_trace s' = [EvRun 10; EvLog 10 0%Z; EvRun 10; EvLog 10 7%Z; EvRun 10; EvLog 10 8%Z] /\
   n_freshness <$> g_nodes s' !! (10 : node_id) = Some Clean /\ denotes s' 6 (Ok 8%Z) /\
   quiescent s' /\ run_flush 1000 s' = Some (s', tt).
 Proof.
@@ -1344,8 +1279,8 @@ Proof.
   exists 5. vm_compute. reflexivity.
 Qed.
 
-(** The walk passes memo [3], as in [walk_passed], so effect [6] sleeps on it with the queue empty. Memo [5] is pure, with a
-    batch. *)
+(** With the check-walk fix, the walk restarts when memo [3] is marked [Dirty], so effect [6] already runs on the write to
+    signal [2] and sets signal [1] to 9 before the host read. Closed in [BUGS.md]. *)
 Definition read_past_flush : cmd :=
   CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
   CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -1363,24 +1298,22 @@ Definition read_past_flush_by_cleanup : cmd :=
   CEffect 6 (CRead 10 (V 3) (CRead 12 (V 5) (CRead 11 (V 4) (CIf (V 10) (CWrite (V 1) (K 9%Z) (CLog (V 12) Nop)) (CLog (V 12) Nop))))) (
   CWrite (V 2) (K 1%Z) Nop)))))).
 
-(** The effect has passed a stale source, by [gh_passed]: the state [walk_passed_source_marked] leaves. *)
+(** The effect's walk restarts on memo [3], so [gh_passed] is empty and memo [3] and signal [1] converge to 9. *)
 Example read_past_flush_passed :
   let s := final read_past_flush in
-  bool_decide ((6 : node_id) ∈ gh_passed (g_ghost s)) = true /\ n_freshness <$> g_nodes s !! (3 : node_id) = Some Dirty /\
-  n_value <$> g_nodes s !! (3 : node_id) = Some 0%Z /\ n_value <$> g_nodes s !! (1 : node_id) = Some 1%Z.
+  gh_passed (g_ghost s) = ∅ /\ n_freshness <$> g_nodes s !! (3 : node_id) = Some Clean /\
+  n_value <$> g_nodes s !! (3 : node_id) = Some 9%Z /\ n_value <$> g_nodes s !! (1 : node_id) = Some 9%Z.
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (**md
-**At quiescence on [`read_past_flush`](#read_past_flush), a read of memo `5` answers what it denotes before the flush it settles.**
-
-Effect `6` sleeps on stale memo `3`, the read moves `3` and queues the effect, and memo `5`'s batch and `3`'s move owe a flush that writes 9 on `ExitPull`. Capturing the read's outcome before `settle_flush` answers 1, matching what memo `5` denotes at the read's start. Closed in `BUGS.md`.
+**At quiescence on [`read_past_flush`](#read_past_flush), memo `5` has already converged to 9 and the read answers 9.**
 *)
 Example read_quiescent_falsified :
   let s := final read_past_flush in
   let r := read 1000 5 true s in
   run_top 100000 read_past_flush (init current_flags) = Some (s, Ok 0%Z) /\
   quiescent s /\
-  (snd <$> r = Some (Ok 1%Z)) /\ denotes s 5 (Ok 1%Z) /\
+  (snd <$> r = Some (Ok 9%Z)) /\ denotes s 5 (Ok 9%Z) /\
   den 10 (default s (fst <$> r)) 5 = Some (Ok 9%Z).
 Proof.
   intros s r. split_and!; try (vm_compute; reflexivity).
@@ -1388,7 +1321,7 @@ Proof.
   - exists 5. vm_compute. reflexivity.
 Qed.
 
-(** The writer of [read_past_flush] with no read of memo [5]. The read answers 1, and the memo denotes 9 after it. *)
+(** The writer of [read_past_flush] with no read of memo [5]. Both the read and the memo after it answer 9. *)
 Definition read_before_flush : cmd :=
   CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
   CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -1400,39 +1333,21 @@ Definition read_before_flush : cmd :=
 Example read_before_flush_answer :
   let s := final read_before_flush in
   let r := read 1000 5 true s in
-  (snd <$> r = Some (Ok 1%Z)) /\ den 10 (default s (fst <$> r)) 5 = Some (Ok 9%Z).
+  (snd <$> r = Some (Ok 9%Z)) /\ den 10 (default s (fst <$> r)) 5 = Some (Ok 9%Z).
 Proof. intros s r. split; vm_compute; reflexivity. Qed.
 
 (**md
-**Falsified on the present engine: at quiescence an effect can hold a read its source no longer answers.**
-
-This is a counterexample, not a guarantee. It proves `convergence_all_statement` false, twice: on [`self_marking_cleanup`](#self_marking_cleanup), where the effect's memo computes 50 and the effect read 0, and on [`never_lost`](#never_lost), where no body writes, the memo computes 7 and the effect read 0. Each premise of the statement holds on both.
+**Both former counterexamples [`self_marking_cleanup`](#self_marking_cleanup) and [`never_lost`](#never_lost) now satisfy `converged_all`.**
 *)
 Theorem convergence_all_falsified :
-  (fix_premises (final (self_marking_cleanup Nop)) /\ ~ converged_all (final (self_marking_cleanup Nop))) /\
-  (fix_premises (final (never_lost Nop)) /\ ~ converged_all (final (never_lost Nop))) /\
-  ~ convergence_all_statement.
+  (fix_premises (final (self_marking_cleanup Nop)) /\ converged_all (final (self_marking_cleanup Nop))) /\
+  (fix_premises (final (never_lost Nop)) /\ converged_all (final (never_lost Nop))).
 Proof.
-  assert (P1 : fix_premises (final (self_marking_cleanup Nop))).
-  { apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]. }
-  assert (P2 : fix_premises (final (never_lost Nop))).
-  { apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity]. }
-  assert (N1 : ~ converged_all (final (self_marking_cleanup Nop))).
-  { intros H. set (s := final (self_marking_cleanup Nop)) in *. set (d := default (signal_node 0%Z) (g_nodes s !! (6 : node_id))).
-    destruct (H 6 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; discriminate)) as (_&_&Hsrc&_).
-    destruct (Hsrc 5 ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as [_ Hall].
-    pose proof (Hall (0%Z, StNone, None) ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as Hx.
-    assert (Hy : denotes_all s 5 (Ok 50%Z)) by (exists 6; vm_compute; reflexivity).
-    pose proof (denotes_all_unique s 5 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz. }
-  assert (N2 : ~ converged_all (final (never_lost Nop))).
-  { intros H. set (s := final (never_lost Nop)) in *. set (d := default (signal_node 0%Z) (g_nodes s !! (10 : node_id))).
-    destruct (H 10 d ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity) ltac:(vm_compute; discriminate)) as (_&_&Hsrc&_).
-    destruct (Hsrc 6 ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as [_ Hall].
-    pose proof (Hall (0%Z, StNone, None) ltac:(apply list_elem_of_In; vm_compute; left; reflexivity)) as Hx.
-    assert (Hy : denotes_all s 6 (Ok 7%Z)) by (exists 7; vm_compute; reflexivity).
-    pose proof (denotes_all_unique s 6 _ _ Hx Hy) as Hz. vm_compute in Hz. discriminate Hz. }
-  split_and!; try assumption.
-  intros H. apply N2. refine (H 100000 (never_lost Nop) _ (Ok 0%Z) _ P2). vm_compute. reflexivity.
+  split; split.
+  - apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity].
+  - apply (converged_all_of_b 10). vm_compute. reflexivity.
+  - apply fix_premises_of_b; [split; vm_compute; reflexivity|vm_compute; reflexivity].
+  - apply (converged_all_of_b 10). vm_compute. reflexivity.
 Qed.
 
 (** ** The exclusions of the statement over all programs
@@ -1533,7 +1448,7 @@ A memo that writes its signal, reads it, and writes it again.
 Definition row_read_between_writes : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CWrite (V 1) (K 1%Z) (CRead 10 (V 1) (CWrite (V 1) (K 2%Z) (CRet (V 10))))) (
-  CEffect 3 (CRead 11 (V 2) (CLog (V 11) Nop)) Nop)).
+  CRead 11 (V 2) Nop)).
 
 Lemma row_read_between_writes_excluded : ~ memos_read_before_write (final row_read_between_writes).
 Proof.
@@ -1596,7 +1511,7 @@ Definition check_over_moved_read : cmd := check_over_moved (CEffect 9 (CRead 30 
 
 Example check_over_moved_left_behind :
   let s := final check_over_moved_read in
-  seen_of (g_ghost s) 5 4 = [(0%Z, StNone, None)] /\ den_all 8 s 4 = Some (Ok 1%Z) /\
+  seen_of (g_ghost s) 5 4 = [(1%Z, StNone, None)] /\ den_all 8 s 4 = Some (Ok 1%Z) /\
   n_freshness <$> g_nodes s !! (4 : node_id) = Some Clean.
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
