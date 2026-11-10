@@ -15,6 +15,23 @@ let private invalidOp (f: unit -> unit) (message: string) : InvalidOperationExce
     with :? InvalidOperationException as ex ->
         ex
 
+#if FABLE_COMPILER
+[<Fable.Core.Emit("$0.unannounced")>]
+let private isUnannounced (_memo: obj) : bool =
+    Fable.Core.Util.jsNative
+#else
+let private isUnannounced (memo: obj) : bool =
+    memo
+        .GetType()
+        .GetField(
+            "unannounced",
+            Reflection.BindingFlags.Instance
+            ||| Reflection.BindingFlags.NonPublic
+        )
+        .GetValue(memo)
+    :?> bool
+#endif
+
 /// <summary>
 /// A cleanup that writes a source of its computation and then reads the
 /// computation, an effect's teardown under a pure reader, and the error a
@@ -824,19 +841,11 @@ let tests =
                             gate.Value <- 2
                             0)
 
-                let unannouncedField =
-                    typeof<Memo<int>>
-                        .GetField(
-                            "unannounced",
-                            Reflection.BindingFlags.Instance
-                            ||| Reflection.BindingFlags.NonPublic
-                        )
-
                 Expect.equal self.Value 0 "initial run"
                 s.Value <- 1
                 Expect.equal self.Value 0 "the outer run finishes after the nested cleanup disposes the memo"
                 Expect.equal (self :> INode).Status Status.None "the disposed memo settles Clean"
-                Expect.isFalse (unannouncedField.GetValue self :?> bool) "the disposed clean memo clears unannounced"
+                Expect.isFalse (isUnannounced self) "the disposed clean memo clears unannounced"
                 Expect.equal self.Runs 3 "three runs before disposal"
             }
         ]
