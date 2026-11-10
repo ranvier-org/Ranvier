@@ -143,6 +143,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 83,472 | 127,069 | 1,751,109 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 83,471 | 127,080 | 1,751,085 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 83,472 | 127,084 | 1,751,069 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 83,471 | 127,087 | 1,751,032 |
 
 ## app-table
 
@@ -287,6 +288,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 4,436,376 | 9,349,633 | 107,995,750 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 4,436,383 | 9,349,181 | 108,350,650 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 4,436,348 | 9,347,627 | 108,097,497 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 4,436,445 | 9,526,290 | 108,517,280 |
 
 ## async-recover
 
@@ -431,6 +433,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 139,123 | 41,358 | 435,913 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 139,123 | 41,390 | 435,918 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 139,123 | 41,390 | 435,919 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 139,123 | 41,388 | 435,927 |
 
 ## async-resolve
 
@@ -575,6 +578,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,789,437 | 1,002,322 | 12,001,541 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,789,437 | 1,002,208 | 12,002,003 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,789,438 | 1,002,337 | 12,002,065 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,789,437 | 1,002,195 | 12,001,347 |
 
 ## chain
 
@@ -719,6 +723,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 13,163 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 
 ## chain-affinity
 
@@ -863,6 +868,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,578 | 3,096 | 2,525 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,578 | 3,096 | 2,525 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,578 | 3,096 | 2,525 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,578 | 3,096 | 2,525 |
 
 ## control
 
@@ -1007,6 +1013,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 74,710 | 839,917 | 2,601,846 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 74,710 | 839,878 | 2,596,615 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 74,710 | 839,893 | 2,601,797 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 74,710 | 839,889 | 2,599,697 |
 
 ## create
 
@@ -1151,6 +1158,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 13,560,214 | 2,861,677 | 2,570,368 | 2,127,977 | 4,045,504 | 34,034,781 | 50,427,563 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 13,448,339 | 2,861,678 | 2,570,368 | 2,127,940 | 4,045,522 | 34,034,706 | 50,427,743 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 13,448,318 | 2,861,677 | 2,570,368 | 2,127,980 | 4,045,222 | 34,034,907 | 50,427,616 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 13,448,235 | 2,861,677 | 2,570,369 | 2,127,896 | 4,045,340 | 34,034,535 | 50,427,600 |
 
 ## create-on
 
@@ -1295,6 +1303,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,949,500 | 4,179,927 | 55,228,848 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,949,500 | 4,179,716 | 55,228,832 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,949,500 | 4,179,668 | 55,228,688 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,949,484 | 4,179,655 | 55,228,770 |
 
 ## cutoff
 
@@ -1439,6 +1448,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1583,6 +1593,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 781 | 751 | 16,520 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 781 | 751 | 16,520 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 781 | 751 | 16,520 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1727,6 +1738,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 751 | 802 | 16,543 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 751 | 802 | 16,543 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 751 | 802 | 16,543 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1871,6 +1883,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 2,707,643 | 806,291 | 367,497 | 475,885 | 494,904 | 13,206,203 | 9,106,127 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 2,707,646 | 806,290 | 367,497 | 475,728 | 495,018 | 13,205,645 | 9,106,230 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 2,707,641 | 806,291 | 367,497 | 475,439 | 495,019 | 13,205,970 | 9,105,717 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,706,240 | 806,291 | 367,497 | 476,056 | 495,047 | 13,205,460 | 9,105,771 |
 
 ## dispose-on
 
@@ -2015,6 +2028,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 346,497 | 487,899 | 8,902,696 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 346,497 | 487,772 | 8,902,689 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 346,497 | 487,563 | 8,902,389 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 346,497 | 487,790 | 8,902,258 |
 
 ## editable-edit
 
@@ -2159,6 +2173,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 182,106 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 182,106 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 182,106 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 182,106 |
 
 ## editable-upstream
 
@@ -2303,6 +2318,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 233,855 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 233,855 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 233,855 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 233,855 |
 
 ## fail-recompute
 
@@ -2447,6 +2463,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 64,895 | 1,383 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 64,895 | 1,383 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 64,895 | 1,383 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 64,895 | 1,383 |
 
 ## flight
 
@@ -2591,6 +2608,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 
 ## keyed-insert
 
@@ -2735,6 +2753,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,925,731 | 53,917 | 54,957 | 3,279,982 | 660,645 | 243,398 | 45,302,976 | 2,634,617 | 2,655,689 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,925,763 | 53,949 | 54,987 | 3,279,968 | 660,380 | 243,032 | 45,302,969 | 2,634,654 | 2,655,739 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,925,731 | 53,917 | 54,954 | 3,280,054 | 660,436 | 243,376 | 45,303,004 | 2,634,651 | 2,655,687 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,925,733 | 53,917 | 54,954 | 3,280,052 | 660,295 | 243,395 | 45,302,978 | 2,634,677 | 2,655,658 |
 
 ## keyed-remove
 
@@ -2879,6 +2898,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,924,656 | 43,600 | 45,304 | 3,284,095 | 596,028 | 602,225 | 45,268,271 | 1,924,738 | 1,960,304 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,924,688 | 43,632 | 45,335 | 3,284,134 | 596,134 | 602,246 | 45,280,310 | 1,924,740 | 1,960,427 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,924,662 | 43,600 | 45,303 | 3,284,070 | 596,038 | 602,219 | 45,268,286 | 1,924,655 | 1,960,393 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,924,658 | 43,600 | 45,303 | 3,284,068 | 596,013 | 602,239 | 45,268,298 | 1,924,554 | 1,960,266 |
 
 ## keyed-swap
 
@@ -3023,6 +3043,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,977,355 | 46,205 | 46,927 | 3,649,794 | 147,934 | 509,120 | 46,429,306 | 915,662 | 935,759 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,977,387 | 46,238 | 46,959 | 3,649,956 | 148,225 | 508,907 | 46,429,259 | 915,664 | 935,781 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,977,355 | 46,205 | 46,927 | 3,650,178 | 147,989 | 508,899 | 46,428,929 | 915,671 | 935,776 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,977,356 | 46,205 | 46,928 | 3,647,892 | 147,965 | 508,833 | 46,429,254 | 915,643 | 935,778 |
 
 ## mvu-dispatch
 
@@ -3167,6 +3188,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 58,548 | 788 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 58,548 | 788 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 58,548 | 788 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 58,548 | 788 |
 
 ## persist-write
 
@@ -3311,6 +3333,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — |
 
 ## project-chain
 
@@ -3455,6 +3478,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,077,356 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,077,292 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,077,349 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,077,382 |
 
 ## project-churn
 
@@ -3599,6 +3623,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 36,402 | 34,269 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 36,386 | 34,251 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 36,386 | 34,251 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 36,404 | 34,281 |
 
 ## project-edit
 
@@ -3743,6 +3768,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 50,496 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 50,527 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 50,497 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 50,496 |
 
 ## project-reorder
 
@@ -3887,6 +3913,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 780,084 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 780,116 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 780,085 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 780,084 |
 
 ## server-render
 
@@ -4031,6 +4058,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | — | — | — |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | — | — | — |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | — | — | — |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — | — |
 
 ## shape-diamond
 
@@ -4175,6 +4203,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 60,816 | 82,845 | 1,802,884 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 60,816 | 82,845 | 1,802,884 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 60,816 | 82,845 | 1,802,884 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 60,816 | 82,845 | 1,802,884 |
 
 ## shape-dynamic
 
@@ -4319,6 +4348,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 84,378 | 108,947 | 2,038,136 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 84,378 | 108,947 | 2,038,136 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 84,378 | 108,947 | 2,038,136 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 84,378 | 108,944 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4463,6 +4493,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,047 | 47,796 | 46,003 | 55,599 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,954 | 1,552 | 2,509 | 5,030 | 7,372 | 14,047 | 47,796 | 46,003 | 55,599 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,954 | 1,552 | 2,509 | 5,034 | 7,376 | 14,050 | 47,794 | 46,003 | 55,598 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,051 | 47,792 | 46,003 | 55,600 |
 
 ## stream-burst-16
 
@@ -4607,6 +4638,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 5,056 | 24,682 | 5,719 | 9,816 | 49,281 | 8,194 | 124,968 | 723,620 | 113,950 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 5,056 | 24,682 | 5,719 | 9,816 | 49,281 | 8,194 | 124,969 | 723,620 | 113,950 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 5,056 | 24,682 | 5,719 | 9,817 | 49,281 | 8,193 | 124,965 | 723,617 | 113,950 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 5,056 | 24,682 | 5,719 | 9,814 | 49,281 | 8,194 | 124,968 | 723,620 | 113,946 |
 
 ## stream-burst-256
 
@@ -4751,6 +4783,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 54,676 | 394,726 | 57,058 | 133,585 | 800,313 | 45,152 | 1,359,880 | 11,564,280 | 1,046,979 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 54,676 | 394,726 | 57,058 | 133,576 | 800,308 | 45,152 | 1,359,974 | 11,564,280 | 1,046,979 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 54,676 | 394,726 | 57,058 | 133,545 | 800,308 | 45,152 | 1,359,968 | 11,564,282 | 1,046,981 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 54,676 | 394,726 | 57,058 | 133,524 | 800,308 | 45,154 | 1,359,925 | 11,564,280 | 1,046,969 |
 
 ## stream-restart
 
@@ -4895,6 +4928,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 4,216 | 5,040 | 5,740 | 5,335 | 43,388 | 72,509 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 4,216 | 5,040 | 5,739 | 5,333 | 43,387 | 72,513 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 4,216 | 5,040 | 5,736 | 5,334 | 43,390 | 72,510 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 4,216 | 5,040 | 5,731 | 5,331 | 43,387 | 72,505 |
 
 ## timed-admit-both
 
@@ -5039,6 +5073,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 117,709 | 130,035 | 2,693,850 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 117,709 | 130,037 | 2,693,850 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 117,709 | 130,037 | 2,693,850 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 117,709 | 130,036 | 2,693,876 |
 
 ## timed-admit-debounce
 
@@ -5183,6 +5218,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 116,614 | 128,630 | 2,654,132 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 116,614 | 128,619 | 2,654,132 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 116,614 | 128,626 | 2,654,132 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 116,614 | 128,621 | 2,654,132 |
 
 ## timed-admit-first
 
@@ -5327,6 +5363,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 69,621 | 79,565 | 1,620,678 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 69,621 | 79,565 | 1,620,678 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 69,621 | 79,565 | 1,620,678 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 69,621 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -5471,6 +5508,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 116,876 | 128,937 | 2,663,988 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 116,876 | 128,951 | 2,663,988 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 116,876 | 128,938 | 2,663,988 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 116,876 | 128,948 | 2,663,987 |
 
 ## timed-capture-both
 
@@ -5615,6 +5653,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,740 | 44,936 | 847,273 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,740 | 44,935 | 847,273 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,740 | 44,936 | 847,273 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,740 | 44,936 | 847,273 |
 
 ## timed-capture-debounce
 
@@ -5759,6 +5798,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,612 | 44,232 | 847,657 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,612 | 44,232 | 847,657 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,612 | 44,232 | 847,657 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -5903,6 +5943,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 32,092 | 36,741 | 745,651 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 32,092 | 36,741 | 745,651 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 32,092 | 36,741 | 745,652 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 32,092 | 36,741 | 745,651 |
 
 ## timed-capture-last
 
@@ -6047,6 +6088,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 35,548 | 44,168 | 839,785 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 35,548 | 44,168 | 839,785 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 35,548 | 44,169 | 839,785 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,548 | 44,169 | 839,785 |
 
 ## update
 
@@ -6191,6 +6233,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 1,087,790 | 38,805 | 84,105 | 263,375 | 145,799 | 3,351,253 | 2,545,074 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 1,087,790 | 38,805 | 84,105 | 263,378 | 145,804 | 3,351,294 | 2,545,083 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 1,087,790 | 38,805 | 84,105 | 263,190 | 145,820 | 3,351,294 | 2,545,082 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,087,790 | 38,805 | 84,105 | 263,205 | 145,792 | 3,351,174 | 2,544,985 |
 
 ## update-on
 
@@ -6335,6 +6378,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 94,605 | 169,024 | 2,872,469 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 94,605 | 169,026 | 2,872,447 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 94,605 | 169,056 | 2,872,456 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 94,605 | 169,037 | 2,872,354 |
 
 ## work-form
 
@@ -6479,6 +6523,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 172,679 | 165,150 | 308,844 | 296,977 | 5,421,848 | 5,334,914 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 172,679 | 165,150 | 308,825 | 296,956 | 5,421,849 | 5,334,915 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 172,679 | 165,150 | 308,833 | 296,954 | 5,421,833 | 5,334,886 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 172,679 | 165,150 | 308,860 | 297,021 | 5,421,859 | 5,334,885 |
 
 ## work-status
 
@@ -6623,6 +6668,7 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 102,045 | 80,235 | 269,340 | 156,111 | 2,659,292 | 2,391,318 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 102,045 | 80,235 | 269,299 | 156,136 | 2,659,293 | 2,391,318 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 102,045 | 80,235 | 269,313 | 156,127 | 2,659,274 | 2,391,280 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 102,045 | 80,235 | 269,257 | 156,110 | 2,659,289 | 2,391,294 |
 
 ## work-value
 
@@ -6767,4 +6813,5 @@
 | `4eff68d` | 2026-11-09 | test(docs): give the cold live compiler a budget it can meet on hosted runners (#304) | 109,169 | 121,071 | 269,611 | 283,430 | 2,643,903 | 2,968,463 |
 | `3df77eb` | 2026-11-09 | fix(deps): repair the two failing Dependabot jobs (#305) | 109,169 | 121,069 | 269,542 | 283,397 | 2,643,937 | 2,968,473 |
 | `c4a2394` | 2026-11-10 | fix(docs): take the anime.js bindings from ranvier-org/Ranvier.Anime (#308) | 109,169 | 121,071 | 269,600 | 283,395 | 2,643,905 | 2,968,446 |
+| `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 109,170 | 121,069 | 269,626 | 283,396 | 2,643,901 | 2,968,464 |
 
