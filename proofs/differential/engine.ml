@@ -3944,19 +3944,20 @@ and read_node fuel n0 =
         m_bind
           (match stale_live d with
            | True ->
-             m_bind (refresh_or_pull f n0) (fun _ ->
-               m_bind (track n0) (fun _ ->
-                 m_bind (get_node n0) (fun d' ->
-                   match stale_live d' with
-                   | True -> mark_reader f
-                   | False -> m_return Tt)))
-           | False -> track n0)
-          (fun _ ->
-          m_bind (get_node n0) (fun d' ->
-            match d'.n_status with
-            | StError ->
-              m_return (Fail (from_option (Obj.magic id) Z0 d'.n_failure))
-            | _ -> m_return (Ok d'.n_value)))
+             m_bind (refresh_or_pull f n0) (fun d' ->
+               m_bind
+                 (m_bind (track n0) (fun _ ->
+                   m_bind (get_node n0) (fun d'' ->
+                     match stale_live d'' with
+                     | True -> mark_reader f
+                     | False -> m_return Tt)))
+                 (fun _ -> m_return d'))
+           | False -> m_bind (track n0) (fun _ -> get_node n0))
+          (fun d' ->
+          match d'.n_status with
+          | StError ->
+            m_return (Fail (from_option (Obj.magic id) Z0 d'.n_failure))
+          | _ -> m_return (Ok d'.n_value))
       | KEffect -> stuck)
 
 (** val update_if_necessary : nat -> node_id -> unit0 m **)
@@ -3969,11 +3970,11 @@ and update_if_necessary fuel n0 =
       match d.n_kind with
       | KMemo ->
         (match stale_live d with
-         | True -> refresh_or_pull f n0
+         | True -> m_bind (refresh_or_pull f n0) (fun _ -> m_return Tt)
          | False -> m_return Tt)
       | _ -> m_return Tt)
 
-(** val refresh_or_pull : nat -> node_id -> unit0 m **)
+(** val refresh_or_pull : nat -> node_id -> node m **)
 
 and refresh_or_pull fuel n0 =
   match fuel with
@@ -3981,10 +3982,10 @@ and refresh_or_pull fuel n0 =
   | S f ->
     m_bind m_get (fun s ->
       match deferring s with
-      | True -> refresh f n0
+      | True -> m_bind (refresh f n0) (fun _ -> get_node n0)
       | False -> pull f n0)
 
-(** val pull : nat -> node_id -> unit0 m **)
+(** val pull : nat -> node_id -> node m **)
 
 and pull fuel n0 =
   match fuel with
@@ -3993,15 +3994,19 @@ and pull fuel n0 =
     m_bind (m_modify (fun s -> with_pull_depth (S s.g_pull_depth) s))
       (fun _ ->
       m_bind (refresh f n0) (fun _ ->
-        m_bind (m_modify (fun s -> with_pull_depth (pred s.g_pull_depth) s))
-          (fun _ ->
-          m_bind m_get (fun s ->
-            match match bool_decide
-                          (decide_rel Coq_Nat.eq_dec s.g_pull_depth O) with
-                  | True -> s.g_flush_owed
-                  | False -> False with
-            | True -> settle_flush f
-            | False -> m_return Tt))))
+        m_bind (get_node n0) (fun d ->
+          m_bind
+            (m_modify (fun s -> with_pull_depth (pred s.g_pull_depth) s))
+            (fun _ ->
+            m_bind m_get (fun s ->
+              m_bind
+                (match match bool_decide
+                               (decide_rel Coq_Nat.eq_dec s.g_pull_depth O) with
+                       | True -> s.g_flush_owed
+                       | False -> False with
+                 | True -> settle_flush f
+                 | False -> m_return Tt)
+                (fun _ -> m_return d))))))
 
 (** val refresh : nat -> node_id -> unit0 m **)
 
@@ -4169,9 +4174,25 @@ and run_memo fuel n0 =
                                   m_bind
                                     (match moved with
                                      | True ->
-                                       m_step
-                                         (notify_dirty_except f n0
-                                           s.g_current)
+                                       m_bind
+                                         (m_step
+                                           (notify_dirty_except f n0
+                                             s.g_current))
+                                         (fun _ ->
+                                         m_bind m_get (fun s' ->
+                                           match match match bool_decide
+                                                               (decide_rel
+                                                                 Coq_Nat.eq_dec
+                                                                 s'.g_batch_depth
+                                                                 O) with
+                                                       | True ->
+                                                         negb s'.g_flushing
+                                                       | False -> False with
+                                                 | True -> live_queue s'
+                                                 | False -> False with
+                                           | True ->
+                                             m_modify (with_flush_owed True)
+                                           | False -> m_return Tt))
                                      | False -> m_return Tt)
                                     (fun _ ->
                                     m_bind (get_node n0) (fun d3 ->
@@ -4815,19 +4836,20 @@ and oread_node fuel n0 =
         m_bind
           (match stale_live d with
            | True ->
-             m_bind (orefresh_or_pull f n0) (fun _ ->
-               m_bind (otrack n0) (fun _ ->
-                 m_bind (get_node n0) (fun d' ->
-                   match stale_live d' with
-                   | True -> mark_reader f
-                   | False -> m_return Tt)))
-           | False -> otrack n0)
-          (fun _ ->
-          m_bind (get_node n0) (fun d' ->
-            match d'.n_status with
-            | StError ->
-              m_return (Fail (from_option (Obj.magic id) Z0 d'.n_failure))
-            | _ -> m_return (Ok d'.n_value)))
+             m_bind (orefresh_or_pull f n0) (fun d' ->
+               m_bind
+                 (m_bind (otrack n0) (fun _ ->
+                   m_bind (get_node n0) (fun d'' ->
+                     match stale_live d'' with
+                     | True -> mark_reader f
+                     | False -> m_return Tt)))
+                 (fun _ -> m_return d'))
+           | False -> m_bind (otrack n0) (fun _ -> get_node n0))
+          (fun d' ->
+          match d'.n_status with
+          | StError ->
+            m_return (Fail (from_option (Obj.magic id) Z0 d'.n_failure))
+          | _ -> m_return (Ok d'.n_value))
       | KEffect -> stuck)
 
 (** val oupdate_if_necessary : nat -> node_id -> unit0 m **)
@@ -4840,11 +4862,11 @@ and oupdate_if_necessary fuel n0 =
       match d.n_kind with
       | KMemo ->
         (match stale_live d with
-         | True -> orefresh_or_pull f n0
+         | True -> m_bind (orefresh_or_pull f n0) (fun _ -> m_return Tt)
          | False -> m_return Tt)
       | _ -> m_return Tt)
 
-(** val orefresh_or_pull : nat -> node_id -> unit0 m **)
+(** val orefresh_or_pull : nat -> node_id -> node m **)
 
 and orefresh_or_pull fuel n0 =
   match fuel with
@@ -4852,10 +4874,10 @@ and orefresh_or_pull fuel n0 =
   | S f ->
     m_bind m_get (fun s ->
       match deferring s with
-      | True -> orefresh f n0
+      | True -> m_bind (orefresh f n0) (fun _ -> get_node n0)
       | False -> opull f n0)
 
-(** val opull : nat -> node_id -> unit0 m **)
+(** val opull : nat -> node_id -> node m **)
 
 and opull fuel n0 =
   match fuel with
@@ -4864,15 +4886,19 @@ and opull fuel n0 =
     m_bind (m_modify (fun s -> with_pull_depth (S s.g_pull_depth) s))
       (fun _ ->
       m_bind (orefresh f n0) (fun _ ->
-        m_bind (m_modify (fun s -> with_pull_depth (pred s.g_pull_depth) s))
-          (fun _ ->
-          m_bind m_get (fun s ->
-            match match bool_decide
-                          (decide_rel Coq_Nat.eq_dec s.g_pull_depth O) with
-                  | True -> s.g_flush_owed
-                  | False -> False with
-            | True -> osettle_flush f
-            | False -> m_return Tt))))
+        m_bind (get_node n0) (fun d ->
+          m_bind
+            (m_modify (fun s -> with_pull_depth (pred s.g_pull_depth) s))
+            (fun _ ->
+            m_bind m_get (fun s ->
+              m_bind
+                (match match bool_decide
+                               (decide_rel Coq_Nat.eq_dec s.g_pull_depth O) with
+                       | True -> s.g_flush_owed
+                       | False -> False with
+                 | True -> osettle_flush f
+                 | False -> m_return Tt)
+                (fun _ -> m_return d))))))
 
 (** val orefresh : nat -> node_id -> unit0 m **)
 
@@ -5041,9 +5067,25 @@ and orun_memo fuel n0 =
                                   m_bind
                                     (match moved with
                                      | True ->
-                                       m_step
-                                         (notify_dirty_except f n0
-                                           s.g_current)
+                                       m_bind
+                                         (m_step
+                                           (notify_dirty_except f n0
+                                             s.g_current))
+                                         (fun _ ->
+                                         m_bind m_get (fun s' ->
+                                           match match match bool_decide
+                                                               (decide_rel
+                                                                 Coq_Nat.eq_dec
+                                                                 s'.g_batch_depth
+                                                                 O) with
+                                                       | True ->
+                                                         negb s'.g_flushing
+                                                       | False -> False with
+                                                 | True -> live_queue s'
+                                                 | False -> False with
+                                           | True ->
+                                             m_modify (with_flush_owed True)
+                                           | False -> m_return Tt))
                                      | False -> m_return Tt)
                                     (fun _ ->
                                     m_bind (get_node n0) (fun d3 ->

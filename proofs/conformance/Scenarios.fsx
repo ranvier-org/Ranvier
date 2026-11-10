@@ -431,12 +431,12 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.CheckQuiet [ "x", box x, "Stale"; "e", box e, "None" ]
             c.Check (c.HostRead 5 (fun () -> x.Value) = 50) "the memo's body answers 50"
 
-            // BUGS.md, read_move_leaves_effect_queued. The read's move queues the effect and owes no flush.
-            c.Check (statusOf e = "Stale") $"after the read the effect has status {statusOf e}"
-            c.Check (freshnessOf e = "Dirty") $"after the read the effect is {freshnessOf e}"
-            c.Check (privateField e "queued" :?> bool) "after the read the effect is queued"
-            c.Check (c.QueueLength = 1) $"after the read the queue holds {c.QueueLength}"
-            c.Check (e.Runs = 1) $"after the read the effect has run {e.Runs} times"
+            // BUGS.md, read_move_leaves_effect_queued (closed). The read's move queues the effect, owes a flush, and settles it on ExitPull.
+            c.Check (statusOf e = "None") $"after the read the effect has status {statusOf e}"
+            c.Check (freshnessOf e = "Clean") $"after the read the effect is {freshnessOf e}"
+            c.Check (not (privateField e "queued" :?> bool)) "after the read the effect is not queued"
+            c.Check (c.QueueLength = 0) $"after the read the queue holds {c.QueueLength}"
+            c.Check (e.Runs = 2) $"after the read the effect has run {e.Runs} times"
             c.Check (not (privateField c.Graph "flushOwed" :?> bool)) "after the read no flush is owed"
             c.Graph.Flush ()
             c.Check (e.Runs = 2) $"the explicit flush leaves {e.Runs} runs"
@@ -1043,11 +1043,12 @@ let scenarios: (string * (Ctx -> unit)) list =
                 ()
 
             c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
-            c.Check (c.HostRead 3 (fun () -> a.Value) = 9) "the read answers past the flush"
+            c.Check (c.HostRead 3 (fun () -> a.Value) = 1) "the read answers before the flush"
+            c.Check (s.Peek = 9) $"after the read the signal holds {s.Peek}"
 
         // No batch failed and the queue is empty. The walk passes `a`, as in `walk_passed_source_marked`, so the effect
-        // sleeps on it. A read of `n` moves `a`, which queues the effect, `n`'s batch owes a flush, and the flush runs
-        // the effect before the read answers.
+        // sleeps on it. A read of `n` moves `a`, which queues the effect, `n`'s batch owes a flush, and the read captures
+        // `n`'s outcome before `ExitPull` settles the flush.
         "quiescent_read_answers_past_flush",
         fun c ->
             let s = c.Signal 1 0
@@ -1080,7 +1081,7 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
             c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
             c.Check (s.Peek = 1) $"before the read the signal holds {s.Peek}"
-            c.Check (c.HostRead 5 (fun () -> n.Value) = 9) "the read answers past the flush"
+            c.Check (c.HostRead 5 (fun () -> n.Value) = 1) "the read answers before the flush"
             c.Check (s.Peek = 9) $"after the read the signal holds {s.Peek}"
 
         // The same with no memo body writing: `b`'s cleanup writes.
@@ -1117,7 +1118,7 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
             c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
             c.Check (s.Peek = 1) $"before the read the signal holds {s.Peek}"
-            c.Check (c.HostRead 5 (fun () -> n.Value) = 9) "the read answers past the flush"
+            c.Check (c.HostRead 5 (fun () -> n.Value) = 1) "the read answers before the flush"
             c.Check (s.Peek = 9) $"after the read the signal holds {s.Peek}"
 
         // BUGS.md, cmp_never_passes_source. `a` is passed and left `Dirty` with no announcement, so writes of a signal only

@@ -230,13 +230,13 @@ Example self_marking_body_left_behind :
   node_view s 2 = Some (Dirty, true, false, StNone, 0%Z).
 Proof. intros s. split_and!; [left_behind_proof 0 0|vm_compute; reflexivity|vm_compute; reflexivity]. Qed.
 
-(** The read of the left-behind memo moves it, which queues the effect and owes no flush. The next flush
-    runs the effect on the value it missed. Confirmed in [BUGS.md]. *)
+(** The read of the left-behind memo moves it, which queues the effect, owes a flush, and settles that flush on [ExitPull]
+    before the read returns. Closed in [BUGS.md]. *)
 Example read_move_leaves_effect_queued :
   let s := final (self_marking_cleanup (CRead 20 (V 5) Nop)) in
-  node_view s 6 = Some (Dirty, false, true, StNone, 0%Z) /\
-  pending s = [6] /\ g_flush_owed s = false /\ n_runs <$> g_nodes s !! 6 = Some 1 /\
-  (r ← run_flush 1000 s; Some (g_trace r.1)) = Some (g_trace s ++ [EvRun 6; EvLog 6 50%Z]).
+  node_view s 6 = Some (Clean, false, false, StNone, 0%Z) /\
+  pending s = [] /\ g_flush_owed s = false /\ n_runs <$> g_nodes s !! 6 = Some 2 /\
+  (r ← run_flush 1000 s; Some (g_trace r.1)) = Some (g_trace s).
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (** The same memo through a reading memo, whose [ResolveCheck] goes clean. *)
@@ -1329,19 +1329,19 @@ Definition read_flush : cmd :=
   CBatch (CWrite (V 1) (K 1%Z) (CWrite (V 2) (K 1%Z) (CThrow 5%Z))) Nop)))).
 
 (**md
-**Falsified: a read of a pure node can answer past what the node denotes at the read's start.**
+**A read of a pure node captures its answer before settling an owed flush (`#316`).**
 
-This is a counterexample, not a guarantee. It proves `read_per_node_statement` false. Memo `3` is pure and denotes 1, the effect left queued writes its source, and the read answers 9. The read settles a flush and answers after it. `BUGS.md` holds the question for the owner, Awaiting ruling.
+Memo `3` is pure and denotes 1, and the effect left queued writes its source to 9 during the flush settled by `ExitPull`. Because `pull` captures the node's outcome before `settle_flush`, the read answers 1 and memo `3` denotes 9 after the read. Closed in `BUGS.md`.
 *)
-Theorem read_settles_writer : ~ read_per_node_statement.
+Example read_settles_writer :
+  let s := final read_flush in
+  let r := read 1000 3 true s in
+  run_top 100000 read_flush (init current_flags) = Some (s, Fail 5%Z) /\
+  (snd <$> r = Some (Ok 1%Z)) /\ denotes s 3 (Ok 1%Z) /\
+  den 5 (default s (fst <$> r)) 3 = Some (Ok 9%Z).
 Proof.
-  intros H. set (s := final read_flush).
-  assert (Hm : run_top 100000 read_flush (init current_flags) = Some (s, Fail 5%Z)) by (vm_compute; reflexivity).
-  assert (Hr : read 1000 3 true s = Some (default s (fst <$> read 1000 3 true s), Ok 9%Z)) by (vm_compute; reflexivity).
-  assert (Hp : pure_in (shapes s) 3) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : @pure_b id_rank (shapes s) 4 3 = true))).
-  pose proof (H 100000 1000 _ s _ 3 _ _ Hm Hp Hr) as Hd.
-  assert (Hd2 : denotes s 3 (Ok 1%Z)) by (exists 5; vm_compute; reflexivity).
-  pose proof (denotes_unique s 3 _ _ Hd Hd2) as Hz. discriminate Hz.
+  intros s r. split_and!; try (vm_compute; reflexivity).
+  exists 5. vm_compute. reflexivity.
 Qed.
 
 (** The walk passes memo [3], as in [walk_passed], so effect [6] sleeps on it with the queue empty. Memo [5] is pure, with a
@@ -1371,20 +1371,21 @@ Example read_past_flush_passed :
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
 (**md
-**Falsified on the present engine: at quiescence, a read of a pure node can answer past what the node denotes.**
+**At quiescence on [`read_past_flush`](#read_past_flush), a read of memo `5` answers what it denotes before the flush it settles.**
 
-This is a counterexample, not a guarantee. It proves `read_quiescent_statement` false on [`read_past_flush`](#read_past_flush). The queue is empty and nothing runs, memo `5` is pure and denotes 1, and the read answers 9. Effect `6` sleeps on stale memo `3`, the read moves it and queues the effect, memo `5`'s batch owes a flush, and the flush writes 9 before the read answers. Scenarios `quiescent_read_answers_past_flush` and `quiescent_read_answers_past_flush_by_cleanup` reproduce it on the F#.
+Effect `6` sleeps on stale memo `3`, the read moves `3` and queues the effect, and memo `5`'s batch and `3`'s move owe a flush that writes 9 on `ExitPull`. Capturing the read's outcome before `settle_flush` answers 1, matching what memo `5` denotes at the read's start. Closed in `BUGS.md`.
 *)
-Theorem read_quiescent_falsified : ~ read_quiescent_statement.
+Example read_quiescent_falsified :
+  let s := final read_past_flush in
+  let r := read 1000 5 true s in
+  run_top 100000 read_past_flush (init current_flags) = Some (s, Ok 0%Z) /\
+  quiescent s /\
+  (snd <$> r = Some (Ok 1%Z)) /\ denotes s 5 (Ok 1%Z) /\
+  den 10 (default s (fst <$> r)) 5 = Some (Ok 9%Z).
 Proof.
-  intros H. set (s := final read_past_flush).
-  assert (Hm : run_top 100000 read_past_flush (init current_flags) = Some (s, Ok 0%Z)) by (vm_compute; reflexivity).
-  assert (Hq : quiescent s) by (split; vm_compute; reflexivity).
-  assert (Hr : read 1000 5 true s = Some (default s (fst <$> read 1000 5 true s), Ok 9%Z)) by (vm_compute; reflexivity).
-  assert (Hp : pure_in (shapes s) 5) by (exact (pure_b_sound _ _ _ (ltac:(vm_compute; reflexivity) : @pure_b id_rank (shapes s) 6 5 = true))).
-  pose proof (H 100000 1000 _ s _ 5 _ _ Hm Hq Hp Hr) as Hd.
-  assert (Hd2 : denotes s 5 (Ok 1%Z)) by (exists 5; vm_compute; reflexivity).
-  pose proof (denotes_unique s 5 _ _ Hd Hd2) as Hz. discriminate Hz.
+  intros s r. split_and!; try (vm_compute; reflexivity).
+  - split; vm_compute; reflexivity.
+  - exists 5. vm_compute. reflexivity.
 Qed.
 
 (** The writer of [read_past_flush] with no read of memo [5]. The read answers 1, and the memo denotes 9 after it. *)
