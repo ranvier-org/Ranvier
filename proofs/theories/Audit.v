@@ -2,6 +2,7 @@ From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
 From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger.
 From Ranvier.Conformance Require Check.
+From Ranvier.Heap Require ObserverSet SourceList Ghost.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
 
@@ -290,3 +291,32 @@ Print Assumptions witness_302_optimised.
 Print Assumptions prog_window_checked.
 Print Assumptions optimised_cleanups.
 Print Assumptions cleanup_registered_in_teardown_runs_late.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_new_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_grow_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_add_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_try_add_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_remove_at_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.walk_trace_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.walk_spec.
+Print Assumptions Ranvier.Heap.SourceList.moved_past_list_clears.
+Print Assumptions Ranvier.Heap.SourceList.moved_past_list_incoherent.
+Print Assumptions Ranvier.Heap.SourceList.sources_cell_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_set_cell_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_moved_in_rep_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_moved_in_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_grow_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_holds_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_trim_loop_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_trim_from_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_link_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_end_run_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_clear_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_begin_run_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_add_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_new_spec.
+Print Assumptions Ranvier.Heap.Ghost.fresh_code_le.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_agree.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_edge.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_fresh_lb.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_fresh_valid.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_alloc.

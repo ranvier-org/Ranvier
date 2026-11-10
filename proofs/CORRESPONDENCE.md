@@ -214,3 +214,27 @@ Every state change of the engine is one of these. The simulation (`rsims_all`) u
 The effect creation advance is a model choice: an absent id counts as saturated, and the model carries no invariant
 that a new id is no observer. The F# may advance at the `Effect` constructor or argue that a new object is no
 observer.
+
+## Heap tier: edge structures
+
+`Heap/ObserverSet.v` and `Heap/SourceList.v` implement `ObserverSet` and `SourceList` in HeapLang, and `Heap/Ghost.v`
+holds the ghost state of the heap graph. The heap tier covers the present engine: `is_graph_at` requires `g_skip`,
+`g_epoch` and `g_stamps` at their initial values, and the observer-set code clears no stamp.
+
+| Model symbol | Core.fs symbol | Simplification and reason |
+|---|---|---|
+| `is_observers`, `item_cells`, `observer_cell`, `blank_cell` | `ObserverSet`: `items`, `count`, `latest` (195-212) | Four fields: the array, `count`, `latest`, and the array's capacity, which HeapLang cannot read from the array. A cell is the .NET pair of observer and slot; Fable's parallel `slots` array is the same pair. Cells past `count` are `(-1, -1)`, the blanking of 330 and 350. An observer is its id. The empty set has capacity 0, as `ObserverSlots.none`. |
+| `observers_grow_code` | `grow` (222-235) | The same sizes. The old array is dropped, not freed: HeapLang's logic is affine. |
+| `observers_add_code`, `observers_try_add_code`, `observers_scan_code` | `Add` (247-264), `TryAdd` (270-290) | Reference equality is id equality. `tried_val` gives the F# answers: the handle, -1 and -2. |
+| `observers_remove_at_code`, `moved_val` | `RemoveAt` (301-357) | A handle holding another observer fails an `assert`, which is stuck: HeapLang has no exceptions. The `MovedIn` call is returned as a notice, as in the pure model, and the source list's trim delivers it. |
+| `observers_walk_code`, `observers_walk_loop`, `visitor_spec` | `NotifyDirty`, `NotifyDirtyExcept`, `NotifyCheck` (372-428) | One walk with a visitor closure called on each observer id. The loop's argument is the F# cursor plus one, the pure `walk`'s first argument. `visitor_spec` lets a visit mutate the set through `observers_add` and `observers_remove_at`, the mutations of the pure `walk`. |
+| `is_source_list`, `source_list_rep`, `src_rep`, `slot_fun`, `slot_val`, `handle_val` | `SourceList`: `first`, `firstHandle`, `rest`, `count`, `cursor`, `held` (540-576) | Six fields. Position 0's source and handle are one field holding a pair, the rest array and its capacity are two more, then `count`, `cursor` and `held`. `None` is -1. Cells past `count` are blank, the blanking of 670-688. `is_source_list` requires the cursor within the slots, which F# keeps and the repeat test at 787 needs. `source_list_rep` is the state inside `Clear`, between its trim and its cursor reset. |
+| `held_rep`, `list_val`, `held_build_code`, `held_mem_code`, `sources_holds_code`, `sources_held_before_code` | `held`, `holds`, `heldBefore` (576, 630-653) | The `RefIndex` is a HeapLang list of sources, abstracted to the set of its elements. It exists only for lists longer than `scan_limit`, and then holds every slot's source. Building it is `holds`'s loop, membership a list scan. |
+| `resolver`, `is_world`, `obs_part`, `src_part`, `world_in` | object references to `ISource` and `IComputation` | A node is its id, and `res` maps an id to the locations of its observer set and source list. `is_world` holds both structures of every node in the table. |
+| `sources_trim_loop`, `sources_trim_from_code` | `trimFrom` (658-694) | Each handle is read when its position is reached, as in F#. The loop bound is `count` read once, as F#'s `for`. `held` is set to `NONE` unconditionally, the same state as the null test. |
+| `sources_moved_in_code` | `MovedIn`, `setHandle` (599-607, 715) | Writes the cell without a bounds test, as F#. The world specifications therefore take `edge_match`: `moved_past_list_world` is an incoherent world whose trim the pure model completes by a `MovedIn` past the end, which the heap would write into a blank cell or past the array. |
+| `sources_link_code`, `sources_index_add_code`, `sources_append_code`, `sources_add_code` | `Append`, `Add` (729-796) | F#'s order: the new slot is written with -1, the count and cursor set, then `TryAdd`, `holds` and `Add`, then the handle and the index. The add takes the resolver and the computation's id; the source list is resolved from the id. |
+| `sources_begin_run_code`, `sources_end_run_code`, `sources_clear_code`, `sources_new_code` | `BeginRun`, `EndRun`, `Clear`, the constructor (722, 803-814) | As F#. |
+| `graphG`, `graph_edge`, `graph_edges_auth`, `edge_map` | none | Ghost: an authoritative map from each node to its observer set and source list, with an exclusive fragment per node. |
+| `graph_fresh_lb`, `fresh_code`, `fresh_map` | `freshness` per node | Ghost: monotone freshness. A node's code is `3 * epoch + rank`, with a ghost epoch per node that advances when the freshness falls, so codes only grow (`fresh_code_le`). |
+| `graph_state`, `graph_state_auth`, `is_graph_at`, `is_graph` | none | Ghost agreement between the heap graph and the pure `state`. `is_graph_at` holds the edge world in the heap; the node fields join it in Task 15. |

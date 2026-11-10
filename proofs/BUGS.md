@@ -241,6 +241,14 @@ Each entry of Task 12 is a difference between the engine and the reference, with
 
 ## Closed
 
+- `moved_past_list_clears` (`theories/Heap/SourceList.v`, with `moved_past_list_incoherent`), closed as spec corrected
+  (Task 14). The heap source-list specifications as "the pure function succeeds, so the code leaves its world" are false
+  on an incoherent world: observer 2 recorded at slot 3 of a source, with no slots. The pure `sources_clear` of the
+  other observer succeeds, moving 2, and its `MovedIn` past the end changes nothing; the heap `MovedIn`, like
+  `SourceList.MovedIn` (Core.fs 599-607, 715), writes `rest[2]` unchecked, into a blank cell or past the array. The
+  correspondence row of `sources_moved_in` documents that a coherent world reaches neither. The specifications take
+  `edge_match`, which every reachable world has (`reachable_well_formed`). Not an F# defect.
+
 - `cleanup_registered_in_teardown_runs_late` (`theories/Pure/Optimised.v`), reproduced and closed as spec corrected. A
   cleanup that registers a cleanup with the scope it is torn down from: the second cleanup joins the emptied scope and
   runs at the next teardown, after the host's next run. Core.fs 1130-1132 documents this: "A cleanup or child
