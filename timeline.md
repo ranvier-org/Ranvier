@@ -149,6 +149,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 83,478 | 127,035 | 1,750,902 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 83,565 | 127,300 | 1,753,872 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 83,611 | 127,834 | 1,762,221 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 83,780 | 128,019 | 1,760,395 |
 
 ## app-table
 
@@ -299,6 +300,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 4,436,346 | 9,348,895 | 108,121,731 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 4,446,850 | 9,373,011 | 108,701,850 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 4,412,632 | 9,480,342 | 108,611,293 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 4,425,110 | 9,646,644 | 108,653,777 |
 
 ## async-recover
 
@@ -449,6 +451,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 139,123 | 41,390 | 435,914 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 139,381 | 41,434 | 437,754 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 139,421 | 39,706 | 440,017 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 139,553 | 39,732 | 441,871 |
 
 ## async-resolve
 
@@ -599,6 +602,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,789,438 | 1,002,196 | 12,001,740 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,799,187 | 1,007,412 | 12,082,061 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,799,563 | 1,071,874 | 12,117,078 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,803,595 | 1,075,541 | 12,201,389 |
 
 ## chain
 
@@ -749,6 +753,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 13,037 | 318 | 2,487 | 4,491 | 3,363 | 72,781 | 68,235 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 13,037 | 318 | 2,488 | 4,491 | 3,412 | 72,781 | 69,367 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 13,035 | 318 | 2,523 | 4,491 | 3,422 | 72,781 | 69,743 |
 
 ## chain-affinity
 
@@ -899,6 +904,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,578 | 3,096 | 2,525 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,586 | 3,108 | 2,537 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,587 | 3,110 | 2,538 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,622 | 3,145 | 2,573 |
 
 ## control
 
@@ -1049,6 +1055,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 74,710 | 839,862 | 2,596,476 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 74,710 | 839,928 | 2,601,693 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 74,710 | 839,801 | 2,599,771 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 74,710 | 816,919 | 2,594,456 |
 
 ## create
 
@@ -1199,6 +1206,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 13,448,339 | 2,877,676 | 2,570,369 | 2,127,894 | 4,042,633 | 34,034,750 | 50,427,477 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 13,451,472 | 2,866,678 | 2,571,380 | 2,126,881 | 4,052,214 | 34,027,206 | 50,549,538 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 13,467,400 | 2,882,678 | 2,571,379 | 2,127,000 | 4,051,254 | 33,947,032 | 50,418,423 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 13,467,386 | 2,866,678 | 2,575,392 | 2,127,129 | 4,057,296 | 34,059,586 | 50,597,758 |
 
 ## create-on
 
@@ -1349,6 +1357,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,949,485 | 4,179,685 | 55,228,785 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,948,492 | 4,187,809 | 55,350,897 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,964,492 | 4,187,960 | 55,350,852 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,968,488 | 4,234,734 | 55,454,804 |
 
 ## cutoff
 
@@ -1499,6 +1508,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,184 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,184 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1649,6 +1659,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 781 | 751 | 16,520 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 783 | 755 | 16,581 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 783 | 755 | 16,581 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1799,6 +1810,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 751 | 802 | 16,543 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 753 | 806 | 16,604 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 769 | 806 | 16,604 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 757 | 759 | 16,707 |
 
 ## dispose
 
@@ -1949,6 +1961,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,707,646 | 806,291 | 367,497 | 475,645 | 495,242 | 13,205,822 | 9,105,553 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,707,642 | 806,288 | 367,497 | 475,485 | 495,218 | 13,206,578 | 9,106,144 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,706,751 | 806,288 | 367,497 | 476,066 | 495,522 | 13,205,965 | 9,106,140 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,706,750 | 806,288 | 367,497 | 475,831 | 495,422 | 13,204,229 | 9,106,660 |
 
 ## dispose-on
 
@@ -2099,6 +2112,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 346,497 | 487,932 | 8,902,728 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 346,497 | 487,647 | 8,902,485 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 346,497 | 487,775 | 8,902,750 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 346,497 | 487,933 | 8,901,916 |
 
 ## editable-edit
 
@@ -2249,6 +2263,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 182,106 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 182,706 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 181,406 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 182,906 |
 
 ## editable-upstream
 
@@ -2399,6 +2414,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 233,855 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 234,655 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 234,855 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 237,355 |
 
 ## fail-recompute
 
@@ -2549,6 +2565,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 64,895 | 1,383 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 65,015 | 1,387 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 65,094 | 1,386 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 65,107 | 1,407 |
 
 ## flight
 
@@ -2699,6 +2716,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,382 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 10,958 | 6,200 | 6,201 | 11,283 | 10,726 | 22,362 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 10,992 | 6,236 | 6,237 | 11,331 | 10,760 | 22,402 |
 
 ## keyed-insert
 
@@ -2849,6 +2867,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,925,731 | 53,917 | 54,960 | 3,279,934 | 660,313 | 243,046 | 45,313,160 | 2,634,704 | 2,655,726 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,927,779 | 53,938 | 55,015 | 3,324,527 | 657,553 | 664,013 | 45,364,312 | 2,634,747 | 2,656,030 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,927,750 | 53,934 | 54,987 | 3,320,502 | 657,443 | 664,222 | 45,371,530 | 2,634,869 | 2,656,308 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 1,949,785 | 54,040 | 55,018 | 3,419,469 | 657,276 | 662,749 | 46,302,642 | 2,635,502 | 2,656,457 |
 
 ## keyed-remove
 
@@ -2999,6 +3018,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,924,666 | 43,601 | 45,304 | 3,284,133 | 596,019 | 602,207 | 45,268,305 | 1,924,733 | 1,960,354 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,926,703 | 43,723 | 45,334 | 3,328,966 | 593,061 | 604,361 | 45,329,680 | 1,924,766 | 1,960,791 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,926,660 | 43,639 | 45,303 | 3,324,710 | 593,093 | 604,408 | 45,322,719 | 1,925,053 | 1,960,937 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 1,948,710 | 43,739 | 45,345 | 3,398,134 | 593,181 | 607,931 | 46,267,001 | 1,925,328 | 1,961,138 |
 
 ## keyed-swap
 
@@ -3149,6 +3169,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,977,355 | 46,205 | 46,927 | 3,647,737 | 148,192 | 508,837 | 46,428,902 | 915,647 | 935,763 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,979,382 | 46,225 | 46,970 | 3,546,050 | 148,306 | 510,001 | 46,504,251 | 915,746 | 936,004 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,979,351 | 46,221 | 46,939 | 6,715,377 | 148,690 | 509,044 | 46,481,804 | 915,740 | 935,263 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 2,001,389 | 46,326 | 46,960 | 3,673,235 | 147,372 | 508,549 | 47,436,441 | 915,894 | 934,241 |
 
 ## mvu-dispatch
 
@@ -3299,6 +3320,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 58,548 | 788 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 58,678 | 790 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 58,683 | 790 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 59,897 | 794 |
 
 ## persist-write
 
@@ -3449,6 +3471,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | — | — |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | — | — |
 
 ## project-chain
 
@@ -3599,6 +3622,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,077,348 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,078,281 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,065,800 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,065,043 |
 
 ## project-churn
 
@@ -3749,6 +3773,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 36,404 | 34,281 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 36,397 | 34,258 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 36,397 | 34,258 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 36,422 | 34,281 |
 
 ## project-edit
 
@@ -3899,6 +3924,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 50,511 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 50,679 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 50,474 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 50,540 |
 
 ## project-reorder
 
@@ -4049,6 +4075,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 780,085 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 780,215 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 780,087 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 780,131 |
 
 ## server-render
 
@@ -4199,6 +4226,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — | — |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — | — |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | — | — | — |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | — | — | — |
 
 ## shape-diamond
 
@@ -4349,6 +4377,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 60,816 | 82,845 | 1,802,884 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 61,218 | 83,500 | 1,815,145 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 61,121 | 83,999 | 1,839,464 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 61,937 | 85,373 | 1,851,542 |
 
 ## shape-dynamic
 
@@ -4499,6 +4528,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 84,378 | 108,944 | 2,038,136 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 84,778 | 109,747 | 2,050,336 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 84,778 | 109,745 | 2,050,336 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 85,079 | 109,898 | 2,055,688 |
 
 ## stream-burst-1
 
@@ -4649,6 +4679,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,954 | 1,552 | 2,509 | 5,034 | 7,376 | 14,045 | 47,795 | 46,003 | 55,600 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,959 | 1,555 | 2,515 | 5,041 | 7,612 | 14,343 | 47,918 | 46,125 | 55,722 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,960 | 1,556 | 2,516 | 5,283 | 7,710 | 14,445 | 48,253 | 46,460 | 56,047 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,977 | 1,573 | 2,549 | 5,388 | 3,653 | 13,817 | 48,733 | 46,939 | 56,823 |
 
 ## stream-burst-16
 
@@ -4799,6 +4830,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 5,056 | 24,682 | 5,719 | 9,813 | 49,282 | 8,194 | 124,969 | 723,620 | 113,949 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 5,061 | 24,715 | 5,725 | 9,820 | 49,376 | 8,186 | 125,088 | 725,572 | 114,070 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 5,062 | 24,731 | 5,726 | 9,834 | 49,777 | 8,199 | 125,516 | 730,932 | 114,400 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 5,079 | 25,003 | 5,759 | 10,524 | 47,973 | 16,466 | 126,056 | 738,558 | 115,176 |
 
 ## stream-burst-256
 
@@ -4949,6 +4981,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 54,676 | 394,726 | 57,058 | 133,566 | 800,308 | 45,152 | 1,359,873 | 11,564,223 | 1,046,964 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 54,681 | 395,239 | 57,064 | 133,799 | 801,789 | 45,246 | 1,360,012 | 11,595,505 | 1,047,045 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 54,682 | 395,495 | 57,065 | 134,094 | 808,245 | 45,235 | 1,361,882 | 11,681,272 | 1,047,412 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 54,699 | 399,847 | 57,098 | 134,069 | 812,337 | 46,111 | 1,363,448 | 11,803,258 | 1,048,210 |
 
 ## stream-restart
 
@@ -5099,6 +5132,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 4,216 | 5,040 | 5,739 | 5,331 | 43,389 | 72,513 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 4,220 | 5,046 | 5,976 | 5,340 | 43,512 | 72,633 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 4,217 | 5,045 | 5,920 | 5,336 | 43,425 | 72,634 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 4,236 | 5,069 | 5,897 | 5,355 | 43,994 | 73,185 |
 
 ## timed-admit-both
 
@@ -5249,6 +5283,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 117,709 | 130,036 | 2,693,850 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 117,837 | 130,164 | 2,697,749 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 117,837 | 130,165 | 2,697,771 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 118,607 | 130,104 | 2,697,599 |
 
 ## timed-admit-debounce
 
@@ -5399,6 +5434,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 116,614 | 128,619 | 2,654,132 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 116,742 | 128,746 | 2,658,035 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 116,742 | 128,759 | 2,658,035 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 117,512 | 128,697 | 2,657,657 |
 
 ## timed-admit-first
 
@@ -5549,6 +5585,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 69,621 | 79,565 | 1,620,678 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 69,749 | 79,693 | 1,624,582 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 69,749 | 79,693 | 1,624,581 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 70,263 | 79,569 | 1,617,624 |
 
 ## timed-admit-last
 
@@ -5699,6 +5736,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 116,876 | 128,938 | 2,663,975 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 117,004 | 129,075 | 2,667,878 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 117,004 | 129,067 | 2,667,892 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 117,774 | 129,017 | 2,667,513 |
 
 ## timed-capture-both
 
@@ -5849,6 +5887,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,740 | 44,937 | 847,272 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,740 | 44,936 | 847,273 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 35,740 | 44,936 | 847,407 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 35,870 | 44,940 | 848,257 |
 
 ## timed-capture-debounce
 
@@ -5999,6 +6038,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,612 | 44,232 | 847,657 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,612 | 46,728 | 847,657 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 35,612 | 46,728 | 847,657 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 35,742 | 46,732 | 847,948 |
 
 ## timed-capture-first
 
@@ -6149,6 +6189,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 32,092 | 36,741 | 745,652 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 32,092 | 36,613 | 745,652 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 32,092 | 36,613 | 745,651 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 32,222 | 36,489 | 745,942 |
 
 ## timed-capture-last
 
@@ -6299,6 +6340,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,548 | 44,168 | 839,785 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,548 | 46,664 | 839,785 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 35,548 | 46,664 | 839,785 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 35,678 | 46,668 | 840,076 |
 
 ## update
 
@@ -6449,6 +6491,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,087,790 | 38,805 | 84,105 | 263,096 | 145,785 | 3,351,281 | 2,545,039 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,087,990 | 38,805 | 84,505 | 263,207 | 145,023 | 3,351,242 | 2,557,192 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,087,990 | 38,805 | 84,505 | 262,742 | 145,015 | 3,351,214 | 2,557,257 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,089,390 | 38,805 | 84,905 | 262,844 | 159,950 | 3,351,219 | 2,567,563 |
 
 ## update-on
 
@@ -6599,6 +6642,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 94,605 | 169,060 | 2,872,395 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 95,005 | 169,749 | 2,884,640 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 96,605 | 169,724 | 2,884,675 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 95,405 | 173,842 | 2,894,925 |
 
 ## work-form
 
@@ -6749,6 +6793,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 172,679 | 165,167 | 308,861 | 296,989 | 5,421,861 | 5,334,874 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 174,681 | 169,152 | 313,031 | 342,006 | 5,482,871 | 5,396,011 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 174,681 | 169,152 | 313,017 | 342,038 | 5,482,923 | 5,395,978 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 175,183 | 167,654 | 314,153 | 342,867 | 5,495,799 | 5,408,819 |
 
 ## work-status
 
@@ -6899,6 +6944,7 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 102,045 | 80,235 | 269,336 | 156,135 | 2,659,294 | 2,391,278 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 102,245 | 80,435 | 260,646 | 161,316 | 2,665,366 | 2,397,374 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 102,245 | 82,035 | 260,649 | 161,332 | 2,665,402 | 2,397,418 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 102,645 | 80,835 | 260,969 | 156,829 | 2,675,634 | 2,407,682 |
 
 ## work-value
 
@@ -7049,4 +7095,5 @@
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 109,169 | 121,071 | 269,579 | 283,408 | 2,643,873 | 2,968,378 |
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 109,371 | 121,270 | 260,925 | 288,573 | 2,650,008 | 2,974,535 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 109,369 | 122,869 | 260,926 | 288,600 | 2,650,042 | 2,974,584 |
+| `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 109,771 | 121,670 | 261,204 | 284,096 | 2,660,293 | 2,984,885 |
 
