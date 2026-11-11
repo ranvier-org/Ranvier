@@ -79,19 +79,25 @@ jobs:
           # Keyed by the version table alone, so an edit elsewhere in this file keeps the cache. A change to the install
           # step below changes proofs/VERSIONS.md with it.
           key: rocq-toolchain-${{ runner.os }}-${{ hashFiles('proofs/VERSIONS.md') }}
+          restore-keys: |
+            rocq-toolchain-${{ runner.os }}-
       # The versions match the table in proofs/VERSIONS.md. build.sh selects the switch by this name.
       - name: Install the Rocq toolchain
         if: steps.reuse.outputs.hit != 'true' && steps.opam-cache.outputs.cache-hit != 'true'
         env:
           OPAMYES: '1'
         run: |
-          opam init --bare --disable-sandboxing --no-setup
-          opam switch create ranvier-proofs ocaml-base-compiler.4.14.2
+          if [ ! -d "$HOME/.opam/ranvier-proofs" ]; then
+            rm -rf "$HOME/.opam"
+            opam init --bare --disable-sandboxing --no-setup
+            opam switch create ranvier-proofs ocaml-base-compiler.4.14.2
+          fi
           eval "$(opam env --switch=ranvier-proofs --set-switch)"
-          opam repo add rocq-released https://rocq-prover.org/opam/released
-          opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git
+          opam repo add rocq-released https://rocq-prover.org/opam/released || opam repo set-url rocq-released https://rocq-prover.org/opam/released
+          opam repo add iris-dev https://gitlab.mpi-sws.org/iris/opam.git || opam repo set-url iris-dev https://gitlab.mpi-sws.org/iris/opam.git
           opam update
           opam install rocq-core.9.1.0 rocq-stdlib.9.2.0 rocq-stdpp.1.13.0 rocq-iris-heap-lang.4.5.0 zarith.1.14
+          opam clean --all-switches --download-cache --logs --repo-cache --untracked
       - name: Audit the proofs
         if: steps.reuse.outputs.hit != 'true'
         run: bash proofs/check.sh

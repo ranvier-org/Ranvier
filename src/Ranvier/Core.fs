@@ -3186,6 +3186,17 @@ type Graph(options: GraphOptions) =
             this.Flush ()
 
     /// <summary>
+    /// Owes a flush for effects queued while a read or discharge is in progress.
+    /// </summary>
+    member internal _.OweFlush() =
+        if
+            queueHead < queueCount
+            && batchDepth = 0
+            && not flushing
+        then
+            flushOwed <- true
+
+    /// <summary>
     /// True inside a stale read, or while a computation's body runs outside
     /// <c>untrack</c>. False inside <c>untrack</c> within a body, where the flush is
     /// deferred as well. Under <c>Serialised</c>, false on every thread other than the holder, so a stale read from
@@ -3246,6 +3257,47 @@ type Graph(options: GraphOptions) =
 #else
             if flushOwed then
                 this.SettleFlush ()
+#endif
+
+    /// <summary>
+    /// Marks the end of a stale read that has not thrown. When the outermost read owes a flush, defers
+    /// <c>SettleFlush</c> (and releasing <c>pullHeld</c>) to <c>FinishPullSettle</c> so the caller can read the node's
+    /// fields first.
+    /// </summary>
+    member internal this.ExitPullDeferSettle() : bool =
+        pullDepth <- pullDepth - 1
+
+        if pullDepth = 0 then
+            this.LeaveAmbient pullAmbient
+
+            if not (Platform.isNull lastRaised) then
+                lastRaised <- null
+
+            if flushOwed then
+                true
+            else
+#if !FABLE_COMPILER
+                if pullHeld then
+                    pullHeld <- false
+                    this.Release ()
+#endif
+                false
+        else
+            false
+
+    member internal this.FinishPullSettle() =
+#if !FABLE_COMPILER
+        if pullHeld then
+            pullHeld <- false
+
+            try
+                this.SettleFlush ()
+            finally
+                this.Release ()
+        else
+            this.SettleFlush ()
+#else
+        this.SettleFlush ()
 #endif
 
     /// <summary>
@@ -3324,13 +3376,7 @@ type Graph(options: GraphOptions) =
         Tracer.DischargeStart owner
         this.Detached (owner, owner.DisposeScope)
         Tracer.DischargeEnd owner
-
-        if
-            batchDepth = 0
-            && not flushing
-            && queueHead < queueCount
-        then
-            flushOwed <- true
+        this.OweFlush ()
 
     /// <summary>
     /// Disposes a computation's scope as <c>Discharge</c> discharges it. A node
@@ -4286,6 +4332,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             observers.NotifyDirtyExcept graph.CurrentComputation
             Tracer.Notified graph
             Tracer.RunEnd (graph, id, status)
+            graph.OweFlush ()
         else
             Tracer.RunEnd (graph, id, status)
 
@@ -4326,29 +4373,61 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         if freshness <> Freshness.Clean && not disposed then
             if graph.Deferring then this.Refresh () else this.Pull ()
 
-    /// <summary>
-    /// <c>EnsureCurrent</c>, then links this memo into the running reader. A memo still stale after the pull was
-    /// dirtied during its own run, before this edge existed: see <c>Graph.MarkReaderDirty</c>.
-    /// </summary>
-    /// <remarks>
-    /// <c>Check</c>, as <c>MarkDirty</c> tells readers. The second test sits on the stale path only, so a cached read
-    /// still costs the one comparison <c>EnsureCurrent</c> describes.
-    /// </remarks>
-    member private this.TrackCurrent() =
-        if freshness <> Freshness.Clean && not disposed then
-            if graph.Deferring then this.Refresh () else this.Pull ()
-            graph.Track (this :> ISource)
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndRead() : 'T =
+        let currentStatus = status
+        let currentFailure = failure
+        let currentValue = value
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
 
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderCheck ()
+
+        if currentStatus.HasFlag Status.Pending then
+            raise (graph.NotReady (this :> INode))
+
+        if currentStatus.HasFlag Status.Error then
+            graph.Raise currentFailure
+
+        currentValue
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndReadTry() : Reading<'T> =
+        let currentStatus = status
+        let currentFailure = failure
+        let currentValue = value
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderCheck ()
+
+        if currentStatus.HasFlag Status.Pending then
+            Pending
+        elif currentStatus.HasFlag Status.Error then
+            Failed currentFailure.Error
         else
-            graph.Track (this :> ISource)
+            Ready currentValue
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndReadUntracked() : Reading<'T> =
+        let currentStatus = status
+        let currentFailure = failure
+        let currentValue = value
+        graph.FinishPullSettle ()
+
+        if currentStatus.HasFlag Status.Pending then
+            Pending
+        elif currentStatus.HasFlag Status.Error then
+            Failed currentFailure.Error
+        else
+            Ready currentValue
 
     /// <summary>
     /// Brings a stale memo current when <c>Graph.Deferring</c> is false: outside
     /// every stale read and body, or inside <c>untrack</c> within a body.
     /// </summary>
-
     member private this.Pull() =
         graph.EnterPull ()
 
@@ -4356,6 +4435,17 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             this.Refresh ()
         finally
             graph.ExitPull ()
+
+    member private this.PullWithoutSettle() : bool =
+        graph.EnterPull ()
+
+        try
+            this.Refresh ()
+        with _ ->
+            graph.ExitPull ()
+            reraise ()
+
+        graph.ExitPullDeferSettle ()
 
     /// <summary>
     /// Brings a stale memo current.
@@ -4540,35 +4630,74 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// suspended, which is how the pending channel propagates.
     /// </summary>
     member this.Value: 'T =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    false
+                else
+                    this.PullWithoutSettle ())
+        then
+            this.SettlePullAndRead ()
+        else
+            graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
 
-        if status.HasFlag Status.Error then
-            graph.Raise failure
+            if status.HasFlag Status.Pending then
+                raise (graph.NotReady (this :> INode))
 
-        value
+            if status.HasFlag Status.Error then
+                graph.Raise failure
+
+            value
 
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
     member this.TryValue: Reading<'T> =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    false
+                else
+                    this.PullWithoutSettle ())
+        then
+            this.SettlePullAndReadTry ()
+        else
+            graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
+
+            if status.HasFlag Status.Pending then Pending
+            elif status.HasFlag Status.Error then Failed failure.Error
+            else Ready value
 
     /// <summary>
     /// Non-throwing read that brings the memo up to date without recording a dependency.
     /// </summary>
     member internal this.ReadUntracked() : Reading<'T> =
-        this.EnsureCurrent ()
-
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    false
+                else
+                    this.PullWithoutSettle ())
+        then
+            this.SettlePullAndReadUntracked ()
+        elif status.HasFlag Status.Pending then
+            Pending
+        elif status.HasFlag Status.Error then
+            Failed failure.Error
+        else
+            Ready value
 
     /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.
@@ -5825,19 +5954,42 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         if freshness <> Freshness.Clean && not disposed then
             this.Pull ()
 
-    /// <summary>
-    /// <c>EnsureCurrent</c>, then links this memo into the running reader, as on <c>Memo</c>. <c>Dirty</c>, as
-    /// <c>MarkDirty</c> tells readers.
-    /// </summary>
-    member private this.TrackCurrent() =
-        if freshness <> Freshness.Clean && not disposed then
-            this.Pull ()
-            graph.Track (this :> ISource)
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndRead() : 'T =
+        let currentStatus = status
+        let currentFailure = failure
+        let currentValue = value
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
 
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderDirty ()
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
+        if currentStatus.HasFlag Status.Pending then
+            raise (graph.NotReady (this :> INode))
+
+        if currentStatus.HasFlag Status.Error then
+            graph.Raise currentFailure
+
+        currentValue
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndReadTry() : Reading<'T> =
+        let currentStatus = status
+        let currentFailure = failure
+        let currentValue = value
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderDirty ()
+
+        if currentStatus.HasFlag Status.Pending then
+            Pending
+        elif currentStatus.HasFlag Status.Error then
+            Failed currentFailure.Error
         else
-            graph.Track (this :> ISource)
+            Ready currentValue
 
     /// <summary>
     /// Brings a stale async memo current.
@@ -5846,26 +5998,40 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         graph.EnterPull ()
 
         try
-            // Resolving `Check` matters more here than anywhere: the work it
-            // may avoid is a network round trip, not a multiplication.
-            if freshness = Freshness.Check then
-                Tracer.CheckStart (graph, id)
-                let mutable i = 0
-
-                while freshness = Freshness.Check && i < sources.Count do
-                    sources.SourceAt(i).UpdateIfNecessary()
-                    i <- i + 1
-
-                Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-
-                if freshness = Freshness.Check then
-                    freshness <- Freshness.Clean
-                    unannounced <- false
-
-            if freshness = Freshness.Dirty then
-                this.Start ()
+            this.Refresh ()
         finally
             graph.ExitPull ()
+
+    member private this.PullWithoutSettle() : bool =
+        graph.EnterPull ()
+
+        try
+            this.Refresh ()
+        with _ ->
+            graph.ExitPull ()
+            reraise ()
+
+        graph.ExitPullDeferSettle ()
+
+    member private this.Refresh() =
+        // Resolving `Check` matters more here than anywhere: the work it
+        // may avoid is a network round trip, not a multiplication.
+        if freshness = Freshness.Check then
+            Tracer.CheckStart (graph, id)
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+            if freshness = Freshness.Check then
+                freshness <- Freshness.Clean
+                unannounced <- false
+
+        if freshness = Freshness.Dirty then
+            this.Start ()
 
     interface IOwned with
         member this.Release() =
@@ -6047,25 +6213,45 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     /// Pending while a flight is in progress, except under <c>Queue</c> once an earlier flight's outcome is applied.
     /// </remarks>
     member this.Value: 'T =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && this.PullWithoutSettle ()
+        then
+            this.SettlePullAndRead ()
+        else
+            graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderDirty ()
 
-        if status.HasFlag Status.Error then
-            graph.Raise failure
+            if status.HasFlag Status.Pending then
+                raise (graph.NotReady (this :> INode))
 
-        value
+            if status.HasFlag Status.Error then
+                graph.Raise failure
+
+            value
 
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
     member this.TryValue: Reading<'T> =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && this.PullWithoutSettle ()
+        then
+            this.SettlePullAndReadTry ()
+        else
+            graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderDirty ()
+
+            if status.HasFlag Status.Pending then Pending
+            elif status.HasFlag Status.Error then Failed failure.Error
+            else Ready value
 
     /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.
@@ -6368,6 +6554,7 @@ type Boundary<'T>
             observers.NotifyDirtyExcept graph.CurrentComputation
             Tracer.Notified graph
             Tracer.RunEnd (graph, id, status)
+            graph.OweFlush ()
         else
             Tracer.RunEnd (graph, id, status)
 
@@ -6382,19 +6569,64 @@ type Boundary<'T>
         if freshness <> Freshness.Clean && not disposed then
             this.Pull ()
 
-    /// <summary>
-    /// <c>EnsureCurrent</c>, then links this boundary into the running reader, as on <c>Memo</c>. <c>Check</c>, as
-    /// <c>MarkDirty</c> tells readers.
-    /// </summary>
-    member private this.TrackCurrent() =
-        if freshness <> Freshness.Clean && not disposed then
-            this.Pull ()
-            graph.Track (this :> ISource)
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndRead() : 'T =
+        let currentStatus = status
+        let currentFailure = failure
+        let currentValue = value
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
 
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderCheck ()
+
+        if currentStatus.HasFlag Status.Pending then
+            raise (graph.NotReady (this :> INode))
+
+        if currentStatus.HasFlag Status.Error then
+            graph.Raise currentFailure
+
+        currentValue
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndReadTry() : Reading<'T> =
+        let currentStatus = status
+        let currentFailure = failure
+        let currentValue = value
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderCheck ()
+
+        if currentStatus.HasFlag Status.Pending then
+            Pending
+        elif currentStatus.HasFlag Status.Error then
+            Failed currentFailure.Error
         else
-            graph.Track (this :> ISource)
+            Ready currentValue
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndReadWaiting() : bool =
+        let currentWaiting = waiting
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderCheck ()
+
+        currentWaiting
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SettlePullAndReadCaught() : Failure =
+        let currentCaught = caught
+        graph.FinishPullSettle ()
+        graph.Track (this :> ISource)
+
+        if freshness <> Freshness.Clean && not disposed then
+            graph.MarkReaderCheck ()
+
+        currentCaught
 
     /// <summary>
     /// Brings a stale boundary current.
@@ -6403,24 +6635,38 @@ type Boundary<'T>
         graph.EnterPull ()
 
         try
-            if freshness = Freshness.Check then
-                Tracer.CheckStart (graph, id)
-                let mutable i = 0
-
-                while freshness = Freshness.Check && i < sources.Count do
-                    sources.SourceAt(i).UpdateIfNecessary()
-                    i <- i + 1
-
-                Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-
-                if freshness = Freshness.Check then
-                    freshness <- Freshness.Clean
-                    unannounced <- false
-
-            if freshness = Freshness.Dirty then
-                this.Recompute ()
+            this.Refresh ()
         finally
             graph.ExitPull ()
+
+    member private this.PullWithoutSettle() : bool =
+        graph.EnterPull ()
+
+        try
+            this.Refresh ()
+        with _ ->
+            graph.ExitPull ()
+            reraise ()
+
+        graph.ExitPullDeferSettle ()
+
+    member private this.Refresh() =
+        if freshness = Freshness.Check then
+            Tracer.CheckStart (graph, id)
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+            if freshness = Freshness.Check then
+                freshness <- Freshness.Clean
+                unannounced <- false
+
+        if freshness = Freshness.Dirty then
+            this.Recompute ()
 
     /// <summary>
     /// Detaches from every source. Idempotent, and usually called for you by
@@ -6575,16 +6821,36 @@ type Boundary<'T>
     /// construction. A tracked read that brings the boundary current, as <c>TryValue</c> does.
     /// </remarks>
     member this.IsWaiting =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && this.PullWithoutSettle ()
+        then
+            this.SettlePullAndReadWaiting ()
+        else
+            graph.Track (this :> ISource)
 
-        waiting
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
+
+            waiting
 
     /// <summary>The error the boundary recovered from on its current run, or null.</summary>
     /// <remarks>A tracked read that brings the boundary current, as <c>TryValue</c> does.</remarks>
     member this.Caught =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && this.PullWithoutSettle ()
+        then
+            Failure.ErrorOf (this.SettlePullAndReadCaught ())
+        else
+            graph.Track (this :> ISource)
 
-        Failure.ErrorOf caught
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
+
+            Failure.ErrorOf caught
 
     /// <summary>The node <c>Caught</c> originated in, or null when <c>Caught</c> is null.</summary>
     /// <remarks>
@@ -6592,9 +6858,19 @@ type Boundary<'T>
     /// the exception; the upstream node when the body rethrew the exception of a failed read.
     /// </remarks>
     member this.CaughtFrom: INode =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && this.PullWithoutSettle ()
+        then
+            Failure.OriginOf (this.SettlePullAndReadCaught ())
+        else
+            graph.Track (this :> ISource)
 
-        Failure.OriginOf caught
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
+
+            Failure.OriginOf caught
 
     /// <summary>
     /// The source of the last run's last pending read, whether or not a fallback caught it, and the source a fallback or
@@ -6620,25 +6896,45 @@ type Boundary<'T>
     /// suspends or throws.
     /// </remarks>
     member this.Value: 'T =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && this.PullWithoutSettle ()
+        then
+            this.SettlePullAndRead ()
+        else
+            graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
 
-        if status.HasFlag Status.Error then
-            graph.Raise failure
+            if status.HasFlag Status.Pending then
+                raise (graph.NotReady (this :> INode))
 
-        value
+            if status.HasFlag Status.Error then
+                graph.Raise failure
+
+            value
 
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
     member this.TryValue: Reading<'T> =
-        this.TrackCurrent ()
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && this.PullWithoutSettle ()
+        then
+            this.SettlePullAndReadTry ()
+        else
+            graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
+
+            if status.HasFlag Status.Pending then Pending
+            elif status.HasFlag Status.Error then Failed failure.Error
+            else Ready value
 
     /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.

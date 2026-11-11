@@ -1432,8 +1432,11 @@ Proof.
   apply tot_bind; [apply _|apply tot_modify; intros s9; unfold ghost_run_end; destruct (g_nodes s9 !! n); split_and!; reflexivity|intros _].
   assert (Htail : tot (xl (S (rk n))) (pt n) (fun _ => m_bind (get_node n) (fun d3 => if decide (n_freshness d3 = Clean) then m_return tt else announce n))).
   { apply (tot_node_at _ _ _ _ _ Hsn). intros d3 _. destruct (decide _); [apply tot_ret|exact (tot_announce _ _ _ _ _ _ Hsn)]. }
+  assert (Howe : tot (xl (S (rk n))) (pt n) (fun _ => m_bind m_get (fun s' => if bool_decide (g_batch_depth s' = 0) && negb (g_flushing s') && live_queue s' then m_modify (with_flush_owed true) else m_return tt))).
+  { apply tot_bind; [apply _|apply tot_get|intros s9]. destruct (_ && _ && _); [apply tot_modify; intros ?; split_and!; reflexivity|apply tot_ret]. }
   destruct moved.
   - refine (tot_ule _ _ _ _ _ _ (tot_seq (Z.of_nat (cost n)) 0 _ (pt n) (pt n) _ _ (fun s s' G G' K Hp => ts _ _ _ _ G G' K Hp) _ (fun _ => Htail))); [lia|].
+    refine (tot_ule _ _ _ _ _ _ (tot_seq (Z.of_nat (cost n)) 0 _ (pt n) (pt n) _ _ (fun s s' G G' K Hp => ts _ _ _ _ G G' K Hp) _ (fun _ => Howe))); [lia|].
     refine (tot_weaken _ _ _ _ _ _ _ (notify_budget n _ n_lim)); [done|done].
   - apply tot_bind; [apply _|apply tot_ret|intros _]. refine (tot_ule _ _ _ _ _ _ Htail). lia.
 Qed.
@@ -1561,13 +1564,17 @@ Lemma rop_post (Hup' : forall t, rk t < rk n -> Rd t -> tot (xl (rk n)) (pt t) (
   exists s' a, ev_m (fun f => refresh_or_pull f n) s (s', a) /\ gd s' /\ kept 0 (xl (S (rk n))) s s' /\ rpost s s'.
 Proof.
   intros G C Hp. destruct (deferring s) eqn:Ed.
-  - destruct (refresh_post Hup' s G C Hp) as (s'&a&[N Ev]&G'&K&Rp). exists s', a. split_and!; [|done|done|done].
-    exists (S N). intros f Hf. destruct f as [|f]; [lia|]. cbn [refresh_or_pull]. rewrite bind_get, Ed. apply Ev. lia.
+  - destruct (refresh_post Hup' s G C Hp) as (s'&a&[N Ev]&G'&K&Rp).
+    destruct (gd_node s' n _ G' Hsn) as (d'&Hd'&_).
+    exists s', d'. split_and!; [|done|done|done].
+    exists (S N). intros f Hf. destruct f as [|f]; [lia|]. cbn [refresh_or_pull]. rewrite bind_get, Ed.
+    unfold m_bind at 1. rewrite (Ev f) by lia. unfold get_node. by rewrite Hd'.
   - set (s1 := with_pull_depth (S (g_pull_depth s)) s).
     assert (G1 : gd s1) by (destruct G; split; done).
     assert (C1 : tk_ctx s1) by exact C.
     assert (P1 : pt n s1) by exact Hp.
     destruct (refresh_post Hup' s1 G1 C1 P1) as (s2&a2&[N Ev]&G2&K&Rp).
+    destruct (gd_node s2 n _ G2 Hsn) as (d2&Hd2&_).
     set (s3 := with_pull_depth (pred (g_pull_depth s2)) s2).
     assert (G3 : gd s3) by (destruct G2; split; done).
     assert (Hm1 : mu s1 = mu s) by exact (mu_eq _ _ eq_refl eq_refl eq_refl).
@@ -1577,10 +1584,11 @@ Proof.
     assert (C3 : tk_ctx s3).
     { unfold tk_ctx in *. change (g_flushing s2 = true \/ 0 < g_batch_depth s2). rewrite D, F. exact C1. }
     destruct (settle_same s3 C3) as [N3 E3].
-    exists s3, tt. split_and!.
+    exists s3, d2. split_and!.
     + exists (S (S (S (N `max` N3)))). intros f Hf. destruct f as [|[|f]]; [lia|lia|]. cbn [refresh_or_pull pull]. rewrite bind_get, Ed, bind_m_modify. cbv beta.
-      fold s1. unfold m_bind at 1. rewrite (Ev f) by lia. destruct a2. rewrite bind_m_modify, bind_get. cbv beta. fold s3.
-      destruct (_ && _); [apply E3; lia|reflexivity].
+      fold s1. unfold m_bind at 1. rewrite (Ev f) by lia. destruct a2.
+      unfold m_bind at 1, get_node at 1. rewrite Hd2, bind_m_modify, bind_get. cbv beta. fold s3.
+      destruct (_ && _); [unfold m_bind at 1; rewrite (E3 f) by lia; reflexivity|reflexivity].
     + done.
     + split; try done.
     + intros Hst. rewrite Hst3 in Hst. pose proof (Rp Hst). lia.
@@ -1614,7 +1622,7 @@ Proof.
     { exact (rop_post k _ _ _ Hs Hr Hbl Hbu). }
     split.
     + apply tot_S. cbn [read_node]. apply (tot_node_at _ _ _ _ _ Hs). intros d Hd. unfold shape_of in Hd. injection Hd as -> _ _ _.
-      apply tot_bind; [apply _| |intros _].
+      apply tot_bind; [apply _| |intros d'].
       * destruct (stale_live d) eqn:Esl.
         -- intros s G C Hp. destruct (Hrp s G C Hp) as (s1&a1&Ev1&G1&K1&Rp).
            assert (C1 : tk_ctx s1) by (unfold tk_ctx in *; rewrite (kp_flu _ _ _ _ K1), (kp_bat _ _ _ _ K1); exact C).
@@ -1628,8 +1636,9 @@ Proof.
            destruct (gd_node s2 k _ G2 Hs) as (d2&Hd2&Hsh2). unfold shape_of in Hsh2. injection Hsh2 as Hk2 _ _ _.
            destruct (stale_live d2) eqn:Es2.
            ++ destruct (reader_budget k (Hlim _ _ Hs) s2 G2 C2 P2) as (s3&a3&[N3 E3]&G3&K3).
-              exists s3, a3. split_and!; [|done|].
-              ** eapply ev_bind; [exact Ev1|]. eapply ev_bind; [exists 0; intros f _; exact Et|].
+              exists s3, a1. split_and!; [|done|].
+              ** eapply ev_bind; [exact Ev1|]. eapply ev_bind; [|exists 0; intros f _; reflexivity].
+                 eapply ev_bind; [exists 0; intros f _; exact Et|].
                  exists N3. intros f Hf. unfold m_bind, get_node. rewrite Hd2, Es2. exact (E3 f Hf).
               ** pose proof (kp_mu _ _ _ _ K3) as M3.
                  assert (Hst : 0 < stale_w s1 k).
@@ -1639,13 +1648,17 @@ Proof.
                  destruct K1 as [A1 B1 D1 F1 _]. destruct K2 as [A2 B2 D2 F2 _]. destruct K3 as [A3 B3 D3 F3 _].
                  split; try congruence; [|lia].
                  intros c0 Hx Hcr. rewrite A3, A2, A1; [done|done|done|done|congruence|intros []|congruence].
-           ++ exists s2, a2. split_and!; [|done|exact (kept_trans _ _ _ _ _ _ K1 K2)].
-              eapply ev_bind; [exact Ev1|]. eapply ev_bind; [exists 0; intros f _; exact Et|].
+           ++ exists s2, a1. split_and!; [|done|exact (kept_trans _ _ _ _ _ _ K1 K2)].
+              eapply ev_bind; [exact Ev1|]. eapply ev_bind; [|exists 0; intros f _; reflexivity].
+              eapply ev_bind; [exists 0; intros f _; exact Et|].
               exists 0. intros f _. unfold m_bind, get_node. rewrite Hd2, Es2. destruct a2. reflexivity.
-        -- apply tot_track. exact Hr.
-      * apply (tot_node_at _ _ _ _ _ Hs). intros d' _. destruct (n_status d'); apply tot_ret.
+        -- apply tot_bind; [apply _|apply tot_track; exact Hr|intros _].
+           apply tot_const. intros s0 G0 _ _. destruct (gd_node s0 k _ G0 Hs) as (d0&Hd0&_). unfold get_node. rewrite Hd0. exists s0, d0. split_and!; [done|done|apply kept_refl].
+      * destruct (n_status d'); apply tot_ret.
     + apply tot_S. cbn [update_if_necessary]. apply (tot_node_at _ _ _ _ _ Hs). intros d Hd. unfold shape_of in Hd. injection Hd as -> _ _ _.
-      destruct (stale_live d); [|apply tot_ret]. intros s G C Hp. destruct (Hrp s G C Hp) as (s1&a1&Ev1&G1&K1&_). exists s1, a1. done.
+      destruct (stale_live d); [|apply tot_ret].
+      apply tot_bind; [apply _| |intros _]; [|apply tot_ret].
+      intros s G C Hp. destruct (Hrp s G C Hp) as (s1&a1&Ev1&G1&K1&_). exists s1, a1. done.
 Qed.
 
 (**md
@@ -2766,16 +2779,17 @@ Proof.
     destruct (b_window _ (proj1 (proj2 Hc))) as (_&_&Wsig&_).
     pose proof (quiet_denotes s (proj1 Hw) Hc Hnp n d Hd Hp (or_introl (or_introl (Wsig n d Hd Ek)))) as Hden.
     rewrite Hden. unfold view_answer, read_view_of. simpl. rewrite (proj1 (w_signal _ (proj1 Hw) n d Hd Ek)). split_and!; [done|apply keepq_refl|apply keepd_refl].
-  - apply bind_inv in Hrd as (s2' & [] & H1 & Hrd).
+  - apply bind_inv in Hrd as (s2' & d' & H1 & Hrd).
     destruct (stale_live d) eqn:El.
     + assert (Hl : n_disposed d = false) by (unfold stale_live in El; destruct (n_disposed d); [by rewrite andb_false_r in El|done]).
       apply bind_inv in H1 as (s1 & a1 & Hrp & H1).
+      apply bind_inv in H1 as (s2'' & [] & H1 & Hret). unfold m_return in Hret. injection Hret as <- <-.
       destruct f' as [|f']; [done|]. cbn [refresh_or_pull] in Hrp. rewrite bind_get in Hrp.
       assert (Hdf : deferring s = false) by (unfold deferring; rewrite Hcur, Hpl; done).
       rewrite Hdf in Hrp. destruct f' as [|f']; [done|]. cbn [pull] in Hrp. rewrite bind_m_modify in Hrp.
       set (s0 := with_pull_depth (S (g_pull_depth s)) s) in Hrp.
       assert (H0 : same4 s s0) by done.
-      apply bind_inv in Hrp as (sb & a2 & Hrf & Hrp). rewrite bind_m_modify, bind_get in Hrp.
+      apply bind_inv in Hrp as (sb & a2 & Hrf & Hrp).
       assert (Hc0 : run_core s0) by (by apply core_pull).
       assert (Hw0 : wk0 s0) by (apply (wk_same s); [split_and!; done|exact Hw]).
       assert (Hdf0 : deferring s0 = true) by (unfold deferring; change (g_current s) with (g_current s0) in Hcur; rewrite Hcur; apply bool_decide_eq_true_2; simpl; lia).
@@ -2784,22 +2798,23 @@ Proof.
       assert (Hd0 : g_nodes s0 !! n = Some d) by exact Hd.
       destruct (Aref _ (A_ok_all f') (fun _ => False) (S (rk n)) n s0 sb a2 d (conj Hc0 (conj (proj1 Hw0) St)) ltac:(lia) Hp0 Hd0 Ek Hl Hrf) as ((Hcb&Hwb&_)&A&[Dq _]).
       destruct Dq as (e&He1&Qe).
+      rewrite (bind_get_node _ _ _ _ He1), bind_m_modify, bind_get in Hrp.
       set (s2 := with_pull_depth (pred (g_pull_depth sb)) sb) in Hrp.
       assert (Hbat : 0 < g_batch_depth s2) by (change (0 < g_batch_depth sb); rewrite (at_batch _ _ _ _ _ A); exact Hbt).
-      assert (Hs1 : s1 = s2).
+      assert (Hs1 : s1 = s2 /\ a1 = e).
       { destruct (bool_decide (g_pull_depth s2 = 0) && g_flush_owed s2).
-        - destruct f' as [|f']; [done|]. cbn [settle_flush] in Hrp. rewrite bind_get in Hrp.
+        - destruct f' as [|f']; [done|]. cbn [settle_flush] in Hrp. rewrite bind_bind, bind_get in Hrp. cbv beta in Hrp.
           assert (Hb0 : bool_decide (g_batch_depth s2 = 0) = false) by (apply bool_decide_eq_false_2; lia).
-          rewrite Hb0, andb_false_r in Hrp. simpl in Hrp. unfold m_return in Hrp. by injection Hrp as <-.
-        - unfold m_return in Hrp. by injection Hrp as <-. }
-      subst s1.
+          rewrite Hb0, andb_false_r in Hrp. simpl in Hrp. unfold m_return, m_bind in Hrp. by injection Hrp as <- <-.
+        - unfold m_return, m_bind in Hrp. by injection Hrp as <- <-. }
+      destruct Hs1 as [-> ->].
       assert (Hc1cur : g_current s2 = None) by (change (g_current sb = None); rewrite (at_current _ _ _ _ _ A); exact Hcur).
       assert (Ht1 : track n s2 = Some (s2, tt)) by (unfold track, live_current; by rewrite Hc1cur).
       assert (He2 : g_nodes s2 !! n = Some e) by exact He1.
       rewrite (bind_some _ _ _ _ _ Ht1), (bind_get_node _ _ _ _ He2) in H1.
-      assert (Hs2 : s2' = s2).
-      { destruct (stale_live e); [unfold mark_reader in H1; rewrite Hc1cur in H1|]; unfold m_return in H1; by injection H1 as <-. }
-      subst s2'. rewrite (bind_get_node _ _ _ _ He2) in Hrd. destruct (read_answer _ _ _ _ Hrd) as [Es' ->].
+      assert (Hs2 : s2'' = s2).
+      { destruct (stale_live e); [unfold mark_reader in H1; rewrite Hc1cur in H1|]; unfold m_return, m_bind in H1; by injection H1 as <-. }
+      subst s2''. destruct (read_answer _ _ _ _ Hrd) as [Es' ->].
       assert (Hrnb : forall m, m ∈ g_running sb -> ~ pure_in (shapes sb) m).
       { intros m Hin. rewrite (at_shapes _ _ _ _ _ A). rewrite (at_running _ _ _ _ _ A) in Hin. exact (Hnp m Hin). }
       assert (Hpb2 : pure_in (shapes sb) n) by (rewrite (at_shapes _ _ _ _ _ A); exact Hp0).
@@ -2813,8 +2828,8 @@ Proof.
       { destruct (stale (n_freshness d)) eqn:Es; simpl in El.
         - right. destruct (n_disposed d); done.
         - left. left. destruct (n_freshness d); done. }
-      rewrite Htrack in H1. injection H1 as <-.
-      rewrite (bind_get_node _ _ _ _ Hd) in Hrd. destruct (read_answer _ _ _ _ Hrd) as [Es' ->]. rewrite Es'.
+      rewrite (bind_some _ _ _ _ _ Htrack) in H1. unfold get_node in H1. rewrite Hd in H1. injection H1 as <- <-.
+      destruct (read_answer _ _ _ _ Hrd) as [Es' ->]. rewrite Es'.
       split_and!; [exact (quiet_denotes s (proj1 Hw) Hc Hnp n d Hd Hp Hq0)|apply keepq_refl|apply keepd_refl].
   - done.
 Qed.

@@ -1026,9 +1026,9 @@ val read_node : nat -> node_id -> outcome m
 
 val update_if_necessary : nat -> node_id -> unit0 m
 
-val refresh_or_pull : nat -> node_id -> unit0 m
+val refresh_or_pull : nat -> node_id -> node m
 
-val pull : nat -> node_id -> unit0 m
+val pull : nat -> node_id -> node m
 
 val refresh : nat -> node_id -> unit0 m
 
@@ -1125,9 +1125,9 @@ val oread_node : nat -> node_id -> outcome m
 
 val oupdate_if_necessary : nat -> node_id -> unit0 m
 
-val orefresh_or_pull : nat -> node_id -> unit0 m
+val orefresh_or_pull : nat -> node_id -> node m
 
-val opull : nat -> node_id -> unit0 m
+val opull : nat -> node_id -> node m
 
 val orefresh : nat -> node_id -> unit0 m
 

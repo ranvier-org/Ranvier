@@ -1415,12 +1415,13 @@ Section Step.
     - apply (ok_weaken (has_kind n KSignal)); [intros s [_ Hd]; by exists d|].
       apply ok_bind; [apply _|apply ok_track; done|intros _; apply ok_return].
     - apply (ok_weaken (has_kind n KMemo)); [intros s [_ Hd]; by exists d|].
-      apply ok_bind; [apply _| |intros _; go IH].
+      apply ok_bind; [apply _| |intros d_ans; go IH].
       destruct (stale_live d).
-      + apply ok_bind; [apply _|ih IH|intros _].
+      + apply ok_bind; [apply _|ih IH|intros d'].
+        apply ok_bind; [apply _| |intros _; apply ok_return].
         apply ok_bind; [apply _|apply ok_track; done|intros _].
         go IH.
-      + apply ok_track. done.
+      + apply ok_bind; [apply _|apply ok_track; done|intros _; go IH].
     - apply ok_stuck.
   Qed.
 
@@ -1429,22 +1430,23 @@ Section Step.
     cbn [update_if_necessary]. apply ok_get_node_at. intros d.
     destruct (n_kind d) eqn:Ek; try apply ok_return.
     destruct (stale_live d); [|apply ok_return].
-    apply (ok_weaken (has_kind n KMemo)); [intros s [_ Hd]; by exists d|]. ih IH.
+    apply (ok_weaken (has_kind n KMemo)); [intros s [_ Hd]; by exists d|]. go IH.
   Qed.
 
   Lemma ok_refresh_or_pull_S n : ok_under (has_kind n KMemo) (refresh_or_pull (S f) n).
   Proof.
     cbn [refresh_or_pull]. apply ok_bind; [apply _|apply ok_get|intros s].
-    destruct (deferring s); ih IH.
+    destruct (deferring s); go IH.
   Qed.
 
   Lemma ok_pull_S n : ok_under (has_kind n KMemo) (pull (S f) n).
   Proof.
     cbn [pull]. apply ok_bind; [apply _|apply ok_modify_irrelevant; intros ?; irr|intros _].
     apply ok_bind; [apply _|ih IH|intros _].
+    apply ok_bind; [apply _|apply ok_get_node|intros d].
     apply ok_bind; [apply _|apply ok_modify_irrelevant; intros ?; irr|intros _].
     apply ok_bind; [apply _|apply ok_get|intros s].
-    destruct (_ && _); [apply ok_any; ih IH|apply ok_return].
+    apply ok_bind; [apply _|destruct (_ && _); [apply ok_any; ih IH|apply ok_return]|intros _; apply ok_return].
   Qed.
 
   Lemma ok_refresh_S n : ok_under (has_kind n KMemo) (refresh (S f) n).
@@ -1676,18 +1678,25 @@ Section Step.
     assert (Hs11 : exists s11, K11 tt s11 = Some (s', a) /\ check_invariant s11 /\ frame s10 s11).
     { assert (Hreach : world_reachable (g_edges s10)) by apply (ci_reachable _ _ _ Hi10).
       destruct mv.
-      - apply bind_step in Hm10 as (s11 & Hn & Hm11).
-        exists s11. split; [exact Hm11|].
-        apply (invariant_told n d3 s10 G); [done|done|done|done|done|simpl; set_solver| |].
-        + eapply (any_mark_rtc f n (g_current s10)). right; right; right; right. done.
-        + intros c dc Hc Hkc Hpre.
-          destruct (decide (g_current s10 = Some c)) as [Hr|Hr].
-          * right. right. subst G. simpl. unfold run_end_unnoticed. rewrite Hr.
-            rewrite decide_True by done. set_solver.
-          * right. left. eapply (notify_dirty_ends_dirty f n (g_current s10) (with_ghost G s10)).
-            -- by apply prefix_observer.
-            -- exists dc. split; [done|by left].
-            -- right. split; [exact Hn|done].
+      - rewrite bind_bind in Hm10. apply bind_step in Hm10 as (s11a & Hn & Hm11).
+        rewrite bind_bind, bind_get in Hm11. cbv beta in Hm11.
+        assert (H11a : check_invariant s11a /\ frame s10 s11a).
+        { apply (invariant_told n d3 s10 G); [done|done|done|done|done|simpl; set_solver| |].
+          - eapply (any_mark_rtc f n (g_current s10)). right; right; right; right. done.
+          - intros c dc Hc Hkc Hpre.
+            destruct (decide (g_current s10 = Some c)) as [Hr|Hr].
+            + right. right. subst G. simpl. unfold run_end_unnoticed. rewrite Hr.
+              rewrite decide_True by done. set_solver.
+            + right. left. eapply (notify_dirty_ends_dirty f n (g_current s10) (with_ghost G s10)).
+              * by apply prefix_observer.
+              * exists dc. split; [done|by left].
+              * right. split; [exact Hn|done]. }
+        destruct H11a as [Hi11a F11a].
+        destruct (bool_decide (g_batch_depth s11a = 0) && negb (g_flushing s11a) && live_queue s11a).
+        + rewrite bind_m_modify in Hm11. exists (with_flush_owed true s11a). split; [exact Hm11|].
+          split; [eapply invariant_irrelevant; [|exact Hi11a]; irr|].
+          eapply frame_trans; [exact F11a|]. apply frame_irrelevant; irr.
+        + rewrite bind_m_return in Hm11. exists s11a. done.
       - rewrite bind_m_return in Hm10. exists (with_ghost G s10). split; [exact Hm10|].
         apply (invariant_told n d3 s10 G); [done|done|done|done|done|simpl; set_solver|apply rtc_refl|].
         intros c dc Hc Hkc Hpre. subst G. simpl. unfold run_end_unnoticed.
@@ -2291,7 +2300,7 @@ Proof.
   intros Hd Hk Hdisp Hr. destruct f as [|f]; [done|]. cbn [read_node] in Hr.
   rewrite (bind_get_node _ _ _ _ Hd), Hk in Hr.
   assert (Hl : stale_live d = false) by (unfold stale_live; rewrite Hdisp; apply andb_false_r).
-  rewrite Hl in Hr. unfold m_bind in Hr.
+  rewrite Hl, bind_bind in Hr. unfold m_bind in Hr.
   destruct (track n s) as [[s1 []]|] eqn:Et; [|done].
   apply track_nodes in Et.
   assert (Hd1 : g_nodes s1 !! n = Some d) by (by rewrite Et).

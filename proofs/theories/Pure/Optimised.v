@@ -319,14 +319,17 @@ with oread_node (fuel : nat) (n : node_id) {struct fuel} : M outcome :=
       m_return (Ok (n_value d))
     | KEffect => stuck
     | KMemo =>
-      let* _ :=
+      let* d' :=
         if stale_live d then
-          let* _ := orefresh_or_pull f n in
+          let* d' := orefresh_or_pull f n in
+          let* _ :=
+            let* _ := otrack n in
+            let* d'' := get_node n in
+            if stale_live d'' then mark_reader f else m_return tt in
+          m_return d'
+        else
           let* _ := otrack n in
-          let* d' := get_node n in
-          if stale_live d' then mark_reader f else m_return tt
-        else otrack n in
-      let* d' := get_node n in
+          get_node n in
       match n_status d' with
       | StError => m_return (Fail (default 0%Z (n_failure d')))
       | _ => m_return (Ok (n_value d'))
@@ -340,28 +343,34 @@ with oupdate_if_necessary (fuel : nat) (n : node_id) {struct fuel} : M unit :=
   | S f =>
     let* d := get_node n in
     match n_kind d with
-    | KMemo => if stale_live d then orefresh_or_pull f n else m_return tt
+    | KMemo => if stale_live d then let* _ := orefresh_or_pull f n in m_return tt else m_return tt
     | _ => m_return tt
     end
   end
 
-with orefresh_or_pull (fuel : nat) (n : node_id) {struct fuel} : M unit :=
+with orefresh_or_pull (fuel : nat) (n : node_id) {struct fuel} : M node :=
   match fuel with
   | 0 => stuck
   | S f =>
     let* s := m_get in
-    if deferring s then orefresh f n else opull f n
+    if deferring s then
+      let* _ := orefresh f n in
+      get_node n
+    else opull f n
   end
 
-with opull (fuel : nat) (n : node_id) {struct fuel} : M unit :=
+with opull (fuel : nat) (n : node_id) {struct fuel} : M node :=
   match fuel with
   | 0 => stuck
   | S f =>
     let* _ := m_modify (fun s => with_pull_depth (S (g_pull_depth s)) s) in
     let* _ := orefresh f n in
+    let* d := get_node n in
     let* _ := m_modify (fun s => with_pull_depth (pred (g_pull_depth s)) s) in
     let* s := m_get in
-    if bool_decide (g_pull_depth s = 0%nat) && g_flush_owed s then osettle_flush f else m_return tt
+    let* _ :=
+      if bool_decide (g_pull_depth s = 0%nat) && g_flush_owed s then osettle_flush f else m_return tt in
+    m_return d
   end
 
 with orefresh (fuel : nat) (n : node_id) {struct fuel} : M unit :=
@@ -465,7 +474,14 @@ with orun_memo (fuel : nat) (n : node_id) {struct fuel} : M unit :=
         end in
     let* s := m_get in
     let* _ := m_modify (ghost_run_end n (g_current s) moved) in
-    let* _ := if moved then m_step (notify_dirty_except f n (g_current s)) else m_return tt in
+    let* _ :=
+      if moved then
+        let* _ := m_step (notify_dirty_except f n (g_current s)) in
+        let* s' := m_get in
+        if bool_decide (g_batch_depth s' = 0%nat) && negb (g_flushing s') && live_queue s'
+        then m_modify (with_flush_owed true)
+        else m_return tt
+      else m_return tt in
     let* d3 := get_node n in
     if decide (n_freshness d3 = Clean) then m_return tt else oannounce n
   end

@@ -329,4 +329,79 @@ let tests =
                     [ "effect 0"; "read"; "body start"; "body end"; "effect 1"; "returned" ]
                     "the effect ran once the body finished"
             }
+
+            test "a read whose pull settles an owed flush returns the value computed before the flush's effects write" {
+                let g = new Graph ()
+                let s = Signal (g, 0)
+                let t = Signal (g, 0)
+
+                let a =
+                    Make.Memo (
+                        g,
+                        fun _ ->
+                            g.Batch (fun () -> ())
+                            s.Value
+                    )
+
+                new Effect (
+                    g,
+                    fun () ->
+                        let v = t.Value
+                        let _ = a.Value
+
+                        if v <> 0 then
+                            s.Value <- 9
+                )
+                |> ignore
+
+                try
+                    g.Batch (fun () ->
+                        s.Value <- 1
+                        t.Value <- 1
+                        failwith "boom")
+                with _ ->
+                    ()
+
+                Expect.equal a.Value 1 "the read answers what the pull computed before the settled flush wrote 9"
+                Expect.equal s.Peek 9 "and the settled flush still ran before the read returned"
+                Expect.equal a.Value 9 "the next read observes the flush's write"
+            }
+
+            test "a stale read whose recomputation moves a memo owes a flush and drains woken effects on ExitPull" {
+                let g = new Graph ()
+                let h = Signal (g, 0)
+                let k = Signal (g, 0)
+                let s = Signal (g, 0)
+
+                let y =
+                    Make.Memo (
+                        g,
+                        (fun _ ->
+                            let v = k.Value
+                            g.OnCleanup (fun () -> s.Value <- 50)
+                            v * 0),
+                        true
+                    )
+
+                let x =
+                    Make.Memo (
+                        g,
+                        fun _ ->
+                            let _ = h.Value
+                            let v = s.Value
+                            let _ = y.Value
+                            v
+                    )
+
+                let seen = ResizeArray ()
+                let e = new Effect (g, (fun () -> seen.Add x.Value))
+
+                g.Batch (fun () ->
+                    h.Value <- 1
+                    k.Value <- 1)
+
+                Expect.equal x.Value 50 "the read recomputes x to 50"
+                Expect.equal e.Runs 2 "the read's move owed a flush that ran the woken effect on ExitPull"
+                Expect.sequenceEqual seen [ 0; 50 ] "the effect observed 50 without needing an explicit Flush"
+            }
         ]

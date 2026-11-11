@@ -1478,6 +1478,8 @@ Local Ltac sgo1 IH :=
     | (apply sok_any; sih IH)
     | (apply (sok_weaken _ _ run_ctx); [intros ? [_ G]; exact G|apply (Sdischarge _ IH)])
     | (apply (sok_weaken _ _ run_ctx); [intros ? [_ G]; right; exact G|apply (Sdischarge _ IH)])
+    | (apply (sok_weaken _ _ run_ctx); [intros ? [_ G]; exact G|apply sok_owe])
+    | (apply (sok_weaken _ _ run_ctx); [intros ? [_ G]; right; exact G|apply sok_owe])
     | (apply sok_hosted; [intros ? [_ G]; exact G|sih IH])
     | (apply sok_hosted; [intros ? [_ G]; right; exact G|sih IH])
     | (apply sok_any; apply sok_detached; sih IH)
@@ -1557,14 +1559,16 @@ Section Step.
     cbn [update_if_necessary]. apply sok_get_node_at. intros d.
     destruct (n_kind d) eqn:Ek; try apply sok_return.
     destruct (stale_live d); [|apply sok_return].
-    apply (sok_weaken _ _ (has_kind n KMemo)); [intros s [_ Hd]; by exists d|]. sih IH.
+    apply (sok_weaken _ _ (has_kind n KMemo)); [intros s [_ Hd]; by exists d|]. sgo IH.
   Qed.
 
   Lemma sok_rop_S x n : sok x x (has_kind n KMemo) (refresh_or_pull (S f) n).
   Proof.
     intros s s' a Hi Hk Hm. cbn [refresh_or_pull] in Hm. rewrite bind_get in Hm.
     destruct (deferring s) eqn:Ed.
-    - eapply (Srefresh _ IH); [done| |exact Hm]. split; [done|].
+    - unfold m_bind in Hm. destruct (refresh f n s) as [[s1 []]|] eqn:Er; [|done].
+      unfold get_node in Hm. destruct (g_nodes s1 !! n) as [d1|]; [|done]. simplify_eq.
+      eapply (Srefresh _ IH); [done| |exact Er]. split; [done|].
       pose proof Hi as (_&[_ _ B3]&_). unfold deferring in Ed. destruct (g_current s) as [c|] eqn:Ec.
       + apply B3. left. by eexists.
       + left. apply bool_decide_eq_true in Ed. done.
@@ -1583,6 +1587,8 @@ Section Step.
       - split; [exact B1|exact B2|intros _; left; simpl; lia].
       - intros _. left. simpl. lia. }
     unfold m_bind in Hm. destruct (refresh f n s0) as [[s1 []]|] eqn:E; [|done].
+    unfold get_node, m_modify, m_get in Hm. destruct (g_nodes s1 !! n) as [d1|] eqn:Ed1; [|done].
+    cbv beta iota in Hm.
     assert (Hm0 : memo_ctx n s0).
     { split; [|left; simpl; lia]. destruct Hk as (d&Hd&Hkd). by exists d. }
     destruct (Srefresh _ IH x n _ _ _ Hi0 Hm0 E) as [(Ha1&[C1 C2 C3]&Hc1) (Bal&Dr&Cl)].
@@ -1596,16 +1602,15 @@ Section Step.
     assert (F2 : post s s2).
     { unfold post. split_and!; [|done|done]. split; simpl; try done.
       rewrite Q4. simpl. done. }
-    unfold m_get in Hm. simpl in Hm.
     assert (Hp2 : g_pull_depth s2 = g_pull_depth s) by (simpl; rewrite Q4; done).
-    change (g_flush_owed s1) with (g_flush_owed s2) in Hm.
-    destruct (bool_decide (pred (g_pull_depth s1) = 0%nat) && g_flush_owed s2) eqn:Es.
-    - destruct (Ssettle _ IH x _ _ _ Hd2 Hc2 Hm) as [H3 F3].
+    destruct (bool_decide (g_pull_depth s2 = 0%nat) && g_flush_owed s2) eqn:Es.
+    - destruct (settle_flush f s2) as [[s3 []]|] eqn:Esf; [|done]. unfold m_return in Hm. simplify_eq.
+      destruct (Ssettle _ IH x _ _ _ Hd2 Hc2 Esf) as [H3 F3].
       split; [done|]. by eapply post_trans.
     - unfold m_return in Hm. simplify_eq. split; [|done].
       unfold sched_inv. split_and!; [done|done|]. intros Ho.
       apply andb_false_iff in Es as [Es|Es]; [|exfalso; simpl in *; congruence].
-      apply bool_decide_eq_false in Es. left. simpl. lia.
+      apply bool_decide_eq_false in Es. left. simpl in *. lia.
   Qed.
 
   Lemma sok_refresh_S x n : sok x x (memo_ctx n) (refresh (S f) n).
@@ -2495,9 +2500,16 @@ Proof.
     assert (Hrt : rtc mark_prim s1 s2).
     { apply (any_mark_rtc f n (g_current s)). unfold any_mark. tauto. }
     destruct (mf_forward _ _ (marks_fixed _ _ Hrt) n d Hd1) as (d2&Hd2&_&_&_&Hv).
-    unfold m_bind at 1, m_step. rewrite Hn.
-    destruct (run_finish_tail n s2 d2 Hd2) as (s'&d'&H1&H2&H3).
-    exists s', d'. split_and!; [exact H1|exact H2|congruence].
+    rewrite bind_bind. unfold m_bind at 1, m_step. rewrite Hn. rewrite bind_bind, bind_get. cbv beta.
+    set (s3 := if bool_decide (g_batch_depth s2 = 0) && negb (g_flushing s2) && live_queue s2 then with_flush_owed true s2 else s2).
+    assert (Hd3 : g_nodes s3 !! n = Some d2) by (unfold s3; by destruct (_ && _ && _)).
+    destruct (bool_decide (g_batch_depth s2 = 0) && negb (g_flushing s2) && live_queue s2) eqn:Eo.
+    + rewrite bind_m_modify. fold s3.
+      destruct (run_finish_tail n s3 d2 Hd3) as (s'&d'&H1&H2&H3).
+      exists s', d'. split_and!; [exact H1|exact H2|congruence].
+    + rewrite bind_m_return. fold s3.
+      destruct (run_finish_tail n s3 d2 Hd3) as (s'&d'&H1&H2&H3).
+      exists s', d'. split_and!; [exact H1|exact H2|congruence].
   - rewrite bind_m_return. destruct (run_finish_tail n s1 d Hd1) as (s'&d'&H1&H2&H3). eauto.
 Qed.
 
