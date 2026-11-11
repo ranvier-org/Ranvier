@@ -2369,9 +2369,10 @@ type state = { g_flags : flags; g_edges : edgeWorld;
                g_pull_depth : nat; g_current : node_id option;
                g_untracked : bool; g_current_owner : owner_id option;
                g_next_id : nat; g_trace : event list;
-               g_running : node_id list; g_ghost : ghost;
-               g_registered : (node_id, nat) gmap; g_skip : skip_mode;
-               g_epoch : nat; g_stamps : (node_id, nat) gmap }
+               g_running : node_id list; g_checking : node_id list;
+               g_ghost : ghost; g_registered : (node_id, nat) gmap;
+               g_skip : skip_mode; g_epoch : nat;
+               g_stamps : (node_id, nat) gmap }
 
 (** val node_marked : freshness -> bool -> bool -> node -> node **)
 
@@ -2394,9 +2395,9 @@ let set_node n0 d s =
     g_batch_depth = s.g_batch_depth; g_pull_depth = s.g_pull_depth;
     g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
     s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
-    g_running = s.g_running; g_ghost = s.g_ghost; g_registered =
-    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
-    s.g_stamps }
+    g_running = s.g_running; g_checking = s.g_checking; g_ghost = s.g_ghost;
+    g_registered = s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch;
+    g_stamps = s.g_stamps }
 
 (** val enqueue : node_id -> state -> state **)
 
@@ -2407,9 +2408,9 @@ let enqueue n0 s =
     g_batch_depth = s.g_batch_depth; g_pull_depth = s.g_pull_depth;
     g_current = s.g_current; g_untracked = s.g_untracked; g_current_owner =
     s.g_current_owner; g_next_id = s.g_next_id; g_trace = s.g_trace;
-    g_running = s.g_running; g_ghost = s.g_ghost; g_registered =
-    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
-    s.g_stamps }
+    g_running = s.g_running; g_checking = s.g_checking; g_ghost = s.g_ghost;
+    g_registered = s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch;
+    g_stamps = s.g_stamps }
 
 (** val walk_marks :
     (node_id -> state -> state option) -> node_id -> nat -> state -> state
@@ -2595,8 +2596,9 @@ let with_edges v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_owners : (owner_id, owner_state) gmap -> state -> state **)
 
@@ -2607,8 +2609,9 @@ let with_owners v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_queue : node_id list -> state -> state **)
 
@@ -2619,8 +2622,9 @@ let with_queue v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_queue_head : nat -> state -> state **)
 
@@ -2631,8 +2635,9 @@ let with_queue_head v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_flushing : bool -> state -> state **)
 
@@ -2643,8 +2648,9 @@ let with_flushing v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_flush_owed : bool -> state -> state **)
 
@@ -2655,8 +2661,9 @@ let with_flush_owed v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_batch_depth : nat -> state -> state **)
 
@@ -2666,9 +2673,9 @@ let with_batch_depth v s =
     g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
     v; g_pull_depth = s.g_pull_depth; g_current = s.g_current; g_untracked =
     s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
-    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_checking =
+    s.g_checking; g_ghost = s.g_ghost; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_pull_depth : nat -> state -> state **)
 
@@ -2678,9 +2685,9 @@ let with_pull_depth v s =
     g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
     s.g_batch_depth; g_pull_depth = v; g_current = s.g_current; g_untracked =
     s.g_untracked; g_current_owner = s.g_current_owner; g_next_id =
-    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_checking =
+    s.g_checking; g_ghost = s.g_ghost; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_current : node_id option -> state -> state **)
 
@@ -2691,8 +2698,9 @@ let with_current v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = v;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_untracked : bool -> state -> state **)
 
@@ -2702,9 +2710,9 @@ let with_untracked v s =
     g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = v; g_current_owner = s.g_current_owner; g_next_id =
-    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_checking =
+    s.g_checking; g_ghost = s.g_ghost; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_current_owner : owner_id option -> state -> state **)
 
@@ -2714,9 +2722,9 @@ let with_current_owner v s =
     g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = v; g_next_id =
-    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    s.g_next_id; g_trace = s.g_trace; g_running = s.g_running; g_checking =
+    s.g_checking; g_ghost = s.g_ghost; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_next_id : nat -> state -> state **)
 
@@ -2726,9 +2734,9 @@ let with_next_id v s =
     g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
-    g_next_id = v; g_trace = s.g_trace; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    g_next_id = v; g_trace = s.g_trace; g_running = s.g_running; g_checking =
+    s.g_checking; g_ghost = s.g_ghost; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_trace : event list -> state -> state **)
 
@@ -2738,9 +2746,10 @@ let with_trace v s =
     g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
-    g_next_id = s.g_next_id; g_trace = v; g_running = s.g_running; g_ghost =
-    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    g_next_id = s.g_next_id; g_trace = v; g_running = s.g_running;
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps =
+    s.g_stamps }
 
 (** val with_running : node_id list -> state -> state **)
 
@@ -2750,9 +2759,21 @@ let with_running v s =
     g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
-    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = v; g_ghost =
-    s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = v; g_checking =
+    s.g_checking; g_ghost = s.g_ghost; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
+
+(** val with_checking : node_id list -> state -> state **)
+
+let with_checking v s =
+  { g_flags = s.g_flags; g_edges = s.g_edges; g_nodes = s.g_nodes; g_owners =
+    s.g_owners; g_queue = s.g_queue; g_queue_head = s.g_queue_head;
+    g_flushing = s.g_flushing; g_flush_owed = s.g_flush_owed; g_batch_depth =
+    s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
+    g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
+    g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
+    g_checking = v; g_ghost = s.g_ghost; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_ghost : ghost -> state -> state **)
 
@@ -2763,8 +2784,8 @@ let with_ghost v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = v; g_registered = s.g_registered; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = v; g_registered = s.g_registered;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_registered : (node_id, nat) gmap -> state -> state **)
 
@@ -2775,8 +2796,8 @@ let with_registered v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = v; g_skip = s.g_skip; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered = v;
+    g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_skip : skip_mode -> state -> state **)
 
@@ -2787,8 +2808,8 @@ let with_skip v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = v; g_epoch =
-    s.g_epoch; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = v; g_epoch = s.g_epoch; g_stamps = s.g_stamps }
 
 (** val with_epoch : nat -> state -> state **)
 
@@ -2799,8 +2820,8 @@ let with_epoch v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = v; g_stamps = s.g_stamps }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = v; g_stamps = s.g_stamps }
 
 (** val with_stamps : (node_id, nat) gmap -> state -> state **)
 
@@ -2811,8 +2832,8 @@ let with_stamps v s =
     s.g_batch_depth; g_pull_depth = s.g_pull_depth; g_current = s.g_current;
     g_untracked = s.g_untracked; g_current_owner = s.g_current_owner;
     g_next_id = s.g_next_id; g_trace = s.g_trace; g_running = s.g_running;
-    g_ghost = s.g_ghost; g_registered = s.g_registered; g_skip = s.g_skip;
-    g_epoch = s.g_epoch; g_stamps = v }
+    g_checking = s.g_checking; g_ghost = s.g_ghost; g_registered =
+    s.g_registered; g_skip = s.g_skip; g_epoch = s.g_epoch; g_stamps = v }
 
 (** val node_with_value : val0 -> node -> node **)
 
@@ -3013,6 +3034,16 @@ let push_running n0 =
 
 let pop_running =
   m_modify (fun s -> with_running (tl s.g_running) s)
+
+(** val push_checking : node_id -> unit0 m **)
+
+let push_checking n0 =
+  m_modify (fun s -> with_checking (Cons (n0, s.g_checking)) s)
+
+(** val pop_checking : unit0 m **)
+
+let pop_checking =
+  m_modify (fun s -> with_checking (tl s.g_checking) s)
 
 (** val stale_live : node -> bool **)
 
@@ -4010,24 +4041,41 @@ and refresh fuel n0 =
   match fuel with
   | O -> stuck
   | S f ->
-    m_bind (get_node n0) (fun d ->
-      m_bind
-        (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
-         | Left ->
-           m_bind (resolve_walk f n0 O) (fun _ ->
-             m_bind (get_node n0) (fun d' ->
-               match decide (decide_rel freshness_eq_dec d'.n_freshness Check) with
-               | Left ->
-                 m_bind (m_modify (ghost_resolved n0)) (fun _ ->
-                   modify_node n0 (fun x ->
-                     node_with_unannounced False (node_with_freshness Clean x)))
-               | Right -> m_return Tt))
-         | Right -> m_return Tt)
-        (fun _ ->
-        m_bind (get_node n0) (fun d' ->
-          match decide (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
-          | Left -> recompute f n0
-          | Right -> m_return Tt)))
+    m_bind m_get (fun s0 ->
+      match decide
+              (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+                s0.g_checking) with
+      | Left -> m_step (mark_dirty f n0)
+      | Right ->
+        (match decide
+                 (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+                   s0.g_running) with
+         | Left -> m_return Tt
+         | Right ->
+           m_bind (get_node n0) (fun d ->
+             m_bind
+               (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
+                | Left ->
+                  m_bind (push_checking n0) (fun _ ->
+                    m_bind (resolve_walk f n0 O) (fun _ ->
+                      m_bind pop_checking (fun _ ->
+                        m_bind (get_node n0) (fun d' ->
+                          match decide
+                                  (decide_rel freshness_eq_dec d'.n_freshness
+                                    Check) with
+                          | Left ->
+                            m_bind (m_modify (ghost_resolved n0)) (fun _ ->
+                              modify_node n0 (fun x ->
+                                node_with_unannounced False
+                                  (node_with_freshness Clean x)))
+                          | Right -> m_return Tt))))
+                | Right -> m_return Tt)
+               (fun _ ->
+               m_bind (get_node n0) (fun d' ->
+                 match decide
+                         (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
+                 | Left -> recompute f n0
+                 | Right -> m_return Tt)))))
 
 (** val resolve_walk : nat -> node_id -> nat -> unit0 m **)
 
@@ -4044,7 +4092,29 @@ and resolve_walk fuel n0 i =
            | Some y ->
              let Pair (src, _) = y in
              m_bind (update_if_necessary f src) (fun _ ->
-               resolve_walk f n0 (S i))
+               m_bind (get_node n0) (fun d' ->
+                 m_bind (get_node src) (fun d_src ->
+                   m_bind m_get (fun s1 ->
+                     m_bind
+                       (match decide
+                                (and_dec
+                                  (decide_rel freshness_eq_dec d'.n_freshness
+                                    Check)
+                                  (and_dec
+                                    (decide_rel bool_eq_dec
+                                      (stale_live d_src) True)
+                                    (or_dec
+                                      (decide_rel
+                                        (Coq_list.list_elem_of_dec
+                                          Coq_Nat.eq_dec)
+                                        src s1.g_running)
+                                      (decide_rel
+                                        (Coq_list.list_elem_of_dec
+                                          Coq_Nat.eq_dec)
+                                        src s1.g_checking)))) with
+                        | Left -> m_step (mark_dirty f n0)
+                        | Right -> m_return Tt)
+                       (fun _ -> resolve_walk f n0 (S i))))))
            | None ->
              (match slot_holds stale_live s n0 with
               | True -> resolve_walk f n0 O
@@ -4515,7 +4585,8 @@ let init fl =
     g_queue = Nil; g_queue_head = O; g_flushing = False; g_flush_owed =
     False; g_batch_depth = O; g_pull_depth = O; g_current = None;
     g_untracked = False; g_current_owner = (Some root_owner_id); g_next_id =
-    O; g_trace = Nil; g_running = Nil; g_ghost = empty_ghost; g_registered =
+    O; g_trace = Nil; g_running = Nil; g_checking = Nil; g_ghost =
+    empty_ghost; g_registered =
     (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)); g_skip = SkipOff;
     g_epoch = O; g_stamps =
     (empty0 (gmap_empty Coq_Nat.eq_dec nat_countable)) }
@@ -4905,24 +4976,41 @@ and orefresh fuel n0 =
   match fuel with
   | O -> stuck
   | S f ->
-    m_bind (get_node n0) (fun d ->
-      m_bind
-        (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
-         | Left ->
-           m_bind (oresolve_walk f n0 O) (fun _ ->
-             m_bind (get_node n0) (fun d' ->
-               match decide (decide_rel freshness_eq_dec d'.n_freshness Check) with
-               | Left ->
-                 m_bind (m_modify (ghost_resolved n0)) (fun _ ->
-                   modify_node n0 (fun x ->
-                     node_with_unannounced False (node_with_freshness Clean x)))
-               | Right -> m_return Tt))
-         | Right -> m_return Tt)
-        (fun _ ->
-        m_bind (get_node n0) (fun d' ->
-          match decide (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
-          | Left -> orecompute f n0
-          | Right -> m_return Tt)))
+    m_bind m_get (fun s0 ->
+      match decide
+              (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+                s0.g_checking) with
+      | Left -> m_step (mark_dirty f n0)
+      | Right ->
+        (match decide
+                 (decide_rel (Coq_list.list_elem_of_dec Coq_Nat.eq_dec) n0
+                   s0.g_running) with
+         | Left -> m_return Tt
+         | Right ->
+           m_bind (get_node n0) (fun d ->
+             m_bind
+               (match decide (decide_rel freshness_eq_dec d.n_freshness Check) with
+                | Left ->
+                  m_bind (push_checking n0) (fun _ ->
+                    m_bind (oresolve_walk f n0 O) (fun _ ->
+                      m_bind pop_checking (fun _ ->
+                        m_bind (get_node n0) (fun d' ->
+                          match decide
+                                  (decide_rel freshness_eq_dec d'.n_freshness
+                                    Check) with
+                          | Left ->
+                            m_bind (m_modify (ghost_resolved n0)) (fun _ ->
+                              modify_node n0 (fun x ->
+                                node_with_unannounced False
+                                  (node_with_freshness Clean x)))
+                          | Right -> m_return Tt))))
+                | Right -> m_return Tt)
+               (fun _ ->
+               m_bind (get_node n0) (fun d' ->
+                 match decide
+                         (decide_rel freshness_eq_dec d'.n_freshness Dirty) with
+                 | Left -> orecompute f n0
+                 | Right -> m_return Tt)))))
 
 (** val oresolve_walk : nat -> node_id -> nat -> unit0 m **)
 
@@ -4939,7 +5027,29 @@ and oresolve_walk fuel n0 i =
            | Some y ->
              let Pair (src, _) = y in
              m_bind (oupdate_if_necessary f src) (fun _ ->
-               oresolve_walk f n0 (S i))
+               m_bind (get_node n0) (fun d' ->
+                 m_bind (get_node src) (fun d_src ->
+                   m_bind m_get (fun s1 ->
+                     m_bind
+                       (match decide
+                                (and_dec
+                                  (decide_rel freshness_eq_dec d'.n_freshness
+                                    Check)
+                                  (and_dec
+                                    (decide_rel bool_eq_dec
+                                      (stale_live d_src) True)
+                                    (or_dec
+                                      (decide_rel
+                                        (Coq_list.list_elem_of_dec
+                                          Coq_Nat.eq_dec)
+                                        src s1.g_running)
+                                      (decide_rel
+                                        (Coq_list.list_elem_of_dec
+                                          Coq_Nat.eq_dec)
+                                        src s1.g_checking)))) with
+                        | Left -> m_step (mark_dirty f n0)
+                        | Right -> m_return Tt)
+                       (fun _ -> oresolve_walk f n0 (S i))))))
            | None ->
              (match slot_holds stale_live s n0 with
               | True -> oresolve_walk f n0 O

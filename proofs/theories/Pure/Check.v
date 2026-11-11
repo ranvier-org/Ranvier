@@ -1451,10 +1451,16 @@ Section Step.
 
   Lemma ok_refresh_S n : ok_under (has_kind n KMemo) (refresh (S f) n).
   Proof.
-    cbn [refresh]. apply ok_bind; [apply _|apply ok_get_node|intros d].
+    cbn [refresh]. unfold push_checking, pop_checking.
+    apply ok_bind; [apply _|apply ok_get|intros s0].
+    destruct (decide (n ∈ g_checking s0)); [apply ok_mark_dirty|].
+    destruct (decide (n ∈ g_running s0)); [apply ok_return|].
+    apply ok_bind; [apply _|apply ok_get_node|intros d].
     apply ok_bind; [apply _| |intros _].
     - destruct (decide (n_freshness d = Check)); [|apply ok_return].
+      apply ok_bind; [apply _|apply ok_modify_irrelevant; intros ?; irr|intros _].
       apply ok_bind; [apply _|apply ok_any; ih IH|intros _].
+      apply ok_bind; [apply _|apply ok_modify_irrelevant; intros ?; irr|intros _].
       apply ok_get_node_at. intros d'.
       destruct (decide (n_freshness d' = Check)) as [Hc|_]; [|apply ok_return].
       intros s s' a Hi [_ Hd] Hm. rewrite bind_m_modify in Hm.
@@ -2191,7 +2197,16 @@ With the node in `Check` and a source in this slot, the walk runs `update_if_nec
 Theorem resolve_walk_step f n i s d src mh :
   g_nodes s !! n = Some d -> n_freshness d = Check ->
   source_slots (sources_of (g_edges s) n) !! i = Some (src, mh) ->
-  resolve_walk (S f) n i s = m_bind (update_if_necessary f src) (fun _ => resolve_walk f n (S i)) s.
+  resolve_walk (S f) n i s =
+    (let* _ := update_if_necessary f src in
+     let* d' := get_node n in
+     let* d_src := get_node src in
+     let* s1 := m_get in
+     let* _ :=
+       if decide (n_freshness d' = Check /\ stale_live d_src = true /\ (src ∈ g_running s1 \/ src ∈ g_checking s1))
+       then m_step (mark_dirty f n)
+       else m_return tt in
+     resolve_walk f n (S i)) s.
 Proof.
   intros Hd Hc Hs. cbn [resolve_walk]. rewrite (bind_get_node _ _ _ _ Hd), bind_get.
   rewrite decide_True by done. by rewrite Hs.
@@ -2220,7 +2235,14 @@ Proof.
   rewrite (bind_get_node _ _ _ _ Hd), bind_get in Hw.
   destruct (decide (n_freshness d = Check)) as [Hc|Hc].
   - destruct (source_slots (sources_of (g_edges s) n) !! i) as [[src mh]|].
-    + unfold m_bind in Hw. destruct (update_if_necessary f src s) as [[s1 []]|]; [eapply IH; eauto|done].
+    + unfold m_bind in Hw.
+      destruct (update_if_necessary f src s) as [[s1 []]|]; [|done].
+      destruct (get_node n s1) as [[s2 d1]|]; [|done].
+      destruct (get_node src s2) as [[s3 d_src]|]; [|done].
+      destruct (m_get s3) as [[s4 s5]|]; [|done].
+      destruct (decide (n_freshness d1 = Check /\ stale_live d_src = true /\ (src ∈ g_running s5 \/ src ∈ g_checking s5)));
+        [destruct (m_step (mark_dirty f n) s4) as [[s6 []]|]; [eapply IH; eauto|done]
+        |destruct (m_return tt s4) as [[s6 []]|]; [eapply IH; eauto|done]].
     + destruct (slot_holds stale_live s n) eqn:Esh.
       * eapply IH; eauto.
       * unfold m_return in Hw. by simplify_eq.
@@ -2261,7 +2283,7 @@ Qed.
 (**md
 **A check walk that ends in `Check` makes the node `Clean` with no run after the walk.**
 
-For a node that starts in `Check`, `refresh` succeeds with the node as the walk left it, except `Clean` with `n_unannounced` false. Its run count is the one the walk left, which says nothing of runs during the walk.
+For a node that starts in `Check` outside `g_checking` and `g_running`, `refresh` succeeds with the node as the walk left it, except `Clean` with `n_unannounced` false. Its run count is the one the walk left, which says nothing of runs during the walk.
 
 - [f:] the fuel, which `refresh` runs at `S f`.
 - [n:] the memo, in `Check` before and after the walk.
@@ -2271,8 +2293,9 @@ For a node that starts in `Check`, `refresh` succeeds with the node as the walk 
 - [d1:] the node `n` in `s1`.
 *)
 Theorem resolve_walk_check_clears f n s s1 d d1 :
+  n ∉ g_checking s -> n ∉ g_running s ->
   g_nodes s !! n = Some d -> n_freshness d = Check ->
-  resolve_walk f n 0 s = Some (s1, tt) ->
+  resolve_walk f n 0 (with_checking (n :: g_checking s) s) = Some (s1, tt) ->
   g_nodes s1 !! n = Some d1 -> n_freshness d1 = Check ->
   exists s', refresh (S f) n s = Some (s', tt) /\
     g_nodes s' !! n = Some (node_with_unannounced false (node_with_freshness Clean d1)) /\
@@ -2280,15 +2303,21 @@ Theorem resolve_walk_check_clears f n s s1 d d1 :
     n_unannounced (node_with_unannounced false (node_with_freshness Clean d1)) = false /\
     n_runs (node_with_unannounced false (node_with_freshness Clean d1)) = n_runs d1.
 Proof.
-  intros Hd Hc Hw Hd1 Hc1.
-  assert (Hg : g_nodes (ghost_resolved n s1) !! n = Some d1) by exact Hd1.
-  assert (Hd2 : g_nodes (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) (ghost_resolved n s1)) !! n =
+  intros Hnc Hnr Hd Hc Hw Hd1 Hc1.
+  set (s2 := with_checking (tail (g_checking s1)) s1).
+  assert (Hd1' : g_nodes s2 !! n = Some d1) by exact Hd1.
+  assert (Hg : g_nodes (ghost_resolved n s2) !! n = Some d1) by exact Hd1.
+  assert (Hd2 : g_nodes (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) (ghost_resolved n s2)) !! n =
                 Some (node_with_unannounced false (node_with_freshness Clean d1))) by (simpl; apply lookup_insert_eq).
-  exists (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) (ghost_resolved n s1)).
+  exists (set_node n (node_with_unannounced false (node_with_freshness Clean d1)) (ghost_resolved n s2)).
   split_and!; [|done|done|done|done].
-  cbn [refresh]. rewrite (bind_get_node _ _ _ _ Hd), decide_True by done.
+  cbn [refresh]. rewrite bind_get, decide_False, decide_False by done.
+  rewrite (bind_get_node _ _ _ _ Hd), decide_True by done.
+  unfold push_checking, pop_checking.
+  rewrite bind_bind, bind_m_modify. cbv beta.
   rewrite bind_bind, (bind_some _ _ _ _ _ Hw).
-  rewrite bind_bind, (bind_get_node _ _ _ _ Hd1), decide_True by done.
+  rewrite bind_bind, bind_m_modify. cbv beta.
+  rewrite bind_bind, (bind_get_node _ _ _ _ Hd1'), decide_True by done.
   rewrite bind_bind, bind_m_modify, (bind_modify_node _ _ _ _ _ Hg).
   rewrite (bind_get_node _ _ _ _ Hd2), decide_False by done.
   reflexivity.

@@ -170,7 +170,7 @@ bash differential/run.sh 200 1 || note "differential/run.sh 200 1 failed"
 
 # 8. Fatal scenarios. Each runs in its own process, and a scenario that returns has outlived its ledger entry.
 if [ -n "${dotnet_cmd:-}" ]; then
-  for name in self_read_check_overflow mutual_read_check_overflow; do
+  for name in; do
     rc=0
     "$dotnet_cmd" fsi conformance/Scenarios.fsx --fatal "$name" >"$out" 2>&1 || rc=$?
     if [ "$rc" -eq 0 ] || ! grep -q 'Stack overflow' "$out"; then

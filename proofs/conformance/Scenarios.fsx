@@ -520,15 +520,71 @@ let scenarios: (string * (Ctx -> unit)) list =
                 internalProp node "ObserverCount" :?> int
 
             c.Check (flip.Peek = 3) $"flip holds {flip.Peek}"
-            c.Check (m.Peek = 10) $"the memo holds {m.Peek}"
+            c.Check (m.Peek = 20) $"the memo holds {m.Peek}"
             c.Check (observers a = 0) "the memo holds no edge to a"
             c.Check (observers b = 1) "the memo holds an edge to b"
-            c.Check (observers m = 2) "the memo observes itself beside the effect"
+            c.Check (observers m = 1) "only the effect observes the memo"
             c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
             a.Value <- 11
-            c.Check (m.Peek = 10) $"after the write to a the memo holds {m.Peek}"
+            c.Check (m.Peek = 20) $"after the write to a the memo holds {m.Peek}"
             c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
-            c.Check (c.HostRead 4 (fun () -> m.Value) = 10) "a clean read answers the stored value"
+            c.Check (c.HostRead 4 (fun () -> m.Value) = 20) "a clean read answers the stored value"
+
+        // BUGS.md, self_read_check_overflow. A memo reads itself, then a memo over a signal. The write leaves it in `Check`
+        // with a slot naming itself; on the next read, `Refresh` sees `checking`, marks the memo `Dirty`, and recomputes it.
+        "self_read_check_overflow",
+        fun c ->
+            let s = c.Signal 1 0
+            let a = c.Memo 2 (fun () -> s.Value)
+            let self: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
+
+            let m =
+                c.Memo 3 (fun () ->
+                    self.Value.Value |> ignore
+                    a.Value)
+
+            self.Value <- m
+            c.HostRead 3 (fun () -> m.Value) |> ignore
+            c.HostRead 3 (fun () -> m.Value) |> ignore
+            c.Check (freshnessOf m = "Clean") $"two reads leave the memo {freshnessOf m}"
+            s.Value <- 1
+            c.Check (freshnessOf m = "Check") $"the write leaves the memo {freshnessOf m}"
+            c.Check ((internalProp m "ObserverCount" :?> int) = 1) "the memo observes itself"
+            c.Check (c.HostRead 3 (fun () -> m.Value) = 1) "the read resolves the self-check and recomputes the memo"
+            c.Check (c.HostRead 3 (fun () -> m.Value) = 1) "the second read settles the self-notification"
+            c.Check (freshnessOf m = "Clean") $"after the reads the memo is {freshnessOf m}"
+
+        // The same walk through a cycle of two memos.
+        "mutual_read_check_overflow",
+        fun c ->
+            let s = c.Signal 1 0
+            let a = c.Memo 2 (fun () -> s.Value)
+            let other: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
+
+            let x =
+                c.Memo 3 (fun () ->
+                    if not (isNull (box other.Value)) then
+                        other.Value.Value |> ignore
+
+                    a.Value)
+
+            let y = c.Memo 4 (fun () -> x.Value)
+            other.Value <- y
+
+            for _ in 1..2 do
+                c.HostRead 3 (fun () -> x.Value) |> ignore
+                c.HostRead 4 (fun () -> y.Value) |> ignore
+
+            c.Check (freshnessOf x = "Clean") $"the reads leave the first memo {freshnessOf x}"
+            c.Check (freshnessOf y = "Clean") $"the reads leave the second memo {freshnessOf y}"
+            s.Value <- 1
+            c.Check (freshnessOf x = "Check") $"the write leaves the first memo {freshnessOf x}"
+            c.Check (freshnessOf y = "Check") $"the write leaves the second memo {freshnessOf y}"
+            c.Check (c.HostRead 3 (fun () -> x.Value) = 1) "the read breaks the check cycle and recomputes the first memo"
+            c.Check (c.HostRead 4 (fun () -> y.Value) = 1) "the second memo answers the updated value"
+            c.Check (c.HostRead 3 (fun () -> x.Value) = 1) "the first memo resolves the second memo's notification"
+            c.Check (freshnessOf x = "Clean") $"after the reads the first memo is {freshnessOf x}"
+            c.Check (freshnessOf y = "Clean") $"after the reads the second memo is {freshnessOf y}"
 
         // BUGS.md, check_resolves_over_moved_source. x reads a, writes a's source, and reads b, a memo over a. b's walk runs
         // a under x's body, and the notice of that run skips x. x ends in Check, and its next read resolves it clean.
@@ -629,16 +685,15 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             let n =
                 c.OwningMemo 4 (fun () ->
-                    if m.Value = 0 then
-                        0
-                    elif g.Value = 0 then
-                        g.Value <- 1
+                    let v = m.Value
+                    g.Value |> ignore
 
-                        c.Graph.Untrack (Func<int>(fun () -> self.Value.Value))
-                        |> ignore
+                    if v = 0 then
+                        c.Cleanup 4 (fun () ->
+                            g.Value <- 1
 
-                        c.Graph.Untrack (Func<int>(fun () -> self.Value.Value))
-                        |> ignore
+                            c.Graph.Untrack (Func<int>(fun () -> self.Value.Value))
+                            |> ignore)
 
                         0
                     else
@@ -1418,69 +1473,7 @@ let scenarios: (string * (Ctx -> unit)) list =
 
 /// Scenarios that end the process, run one to a process by `--fatal`. A `Check` failure exits with 2 before the fatal step,
 /// and returning from the fatal step exits with 3.
-let fatalScenarios: (string * (Ctx -> unit)) list =
-    [
-        // BUGS.md, self_read_check_overflow. A memo reads itself, then a memo over a signal. The write leaves it in `Check`
-        // with a slot naming itself, and the next read's ResolveCheck walks into itself with no body running.
-        "self_read_check_overflow",
-        fun c ->
-            let s = c.Signal 1 0
-            let a = c.Memo 2 (fun () -> s.Value)
-            let self: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
-
-            let m =
-                c.Memo 3 (fun () ->
-                    self.Value.Value |> ignore
-                    a.Value)
-
-            self.Value <- m
-            c.HostRead 3 (fun () -> m.Value) |> ignore
-            c.HostRead 3 (fun () -> m.Value) |> ignore
-            c.Check (freshnessOf m = "Clean") $"two reads leave the memo {freshnessOf m}"
-            s.Value <- 1
-            c.Check (freshnessOf m = "Check") $"the write leaves the memo {freshnessOf m}"
-            c.Check ((internalProp m "ObserverCount" :?> int) = 1) "the memo observes itself"
-
-            if not c.Failures.IsEmpty then
-                eprintfn "%s" (String.concat "; " c.Failures)
-                exit 2
-
-            m.Value |> ignore
-
-        // The same walk through a cycle of two memos. `mutual_read_check_resolves_itself` in Witnesses.v is the model's
-        // witness, whose program refers forward by constant id.
-        "mutual_read_check_overflow",
-        fun c ->
-            let s = c.Signal 1 0
-            let a = c.Memo 2 (fun () -> s.Value)
-            let other: Memo<int> ref = ref Unchecked.defaultof<Memo<int>>
-
-            let x =
-                c.Memo 3 (fun () ->
-                    if not (isNull (box other.Value)) then
-                        other.Value.Value |> ignore
-
-                    a.Value)
-
-            let y = c.Memo 4 (fun () -> x.Value)
-            other.Value <- y
-
-            for _ in 1..3 do
-                x.Value |> ignore
-                y.Value |> ignore
-
-            c.Check (freshnessOf x = "Clean") $"the reads leave the first memo {freshnessOf x}"
-            c.Check (freshnessOf y = "Clean") $"the reads leave the second memo {freshnessOf y}"
-            s.Value <- 1
-            c.Check (freshnessOf x = "Check") $"the write leaves the first memo {freshnessOf x}"
-            c.Check (freshnessOf y = "Check") $"the write leaves the second memo {freshnessOf y}"
-
-            if not c.Failures.IsEmpty then
-                eprintfn "%s" (String.concat "; " c.Failures)
-                exit 2
-
-            x.Value |> ignore
-    ]
+let fatalScenarios: (string * (Ctx -> unit)) list = []
 
 match fsi.CommandLineArgs |> Array.toList with
 | [ _; "--fatal"; name ] ->

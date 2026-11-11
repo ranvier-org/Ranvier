@@ -111,7 +111,16 @@ Definition exp_self_marking_through_memo : list event := [
 ].
 
 Definition exp_nested_self_run : list event := [
-  EvRun 5; EvLog 5 10%Z; EvRun 5; EvLog 5 10%Z; EvHostRead 4 (Ok 10%Z)
+  EvRun 5; EvLog 5 10%Z; EvRun 5; EvLog 5 20%Z; EvHostRead 4 (Ok 20%Z)
+].
+
+Definition exp_self_read_check_overflow : list event := [
+  EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 1%Z); EvHostRead 3 (Ok 1%Z)
+].
+
+Definition exp_mutual_read_check_overflow : list event := [
+  EvHostRead 3 (Ok 0%Z); EvHostRead 4 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 4 (Ok 0%Z); EvHostRead 3 (Ok 1%Z); EvHostRead 4 (Ok 1%Z);
+  EvHostRead 3 (Ok 1%Z)
 ].
 
 Definition exp_check_over_moved : list event := [
@@ -132,7 +141,7 @@ Definition exp_disposed_memo_keeps_observers : list event := [
 ].
 
 Definition exp_disposed_self_window : list event := [
-  EvHostRead 4 (Ok 0%Z); EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0%Z)
+  EvHostRead 4 (Ok 0%Z); EvCleanup 4; EvCleanup 4; EvDispose 4; EvHostRead 4 (Ok 0%Z)
 ].
 
 Definition exp_previous_value : list event := [

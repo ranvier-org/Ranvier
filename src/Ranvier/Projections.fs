@@ -119,6 +119,8 @@ type internal ProjectionBeacon(graph: Graph, host: IBeaconHost) =
 
         member _.IsStale = false
 
+        member _.IsActive = false
+
     /// <summary>
     /// Marks everything watching the projection dirty, except <c>running</c>: the
     /// reader the failure is raised to.
@@ -1089,7 +1091,15 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             (this :> IComputation).MarkDirty()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -1098,6 +1108,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -1112,6 +1126,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         while freshness = Freshness.Check && i < sources.Count do
             sources.SourceAt(i).UpdateIfNecessary()
+
+            if graph.ActiveSkips <> 0 then
+                this.CheckActiveSource i
+
             i <- i + 1
 
         if
@@ -1126,7 +1144,15 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             freshness <- Freshness.Clean
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveFailedCheckAgain() =
+    member private this.CheckActiveSourceFailed(i: int) =
+        if not invalidated then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveFailedCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -1135,6 +1161,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             while not invalidated && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSourceFailed i
+
                 i <- i + 1
 
             again <-
@@ -1153,6 +1183,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         while not invalidated && i < sources.Count do
             sources.SourceAt(i).UpdateIfNecessary()
+
+            if graph.ActiveSkips <> 0 then
+                this.CheckActiveSourceFailed i
+
             i <- i + 1
 
         if
@@ -2724,6 +2758,8 @@ type internal LookupCell<'V>(graph: Graph, equal: IEqualityComparer<'V>, orphane
         member _.UpdateIfNecessary() = ()
 
         member _.IsStale = false
+
+        member _.IsActive = false
 
     /// <summary>
     /// Tracked read. Raises <c>NotReadyException</c> if the cell is suspended, and

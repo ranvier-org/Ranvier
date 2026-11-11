@@ -1301,6 +1301,12 @@ Proof. apply sok_modify_same. intros s. repeat split. Qed.
 Lemma sok_pop x P : sok x x P pop_running.
 Proof. apply sok_modify_same. intros s. repeat split. Qed.
 
+Lemma sok_push_checking x P n : sok x x P (push_checking n).
+Proof. apply sok_modify_same. intros s. repeat split. Qed.
+
+Lemma sok_pop_checking x P : sok x x P pop_checking.
+Proof. apply sok_modify_same. intros s. repeat split. Qed.
+
 Lemma sok_edges x P u : sok x x P (edges u).
 Proof. apply sok_modify_same. intros s. repeat split. Qed.
 
@@ -1466,6 +1472,7 @@ Local Ltac sgo1 IH :=
     [ apply sok_return | apply sok_stuck | apply sok_get | apply sok_get_node | apply sok_get_owner
     | apply sok_note | apply sok_log_label | apply sok_track | apply sok_mark_reader
     | apply sok_edges_opt | apply sok_edges | apply sok_push | apply sok_pop
+    | apply sok_push_checking | apply sok_pop_checking
     | apply sok_current_owner | apply sok_announce | apply sok_unlink | apply sok_record
     | apply sok_mark_dirty | apply sok_notify_dirty | apply sok_notify_except
     | (apply sok_emit; reflexivity)

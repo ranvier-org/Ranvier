@@ -162,6 +162,13 @@ type internal Binding<'Target, 'T>
                     while freshness = Freshness.Check && source.IsStale do
                         source.UpdateIfNecessary ()
 
+                        if
+                            freshness = Freshness.Check
+                            && source.IsStale
+                            && source.IsActive
+                        then
+                            (this :> IComputation).MarkDirty()
+
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
                 elif not (Platform.isNull (box memo)) then
                     source.UpdateIfNecessary ()

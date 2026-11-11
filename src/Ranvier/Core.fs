@@ -97,6 +97,11 @@ type internal ISource =
     /// </summary>
     abstract IsStale: bool
 
+    /// <summary>
+    /// Whether this source is currently running its body or resolving its own <c>Check</c>.
+    /// </summary>
+    abstract IsActive: bool
+
 /// <summary>
 /// A node that depends on sources, and therefore can be invalidated.
 /// </summary>
@@ -2137,6 +2142,7 @@ type internal JournalRecorder(journal: IInputJournal) =
 type Graph(options: GraphOptions) =
     let mutable nextId = 0
     let mutable staleTransitions = 0
+    let mutable activeSkips = 0
 
     /// <summary>
     /// Null rather than <c>IComputation option</c>. The option was 24 bytes of
@@ -3209,6 +3215,7 @@ type Graph(options: GraphOptions) =
 
                 if staleTransitions <> 0 && pullDepth = 0 then
                     staleTransitions <- 0
+                    activeSkips <- 0
 
                 if not (Platform.isNull lastRaised) then
                     lastRaised <- null
@@ -3310,6 +3317,7 @@ type Graph(options: GraphOptions) =
 
             if staleTransitions <> 0 && not flushing then
                 staleTransitions <- 0
+                activeSkips <- 0
 
 #if !FABLE_COMPILER
             if pullHeld then
@@ -3346,6 +3354,7 @@ type Graph(options: GraphOptions) =
             else
                 if staleTransitions <> 0 && not flushing then
                     staleTransitions <- 0
+                    activeSkips <- 0
 
 #if !FABLE_COMPILER
                 if pullHeld then
@@ -3360,6 +3369,7 @@ type Graph(options: GraphOptions) =
         if pullDepth = 0 then
             if staleTransitions <> 0 && not flushing then
                 staleTransitions <- 0
+                activeSkips <- 0
 
 #if !FABLE_COMPILER
             if pullHeld then
@@ -3535,9 +3545,15 @@ type Graph(options: GraphOptions) =
 
     member inline internal _.StaleTransitions = staleTransitions
 
+    member inline internal _.ActiveSkips = activeSkips
+
     member inline internal _.NoteStaleTransition() =
         if pullDepth > 0 || flushing then
             staleTransitions <- staleTransitions + 1
+
+    member internal _.NoteActiveSkip() =
+        activeSkips <- activeSkips + 1
+        staleTransitions <- staleTransitions + 1
 
     member inline internal _.NotifyMoved(observers: ObserverSet) =
         if staleTransitions = 0 then
@@ -3929,6 +3945,8 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 
         member _.IsStale = false
 
+        member _.IsActive = false
+
     /// <summary>
     /// Transparent, tracked read. A plain signal is never pending, so this
     /// never throws.
@@ -4064,6 +4082,8 @@ type AsyncSource<'T>(graph: Graph) =
         member _.UpdateIfNecessary() = ()
 
         member _.IsStale = false
+
+        member _.IsActive = false
 
     member _.Status = status
 
@@ -4208,6 +4228,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     let mutable value = Unchecked.defaultof<'T>
     let mutable failure: Failure = null
     let mutable runs = 0
+    let mutable active = 0
     let mutable disposed = false
 
     /// <summary>
@@ -4373,6 +4394,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         Counters.MemoRecomputed ()
 #endif
         Tracer.RunStart (graph, id, runs)
+        active <- 1
 
         try
             try
@@ -4385,6 +4407,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                 value <- result
                 published <- true
             finally
+                active <- 0
+
                 if disposed then
                     sources.Clear (this :> IComputation)
                 else
@@ -4437,7 +4461,15 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             graph.NoteStaleTransition ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -4446,6 +4478,10 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -4467,11 +4503,16 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// </remarks>
     member private this.ResolveCheck() =
         Tracer.CheckStart (graph, id)
+        active <- 2
         let before = graph.StaleTransitions
         let mutable i = 0
 
         while freshness = Freshness.Check && i < sources.Count do
             sources.SourceAt(i).UpdateIfNecessary()
+
+            if graph.ActiveSkips <> 0 then
+                this.CheckActiveSource i
+
             i <- i + 1
 
         if
@@ -4480,6 +4521,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         then
             this.ResolveCheckAgain ()
 
+        active <- 0
         Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
         if freshness = Freshness.Check then
@@ -4569,15 +4611,25 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         graph.ExitPullDeferSettle ()
         || freshness <> Freshness.Clean
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RefreshActive() =
+        graph.NoteActiveSkip ()
+
+        if active = 2 then
+            (this :> IComputation).MarkDirty()
+
     /// <summary>
     /// Brings a stale memo current.
     /// </summary>
     member private this.Refresh() =
-        if freshness = Freshness.Check then
-            this.ResolveCheck ()
+        if active = 0 then
+            if freshness = Freshness.Check then
+                this.ResolveCheck ()
 
-        if freshness = Freshness.Dirty then
-            this.Recompute ()
+            if freshness = Freshness.Dirty then
+                this.Recompute ()
+        else
+            this.RefreshActive ()
 
     /// <summary>
     /// Detaches from every source. Idempotent, and usually called for you by
@@ -4688,6 +4740,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             this.EnsureCurrent ()
 
         member _.IsStale = freshness <> Freshness.Clean && not disposed
+
+        member _.IsActive = active <> 0
 
     interface IComputation with
         member this.AddSource s =
@@ -5036,7 +5090,15 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
         with set value = publishes <- value
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -5045,6 +5107,10 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -5069,6 +5135,10 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
                     while freshness = Freshness.Check && i < sources.Count do
                         sources.SourceAt(i).UpdateIfNecessary()
+
+                        if graph.ActiveSkips <> 0 then
+                            this.CheckActiveSource i
+
                         i <- i + 1
 
                     if
@@ -5463,7 +5533,15 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                     graph.Schedule (this :> IScheduled)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -5472,6 +5550,10 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -5491,6 +5573,10 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
                     while freshness = Freshness.Check && i < sources.Count do
                         sources.SourceAt(i).UpdateIfNecessary()
+
+                        if graph.ActiveSkips <> 0 then
+                            this.CheckActiveSource i
+
                         i <- i + 1
 
                     if
@@ -5629,6 +5715,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
     /// <summary>The number of bodies executing. The shared source is retained while it is nonzero.</summary>
     let mutable running = 0
+    let mutable checking = false
 
     /// <summary>
     /// The end of the serialised chain, under <c>Queue</c>.
@@ -6196,7 +6283,15 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         || freshness <> Freshness.Clean
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -6205,6 +6300,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -6212,32 +6311,48 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 && graph.StaleTransitions <> before
                 && sources.HasStaleSource ()
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RefreshActive() =
+        graph.NoteActiveSkip ()
+
+        if checking then
+            (this :> IComputation).MarkDirty()
+
     member private this.Refresh() =
         // Resolving `Check` matters more here than anywhere: the work it
         // may avoid is a network round trip, not a multiplication.
-        if freshness = Freshness.Check then
-            Tracer.CheckStart (graph, id)
-            let before = graph.StaleTransitions
-            let mutable i = 0
-
-            while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
-                i <- i + 1
-
-            if
-                freshness = Freshness.Check
-                && graph.StaleTransitions <> before
-            then
-                this.ResolveCheckAgain ()
-
-            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-
+        if not checking && running = 0 then
             if freshness = Freshness.Check then
-                freshness <- Freshness.Clean
-                unannounced <- false
+                Tracer.CheckStart (graph, id)
+                checking <- true
+                let before = graph.StaleTransitions
+                let mutable i = 0
 
-        if freshness = Freshness.Dirty then
-            this.Start ()
+                while freshness = Freshness.Check && i < sources.Count do
+                    sources.SourceAt(i).UpdateIfNecessary()
+
+                    if graph.ActiveSkips <> 0 then
+                        this.CheckActiveSource i
+
+                    i <- i + 1
+
+                if
+                    freshness = Freshness.Check
+                    && graph.StaleTransitions <> before
+                then
+                    this.ResolveCheckAgain ()
+
+                checking <- false
+                Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+                if freshness = Freshness.Check then
+                    freshness <- Freshness.Clean
+                    unannounced <- false
+
+            if freshness = Freshness.Dirty then
+                this.Start ()
+        else
+            this.RefreshActive ()
 
     interface IOwned with
         member this.Release() =
@@ -6286,6 +6401,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             this.EnsureCurrent ()
 
         member _.IsStale = freshness <> Freshness.Clean && not disposed
+
+        member _.IsActive = running > 0 || checking
 
     interface IComputation with
         member this.AddSource s =
@@ -6537,6 +6654,7 @@ type Boundary<'T>
     let mutable caught: Failure = null
     let mutable waiting = false
     let mutable runs = 0
+    let mutable active = 0
     let mutable disposed = false
     let mutable link: OwnerLink = null
 
@@ -6727,9 +6845,13 @@ type Boundary<'T>
 
             | ex -> recoverOrFail ex
 
+        active <- 1
+
         try
             value <- graph.RunHosted (this :> IComputation, run)
         finally
+            active <- 0
+
             if disposed then
                 sources.Clear (this :> IComputation)
             else
@@ -6861,7 +6983,15 @@ type Boundary<'T>
         || freshness <> Freshness.Clean
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -6870,6 +7000,10 @@ type Boundary<'T>
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -6877,30 +7011,46 @@ type Boundary<'T>
                 && graph.StaleTransitions <> before
                 && sources.HasStaleSource ()
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RefreshActive() =
+        graph.NoteActiveSkip ()
+
+        if active = 2 then
+            (this :> IComputation).MarkDirty()
+
     member private this.Refresh() =
-        if freshness = Freshness.Check then
-            Tracer.CheckStart (graph, id)
-            let before = graph.StaleTransitions
-            let mutable i = 0
-
-            while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
-                i <- i + 1
-
-            if
-                freshness = Freshness.Check
-                && graph.StaleTransitions <> before
-            then
-                this.ResolveCheckAgain ()
-
-            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-
+        if active = 0 then
             if freshness = Freshness.Check then
-                freshness <- Freshness.Clean
-                unannounced <- false
+                Tracer.CheckStart (graph, id)
+                active <- 2
+                let before = graph.StaleTransitions
+                let mutable i = 0
 
-        if freshness = Freshness.Dirty then
-            this.Recompute ()
+                while freshness = Freshness.Check && i < sources.Count do
+                    sources.SourceAt(i).UpdateIfNecessary()
+
+                    if graph.ActiveSkips <> 0 then
+                        this.CheckActiveSource i
+
+                    i <- i + 1
+
+                if
+                    freshness = Freshness.Check
+                    && graph.StaleTransitions <> before
+                then
+                    this.ResolveCheckAgain ()
+
+                active <- 0
+                Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+                if freshness = Freshness.Check then
+                    freshness <- Freshness.Clean
+                    unannounced <- false
+
+            if freshness = Freshness.Dirty then
+                this.Recompute ()
+        else
+            this.RefreshActive ()
 
     /// <summary>
     /// Detaches from every source. Idempotent, and usually called for you by
@@ -7013,6 +7163,8 @@ type Boundary<'T>
             this.EnsureCurrent ()
 
         member _.IsStale = freshness <> Freshness.Clean && not disposed
+
+        member _.IsActive = active <> 0
 
     interface IComputation with
         member this.AddSource s =

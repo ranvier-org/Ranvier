@@ -792,9 +792,10 @@ type state = { g_flags : flags; g_edges : edgeWorld;
                g_pull_depth : nat; g_current : node_id option;
                g_untracked : bool; g_current_owner : owner_id option;
                g_next_id : nat; g_trace : event list;
-               g_running : node_id list; g_ghost : ghost;
-               g_registered : (node_id, nat) gmap; g_skip : skip_mode;
-               g_epoch : nat; g_stamps : (node_id, nat) gmap }
+               g_running : node_id list; g_checking : node_id list;
+               g_ghost : ghost; g_registered : (node_id, nat) gmap;
+               g_skip : skip_mode; g_epoch : nat;
+               g_stamps : (node_id, nat) gmap }
 
 val node_marked : freshness -> bool -> bool -> node -> node
 
@@ -869,6 +870,8 @@ val with_trace : event list -> state -> state
 
 val with_running : node_id list -> state -> state
 
+val with_checking : node_id list -> state -> state
+
 val with_ghost : ghost -> state -> state
 
 val with_registered : (node_id, nat) gmap -> state -> state
@@ -922,6 +925,10 @@ val edges_opt : (edgeWorld -> edgeWorld option) -> unit0 m
 val push_running : node_id -> unit0 m
 
 val pop_running : unit0 m
+
+val push_checking : node_id -> unit0 m
+
+val pop_checking : unit0 m
 
 val stale_live : node -> bool
 
