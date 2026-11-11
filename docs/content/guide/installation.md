@@ -30,10 +30,10 @@ Install `Ranvier` for F#, `Ranvier.CSharp` for C#, or `Ranvier.Elmish` for the M
 Versions are previews, so pass `--prerelease`.
 
 The guide describes the current source. The current versions are
-[`Ranvier` 0.1.1-preview.1](https://www.nuget.org/packages/Ranvier/0.1.1-preview.1),
+[`Ranvier` 0.1.1-preview.3](https://www.nuget.org/packages/Ranvier/0.1.1-preview.3),
 [`Ranvier.CSharp` 0.1.1-preview.1](https://www.nuget.org/packages/Ranvier.CSharp/0.1.1-preview.1),
-[`Ranvier.Elmish` 0.1.0-preview.6](https://www.nuget.org/packages/Ranvier.Elmish/0.1.0-preview.6), and
-[`Ranvier.Query` 0.1.0-preview.3](https://www.nuget.org/packages/Ranvier.Query/0.1.0-preview.3).
+[`Ranvier.Elmish` 0.1.1-preview.1](https://www.nuget.org/packages/Ranvier.Elmish/0.1.1-preview.1), and
+[`Ranvier.Query` 0.1.1-preview.1](https://www.nuget.org/packages/Ranvier.Query/0.1.1-preview.1).
 
 ::::::tabs
 :::::tab Core
@@ -49,7 +49,7 @@ dotnet add package Ranvier --prerelease
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier" Version="0.1.1-preview.1" />
+<PackageReference Include="Ranvier" Version="0.1.1-preview.3" />
 ```
 
 :::
@@ -89,7 +89,7 @@ dotnet add package Ranvier.Elmish --prerelease
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier.Elmish" Version="0.1.0-preview.6" />
+<PackageReference Include="Ranvier.Elmish" Version="0.1.1-preview.1" />
 ```
 
 :::
