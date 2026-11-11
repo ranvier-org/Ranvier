@@ -146,6 +146,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 83,471 | 127,087 | 1,751,032 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 83,471 | 127,068 | 1,751,058 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 83,473 | 127,032 | 1,750,996 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 83,478 | 127,035 | 1,750,902 |
 
 ## app-table
 
@@ -293,6 +294,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 4,436,445 | 9,526,290 | 108,517,280 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 4,436,422 | 9,348,590 | 108,288,776 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 4,436,377 | 9,388,575 | 108,233,524 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 4,436,346 | 9,348,895 | 108,121,731 |
 
 ## async-recover
 
@@ -440,6 +442,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 139,123 | 41,388 | 435,927 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 139,123 | 41,382 | 435,923 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 139,123 | 41,392 | 435,925 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 139,123 | 41,390 | 435,914 |
 
 ## async-resolve
 
@@ -587,6 +590,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,789,437 | 1,002,195 | 12,001,347 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,789,437 | 1,002,399 | 12,001,673 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,789,438 | 1,002,234 | 12,001,732 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,789,438 | 1,002,196 | 12,001,740 |
 
 ## chain
 
@@ -734,6 +738,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 
 ## chain-affinity
 
@@ -881,6 +886,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,578 | 3,096 | 2,525 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,578 | 3,096 | 2,525 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,578 | 3,096 | 2,525 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,578 | 3,096 | 2,525 |
 
 ## control
 
@@ -1028,6 +1034,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 74,710 | 839,889 | 2,599,697 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 74,710 | 839,893 | 2,601,829 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 74,710 | 839,897 | 2,599,701 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 74,710 | 839,862 | 2,596,476 |
 
 ## create
 
@@ -1175,6 +1182,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 13,448,235 | 2,861,677 | 2,570,369 | 2,127,896 | 4,045,340 | 34,034,535 | 50,427,600 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 13,448,371 | 2,861,677 | 2,570,384 | 2,127,933 | 4,045,421 | 34,034,770 | 50,427,664 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 13,464,238 | 2,861,678 | 2,570,369 | 2,127,974 | 4,045,544 | 34,034,732 | 50,427,466 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 13,448,339 | 2,877,676 | 2,570,369 | 2,127,894 | 4,042,633 | 34,034,750 | 50,427,477 |
 
 ## create-on
 
@@ -1322,6 +1330,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,949,484 | 4,179,655 | 55,228,770 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,949,484 | 4,179,449 | 55,228,828 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,949,484 | 4,179,636 | 55,228,828 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,949,485 | 4,179,685 | 55,228,785 |
 
 ## cutoff
 
@@ -1469,6 +1478,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1616,6 +1626,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 781 | 751 | 16,520 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 781 | 751 | 16,520 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 781 | 751 | 16,520 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 781 | 751 | 16,520 |
 
 ## derive-on
 
@@ -1763,6 +1774,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 751 | 802 | 16,543 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 751 | 802 | 16,543 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 751 | 802 | 16,543 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 751 | 802 | 16,543 |
 
 ## dispose
 
@@ -1910,6 +1922,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 2,706,240 | 806,291 | 367,497 | 476,056 | 495,047 | 13,205,460 | 9,105,771 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,707,644 | 806,291 | 367,497 | 475,863 | 495,433 | 13,205,880 | 9,106,153 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,707,643 | 806,290 | 367,497 | 476,134 | 495,150 | 13,206,176 | 9,105,709 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,707,646 | 806,291 | 367,497 | 475,645 | 495,242 | 13,205,822 | 9,105,553 |
 
 ## dispose-on
 
@@ -2057,6 +2070,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 346,497 | 487,790 | 8,902,258 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 346,497 | 487,901 | 8,902,441 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 346,497 | 487,699 | 8,902,633 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 346,497 | 487,932 | 8,902,728 |
 
 ## editable-edit
 
@@ -2204,6 +2218,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 182,106 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 182,106 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 182,106 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 182,106 |
 
 ## editable-upstream
 
@@ -2351,6 +2366,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 233,855 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 233,855 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 233,855 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 233,855 |
 
 ## fail-recompute
 
@@ -2498,6 +2514,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 64,895 | 1,383 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 64,895 | 1,383 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 64,895 | 1,383 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 64,895 | 1,383 |
 
 ## flight
 
@@ -2645,6 +2662,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 
 ## keyed-insert
 
@@ -2792,6 +2810,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,925,733 | 53,917 | 54,954 | 3,280,052 | 660,295 | 243,395 | 45,302,978 | 2,634,677 | 2,655,658 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,925,739 | 53,917 | 54,964 | 3,279,998 | 660,315 | 243,397 | 45,302,963 | 2,634,695 | 2,655,742 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,925,731 | 53,917 | 54,954 | 3,279,960 | 660,367 | 243,382 | 45,302,976 | 2,634,673 | 2,655,680 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,925,731 | 53,917 | 54,960 | 3,279,934 | 660,313 | 243,046 | 45,313,160 | 2,634,704 | 2,655,726 |
 
 ## keyed-remove
 
@@ -2939,6 +2958,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,924,658 | 43,600 | 45,303 | 3,284,068 | 596,013 | 602,239 | 45,268,298 | 1,924,554 | 1,960,266 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,924,672 | 43,600 | 45,312 | 3,284,079 | 595,990 | 602,298 | 45,280,283 | 1,924,722 | 1,960,317 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,924,662 | 43,600 | 45,303 | 3,284,052 | 596,035 | 602,209 | 45,268,289 | 1,924,736 | 1,960,377 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,924,666 | 43,601 | 45,304 | 3,284,133 | 596,019 | 602,207 | 45,268,305 | 1,924,733 | 1,960,354 |
 
 ## keyed-swap
 
@@ -3086,6 +3106,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,977,356 | 46,205 | 46,928 | 3,647,892 | 147,965 | 508,833 | 46,429,254 | 915,643 | 935,778 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,977,355 | 46,205 | 46,927 | 3,648,330 | 147,937 | 508,810 | 46,429,283 | 915,633 | 935,805 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,977,355 | 46,205 | 46,927 | 3,648,001 | 147,897 | 508,939 | 46,429,315 | 915,682 | 935,786 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,977,355 | 46,205 | 46,927 | 3,647,737 | 148,192 | 508,837 | 46,428,902 | 915,647 | 935,763 |
 
 ## mvu-dispatch
 
@@ -3233,6 +3254,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 58,548 | 788 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 58,548 | 788 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 58,548 | 788 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 58,548 | 788 |
 
 ## persist-write
 
@@ -3380,6 +3402,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — |
 
 ## project-chain
 
@@ -3527,6 +3550,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,077,382 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,077,343 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,077,260 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,077,348 |
 
 ## project-churn
 
@@ -3674,6 +3698,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 36,404 | 34,281 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 36,388 | 34,281 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 36,386 | 34,251 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 36,404 | 34,281 |
 
 ## project-edit
 
@@ -3821,6 +3846,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 50,496 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 50,495 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 50,496 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 50,511 |
 
 ## project-reorder
 
@@ -3968,6 +3994,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 780,084 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 780,083 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 780,084 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 780,085 |
 
 ## server-render
 
@@ -4115,6 +4142,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | — | — | — |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — | — |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — | — |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — | — |
 
 ## shape-diamond
 
@@ -4262,6 +4290,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 60,816 | 82,845 | 1,802,884 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 60,816 | 82,845 | 1,802,884 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 60,816 | 82,845 | 1,802,884 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 60,816 | 82,845 | 1,802,884 |
 
 ## shape-dynamic
 
@@ -4409,6 +4438,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 84,378 | 108,944 | 2,038,136 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 84,378 | 108,947 | 2,038,136 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 84,378 | 108,947 | 2,038,136 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 84,378 | 108,944 | 2,038,136 |
 
 ## stream-burst-1
 
@@ -4556,6 +4586,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,051 | 47,792 | 46,003 | 55,600 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,954 | 1,552 | 2,525 | 5,034 | 7,372 | 14,048 | 47,796 | 46,003 | 55,600 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,051 | 47,796 | 46,003 | 55,600 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,954 | 1,552 | 2,509 | 5,034 | 7,376 | 14,045 | 47,795 | 46,003 | 55,600 |
 
 ## stream-burst-16
 
@@ -4703,6 +4734,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 5,056 | 24,682 | 5,719 | 9,814 | 49,281 | 8,194 | 124,968 | 723,620 | 113,946 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 5,056 | 24,682 | 5,735 | 9,816 | 49,281 | 8,193 | 124,965 | 723,620 | 113,950 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 5,056 | 24,682 | 5,719 | 9,815 | 49,281 | 8,194 | 124,965 | 723,620 | 113,950 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 5,056 | 24,682 | 5,719 | 9,813 | 49,282 | 8,194 | 124,969 | 723,620 | 113,949 |
 
 ## stream-burst-256
 
@@ -4850,6 +4882,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 54,676 | 394,726 | 57,058 | 133,524 | 800,308 | 45,154 | 1,359,925 | 11,564,280 | 1,046,969 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 54,676 | 394,726 | 57,074 | 133,531 | 800,308 | 45,152 | 1,359,966 | 11,564,280 | 1,046,979 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 54,676 | 394,726 | 57,058 | 133,565 | 800,311 | 45,152 | 1,359,966 | 11,564,234 | 1,046,981 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 54,676 | 394,726 | 57,058 | 133,566 | 800,308 | 45,152 | 1,359,873 | 11,564,223 | 1,046,964 |
 
 ## stream-restart
 
@@ -4997,6 +5030,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 4,216 | 5,040 | 5,731 | 5,331 | 43,387 | 72,505 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 4,216 | 5,056 | 5,734 | 5,330 | 43,390 | 72,510 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 4,216 | 5,040 | 5,737 | 5,336 | 43,389 | 72,513 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 4,216 | 5,040 | 5,739 | 5,331 | 43,389 | 72,513 |
 
 ## timed-admit-both
 
@@ -5144,6 +5178,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 117,709 | 130,036 | 2,693,876 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 117,709 | 130,037 | 2,693,850 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 117,709 | 130,034 | 2,693,850 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 117,709 | 130,036 | 2,693,850 |
 
 ## timed-admit-debounce
 
@@ -5291,6 +5326,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 116,614 | 128,621 | 2,654,132 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 116,614 | 128,630 | 2,654,132 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 116,614 | 128,632 | 2,654,119 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 116,614 | 128,619 | 2,654,132 |
 
 ## timed-admit-first
 
@@ -5438,6 +5474,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 69,621 | 79,565 | 1,620,678 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 69,621 | 79,565 | 1,620,678 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 69,621 | 79,565 | 1,620,678 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 69,621 | 79,565 | 1,620,678 |
 
 ## timed-admit-last
 
@@ -5585,6 +5622,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 116,876 | 128,948 | 2,663,987 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 116,876 | 128,939 | 2,663,975 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 116,876 | 128,939 | 2,663,986 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 116,876 | 128,938 | 2,663,975 |
 
 ## timed-capture-both
 
@@ -5732,6 +5770,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,740 | 44,936 | 847,273 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,740 | 44,936 | 847,274 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,740 | 44,934 | 847,273 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,740 | 44,937 | 847,272 |
 
 ## timed-capture-debounce
 
@@ -5879,6 +5918,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,612 | 44,232 | 847,657 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,612 | 44,232 | 847,657 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,612 | 44,233 | 847,657 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,612 | 44,232 | 847,657 |
 
 ## timed-capture-first
 
@@ -6026,6 +6066,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 32,092 | 36,741 | 745,651 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 32,092 | 36,741 | 745,651 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 32,092 | 36,741 | 745,651 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 32,092 | 36,741 | 745,652 |
 
 ## timed-capture-last
 
@@ -6173,6 +6214,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 35,548 | 44,169 | 839,785 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,548 | 44,168 | 839,785 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,548 | 44,168 | 839,785 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,548 | 44,168 | 839,785 |
 
 ## update
 
@@ -6320,6 +6362,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 1,087,790 | 38,805 | 84,105 | 263,205 | 145,792 | 3,351,174 | 2,544,985 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,087,783 | 38,805 | 84,105 | 263,194 | 145,785 | 3,351,290 | 2,545,077 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,089,390 | 38,805 | 84,105 | 263,447 | 145,832 | 3,351,256 | 2,545,054 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,087,790 | 38,805 | 84,105 | 263,096 | 145,785 | 3,351,281 | 2,545,039 |
 
 ## update-on
 
@@ -6467,6 +6510,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 94,605 | 169,037 | 2,872,354 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 94,605 | 169,006 | 2,872,461 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 94,605 | 169,049 | 2,872,416 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 94,605 | 169,060 | 2,872,395 |
 
 ## work-form
 
@@ -6614,6 +6658,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 172,679 | 165,150 | 308,860 | 297,021 | 5,421,859 | 5,334,885 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 172,679 | 165,150 | 308,861 | 296,942 | 5,421,859 | 5,334,882 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 172,679 | 165,150 | 308,861 | 297,000 | 5,421,851 | 5,334,847 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 172,679 | 165,167 | 308,861 | 296,989 | 5,421,861 | 5,334,874 |
 
 ## work-status
 
@@ -6761,6 +6806,7 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 102,045 | 80,235 | 269,257 | 156,110 | 2,659,289 | 2,391,294 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 102,045 | 80,235 | 269,328 | 156,112 | 2,659,264 | 2,391,332 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 102,045 | 80,235 | 269,326 | 156,117 | 2,659,264 | 2,391,265 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 102,045 | 80,235 | 269,336 | 156,135 | 2,659,294 | 2,391,278 |
 
 ## work-value
 
@@ -6908,4 +6954,5 @@
 | `9df2227` | 2026-11-10 | feat(proofs): Rocq/Iris proofs of the reactive core (#307) | 109,170 | 121,069 | 269,626 | 283,396 | 2,643,901 | 2,968,464 |
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 109,169 | 121,071 | 269,608 | 283,396 | 2,643,937 | 2,968,467 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 109,171 | 121,070 | 269,615 | 283,399 | 2,643,902 | 2,968,467 |
+| `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 109,169 | 121,071 | 269,579 | 283,408 | 2,643,873 | 2,968,378 |
 
