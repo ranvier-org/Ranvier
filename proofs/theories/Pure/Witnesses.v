@@ -901,7 +901,7 @@ Qed.
 (** ** Flushes *)
 
 (** A batch whose body fails applies its write and skips [RequestFlush], as [RunBatch] does. The effect stays queued
-    and [Dirty] with no flush owed, and runs at the next flush. Awaiting ruling in [BUGS.md]. *)
+    and [Dirty] with no flush owed, and runs at the next flush. Closed in [BUGS.md]. *)
 Definition failed_batch : cmd :=
   CSignal 1 (K 0%Z) (
   CEffect 2 (CRead 10 (V 1) (CLog (V 10) Nop)) (
@@ -1851,7 +1851,7 @@ Qed.
 (**md
 **The unconditional exact refinement is false: a batch restoring a signal reruns its effect.**
 
-`exact_refinement_statement` fails on `restored`, from `batch_restored_value_reruns`, scenario `S07`. The engine's trace has a run the reference's trace does not, under every valid order and fuel. Awaiting ruling in `BUGS.md`. F#: the trace of scenario `S07`.
+`exact_refinement_statement` fails on `restored`, from `batch_restored_value_reruns`, scenario `S07`. The engine's trace has a run the reference's trace does not, under every valid order and fuel. Closed in `BUGS.md` (Core.fs 4639-4640). F#: the trace of scenario `S07`.
 *)
 Theorem exact_refinement_falsified : ~ Refinement.exact_refinement_statement.
 Proof.
@@ -1914,7 +1914,7 @@ Qed.
 (**md
 **The unconditional weak refinement is false: a memo disposed unread answers its default, and the reference answers its value.**
 
-`weak_refinement_statement` fails on `unread_memo`, from `disposed_unread_memo_value`, whose trace the F# scenario of the same name gives: the effect logs 0, where the reference logs 5. Awaiting ruling in `BUGS.md`. [`write_then_dispose_memo_current_value`](#write_then_dispose_memo_current_value) and [`redundant_run_reads_untracked`](#redundant_run_reads_untracked) are two more falsifiers.
+`weak_refinement_statement` fails on `unread_memo`, from `disposed_unread_memo_value`, whose trace the F# scenario of the same name gives: the effect logs 0, where the reference logs 5. Closed in `BUGS.md` (Core.fs 4372-4373). [`write_then_dispose_memo_current_value`](#write_then_dispose_memo_current_value) and [`redundant_run_reads_untracked`](#redundant_run_reads_untracked) are two more falsifiers.
 *)
 Theorem weak_refinement_falsified : ~ Refinement.weak_refinement_statement.
 Proof.
