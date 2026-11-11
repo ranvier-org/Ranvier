@@ -223,7 +223,7 @@ Record check_invariant_except (x e : option node_id) (s : state) : Prop := {
   ci_window_le : forall n d r, g_nodes s !! n = Some d -> gh_window (g_ghost s) !! n = Some r ->
     r <= n_runs d;
   ci_unannounced : forall n d, g_nodes s !! n = Some d -> n_kind d = KMemo -> n_freshness d = Clean ->
-    n_unannounced d = true -> n_disposed d = false ->
+    n_unannounced d = true ->
     exists r, gh_window (g_ghost s) !! n = Some r /\ n_runs d <= r
 }.
 
@@ -235,7 +235,7 @@ Notation check_invariant_unpublished x := (check_invariant_except x None).
 The invariant relates a memo's reads to what its sources last told their observers. It says nothing of whether a stored value is up to date.
 
 - **Reads.** A signal or memo outside any run has told its observers its stored value, status and failure. Each source a memo has read in its latest run has a recorded read. Each recorded read equals what the source last told its observers, unless the memo is `Dirty` or listed in `gh_unnoticed`.
-- **The announcement flag.** A live `Clean` memo holds `n_unannounced` only when it has not run since `RecomputeScoped` last cleared its `Dirty`.
+- **The announcement flag.** A `Clean` memo holds `n_unannounced` only when it has not run since `RecomputeScoped` last cleared its `Dirty`.
 - **Bookkeeping.** The edges are ones the source-list operations can build from empty. Cursors lie within their lists, and a memo outside any run has its cursor at the end. Slots name existing computations and hold only signals and memos. Running nodes exist, the current computation is running, and the queue holds only effects.
 *)
 Definition check_invariant : state -> Prop := check_invariant_unpublished None.
@@ -248,10 +248,10 @@ Definition closed (p : gmap node_id node * gmap node_id nat) (n : node_id) : Pro
   forall d r, p.1 !! n = Some d -> p.2 !! n = Some r -> r < n_runs d.
 
 (**md
-The node `d` is disposed, has a closed window, or holds no announcement.
+The node `d` is disposed (and holds no announcement if `Clean`), has a closed window, or holds no announcement.
 *)
 Definition settled_flag (p : gmap node_id node * gmap node_id nat) (n : node_id) (d : node) : Prop :=
-  n_disposed d = true \/ closed p n \/ n_unannounced d = false.
+  (n_disposed d = true /\ (n_freshness d = Clean -> n_unannounced d = false)) \/ closed p n \/ n_unannounced d = false.
 
 (** What the engine holds of a memo from [p] to [q]. A memo out of [Clean] that ends [Clean] ends with
     [settled_flag]. *)
@@ -362,8 +362,8 @@ Definition node_step (u : node -> node) (d : node) : Prop :=
   (n_kind d = KMemo -> n_freshness d = Dirty -> n_freshness (u d) = Dirty) /\
   n_runs d <= n_runs (u d) /\
   (n_kind d = KMemo -> memo_step u d) /\
-  (n_kind d = KMemo -> n_freshness (u d) = Clean -> n_unannounced (u d) = true -> n_disposed (u d) = false ->
-     n_freshness d = Clean /\ n_unannounced d = true /\ n_disposed d = false /\ n_runs (u d) = n_runs d).
+  (n_kind d = KMemo -> n_freshness (u d) = Clean -> n_unannounced (u d) = true ->
+     n_freshness d = Clean /\ n_unannounced d = true /\ n_runs (u d) = n_runs d).
 
 Local Ltac ms :=
   unfold memo_step; split_and!; try done; intros; simpl in *;
@@ -411,8 +411,8 @@ Lemma invariant_set_gen x e n u d s :
   (x <> Some n -> n_kind d <> KEffect -> n ∉ g_running s -> read_view_of (u d) = read_view_of d) ->
   (n_kind d = KMemo -> n_freshness d = Dirty -> n_freshness (u d) = Dirty \/ n ∈ gh_unnoticed (g_ghost s)) ->
   n_runs d <= n_runs (u d) ->
-  (n_kind d = KMemo -> n_freshness (u d) = Clean -> n_unannounced (u d) = true -> n_disposed (u d) = false ->
-     (n_freshness d = Clean /\ n_unannounced d = true /\ n_disposed d = false /\ n_runs (u d) = n_runs d) \/
+  (n_kind d = KMemo -> n_freshness (u d) = Clean -> n_unannounced (u d) = true ->
+     (n_freshness d = Clean /\ n_unannounced d = true /\ n_runs (u d) = n_runs d) \/
      exists r, gh_window (g_ghost s) !! n = Some r /\ n_runs (u d) <= r) ->
   check_invariant_except x e (set_node n (u d) s).
 Proof.
@@ -441,9 +441,9 @@ Proof.
       pose proof (ci_window_le0 n d r Hd Hw). lia.
     + rewrite lookup_insert_ne by done. eauto.
   - intros m e'. destruct (decide (m = n)) as [->|Hne].
-    + rewrite lookup_insert_eq. intros Heq Hek Hc Hun Hl. simplify_eq. rewrite Hk in Hek.
-      destruct (Hu Hek Hc Hun Hl) as [(H1 & H2 & H3 & H4)|H1]; [|done].
-      rewrite H4. eauto.
+    + rewrite lookup_insert_eq. intros Heq Hek Hc Hun. simplify_eq. rewrite Hk in Hek.
+      destruct (Hu Hek Hc Hun) as [(H1 & H2 & H3)|H1]; [|done].
+      rewrite H3. eauto.
     + rewrite lookup_insert_ne by done. eauto.
 Qed.
 
@@ -467,8 +467,12 @@ Proof.
                       closed (<[n := u d]> (g_nodes s), gh_window (g_ghost s)) n).
       { intros Hc. eapply closed_keep; [exact Hc|done|exact Hd|apply lookup_insert_eq|done]. }
       exists (u d). rewrite lookup_insert_eq. split_and!; [done|congruence|done|done|by left| |].
-      * intros [G|[G|G]]; [left; auto|right; left; auto|].
-        destruct H3 as [H3|H3]; [right; right; done|right; right; congruence].
+      * intros [[G1 G2]|[G|G]]; [|right; left; auto|].
+        -- destruct (decide (n_freshness (u d) = Clean)) as [Hc'|Hc']; [|left; split; [auto|done]].
+           destruct (decide (n_freshness d = Clean)) as [Hc|Hc].
+           ++ pose proof (G2 Hc). destruct H3; right; right; congruence.
+           ++ right. right. auto.
+        -- destruct H3 as [H3|H3]; [right; right; done|right; right; congruence].
       * intros Hc Hc'. right. right. auto.
     + rewrite lookup_insert_ne by done. intros He Hek. exists e.
       split_and!; auto.
@@ -509,7 +513,7 @@ Proof.
     + done.
     + destruct Hu; auto.
     + intros H1 ->. by apply freshness_rise_clean in Hle.
-  - intros _ -> Hun Hl. apply freshness_rise_clean in Hle. destruct Hu as [Hu|Hu]; subst u; [|done].
+  - intros _ -> Hun. apply freshness_rise_clean in Hle. destruct Hu as [Hu|Hu]; subst u; [|done].
     split_and!; done.
 Qed.
 
@@ -927,10 +931,20 @@ Proof.
     + erewrite seen_of_ne; [|reflexivity|done]. apply Hread. by apply Hprefix.
 Qed.
 
+Lemma live_current_some s c :
+  live_current s = Some c ->
+  g_current s = Some c /\ exists d, g_nodes s !! c = Some d /\ n_disposed d = false.
+Proof.
+  unfold live_current. destruct (g_current s) as [c'|]; [|done].
+  destruct (g_nodes s !! c') as [d|] eqn:Hd; [|done].
+  destruct (n_disposed d) eqn:Hdis; [done|]. intros [=->]. eauto.
+Qed.
+
 Lemma ok_track n k : k <> KEffect -> ok_under (has_kind n k) (track n).
 Proof.
   intros Hk s s' a Hi (d & Hd & Hdk) Hm. unfold track in Hm.
-  destruct (g_current s) as [c|] eqn:Ec; [|simplify_eq; split; [done|apply frame_refl]].
+  destruct (live_current s) as [c|] eqn:Elc; [|simplify_eq; split; [done|apply frame_refl]].
+  destruct (live_current_some _ _ Elc) as [Ec _].
   destruct (sources_add c n (g_edges s)) as [w|] eqn:Ea; [|done]. simplify_eq.
   split.
   - eapply invariant_track; eauto.
@@ -1300,7 +1314,8 @@ Qed.
 
 (** After a run, or a recompute that ended, the latest window of [n] has closed, or [n] is disposed. *)
 Definition run_post (s : state) (n : node_id) : Prop :=
-  exists d, g_nodes s !! n = Some d /\ (closed (nodes_and_windows s) n \/ n_disposed d = true).
+  exists d, g_nodes s !! n = Some d /\
+    (closed (nodes_and_windows s) n \/ (n_disposed d = true /\ (n_freshness d = Clean -> n_unannounced d = false))).
 
 (**md
 A completed step `m` from a state satisfying `check_invariant`, where `n` is a memo, ends in a state
@@ -1469,13 +1484,13 @@ Section Step.
       - intros m e r. destruct (decide (m = n)) as [->|Hne].
         + rewrite lookup_insert_eq. rewrite Hd. intros [=<-] [=<-]. done.
         + rewrite lookup_insert_ne by done. eauto.
-      - intros m e He Hek Hc Hu Hl. destruct (decide (m = n)) as [->|Hne].
+      - intros m e He Hek Hc Hu. destruct (decide (m = n)) as [->|Hne].
         + rewrite lookup_insert_eq. rewrite Hd in He. injection He as <-. eexists. split; [done|lia].
         + rewrite lookup_insert_ne by done. eauto. }
     assert (Hin : n ∈ gh_unnoticed (g_ghost (ghost_dirty_cleared n (n_runs d) s))) by (simpl; set_solver).
     refine (invariant_set_gen None None n (node_with_freshness Clean) d _ H1 Hd eq_refl
               (fun _ _ _ => eq_refl) (fun _ _ => or_intror Hin) (le_n _) _).
-    intros _ _ _ _. right. exists (n_runs d). split; [simpl; apply lookup_insert_eq|done].
+    intros _ _ _. right. exists (n_runs d). split; [simpl; apply lookup_insert_eq|done].
   Qed.
 
   Lemma ok_recompute_full n s s' a :
@@ -1510,7 +1525,14 @@ Section Step.
     (* the three ways out, each from a state with the post *)
     assert (Hout : check_invariant s' /\ frame s2 s' /\ run_post s' n).
     { destruct (n_disposed d2) eqn:Edis.
-      - unfold m_return in Hm2. simplify_eq. split_and!; [done|apply frame_refl|]. exists d2. auto.
+      - destruct (decide (n_freshness d2 = Clean)) as [Hc2|Hc2].
+        + unfold modify_node in Hm2. rewrite Hd2 in Hm2. simplify_eq.
+          assert (Hs2 : node_step (node_with_unannounced false) d2) by ns.
+          split_and!; [by apply (invariant_set None None n (node_with_unannounced false) d2)|by apply (frame_node n (node_with_unannounced false) d2)|].
+          exists (node_with_unannounced false d2). split; [simpl; apply lookup_insert_eq|].
+          right. split; done.
+        + unfold m_return in Hm2. simplify_eq. split_and!; [done|apply frame_refl|].
+          exists d2. split; [done|]. right. split; [done|congruence].
       - destruct (decide (n_runs d2 = n_runs d)) as [Heq|Hne].
         + pose proof (Erun_memo _ IH n _ _ _ Hi2 ltac:(by exists d2) Hm2) as [H1 H2].
           split_and!; [done|done|]. exact (Erun_post _ IH n _ _ _ Hi2 ltac:(by exists d2) Hm2).
@@ -1539,7 +1561,7 @@ Section Step.
     destruct (Hf12 n (node_with_freshness Clean d) Hd1 ltac:(done)) as (e' & He' & Hk' & Hr' & Hdi' & _ & _ & _).
     destruct Hpost as (e2 & He2 & Hp). simpl in He'. assert (e2 = e') by congruence. subst e2.
     exists e'. split_and!; [done|done|done|auto| |intros _; destruct Hp; [right; left|left]; done|intros _ _; destruct Hp; [right; left|left]; done].
-    destruct Hp; [right; left|right; right]; done.
+    destruct Hp as [Hp|[Hp _]]; [right; left|right; right]; done.
   Qed.
 
   Lemma ok_recompute_S n : ok_under (has_kind n KMemo) (recompute (S f) n).
@@ -1691,11 +1713,19 @@ Section Step.
       eapply memo_frame_trans; [apply Hfr10|apply Hfr11]. }
     assert (Hfr_all : forall m, memo_frame (nodes_and_windows s) (nodes_and_windows s11) m).
     { intros m. eapply memo_frame_trans; [apply Hfr4|apply Hfr_late]. }
-    assert (Hpost : closed (nodes_and_windows s11) n \/ n_disposed d4 = true).
-    { destruct (Hfr_late n (u d) Hd4' ltac:(done)) as (e & He & _ & Hr & _ & Hwn & _ & _).
+    assert (Hpost : closed (nodes_and_windows s11) n \/
+                    (n_disposed d4 = true /\ (n_freshness d4 = Clean -> n_unannounced d4 = false))).
+    { destruct (Hfr_late n (u d) Hd4' ltac:(done)) as (e & He & _ & Hr & _ & Hwn & Hsf & _).
       simpl in He. assert (e = d4) by congruence. subst e.
-      destruct Hwn as [Hwn|[Hwn|Hwn]]; [left|by left|by right].
-      eapply closed_keep; [exact Hclosed4|exact Hwn|exact Hd4'|exact Hd4|exact Hr]. }
+      assert (Hsf4 : settled_flag (nodes_and_windows s11) n d4) by (apply Hsf; right; left; exact Hclosed4).
+      destruct Hwn as [Hwn|[Hwn|Hwn]].
+      - left. eapply closed_keep; [exact Hclosed4|exact Hwn|exact Hd4'|exact Hd4|exact Hr].
+      - by left.
+      - right. split; [done|]. intros Hc4.
+        destruct Hsf4 as [[_ Hsf4]|[Hsf4|Hsf4]]; [auto| |done].
+        destruct (n_unannounced d4) eqn:Eu4; [|done].
+        destruct (ci_unannounced _ _ _ Hi11 n d4 Hd4 Hk4 Hc4 Eu4) as (r4 & Hr4 & Hle4).
+        pose proof (Hsf4 d4 r4 Hd4 Hr4). lia. }
     destruct (decide (n_freshness d4 = Clean)) as [Hc4|Hc4].
     - unfold m_return in Hm11. simplify_eq. split_and!; [done| |by exists d4].
       split_and!; [done|done|done|done].
@@ -1703,8 +1733,10 @@ Section Step.
       2: { simplify_eq. split_and!; [done| |by exists d4]. split_and!; [done|done|done|done]. }
       unfold modify_node in Hm11. rewrite Hd4 in Hm11. simplify_eq.
       assert (Hclosed' : closed (nodes_and_windows (set_node n (node_with_unannounced true d4) s11)) n \/
-                         n_disposed (node_with_unannounced true d4) = true).
-      { destruct Hpost as [Hp|Hp]; [left|by right].
+                         (n_disposed (node_with_unannounced true d4) = true /\
+                          (n_freshness (node_with_unannounced true d4) = Clean ->
+                           n_unannounced (node_with_unannounced true d4) = false))).
+      { destruct Hpost as [Hp|[Hp _]]; [left|right; split; [done|simpl; congruence]].
         intros e r9 He Hr. simpl in He. rewrite lookup_insert_eq in He. injection He as <-.
         exact (Hp d4 r9 Hd4 Hr). }
       split_and!.
@@ -1718,7 +1750,7 @@ Section Step.
              destruct (Hfr_all n d Hd Hek) as (e' & He' & Hk' & Hr' & Hdi' & _).
              simpl in He'. assert (e' = d4) by congruence. subst e'.
              exists (node_with_unannounced true d4). simpl. rewrite lookup_insert_eq. split_and!; [done|done|done|done| | |].
-             ++ destruct Hclosed' as [H1|H1]; [right; left|right; right]; done.
+             ++ destruct Hclosed' as [H1|[H1 _]]; [right; left|right; right]; done.
              ++ intros _. destruct Hclosed' as [H1|H1]; [right; left|left]; done.
              ++ intros _ _. destruct Hclosed' as [H1|H1]; [right; left|left]; done.
           -- eapply memo_frame_trans; [apply Hfr_all|].
@@ -2160,33 +2192,33 @@ Proof.
 Qed.
 
 (**md
-**Resolving a live memo to `Clean` clears its announcement flag.**
+**Resolving a memo to `Clean` clears its announcement flag.**
 
-Holds on every path of `update_if_necessary`: the walk ending in `Check`, or a run after it.
+Holds on every path of `update_if_necessary`: the walk ending in `Check`, a run after it, or disposal during `RecomputeScoped`.
 
-Premises: the [check invariant](#check_invariant) holds, the memo starts in `Check` and ends `Clean`, and the memo is not disposed at the end. A memo disposed during `RecomputeScoped` can keep the flag, as [`disposed_window_keeps_unannounced`](Ranvier.Pure.Witnesses.html#disposed_window_keeps_unannounced) shows.
+Premises: the [check invariant](#check_invariant) holds, and the memo starts in `Check` and ends `Clean`.
 
 - [f:] the fuel.
 - [n:] the memo, in `Check` before the update.
 - [s:] the state before the update.
 - [s':] the state after the update.
 - [d:] the node `n` in `s`.
-- [d':] the node `n` in `s'`, which is `Clean` and not disposed.
+- [d':] the node `n` in `s'`, which is `Clean`.
 *)
 Theorem resolve_clears_unannounced f n s s' d d' :
   check_invariant s ->
   g_nodes s !! n = Some d -> n_kind d = KMemo -> n_freshness d = Check ->
   update_if_necessary f n s = Some (s', tt) ->
-  g_nodes s' !! n = Some d' -> n_freshness d' = Clean -> n_disposed d' = false ->
+  g_nodes s' !! n = Some d' -> n_freshness d' = Clean ->
   n_unannounced d' = false.
 Proof.
-  intros Hi Hd Hk Hc Hu Hd' Hc' Hl.
+  intros Hi Hd Hk Hc Hu Hd' Hc'.
   destruct (Eupdate _ (engine_ok_all f) n _ _ _ Hi I Hu) as [Hi' (_ & _ & _ & Hfr)].
   destruct (Hfr n d Hd Hk) as (e & He & Hek & _ & _ & _ & _ & Hs).
   simpl in He. assert (e = d') by congruence. subst e.
-  destruct (Hs ltac:(congruence) Hc') as [H|[H|H]]; [congruence| |done].
+  destruct (Hs ltac:(congruence) Hc') as [[_ H]|[H|H]]; [auto| |done].
   destruct (n_unannounced d') eqn:Eu; [|done].
-  destruct (ci_unannounced _ _ _ Hi' n d' Hd' Hek Hc' Eu Hl) as (r & Hr & Hle).
+  destruct (ci_unannounced _ _ _ Hi' n d' Hd' Hek Hc' Eu) as (r & Hr & Hle).
   pose proof (H d' r Hd' Hr). lia.
 Qed.
 
@@ -2245,7 +2277,7 @@ Qed.
 
 Lemma track_nodes n s s' : track n s = Some (s', tt) -> g_nodes s' = g_nodes s.
 Proof.
-  unfold track. destruct (g_current s); [|intros; by simplify_eq].
+  unfold track. destruct (live_current s); [|intros; by simplify_eq].
   destruct (sources_add _ _ _); [|done]. intros Hm. simplify_eq. unfold ghost_read. simpl.
   by destruct (g_nodes s !! n).
 Qed.

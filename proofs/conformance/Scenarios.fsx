@@ -364,8 +364,8 @@ let scenarios: (string * (Ctx -> unit)) list =
             s.Value <- 2
             c.HostRead 2 (fun () -> m.Value) |> ignore
 
-        // BUGS.md: an effect disposes itself, reads a memo over a signal, and writes that signal. The read links an edge
-        // until the run's end, and the mark leaves the effect clean and unqueued.
+        // BUGS.md: an effect disposes itself, reads a memo over a signal, and writes that signal. The read after
+        // disposal links no edge, and the mark leaves the effect clean and unqueued.
         "disposed_running_observer_stays_clean",
         fun c ->
             let s = c.Signal 1 0
@@ -386,7 +386,7 @@ let scenarios: (string * (Ctx -> unit)) list =
                         c.Check (observers () = 0) "the disposal leaves the memo unobserved"
                         let v = m.Value
                         c.Log 3 v
-                        c.Check (observers () = 1) "the read after the disposal links an edge"
+                        c.Check (observers () = 0) "the read after the disposal links no edge"
                         s.Value <- v + 1
                         c.Check (statusOf self.Value = "None") $"the mark leaves the effect clean: {statusOf self.Value}"
                         c.Check (not (privateField self.Value "queued" :?> bool)) "the mark leaves the effect unqueued"
@@ -619,7 +619,7 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check ((privateField e "freshness").ToString() = "Clean") "the effect is Clean"
 
         // BUGS.md, disposed_window_keeps_unannounced. A nested run ends stale and registers a cleanup that disposes the
-        // memo. The next untracked self-read discharges it in RecomputeScoped's window, with the nested run's flag set.
+        // memo. The next untracked self-read discharges it in RecomputeScoped's window, which clears the nested run's flag.
         "disposed_self_window",
         fun c ->
             let s = c.Signal 1 0
@@ -652,7 +652,7 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (freshnessOf n = "Check") $"the memo is {freshnessOf n}"
             c.HostRead 4 (fun () -> n.Value) |> ignore
             c.Check (freshnessOf n = "Clean") $"after its read the memo is {freshnessOf n}"
-            c.Check (privateField n "unannounced" :?> bool) "the memo holds its flag"
+            c.Check (not (privateField n "unannounced" :?> bool)) "the window clears the memo's flag"
             c.Check (privateField n "disposed" :?> bool) "the memo is disposed"
 
         // A memo's previous value. A memo nested in a published memo starts with none, and a later run has its own.

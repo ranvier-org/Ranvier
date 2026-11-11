@@ -992,6 +992,8 @@ val live_queue : state -> bool
 
 val outside_bodies : state -> bool
 
+val live_current : state -> node_id option
+
 val track : node_id -> unit0 m
 
 val mark_reader : nat -> unit0 m

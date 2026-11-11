@@ -4197,6 +4197,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                 this.Run ()
             elif freshness = Freshness.Dirty then
                 this.Recompute ()
+        elif freshness = Freshness.Clean then
+            unannounced <- false
 
     member private this.Run() =
         // Marked clean *before* the body runs, not after. A body that
@@ -4475,7 +4477,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
     interface IComputation with
         member this.AddSource s =
-            sources.Add (this :> IComputation, s)
+            if not disposed then
+                sources.Add (this :> IComputation, s)
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
@@ -4734,7 +4737,8 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
     interface IComputation with
         member this.AddSource s =
-            sources.Add (this :> IComputation, s)
+            if not disposed then
+                sources.Add (this :> IComputation, s)
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
@@ -5152,7 +5156,8 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
     interface IComputation with
         member this.AddSource source =
-            sources.Add (this :> IComputation, source)
+            if not disposed then
+                sources.Add (this :> IComputation, source)
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
@@ -5670,6 +5675,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     this.Launch ()
                 elif freshness = Freshness.Dirty then
                     this.Start ()
+            elif freshness = Freshness.Clean then
+                unannounced <- false
 
 
     member private this.Launch() =
@@ -5908,7 +5915,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
     interface IComputation with
         member this.AddSource s =
-            sources.Add (this :> IComputation, s)
+            if not disposed then
+                sources.Add (this :> IComputation, s)
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
@@ -6200,6 +6208,8 @@ type Boundary<'T>
                     this.Run ()
                 elif freshness = Freshness.Dirty then
                     this.Recompute ()
+            elif freshness = Freshness.Clean then
+                unannounced <- false
 
 
     member private this.Run() =
@@ -6524,7 +6534,8 @@ type Boundary<'T>
 
     interface IComputation with
         member this.AddSource s =
-            sources.Add (this :> IComputation, s)
+            if not disposed then
+                sources.Add (this :> IComputation, s)
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)

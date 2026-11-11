@@ -105,9 +105,9 @@ Proof.
     + intros (d & Hd & Hst). vm_compute in Hd. simplify_eq.
 Qed.
 
-(** Effect 2 disposes itself mid-body and then reads memo 1: [Track] and [AddSource] link the edge with
-    no disposed test, and the [finally] of [RunBody] clears it. The effect ignores the mark, and it is
-    running. Awaiting ruling in [BUGS.md]. *)
+(** A synthetic [mark_state] where disposed running effect 2 holds an edge from memo 1: [mark_check]
+    ignores the disposed effect. [track] and [IComputation.AddSource] guard against [disposed], so a
+    read after self-disposal links no edge ([check_disposed_window]). Closed in [BUGS.md]. *)
 Example disposed_running_observer_stays_clean :
   let s := mark_state linked_world
              (<[1 := clean_node KMemo false false]> (<[2 := clean_node KEffect false true]> ∅)) [] 0 [2] in
@@ -539,7 +539,8 @@ Example resolve_over_disposed_dirty_source :
 Proof. split_and!; vm_compute; reflexivity. Qed.
 
 (** A cleanup of a memo's nested run disposes the memo in [RecomputeScoped]'s window, with the flag of that
-    nested run. The memo goes from [Check] to [Clean] holding [n_unannounced]. Awaiting ruling in [BUGS.md]. *)
+    nested run. The window clears [n_unannounced] when the disposed memo remains [Clean], so
+    [resolve_clears_unannounced] holds without a liveness premise. Closed in [BUGS.md]. *)
 Definition disposed_window (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
   CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -558,7 +559,7 @@ Local Definition window_end : state :=
 Example disposed_window_keeps_unannounced :
   node_view window_start 4 = Some (Check, false, false, StNone, 0%Z) /\
   update_if_necessary 2000 4 window_start = Some (window_end, tt) /\
-  node_view window_end 4 = Some (Clean, true, false, StNone, 0%Z) /\
+  node_view window_end 4 = Some (Clean, false, false, StNone, 0%Z) /\
   n_disposed <$> g_nodes window_end !! 4 = Some true.
 Proof. split_and!; vm_compute; reflexivity. Qed.
 

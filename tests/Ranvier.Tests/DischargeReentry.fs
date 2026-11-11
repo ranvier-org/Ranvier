@@ -15,6 +15,23 @@ let private invalidOp (f: unit -> unit) (message: string) : InvalidOperationExce
     with :? InvalidOperationException as ex ->
         ex
 
+#if FABLE_COMPILER
+[<Fable.Core.Emit("$0.unannounced")>]
+let private isUnannounced (_memo: obj) : bool =
+    Fable.Core.Util.jsNative
+#else
+let private isUnannounced (memo: obj) : bool =
+    memo
+        .GetType()
+        .GetField(
+            "unannounced",
+            Reflection.BindingFlags.Instance
+            ||| Reflection.BindingFlags.NonPublic
+        )
+        .GetValue(memo)
+    :?> bool
+#endif
+
 /// <summary>
 /// A cleanup that writes a source of its computation and then reads the
 /// computation, an effect's teardown under a pure reader, and the error a
@@ -669,6 +686,7 @@ let tests =
                 let u = createSignal 0
                 let t = createSignal 0
                 let mutable self: Effect = Unchecked.defaultof<_>
+                let mutable midRunObservers = -1
 
                 self <-
                     new Effect (
@@ -678,9 +696,13 @@ let tests =
                                 self.Dispose ()
 
                             t.Value |> ignore
+
+                            if u.Value = 1 then
+                                midRunObservers <- t.ObserverCount
                     )
 
                 u.Value <- 1
+                Expect.equal midRunObservers 0 "the read after self-disposal links no edge during the body"
                 Expect.equal t.ObserverCount 0 "the disposed effect holds no edge to t"
                 Expect.equal u.ObserverCount 0 "the disposed effect holds no edge to u"
             }
@@ -691,17 +713,24 @@ let tests =
                 let u = createSignal 0
                 let t = createSignal 0
                 let mutable self: Memo<int> = Unchecked.defaultof<_>
+                let mutable midRunObservers = -1
 
                 self <-
                     createMemo (fun _ ->
                         if u.Value = 1 then
                             self.Dispose ()
 
-                        t.Value)
+                        let v = t.Value
+
+                        if u.Value = 1 then
+                            midRunObservers <- t.ObserverCount
+
+                        v)
 
                 self.Value |> ignore
                 u.Value <- 1
                 self.Value |> ignore
+                Expect.equal midRunObservers 0 "the read after self-disposal links no edge during the body"
                 Expect.equal t.ObserverCount 0 "the disposed memo holds no edge to t"
                 Expect.equal u.ObserverCount 0 "the disposed memo holds no edge to u"
             }
@@ -712,17 +741,24 @@ let tests =
                 let u = createSignal 0
                 let t = createSignal 0
                 let mutable self: AsyncMemo<int> = Unchecked.defaultof<_>
+                let mutable midRunObservers = -1
 
                 self <-
                     createAsync (fun _ _ ->
                         if u.Value = 1 then
                             self.Dispose ()
 
-                        completed t.Value)
+                        let v = t.Value
+
+                        if u.Value = 1 then
+                            midRunObservers <- t.ObserverCount
+
+                        completed v)
 
                 self.TryValue |> ignore
                 u.Value <- 1
                 self.TryValue |> ignore
+                Expect.equal midRunObservers 0 "the read after self-disposal links no edge during the body"
                 Expect.equal t.ObserverCount 0 "the disposed async memo holds no edge to t"
                 Expect.equal u.ObserverCount 0 "the disposed async memo holds no edge to u"
             }
@@ -733,17 +769,24 @@ let tests =
                 let u = createSignal 0
                 let t = createSignal 0
                 let mutable self: Boundary<int> = Unchecked.defaultof<_>
+                let mutable midRunObservers = -1
 
                 self <-
                     createErrorBoundary (fun _ _ -> -1) (fun () ->
                         if u.Value = 1 then
                             self.Dispose ()
 
-                        t.Value)
+                        let v = t.Value
+
+                        if u.Value = 1 then
+                            midRunObservers <- t.ObserverCount
+
+                        v)
 
                 self.Value |> ignore
                 u.Value <- 1
                 self.Value |> ignore
+                Expect.equal midRunObservers 0 "the read after self-disposal links no edge during the body"
                 Expect.equal t.ObserverCount 0 "the disposed boundary holds no edge to t"
                 Expect.equal u.ObserverCount 0 "the disposed boundary holds no edge to u"
             }
@@ -754,18 +797,55 @@ let tests =
                 let u = createSignal 0
                 let t = createSignal 0
                 let mutable self: Projection<int, int> = Unchecked.defaultof<_>
+                let mutable midRunObservers = -1
 
                 self <-
                     createProjection id id (fun () ->
                         if u.Value = 1 then
                             self.Dispose ()
 
-                        [ t.Value ])
+                        let v = t.Value
+
+                        if u.Value = 1 then
+                            midRunObservers <- t.ObserverCount
+
+                        [ v ])
 
                 self.Keys |> ignore
                 u.Value <- 1
                 self.Keys |> ignore
+                Expect.equal midRunObservers 0 "the read after self-disposal links no edge during the source pass"
                 Expect.equal t.ObserverCount 0 "the disposed projection holds no edge to t"
                 Expect.equal u.ObserverCount 0 "the disposed projection holds no edge to u"
+            }
+
+            test "an owning memo disposed by a cleanup during RecomputeScoped after a stale nested run settles clean" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                let gate = createSignal 0
+                let m = createMemo (fun _ -> s.Value)
+                let mutable self: Memo<int> = Unchecked.defaultof<_>
+
+                self <-
+                    createMemoWith (fun _ ->
+                        if m.Value = 0 then
+                            0
+                        elif gate.Value = 0 then
+                            gate.Value <- 1
+                            untrack (fun () -> self.Value) |> ignore
+                            untrack (fun () -> self.Value) |> ignore
+                            0
+                        else
+                            onCleanup (fun () -> self.Dispose ())
+                            gate.Value <- 2
+                            0)
+
+                Expect.equal self.Value 0 "initial run"
+                s.Value <- 1
+                Expect.equal self.Value 0 "the outer run finishes after the nested cleanup disposes the memo"
+                Expect.equal (self :> INode).Status Status.None "the disposed memo settles Clean"
+                Expect.isFalse (isUnannounced self) "the disposed clean memo clears unannounced"
+                Expect.equal self.Runs 3 "three runs before disposal"
             }
         ]

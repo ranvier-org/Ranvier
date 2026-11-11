@@ -1220,8 +1220,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     interface IComputation with
         member this.AddSource s =
-            trackedReads <- trackedReads + 1
-            sources.Add (this :> IComputation, s)
+            if not disposed then
+                trackedReads <- trackedReads + 1
+                sources.Add (this :> IComputation, s)
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)

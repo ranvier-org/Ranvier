@@ -424,7 +424,7 @@ Qed.
 Lemma track_keeps n s s' :
   track n s = Some (s', tt) -> g_nodes s' = g_nodes s /\ g_trace s' = g_trace s /\ g_queue s' = g_queue s.
 Proof.
-  unfold track. destruct (g_current s); [|intros; simplify_eq; done].
+  unfold track. destruct (live_current s); [|intros; simplify_eq; done].
   destruct (sources_add _ _ _); [|done]. intros Hm. simplify_eq. unfold ghost_read. simpl.
   destruct (g_nodes s !! n); done.
 Qed.
