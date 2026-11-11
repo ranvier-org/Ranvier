@@ -147,6 +147,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 83,471 | 127,068 | 1,751,058 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 83,473 | 127,032 | 1,750,996 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 83,478 | 127,035 | 1,750,902 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 83,565 | 127,300 | 1,753,872 |
 
 ## app-table
 
@@ -295,6 +296,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 4,436,422 | 9,348,590 | 108,288,776 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 4,436,377 | 9,388,575 | 108,233,524 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 4,436,346 | 9,348,895 | 108,121,731 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 4,446,850 | 9,373,011 | 108,701,850 |
 
 ## async-recover
 
@@ -443,6 +445,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 139,123 | 41,382 | 435,923 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 139,123 | 41,392 | 435,925 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 139,123 | 41,390 | 435,914 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 139,381 | 41,434 | 437,754 |
 
 ## async-resolve
 
@@ -591,6 +594,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,789,437 | 1,002,399 | 12,001,673 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,789,438 | 1,002,234 | 12,001,732 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,789,438 | 1,002,196 | 12,001,740 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,799,187 | 1,007,412 | 12,082,061 |
 
 ## chain
 
@@ -739,6 +743,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 13,035 | 318 | 2,479 | 4,491 | 3,343 | 72,781 | 67,991 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 13,037 | 318 | 2,487 | 4,491 | 3,363 | 72,781 | 68,235 |
 
 ## chain-affinity
 
@@ -887,6 +892,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,578 | 3,096 | 2,525 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,578 | 3,096 | 2,525 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,578 | 3,096 | 2,525 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,586 | 3,108 | 2,537 |
 
 ## control
 
@@ -1035,6 +1041,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 74,710 | 839,893 | 2,601,829 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 74,710 | 839,897 | 2,599,701 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 74,710 | 839,862 | 2,596,476 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 74,710 | 839,928 | 2,601,693 |
 
 ## create
 
@@ -1183,6 +1190,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 13,448,371 | 2,861,677 | 2,570,384 | 2,127,933 | 4,045,421 | 34,034,770 | 50,427,664 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 13,464,238 | 2,861,678 | 2,570,369 | 2,127,974 | 4,045,544 | 34,034,732 | 50,427,466 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 13,448,339 | 2,877,676 | 2,570,369 | 2,127,894 | 4,042,633 | 34,034,750 | 50,427,477 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 13,451,472 | 2,866,678 | 2,571,380 | 2,126,881 | 4,052,214 | 34,027,206 | 50,549,538 |
 
 ## create-on
 
@@ -1331,6 +1339,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,949,484 | 4,179,449 | 55,228,828 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,949,484 | 4,179,636 | 55,228,828 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,949,485 | 4,179,685 | 55,228,785 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,948,492 | 4,187,809 | 55,350,897 |
 
 ## cutoff
 
@@ -1479,6 +1488,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,184 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1627,6 +1637,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 781 | 751 | 16,520 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 781 | 751 | 16,520 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 781 | 751 | 16,520 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 783 | 755 | 16,581 |
 
 ## derive-on
 
@@ -1775,6 +1786,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 751 | 802 | 16,543 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 751 | 802 | 16,543 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 751 | 802 | 16,543 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 753 | 806 | 16,604 |
 
 ## dispose
 
@@ -1923,6 +1935,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 2,707,644 | 806,291 | 367,497 | 475,863 | 495,433 | 13,205,880 | 9,106,153 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 2,707,643 | 806,290 | 367,497 | 476,134 | 495,150 | 13,206,176 | 9,105,709 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 2,707,646 | 806,291 | 367,497 | 475,645 | 495,242 | 13,205,822 | 9,105,553 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,707,642 | 806,288 | 367,497 | 475,485 | 495,218 | 13,206,578 | 9,106,144 |
 
 ## dispose-on
 
@@ -2071,6 +2084,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 346,497 | 487,901 | 8,902,441 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 346,497 | 487,699 | 8,902,633 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 346,497 | 487,932 | 8,902,728 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 346,497 | 487,647 | 8,902,485 |
 
 ## editable-edit
 
@@ -2219,6 +2233,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 182,106 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 182,106 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 182,106 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 182,706 |
 
 ## editable-upstream
 
@@ -2367,6 +2382,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 233,855 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 233,855 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 233,855 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 234,655 |
 
 ## fail-recompute
 
@@ -2515,6 +2531,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 64,895 | 1,383 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 64,895 | 1,383 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 64,895 | 1,383 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 65,015 | 1,387 |
 
 ## flight
 
@@ -2663,6 +2680,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,378 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,382 |
 
 ## keyed-insert
 
@@ -2811,6 +2829,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,925,739 | 53,917 | 54,964 | 3,279,998 | 660,315 | 243,397 | 45,302,963 | 2,634,695 | 2,655,742 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,925,731 | 53,917 | 54,954 | 3,279,960 | 660,367 | 243,382 | 45,302,976 | 2,634,673 | 2,655,680 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,925,731 | 53,917 | 54,960 | 3,279,934 | 660,313 | 243,046 | 45,313,160 | 2,634,704 | 2,655,726 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,927,779 | 53,938 | 55,015 | 3,324,527 | 657,553 | 664,013 | 45,364,312 | 2,634,747 | 2,656,030 |
 
 ## keyed-remove
 
@@ -2959,6 +2978,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,924,672 | 43,600 | 45,312 | 3,284,079 | 595,990 | 602,298 | 45,280,283 | 1,924,722 | 1,960,317 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,924,662 | 43,600 | 45,303 | 3,284,052 | 596,035 | 602,209 | 45,268,289 | 1,924,736 | 1,960,377 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,924,666 | 43,601 | 45,304 | 3,284,133 | 596,019 | 602,207 | 45,268,305 | 1,924,733 | 1,960,354 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,926,703 | 43,723 | 45,334 | 3,328,966 | 593,061 | 604,361 | 45,329,680 | 1,924,766 | 1,960,791 |
 
 ## keyed-swap
 
@@ -3107,6 +3127,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,977,355 | 46,205 | 46,927 | 3,648,330 | 147,937 | 508,810 | 46,429,283 | 915,633 | 935,805 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,977,355 | 46,205 | 46,927 | 3,648,001 | 147,897 | 508,939 | 46,429,315 | 915,682 | 935,786 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,977,355 | 46,205 | 46,927 | 3,647,737 | 148,192 | 508,837 | 46,428,902 | 915,647 | 935,763 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,979,382 | 46,225 | 46,970 | 3,546,050 | 148,306 | 510,001 | 46,504,251 | 915,746 | 936,004 |
 
 ## mvu-dispatch
 
@@ -3255,6 +3276,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 58,548 | 788 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 58,548 | 788 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 58,548 | 788 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 58,678 | 790 |
 
 ## persist-write
 
@@ -3403,6 +3425,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — |
 
 ## project-chain
 
@@ -3551,6 +3574,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,077,343 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,077,260 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,077,348 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,078,281 |
 
 ## project-churn
 
@@ -3699,6 +3723,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 36,388 | 34,281 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 36,386 | 34,251 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 36,404 | 34,281 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 36,397 | 34,258 |
 
 ## project-edit
 
@@ -3847,6 +3872,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 50,495 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 50,496 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 50,511 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 50,679 |
 
 ## project-reorder
 
@@ -3995,6 +4021,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 780,083 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 780,084 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 780,085 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 780,215 |
 
 ## server-render
 
@@ -4143,6 +4170,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | — | — | — |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | — | — | — |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | — | — | — |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — | — |
 
 ## shape-diamond
 
@@ -4291,6 +4319,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 60,816 | 82,845 | 1,802,884 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 60,816 | 82,845 | 1,802,884 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 60,816 | 82,845 | 1,802,884 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 61,218 | 83,500 | 1,815,145 |
 
 ## shape-dynamic
 
@@ -4439,6 +4468,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 84,378 | 108,947 | 2,038,136 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 84,378 | 108,947 | 2,038,136 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 84,378 | 108,944 | 2,038,136 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 84,778 | 109,747 | 2,050,336 |
 
 ## stream-burst-1
 
@@ -4587,6 +4617,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,954 | 1,552 | 2,525 | 5,034 | 7,372 | 14,048 | 47,796 | 46,003 | 55,600 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,954 | 1,552 | 2,509 | 5,034 | 7,372 | 14,051 | 47,796 | 46,003 | 55,600 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,954 | 1,552 | 2,509 | 5,034 | 7,376 | 14,045 | 47,795 | 46,003 | 55,600 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,959 | 1,555 | 2,515 | 5,041 | 7,612 | 14,343 | 47,918 | 46,125 | 55,722 |
 
 ## stream-burst-16
 
@@ -4735,6 +4766,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 5,056 | 24,682 | 5,735 | 9,816 | 49,281 | 8,193 | 124,965 | 723,620 | 113,950 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 5,056 | 24,682 | 5,719 | 9,815 | 49,281 | 8,194 | 124,965 | 723,620 | 113,950 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 5,056 | 24,682 | 5,719 | 9,813 | 49,282 | 8,194 | 124,969 | 723,620 | 113,949 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 5,061 | 24,715 | 5,725 | 9,820 | 49,376 | 8,186 | 125,088 | 725,572 | 114,070 |
 
 ## stream-burst-256
 
@@ -4883,6 +4915,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 54,676 | 394,726 | 57,074 | 133,531 | 800,308 | 45,152 | 1,359,966 | 11,564,280 | 1,046,979 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 54,676 | 394,726 | 57,058 | 133,565 | 800,311 | 45,152 | 1,359,966 | 11,564,234 | 1,046,981 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 54,676 | 394,726 | 57,058 | 133,566 | 800,308 | 45,152 | 1,359,873 | 11,564,223 | 1,046,964 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 54,681 | 395,239 | 57,064 | 133,799 | 801,789 | 45,246 | 1,360,012 | 11,595,505 | 1,047,045 |
 
 ## stream-restart
 
@@ -5031,6 +5064,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 4,216 | 5,056 | 5,734 | 5,330 | 43,390 | 72,510 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 4,216 | 5,040 | 5,737 | 5,336 | 43,389 | 72,513 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 4,216 | 5,040 | 5,739 | 5,331 | 43,389 | 72,513 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 4,220 | 5,046 | 5,976 | 5,340 | 43,512 | 72,633 |
 
 ## timed-admit-both
 
@@ -5179,6 +5213,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 117,709 | 130,037 | 2,693,850 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 117,709 | 130,034 | 2,693,850 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 117,709 | 130,036 | 2,693,850 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 117,837 | 130,164 | 2,697,749 |
 
 ## timed-admit-debounce
 
@@ -5327,6 +5362,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 116,614 | 128,630 | 2,654,132 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 116,614 | 128,632 | 2,654,119 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 116,614 | 128,619 | 2,654,132 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 116,742 | 128,746 | 2,658,035 |
 
 ## timed-admit-first
 
@@ -5475,6 +5511,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 69,621 | 79,565 | 1,620,678 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 69,621 | 79,565 | 1,620,678 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 69,621 | 79,565 | 1,620,678 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 69,749 | 79,693 | 1,624,582 |
 
 ## timed-admit-last
 
@@ -5623,6 +5660,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 116,876 | 128,939 | 2,663,975 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 116,876 | 128,939 | 2,663,986 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 116,876 | 128,938 | 2,663,975 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 117,004 | 129,075 | 2,667,878 |
 
 ## timed-capture-both
 
@@ -5771,6 +5809,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,740 | 44,936 | 847,274 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,740 | 44,934 | 847,273 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,740 | 44,937 | 847,272 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,740 | 44,936 | 847,273 |
 
 ## timed-capture-debounce
 
@@ -5919,6 +5958,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,612 | 44,232 | 847,657 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,612 | 44,233 | 847,657 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,612 | 44,232 | 847,657 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,612 | 46,728 | 847,657 |
 
 ## timed-capture-first
 
@@ -6067,6 +6107,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 32,092 | 36,741 | 745,651 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 32,092 | 36,741 | 745,651 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 32,092 | 36,741 | 745,652 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 32,092 | 36,613 | 745,652 |
 
 ## timed-capture-last
 
@@ -6215,6 +6256,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 35,548 | 44,168 | 839,785 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 35,548 | 44,168 | 839,785 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 35,548 | 44,168 | 839,785 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,548 | 46,664 | 839,785 |
 
 ## update
 
@@ -6363,6 +6405,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 1,087,783 | 38,805 | 84,105 | 263,194 | 145,785 | 3,351,290 | 2,545,077 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 1,089,390 | 38,805 | 84,105 | 263,447 | 145,832 | 3,351,256 | 2,545,054 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 1,087,790 | 38,805 | 84,105 | 263,096 | 145,785 | 3,351,281 | 2,545,039 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,087,990 | 38,805 | 84,505 | 263,207 | 145,023 | 3,351,242 | 2,557,192 |
 
 ## update-on
 
@@ -6511,6 +6554,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 94,605 | 169,006 | 2,872,461 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 94,605 | 169,049 | 2,872,416 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 94,605 | 169,060 | 2,872,395 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 95,005 | 169,749 | 2,884,640 |
 
 ## work-form
 
@@ -6659,6 +6703,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 172,679 | 165,150 | 308,861 | 296,942 | 5,421,859 | 5,334,882 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 172,679 | 165,150 | 308,861 | 297,000 | 5,421,851 | 5,334,847 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 172,679 | 165,167 | 308,861 | 296,989 | 5,421,861 | 5,334,874 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 174,681 | 169,152 | 313,031 | 342,006 | 5,482,871 | 5,396,011 |
 
 ## work-status
 
@@ -6807,6 +6852,7 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 102,045 | 80,235 | 269,328 | 156,112 | 2,659,264 | 2,391,332 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 102,045 | 80,235 | 269,326 | 156,117 | 2,659,264 | 2,391,265 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 102,045 | 80,235 | 269,336 | 156,135 | 2,659,294 | 2,391,278 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 102,245 | 80,435 | 260,646 | 161,316 | 2,665,366 | 2,397,374 |
 
 ## work-value
 
@@ -6955,4 +7001,5 @@
 | `7d59ec0` | 2026-11-10 | ci(proofs): reuse a site already built from the same inputs (#324) | 109,169 | 121,071 | 269,608 | 283,396 | 2,643,937 | 2,968,467 |
 | `4f03ee9` | 2026-11-10 | build(proofs): take Nacara.Plugin.Rocq 0.1.0-preview.3 (#325) | 109,171 | 121,070 | 269,615 | 283,399 | 2,643,902 | 2,968,467 |
 | `52e55d6` | 2026-11-11 | docs(proofs): record rulings on #309-#314 and #319-#322 (#326) | 109,169 | 121,071 | 269,579 | 283,408 | 2,643,873 | 2,968,378 |
+| `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 109,371 | 121,270 | 260,925 | 288,573 | 2,650,008 | 2,974,535 |
 
