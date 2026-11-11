@@ -150,6 +150,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 83,565 | 127,300 | 1,753,872 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 83,611 | 127,834 | 1,762,221 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 83,780 | 128,019 | 1,760,395 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 83,828 | 128,298 | 1,768,607 |
 
 ## app-table
 
@@ -301,6 +302,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 4,446,850 | 9,373,011 | 108,701,850 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 4,412,632 | 9,480,342 | 108,611,293 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 4,425,110 | 9,646,644 | 108,653,777 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 4,444,449 | 9,642,489 | 109,792,776 |
 
 ## async-recover
 
@@ -452,6 +454,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 139,381 | 41,434 | 437,754 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 139,421 | 39,706 | 440,017 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 139,553 | 39,732 | 441,871 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 139,557 | 39,900 | 443,788 |
 
 ## async-resolve
 
@@ -603,6 +606,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,799,187 | 1,007,412 | 12,082,061 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,799,563 | 1,071,874 | 12,117,078 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,803,595 | 1,075,541 | 12,201,389 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 2,803,565 | 1,090,334 | 12,254,120 |
 
 ## chain
 
@@ -754,6 +758,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 13,037 | 318 | 2,487 | 4,491 | 3,363 | 72,781 | 68,235 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 13,037 | 318 | 2,488 | 4,491 | 3,412 | 72,781 | 69,367 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 13,035 | 318 | 2,523 | 4,491 | 3,422 | 72,781 | 69,743 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) (accepted) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 
 ## chain-affinity
 
@@ -905,6 +910,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,586 | 3,108 | 2,537 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,587 | 3,110 | 2,538 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,622 | 3,145 | 2,573 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1056,6 +1062,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 74,710 | 839,928 | 2,601,693 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 74,710 | 839,801 | 2,599,771 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 74,710 | 816,919 | 2,594,456 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 74,709 | 812,594 | 2,600,801 |
 
 ## create
 
@@ -1207,6 +1214,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 13,451,472 | 2,866,678 | 2,571,380 | 2,126,881 | 4,052,214 | 34,027,206 | 50,549,538 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 13,467,400 | 2,882,678 | 2,571,379 | 2,127,000 | 4,051,254 | 33,947,032 | 50,418,423 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 13,467,386 | 2,866,678 | 2,575,392 | 2,127,129 | 4,057,296 | 34,059,586 | 50,597,758 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 13,467,404 | 2,866,678 | 2,575,377 | 2,127,026 | 4,056,094 | 33,845,022 | 50,484,189 |
 
 ## create-on
 
@@ -1358,6 +1366,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,948,492 | 4,187,809 | 55,350,897 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,964,492 | 4,187,960 | 55,350,852 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,968,488 | 4,234,734 | 55,454,804 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 2,968,506 | 4,234,733 | 55,454,781 |
 
 ## cutoff
 
@@ -1509,6 +1518,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,184 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,184 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1660,6 +1670,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 783 | 755 | 16,581 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 783 | 755 | 16,581 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 787 | 758 | 16,684 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1811,6 +1822,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 753 | 806 | 16,604 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 769 | 806 | 16,604 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 757 | 759 | 16,707 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 773 | 759 | 16,707 |
 
 ## dispose
 
@@ -1962,6 +1974,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 2,707,642 | 806,288 | 367,497 | 475,485 | 495,218 | 13,206,578 | 9,106,144 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 2,706,751 | 806,288 | 367,497 | 476,066 | 495,522 | 13,205,965 | 9,106,140 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 2,706,750 | 806,288 | 367,497 | 475,831 | 495,422 | 13,204,229 | 9,106,660 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 2,707,643 | 806,288 | 367,497 | 475,794 | 495,281 | 13,205,514 | 9,106,137 |
 
 ## dispose-on
 
@@ -2113,6 +2126,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 346,497 | 487,647 | 8,902,485 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 346,497 | 487,775 | 8,902,750 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 346,497 | 487,933 | 8,901,916 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 346,497 | 487,910 | 8,902,668 |
 
 ## editable-edit
 
@@ -2264,6 +2278,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 182,706 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 181,406 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 182,906 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 183,506 |
 
 ## editable-upstream
 
@@ -2415,6 +2430,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 234,655 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 234,855 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 237,355 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 239,256 |
 
 ## fail-recompute
 
@@ -2566,6 +2582,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 65,015 | 1,387 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 65,094 | 1,386 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 65,107 | 1,407 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 65,024 | 1,420 |
 
 ## flight
 
@@ -2717,6 +2734,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 10,978 | 6,220 | 6,221 | 11,306 | 10,746 | 22,382 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 10,958 | 6,200 | 6,201 | 11,283 | 10,726 | 22,362 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 10,992 | 6,236 | 6,237 | 11,331 | 10,760 | 22,402 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 
 ## keyed-insert
 
@@ -2868,6 +2886,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,927,779 | 53,938 | 55,015 | 3,324,527 | 657,553 | 664,013 | 45,364,312 | 2,634,747 | 2,656,030 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,927,750 | 53,934 | 54,987 | 3,320,502 | 657,443 | 664,222 | 45,371,530 | 2,634,869 | 2,656,308 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 1,949,785 | 54,040 | 55,018 | 3,419,469 | 657,276 | 662,749 | 46,302,642 | 2,635,502 | 2,656,457 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 1,959,790 | 53,930 | 55,021 | 3,425,598 | 657,250 | 663,213 | 46,883,684 | 2,635,372 | 2,656,668 |
 
 ## keyed-remove
 
@@ -3019,6 +3038,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,926,703 | 43,723 | 45,334 | 3,328,966 | 593,061 | 604,361 | 45,329,680 | 1,924,766 | 1,960,791 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,926,660 | 43,639 | 45,303 | 3,324,710 | 593,093 | 604,408 | 45,322,719 | 1,925,053 | 1,960,937 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 1,948,710 | 43,739 | 45,345 | 3,398,134 | 593,181 | 607,931 | 46,267,001 | 1,925,328 | 1,961,138 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 1,958,694 | 43,629 | 45,350 | 3,431,326 | 593,095 | 608,095 | 46,855,194 | 1,925,269 | 1,961,338 |
 
 ## keyed-swap
 
@@ -3170,6 +3190,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,979,382 | 46,225 | 46,970 | 3,546,050 | 148,306 | 510,001 | 46,504,251 | 915,746 | 936,004 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,979,351 | 46,221 | 46,939 | 6,715,377 | 148,690 | 509,044 | 46,481,804 | 915,740 | 935,263 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 2,001,389 | 46,326 | 46,960 | 3,673,235 | 147,372 | 508,549 | 47,436,441 | 915,894 | 934,241 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 2,011,391 | 46,215 | 46,963 | 3,456,853 | 498,817 | 508,157 | 48,011,245 | 915,885 | 934,333 |
 
 ## mvu-dispatch
 
@@ -3321,6 +3342,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 58,678 | 790 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 58,683 | 790 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) (accepted) | 59,897 | 794 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3472,6 +3494,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | — | — |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | — | — |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | — | — |
 
 ## project-chain
 
@@ -3623,6 +3646,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,078,281 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,065,800 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,065,043 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 1,068,970 |
 
 ## project-churn
 
@@ -3774,6 +3798,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 36,397 | 34,258 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 36,397 | 34,258 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 36,422 | 34,281 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 36,405 | 34,264 |
 
 ## project-edit
 
@@ -3925,6 +3950,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 50,679 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 50,474 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 50,540 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 50,504 |
 
 ## project-reorder
 
@@ -4076,6 +4102,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 780,215 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 780,087 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 780,131 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 780,085 |
 
 ## server-render
 
@@ -4227,6 +4254,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | — | — | — |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | — | — | — |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | — | — | — |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | — | — | — |
 
 ## shape-diamond
 
@@ -4378,6 +4406,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 61,218 | 83,500 | 1,815,145 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 61,121 | 83,999 | 1,839,464 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 61,937 | 85,373 | 1,851,542 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4529,6 +4558,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 84,778 | 109,747 | 2,050,336 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 84,778 | 109,745 | 2,050,336 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 85,079 | 109,898 | 2,055,688 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 85,079 | 109,897 | 2,055,680 |
 
 ## stream-burst-1
 
@@ -4680,6 +4710,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,959 | 1,555 | 2,515 | 5,041 | 7,612 | 14,343 | 47,918 | 46,125 | 55,722 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,960 | 1,556 | 2,516 | 5,283 | 7,710 | 14,445 | 48,253 | 46,460 | 56,047 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,977 | 1,573 | 2,549 | 5,388 | 3,653 | 13,817 | 48,733 | 46,939 | 56,823 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,341 |
 
 ## stream-burst-16
 
@@ -4831,6 +4862,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 5,061 | 24,715 | 5,725 | 9,820 | 49,376 | 8,186 | 125,088 | 725,572 | 114,070 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 5,062 | 24,731 | 5,726 | 9,834 | 49,777 | 8,199 | 125,516 | 730,932 | 114,400 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 5,079 | 25,003 | 5,759 | 10,524 | 47,973 | 16,466 | 126,056 | 738,558 | 115,176 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 5,085 | 25,099 | 5,765 | 10,540 | 48,308 | 16,568 | 126,484 | 745,454 | 115,685 |
 
 ## stream-burst-256
 
@@ -4982,6 +5014,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 54,681 | 395,239 | 57,064 | 133,799 | 801,789 | 45,246 | 1,360,012 | 11,595,505 | 1,047,045 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 54,682 | 395,495 | 57,065 | 134,094 | 808,245 | 45,235 | 1,361,882 | 11,681,272 | 1,047,412 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 54,699 | 399,847 | 57,098 | 134,069 | 812,337 | 46,111 | 1,363,448 | 11,803,258 | 1,048,210 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 54,705 | 401,383 | 57,104 | 134,382 | 816,613 | 46,288 | 1,363,812 | 11,913,734 | 1,048,673 |
 
 ## stream-restart
 
@@ -5133,6 +5166,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 4,220 | 5,046 | 5,976 | 5,340 | 43,512 | 72,633 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 4,217 | 5,045 | 5,920 | 5,336 | 43,425 | 72,634 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 4,236 | 5,069 | 5,897 | 5,355 | 43,994 | 73,185 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 4,240 | 5,072 | 5,905 | 5,410 | 44,161 | 73,508 |
 
 ## timed-admit-both
 
@@ -5284,6 +5318,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 117,837 | 130,164 | 2,697,749 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 117,837 | 130,165 | 2,697,771 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 118,607 | 130,104 | 2,697,599 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 118,607 | 130,103 | 2,698,021 |
 
 ## timed-admit-debounce
 
@@ -5435,6 +5470,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 116,742 | 128,746 | 2,658,035 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 116,742 | 128,759 | 2,658,035 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 117,512 | 128,697 | 2,657,657 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 117,512 | 128,697 | 2,657,656 |
 
 ## timed-admit-first
 
@@ -5586,6 +5622,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 69,749 | 79,693 | 1,624,582 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 69,749 | 79,693 | 1,624,581 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 70,263 | 79,569 | 1,617,624 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 70,263 | 79,568 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -5737,6 +5774,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 117,004 | 129,075 | 2,667,878 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 117,004 | 129,067 | 2,667,892 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 117,774 | 129,017 | 2,667,513 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 117,774 | 128,994 | 2,667,512 |
 
 ## timed-capture-both
 
@@ -5888,6 +5926,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,740 | 44,936 | 847,273 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 35,740 | 44,936 | 847,407 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 35,870 | 44,940 | 848,257 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 35,870 | 44,937 | 848,278 |
 
 ## timed-capture-debounce
 
@@ -6039,6 +6078,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,612 | 46,728 | 847,657 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 35,612 | 46,728 | 847,657 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 35,742 | 46,732 | 847,948 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 35,742 | 46,731 | 847,948 |
 
 ## timed-capture-first
 
@@ -6190,6 +6230,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 32,092 | 36,613 | 745,652 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 32,092 | 36,613 | 745,651 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 32,222 | 36,489 | 745,942 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 32,222 | 36,488 | 745,942 |
 
 ## timed-capture-last
 
@@ -6341,6 +6382,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 35,548 | 46,664 | 839,785 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 35,548 | 46,664 | 839,785 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 35,678 | 46,668 | 840,076 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 35,678 | 46,666 | 840,076 |
 
 ## update
 
@@ -6492,6 +6534,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 1,087,990 | 38,805 | 84,505 | 263,207 | 145,023 | 3,351,242 | 2,557,192 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 1,087,990 | 38,805 | 84,505 | 262,742 | 145,015 | 3,351,214 | 2,557,257 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 1,089,390 | 38,805 | 84,905 | 262,844 | 159,950 | 3,351,219 | 2,567,563 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 1,087,790 | 38,805 | 84,905 | 262,437 | 160,202 | 3,351,338 | 2,567,512 |
 
 ## update-on
 
@@ -6643,6 +6686,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 95,005 | 169,749 | 2,884,640 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 96,605 | 169,724 | 2,884,675 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 95,405 | 173,842 | 2,894,925 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 97,005 | 175,532 | 2,894,873 |
 
 ## work-form
 
@@ -6794,6 +6838,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 174,681 | 169,152 | 313,031 | 342,006 | 5,482,871 | 5,396,011 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 174,681 | 169,152 | 313,017 | 342,038 | 5,482,923 | 5,395,978 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 175,183 | 167,654 | 314,153 | 342,867 | 5,495,799 | 5,408,819 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 175,183 | 167,654 | 313,375 | 343,276 | 5,495,728 | 5,408,827 |
 
 ## work-status
 
@@ -6945,6 +6990,7 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 102,245 | 80,435 | 260,646 | 161,316 | 2,665,366 | 2,397,374 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 102,245 | 82,035 | 260,649 | 161,332 | 2,665,402 | 2,397,418 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 102,645 | 80,835 | 260,969 | 156,829 | 2,675,634 | 2,407,682 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 102,645 | 82,435 | 260,967 | 156,817 | 2,675,698 | 2,407,684 |
 
 ## work-value
 
@@ -7096,4 +7142,5 @@
 | `558d40c` | 2026-11-11 | fix(core): guard AddSource on disposed computations and clear unannounced on clean window disposal (#327) | 109,371 | 121,270 | 260,925 | 288,573 | 2,650,008 | 2,974,535 |
 | `d18d610` | 2026-11-11 | fix: capture read outcome before ExitPull and owe flush on discharge/memo moves (#316) (#330) | 109,369 | 122,869 | 260,926 | 288,600 | 2,650,042 | 2,974,584 |
 | `2302e6e` | 2026-11-11 | fix: re-check stale sources in check walks and mark prefix-read current computations (#331) | 109,771 | 121,670 | 261,204 | 284,096 | 2,660,293 | 2,984,885 |
+| `d765d2d` | 2026-11-11 | fix(core): guard nested self-runs and cyclic check walks (#332) | 109,770 | 123,269 | 261,199 | 284,099 | 2,660,230 | 2,984,867 |
 
