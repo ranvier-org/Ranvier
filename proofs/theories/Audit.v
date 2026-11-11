@@ -2,7 +2,7 @@ From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
 From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger.
 From Ranvier.Conformance Require Check.
-From Ranvier.Heap Require ObserverSet SourceList Ghost.
+From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy.
 From Ranvier Require Extract.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -327,3 +327,64 @@ Print Assumptions Ranvier.Heap.Ghost.is_graph_loc.
 Print Assumptions Ranvier.Heap.Ghost.is_graph_fresh_epoch.
 Print Assumptions Ranvier.Heap.Ghost.is_graph_open.
 Print Assumptions Ranvier.Heap.Ghost.graph_add_node_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.cursor_visitor_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.observers_walk_loop_cursor_spec.
+Print Assumptions Ranvier.Heap.ObserverSet.walk_cursor_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_slot_src_spec.
+Print Assumptions Ranvier.Heap.SourceList.sources_held_in_prefix_spec.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_fresh_dom.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_absent_observers.
+Print Assumptions Ranvier.Heap.Ghost.is_graph_observers_acc.
+Print Assumptions Ranvier.Heap.Ghost.graph_get_node_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_set_node_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_put_node_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_enqueue_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_live_queue_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_dequeue_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_get_owner_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_put_owner_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_fresh_owner_id_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_get_ctrl_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_set_ctrl_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_sources_begin_run_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_sources_end_run_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_sources_clear_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_sources_add_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_slot_src_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_held_in_prefix_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_slot_holds_stale_live_spec.
+Print Assumptions Ranvier.Heap.Ghost.graph_new_spec.
+Print Assumptions Ranvier.Heap.Marking.mark_check_spec.
+Print Assumptions Ranvier.Heap.Marking.notify_check_spec.
+Print Assumptions Ranvier.Heap.Marking.mark_dirty_spec.
+Print Assumptions Ranvier.Heap.Marking.notify_dirty_spec.
+Print Assumptions Ranvier.Heap.Marking.notify_dirty_except_spec.
+Print Assumptions Ranvier.Heap.Run.engine_spec_all.
+Print Assumptions Ranvier.Heap.Run.exec_spec.
+Print Assumptions Ranvier.Heap.Run.read_spec.
+Print Assumptions Ranvier.Heap.Run.run_memo_spec.
+Print Assumptions Ranvier.Heap.Run.execute_effect_spec.
+Print Assumptions Ranvier.Heap.Run.write_signal_spec.
+Print Assumptions Ranvier.Heap.Run.run_top_spec.
+Print Assumptions Ranvier.Heap.Scheduler.request_flush_spec.
+Print Assumptions Ranvier.Heap.Scheduler.settle_flush_spec.
+Print Assumptions Ranvier.Heap.Scheduler.run_flush_spec.
+Print Assumptions Ranvier.Heap.Scheduler.drain_spec.
+Print Assumptions Ranvier.Heap.Scheduler.heap_flush_returns_clean.
+Print Assumptions Ranvier.Heap.Scheduler.heap_sched_inv_top.
+Print Assumptions Ranvier.Heap.Ownership.owner_links_new_spec.
+Print Assumptions Ranvier.Heap.Ownership.owner_links_append_spec.
+Print Assumptions Ranvier.Heap.Ownership.owner_links_detach_spec.
+Print Assumptions Ranvier.Heap.Ownership.owner_links_walk_prev_spec.
+Print Assumptions Ranvier.Heap.Ownership.owner_links_stale_unlink_spec.
+Print Assumptions Ranvier.Heap.Ownership.dispose_node_spec.
+Print Assumptions Ranvier.Heap.Ownership.discharge_spec.
+Print Assumptions Ranvier.Heap.Ownership.retire_spec.
+Print Assumptions Ranvier.Heap.Ownership.dispose_scope_spec.
+Print Assumptions Ranvier.Heap.Ownership.teardown_spec.
+Print Assumptions Ranvier.Heap.Ownership.run_cleanup_spec.
+Print Assumptions Ranvier.Heap.Ownership.release_spec.
+Print Assumptions Ranvier.Heap.Ownership.attach_spec.
+Print Assumptions Ranvier.Heap.Ownership.heap_ownership_guarantees.
+Print Assumptions Ranvier.Heap.Adequacy.heap_refines_pure.
+Print Assumptions Ranvier.Heap.Adequacy.heap_no_lost_wakeups.

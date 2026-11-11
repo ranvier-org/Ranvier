@@ -562,4 +562,75 @@ Proof.
   by eapply walk_covers.
 Qed.
 
+(**md
+The visitor of a cursor-indexed walk over the set at `l`. Each call receives the set at cursor `n`, where
+`min n (length (observer_items o)) = S i`, the resource `I n o`, and the observer `d` at position `i`, and
+returns the updated set `o1` with `I i o1`.
+
+- [l:] the observer set walked.
+- [visit:] the closure called on each observer.
+- [I:] the cursor-indexed resource carried through the walk.
+*)
+Definition cursor_visitor_spec (l : loc) (visit : val) (I : nat -> observer_set -> iProp Σ) : iProp Σ :=
+  ∀ (n i : nat) (o : observer_set) (d : node_id) (slot : nat),
+    {{{ ⌜min n (length (observer_items o)) = S i⌝ ∗ ⌜observer_items o !! i = Some (d, slot)⌝ ∗
+        is_observers l o ∗ I n o }}}
+      visit #(Z.of_nat d)
+    {{{ o1, RET #(); is_observers l o1 ∗ I i o1 }}}.
+
+(**md
+**The walk's loop from cursor `n` steps `I` through each visited index down to an empty prefix.**
+
+- [l:] the observer set walked.
+- [visit:] the visitor.
+- [I:] the cursor-indexed resource.
+- [o:] the set at the loop's start.
+- [n:] the cursor, the F# index plus one.
+*)
+Lemma observers_walk_loop_cursor_spec (l : loc) (visit : val) (I : nat -> observer_set -> iProp Σ)
+    (o : observer_set) (n : nat) :
+  {{{ cursor_visitor_spec l visit I ∗ is_observers l o ∗ I n o }}}
+    observers_walk_loop #l visit #(Z.of_nat n)
+  {{{ k o', RET #(); ⌜min k (length (observer_items o')) = 0⌝ ∗ is_observers l o' ∗ I k o' }}}.
+Proof.
+  iIntros (Φ) "(#Hvis & Ho & HI) HΦ". iLöb as "IH" forall (n o).
+  wp_rec. wp_pures. iDestruct "Ho" as (a cap Hcap) "(Ha & Hn & Hlt & Hc & Hcells)".
+  wp_load. wp_pures.
+  set (k := length (observer_items o)).
+  wp_bind (If _ _ _). iApply (wp_wand _ _ _ (fun v => ⌜v = #(Z.of_nat (min n k))⌝)%I).
+  { case_bool_decide; wp_pures; iPureIntro; f_equal; f_equal; lia. }
+  iIntros (v ->). wp_pures.
+  destruct (min n k) as [|i] eqn:Hmin.
+  - wp_pures. iModIntro. iApply ("HΦ" $! n o). iSplit; [done|]. iFrame "HI". iExists a, cap. by iFrame.
+  - rewrite bool_decide_eq_false_2; [|intros [= ?]; lia]. wp_pures.
+    rewrite (_ : (Z.of_nat (S i) - 1)%Z = Z.of_nat i); [|lia].
+    destruct (lookup_lt_is_Some_2 (observer_items o) i) as [[d slot] Hd]; [subst k; lia|].
+    wp_load. wp_pures. wp_apply (wp_load_offset with "Hcells"); [by apply item_cells_lookup_some|].
+    iIntros "Hcells". wp_pures.
+    wp_apply ("Hvis" $! n i o d slot with "[Ha Hn Hlt Hc Hcells HI]").
+    { iFrame "HI". iSplit; [done|]. iSplit; [done|]. iExists a, cap. by iFrame. }
+    iIntros (o1) "[Ho1 HI1]". wp_pures.
+    by iApply ("IH" $! i o1 with "Ho1 HI1").
+Qed.
+
+(**md
+**A cursor-indexed walk starts at the observer count and ends at an empty prefix.**
+
+- [l:] the observer set walked.
+- [visit:] the visitor.
+- [I:] the cursor-indexed resource.
+- [o:] the set at the start of the walk.
+*)
+Lemma walk_cursor_spec (l : loc) (visit : val) (I : nat -> observer_set -> iProp Σ) (o : observer_set) :
+  {{{ cursor_visitor_spec l visit I ∗ is_observers l o ∗ I (length (observer_items o)) o }}}
+    observers_walk_code #l visit
+  {{{ k o', RET #(); ⌜min k (length (observer_items o')) = 0⌝ ∗ is_observers l o' ∗ I k o' }}}.
+Proof.
+  iIntros (Φ) "(#Hvis & Ho & HI) HΦ". wp_lam. wp_pures.
+  iDestruct "Ho" as (a cap Hcap) "(Ha & Hn & Hlt & Hc & Hcells)". wp_load.
+  wp_apply (observers_walk_loop_cursor_spec with "[Ha Hn Hlt Hc Hcells HI]").
+  { iFrame "#". iFrame "HI". iExists a, cap. by iFrame. }
+  done.
+Qed.
+
 End heap.
