@@ -218,6 +218,7 @@ type StreamMemo<'S>
     let mutable run: IStreamRun<'S> = Unchecked.defaultof<_>
     let mutable cts: CancellationTokenSource = null
     let mutable running = false
+    let mutable active = 0
     let mutable launching = false
     let mutable queued = false
 #if !FABLE_COMPILER
@@ -355,6 +356,7 @@ type StreamMemo<'S>
         sources.BeginRun ()
         let source = new CancellationTokenSource ()
         cts <- source
+        active <- 1
 
         try
             try
@@ -396,6 +398,8 @@ type StreamMemo<'S>
                     if gen = generation && running && started.Received then
                         this.PublishLatest StreamNotice.Silent
             finally
+                active <- 0
+
                 if disposed then
                     sources.Clear (this :> IComputation)
                 else
@@ -432,7 +436,15 @@ type StreamMemo<'S>
             graph.Track (this :> ISource)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -441,6 +453,10 @@ type StreamMemo<'S>
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -448,32 +464,49 @@ type StreamMemo<'S>
                 && graph.StaleTransitions <> before
                 && sources.HasStaleSource ()
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RefreshActive() =
+        graph.NoteActiveSkip ()
+
+        if active = 2 then
+            (this :> IComputation).MarkDirty()
+
     member private this.Pull() =
         graph.EnterPull ()
 
         try
-            if freshness = Freshness.Check then
-                Tracer.CheckStart (graph, id)
-                let before = graph.StaleTransitions
-                let mutable i = 0
-
-                while freshness = Freshness.Check && i < sources.Count do
-                    sources.SourceAt(i).UpdateIfNecessary()
-                    i <- i + 1
-
-                if
-                    freshness = Freshness.Check
-                    && graph.StaleTransitions <> before
-                then
-                    this.ResolveCheckAgain ()
-
-                Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-
+            if active = 0 then
                 if freshness = Freshness.Check then
-                    freshness <- Freshness.Clean
+                    Tracer.CheckStart (graph, id)
+                    active <- 2
+                    let before = graph.StaleTransitions
+                    let mutable i = 0
 
-            if freshness = Freshness.Dirty then
-                this.Launch ()
+                    while freshness = Freshness.Check && i < sources.Count do
+                        sources.SourceAt(i).UpdateIfNecessary()
+
+                        if graph.ActiveSkips <> 0 then
+                            this.CheckActiveSource i
+
+                        i <- i + 1
+
+                    if
+                        freshness = Freshness.Check
+                        && graph.StaleTransitions <> before
+                    then
+                        this.ResolveCheckAgain ()
+
+                    active <- 0
+                    Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+                    if freshness = Freshness.Check then
+                        freshness <- Freshness.Clean
+                        unannounced <- false
+
+                if freshness = Freshness.Dirty then
+                    this.Launch ()
+            else
+                this.RefreshActive ()
         finally
             graph.ExitPull ()
 
@@ -521,6 +554,8 @@ type StreamMemo<'S>
 
         member _.IsStale = freshness <> Freshness.Clean && not disposed
 
+        member _.IsActive = active <> 0
+
     interface IComputation with
         member this.AddSource source =
             sources.Add (this :> IComputation, source)
@@ -559,24 +594,34 @@ type StreamMemo<'S>
                     graph.EnterPull ()
 
                     try
-                        Tracer.CheckStart (graph, id)
-                        let before = graph.StaleTransitions
-                        let mutable i = 0
+                        if active = 0 then
+                            Tracer.CheckStart (graph, id)
+                            active <- 2
+                            let before = graph.StaleTransitions
+                            let mutable i = 0
 
-                        while freshness = Freshness.Check && i < sources.Count do
-                            sources.SourceAt(i).UpdateIfNecessary()
-                            i <- i + 1
+                            while freshness = Freshness.Check && i < sources.Count do
+                                sources.SourceAt(i).UpdateIfNecessary()
 
-                        if
-                            freshness = Freshness.Check
-                            && graph.StaleTransitions <> before
-                        then
-                            this.ResolveCheckAgain ()
+                                if graph.ActiveSkips <> 0 then
+                                    this.CheckActiveSource i
 
-                        Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+                                i <- i + 1
 
-                        if freshness = Freshness.Check then
-                            freshness <- Freshness.Clean
+                            if
+                                freshness = Freshness.Check
+                                && graph.StaleTransitions <> before
+                            then
+                                this.ResolveCheckAgain ()
+
+                            active <- 0
+                            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+                            if freshness = Freshness.Check then
+                                freshness <- Freshness.Clean
+                                unannounced <- false
+                        else
+                            this.RefreshActive ()
                     finally
                         graph.ExitPull ()
 

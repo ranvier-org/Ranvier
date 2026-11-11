@@ -212,3 +212,5 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
                     observers.NotifyDirty ()
 
         member _.IsStale = false
+
+        member _.IsActive = false

@@ -660,6 +660,14 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
         i < order.Count
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.CheckActiveSource(i: int) =
+        if not dirty then
+            let source = Platform.entryAt i order
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.MovedAgain() =
         let mutable again = this.HasStaleSource ()
 
@@ -669,6 +677,10 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
 
             while not dirty && i < order.Count do
                 (Platform.entryAt i order).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -684,6 +696,10 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
 
             while not dirty && i < order.Count do
                 (Platform.entryAt i order).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             if not dirty && graph.StaleTransitions <> before then
@@ -1116,6 +1132,8 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                     observers.NotifyDirty ()
 
         member _.IsStale = false
+
+        member _.IsActive = false
 
     interface IOwned with
         member this.Release() =

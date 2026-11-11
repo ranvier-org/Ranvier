@@ -285,6 +285,8 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
         member _.IsStale = false
 
+        member _.IsActive = false
+
     interface IComputation with
         member this.AddSource source =
             sources.Add (this :> IComputation, source)
@@ -308,7 +310,15 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                 this.Enqueue ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ResolveCheckAgain() =
+    member private this.CheckActiveSource(i: int) =
+        if freshness = Freshness.Check then
+            let source = sources.SourceAt i
+
+            if source.IsStale && source.IsActive then
+                (this :> IComputation).MarkDirty()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ResolveCheckAgain() =
         let mutable again = sources.HasStaleSource ()
 
         while again do
@@ -317,6 +327,10 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
                 i <- i + 1
 
             again <-
@@ -336,6 +350,10 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
                     while freshness = Freshness.Check && i < sources.Count do
                         sources.SourceAt(i).UpdateIfNecessary()
+
+                        if graph.ActiveSkips <> 0 then
+                            this.CheckActiveSource i
+
                         i <- i + 1
 
                     if

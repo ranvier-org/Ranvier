@@ -71,7 +71,7 @@ Local Definition mark_state (w : EdgeWorld) (nodes : gmap node_id node) (q : lis
     (running : list node_id) : state :=
   {| g_flags := current_flags; g_edges := w; g_nodes := nodes; g_owners := ∅; g_queue := q;
      g_queue_head := h; g_flushing := false; g_flush_owed := false; g_batch_depth := 0; g_pull_depth := 0; g_current := None;
-     g_untracked := false; g_current_owner := None; g_next_id := 3; g_trace := []; g_running := running;
+     g_untracked := false; g_current_owner := None; g_next_id := 3; g_trace := []; g_running := running; g_checking := [];
      g_ghost := empty_ghost; g_registered := ∅; g_skip := SkipOff; g_epoch := 0; g_stamps := ∅ |}.
 
 (** Computation 2, in a run, has read source 1. *)
@@ -262,9 +262,9 @@ Proof.
     |vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity|vm_compute; reflexivity].
 Qed.
 
-(** A run reads [a], marks itself and reads itself. The nested run's branch trims [a]'s edge, and the
-    outer run stores the value it computed from [a]. The memo ends clean, at 10, with no edge to [a],
-    where its body answers 20. Confirmed in [BUGS.md]. *)
+(** A run reads [a], marks itself and reads itself. Because [4 ∈ g_running], the self-read does not start a
+    nested recomputation; memo 4 finishes its first run [Dirty], so effect 5's check walk immediately recomputes
+    memo 4 to [Clean] at 20 over signals 1 and 3. Closed in [BUGS.md]. *)
 Definition nested_self_run (k : cmd) : cmd :=
   CSignal 1 (K 1%Z) (CSignal 2 (K 10%Z) (CSignal 3 (K 20%Z) (
   CMemo 4 Pure CmpEq
@@ -278,9 +278,9 @@ Definition nested_self_run (k : cmd) : cmd :=
 
 Example nested_self_run_ends_clean_and_wrong :
   let s := final (nested_self_run Nop) in
-  node_view s 4 = Some (Clean, false, false, StNone, 10%Z) /\
+  node_view s 4 = Some (Clean, false, false, StNone, 20%Z) /\
   node_view s 5 = Some (Clean, false, false, StNone, 0%Z) /\
-  observer_items (observers_of (g_edges s) 4) = [(5, 0); (4, 2)] /\
+  observer_items (observers_of (g_edges s) 4) = [(5, 0)] /\
   pending s = [] /\ g_running s = [] /\ run_flush 1000 s = Some (s, tt) /\
   observer_items (observers_of (g_edges s) 2) = [] /\ n_value <$> g_nodes s !! 1 = Some 3%Z /\
   n_value <$> g_nodes s !! 3 = Some 20%Z /\
@@ -292,9 +292,8 @@ Proof.
 Qed.
 
 (** A memo reads itself, then a memo over a signal. The write leaves it in [Check] with a slot naming
-    itself, so the next read's walk asks the memo to resolve itself. Each round of the walk spends
-    fuel and changes nothing, so the read has no result at any fuel tried, and the F# overflows its stack.
-    Confirmed in [BUGS.md]. *)
+    itself; on the next read, [refresh] sees [3 ∈ g_checking], marks memo 3 [Dirty], and recomputes it to 1.
+    Closed in [BUGS.md]. *)
 Definition self_read_check (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -306,12 +305,14 @@ Example self_read_check_resolves_itself :
   n_freshness <$> g_nodes s !! 3 = Some Check /\ source_slots (sources_of (g_edges s) 3) !! 0 = Some (3, Some 0) /\
   trace_of 100000 current_flags (self_read_check Nop) =
     Some [EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z)] /\
-  trace_of 500 current_flags (self_read_check (CRead 22 (V 3) Nop)) = None /\
-  trace_of 2000 current_flags (self_read_check (CRead 22 (V 3) Nop)) = None.
+  trace_of 500 current_flags (self_read_check (CRead 22 (V 3) Nop)) =
+    Some [EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 1%Z)] /\
+  trace_of 2000 current_flags (self_read_check (CRead 22 (V 3) Nop)) =
+    Some [EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 1%Z)].
 Proof. intros s. split_and!; vm_compute; reflexivity. Qed.
 
-(** The walk reaches a later self-slot when the sources before it hold their values. The program returns
-    without its final read, and with that read has no result at the fuel tried. *)
+(** The walk reaches a later self-slot when the sources before it hold their values, marks memo 3 [Dirty]
+    on seeing [3 ∈ g_checking], and recomputes it cleanly. *)
 Definition self_read_second (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (ELt (V 10) (K 100%Z)))) (
@@ -322,11 +323,12 @@ Example self_read_second_resolves_itself :
   source_slots (sources_of (g_edges (final (self_read_second Nop))) 3) !! 1 = Some (3, Some 0) /\
   n_freshness <$> g_nodes (final (self_read_second Nop)) !! 3 = Some Check /\
   is_Some (trace_of 2000 current_flags (self_read_second Nop)) /\
-  trace_of 2000 current_flags (self_read_second (CRead 22 (V 3) Nop)) = None.
+  trace_of 2000 current_flags (self_read_second (CRead 22 (V 3) Nop)) =
+    Some [EvHostRead 3 (Ok 1%Z); EvHostRead 3 (Ok 1%Z); EvHostRead 3 (Ok 1%Z)].
 Proof. split_and!; try (vm_compute; reflexivity). vm_compute. eexists. reflexivity. Qed.
 
 (** Two memos read each other, by constant id, since a memo's body runs after the later memo exists. The
-    write leaves both in [Check], and a read walks round the cycle, with no result at any fuel tried. *)
+    write leaves both in [Check], and a read breaks the check cycle via [g_checking] and recomputes to 1. *)
 Definition mutual_read_check (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (
   CMemo 2 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
@@ -339,9 +341,9 @@ Example mutual_read_check_resolves_itself :
   n_freshness <$> g_nodes (final (mutual_read_check Nop)) !! 3 = Some Check /\
   n_freshness <$> g_nodes (final (mutual_read_check Nop)) !! 4 = Some Check /\
   is_Some (trace_of 2000 current_flags (mutual_read_check Nop)) /\
-  trace_of 500 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop)) = None /\
-  trace_of 2000 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop)) = None.
-Proof. split_and!; try (vm_compute; reflexivity). vm_compute. eexists. reflexivity. Qed.
+  is_Some (trace_of 500 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop))) /\
+  is_Some (trace_of 2000 current_flags (mutual_read_check (CTryRead 28 29 (K 3%Z) Nop))).
+Proof. split_and!; try (vm_compute; reflexivity); vm_compute; eexists; reflexivity. Qed.
 
 (** ** Check resolution counterexamples *)
 
@@ -532,17 +534,16 @@ Example resolve_over_disposed_dirty_source :
   n_disposed <$> g_nodes disposed_source_end !! 2 = Some true.
 Proof. split_and!; vm_compute; reflexivity. Qed.
 
-(** A cleanup of a memo's nested run disposes the memo in [RecomputeScoped]'s window, with the flag of that
-    nested run. The window clears [n_unannounced] when the disposed memo remains [Clean], so
+(** A cleanup of a memo's replacement run disposes the memo in [RecomputeScoped]'s window, with the flag of that
+    replacement run. The window clears [n_unannounced] when the disposed memo remains [Clean], so
     [resolve_clears_unannounced] holds without a liveness premise. Closed in [BUGS.md]. *)
 Definition disposed_window (k : cmd) : cmd :=
   CSignal 1 (K 0%Z) (CSignal 2 (K 0%Z) (
   CMemo 3 Pure CmpEq (CRead 10 (V 1) (CRet (V 10))) (
   CMemo 4 Owning CmpEq
-    (CRead 10 (V 3) (CIf (EEq (V 10) (K 0%Z)) Nop (
-     CRead 11 (V 2) (CIf (EEq (V 11) (K 0%Z))
-       (CWrite (V 2) (K 1%Z) (CReadUntracked 12 (K 4%Z) (CReadUntracked 13 (K 4%Z) Nop)))
-       (CCleanup (CDispose (K 4%Z) Nop) (CWrite (V 2) (K 2%Z) Nop)))))) (
+    (CRead 10 (V 3) (CRead 11 (V 2) (CIf (EEq (V 10) (K 0%Z))
+      (CCleanup (CWrite (V 2) (K 1%Z) (CReadUntracked 12 (K 4%Z) Nop)) Nop)
+      (CCleanup (CDispose (K 4%Z) Nop) (CWrite (V 2) (K 2%Z) Nop))))) (
   CRead 20 (V 4) (CWrite (V 1) (K 1%Z) k))))).
 
 Local Definition window_start : state := final (disposed_window Nop).
@@ -745,38 +746,21 @@ Local Lemma nested_lookup : g_nodes nested_start !! (4 : node_id) = Some nested_
 Proof. vm_compute. reflexivity. Qed.
 
 (**md
-**Falsified on the present engine: a mark received during a run can be gone at the run's end.**
-
-This is a counterexample, not a guarantee. It proves `marks_survive_run_statement` false, using the Confirmed bug `nested_self_recompute_resets_cursor`: a memo writes its own source, which leaves it `Dirty`, then reads itself. The nested run ends `Clean`, and so does the outer run.
+**Counterexample [`nested_host`](#nested_host) is now resolved: the mark received during the run survives to `nested_end`, with `n_unannounced` set.**
 *)
-Theorem marks_survive_run_falsified : ~ marks_survive_run_statement.
+Theorem marks_survive_run_falsified :
+  stale_of nested_end 4 /\ n_unannounced_of nested_end 4 = true.
 Proof.
-  intros H.
-  assert (Hb : n_body nested_node = nested_host_body) by (vm_compute; reflexivity).
-  destruct (H 999 4 nested_start nested_end nested_point (Ok 0%Z) nested_node nested_host_point
-             nested_settled nested_lookup) as [(e&He&Hs) _].
-  - vm_compute. reflexivity.
-  - rewrite Hb. apply nested_host_prefix.
-  - vm_compute. reflexivity.
-  - eexists. split; vm_compute; reflexivity.
-  - vm_compute. reflexivity.
-  - vm_compute in He. injection He as <-. vm_compute in Hs. discriminate Hs.
+  split; [eexists; split; vm_compute; reflexivity|vm_compute; reflexivity].
 Qed.
 
 (**md
-**Falsified on the present engine: a live memo's source list can miss a read of its run.**
-
-This is a counterexample, not a guarantee. It proves `run_end_edges_are_reads_statement` false, on the same run as [`marks_survive_run_falsified`](#marks_survive_run_falsified): the outer run's read of signal 2 has no slot, because the nested run trimmed it. A live memo with no nested run has the list `run_end_edges_no_nested_run` states.
+**Counterexample [`nested_host`](#nested_host) is now resolved: the memo's source list at `nested_end` matches the reads of the run.**
 *)
-Theorem run_end_edges_are_reads_falsified : ~ run_end_edges_are_reads_statement.
+Theorem run_end_edges_are_reads_falsified :
+  fst <$> source_slots (sources_of (g_edges nested_end) 4) = read_list (run_reads_of nested_end 4).
 Proof.
-  intros H.
-  assert (Hnr : (4 : node_id) ∉ g_running nested_start) by (vm_compute; apply not_elem_of_nil).
-  assert (Hk : has_kind 4 KMemo nested_start) by (exists nested_node; split; [exact nested_lookup|vm_compute; reflexivity]).
-  assert (Hm : run_memo 1000 4 nested_start = Some (nested_end, tt)) by (vm_compute; reflexivity).
-  assert (He : g_nodes nested_end !! (4 : node_id) = Some (default (signal_node 0%Z) (g_nodes nested_end !! (4 : node_id)))) by (vm_compute; reflexivity).
-  pose proof (H 1000 4 nested_start nested_end _ nested_settled Hnr (or_introl (conj Hk Hm)) He ltac:(vm_compute; reflexivity)) as Heq.
-  vm_compute in Heq. discriminate Heq.
+  vm_compute. reflexivity.
 Qed.
 
 (** A diamond with no write in any body: [x] reads [h] and [y], and [m] reads [h], [x] and [y]. [m]'s run reaches [y]'s run

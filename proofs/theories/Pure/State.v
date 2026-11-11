@@ -90,16 +90,18 @@ Proof. solve_decision. Defined.
 (**md
 The whole state of a graph: the edge world (`g_edges`), the nodes, the owners, the effect queue with its
 head, the flush and batch bookkeeping, the running computation and owner, the id counter, the event
-trace (`g_trace`), the ghost fields `g_running`, `g_ghost` and `g_registered`, which no engine
-decision reads, and the fields of the saturated-write skip: its mode (`g_skip`), the graph epoch
-(`g_epoch`) and each signal's stamp (`g_stamps`). The last three are read only by the optimised engine of `Pure/Optimised.v`.
+trace (`g_trace`), the active computation stacks `g_running` and `g_checking`, the ghost fields `g_ghost`
+and `g_registered`, which no engine decision reads, and the fields of the saturated-write skip: its mode
+(`g_skip`), the graph epoch (`g_epoch`) and each signal's stamp (`g_stamps`). The last three are read only
+by the optimised engine of `Pure/Optimised.v`.
 *)
 Record state := { g_flags : flags; g_edges : EdgeWorld; g_nodes : gmap node_id node;
                   g_owners : gmap owner_id owner_state; g_queue : list node_id; g_queue_head : nat;
                   g_flushing : bool; g_flush_owed : bool; g_batch_depth : nat; g_pull_depth : nat;
                   g_current : option node_id; g_untracked : bool; g_current_owner : option owner_id;
                   g_next_id : nat; g_trace : list event;
-                  g_running : list node_id (* ghost: between a run's start and EndRun *);
+                  g_running : list node_id (* between a run's start and EndRun *);
+                  g_checking : list node_id (* between a memo's ResolveCheck start and end *);
                   g_ghost : ghost;
                   g_registered : gmap node_id nat (* ghost: the cleanups registered per host *);
                   g_skip : skip_mode; g_epoch : nat; g_stamps : gmap node_id nat }.

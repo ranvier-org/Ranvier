@@ -819,7 +819,7 @@ let tests =
                 Expect.equal u.ObserverCount 0 "the disposed projection holds no edge to u"
             }
 
-            test "an owning memo disposed by a cleanup during RecomputeScoped after a stale nested run settles clean" {
+            test "an owning memo disposed by a cleanup during RecomputeScoped after a stale replacement run settles clean" {
                 use g = new Graph ()
                 use _ = g.Activate ()
                 let s = createSignal 0
@@ -829,12 +829,14 @@ let tests =
 
                 self <-
                     createMemoWith (fun _ ->
-                        if m.Value = 0 then
-                            0
-                        elif gate.Value = 0 then
-                            gate.Value <- 1
-                            untrack (fun () -> self.Value) |> ignore
-                            untrack (fun () -> self.Value) |> ignore
+                        let v = m.Value
+                        gate.Value |> ignore
+
+                        if v = 0 then
+                            onCleanup (fun () ->
+                                gate.Value <- 1
+                                untrack (fun () -> self.Value) |> ignore)
+
                             0
                         else
                             onCleanup (fun () -> self.Dispose ())
@@ -843,9 +845,9 @@ let tests =
 
                 Expect.equal self.Value 0 "initial run"
                 s.Value <- 1
-                Expect.equal self.Value 0 "the outer run finishes after the nested cleanup disposes the memo"
+                Expect.equal self.Value 0 "the outer recompute finishes after the replacement run's cleanup disposes the memo"
                 Expect.equal (self :> INode).Status Status.None "the disposed memo settles Clean"
                 Expect.isFalse (isUnannounced self) "the disposed clean memo clears unannounced"
-                Expect.equal self.Runs 3 "three runs before disposal"
+                Expect.equal self.Runs 2 "two runs before disposal"
             }
         ]

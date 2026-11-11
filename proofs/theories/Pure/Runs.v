@@ -2196,24 +2196,38 @@ Section Step.
 
   Lemma ok2_refresh_S n : ok2 (has_kind n KMemo) (refresh (S f) n).
   Proof.
-    cbn [refresh]. apply ok2_bind; [apply _|apply ok2_get_node|intros d].
+    cbn [refresh]. unfold push_checking, pop_checking.
+    apply ok2_get_at. intros s0.
+    destruct (decide (n ∈ g_checking s0)); [apply ok2_mark_dirty|].
+    destruct (decide (n ∈ g_running s0)); [apply ok2_return|].
+    apply (ok2_weaken (has_kind n KMemo)); [by intros ? [? _]|].
+    apply ok2_bind; [apply _|apply ok2_get_node|intros d].
     apply ok2_bind; [apply _| |intros _].
     - destruct (decide (n_freshness d = Check)); [|apply ok2_return].
+      apply ok2_bind; [apply _|ok2_mod|intros _].
       intros s s' a Hc Hk Hm. unfold m_bind in Hm.
       destruct (resolve_walk f n 0 s) as [[s1 []]|] eqn:Hw; [|done].
       destruct (Rwalk _ IH n 0 s s1 tt Hc I Hw) as [Hc1 K1].
       assert (Hk1 : has_kind n KMemo s1) by exact (stable2 _ _ K1 Hk).
-      fold (m_bind (get_node n) (fun d' =>
-        if decide (n_freshness d' = Check) then
-          let* _ := m_modify (ghost_resolved n) in
-          modify_node n (fun x => node_with_unannounced false (node_with_freshness Clean x))
-        else m_return tt) s1) in Hm.
-      unfold m_bind, get_node in Hm. destruct (g_nodes s1 !! n) as [d'|] eqn:Hd'; [|done].
+      change (m_modify (fun s2 : state => with_checking (tail (g_checking s2)) s2) s1)
+        with (Some (with_checking (tail (g_checking s1)) s1, tt)) in Hm.
+      cbv iota in Hm.
+      set (s2 := with_checking (tail (g_checking s1)) s1) in Hm.
+      assert (Hfs2 : fields_same s1 s2) by (split; reflexivity).
+      assert (Hi2 : check_invariant s2) by (eapply invariant_irrelevant; [|exact (proj1 Hc1)]; unfold irrelevant; simpl; split_and!; reflexivity).
+      assert (Hx2 := extras_same _ _ Hfs2 (proj2 Hc1)).
+      assert (K12 : run_kept s s2).
+      { eapply kept_trans; [exact K1|]. split; [apply frame_irrelevant; unfold irrelevant; simpl; split_and!; reflexivity|exact (ekept_same _ _ Hfs2)]. }
+      assert (Hk2 : has_kind n KMemo s2) by exact (stable2 _ _ K12 Hk).
+      unfold get_node in Hm.
+      assert (Hd'2 : g_nodes s2 !! n = g_nodes s1 !! n) by reflexivity.
+      destruct (g_nodes s1 !! n) as [d'|] eqn:Hd'; rewrite Hd'2 in Hm; [|done].
       destruct (decide (n_freshness d' = Check)) as [Hc'|_].
       + pose proof (resolve_walk_no_stale_source f n 0 s s1 d' Hw Hd' Hc') as Hsh.
-        destruct (ok2_resolved_memo n d' Hc' s1 s' a Hc1 (conj Hk1 (conj Hd' Hsh)) Hm) as [Hc2 K2].
+        assert (Hsh2 : slot_holds stale_live s2 n = false) by exact Hsh.
+        destruct (ok2_resolved_memo n d' Hc' s2 s' a (conj Hi2 Hx2) (conj Hk2 (conj Hd' Hsh2)) Hm) as [Hc3 K3].
         split; [done|by eapply kept_trans].
-      + unfold m_return in Hm. simplify_eq. split; done.
+      + unfold m_return in Hm. simplify_eq. split; [by split|done].
     - apply ok2_bind; [apply _|apply ok2_get_node|intros d'].
       destruct (decide (n_freshness d' = Dirty)); [rih IH|apply ok2_return].
   Qed.

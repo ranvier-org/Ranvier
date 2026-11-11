@@ -61,7 +61,7 @@ Definition strip (s : state) : state :=
      g_queue := g_queue s; g_queue_head := g_queue_head s; g_flushing := g_flushing s; g_flush_owed := g_flush_owed s;
      g_batch_depth := g_batch_depth s; g_pull_depth := g_pull_depth s; g_current := g_current s;
      g_untracked := g_untracked s; g_current_owner := g_current_owner s; g_next_id := g_next_id s;
-     g_trace := g_trace s; g_running := g_running s; g_ghost := g_ghost s; g_registered := g_registered s;
+     g_trace := g_trace s; g_running := g_running s; g_checking := g_checking s; g_ghost := g_ghost s; g_registered := g_registered s;
      g_skip := SkipOff; g_epoch := 0; g_stamps := ∅ |}.
 
 (**md
@@ -377,19 +377,25 @@ with orefresh (fuel : nat) (n : node_id) {struct fuel} : M unit :=
   match fuel with
   | 0 => stuck
   | S f =>
-    let* d := get_node n in
-    let* _ :=
-      if decide (n_freshness d = Check) then
-        let* _ := oresolve_walk f n 0 in
-        let* d' := get_node n in
-        if decide (n_freshness d' = Check)
-        then
-          let* _ := m_modify (ghost_resolved n) in
-          modify_node n (fun x => node_with_unannounced false (node_with_freshness Clean x))
-        else m_return tt
-      else m_return tt in
-    let* d' := get_node n in
-    if decide (n_freshness d' = Dirty) then orecompute f n else m_return tt
+    let* s0 := m_get in
+    if decide (n ∈ g_checking s0) then m_step (mark_dirty f n)
+    else if decide (n ∈ g_running s0) then m_return tt
+    else
+      let* d := get_node n in
+      let* _ :=
+        if decide (n_freshness d = Check) then
+          let* _ := push_checking n in
+          let* _ := oresolve_walk f n 0 in
+          let* _ := pop_checking in
+          let* d' := get_node n in
+          if decide (n_freshness d' = Check)
+          then
+            let* _ := m_modify (ghost_resolved n) in
+            modify_node n (fun x => node_with_unannounced false (node_with_freshness Clean x))
+          else m_return tt
+        else m_return tt in
+      let* d' := get_node n in
+      if decide (n_freshness d' = Dirty) then orecompute f n else m_return tt
   end
 
 with oresolve_walk (fuel : nat) (n : node_id) (i : nat) {struct fuel} : M unit :=
@@ -402,6 +408,13 @@ with oresolve_walk (fuel : nat) (n : node_id) (i : nat) {struct fuel} : M unit :
       match source_slots (sources_of (g_edges s) n) !! i with
       | Some (src, _) =>
         let* _ := oupdate_if_necessary f src in
+        let* d' := get_node n in
+        let* d_src := get_node src in
+        let* s1 := m_get in
+        let* _ :=
+          if decide (n_freshness d' = Check /\ stale_live d_src = true /\ (src ∈ g_running s1 \/ src ∈ g_checking s1))
+          then m_step (mark_dirty f n)
+          else m_return tt in
         oresolve_walk f n (S i)
       | None => if slot_holds stale_live s n then oresolve_walk f n 0 else m_return tt
       end
@@ -1190,7 +1203,7 @@ Definition window_state : state :=
      g_nodes := <[1 := signal_node 0%Z]> {[2 := window_memo]};
      g_owners := ∅; g_queue := []; g_queue_head := 0; g_flushing := false; g_flush_owed := false;
      g_batch_depth := 0; g_pull_depth := 0; g_current := None; g_untracked := false; g_current_owner := None;
-     g_next_id := 2; g_trace := []; g_running := []; g_ghost := empty_ghost; g_registered := ∅;
+     g_next_id := 2; g_trace := []; g_running := []; g_checking := []; g_ghost := empty_ghost; g_registered := ∅;
      g_skip := SkipUnchecked; g_epoch := 3; g_stamps := ∅ |}.
 
 Lemma window_mark : (fun s' => bool_decide (saturated s' 2)) <$> mark_dirty 10 2 window_state = Some false.
@@ -1586,6 +1599,12 @@ Proof. apply old2_modify. intros []; reflexivity. Qed.
 Lemma old2_pop : old2 pop_running.
 Proof. apply old2_modify. intros []; reflexivity. Qed.
 
+Lemma old2_push_checking n : old2 (push_checking n).
+Proof. apply old2_modify. intros []; reflexivity. Qed.
+
+Lemma old2_pop_checking : old2 pop_checking.
+Proof. apply old2_modify. intros []; reflexivity. Qed.
+
 Lemma old2_unlink l : old2 (unlink l).
 Proof.
   unfold unlink. apply old2_bind; [apply old2_get_owner|intros x].
@@ -1622,7 +1641,7 @@ Local Ltac old2_tac :=
 
 Local Ltac inert_tac :=
   intros ? ? ? Hm;
-  unfold unlink, record_error, note_host_read, log_label, next_id, push_running, pop_running, put_owner, emit,
+  unfold unlink, record_error, note_host_read, log_label, next_id, push_running, pop_running, push_checking, pop_checking, put_owner, emit,
     get_owner, get_node, m_bind, m_modify, m_return, ghost_registered, ghost_run_start, ghost_effect_start,
     ghost_run_end, ghost_dirty_cleared, ghost_resolved, ghost_publish in Hm;
   repeat (case_match; simplify_eq/=); simplify_eq/=; split_and!; reflexivity.
@@ -2317,6 +2336,10 @@ Lemma simM_push n : simM (push_running n) (push_running n).
 Proof. apply simM_inert; [apply old2_push|inert_tac]. Qed.
 Lemma simM_pop : simM pop_running pop_running.
 Proof. apply simM_inert; [apply old2_pop|inert_tac]. Qed.
+Lemma simM_push_checking n : simM (push_checking n) (push_checking n).
+Proof. apply simM_inert; [apply old2_push_checking|inert_tac]. Qed.
+Lemma simM_pop_checking : simM pop_checking pop_checking.
+Proof. apply simM_inert; [apply old2_pop_checking|inert_tac]. Qed.
 Lemma simM_unlink l : simM (unlink l) (unlink l).
 Proof. apply simM_inert; [apply old2_unlink|inert_tac]. Qed.
 Lemma simM_record_error x y : simM (record_error x y) (record_error x y).
@@ -2362,6 +2385,8 @@ Local Ltac sgo1 IH :=
   | |- simM (note_host_read _ _) _ => apply simM_note
   | |- simM (push_running _) _ => apply simM_push
   | |- simM pop_running _ => apply simM_pop
+  | |- simM (push_checking _) _ => apply simM_push_checking
+  | |- simM pop_checking _ => apply simM_pop_checking
   | |- simM (unlink _) _ => apply simM_unlink
   | |- simM (record_error _ _) _ => apply simM_record_error
   | |- simM current_owner _ => apply simM_current_owner

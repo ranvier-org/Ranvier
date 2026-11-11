@@ -181,6 +181,14 @@ Definition prog_self_marking_cleanup : cmd := self_marking_cleanup (R 20 (V 5) N
 Definition prog_self_marking_body : cmd := self_marking_body (R 20 (V 2) Nop).
 Definition prog_self_marking_through_memo : cmd := self_marking_through_memo (R 20 (V 3) Nop).
 Definition prog_nested_self_run : cmd := nested_self_run (R 20 (V 4) Nop).
+Definition prog_self_read_check_overflow : cmd := self_read_check (R 22 (V 3) (R 23 (V 3) Nop)).
+Definition prog_mutual_read_check_overflow : cmd :=
+  CSignal 1 (K 0) (
+  CMemo 2 Pure CmpEq (R 10 (V 1) (CRet (V 10))) (
+  CMemo 3 Pure CmpEq (R 11 (K 4) (R 12 (V 2) (CRet (V 12)))) (
+  CMemo 4 Pure CmpEq (R 13 (K 3) (CRet (V 13))) (
+  R 20 (V 3) (R 21 (V 4) (R 22 (V 3) (R 23 (V 4) (
+  W (V 1) (K 1) (R 24 (V 3) (R 25 (V 4) (R 26 (V 3) Nop))))))))))).
 Definition prog_check_over_moved : cmd := check_over_moved (R 22 (V 4) Nop).
 Definition prog_check_two_reads : cmd := check_two_reads (R 22 (V 3) Nop).
 Definition prog_stale_source_reader : cmd := stale_source_reader (R 22 (V 3) (R 23 (V 3) (R 24 (V 2) Nop))).
@@ -304,6 +312,12 @@ Example check_self_marking_through_memo :
 Proof. vm_compute. reflexivity. Qed.
 Example check_nested_self_run :
   trace_of 100000 current_flags prog_nested_self_run = Some exp_nested_self_run.
+Proof. vm_compute. reflexivity. Qed.
+Example check_self_read_check_overflow :
+  trace_of 100000 current_flags prog_self_read_check_overflow = Some exp_self_read_check_overflow.
+Proof. vm_compute. reflexivity. Qed.
+Example check_mutual_read_check_overflow :
+  trace_of 100000 current_flags prog_mutual_read_check_overflow = Some exp_mutual_read_check_overflow.
 Proof. vm_compute. reflexivity. Qed.
 Example check_check_over_moved :
   trace_of 100000 current_flags prog_check_over_moved = Some exp_check_over_moved.

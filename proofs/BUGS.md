@@ -9,57 +9,14 @@ intended, the entry closes as "spec corrected".
 
 ## Confirmed
 
-- `nested_self_recompute_resets_cursor` (scenario `nested_self_run`; `theories/Pure/Witnesses.v`:
-  `nested_self_run_ends_clean_and_wrong`): a run reads `a`, writes `flip`, which marks it, and reads itself. The nested run
-  (Core.fs 4209) takes another branch and its `EndRun` trims `a`'s edge, and the outer run then stores the value it computed
-  from `a`. After `flip <- 2`, the memo is clean with value 10, its body now answers 20, `a` has no observers and `b`
-  has one. After `a <- 11` the memo is still clean at 10. The effect is clean, nothing is queued or running, and an explicit
-  `Flush` changes nothing. The harness asserts each of these and the witness states them. F# trace: `[EvRun 5; EvLog 5 10; EvRun 5; EvLog 5 10; EvHostRead 4 (Ok 10)]`. Unlike `self_marking_wake_lost`, the
-  memo is clean, so no marked state records the difference. Core.fs 4205-4206 covers a self-read's overflow and 4178-4181 a
-  cleanup's nested run, and neither states this. A self-read and a write put it outside the well-behaved fragment. The
-  glitch-free claim excepts the self-dirtying case.
-  **Theorems.** This falsifies `marks_survive_run_statement` and `run_end_edges_are_reads_statement`: `marks_survive_run_falsified`, `run_end_edges_are_reads_falsified`. The nested run clears a mark the
-  outer run received, and the outer run read `a` with no slot for it. Both are Open below. `marks_survive_body_end` covers the tail of a run from the body's return. `run_end_edges_are_latest_reads` states the source
-  list against the reads since the latest run start, and `run_end_edges_no_nested_run` against the run's reads when no nested self-run started. A form of the first with a mark at any point and a premise excluding the
-  clearing paths (a nested run, a self-read's `ResolveCheck`, the discharge window) was not attempted.
-
-- `self_read_check_overflow` (scenarios `self_read_check_overflow`, `mutual_read_check_overflow`, run by `--fatal`;
-  `theories/Pure/Witnesses.v`: `self_read_check_resolves_itself`, `self_read_second_resolves_itself`,
-  `mutual_read_check_resolves_itself`): a memo reads itself and also reads another memo `a` over a signal. Two reads leave it
-  clean with itself among its sources, and a write to the signal marks `a` dirty, which tells the memo `Check`. The next read
-  overflows the stack, which ends the process: no caller can catch it. Program:
-  `(signal 1 (k 0) (memo 2 pure eq (read 10 (v 1) (ret (v 10))) (memo 3 pure eq (read 10 (v 3) (read 11 (v 2) (ret (v 11)))) (read 20 (v 3) (read 21 (v 3) (write (v 1) (k 1) (read 22 (v 3) (ret (k 0)))))))))`.
-  The harness asserts `Clean`, then `Check`, then that the memo observes itself, before the fatal read.
-  **The shape.** The other source has to be a memo, since that is what delivers `Check`. A memo reading itself and a signal runs
-  fine, because the write marks it `Dirty`, and `Dirty` runs the body with no walk. The self-slot need not be first. With the
-  self-read second the walk reaches it when `a` holds its value (`a` as `lt s 100`, `self_read_second_resolves_itself`), and stops
-  short of it when `a` moves, which runs fine. Two memos reading each other overflow the same way, by constant id in the command
-  language: `(signal 1 (k 0) (memo 2 pure eq (read 10 (v 1) (ret (v 10))) (memo 3 pure eq (read 11 (k 4) (read 12 (v 2) (ret (v 12)))) (memo 4 pure eq (read 13 (k 3) (ret (v 13))) (tryread 20 21 (k 3) (tryread 22 23 (k 4) (tryread 24 25 (k 3) (tryread 26 27 (k 4) (write (v 1) (k 1) (tryread 28 29 (k 3) (ret (k 0))))))))))))`.
-  Without its final read that program returns on both sides, with the two sides agreeing and memo 3 in `Check`.
-  Path: `TrackCurrent` (Core.fs 4334), then for a host read `Pull` (4336, 4349-4353), to `Refresh` (4360) to `ResolveCheck` (4304),
-  whose walk calls `UpdateIfNecessary` (4309) on the memo itself, which is still in `Check`, so `EnsureCurrent` (4318) enters
-  `Refresh` again, and no body runs between the frames. Mark and body guards never see it. `Generate.fsx`'s step and depth budgets
-  count bodies, and do not see it either. The model has the same walk: `resolve_walk` spends fuel and changes nothing, so the read
-  has no result at the fuels the witnesses state, where the same program without that read returns.
-  **Against the documents.** Core.fs 4205-4206 says marking clean before the body "turns a memo that reads itself from a stack
-  overflow into a default value". That holds for the path it names, `Run`, and the walk in `ResolveCheck` is a second path with no
-  such guard. The test "a memo that reads itself yields a default rather than overflowing" (`tests/Ranvier.Tests/Invalidation.fs:66`)
-  says of a self-read: "Not a supported thing to write, but a cycle must fail as a value, not as a stack overflow the caller cannot
-  catch." That test reads through `Peek`, so it takes no edge to itself and does not reach this path.
-  **The contract is the owner's call.** A self-reading memo may be outside the contract, and the owner decides that. No document
-  found says this outcome is intended, which is why the entry is Confirmed and not closed as spec corrected.
-  **Theorems.** `glitch_free_read` (Task 11) and `self_dirtying` exclude this program: a read of a node, or of itself, later than the reader makes the reader self-dirtying, for every answer of its earlier reads: `self_dirtying_covers_known_cases`. `convergence_all_statement` takes `memos_ranked` for the same reason. No proved theorem is falsified, and none is
-  weakened. `well_formed_program` includes `memos_acyclic`, which rejects this program, so Task 12's `engine_of_answers_statement` and `weak_refinement_statement` keep
-  their form with that premise. `well_behaved_memo` alone accepts a self-read and is no substitute for it. Any statement that `read`
-  or `update_if_necessary` returns needs `memos_acyclic` as a premise, and Task 8's `resolve_clean_no_move_statement` and Task 9's
-  `engine_inv_preserved_statement` hold over results, which this read has none of. In the differential check this program is `fatal` on the
-  F# side and has no result in the model, which counts as a both-sides skip and closes nothing.
-
 ## Awaiting ruling
 
 Each entry of Task 12 is a difference between the engine and the reference, with a checked `Example` in `theories/Pure/Witnesses.v` holding both traces. `weak_refinement_except` or `exact_refinement_except` takes each as a named premise until the owner rules. All of them are outside `src/Ranvier`'s documents unless the entry says so.
 
 ## Closed
+
+- `nested_self_recompute_resets_cursor` (scenario `nested_self_run`; `theories/Pure/Witnesses.v`: `nested_self_run_ends_clean_and_wrong`, `marks_survive_run_falsified`, `run_end_edges_are_reads_falsified`), closed as fixed (`Memo.Refresh`, `AsyncMemo.Refresh`, `Boundary.Refresh`, `StreamMemo.Pull` in `src/Ranvier/`, and `refresh` / `orefresh` in `theories/Pure/Engine.v` and `Optimised.v`). A computation whose body is currently running (`running` / `n ∈ g_running`) ignores `Refresh`, so a tracked or untracked self-read while `Dirty` returns the stored value without starting a nested recomputation that would clear the outer run's `Dirty` mark or trim its earlier source edges.
+- `self_read_check_overflow` (scenarios `self_read_check_overflow`, `mutual_read_check_overflow`; `theories/Pure/Witnesses.v`: `self_read_check_resolves_itself`, `self_read_second_resolves_itself`, `mutual_read_check_resolves_itself`), closed as fixed (`ISource.IsActive`, `Memo.Refresh`, `Memo.ResolveCheck`, `Effect.Execute`, `EffectOn.Execute`, `AsyncMemo.Refresh`, `Boundary.Refresh`, `StreamMemo.Pull`, `StreamMemo.Execute`, `Timed.Execute`, `Binding.Execute`, `FoldReads.Moved` in `src/Ranvier/`, and `g_checking`, `refresh` / `orefresh`, `resolve_walk` / `oresolve_walk` in `theories/Pure/State.v`, `Engine.v` and `Optimised.v`). Entering `Refresh` on a node already resolving `Check` (`checking` / `n ∈ g_checking`) marks the node `Dirty`, and in `resolve_walk`, if after `UpdateIfNecessary` on a source the reader is still `Check` and the source remains `IsStale` while `IsActive` (`running || checking` / `src ∈ g_running \/ src ∈ g_checking`), the reader marks itself `Dirty` so the check walk terminates instead of looping on `HasStaleSource`.
 
 - `self_marking_wake_lost` (scenarios `self_marking_cleanup`, `self_marking_body`, `self_marking_through_memo`, `stale_source_reader`; `theories/Pure/Witnesses.v`: `self_marking_cleanup_left_behind`, `self_marking_body_left_behind`, `self_marking_through_memo_left_behind`, `resolve_clean_no_stale_source_falsified`), closed as fixed (`SourceList.HasStaleSource`, `Memo.ResolveCheck`, `Effect.Execute`, `EffectOn.Execute`, `AsyncMemo.Refresh`, `Boundary.Refresh` in Core.fs, and `resolve_walk` / `oresolve_walk` in `theories/Pure/Engine.v` and `Optimised.v`). A check walk repeats from slot 0 while the node remains in `Check` and any live source in its `SourceList` is stale (`HasStaleSource` / `slot_holds stale_live`), so a source dirtied during its own recomputation or by a later source's run is re-pulled before the reader can resolve its `Check` to `Clean`.
 - `walk_passed_source_marked` (scenarios `walk_passed_source_marked`, `walk_passed_source_cleanup`; `theories/Pure/Witnesses.v`: `walk_passed_source_marked`, `walk_passed_source_cleanup`, `walk_passed_stays_deaf`, `no_lost_wakeups_falsified`, `engine_inv_preserved_falsified`), closed as fixed under the same `resolve_walk` / `HasStaleSource` fix as `self_marking_wake_lost`. When a later source in a check walk marks an already-passed source `Dirty`, `HasStaleSource` restarts the walk from slot 0 and pulls the dirtied source before resolving `Check`.
