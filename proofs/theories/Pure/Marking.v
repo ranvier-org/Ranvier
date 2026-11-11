@@ -129,18 +129,18 @@ Definition notify_dirty (fuel : nat) (src : node_id) (s : state) : option state 
   notify_with (mark_dirty fuel) src s.
 
 (** The visit of [NotifyDirtyExcept]. [r] is [CurrentComputation], and [None] is null. *)
-Definition mark_except (fuel : nat) (r : option node_id) (c : node_id) (s : state) : option state :=
-  if decide (r = Some c) then Some s else mark_dirty fuel c s.
+Definition mark_except (fuel : nat) (src : node_id) (r : option node_id) (c : node_id) (s : state) : option state :=
+  if decide (r = Some c /\ src ∉ read_prefix (g_edges s) c) then Some s else mark_dirty fuel c s.
 
 (**md
-`NotifyDirtyExcept`: marks each observer of `src` with `mark_dirty`, skipping the computation `r`.
+`NotifyDirtyExcept`: marks each observer of `src` with `mark_dirty`, skipping the computation `r` unless `r` has already read `src` in its current run.
 
 - [fuel:] the bound on the recursion of the marks.
 - [src:] the source whose observers are marked.
 - [r:] the current computation, or `None`.
 *)
 Definition notify_dirty_except (fuel : nat) (src : node_id) (r : option node_id) (s : state) : option state :=
-  notify_with (mark_except fuel r) src s.
+  notify_with (mark_except fuel src r) src s.
 
 (** Any of the five marking operations, from [s] to [s']. *)
 Definition any_mark (fuel : nat) (n : node_id) (r : option node_id) (s s' : state) : Prop :=
@@ -275,7 +275,7 @@ Proof.
   - simplify_eq. apply effect_marked_rtc; [done|done|apply freshness_le_dirty].
 Qed.
 
-Lemma mark_except_rtc f r c s s' : mark_except f r c s = Some s' -> marks s s'.
+Lemma mark_except_rtc f src r c s s' : mark_except f src r c s = Some s' -> marks s s'.
 Proof.
   unfold mark_except. destruct (decide _); [intros; simplify_eq; apply rtc_refl|apply mark_dirty_rtc].
 Qed.
@@ -634,7 +634,7 @@ Theorem notify_walk_unmutated fuel src r s (o := observers_of (g_edges s) src) (
   walk (length (observer_items o)) o ((fun _ => []) <$> vis) vis o /\
   notify_check fuel src s = mark_list (mark_check fuel) vis s /\
   notify_dirty fuel src s = mark_list (mark_dirty fuel) vis s /\
-  notify_dirty_except fuel src r s = mark_list (mark_except fuel r) vis s.
+  notify_dirty_except fuel src r s = mark_list (mark_except fuel src r) vis s.
 Proof.
   split_and!.
   - pose proof (walk_static (length (observer_items o)) o) as Hw.
@@ -745,7 +745,7 @@ Qed.
 Lemma notify_with_reaches (P : state -> Prop) (mark : node_id -> state -> option state) src s s' m :
   (forall s0 s1, marks s0 s1 -> P s0 -> P s1) ->
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
-  (forall s0 s1, takes_marks s0 m -> mark m s0 = Some s1 -> P s1) ->
+  (forall s0 s1, g_edges s0 = g_edges s -> takes_marks s0 m -> mark m s0 = Some s1 -> P s1) ->
   notify_with mark src s = Some s' ->
   m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
@@ -754,12 +754,12 @@ Proof.
   intros Hp Hr Hst Hn Hin Ht. rewrite notify_with_list in Hn by done.
   destruct (mark_list_visit _ _ _ _ m Hr Hn (elem_rev _ _ Hin))
     as (s1 & s2 & H1 & H2 & H3).
-  eapply Hp; [done|]. eapply Hst; [|done]. by eapply marks_takes.
+  eapply Hp; [done|]. eapply Hst; [by apply marks_edges|by eapply marks_takes|done].
 Qed.
 
 Lemma notify_with_stale (mark : node_id -> state -> option state) src s s' m :
   (forall c s0 s1, mark c s0 = Some s1 -> marks s0 s1) ->
-  (forall s0 s1, takes_marks s0 m -> mark m s0 = Some s1 -> ends_stale s1 m) ->
+  (forall s0 s1, g_edges s0 = g_edges s -> takes_marks s0 m -> mark m s0 = Some s1 -> ends_stale s1 m) ->
   notify_with mark src s = Some s' ->
   m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
@@ -771,7 +771,7 @@ Qed.
 (**md
 **A marking walk leaves each observer stale.**
 
-Each observer of the source that takes marks ends `Check` or `Dirty`. `notify_dirty_except` skips the running computation, so the guarantee covers observers other than that one. An observer takes marks when it is a memo, or an effect outside its disposal and its cleanups.
+Each observer of the source that takes marks ends `Check` or `Dirty`. `notify_dirty_except` skips the running computation unless it has already read the source in its current run, so the guarantee covers observers other than that one and running observers that have already read the source. An observer takes marks when it is a memo, or an effect outside its disposal and its cleanups.
 
 - [fuel:] the fuel.
 - [src:] the source whose observers are marked.
@@ -784,16 +784,16 @@ Theorem notify_stales fuel src r s s' m :
   m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
   (notify_check fuel src s = Some s' \/ notify_dirty fuel src s = Some s' \/
-   (notify_dirty_except fuel src r s = Some s' /\ r <> Some m)) ->
+   (notify_dirty_except fuel src r s = Some s' /\ (r <> Some m \/ src ∈ read_prefix (g_edges s) m))) ->
   ends_stale s' m.
 Proof.
   intros Hin Ht [Hn|[Hn|[Hn Hne]]].
-  - eapply notify_with_stale; [|intros ??; apply mark_check_stale|done|done|done].
+  - eapply notify_with_stale; [|intros ?? _; apply mark_check_stale|done|done|done].
     intros ???. apply mark_check_rtc.
-  - eapply notify_with_stale; [|intros ??; apply mark_dirty_stale|done|done|done].
+  - eapply notify_with_stale; [|intros ?? _; apply mark_dirty_stale|done|done|done].
     intros ???. apply mark_dirty_rtc.
   - eapply notify_with_stale; [intros ???; apply mark_except_rtc| |done|done|done].
-    intros s0 s1 Ht0. unfold mark_except. rewrite decide_False by done. by apply mark_dirty_stale.
+    intros s0 s1 He Ht0. unfold mark_except. rewrite He. rewrite decide_False by tauto. by apply mark_dirty_stale.
 Qed.
 
 Lemma set_node_edges n d s : g_edges (set_node n d s) = g_edges s.
@@ -1132,16 +1132,16 @@ Theorem notify_dirty_ends_dirty fuel src r s s' m :
   m ∈ observer_view (observers_of (g_edges s) src) ->
   takes_marks s m ->
   (notify_dirty fuel src s = Some s' \/
-   (notify_dirty_except fuel src r s = Some s' /\ r <> Some m)) ->
+   (notify_dirty_except fuel src r s = Some s' /\ (r <> Some m \/ src ∈ read_prefix (g_edges s) m))) ->
   ends_dirty s' m.
 Proof.
   intros Hin Ht [Hn|[Hn Hne]].
   - eapply (notify_with_reaches (fun s0 => ends_dirty s0 m));
       [intros ???; by eapply marks_dirty|intros ???; apply mark_dirty_rtc|
-       intros ??; apply mark_dirty_ends_dirty|done|done|done].
+       intros ?? _; apply mark_dirty_ends_dirty|done|done|done].
   - eapply (notify_with_reaches (fun s0 => ends_dirty s0 m));
       [intros ???; by eapply marks_dirty|intros ???; apply mark_except_rtc| |done|done|done].
-    intros s0 s1 Ht0. unfold mark_except. rewrite decide_False by done. by apply mark_dirty_ends_dirty.
+    intros s0 s1 He Ht0. unfold mark_except. rewrite He. rewrite decide_False by tauto. by apply mark_dirty_ends_dirty.
 Qed.
 
 (** Every node of [s] is present in [s'], and is [Dirty] in [s'] only if it was in [s]. *)

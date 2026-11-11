@@ -1324,13 +1324,14 @@ Section Touch.
 
   (** A notice from [n] whose observers can be touched, apart from the skipped [r]. *)
   Lemma ytouch_notify_except f n r s' :
-    (forall y, y ∈ observer_view (observers_of (g_edges s) n) -> r = Some y \/ iny T s y) ->
+    (forall y, y ∈ observer_view (observers_of (g_edges s) n) ->
+      (r = Some y /\ n ∉ read_prefix (g_edges s) y) \/ iny T s y) ->
     notify_dirty_except f n r s = Some s' -> ytouch T s s'.
   Proof.
     intros Hobs Hw. refine (walk_in _ _ _ _ _ _ _ ytouch_refl Hw).
     intros c s2 s3 Hin Hs2 Hm. unfold mark_except in Hm.
     destruct (decide _) as [_|Hne]; [by simplify_eq|].
-    rewrite (rs_edges _ _ (proj1 Hs2)) in Hin.
+    rewrite (rs_edges _ _ (proj1 Hs2)) in Hin, Hne.
     destruct (Hobs c Hin) as [Hr|Hy]; [done|]. eapply ytouch_dirty; [exact Hs2|exact Hy|exact Hm].
   Qed.
 End Touch.
@@ -2240,10 +2241,13 @@ Section Step.
         assert (HTs : ~ T src).
         { intros K. pose proof (st_low _ _ _ St1 src (st_T _ _ _ St1 src K) ltac:(by rewrite Hsh1)). lia. }
         refine (qog_atom T lim None s1 s' src A2 ltac:(by rewrite Hsh1) HTs (proj1 D1)).
-      + unfold m_return in Hm. injection Hm as <- <-. split_and!; [done|apply atom_refl|].
-        intros dc j u mh Hdc Hfc Hsj Hij. unfold slot_at in Hsj.
-        rewrite (lookup_ge_None_2 (source_slots (sources_of (g_edges s) c)) j) in Hsj; [done|].
-        apply lookup_ge_None_1 in Es. lia.
+      + destruct (slot_holds stale_live s c).
+        * destruct (Awalk _ IH T lim c 0 s s' a Ha Hrn Hnr Hsl Hm) as (Ha1&A1&Hall).
+          split_and!; [done|done|]. intros dc j u mh Hdc Hfc Hsj _. apply (Hall dc j u mh Hdc Hfc Hsj); lia.
+        * unfold m_return in Hm. injection Hm as <- <-. split_and!; [done|apply atom_refl|].
+          intros dc j u mh Hdc Hfc Hsj Hij. unfold slot_at in Hsj.
+          rewrite (lookup_ge_None_2 (source_slots (sources_of (g_edges s) c)) j) in Hsj; [done|].
+          apply lookup_ge_None_1 in Es. lia.
     - unfold m_return in Hm. injection Hm as <- <-. split_and!; [done|apply atom_refl|].
       intros dc j u mh Hdc Hfc. rewrite Hd in Hdc. injection Hdc as <-. done.
   Qed.
@@ -3614,7 +3618,7 @@ Section Step.
         assert (Hcc' : g_current s = Some c).
         { unfold flds in Hfl10. injection Hfl10 as X. rewrite <- X. exact Hcc. }
         exact (b_current _ (proj1 (proj2 Hc)) c Hcc'). }
-      destruct (notify_dirty_ends_dirty f t (g_current s10) sg s11 c Hobs Htk (or_intror (conj Hn Hrne))) as (dd&Hdd&Hff).
+      destruct (notify_dirty_ends_dirty f t (g_current s10) sg s11 c Hobs Htk (or_intror (conj Hn (or_introl Hrne)))) as (dd&Hdd&Hff).
       rewrite Hdc in Hdd. injection Hdd as <-.
       destruct Hse as [K|K]; [done|congruence]. }
     destruct (finish_ok T lim t s s0 s1 s' d d1 dE r Hw St Hlt Hp Hd Hk Hl Sh0 Run0 Nd0 Sv0 Se0 Pa0 Hw1 St1 A1 Hd1 Hk1 Hev Hshs Hruns)
@@ -5883,7 +5887,9 @@ Proof.
       apply tkm_modify_node; intros ?; reflexivity.
     + apply tkm_bind_node. intros d' _. destruct (decide _); [apply (Trec _ IH)|apply tkm_return].
   - intros n i. cbn [resolve_walk]. apply tkm_bind_node. intros d _. apply tkm_bind_get. intros s0. destruct (decide _); [|apply tkm_return].
-    destruct (_ !! i) as [[src mh]|]; [|apply tkm_return]. apply tkm_bind; [apply _|apply (Tupd _ IH)|intros _]. apply (Twalk _ IH).
+    destruct (_ !! i) as [[src mh]|].
+    + apply tkm_bind; [apply _|apply (Tupd _ IH)|intros _]. apply (Twalk _ IH).
+    + destruct (slot_holds stale_live s0 n); [apply (Twalk _ IH)|apply tkm_return].
   - intros n. cbn [recompute]. apply tkm_bind_node. intros d (s0&Hi0&(d0&Hd0&Hk0)&Hd). rewrite Hd in Hd0. injection Hd0 as <-.
     destruct (Hi0 n d Hd Hk0) as [Hsc _]. rewrite Hsc. apply (Trun _ IH).
   - intros n. cbn [run_memo]. apply tkm_bind_node. intros d (s0&Hi0&(d0&Hd0&Hk0)&Hd). rewrite Hd in Hd0. injection Hd0 as <-.
@@ -7654,7 +7660,7 @@ Proof.
       destruct (proj2 (proj2 Hc) true e t d x I Hd Hx Ht Hsx Ed Hl) as [K|[K|[K|K]]].
       - rewrite Hcl in K. done.
       - apply Q. right. apply K.
-      - simpl in K. unfold nothing_passed in Hnp. rewrite Hnp in K. set_solver.
+      - set_solver.
       - destruct K as (w&Kw&Kr). pose proof (proj2 Hset e d w Hd Kw Hl). lia. }
     exact (quiet_denotes s (proj1 Hw) Hc Hnr t x Hx Hpt Hqx). }
   destruct (proj1 (proj2 (proj2 (proj2 Hw))) e d Hd (He e d Hd Hk) Hl ltac:(by rewrite Hcl)) as [[K _]|(r0&l&pre&A&C)]; [done|].

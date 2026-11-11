@@ -52,6 +52,8 @@ type internal RowWatch(graph: Graph, refresh: unit -> unit, touched: unit -> uni
         /// <summary>Rows link through a <c>ForwardingEdge</c> each, and the watch holds no edge of its own.</summary>
         member _.MovedIn(_, _) = ()
 
+        member _.HasReadSlot _ = false
+
         member this.MarkDirty() =
             touched ()
             this.Request ()
@@ -115,12 +117,14 @@ type internal ProjectionBeacon(graph: Graph, host: IBeaconHost) =
         member _.UpdateIfNecessary() =
             host.Refresh ()
 
+        member _.IsStale = false
+
     /// <summary>
     /// Marks everything watching the projection dirty, except <c>running</c>: the
     /// reader the failure is raised to.
     /// </summary>
     member _.NotifyFailure(running: IComputation) =
-        observers.NotifyDirtyExcept running
+        observers.NotifyDirtyOther running
 
     member _.ObserverCount = observers.Count
 
@@ -1084,30 +1088,78 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             deferredDirty <- false
             (this :> IComputation).MarkDirty()
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
+
     member private this.ResolveCheck() =
         Tracer.CheckStart (graph, id)
+        let before = graph.StaleTransitions
         let mutable i = 0
 
         while freshness = Freshness.Check && i < sources.Count do
             sources.SourceAt(i).UpdateIfNecessary()
             i <- i + 1
 
+        if
+            freshness = Freshness.Check
+            && graph.StaleTransitions <> before
+        then
+            this.ResolveCheckAgain ()
+
         Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
         if freshness = Freshness.Check then
             freshness <- Freshness.Clean
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveFailedCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while not invalidated && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                not invalidated
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
+
     /// <summary>
     /// Brings the sources of a failed projection current, so a source that
     /// moved marks the projection dirty before the retry.
     /// </summary>
-    member private _.ResolveFailedCheck() =
+    member private this.ResolveFailedCheck() =
         Tracer.CheckStart (graph, id)
+        let before = graph.StaleTransitions
         let mutable i = 0
 
         while not invalidated && i < sources.Count do
             sources.SourceAt(i).UpdateIfNecessary()
             i <- i + 1
+
+        if
+            not invalidated
+            && graph.StaleTransitions <> before
+        then
+            this.ResolveFailedCheckAgain ()
 
         Tracer.CheckResolved (graph, id, invalidated)
 
@@ -1226,6 +1278,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
+
+        member _.HasReadSlot _ = false
 
         member this.MarkDirty() =
             if not disposed then
@@ -2668,6 +2722,8 @@ type internal LookupCell<'V>(graph: Graph, equal: IEqualityComparer<'V>, orphane
                 orphaned ()
 
         member _.UpdateIfNecessary() = ()
+
+        member _.IsStale = false
 
     /// <summary>
     /// Tracked read. Raises <c>NotReadyException</c> if the cell is suspended, and

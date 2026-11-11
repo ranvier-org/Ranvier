@@ -403,7 +403,7 @@ with oresolve_walk (fuel : nat) (n : node_id) (i : nat) {struct fuel} : M unit :
       | Some (src, _) =>
         let* _ := oupdate_if_necessary f src in
         oresolve_walk f n (S i)
-      | None => m_return tt
+      | None => if slot_holds stale_live s n then oresolve_walk f n 0 else m_return tt
       end
     else m_return tt
   end
@@ -1381,14 +1381,14 @@ write fails `stamp_ok`. The plan's version, with an effect reading `M`, shows no
 `Execute` advances at 4807 after the walk that records.
 *)
 Example leave_dirty_unannounced_skip :
-  trace_of_mode 3000 current_flags SkipLeaveDirty prog_self_write_announce =
+  trace_of_mode 3000 Witnesses.no_reader_mark SkipLeaveDirty prog_self_write_announce =
     Some [EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z)] /\
-  trace_of_mode 3000 current_flags SkipOff prog_self_write_announce =
+  trace_of_mode 3000 Witnesses.no_reader_mark SkipOff prog_self_write_announce =
     Some [EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 0%Z); EvHostRead 3 (Ok 2%Z)] /\
-  trace_of_mode 3000 current_flags SkipAll prog_self_write_announce =
-    trace_of_mode 3000 current_flags SkipOff prog_self_write_announce /\
+  trace_of_mode 3000 Witnesses.no_reader_mark SkipAll prog_self_write_announce =
+    trace_of_mode 3000 Witnesses.no_reader_mark SkipOff prog_self_write_announce /\
   (fun r => (bool_decide (stamp_current r.1 1), bool_decide (observer_of r.1 1 2), bool_decide (saturated r.1 2)))
-    <$> oexec 3000 [] prog_self_write_announce_head (with_skip SkipLeaveDirty (init current_flags)) =
+    <$> oexec 3000 [] prog_self_write_announce_head (with_skip SkipLeaveDirty (init Witnesses.no_reader_mark)) =
     Some (true, true, false).
 Proof. split_and!; vm_compute; reflexivity. Qed.
 
@@ -2106,6 +2106,7 @@ Lemma notify_except_old f n r s o :
   strip s = strip o -> strip <$> notify_dirty_except f n r s = strip <$> notify_dirty_except f n r o.
 Proof.
   intros E. apply notify_old; [|done]. intros c s0 o0 E0. unfold mark_except.
+  rewrite (strip_edges _ _ E0).
   destruct (decide _); [simpl; by rewrite E0|by apply mark_dirty_old].
 Qed.
 
@@ -2636,24 +2637,23 @@ Theorem witness_302_optimised :
   exists o_bad o_good r_bad r_good,
     oexec 100000 [] Witnesses.prog_S03 (with_skip SkipAll (init Witnesses.no_unannounced)) = Some (o_bad, r_bad) /\
     oexec 100000 [] Witnesses.prog_S03 (with_skip SkipAll (init current_flags)) = Some (o_good, r_good) /\
-    ~ Runs.wake_ok o_bad /\ Runs.wake_ok o_good /\ WholeGraph.effect_ran_for_last_write o_good /\
-    ~ WholeGraph.effect_ran_for_last_write o_bad /\
-    WholeGraph.well_behaved_program o_bad /\ WholeGraph.effects_only_read o_bad /\ ~ Runs.nothing_passed o_bad.
+    Runs.wake_ok o_bad /\ Runs.wake_ok o_good /\ WholeGraph.effect_ran_for_last_write o_good /\
+    WholeGraph.effect_ran_for_last_write o_bad /\
+    WholeGraph.well_behaved_program o_bad /\ WholeGraph.effects_only_read o_bad /\ Runs.nothing_passed o_bad.
 Proof.
   destruct Witnesses.witness_302 as (s_bad & s_good & r_bad & r_good & Eb & Eg & H1 & H2 & H3 & H4 & H5 & H6 & H7).
   destruct (optimised_run_of _ _ _ _ _ Eb) as (o_bad & Ob & Eb').
   destruct (optimised_run_of _ _ _ _ _ Eg) as (o_good & Og & Eg').
   exists o_bad, o_good, r_bad, r_good. split_and!; [exact Ob|exact Og| | | | | | |].
-  - eapply (transfer (fun x => ~ Runs.wake_ok x)); [intros x; reflexivity|exact Eb'|exact H1].
+  - eapply (transfer Runs.wake_ok); [intros x; reflexivity|exact Eb'|exact H1].
   - eapply (transfer Runs.wake_ok); [intros x; reflexivity|exact Eg'|exact H2].
   - eapply (transfer WholeGraph.effect_ran_for_last_write); [apply ran_strip|exact Eg'|exact H3].
-  - eapply (transfer (fun x => ~ WholeGraph.effect_ran_for_last_write x)); [|exact Eb'|exact H4].
-    intros x. pose proof (ran_strip x). tauto.
+  - eapply (transfer WholeGraph.effect_ran_for_last_write); [apply ran_strip|exact Eb'|exact H4].
   - eapply (transfer WholeGraph.well_behaved_program); [|exact Eb'|exact H5].
     intros x. unfold WholeGraph.well_behaved_program. rewrite shapes_strip. reflexivity.
   - eapply (transfer WholeGraph.effects_only_read); [|exact Eb'|exact H6].
     intros x. unfold WholeGraph.effects_only_read, WholeGraph.quiet_effect. rewrite shapes_strip. reflexivity.
-  - eapply (transfer (fun x => ~ Runs.nothing_passed x)); [intros x; reflexivity|exact Eb'|exact H7].
+  - eapply (transfer Runs.nothing_passed); [intros x; reflexivity|exact Eb'|exact H7].
 Qed.
 
 (**md

@@ -401,18 +401,19 @@ Proof.
   apply covered_of_nothing_passed; [vm_compute; reflexivity|done|done|done|done].
 Qed.
 
-(** A memo's cleanup leaves it [Dirty] over a clean, idle effect, with [gh_passed] empty: the edge is covered by the
-    memo's flag alone. *)
+(** A self-marking memo ends [Dirty] with [n_unannounced] over its reader, with [gh_passed] empty: the edge is
+    covered. *)
 Example flagged_stale_edge_covered :
-  let s := end_of (self_marking_cleanup Nop) in
-  stale_of s 5%nat /\ edge s 5%nat 6%nat /\ nothing_passed s /\ observer_covered s 5%nat 6%nat.
+  let s := end_of (stale_source_reader Nop) in
+  stale_of s 2%nat /\ n_unannounced_of s 2%nat /\ edge s 2%nat 3%nat /\ nothing_passed s /\ observer_covered s 2%nat 3%nat.
 Proof.
   intros s.
-  assert (He : edge s 5%nat 6%nat) by (exists 0%nat, 0%nat; split; vm_compute; reflexivity).
+  assert (He : edge s 2%nat 3%nat) by (exists 0%nat, 0%nat; split; vm_compute; reflexivity).
   assert (Hn : nothing_passed s) by (vm_compute; reflexivity).
-  assert (Hs : stale_of s 5%nat) by (eexists; split; vm_compute; reflexivity).
-  assert (Hl : live_of s 5%nat) by (eexists; split; vm_compute; reflexivity).
-  split_and!; [done|done|done|].
+  assert (Hs : stale_of s 2%nat) by (eexists; split; vm_compute; reflexivity).
+  assert (Hu : n_unannounced_of s 2%nat) by (vm_compute; reflexivity).
+  assert (Hl : live_of s 2%nat) by (eexists; split; vm_compute; reflexivity).
+  split_and!; [done|done|done|done|].
   apply covered_of_nothing_passed; [vm_compute; reflexivity|done|done|done|done].
 Qed.
 

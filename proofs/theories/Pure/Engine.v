@@ -321,10 +321,6 @@ Definition pop_running : M unit := m_modify (fun s => with_running (tail (g_runn
 
 Definition stale_live (d : node) : bool := stale (n_freshness d) && negb (n_disposed d).
 
-(** The sources of [c] read in its latest run: the slots before the cursor. *)
-Definition read_prefix (w : EdgeWorld) (c : node_id) : list node_id :=
-  fst <$> take (source_cursor (sources_of w c)) (source_slots (sources_of w c)).
-
 (** A tracked read of [n] by [c], where [pre] is [c]'s read prefix ahead of the read. A read of a running
     node takes a view its run has yet to publish. *)
 Definition ghost_read (c n : node_id) (pre : list node_id) (s : state) : state :=
@@ -373,15 +369,11 @@ Definition ghost_publish (n : node_id) (s : state) : state :=
   | None => s
   end.
 
-(** The observers the end of [n]'s run leaves unnoticed. A moved run skips [r], which matters when [r]
-    read [n] earlier in its run. A run with no move sends no notice, which matters when its view differs
+(** The observers the end of [n]'s run leaves unnoticed. A moved run notifies every observer except [r] when
+    [r] has not yet read [n] in its current run. A run with no move sends no notice, which matters when its view differs
     from the published one: a nested run published another. *)
 Definition run_end_unnoticed (n : node_id) (r : option node_id) (moved : bool) (d : node) (s : state) : gset node_id :=
-  if moved then
-    match r with
-    | Some c => if decide (n ∈ read_prefix (g_edges s) c) then {[c]} else ∅
-    | None => ∅
-    end
+  if moved then ∅
   else if decide (gh_published (g_ghost s) !! n = Some (read_view_of d)) then ∅
   else list_to_set (observer_view (observers_of (g_edges s) n)).
 
@@ -900,7 +892,7 @@ with resolve_walk (fuel : nat) (n : node_id) (i : nat) {struct fuel} : M unit :=
       | Some (src, _) =>
         let* _ := update_if_necessary f src in
         resolve_walk f n (S i)
-      | None => m_return tt
+      | None => if slot_holds stale_live s n then resolve_walk f n 0 else m_return tt
       end
     else m_return tt
   end

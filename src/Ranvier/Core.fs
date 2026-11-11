@@ -92,6 +92,11 @@ type internal ISource =
     /// </remarks>
     abstract UpdateIfNecessary: unit -> unit
 
+    /// <summary>
+    /// Whether this source is live and not <c>Clean</c>.
+    /// </summary>
+    abstract IsStale: bool
+
 /// <summary>
 /// A node that depends on sources, and therefore can be invalidated.
 /// </summary>
@@ -115,6 +120,11 @@ and internal IComputation =
     /// during a notification walk.
     /// </summary>
     abstract MovedIn: slot: int * handle: int -> unit
+
+    /// <summary>
+    /// Whether this computation's current run has already read past <c>slot</c>.
+    /// </summary>
+    abstract HasReadSlot: slot: int -> bool
 
 /// <summary>
 /// Something the scheduler can run. Memos are pull-based and never need this —
@@ -382,17 +392,53 @@ type internal ObserverSet() =
                 i <- i - 1
 
     /// <summary>
-    /// <c>NotifyDirty</c>, skipping one observer.
+    /// <c>NotifyDirty</c>, skipping <c>running</c> when its current run has not yet read its edge to this source.
     /// </summary>
     /// <remarks>
-    /// The exception is the computation whose body is running right now. It is
-    /// the reason this source is recomputing — it read it — and it receives the
-    /// new value from that very read, so it is current with respect to this
-    /// source and marking it dirty would only make it re-run on a value it
-    /// already has. Without the skip, every cutoff decision taken mid-body
-    /// costs the reader a spurious second run.
+    /// The exception is the computation whose body is running right now when it
+    /// is the direct reader of this source: it has not yet advanced its read
+    /// cursor past this source's slot, and it receives the new value from that
+    /// very read, so marking it dirty would only make it re-run on a value it
+    /// already has. When <c>running</c> has already read this source earlier in
+    /// its current run — or is resolving a <c>Check</c> walk over a later source
+    /// whose recompute moved this already-read source — its cursor sits past
+    /// the slot and it must be marked <c>Dirty</c>.
     /// </remarks>
     member this.NotifyDirtyExcept(running: IComputation) =
+        let mutable i = count - 1
+
+        while i >= 0 do
+            if i >= count then
+                i <- count - 1
+
+            if i >= 0 then
+#if FABLE_COMPILER
+                let observer = (Platform.itemAt i items).Observer
+
+                if
+                    not (obj.ReferenceEquals (observer, running))
+                    || running.HasReadSlot (Platform.itemAt i slots)
+                then
+#else
+                let item = Platform.itemAt i items
+                let observer = item.Observer
+
+                if
+                    not (obj.ReferenceEquals (observer, running))
+                    || running.HasReadSlot item.Slot
+                then
+#endif
+                    Tracer.Mark (this, observer, true)
+                    observer.MarkDirty ()
+                else
+                    Tracer.MarkSkip (this, observer)
+
+                i <- i - 1
+
+    /// <summary>
+    /// <c>NotifyDirty</c>, unconditionally skipping <c>running</c>.
+    /// </summary>
+    member this.NotifyDirtyOther(running: IComputation) =
         let mutable i = count - 1
 
         while i >= 0 do
@@ -467,6 +513,8 @@ type internal ForwardingEdge(target: IComputation) =
 
         member this.MovedIn(_, handle) =
             this.Handle <- handle
+
+        member _.HasReadSlot _ = false
 
 /// <summary>
 /// One slot in a computation's dependency list, with the same target-specific representation as <c>ObserverSlot</c>:
@@ -694,6 +742,18 @@ type internal SourceList() =
         count <- from
 
     member _.Count = count
+    member _.Cursor = cursor
+
+    /// <summary>
+    /// Whether any recorded source is currently stale.
+    /// </summary>
+    member _.HasStaleSource() =
+        let mutable i = 0
+
+        while i < count && not (sourceAt i).IsStale do
+            i <- i + 1
+
+        i < count
 
     /// <summary>
     /// The source at <c>i</c>. For the <c>Check</c> walk, which has to ask each source in
@@ -2076,6 +2136,8 @@ type internal JournalRecorder(journal: IInputJournal) =
 /// </summary>
 type Graph(options: GraphOptions) =
     let mutable nextId = 0
+    let mutable staleTransitions = 0
+
     /// <summary>
     /// Null rather than <c>IComputation option</c>. The option was 24 bytes of
     /// garbage per tracked run — allocated on the way in to every memo
@@ -3145,6 +3207,9 @@ type Graph(options: GraphOptions) =
             finally
                 flushing <- false
 
+                if staleTransitions <> 0 && pullDepth = 0 then
+                    staleTransitions <- 0
+
                 if not (Platform.isNull lastRaised) then
                     lastRaised <- null
 
@@ -3243,6 +3308,9 @@ type Graph(options: GraphOptions) =
             if not (Platform.isNull lastRaised) then
                 lastRaised <- null
 
+            if staleTransitions <> 0 && not flushing then
+                staleTransitions <- 0
+
 #if !FABLE_COMPILER
             if pullHeld then
                 pullHeld <- false
@@ -3276,6 +3344,9 @@ type Graph(options: GraphOptions) =
             if flushOwed then
                 true
             else
+                if staleTransitions <> 0 && not flushing then
+                    staleTransitions <- 0
+
 #if !FABLE_COMPILER
                 if pullHeld then
                     pullHeld <- false
@@ -3286,18 +3357,22 @@ type Graph(options: GraphOptions) =
             false
 
     member internal this.FinishPullSettle() =
-#if !FABLE_COMPILER
-        if pullHeld then
-            pullHeld <- false
+        if pullDepth = 0 then
+            if staleTransitions <> 0 && not flushing then
+                staleTransitions <- 0
 
-            try
+#if !FABLE_COMPILER
+            if pullHeld then
+                pullHeld <- false
+
+                try
+                    this.SettleFlush ()
+                finally
+                    this.Release ()
+            else
                 this.SettleFlush ()
-            finally
-                this.Release ()
-        else
-            this.SettleFlush ()
 #else
-        this.SettleFlush ()
+            this.SettleFlush ()
 #endif
 
     /// <summary>
@@ -3336,6 +3411,9 @@ type Graph(options: GraphOptions) =
         if not (Platform.isNull (box source)) then
             source.UpdateIfNecessary ()
             this.Track source
+
+            if source.IsStale then
+                this.MarkReaderCheck ()
 
         node.Status
 
@@ -3455,6 +3533,18 @@ type Graph(options: GraphOptions) =
     /// <summary>The last id <c>NextId</c> issued.</summary>
     member internal _.NodeCount = nextId
 
+    member inline internal _.StaleTransitions = staleTransitions
+
+    member inline internal _.NoteStaleTransition() =
+        if pullDepth > 0 || flushing then
+            staleTransitions <- staleTransitions + 1
+
+    member inline internal _.NotifyMoved(observers: ObserverSet) =
+        if staleTransitions = 0 then
+            observers.NotifyDirtyOther current
+        else
+            observers.NotifyDirtyExcept current
+
     /// <summary>
     /// Links <c>source</c> into the computation currently being evaluated, if any.
     /// </summary>
@@ -3487,16 +3577,18 @@ type Graph(options: GraphOptions) =
     /// the first time links after the pull. Once dirty, the source's <c>MarkDirty</c> notifies no one, so without
     /// this mark the reader is never told the value it read is stale, and waits forever on a settled flight.
     /// </remarks>
-    member internal _.MarkReaderDirty() =
+    member internal this.MarkReaderDirty() =
         if not (obj.ReferenceEquals (current, null)) then
+            this.NoteStaleTransition ()
             current.MarkDirty ()
 
     /// <summary>
     /// Marks the running computation <c>Check</c>, if any: <c>MarkReaderDirty</c> for a source that tells its readers
     /// <c>Check</c> when it goes dirty, so a re-run to an equal value stops at the cutoff.
     /// </summary>
-    member internal _.MarkReaderCheck() =
+    member internal this.MarkReaderCheck() =
         if not (obj.ReferenceEquals (current, null)) then
+            this.NoteStaleTransition ()
             current.MarkCheck ()
 
     /// <summary>
@@ -3835,6 +3927,8 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
         /// </summary>
         member _.UpdateIfNecessary() = ()
 
+        member _.IsStale = false
+
     /// <summary>
     /// Transparent, tracked read. A plain signal is never pending, so this
     /// never throws.
@@ -3884,7 +3978,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                     Tracer.Write (observers, true, box v)
 
                     if not (Platform.isNull (box observers)) then
-                        observers.NotifyDirtyExcept running
+                        observers.NotifyDirtyOther running
 
                     Tracer.Notified observers
                     graph.RequestFlush ()
@@ -3968,6 +4062,8 @@ type AsyncSource<'T>(graph: Graph) =
         /// Nothing to bring current: the value is whatever was last written.
         /// </summary>
         member _.UpdateIfNecessary() = ()
+
+        member _.IsStale = false
 
     member _.Status = status
 
@@ -4329,7 +4425,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         if moved then
             Tracer.Moved (graph, id, Failure.Payload (failure, box value))
-            observers.NotifyDirtyExcept graph.CurrentComputation
+            graph.NotifyMoved observers
             Tracer.Notified graph
             Tracer.RunEnd (graph, id, status)
             graph.OweFlush ()
@@ -4338,6 +4434,24 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         if freshness <> Freshness.Clean then
             unannounced <- true
+            graph.NoteStaleTransition ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
 
     /// <summary>
     /// Resolves <c>Check</c> into <c>Clean</c> or <c>Dirty</c> by asking each source, in read
@@ -4353,11 +4467,18 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// </remarks>
     member private this.ResolveCheck() =
         Tracer.CheckStart (graph, id)
+        let before = graph.StaleTransitions
         let mutable i = 0
 
         while freshness = Freshness.Check && i < sources.Count do
             sources.SourceAt(i).UpdateIfNecessary()
             i <- i + 1
+
+        if
+            freshness = Freshness.Check
+            && graph.StaleTransitions <> before
+        then
+            this.ResolveCheckAgain ()
 
         Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
@@ -4446,6 +4567,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             reraise ()
 
         graph.ExitPullDeferSettle ()
+        || freshness <> Freshness.Clean
 
     /// <summary>
     /// Brings a stale memo current.
@@ -4565,6 +4687,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         member this.UpdateIfNecessary() =
             this.EnsureCurrent ()
 
+        member _.IsStale = freshness <> Freshness.Clean && not disposed
+
     interface IComputation with
         member this.AddSource s =
             if not disposed then
@@ -4572,6 +4696,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
+
+        member _.HasReadSlot slot =
+            slot < sources.Cursor
 
         member _.MarkDirty() =
             if freshness <> Freshness.Dirty then
@@ -4588,21 +4715,24 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                 // told them this once, and telling them again is a no-op that
                 // walks the whole fan-out to discover as much.
                 if wasClean then
+                    graph.NoteStaleTransition ()
                     observers.NotifyCheck ()
                 elif unannounced then
                     unannounced <- false
+                    graph.NoteStaleTransition ()
                     observers.NotifyCheck ()
             elif unannounced then
                 unannounced <- false
+                graph.NoteStaleTransition ()
                 observers.NotifyCheck ()
 
         member _.MarkCheck() =
             if freshness = Freshness.Clean then
                 freshness <- Freshness.Check
-
                 observers.NotifyCheck ()
             elif unannounced then
                 unannounced <- false
+                graph.NoteStaleTransition ()
                 observers.NotifyCheck ()
 
     member _.Status = status
@@ -4635,16 +4765,13 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             && not disposed
             && (if graph.Deferring then
                     this.Refresh ()
-                    false
+                    freshness <> Freshness.Clean
                 else
                     this.PullWithoutSettle ())
         then
             this.SettlePullAndRead ()
         else
             graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
 
             if status.HasFlag Status.Pending then
                 raise (graph.NotReady (this :> INode))
@@ -4663,16 +4790,13 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             && not disposed
             && (if graph.Deferring then
                     this.Refresh ()
-                    false
+                    freshness <> Freshness.Clean
                 else
                     this.PullWithoutSettle ())
         then
             this.SettlePullAndReadTry ()
         else
             graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
 
             if status.HasFlag Status.Pending then Pending
             elif status.HasFlag Status.Error then Failed failure.Error
@@ -4872,6 +4996,9 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
 
+        member _.HasReadSlot slot =
+            slot < sources.Cursor
+
         member this.MarkDirty() =
             if not disposed && not inCleanup then
                 // Upgrades even when already queued: an effect that was
@@ -4908,6 +5035,23 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     member internal _.Publishes
         with set value = publishes <- value
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
+
     interface IScheduled with
         member this.Execute() =
             // `queued` stays set across the resolution walk. Resolving a
@@ -4920,11 +5064,18 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
             else
                 if freshness = Freshness.Check then
                     Tracer.CheckStart (graph, id)
+                    let before = graph.StaleTransitions
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
                         sources.SourceAt(i).UpdateIfNecessary()
                         i <- i + 1
+
+                    if
+                        freshness = Freshness.Check
+                        && graph.StaleTransitions <> before
+                    then
+                        this.ResolveCheckAgain ()
 
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
@@ -5291,6 +5442,9 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
 
+        member _.HasReadSlot slot =
+            slot < sources.Cursor
+
         member this.MarkDirty() =
             if not disposed then
                 freshness <- Freshness.Dirty
@@ -5308,6 +5462,23 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                     queued <- true
                     graph.Schedule (this :> IScheduled)
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
+
     interface IScheduled with
         member this.Execute() =
             if disposed then
@@ -5315,11 +5486,18 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
             else
                 if freshness = Freshness.Check then
                     Tracer.CheckStart (graph, id)
+                    let before = graph.StaleTransitions
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
                         sources.SourceAt(i).UpdateIfNecessary()
                         i <- i + 1
+
+                    if
+                        freshness = Freshness.Check
+                        && graph.StaleTransitions <> before
+                    then
+                        this.ResolveCheckAgain ()
 
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
@@ -5491,8 +5669,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         Tracer.Moved (graph, id, Failure.Payload (failure, box value))
 
         if launching then
-            observers.NotifyDirtyExcept graph.CurrentComputation
+            graph.NotifyMoved observers
         else
+            graph.NoteStaleTransition ()
             observers.NotifyDirty ()
 
         Tracer.Notified graph
@@ -5701,6 +5880,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         | DropWhilePending when owed && not disposed ->
             freshness <- Freshness.Dirty
             Tracer.TrailingRun (graph, id)
+            graph.NoteStaleTransition ()
             observers.NotifyDirty ()
             Tracer.Notified graph
             graph.RequestFlush ()
@@ -5948,6 +6128,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         if freshness <> Freshness.Clean then
             unannounced <- true
+            graph.NoteStaleTransition ()
 
     member private this.EnsureCurrent() =
         // One comparison on the cached path, as on `Memo`.
@@ -6012,17 +6193,42 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             reraise ()
 
         graph.ExitPullDeferSettle ()
+        || freshness <> Freshness.Clean
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
 
     member private this.Refresh() =
         // Resolving `Check` matters more here than anywhere: the work it
         // may avoid is a network round trip, not a multiplication.
         if freshness = Freshness.Check then
             Tracer.CheckStart (graph, id)
+            let before = graph.StaleTransitions
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
                 i <- i + 1
+
+            if
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+            then
+                this.ResolveCheckAgain ()
 
             Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
@@ -6079,6 +6285,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         member this.UpdateIfNecessary() =
             this.EnsureCurrent ()
 
+        member _.IsStale = freshness <> Freshness.Clean && not disposed
+
     interface IComputation with
         member this.AddSource s =
             if not disposed then
@@ -6087,8 +6295,14 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
 
+        member _.HasReadSlot slot =
+            slot < sources.Cursor
+
         member _.MarkDirty() =
             if freshness <> Freshness.Dirty || unannounced then
+                if freshness = Freshness.Clean || unannounced then
+                    graph.NoteStaleTransition ()
+
                 freshness <- Freshness.Dirty
                 unannounced <- false
 
@@ -6105,10 +6319,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             if freshness = Freshness.Clean then
                 freshness <- Freshness.Check
                 unannounced <- false
-
                 observers.NotifyCheck ()
             elif unannounced then
                 unannounced <- false
+                graph.NoteStaleTransition ()
                 observers.NotifyCheck ()
 
     /// <summary>
@@ -6222,9 +6436,6 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         else
             graph.Track (this :> ISource)
 
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderDirty ()
-
             if status.HasFlag Status.Pending then
                 raise (graph.NotReady (this :> INode))
 
@@ -6245,9 +6456,6 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             this.SettlePullAndReadTry ()
         else
             graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderDirty ()
 
             if status.HasFlag Status.Pending then Pending
             elif status.HasFlag Status.Error then Failed failure.Error
@@ -6551,7 +6759,7 @@ type Boundary<'T>
 
         if moved then
             Tracer.Moved (graph, id, Failure.Payload (failure, box value))
-            observers.NotifyDirtyExcept graph.CurrentComputation
+            graph.NotifyMoved observers
             Tracer.Notified graph
             Tracer.RunEnd (graph, id, status)
             graph.OweFlush ()
@@ -6560,6 +6768,7 @@ type Boundary<'T>
 
         if freshness <> Freshness.Clean then
             unannounced <- true
+            graph.NoteStaleTransition ()
 
     member private this.EnsureCurrent() =
         // One comparison on the path a cached read takes. Testing `disposed`
@@ -6649,15 +6858,40 @@ type Boundary<'T>
             reraise ()
 
         graph.ExitPullDeferSettle ()
+        || freshness <> Freshness.Clean
 
-    member private this.Refresh() =
-        if freshness = Freshness.Check then
-            Tracer.CheckStart (graph, id)
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.ResolveCheckAgain() =
+        let mutable again = sources.HasStaleSource ()
+
+        while again do
+            let before = graph.StaleTransitions
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
                 sources.SourceAt(i).UpdateIfNecessary()
                 i <- i + 1
+
+            again <-
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+                && sources.HasStaleSource ()
+
+    member private this.Refresh() =
+        if freshness = Freshness.Check then
+            Tracer.CheckStart (graph, id)
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.SourceAt(i).UpdateIfNecessary()
+                i <- i + 1
+
+            if
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+            then
+                this.ResolveCheckAgain ()
 
             Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
 
@@ -6778,6 +7012,8 @@ type Boundary<'T>
         member this.UpdateIfNecessary() =
             this.EnsureCurrent ()
 
+        member _.IsStale = freshness <> Freshness.Clean && not disposed
+
     interface IComputation with
         member this.AddSource s =
             if not disposed then
@@ -6785,6 +7021,9 @@ type Boundary<'T>
 
         member _.MovedIn(slot, handle) =
             sources.MovedIn (slot, handle)
+
+        member _.HasReadSlot slot =
+            slot < sources.Cursor
 
         member _.MarkDirty() =
             if freshness <> Freshness.Dirty then
@@ -6796,21 +7035,24 @@ type Boundary<'T>
                 // while a fallback is standing in and an unrelated source
                 // moves — has published nothing new.
                 if wasClean then
+                    graph.NoteStaleTransition ()
                     observers.NotifyCheck ()
                 elif unannounced then
                     unannounced <- false
+                    graph.NoteStaleTransition ()
                     observers.NotifyCheck ()
             elif unannounced then
                 unannounced <- false
+                graph.NoteStaleTransition ()
                 observers.NotifyCheck ()
 
         member _.MarkCheck() =
             if freshness = Freshness.Clean then
                 freshness <- Freshness.Check
-
                 observers.NotifyCheck ()
             elif unannounced then
                 unannounced <- false
+                graph.NoteStaleTransition ()
                 observers.NotifyCheck ()
 
     member _.Status = status
@@ -6829,10 +7071,6 @@ type Boundary<'T>
             this.SettlePullAndReadWaiting ()
         else
             graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
-
             waiting
 
     /// <summary>The error the boundary recovered from on its current run, or null.</summary>
@@ -6846,10 +7084,6 @@ type Boundary<'T>
             Failure.ErrorOf (this.SettlePullAndReadCaught ())
         else
             graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
-
             Failure.ErrorOf caught
 
     /// <summary>The node <c>Caught</c> originated in, or null when <c>Caught</c> is null.</summary>
@@ -6866,10 +7100,6 @@ type Boundary<'T>
             Failure.OriginOf (this.SettlePullAndReadCaught ())
         else
             graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
-
             Failure.OriginOf caught
 
     /// <summary>
@@ -6905,9 +7135,6 @@ type Boundary<'T>
         else
             graph.Track (this :> ISource)
 
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
-
             if status.HasFlag Status.Pending then
                 raise (graph.NotReady (this :> INode))
 
@@ -6928,9 +7155,6 @@ type Boundary<'T>
             this.SettlePullAndReadTry ()
         else
             graph.Track (this :> ISource)
-
-            if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderCheck ()
 
             if status.HasFlag Status.Pending then Pending
             elif status.HasFlag Status.Error then Failed failure.Error

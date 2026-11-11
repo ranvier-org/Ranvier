@@ -311,8 +311,8 @@ let scenarios: (string * (Ctx -> unit)) list =
                     0)
 
             let e = c.Effect 3 (fun () -> c.Log 3 m.Value)
-            c.Check (s.Peek = 2) $"the first flush leaves the signal at {s.Peek}"
-            c.CheckQuiet [ "m", box m, "Stale"; "e", box e, "None" ]
+            c.Check (s.Peek = 3) $"the first flush leaves the signal at {s.Peek}"
+            c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
             c.HostRead 2 (fun () -> m.Value) |> ignore
             c.HostRead 1 (fun () -> s.Value) |> ignore
 
@@ -426,12 +426,12 @@ let scenarios: (string * (Ctx -> unit)) list =
                 k.Value <- 1)
 
             c.Check (s.Peek = 50) $"the signal holds {s.Peek}"
-            c.Check (x.Peek = 0) $"the memo holds {x.Peek}"
-            c.Check (freshnessOf x = "Dirty") $"the memo is {freshnessOf x}"
-            c.CheckQuiet [ "x", box x, "Stale"; "e", box e, "None" ]
+            c.Check (x.Peek = 50) $"the memo holds {x.Peek}"
+            c.Check (freshnessOf x = "Clean") $"the memo is {freshnessOf x}"
+            c.CheckQuiet [ "x", box x, "None"; "e", box e, "None" ]
             c.Check (c.HostRead 5 (fun () -> x.Value) = 50) "the memo's body answers 50"
 
-            // BUGS.md, read_move_leaves_effect_queued (closed). The read's move queues the effect, owes a flush, and settles it on ExitPull.
+            // BUGS.md, read_move_leaves_effect_queued (closed). The flush settles the effect during the batch.
             c.Check (statusOf e = "None") $"after the read the effect has status {statusOf e}"
             c.Check (freshnessOf e = "Clean") $"after the read the effect is {freshnessOf e}"
             c.Check (not (privateField e "queued" :?> bool)) "after the read the effect is not queued"
@@ -443,8 +443,8 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (statusOf e = "None") $"the explicit flush leaves the status {statusOf e}"
             c.Check (c.QueueLength = 0) $"the explicit flush leaves {c.QueueLength} queued"
 
-        // BUGS.md, self_marking_wake_lost. A memo writes its own source. A run ends stale with the value unchanged, and
-        // the next run would change it.
+        // BUGS.md, self_marking_wake_lost (closed). A memo writes its own source. A run ends stale with the value unchanged, and
+        // the check walk restarts until the source is clean.
         "self_marking_body",
         fun c ->
             let s = c.Signal 1 0
@@ -460,13 +460,13 @@ let scenarios: (string * (Ctx -> unit)) list =
                     if v < 2 then 0 else v)
 
             let e = c.Effect 3 (fun () -> c.Log 3 m.Value)
-            c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
-            c.Check (m.Peek = 0) $"the memo holds {m.Peek}"
-            c.Check (freshnessOf m = "Dirty") $"the memo is {freshnessOf m}"
-            c.CheckQuiet [ "m", box m, "Stale"; "e", box e, "None" ]
+            c.Check (s.Peek = 3) $"the signal holds {s.Peek}"
+            c.Check (m.Peek = 3) $"the memo holds {m.Peek}"
+            c.Check (freshnessOf m = "Clean") $"the memo is {freshnessOf m}"
+            c.CheckQuiet [ "m", box m, "None"; "e", box e, "None" ]
             c.HostRead 2 (fun () -> m.Value) |> ignore
 
-        // BUGS.md, self_marking_wake_lost. The same memo through a reading memo, whose ResolveCheck goes clean.
+        // BUGS.md, self_marking_wake_lost (closed). The same memo through a reading memo, whose ResolveCheck restarts until clean.
         "self_marking_through_memo",
         fun c ->
             let s = c.Signal 1 0
@@ -483,10 +483,10 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             let r = c.Memo 3 (fun () -> m.Value)
             let e = c.Effect 4 (fun () -> c.Log 4 r.Value)
-            c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
-            c.Check (r.Peek = 0) $"the reading memo holds {r.Peek}"
-            c.Check (freshnessOf m = "Dirty") $"the memo is {freshnessOf m}"
-            c.CheckQuiet [ "m", box m, "Stale"; "r", box r, "None"; "e", box e, "None" ]
+            c.Check (s.Peek = 3) $"the signal holds {s.Peek}"
+            c.Check (r.Peek = 3) $"the reading memo holds {r.Peek}"
+            c.Check (freshnessOf m = "Clean") $"the memo is {freshnessOf m}"
+            c.CheckQuiet [ "m", box m, "None"; "r", box r, "None"; "e", box e, "None" ]
             c.HostRead 3 (fun () -> r.Value) |> ignore
 
         // BUGS.md, nested_self_recompute_resets_cursor. A run reads a, marks itself, and reads itself. The nested run takes
@@ -548,13 +548,13 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             c.HostRead 3 (fun () -> b.Value) |> ignore
             c.HostRead 4 (fun () -> x.Value) |> ignore
-            c.Check (freshnessOf x = "Check") $"the reader is {freshnessOf x}"
+            c.Check (freshnessOf x = "Dirty") $"the reader is {freshnessOf x}"
             c.Check (freshnessOf a = "Clean") $"the source is {freshnessOf a}"
-            c.Check (c.HostRead 4 (fun () -> x.Value) = 0) "the resolved read answers the value of the old read"
+            c.Check (c.HostRead 4 (fun () -> x.Value) = 1) "the next read recomputes over the moved source"
             c.Check (freshnessOf x = "Clean") $"after its read the reader is {freshnessOf x}"
             c.Check (a.Peek = 1) $"the source holds {a.Peek}"
 
-        // BUGS.md, check_resolves_over_moved_source. The same skip through a second read of the source.
+        // BUGS.md, check_resolves_over_moved_source (closed). The same notice through a second read of the source.
         "check_two_reads",
         fun c ->
             let s = c.Signal 1 0
@@ -570,13 +570,13 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             c.HostRead 2 (fun () -> a.Value) |> ignore
             c.HostRead 3 (fun () -> x.Value) |> ignore
-            c.Check (freshnessOf x = "Check") $"the reader is {freshnessOf x}"
+            c.Check (freshnessOf x = "Dirty") $"the reader is {freshnessOf x}"
             c.Check (freshnessOf a = "Clean") $"the source is {freshnessOf a}"
-            c.Check (c.HostRead 3 (fun () -> x.Value) = 0) "the resolved read answers the value of the first read"
+            c.Check (c.HostRead 3 (fun () -> x.Value) = 1) "the next read recomputes over the moved source"
             c.Check (freshnessOf x = "Clean") $"after its read the reader is {freshnessOf x}"
             c.Check (a.Peek = 1) $"the source holds {a.Peek}"
 
-        // BUGS.md, self_marking_wake_lost. A reading memo resolves clean over a source that ended its run stale.
+        // BUGS.md, self_marking_wake_lost (closed). A reading memo's ResolveCheck restarts over a source that ended its run stale.
         "stale_source_reader",
         fun c ->
             let s = c.Signal 1 0
@@ -596,10 +596,10 @@ let scenarios: (string * (Ctx -> unit)) list =
             c.Check (freshnessOf r = "Check") $"the reader is {freshnessOf r}"
             c.HostRead 3 (fun () -> r.Value) |> ignore
             c.Check (freshnessOf r = "Clean") $"after its read the reader is {freshnessOf r}"
-            c.Check (freshnessOf m = "Dirty") $"the source is {freshnessOf m}"
-            c.Check (s.Peek = 2) $"the signal holds {s.Peek}"
-            c.Check (c.HostRead 3 (fun () -> r.Value) = 0) "the clean reader answers the value of its old read"
-            c.Check (c.HostRead 2 (fun () -> m.Value) = 2) "the source's next run moves its value"
+            c.Check (freshnessOf m = "Clean") $"the source is {freshnessOf m}"
+            c.Check (s.Peek = 3) $"the signal holds {s.Peek}"
+            c.Check (c.HostRead 3 (fun () -> r.Value) = 3) "the clean reader answers the updated value"
+            c.Check (c.HostRead 2 (fun () -> m.Value) = 3) "the source is clean at 3"
 
         // BUGS.md, disposed_memo_keeps_observers. A disposed memo answers its last value, keeps its observer, and does not
         // wake it. Core.fs 4372-4376.
@@ -726,16 +726,16 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             t.Value <- 1
             c.Check (s.Peek = 1) $"the signal holds {s.Peek}"
-            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
-            c.Check (freshnessOf a = "Dirty") $"the memo is {freshnessOf a}"
+            c.Check (a.Peek = 1) $"the memo holds {a.Peek}"
+            c.Check (freshnessOf a = "Clean") $"the memo is {freshnessOf a}"
             c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
-            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (e.Runs = 2) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             s.Value <- 2
-            c.Check (e.Runs = 1) $"after another write the effect has run {e.Runs} times"
+            c.Check (e.Runs = 3) $"after another write the effect has run {e.Runs} times"
             c.Check (c.HostRead 3 (fun () -> a.Value) = 2) "the memo's body answers 2"
 
-        // BUGS.md, walk_passed_source_marked. The same through a cleanup.
+        // BUGS.md, walk_passed_source_marked (closed). The same through a cleanup.
         "walk_passed_source_cleanup",
         fun c ->
             let s = c.Signal 1 0
@@ -756,17 +756,17 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             t.Value <- 1
             c.Check (s.Peek = 1) $"the signal holds {s.Peek}"
-            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
-            c.Check (freshnessOf a = "Dirty") $"the memo is {freshnessOf a}"
+            c.Check (a.Peek = 1) $"the memo holds {a.Peek}"
+            c.Check (freshnessOf a = "Clean") $"the memo is {freshnessOf a}"
             c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
-            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (e.Runs = 2) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             s.Value <- 2
-            c.Check (e.Runs = 1) $"after another write the effect has run {e.Runs} times"
+            c.Check (e.Runs = 3) $"after another write the effect has run {e.Runs} times"
             c.Check (c.HostRead 3 (fun () -> a.Value) = 2) "the memo's body answers 2"
 
-        // BUGS.md, effect_resolves_over_moved_source. An effect reads `a`, writes its source and reads a memo over it. The
-        // walk of that read runs `a` with the effect as the current computation, and NotifyDirtyExcept skips the effect.
+        // BUGS.md, effect_resolves_over_moved_source (closed). An effect reads `a`, writes its source and reads a memo over it.
+        // The walk of that read runs `a` under `b`'s check walk, and `a`'s notice marks the effect `Dirty`.
         "effect_resolves_over_moved_source",
         fun c ->
             let s = c.Signal 1 0
@@ -783,10 +783,10 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             c.Check (a.Peek = 1) $"the source holds {a.Peek}"
             c.Check (freshnessOf a = "Clean") $"the source is {freshnessOf a}"
-            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
+            c.Check (e.Runs = 2) $"the effect has run {e.Runs} times"
             c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             s.Value <- 2
-            c.Check (e.Runs = 3) $"the next write leaves {e.Runs} runs"
+            c.Check (e.Runs = 4) $"the next write leaves {e.Runs} runs"
 
         // A teardown in reverse acquisition order: the later cleanup, the child's cleanup, the earlier cleanup.
         "teardown_order",
@@ -1006,10 +1006,10 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             s.Value <- 2
             c.Check (a.Peek = 1) $"the memo holds {a.Peek}"
-            c.Check (freshnessOf a = "Dirty") $"the memo is {freshnessOf a}"
+            c.Check (freshnessOf a = "Clean") $"the memo is {freshnessOf a}"
             c.Check (not (privateField a "unannounced" :?> bool)) "the memo holds no announcement"
             c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             c.Check (c.HostRead 5 (fun () -> a.Value) = 1) "the memo's body answers 1"
 
         // A batch that fails leaves `a` stale and a writing effect queued. A read of `a` runs it, its batch owes a flush, and
@@ -1078,10 +1078,10 @@ let scenarios: (string * (Ctx -> unit)) list =
                     c.Log 6 y)
 
             t.Value <- 1
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
-            c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
-            c.Check (s.Peek = 1) $"before the read the signal holds {s.Peek}"
-            c.Check (c.HostRead 5 (fun () -> n.Value) = 1) "the read answers before the flush"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
+            c.Check (a.Peek = 9) $"before the read the memo holds {a.Peek}"
+            c.Check (s.Peek = 9) $"before the read the signal holds {s.Peek}"
+            c.Check (c.HostRead 5 (fun () -> n.Value) = 9) "the read answers the settled value"
             c.Check (s.Peek = 9) $"after the read the signal holds {s.Peek}"
 
         // The same with no memo body writing: `b`'s cleanup writes.
@@ -1115,14 +1115,14 @@ let scenarios: (string * (Ctx -> unit)) list =
                     c.Log 6 y)
 
             t.Value <- 1
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
-            c.Check (a.Peek = 0) $"before the read the memo holds {a.Peek}"
-            c.Check (s.Peek = 1) $"before the read the signal holds {s.Peek}"
-            c.Check (c.HostRead 5 (fun () -> n.Value) = 1) "the read answers before the flush"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
+            c.Check (a.Peek = 9) $"before the read the memo holds {a.Peek}"
+            c.Check (s.Peek = 9) $"before the read the signal holds {s.Peek}"
+            c.Check (c.HostRead 5 (fun () -> n.Value) = 9) "the read answers the settled value"
             c.Check (s.Peek = 9) $"after the read the signal holds {s.Peek}"
 
-        // BUGS.md, cmp_never_passes_source. `a` is passed and left `Dirty` with no announcement, so writes of a signal only
-        // `a` reads stop there. The effect stays clean on 0, and a flush changes nothing, until a host read of `a`.
+        // BUGS.md, cmp_never_passes_source (closed). `a` is re-pulled when marked during `b`'s check walk, so writes of a signal
+        // only `a` reads wake `a` and the effect.
         "cmp_never_lost_update",
         fun c ->
             let s = c.Signal 1 0
@@ -1172,16 +1172,16 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             s.Value <- 2
             t.Value <- 7
-            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (a.Peek = 7) $"the memo holds {a.Peek}"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             t.Value <- 8
-            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (e.Runs = 3) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             c.Check (c.HostRead 6 (fun () -> a.Value) = 8) "the memo's body answers 8"
             c.Graph.Flush ()
-            c.Check (e.Runs = 2) $"after the read and a flush the effect has run {e.Runs} times"
+            c.Check (e.Runs = 3) $"after the read and a flush the effect has run {e.Runs} times"
 
-        // BUGS.md, cmp_never_passes_source. The same with default options and no comparer: memos returning a new record.
+        // BUGS.md, cmp_never_passes_source (closed). The same with default options and no comparer: memos returning a new record.
         "fresh_record_lost_update",
         fun c ->
             let s = c.Signal 1 0
@@ -1231,14 +1231,14 @@ let scenarios: (string * (Ctx -> unit)) list =
 
             s.Value <- 2
             t.Value <- 7
-            c.Check (a.Peek = 0) $"the memo holds {a.Peek}"
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (a.Peek = 7) $"the memo holds {a.Peek}"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             t.Value <- 8
-            c.Check (e.Runs = 1) $"the effect has run {e.Runs} times"
-            c.CheckQuiet [ "a", box a, "Stale"; "e", box e, "None" ]
+            c.Check (e.Runs = 3) $"the effect has run {e.Runs} times"
+            c.CheckQuiet [ "a", box a, "None"; "e", box e, "None" ]
             c.Check (c.HostRead 6 (fun () -> a.Value) = 8) "the memo's body answers 8"
             c.Graph.Flush ()
-            c.Check (e.Runs = 2) $"after the read and a flush the effect has run {e.Runs} times"
+            c.Check (e.Runs = 3) $"after the read and a flush the effect has run {e.Runs} times"
 
         // A batch whose body fails applies its write and requests no flush. The effect stays queued, nothing is owed,
         // and the next flush runs it.

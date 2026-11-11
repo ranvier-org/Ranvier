@@ -699,6 +699,8 @@ val sources_of : edgeWorld -> node_id -> source_list
 
 val slot_at : edgeWorld -> node_id -> nat -> (node_id, nat option) prod option
 
+val read_prefix : edgeWorld -> node_id -> node_id list
+
 val set_observers : node_id -> observer_set -> edgeWorld -> edgeWorld
 
 val set_sources : node_id -> source_list -> edgeWorld -> edgeWorld
@@ -817,7 +819,8 @@ val mark_dirty : nat -> node_id -> state -> state option
 
 val notify_dirty : nat -> node_id -> state -> state option
 
-val mark_except : nat -> node_id option -> node_id -> state -> state option
+val mark_except :
+  nat -> node_id -> node_id option -> node_id -> state -> state option
 
 val notify_dirty_except :
   nat -> node_id -> node_id option -> state -> state option
@@ -921,8 +924,6 @@ val push_running : node_id -> unit0 m
 val pop_running : unit0 m
 
 val stale_live : node -> bool
-
-val read_prefix : edgeWorld -> node_id -> node_id list
 
 val ghost_read : node_id -> node_id -> node_id list -> state -> state
 

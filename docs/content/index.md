@@ -71,7 +71,7 @@ Every reader observes one of six states. The docs, the marks and the API use the
 ```fsharp ranvier setup
 open Fable.Core
 open Fable.Core.JsInterop
-open Ranvier.Anime
+open Fable.Ranvier.Anime
 open Ranvier.View
 
 type DialState =

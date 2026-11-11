@@ -40,6 +40,8 @@ type internal ValueRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: V
         member this.MovedIn(_, handle) =
             this.Handle <- handle
 
+        member _.HasReadSlot _ = false
+
         member this.MarkDirty() =
             touched this
 
@@ -135,7 +137,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
                                         changed row.Entry.Key
                                         row.Value <- value
                                         row.HasValue <- true
-                                        observers.NotifyDirtyExcept graph.CurrentComputation
+                                        graph.NotifyMoved observers
                                 | Pending
                                 | Failed _ -> ()
                         with _ ->
@@ -154,8 +156,10 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
                 running <- false
 
     member this.Read(current: 'K[]) =
-        graph.Track (this :> ISource)
-        this.Refresh current
+        try
+            this.Refresh current
+        finally
+            graph.Track (this :> ISource)
 
     member this.Retire(entry: RowEntry<'K, 'V>) =
         let row = rows.Find entry.Key
@@ -167,7 +171,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
             this.Detach row
             rows.Remove entry.Key
             keys <- null
-            observers.NotifyDirtyExcept graph.CurrentComputation
+            graph.NotifyMoved observers
 
     member _.TryAccepted(key: 'K) =
         let row = rows.Find key
@@ -206,3 +210,5 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
                     graph.RunUntracked (fun () -> this.Refresh (readKeys ()))
                 with _ ->
                     observers.NotifyDirty ()
+
+        member _.IsStale = false

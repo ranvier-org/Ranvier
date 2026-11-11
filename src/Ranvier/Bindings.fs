@@ -130,6 +130,8 @@ type internal Binding<'Target, 'T>
         member _.MovedIn(_, moved) =
             handle <- moved
 
+        member _.HasReadSlot _ = false
+
         member this.MarkDirty() =
             if not disposed then
                 freshness <- Freshness.Dirty
@@ -156,7 +158,10 @@ type internal Binding<'Target, 'T>
                 // marks this binding Dirty without re-queueing it.
                 if freshness = Freshness.Check then
                     Tracer.CheckStart (graph, id)
-                    source.UpdateIfNecessary ()
+
+                    while freshness = Freshness.Check && source.IsStale do
+                        source.UpdateIfNecessary ()
+
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
                 elif not (Platform.isNull (box memo)) then
                     source.UpdateIfNecessary ()

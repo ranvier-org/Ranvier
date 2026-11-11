@@ -369,6 +369,50 @@ let tests =
 
             test "a stale read whose recomputation moves a memo owes a flush and drains woken effects on ExitPull" {
                 let g = new Graph ()
+                let s = Signal (g, 0)
+
+                let x =
+                    Make.Memo (
+                        g,
+                        (fun _ ->
+                            let v = s.Value
+
+                            if v = 1 then
+                                g.OnCleanup (fun () -> s.Value <- 50)
+                                0
+                            else
+                                v),
+                        true
+                    )
+
+                let seen = ResizeArray ()
+                let e = new Effect (g, (fun () -> seen.Add x.Value))
+
+                try
+                    g.Batch (fun () ->
+                        s.Value <- 1
+                        failwith "boom")
+                with _ ->
+                    ()
+
+                Expect.equal x.Value 0 "first read runs x at s = 1 and arms its cleanup"
+
+                try
+                    g.Batch (fun () ->
+                        s.Value <- 2
+                        failwith "boom")
+                with _ ->
+                    ()
+
+                // Discharging x's cleanup writes s <- 50, which marks x and queues e; x then recomputes to 50,
+                // calls OweFlush, and ExitPull drains e before returning.
+                Expect.equal x.Value 50 "the read recomputes x to 50"
+                Expect.equal e.Runs 2 "the read's move owed a flush that ran the woken effect on ExitPull"
+                Expect.sequenceEqual seen [ 0; 50 ] "the effect observed 50 without needing an explicit Flush"
+            }
+
+            test "a memo dirtied by a cleanup during its own run in a check walk is re-pulled before the reader resolves Check" {
+                let g = new Graph ()
                 let h = Signal (g, 0)
                 let k = Signal (g, 0)
                 let s = Signal (g, 0)
@@ -400,8 +444,132 @@ let tests =
                     h.Value <- 1
                     k.Value <- 1)
 
-                Expect.equal x.Value 50 "the read recomputes x to 50"
-                Expect.equal e.Runs 2 "the read's move owed a flush that ran the woken effect on ExitPull"
-                Expect.sequenceEqual seen [ 0; 50 ] "the effect observed 50 without needing an explicit Flush"
+                Expect.equal e.Runs 2 "the check walk re-pulled x after y's cleanup dirtied it"
+                Expect.sequenceEqual seen [ 0; 50 ] "the effect settled on 50 during the batch flush"
+                Expect.equal x.Value 50 "x is clean at 50"
+            }
+
+            test "a check walk restarts when a later source's cleanup marks an already-passed source Dirty" {
+                let g = new Graph ()
+                let s = Signal (g, 0)
+                let t = Signal (g, 0)
+                let a = Make.Memo (g, (fun _ -> s.Value * 2))
+
+                let b =
+                    Make.Memo (
+                        g,
+                        (fun _ ->
+                            let v = t.Value
+                            g.OnCleanup (fun () -> s.Value <- 1)
+                            v * 0),
+                        true
+                    )
+
+                let seen = ResizeArray ()
+                let e = new Effect (g, (fun () -> seen.Add (a.Value + b.Value)))
+
+                t.Value <- 1
+
+                Expect.equal e.Runs 2 "the effect woke when b's cleanup marked the already-passed source a"
+                Expect.sequenceEqual seen [ 0; 2 ] "the effect observed a's updated value 2"
+
+                s.Value <- 2
+                Expect.equal e.Runs 3 "the effect remains responsive to subsequent writes to s"
+                Expect.sequenceEqual seen [ 0; 2; 4 ] "the effect observed 4"
+            }
+
+            test "memos returning fresh records across a shared diamond do not leave a downstream effect asleep" {
+                let g = new Graph ()
+                let s = Signal (g, 0)
+                let t = Signal (g, 0)
+                let m3 = Make.Memo (g, (fun _ -> s.Value * 0))
+                let m4 = Make.Memo (g, (fun _ -> s.Value))
+
+                let m5 =
+                    Make.Memo (
+                        g,
+                        fun _ ->
+                            let x = m3.Value
+                            let y = m4.Value
+                            box (x + y)
+                    )
+
+                let a =
+                    Make.Memo (
+                        g,
+                        fun _ ->
+                            let u = t.Value
+                            let v = unbox<int> m5.Value
+                            u + v * 0
+                    )
+
+                let m7 =
+                    Make.Memo (
+                        g,
+                        fun _ ->
+                            let _ = s.Value
+                            let v = unbox<int> m5.Value
+                            box v
+                    )
+
+                let m8 = Make.Memo (g, (fun _ -> unbox<int> m7.Value * 0))
+                let b = Make.Memo (g, (fun _ -> m8.Value))
+                let seen = ResizeArray ()
+                let e = new Effect (g, (fun () -> seen.Add (a.Value + b.Value)))
+
+                s.Value <- 1
+                t.Value <- 7
+                Expect.sequenceEqual seen [ 0; 7 ] "t <- 7 woke the effect"
+
+                t.Value <- 8
+                Expect.sequenceEqual seen [ 0; 7; 8 ] "t <- 8 woke the effect"
+                Expect.equal e.Runs 3 "three runs in total"
+            }
+
+            test "a memo whose earlier-read source moves during a later source's check walk is marked Dirty" {
+                let g = new Graph ()
+                let s = Signal (g, 0)
+                let a = Make.Memo (g, (fun _ -> s.Value))
+                let b = Make.Memo (g, (fun _ -> a.Value))
+
+                let x =
+                    Make.Memo (
+                        g,
+                        fun _ ->
+                            let v = a.Value
+                            s.Value <- 1
+                            let _ = b.Value
+                            v
+                    )
+
+                Expect.equal b.Value 0 "b is warm before x runs"
+                Expect.equal x.Value 0 "x's first run returns the initial read of a"
+                Expect.equal x.Value 1 "x was marked Dirty when a moved during b's check walk, so the next read recomputes x"
+            }
+
+            test "an effect whose earlier-read source moves during a later source's check walk re-runs in the same flush" {
+                let g = new Graph ()
+                let s = Signal (g, 0)
+                let a = Make.Memo (g, (fun _ -> s.Value))
+                let b = Make.Memo (g, (fun _ -> a.Value))
+                let seen = ResizeArray ()
+
+                Expect.equal b.Value 0 "b is warm before the effect runs"
+
+                let e =
+                    new Effect (
+                        g,
+                        fun () ->
+                            let v = a.Value
+
+                            if v = 0 then
+                                s.Value <- 1
+
+                            let _ = b.Value
+                            seen.Add v
+                    )
+
+                Expect.equal e.Runs 2 "the effect re-ran in the same flush after a moved during b's check walk"
+                Expect.sequenceEqual seen [ 0; 1 ] "the effect settled on the moved value 1"
             }
         ]

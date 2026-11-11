@@ -581,7 +581,8 @@ The state has the shapes `Sh`, scopes of `None` on every computation, only effec
 *)
 Record gd (s : state) : Prop := {
   gd_sh : shapes s = Sh;
-  gd_scope : forall m d, g_nodes s !! m = Some d -> n_kind d <> KSignal -> n_scope d = None;
+  gd_scope : forall m d, g_nodes s !! m = Some d ->
+    (n_kind d <> KSignal -> n_scope d = None) /\ (n_kind d = KSignal -> n_freshness d = Clean);
   gd_queue : forall y, y ∈ g_queue s -> exists q e b, Sh !! y = Some (KEffect, q, e, b);
   gd_reach : world_reachable (g_edges s);
   gd_cursor : forall c, (slot_view (g_edges s) c).2 <= length (slot_view (g_edges s) c).1;
@@ -827,13 +828,14 @@ Qed.
 (** A step that keeps the nodes' shapes and every field [kept] and [gd] read. *)
 Lemma gd_same s s' :
   shapes s' = shapes s -> g_owners s' = g_owners s ->
-  (forall m d', g_nodes s' !! m = Some d' -> exists d, g_nodes s !! m = Some d /\ n_kind d' = n_kind d /\ n_scope d' = n_scope d /\ n_link d' = n_link d) ->
+  (forall m d', g_nodes s' !! m = Some d' -> exists d, g_nodes s !! m = Some d /\ n_kind d' = n_kind d /\ n_scope d' = n_scope d /\ n_link d' = n_link d /\ (n_kind d = KSignal -> n_freshness d' = n_freshness d)) ->
   g_edges s' = g_edges s -> g_queue s' = g_queue s -> gd s -> gd s'.
 Proof.
   intros H1 H0 H2 H3 H4 [A B Q C D E F L]. split; try (rewrite H3; done); [congruence| | |rewrite H0; done|].
-  - intros m d' Hd' Hk. destruct (H2 m d' Hd') as (d&Hd&Hkd&Hs&_). rewrite Hs. apply (B m d Hd). congruence.
+  - intros m d' Hd'. destruct (H2 m d' Hd') as (d&Hd&Hkd&Hs&_&Hfr). destruct (B m d Hd) as [B1 B2].
+    split; [intros Hk; rewrite Hs; apply B1; congruence|intros Hk; rewrite Hfr by congruence; apply B2; congruence].
   - rewrite H4; done.
-  - intros m d' l Hd' Hl. destruct (H2 m d') as (d&Hd&_&_&Hn); [done|]. rewrite Hn in Hl. exact (L m d l Hd Hl).
+  - intros m d' l Hd' Hl. destruct (H2 m d') as (d&Hd&_&_&Hn&_); [done|]. rewrite Hn in Hl. exact (L m d l Hd Hl).
 Qed.
 
 Lemma mu_eq s s' : g_nodes s' = g_nodes s -> g_queue s' = g_queue s -> g_queue_head s' = g_queue_head s -> mu s' = mu s.
@@ -864,12 +866,14 @@ Proof. change (<[n := d]> (g_nodes s) !! n = Some d). apply lookup_insert_eq. Qe
 Lemma stale_set_other s n d m : m <> n -> stale_w (set_node n d s) m = stale_w s m.
 Proof. intros H. unfold stale_w. by rewrite set_ne. Qed.
 
-Lemma gd_set s n d d' : gd s -> g_nodes s !! n = Some d -> shape_of d' = shape_of d -> n_scope d' = n_scope d -> n_link d' = n_link d -> gd (set_node n d' s).
+Lemma gd_set s n d d' : gd s -> g_nodes s !! n = Some d -> shape_of d' = shape_of d -> n_scope d' = n_scope d -> n_link d' = n_link d ->
+  (n_kind d = KSignal -> n_freshness d' = n_freshness d \/ n_freshness d' = Clean) -> gd (set_node n d' s).
 Proof.
-  intros G Hd H1 H2 H3. apply (gd_same s); try done.
+  intros G Hd H1 H2 H3 H4. apply (gd_same s); try done.
   - unfold shapes. change (shape_of <$> <[n := d']> (g_nodes s) = shape_of <$> g_nodes s). rewrite fmap_insert, H1. apply insert_id. by rewrite lookup_fmap, Hd.
   - intros m e Hm. change (<[n := d']> (g_nodes s) !! m = Some e) in Hm. destruct (decide (m = n)) as [->|Hne].
-    + rewrite lookup_insert_eq in Hm. injection Hm as <-. exists d. unfold shape_of in H1. injection H1 as K _ _ _. done.
+    + rewrite lookup_insert_eq in Hm. injection Hm as <-. exists d. unfold shape_of in H1. injection H1 as K _ _ _.
+      split_and!; [done|done|done|done|]. intros Hk. destruct (H4 Hk) as [->| ->]; [done|]. symmetry. exact (proj2 (gd_scope _ G n d Hd) Hk).
     + rewrite lookup_insert_ne in Hm by done. by exists e.
 Qed.
 
@@ -881,7 +885,7 @@ Lemma tot_modify_node X P n (u : node -> node) :
   tot X P (fun _ => modify_node n u).
 Proof.
   intros He H1 H2 H4 H3. apply tot_const. intros s G _ Hp. destruct (He s G Hp) as [d Hd]. unfold modify_node. rewrite Hd.
-  exists (set_node n (u d) s), tt. split_and!; [done|exact (gd_set s n d (u d) G Hd (H1 d) (H2 d) (H4 d))|split; try done].
+  exists (set_node n (u d) s), tt. split_and!; [done|exact (gd_set s n d (u d) G Hd (H1 d) (H2 d) (H4 d) (fun _ => H3 d))|split; try done].
   unfold mu. change (qlen (set_node n (u d) s)) with (qlen s).
   assert (Hs : sum_up (stale_w (set_node n (u d) s)) lim <= sum_up (stale_w s) lim).
   { apply sum_mono. intros m. destruct (decide (m = n)) as [->|Hne]; [|by rewrite stale_set_other].
@@ -911,8 +915,13 @@ Proof.
     - change (y ∈ g_queue s ++ [n]) in Hy. apply elem_of_app in Hy as [Hy|Hy]; [exact (gd_queue _ G y Hy)|].
       apply list_elem_of_singleton in Hy as ->. exists (n_comparer d), (n_env d), (n_body d). rewrite <- (gd_sh _ G). unfold shapes. rewrite lookup_fmap, Hd. simpl. unfold shape_of. by rewrite Hk. }
   split; [rewrite Hsh; exact (gd_sh _ G)| |exact Hq|rewrite E; exact (gd_reach _ G)|rewrite E; exact (gd_cursor _ G)|rewrite E; exact (gd_slots _ G)| |].
-  - intros m d' Hd' Hk. destruct (rs_back _ _ R m d' Hd') as [d Hd]. destruct (rs_fwd _ _ R m d Hd) as (x&Hx&Y&X). rewrite Hd' in Hx. injection Hx as <-.
-    unfold shape_of in Y. injection Y as K _ _ _. pose proof X as (_&_&_&_&Z&_). rewrite Z. apply (gd_scope _ G m d Hd). congruence.
+  - intros m d' Hd'. destruct (rs_back _ _ R m d' Hd') as [d Hd]. destruct (rs_fwd _ _ R m d Hd) as (x&Hx&Y&X). rewrite Hd' in Hx. injection Hx as <-.
+    unfold shape_of in Y. injection Y as K _ _ _. pose proof X as (_&_&_&_&Z&_). destruct (gd_scope _ G m d Hd) as [B1 _].
+    split; [intros Hk; rewrite Z; apply B1; congruence|].
+    intros Hk. destruct Hp as [s n d0 f u Hd0 Hk0 _ _|s n d0 f Hd0 Hk0 _ _|s n d0 f Hd0 Hk0 _ _];
+      simpl in Hd'; destruct (decide (m = n)) as [->|Hne];
+      try (rewrite lookup_insert_eq in Hd'; injection Hd' as <-; simpl in Hk; congruence);
+      rewrite lookup_insert_ne in Hd' by done; exact (proj2 (gd_scope _ G m d' Hd') Hk).
   - destruct Hp; exact (gd_root _ G).
   - intros m d' l Hd' Hl.
     assert (Hup : forall n D, g_nodes s !! n = Some D -> forall D', n_link D' = n_link D -> (<[n := D']> (g_nodes s)) !! m = Some d' -> l_owner l = root_owner_id).
@@ -1017,7 +1026,7 @@ Proof.
   - assert (Hc : rk m < rk c) by (destruct Hm as [A|A]; [done|exfalso; apply A; exact (memo_of_node s c d G Hd Hk)]).
     assert (Hwalk : forall f0 u0 q0, notify_with (mark_check f) c (set_node c (node_marked f0 u0 q0 d) s) = Some s' -> stale_w s' m = stale_w s m).
     { intros f0 u0 q0 Ew.
-      assert (G1 : gd (set_node c (node_marked f0 u0 q0 d) s)) by (apply (gd_set s c d); try done).
+      assert (G1 : gd (set_node c (node_marked f0 u0 q0 d) s)) by (apply (gd_set s c d); try done; intros; congruence).
       unfold notify_with in Ew.
       pose proof (walk_up (mark_check f) c (g_edges s) m) as W.
       assert (Hmk : forall y s0 s1, gd s0 -> g_edges s0 = g_edges s -> (rk m < rk y \/ ~ memo_sh y) -> mark_check f y s0 = Some s1 -> rtc mark_prim s0 s1 /\ stale_w s1 m = stale_w s0 m).
@@ -1041,7 +1050,7 @@ Proof.
   - assert (Hc : rk m < rk c) by (destruct Hm as [A|A]; [done|exfalso; apply A; exact (memo_of_node s c d G Hd Hk)]).
     assert (Hwalk : forall f0 u0 q0, notify_with (mark_check f) c (set_node c (node_marked f0 u0 q0 d) s) = Some s' -> stale_w s' m = stale_w s m).
     { intros f0 u0 q0 Ew.
-      assert (G1 : gd (set_node c (node_marked f0 u0 q0 d) s)) by (apply (gd_set s c d); try done).
+      assert (G1 : gd (set_node c (node_marked f0 u0 q0 d) s)) by (apply (gd_set s c d); try done; intros; congruence).
       unfold notify_with in Ew.
       pose proof (walk_up (mark_check f) c (g_edges s) m) as W.
       assert (Hmk : forall y s0 s1, gd s0 -> g_edges s0 = g_edges s -> (rk m < rk y \/ ~ memo_sh y) -> mark_check f y s0 = Some s1 -> rtc mark_prim s0 s1 /\ stale_w s1 m = stale_w s0 m).
@@ -1096,8 +1105,8 @@ Proof.
   { refine (any_mark_rtc _ _ _ _ _ _). right. right. right. right. exact Hm. }
   assert (Hup : forall m, ~ rk n < rk m -> stale_w s1 m = stale_w s m).
   { intros m Hmn. revert Hm. unfold notify_dirty_except, notify_with. intros Ew.
-    assert (Hmk : forall y s0 s2, gd s0 -> g_edges s0 = g_edges s -> (~ rk n < rk m -> True) -> mark_except (S (mark_measure s)) r y s0 = Some s2 -> True) by done.
-    refine (proj2 (walk_up (mark_except (S (mark_measure s)) r) n (g_edges s) m _ (or_intror I) _ _ s s1 G eq_refl Ew)).
+    assert (Hmk : forall y s0 s2, gd s0 -> g_edges s0 = g_edges s -> (~ rk n < rk m -> True) -> mark_except (S (mark_measure s)) n r y s0 = Some s2 -> True) by done.
+    refine (proj2 (walk_up (mark_except (S (mark_measure s)) n r) n (g_edges s) m _ (or_intror I) _ _ s s1 G eq_refl Ew)).
     - intros c s0 s2 G0 _ Hc E0. unfold mark_except in E0. destruct (decide _); [injection E0 as <-; split; [apply rtc_refl|done]|].
       split; [refine (any_mark_rtc _ c None _ _ _); right; left; exact E0|exact (mark_dirty_up _ c s0 s2 m G0 Hc E0)].
     - intros y k i Hi. destruct (decide (rk m < rk y)) as [|Hn]; [by left|right]. intros Hmy. pose proof (observer_low s n y k i G Hi Hmy). lia. }
@@ -1335,33 +1344,137 @@ Proof.
   - intros d (s&G&_&Hd). apply H. pose proof (gd_shape s n d G Hd) as Y. rewrite Hs in Y. by injection Y as <-.
 Qed.
 
-(** The walk over the slots of [n]. Each step brings a source current, which keeps [n]'s slots. *)
+(** A step on a source [src]: if [src] is clean in [s], [update_if_necessary] returns [s] unchanged; if [src] is stale,
+    [update_if_necessary] terminates and strictly lowers [mu]. *)
+Definition up_step X (P : state -> Prop) (src : node_id) : Prop :=
+  forall s, gd s -> tk_ctx s -> P s ->
+    exists d, g_nodes s !! src = Some d /\
+      if stale_live d then
+        exists s' a, ev_m (fun f => update_if_necessary f src) s (s', a) /\ gd s' /\ kept (-1) X s s'
+      else
+        forall f, update_if_necessary (S f) src s = Some (s, tt).
+
+Lemma up_step_tot X P src : up_step X P src -> tot X P (fun f => update_if_necessary f src).
+Proof.
+  intros H s G C HP. destruct (H s G C HP) as (d&Hd&Hu). destruct (stale_live d).
+  - destruct Hu as (s'&a&Ev&G'&K). exists s', a. split_and!; [exact Ev|exact G'|exact (kept_le (-1) 0 _ _ _ ltac:(lia) K)].
+  - exists s, tt. split_and!; [exists 1; intros [|f] Hf; [lia|apply Hu]|exact G|apply kept_refl].
+Qed.
+
+Lemma up_step_weaken X X' P P' src : (forall c, X c -> X' c) -> (forall s, P' s -> P s) -> up_step X P src -> up_step X' P' src.
+Proof.
+  intros HX HP H s G C HP'. destruct (H s G C (HP s HP')) as (d&Hd&Hu). exists d. split; [exact Hd|].
+  destruct (stale_live d); [|exact Hu].
+  destruct Hu as (s'&a&Ev&G'&[K1 K2 K3 K4 K5]). exists s', a. split_and!; [exact Ev|exact G'|].
+  split; try done. intros c H1 H2. apply K1; [intros K; exact (H1 (HX c K))|done].
+Qed.
+
+Lemma slot_holds_false p s n :
+  (forall j src mh d_src, j < length (source_slots (sources_of (g_edges s) n)) ->
+     source_slots (sources_of (g_edges s) n) !! j = Some (src, mh) -> g_nodes s !! src = Some d_src -> p d_src = false) ->
+  slot_holds p s n = false.
+Proof.
+  unfold slot_holds. generalize (source_slots (sources_of (g_edges s) n)) as l.
+  induction l as [|[src mh] l IH]; intros H; [done|].
+  rewrite fmap_cons; cbn [existsb fst]. rewrite IH.
+  - rewrite orb_false_r. destruct (g_nodes s !! src) as [d_src|] eqn:Hd; [|done].
+    exact (H 0 src mh d_src ltac:(simpl; lia) eq_refl Hd).
+  - intros j src0 mh0 d0 Hj Ej Hd0. exact (H (S j) src0 mh0 d0 ltac:(simpl; lia) Ej Hd0).
+Qed.
+
+(** The walk over the slots of [n]. Each step brings a source current, which keeps [n]'s slots; if a passed source was marked
+    during the pass, [mu] strictly dropped before the restart. *)
 Lemma walk_tot X P `{!TS P} n x0 :
   ~ X n -> Sh !! n = Some x0 -> (forall s, P s -> g_current s <> Some n) ->
-  (forall src, Rd src -> (forall q e b, Sh !! n = Some (KMemo, q, e, b) -> rk src < rk n) -> tot X P (fun f => update_if_necessary f src)) ->
-  forall k i s, gd s -> tk_ctx s -> P s -> length (slot_view (g_edges s) n).1 <= i + k ->
-    exists s' a, ev_m (fun f => resolve_walk f n i) s (s', a) /\ gd s' /\ kept 0 X s s'.
+  (forall src, Rd src -> (forall q e b, Sh !! n = Some (KMemo, q, e, b) -> rk src < rk n) -> up_step X P src) ->
+  forall s, gd s -> tk_ctx s -> P s ->
+    exists s' a, ev_m (fun f => resolve_walk f n 0) s (s', a) /\ gd s' /\ kept 0 X s s' /\ (s' = s \/ mu s' < mu s).
 Proof.
-  intros HX Hsx Hne Hsrc. induction k as [|k IH]; intros i s G C HP Hl.
-  all: destruct (gd_node s n x0 G Hsx) as (d&Hd&_).
-  all: destruct (decide (n_freshness d = Check)) as [Hch|Hch].
-  2, 4: exists s, tt; split_and!; [|done|apply kept_refl]; exists 1; intros f Hf; destruct f as [|f]; [lia|]; cbn [resolve_walk];
-        rewrite (bind_get_node _ _ _ _ Hd), bind_get, decide_False by done; reflexivity.
-  - exists s, tt. split_and!; [|done|apply kept_refl]. exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
-    rewrite (bind_get_node _ _ _ _ Hd), bind_get, decide_True by done. rewrite (proj2 (lookup_ge_None _ _)); [reflexivity|]. rewrite slots_length. lia.
-  - destruct (source_slots (sources_of (g_edges s) n) !! i) as [[src mh]|] eqn:Es.
-    2: { exists s, tt. split_and!; [|done|apply kept_refl]. exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
-         rewrite (bind_get_node _ _ _ _ Hd), bind_get, decide_True by done. rewrite Es. reflexivity. }
-    assert (Hin : src ∈ (slot_view (g_edges s) n).1).
-    { apply list_elem_of_lookup. exists i. unfold slot_view. simpl. rewrite list_lookup_fmap, Es. reflexivity. }
-    destruct (gd_slots _ G n src Hin) as [Hrs Hlow].
-    destruct (Hsrc src Hrs Hlow s G C HP) as (s1&a1&[N1 Ev1]&G1&K1).
-    assert (C1 : tk_ctx s1) by (unfold tk_ctx in *; rewrite (kp_flu _ _ _ _ K1), (kp_bat _ _ _ _ K1); exact C).
-    assert (Hsame : (slot_view (g_edges s1) n).1 = (slot_view (g_edges s) n).1) by exact (kp_slots _ _ _ _ K1 n HX (Hne s HP)).
-    destruct (IH (S i) s1 G1 C1 (ts _ _ _ _ G G1 K1 HP) ltac:(rewrite Hsame; lia)) as (s2&a2&[N2 Ev2]&G2&K2).
-    exists s2, a2. split_and!; [|done|exact (kept_trans _ _ _ _ _ _ K1 K2)].
-    exists (S (N1 `max` N2)). intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
-    rewrite (bind_get_node _ _ _ _ Hd), bind_get, decide_True by done. rewrite Es. unfold m_bind. rewrite (Ev1 f) by lia. apply Ev2. lia.
+  intros HX Hsx Hne Hsrc s0.
+  remember (mu s0) as m eqn:Em. revert s0 Em.
+  induction m as [m IHm] using lt_wf_ind.
+  intros s0 -> G0 C0 HP0.
+  assert (Hdrop : forall k i s1, mu s1 < mu s0 -> gd s1 -> tk_ctx s1 -> P s1 -> length (slot_view (g_edges s1) n).1 <= i + k ->
+    exists s' a, ev_m (fun f => resolve_walk f n i) s1 (s', a) /\ gd s' /\ kept 0 X s1 s' /\ mu s' < mu s0).
+  { induction k as [|k IHk]; intros i s1 Hm1 G1 C1 HP1 Hl1.
+    all: destruct (gd_node s1 n x0 G1 Hsx) as (d1&Hd1&_).
+    all: destruct (decide (n_freshness d1 = Check)) as [Hch1|Hch1].
+    2, 4: exists s1, tt; split_and!; [|done|apply kept_refl|lia]; exists 1; intros f Hf; destruct f as [|f]; [lia|]; cbn [resolve_walk];
+          rewrite (bind_get_node _ _ _ _ Hd1), bind_get, decide_False by done; reflexivity.
+    - assert (Es : source_slots (sources_of (g_edges s1) n) !! i = None) by (apply lookup_ge_None_2; rewrite slots_length; lia).
+      destruct (slot_holds stale_live s1 n) eqn:Esh.
+      + destruct (IHm (mu s1) Hm1 s1 eq_refl G1 C1 HP1) as (s'&a&[N Ev]&G'&K'&_).
+        pose proof (kp_mu _ _ _ _ K').
+        exists s', a. split_and!; [|done|done|lia].
+        exists (S N). intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+        rewrite (bind_get_node _ _ _ _ Hd1), bind_get, decide_True, Es, Esh by done. apply Ev. lia.
+      + exists s1, tt. split_and!; [|done|apply kept_refl|lia].
+        exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+        rewrite (bind_get_node _ _ _ _ Hd1), bind_get, decide_True, Es, Esh by done. reflexivity.
+    - destruct (source_slots (sources_of (g_edges s1) n) !! i) as [[src mh]|] eqn:Es.
+      2: { destruct (slot_holds stale_live s1 n) eqn:Esh.
+           - destruct (IHm (mu s1) Hm1 s1 eq_refl G1 C1 HP1) as (s'&a&[N Ev]&G'&K'&_).
+             pose proof (kp_mu _ _ _ _ K').
+             exists s', a. split_and!; [|done|done|lia].
+             exists (S N). intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+             rewrite (bind_get_node _ _ _ _ Hd1), bind_get, decide_True, Es, Esh by done. apply Ev. lia.
+           - exists s1, tt. split_and!; [|done|apply kept_refl|lia].
+             exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+             rewrite (bind_get_node _ _ _ _ Hd1), bind_get, decide_True, Es, Esh by done. reflexivity. }
+      assert (Hin : src ∈ (slot_view (g_edges s1) n).1).
+      { apply list_elem_of_lookup. exists i. unfold slot_view. simpl. rewrite list_lookup_fmap, Es. reflexivity. }
+      destruct (gd_slots _ G1 n src Hin) as [Hrs Hlow].
+      destruct (up_step_tot _ _ _ (Hsrc src Hrs Hlow) s1 G1 C1 HP1) as (s2&a2&[N2 Ev2]&G2&K2).
+      pose proof (kp_mu _ _ _ _ K2).
+      assert (C2 : tk_ctx s2) by (unfold tk_ctx in *; rewrite (kp_flu _ _ _ _ K2), (kp_bat _ _ _ _ K2); exact C1).
+      assert (Hsame : (slot_view (g_edges s2) n).1 = (slot_view (g_edges s1) n).1) by exact (kp_slots _ _ _ _ K2 n HX (Hne s1 HP1)).
+      destruct (IHk (S i) s2 ltac:(lia) G2 C2 (ts _ _ _ _ G1 G2 K2 HP1) ltac:(rewrite Hsame; lia)) as (s3&a3&[N3 Ev3]&G3&K3&Hm3).
+      exists s3, a3. split_and!; [|done|exact (kept_trans _ _ _ _ _ _ K2 K3)|exact Hm3].
+      exists (S (N2 `max` N3)). intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+      rewrite (bind_get_node _ _ _ _ Hd1), bind_get, decide_True, Es by done. unfold m_bind. rewrite (Ev2 f) by lia. apply Ev3. lia. }
+  assert (Hpass : forall k i,
+    length (slot_view (g_edges s0) n).1 <= i + k ->
+    (forall j src mh d_src, j < i -> source_slots (sources_of (g_edges s0) n) !! j = Some (src, mh) -> g_nodes s0 !! src = Some d_src -> stale_live d_src = false) ->
+    exists s' a, ev_m (fun f => resolve_walk f n i) s0 (s', a) /\ gd s' /\ kept 0 X s0 s' /\ (s' = s0 \/ mu s' < mu s0)).
+  { induction k as [|k IHk]; intros i Hl Hcl.
+    all: destruct (gd_node s0 n x0 G0 Hsx) as (d0&Hd0&_).
+    all: destruct (decide (n_freshness d0 = Check)) as [Hch0|Hch0].
+    2, 4: exists s0, tt; split_and!; [|done|apply kept_refl|by left]; exists 1; intros f Hf; destruct f as [|f]; [lia|]; cbn [resolve_walk];
+          rewrite (bind_get_node _ _ _ _ Hd0), bind_get, decide_False by done; reflexivity.
+    - assert (Es : source_slots (sources_of (g_edges s0) n) !! i = None) by (apply lookup_ge_None_2; rewrite slots_length; lia).
+      assert (Esh : slot_holds stale_live s0 n = false).
+      { apply slot_holds_false. intros j src mh d_src Hj. rewrite slots_length in Hj. apply Hcl. lia. }
+      exists s0, tt. split_and!; [|done|apply kept_refl|by left].
+      exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+      rewrite (bind_get_node _ _ _ _ Hd0), bind_get, decide_True, Es, Esh by done. reflexivity.
+    - destruct (source_slots (sources_of (g_edges s0) n) !! i) as [[src mh]|] eqn:Es.
+      2: { assert (Esh : slot_holds stale_live s0 n = false).
+           { apply slot_holds_false. intros j src mh d_src Hj. apply lookup_ge_None_1 in Es. apply Hcl. lia. }
+           exists s0, tt. split_and!; [|done|apply kept_refl|by left].
+           exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+           rewrite (bind_get_node _ _ _ _ Hd0), bind_get, decide_True, Es, Esh by done. reflexivity. }
+      assert (Hin : src ∈ (slot_view (g_edges s0) n).1).
+      { apply list_elem_of_lookup. exists i. unfold slot_view. simpl. rewrite list_lookup_fmap, Es. reflexivity. }
+      destruct (gd_slots _ G0 n src Hin) as [Hrs Hlow].
+      destruct (Hsrc src Hrs Hlow s0 G0 C0 HP0) as (d_src&Hd_src&Hu).
+      destruct (stale_live d_src) eqn:Est.
+      + destruct Hu as (s1&a1&[N1 Ev1]&G1&K1).
+        pose proof (kp_mu _ _ _ _ K1).
+        assert (C1 : tk_ctx s1) by (unfold tk_ctx in *; rewrite (kp_flu _ _ _ _ K1), (kp_bat _ _ _ _ K1); exact C0).
+        assert (Hsame : (slot_view (g_edges s1) n).1 = (slot_view (g_edges s0) n).1) by exact (kp_slots _ _ _ _ K1 n HX (Hne s0 HP0)).
+        destruct (Hdrop k (S i) s1 ltac:(lia) G1 C1 (ts _ _ _ _ G0 G1 K1 HP0) ltac:(rewrite Hsame; lia)) as (s2&a2&[N2 Ev2]&G2&K2&Hm2).
+        exists s2, a2. split_and!; [|done|exact (kept_le (-1) 0 _ _ _ ltac:(lia) (kept_trans _ _ _ _ _ _ K1 K2))|by right].
+        exists (S (N1 `max` N2)). intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+        rewrite (bind_get_node _ _ _ _ Hd0), bind_get, decide_True, Es by done. unfold m_bind. rewrite (Ev1 f) by lia. apply Ev2. lia.
+      + assert (Hcl' : forall j src0 mh0 d0', j < S i -> source_slots (sources_of (g_edges s0) n) !! j = Some (src0, mh0) -> g_nodes s0 !! src0 = Some d0' -> stale_live d0' = false).
+        { intros j src0 mh0 d0' Hj Ej Hd0'. destruct (decide (j = i)) as [->|Hji]; [|exact (Hcl j src0 mh0 d0' ltac:(lia) Ej Hd0')].
+          rewrite Es in Ej. injection Ej as <- _. rewrite Hd_src in Hd0'. injection Hd0' as <-. exact Est. }
+        destruct (IHk (S i) ltac:(lia) Hcl') as (s2&a2&[N2 Ev2]&G2&K2&Hm2).
+        exists s2, a2. split_and!; [|done|exact K2|exact Hm2].
+        exists (S (1 `max` N2)). intros f Hf. destruct f as [|f]; [lia|]. cbn [resolve_walk].
+        rewrite (bind_get_node _ _ _ _ Hd0), bind_get, decide_True, Es by done. unfold m_bind.
+        destruct f as [|f]; [lia|]. rewrite (Hu f). apply (Ev2 (S f)). lia. }
+  exact (Hpass (length (slot_view (g_edges s0) n).1) 0 ltac:(lia) ltac:(intros j ? ? ? Hj; lia)).
 Qed.
 
 Section Memo.
@@ -1370,7 +1483,7 @@ Variables (q0 : comparer) (e0 : env) (b0 : cmd).
 Hypothesis Hsn : Sh !! n = Some (KMemo, q0, e0, b0).
 Hypothesis Hrn : Rd n.
 Hypothesis Hrd : forall t, rk t < rk n -> Rd t -> tot (xl (rk n)) (pt t) (fun f => read_node f t).
-Hypothesis Hup : forall t, rk t < rk n -> Rd t -> tot (xl (rk n)) (pt t) (fun f => update_if_necessary f t).
+Hypothesis Hup : forall t, rk t < rk n -> Rd t -> up_step (xl (rk n)) (pt t) t.
 
 Lemma xl_mono a b c : a <= b -> xl a c -> xl b c.
 Proof. intros H [A B]. split; [lia|done]. Qed.
@@ -1392,7 +1505,7 @@ Lemma tot_clean X (u : node -> node) :
   totu (- Z.of_nat (wt n)) X (fun s => pt n s /\ dirty_at s) (fun _ => modify_node n u).
 Proof.
   intros H1 H2 H4 H3. apply tot_const. intros s G _ [_ (d&Hd&Hy)]. unfold modify_node. rewrite Hd.
-  exists (set_node n (u d) s), tt. split_and!; [done|exact (gd_set s n d (u d) G Hd (H1 d) (H2 d) (H4 d))|split; try done].
+  exists (set_node n (u d) s), tt. split_and!; [done|exact (gd_set s n d (u d) G Hd (H1 d) (H2 d) (H4 d) (fun _ => or_intror (H3 d)))|split; try done].
   destruct (gd_node s n _ G Hsn) as (d0&Hd0&Hs0). rewrite Hd in Hd0. injection Hd0 as <-. unfold shape_of in Hs0. injection Hs0 as Hk _ _ _.
   assert (Hs : sum_up (stale_w (set_node n (u d) s)) lim + wt n <= sum_up (stale_w s) lim).
   { apply (sum_drop _ _ n _ n_lim).
@@ -1445,15 +1558,15 @@ Lemma recompute_tot : totu (Z.of_nat (cost n) - Z.of_nat (wt n)) (xl (S (rk n)))
 Proof.
   apply tot_S. cbn [recompute]. intros s G C HP. destruct (gd_node s n _ G Hsn) as (d&Hd&Hsd).
   pose proof Hsd as Y. unfold shape_of in Y. injection Y as Hk _ _ _.
-  pose proof (gd_scope _ G n d Hd ltac:(congruence)) as Hsc.
+  pose proof (proj1 (gd_scope _ G n d Hd) ltac:(congruence)) as Hsc.
   destruct (run_memo_tot s G C HP) as (s'&a&[N Ev]&G'&K). exists s', a. split_and!; [|done|done].
   exists N. intros f Hf. unfold m_bind, get_node. rewrite Hd, Hsc. exact (Ev f Hf).
 Qed.
 
-(** A memo left stale by its refresh has run, so the measure has room for a mark of its reader.
+(** A memo left stale by its refresh has run, so the measure has room for a mark of its reader; and refreshing a stale memo strictly lowers [mu].
     - [s:] the state before the refresh.
     - [s':] the state after the refresh. *)
-Definition rpost (s s' : state) : Prop := 0 < stale_w s' n -> mu s' + cost n <= mu s.
+Definition rpost (s s' : state) : Prop := (0 < stale_w s' n -> mu s' + cost n <= mu s) /\ (0 < stale_w s n -> mu s' < mu s).
 
 Lemma cost_wt : wt n = 2 * cost n + 1.
 Proof. unfold wt, cost. lia. Qed.
@@ -1475,15 +1588,17 @@ Proof.
     + exists N. intros f Hf. unfold m_bind, get_node. rewrite Hd, decide_True by done. exact (Ev f Hf).
     + done.
     + refine (kept_le _ _ _ _ _ _ K). rewrite cost_wt. lia.
-    + intros _. pose proof (kp_mu _ _ _ _ K) as Y. rewrite cost_wt in Y. lia.
+    + pose proof (kp_mu _ _ _ _ K) as Y. rewrite cost_wt in Y. split; intros _; lia.
   - exists s1, tt. split_and!.
     + exists 0. intros f _. unfold m_bind, get_node. rewrite Hd, decide_False by done. reflexivity.
     + done.
     + apply kept_refl.
-    + intros Hst. exfalso. unfold stale_w in Hst. rewrite Hd, Hk in Hst. destruct (n_freshness d) eqn:Ef; try lia; [exact (Hc d Hd Ef)|exact (Hy eq_refl)].
+    + assert (Hno : ~ 0 < stale_w s1 n).
+      { intros Hst. unfold stale_w in Hst. rewrite Hd, Hk in Hst. destruct (n_freshness d) eqn:Ef; try lia; [exact (Hc d Hd Ef)|exact (Hy eq_refl)]. }
+      split; intros Hst; exfalso; exact (Hno Hst).
 Qed.
 
-Lemma refresh_post (Hup' : forall t, rk t < rk n -> Rd t -> tot (xl (rk n)) (pt t) (fun f => update_if_necessary f t)) s :
+Lemma refresh_post (Hup' : forall t, rk t < rk n -> Rd t -> up_step (xl (rk n)) (pt t) t) s :
   gd s -> tk_ctx s -> pt n s ->
   exists s' a, ev_m (fun f => refresh f n) s (s', a) /\ gd s' /\ kept 0 (xl (S (rk n))) s s' /\ rpost s s'.
 Proof.
@@ -1499,14 +1614,13 @@ Proof.
       else m_return tt) (fun _ => let* d' := get_node n in if decide (n_freshness d' = Dirty) then recompute f n else m_return tt) s).
   { intros f. cbn [refresh]. unfold m_bind at 1, get_node at 1. by rewrite Hd. }
   destruct (decide (n_freshness d = Check)) as [Hch|Hch].
-  - assert (W : tot (xl (rk n)) (pt n) (fun f => resolve_walk f n 0)).
-    { intros s0 G0 C0 HP0. refine (walk_tot (xl (rk n)) (pt n) n _ _ _ _ _ (length (slot_view (g_edges s0) n).1) 0 s0 G0 C0 HP0 _).
+  - assert (W : exists s2 a2, ev_m (fun f => resolve_walk f n 0) s (s2, a2) /\ gd s2 /\ kept 0 (xl (rk n)) s s2 /\ (s2 = s \/ mu s2 < mu s)).
+    { refine (walk_tot (xl (rk n)) (pt n) n _ _ _ _ _ s G C Hp).
       - intros [A _]. lia.
       - exact Hsn.
       - intros s9 HH Hc. pose proof (HH n _ _ _ Hc Hsn). lia.
-      - intros src Hrs Hl. refine (tot_weaken _ _ _ _ _ _ _ (Hup' src (Hl _ _ _ Hsn) Hrs)); [done|]. intros s9 H c q1 e1 b1 Hc Hs. pose proof (H c q1 e1 b1 Hc Hs). pose proof (Hl _ _ _ Hsn). lia.
-      - lia. }
-    destruct (W s G C Hp) as (s2&a2&[N2 Ev2]&G2&K2).
+      - intros src Hrs Hl. refine (up_step_weaken _ _ _ _ _ _ _ (Hup' src (Hl _ _ _ Hsn) Hrs)); [done|]. intros s9 H c q1 e1 b1 Hc Hs. pose proof (H c q1 e1 b1 Hc Hs). pose proof (Hl _ _ _ Hsn). lia. }
+    destruct W as (s2&a2&[N2 Ev2]&G2&K2&Hm2).
     assert (K2' : kept 0 (xl (S (rk n))) s s2) by (destruct K2 as [A B D F H]; split; try done; intros c H1 H2; apply A; [intros K; apply H1; exact (xl_mono (rk n) (S (rk n)) c ltac:(lia) K)|done]).
     assert (C2 : tk_ctx s2) by (unfold tk_ctx in *; rewrite (kp_flu _ _ _ _ K2'), (kp_bat _ _ _ _ K2'); exact C).
     assert (P2 : pt n s2) by exact (ts _ _ _ _ G G2 K2' Hp).
@@ -1517,19 +1631,19 @@ Proof.
       destruct (ghost_resolved_fields n s2) as (F1&F2&_).
       assert (Hd2' : g_nodes (ghost_resolved n s2) !! n = Some d2) by (by rewrite F2).
       assert (G3 : gd s3).
-      { apply (gd_set (ghost_resolved n s2) n d2); [|done|reflexivity|reflexivity|reflexivity]. destruct G2; split; done. }
-      assert (M3 : (Z.of_nat (mu s3) <= Z.of_nat (mu s2))%Z).
-      { assert (Hm : sum_up (stale_w s3) lim <= sum_up (stale_w s2) lim).
-        { apply sum_mono. intros m. destruct (decide (m = n)) as [->|Hne].
-          - unfold stale_w. change (g_nodes s3) with (<[n := u d2]> (g_nodes (ghost_resolved n s2))). rewrite lookup_insert_eq, Hd2. simpl. destruct (n_kind d2), (n_freshness d2); lia.
-          - unfold s3. rewrite stale_set_other by done. unfold stale_w. by rewrite F2. }
+      { apply (gd_set (ghost_resolved n s2) n d2); [|done|reflexivity|reflexivity|reflexivity|intros _; by right]. destruct G2; split; done. }
+      assert (M3 : mu s3 + wt n <= mu s2).
+      { assert (Hm : sum_up (stale_w s3) lim + wt n <= sum_up (stale_w s2) lim).
+        { apply (sum_drop _ _ n _ n_lim).
+          - intros m Hne. unfold s3. rewrite stale_set_other by done. unfold stale_w. by rewrite F2.
+          - unfold stale_w. change (g_nodes s3) with (<[n := u d2]> (g_nodes (ghost_resolved n s2))). rewrite lookup_insert_eq, Hd2. simpl. rewrite Hk2, Hc2. lia. }
         assert (Hql : qlen s3 = qlen s2) by reflexivity. unfold mu. lia. }
       assert (K3 : kept 0 (xl (S (rk n))) s2 s3).
       { split; try done.
         - lia. }
       assert (C3 : tk_ctx s3) by exact C2.
       assert (P3 : pt n s3) by exact P2.
-      destruct (refresh_tail s3 G3 C3 P3) as (s'&a&[N Ev]&G'&K'&Rp).
+      destruct (refresh_tail s3 G3 C3 P3) as (s'&a&[N Ev]&G'&K'&[Rp1 Rp2]).
       { intros e He. change (<[n := u d2]> (g_nodes (ghost_resolved n s2)) !! n = Some e) in He. rewrite lookup_insert_eq in He. injection He as <-. simpl. done. }
       exists s', a. split_and!.
       * exists (S (S (N2 `max` N))). intros f Hf. destruct f as [|f]; [lia|]. rewrite Hr. cbv iota.
@@ -1537,16 +1651,18 @@ Proof.
         rewrite bind_m_modify. unfold modify_node at 1. rewrite Hd2'. apply Ev. lia.
       * done.
       * exact (kept_trans _ _ _ _ _ _ K2' (kept_trans _ _ _ _ _ _ K3 K')).
-      * intros Hst. pose proof (Rp Hst). pose proof (kp_mu _ _ _ _ K2'). lia.
-    + destruct (refresh_tail s2 G2 C2 P2) as (s'&a&[N Ev]&G'&K'&Rp).
+      * pose proof (kp_mu _ _ _ _ K2'). pose proof (kp_mu _ _ _ _ K'). rewrite cost_wt in M3. split; intros _; lia.
+    + destruct (refresh_tail s2 G2 C2 P2) as (s'&a&[N Ev]&G'&K'&[Rp1 Rp2]).
       { intros e He. rewrite Hd2 in He. injection He as <-. done. }
+      assert (Hlt2 : mu s2 < mu s).
+      { destruct Hm2 as [->|Hlt]; [|exact Hlt]. rewrite Hd in Hd2. injection Hd2 as <-. contradiction. }
       exists s', a. split_and!.
       * exists (S (S (N2 `max` N))). intros f Hf. destruct f as [|f]; [lia|]. rewrite Hr. cbv iota.
         unfold m_bind at 1. simpl. unfold m_bind at 1. rewrite (Ev2 f) by lia. unfold m_bind at 1, get_node at 1. rewrite Hd2, decide_False by done.
         apply Ev. lia.
       * done.
       * exact (kept_trans _ _ _ _ _ _ K2' K').
-      * intros Hst. pose proof (Rp Hst). pose proof (kp_mu _ _ _ _ K2'). lia.
+      * pose proof (kp_mu _ _ _ _ K'). split; [intros Hst; pose proof (Rp1 Hst); lia|intros _; lia].
   - destruct (refresh_tail s G C Hp) as (s'&a&[N Ev]&G'&K'&Rp).
     { intros e He. rewrite Hd in He. injection He as <-. done. }
     exists s', a. split_and!; [|done|done|done].
@@ -1559,7 +1675,7 @@ Proof. intros H Hc. pose proof (H n _ _ _ Hc Hsn). lia. Qed.
 Lemma pt_below t s : rk t < rk n -> pt n s -> pt t s.
 Proof. intros Ht H c q e b Hc Hs. pose proof (H c q e b Hc Hs). lia. Qed.
 
-Lemma rop_post (Hup' : forall t, rk t < rk n -> Rd t -> tot (xl (rk n)) (pt t) (fun f => update_if_necessary f t)) s :
+Lemma rop_post (Hup' : forall t, rk t < rk n -> Rd t -> up_step (xl (rk n)) (pt t) t) s :
   gd s -> tk_ctx s -> pt n s ->
   exists s' a, ev_m (fun f => refresh_or_pull f n) s (s', a) /\ gd s' /\ kept 0 (xl (S (rk n))) s s' /\ rpost s s'.
 Proof.
@@ -1573,12 +1689,13 @@ Proof.
     assert (G1 : gd s1) by (destruct G; split; done).
     assert (C1 : tk_ctx s1) by exact C.
     assert (P1 : pt n s1) by exact Hp.
-    destruct (refresh_post Hup' s1 G1 C1 P1) as (s2&a2&[N Ev]&G2&K&Rp).
+    destruct (refresh_post Hup' s1 G1 C1 P1) as (s2&a2&[N Ev]&G2&K&[Rp1 Rp2]).
     destruct (gd_node s2 n _ G2 Hsn) as (d2&Hd2&_).
     set (s3 := with_pull_depth (pred (g_pull_depth s2)) s2).
     assert (G3 : gd s3) by (destruct G2; split; done).
     assert (Hm1 : mu s1 = mu s) by exact (mu_eq _ _ eq_refl eq_refl eq_refl).
     assert (Hm3 : mu s3 = mu s2) by exact (mu_eq _ _ eq_refl eq_refl eq_refl).
+    assert (Hst1 : stale_w s1 n = stale_w s n) by reflexivity.
     assert (Hst3 : stale_w s3 n = stale_w s2 n) by reflexivity.
     pose proof K as [A B D F E].
     assert (C3 : tk_ctx s3).
@@ -1591,7 +1708,7 @@ Proof.
       destruct (_ && _); [unfold m_bind at 1; rewrite (E3 f) by lia; reflexivity|reflexivity].
     + done.
     + split; try done.
-    + intros Hst. rewrite Hst3 in Hst. pose proof (Rp Hst). lia.
+    + split; intros Hst; [rewrite Hst3 in Hst; pose proof (Rp1 Hst); lia|rewrite <- Hst1 in Hst; pose proof (Rp2 Hst); lia].
 Qed.
 
 End Memo.
@@ -1599,24 +1716,30 @@ End Memo.
 (** Reads and refreshes of every node of rank below [k] end, and they raise no [mu]. *)
 Definition below (k : nat) : Prop :=
   forall t, rk t < k -> Rd t ->
-    tot (xl k) (pt t) (fun f => read_node f t) /\ tot (xl k) (pt t) (fun f => update_if_necessary f t).
+    tot (xl k) (pt t) (fun f => read_node f t) /\ up_step (xl k) (pt t) t.
 
 Lemma below_step k : below k -> below (S k).
 Proof.
   intros IH t Ht Hr.
   assert (Hsub : forall (P : state -> Prop) {A} (F : nat -> M A), tot (xl k) P F -> tot (xl (S k)) P F).
   { intros P A F H. refine (tot_weaken _ _ _ _ _ _ _ H); [|done]. intros c. apply xl_mono. lia. }
+  assert (Hsub_up : forall (P : state -> Prop) src, up_step (xl k) P src -> up_step (xl (S k)) P src).
+  { intros P src H. refine (up_step_weaken _ _ _ _ _ _ _ H); [|done]. intros c. apply xl_mono. lia. }
   destruct (decide (rk t < k)) as [Hl|Hl].
-  { destruct (IH t Hl Hr) as [A B]. split; apply Hsub; done. }
+  { destruct (IH t Hl Hr) as [A B]. split; [apply Hsub; done|apply Hsub_up; done]. }
   assert (Ht0 : k = rk t) by lia. subst k. rename t into k. clear Hl Ht.
   pose proof (Hrdr k Hr) as Hr0. unfold readable in Hr0. destruct (Sh !! k) as [[[[kd c] e] b]|] eqn:Hs; [|done].
   assert (Hbl : forall t, rk t < rk k -> Rd t -> tot (xl (rk k)) (pt t) (fun f => read_node f t)) by (intros u A B; exact (proj1 (IH u A B))).
-  assert (Hbu : forall t, rk t < rk k -> Rd t -> tot (xl (rk k)) (pt t) (fun f => update_if_necessary f t)) by (intros u A B; exact (proj2 (IH u A B))).
+  assert (Hbu : forall t, rk t < rk k -> Rd t -> up_step (xl (rk k)) (pt t) t) by (intros u A B; exact (proj2 (IH u A B))).
   destruct kd; try done.
   - split.
     + apply tot_S. cbn [read_node]. apply (tot_node_at _ _ _ _ _ Hs). intros d Hd. unfold shape_of in Hd. injection Hd as -> _ _ _.
       apply tot_bind; [apply _|apply tot_track; exact Hr|intros _]. apply tot_ret.
-    + apply tot_S. cbn [update_if_necessary]. apply (tot_node_at _ _ _ _ _ Hs). intros d Hd. unfold shape_of in Hd. injection Hd as -> _ _ _. apply tot_ret.
+    + intros s G C Hp. destruct (gd_node s k _ G Hs) as (d&Hd&Hsd). unfold shape_of in Hsd. injection Hsd as Hk _ _ _.
+      exists d. split; [exact Hd|].
+      assert (Est : stale_live d = false).
+      { unfold stale_live, stale. rewrite (proj2 (gd_scope _ G k d Hd) Hk). reflexivity. }
+      rewrite Est. intros f. cbn [update_if_necessary]. unfold m_bind, get_node. rewrite Hd, Hk. reflexivity.
   - assert (Hrp : forall s, gd s -> tk_ctx s -> pt k s ->
        exists s' a, ev_m (fun f => refresh_or_pull f k) s (s', a) /\ gd s' /\ kept 0 (xl (S (rk k))) s s' /\ rpost k s s').
     { exact (rop_post k _ _ _ Hs Hr Hbl Hbu). }
@@ -1624,7 +1747,7 @@ Proof.
     + apply tot_S. cbn [read_node]. apply (tot_node_at _ _ _ _ _ Hs). intros d Hd. unfold shape_of in Hd. injection Hd as -> _ _ _.
       apply tot_bind; [apply _| |intros d'].
       * destruct (stale_live d) eqn:Esl.
-        -- intros s G C Hp. destruct (Hrp s G C Hp) as (s1&a1&Ev1&G1&K1&Rp).
+        -- intros s G C Hp. destruct (Hrp s G C Hp) as (s1&a1&Ev1&G1&K1&[Rp1 _]).
            assert (C1 : tk_ctx s1) by (unfold tk_ctx in *; rewrite (kp_flu _ _ _ _ K1), (kp_bat _ _ _ _ K1); exact C).
            assert (P1 : pt k s1) by exact (ts _ _ _ _ G G1 K1 Hp).
            assert (Hrk : Rd k) by exact Hr.
@@ -1644,7 +1767,7 @@ Proof.
                  assert (Hst : 0 < stale_w s1 k).
                  { unfold stale_w. rewrite <- Nn, Hd2, Hk2. unfold stale_live, stale in Es2. unfold wt.
                    destruct (n_freshness d2); simpl in Es2; try done; lia. }
-                 pose proof (Rp Hst). pose proof (kp_mu _ _ _ _ K1). pose proof (kp_mu _ _ _ _ K2).
+                 pose proof (Rp1 Hst). pose proof (kp_mu _ _ _ _ K1). pose proof (kp_mu _ _ _ _ K2).
                  destruct K1 as [A1 B1 D1 F1 _]. destruct K2 as [A2 B2 D2 F2 _]. destruct K3 as [A3 B3 D3 F3 _].
                  split; try congruence; [|lia].
                  intros c0 Hx Hcr. rewrite A3, A2, A1; [done|done|done|done|congruence|intros []|congruence].
@@ -1655,10 +1778,18 @@ Proof.
         -- apply tot_bind; [apply _|apply tot_track; exact Hr|intros _].
            apply tot_const. intros s0 G0 _ _. destruct (gd_node s0 k _ G0 Hs) as (d0&Hd0&_). unfold get_node. rewrite Hd0. exists s0, d0. split_and!; [done|done|apply kept_refl].
       * destruct (n_status d'); apply tot_ret.
-    + apply tot_S. cbn [update_if_necessary]. apply (tot_node_at _ _ _ _ _ Hs). intros d Hd. unfold shape_of in Hd. injection Hd as -> _ _ _.
-      destruct (stale_live d); [|apply tot_ret].
-      apply tot_bind; [apply _| |intros _]; [|apply tot_ret].
-      intros s G C Hp. destruct (Hrp s G C Hp) as (s1&a1&Ev1&G1&K1&_). exists s1, a1. done.
+    + intros s G C Hp. destruct (gd_node s k _ G Hs) as (d&Hd&Hsd). unfold shape_of in Hsd. injection Hsd as Hk _ _ _.
+      exists d. split; [exact Hd|]. destruct (stale_live d) eqn:Est.
+      * destruct (Hrp s G C Hp) as (s1&a1&[N1 Ev1]&G1&[A1 B1 D1 F1 _]&[_ Rp2]).
+        assert (Hst : 0 < stale_w s k).
+        { unfold stale_w. rewrite Hd, Hk. unfold stale_live, stale in Est. unfold wt.
+          destruct (n_freshness d); simpl in Est; try done; lia. }
+        pose proof (Rp2 Hst).
+        exists s1, tt. split_and!; [|exact G1|split; try done; lia].
+        exists (S N1). intros f Hf. destruct f as [|f]; [lia|]. cbn [update_if_necessary].
+        unfold m_bind at 1, get_node at 1. rewrite Hd, Hk, Est.
+        unfold m_bind. rewrite (Ev1 f) by lia. reflexivity.
+      * intros f. cbn [update_if_necessary]. unfold m_bind, get_node. rewrite Hd, Hk, Est. reflexivity.
 Qed.
 
 (**md
@@ -1694,7 +1825,7 @@ Variable n : node_id.
 Variables (q0 : comparer) (e0 : env) (b0 : cmd).
 Hypothesis Hsn : Sh !! n = Some (KEffect, q0, e0, b0).
 
-Lemma reads_at t : Rd t -> tot (xl rtop) (pt t) (fun f => read_node f t) /\ tot (xl rtop) (pt t) (fun f => update_if_necessary f t).
+Lemma reads_at t : Rd t -> tot (xl rtop) (pt t) (fun f => read_node f t) /\ up_step (xl rtop) (pt t) t.
 Proof.
   intros Hr. assert (Hl : rk t < rtop).
   { pose proof (Hrdr t Hr) as H0. unfold readable in H0. destruct (Sh !! t) as [x|] eqn:E; [exact (rtop_gt t (Hlim _ _ E))|done]. }
@@ -1735,7 +1866,7 @@ Proof.
   apply tot_node.
   { intros s G _. destruct (gd_node s n _ G Hsn) as (x&Hx&_). by eexists. }
   intros d (s&G&_&Hd). pose proof (gd_shape s n d G Hd) as Y. rewrite Hsn in Y. injection Y as Hk _ _ _.
-  rewrite (gd_scope _ G n d Hd ltac:(congruence)).
+  rewrite (proj1 (gd_scope _ G n d Hd) ltac:(congruence)).
   apply tot_bind; [apply _|apply tot_ret|intros _].
   apply (tot_node_at _ _ _ _ _ Hsn). intros d' _.
   apply tot_bind; [apply _| |intros _].
@@ -1752,10 +1883,8 @@ Proof.
   apply tot_bind; [apply _| |intros _].
   - destruct (decide _); [|apply tot_ret]. apply tot_bind; [apply _| |intros _].
     + assert (W : tot (xl rtop) (fun s => g_current s = None) (fun f => resolve_walk f n 0)).
-      { intros s G C HP. refine (walk_tot (xl rtop) (fun s => g_current s = None) n _ effect_not_xl Hsn _ _ (length (slot_view (g_edges s) n).1) 0 s G C HP _).
-        - intros s0 HH Hc. congruence.
-        - intros src Hr _. refine (tot_weaken _ _ _ _ _ _ _ (proj2 (reads_at src Hr))); [done|]. intros s0 H0. exact (pt_none _ _ H0).
-        - lia. }
+      { intros s G C HP. destruct (walk_tot (xl rtop) (fun s => g_current s = None) n _ effect_not_xl Hsn (fun s0 HH Hc => ltac:(congruence)) (fun src Hr _ => up_step_weaken _ _ _ _ _ (fun _ H => H) (fun s0 H0 => pt_none _ _ H0) (proj2 (reads_at src Hr))) s G C HP) as (s'&a&Ev&G'&K&_).
+        exists s', a. done. }
       refine (tot_weaken _ _ _ _ _ xl_xe _ W). done.
     + apply (tot_node_at _ _ _ _ _ Hsn). intros d' _. destruct (decide _); [|apply tot_ret].
       apply tot_bind; [apply _|apply tot_modify; intros s9; split_and!; reflexivity|intros _]. apply Hmod; intros ?; try reflexivity. by right.
@@ -4398,7 +4527,7 @@ Proof.
   - exists s. split_and!; [|done|done|done]. exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [write_signal]. rewrite (bind_get_node _ _ _ _ Hd), Hk, decide_True by done. reflexivity.
   - set (s1 := ghost_publish t (set_node t (node_with_value z d) s)).
     assert (G1 : Gd s1).
-    { assert (G0 : Gd (set_node t (node_with_value z d) s)) by (apply (gd_set Sh (Rdp p) s t d); try done).
+    { assert (G0 : Gd (set_node t (node_with_value z d) s)) by (apply (gd_set Sh (Rdp p) s t d); try done; intros _; by left).
       unfold s1, ghost_publish. rewrite set_eq. destruct G0; split; done. }
     destruct (notify_terminates (S (mark_measure s1)) t None s1 ltac:(lia)) as (_&[s2 Hm]&_).
     assert (Hrt : rtc mark_prim s1 s2) by (refine (any_mark_rtc _ t None _ _ _); right; right; right; left; exact Hm).
@@ -4448,12 +4577,12 @@ Proof.
     { unfold edges_opt. rewrite E2. change (g_edges s1) with (g_edges s). rewrite Ec. reflexivity. }
     exists 1. intros f Hf. destruct f as [|f]; [lia|]. cbn [dispose_node]. rewrite (bind_get_node _ _ _ _ Hd), Edi, (bind_modify_node _ _ _ _ _ Hd).
     change (set_node t (node_with_link None (node_with_disposed true d)) s) with s1.
-    rewrite (bind_some _ _ _ _ _ Eu), (bind_some _ _ _ _ _ Eo), (gd_scope Sh (Rdp p) _ G t d Hd ltac:(congruence)). reflexivity.
+    rewrite (bind_some _ _ _ _ _ Eu), (bind_some _ _ _ _ _ Eo), (proj1 (gd_scope Sh (Rdp p) _ G t d Hd) ltac:(congruence)). reflexivity.
   - split.
     + exact Hs2.
-    + intros m x Hx Hkx. change (g_nodes s2 !! m = Some x) in Hx. rewrite N2 in Hx. change (<[t := u d]> (g_nodes s) !! m = Some x) in Hx. destruct (decide (m = t)) as [->|Hne].
-      * rewrite lookup_insert_eq in Hx. injection Hx as <-. exact (gd_scope Sh (Rdp p) _ G t d Hd ltac:(congruence)).
-      * rewrite lookup_insert_ne in Hx by done. exact (gd_scope Sh (Rdp p) _ G m x Hx Hkx).
+    + intros m x Hx. change (g_nodes s2 !! m = Some x) in Hx. rewrite N2 in Hx. change (<[t := u d]> (g_nodes s) !! m = Some x) in Hx. destruct (decide (m = t)) as [->|Hne].
+      * rewrite lookup_insert_eq in Hx. injection Hx as <-. exact (gd_scope Sh (Rdp p) _ G t d Hd).
+      * rewrite lookup_insert_ne in Hx by done. exact (gd_scope Sh (Rdp p) _ G m x Hx).
     + change (forall y, y ∈ g_queue s2 -> exists q e b, Sh !! y = Some (KEffect, q, e, b)). rewrite Q2. exact (gd_queue Sh (Rdp p) _ G).
     + exact (reachable_clear _ _ _ Hre Ec).
     + intros c. change ((slot_view w c).2 <= length (slot_view w c).1). rewrite (slot_view_clear _ _ _ _ Ec). destruct (decide _); [simpl; lia|exact (gd_cursor Sh (Rdp p) _ G c)].
@@ -4584,9 +4713,11 @@ Proof.
   assert (G3 : gd Sh (Rdp p) s3).
   { split.
     - reflexivity.
-    - intros m d Hd Hk. destruct (n_kind d) eqn:Ek; try done.
-      + exact (proj1 (tk_inv_of s3 (proj1 Hw) (proj1 Hg) m d Hd Ek)).
-      + exact (proj1 (w_effect _ (proj1 Hw) m d Hd (proj2 Hg m d Hd Ek))).
+    - intros m d Hd. split.
+      + intros Hk. destruct (n_kind d) eqn:Ek; try done.
+        * exact (proj1 (tk_inv_of s3 (proj1 Hw) (proj1 Hg) m d Hd Ek)).
+        * exact (proj1 (w_effect _ (proj1 Hw) m d Hd (proj2 Hg m d Hd Ek))).
+      + intros Hk. destruct (b_window _ (proj1 (proj2 (ho_core _ _ _ _ Ho)))) as (_&_&Wsig&_). exact (Wsig m d Hd Hk).
     - intros y Hy. destruct (ci_queue _ _ _ (proj1 (ho_core _ _ _ _ Ho)) y Hy) as (d&Hd&Hk). exists (n_comparer d), (n_env d), (n_body d). unfold Sh. rewrite (shapes_lookup _ _ _ Hd). unfold shape_of. by rewrite Hk.
     - change (world_reachable (g_edges s1)). rewrite Ed. constructor.
     - intros c. change ((slot_view (g_edges s1) c).2 <= length (slot_view (g_edges s1) c).1). rewrite Ed, slot_view_empty. simpl. lia.
