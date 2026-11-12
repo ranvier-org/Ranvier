@@ -161,6 +161,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 83,822 | 128,260 | 1,775,228 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 83,827 | 128,292 | 1,768,972 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 83,828 | 128,243 | 1,769,023 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 83,724 | 128,270 | 1,768,991 |
 
 ## app-table
 
@@ -323,6 +324,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 3,705,439 | 8,850,997 | 99,484,942 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 3,701,624 | 8,678,463 | 99,713,596 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 3,701,631 | 8,791,828 | 99,681,189 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 3,701,348 | 8,689,446 | 99,685,144 |
 
 ## async-recover
 
@@ -485,6 +487,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 139,433 | 39,906 | 443,804 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 139,541 | 39,903 | 443,790 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 139,541 | 39,906 | 443,789 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 139,493 | 39,907 | 443,796 |
 
 ## async-resolve
 
@@ -647,6 +650,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,799,965 | 1,089,578 | 12,254,555 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,803,565 | 1,089,885 | 12,251,351 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,803,574 | 1,090,325 | 12,250,848 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,801,966 | 1,089,553 | 12,250,896 |
 
 ## chain
 
@@ -809,6 +813,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 13,099 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 
 ## chain-affinity
 
@@ -971,6 +976,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,653 | 3,176 | 2,604 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,653 | 3,176 | 2,604 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,653 | 3,176 | 2,604 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1133,6 +1139,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 74,709 | 827,057 | 2,588,482 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 74,709 | 832,075 | 2,586,310 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 74,709 | 827,928 | 2,582,730 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 74,709 | 827,832 | 2,582,903 |
 
 ## create
 
@@ -1295,6 +1302,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 13,483,522 | 2,866,678 | 2,575,376 | 2,127,869 | 4,054,593 | 33,921,649 | 50,447,540 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 13,451,431 | 2,866,742 | 2,575,393 | 2,127,941 | 4,053,526 | 33,849,537 | 50,440,840 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 13,499,388 | 2,898,678 | 2,575,408 | 2,127,786 | 4,056,408 | 33,819,810 | 50,488,688 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,702,454 | 2,882,680 | 2,575,393 | 2,128,055 | 4,055,425 | 33,824,952 | 50,452,535 |
 
 ## create-on
 
@@ -1457,6 +1465,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,984,488 | 4,234,920 | 55,454,692 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,968,600 | 4,234,516 | 55,454,663 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,968,520 | 4,234,860 | 55,454,476 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,968,520 | 4,234,718 | 55,455,030 |
 
 ## cutoff
 
@@ -1619,6 +1628,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1781,6 +1791,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 787 | 758 | 16,684 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 787 | 758 | 16,684 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 787 | 758 | 16,684 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1943,6 +1954,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 789 | 759 | 16,707 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 773 | 759 | 16,707 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 757 | 759 | 16,707 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 757 | 759 | 16,707 |
 
 ## dispose
 
@@ -2105,6 +2117,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,707,644 | 806,288 | 367,497 | 476,054 | 495,330 | 13,207,022 | 9,106,089 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,707,645 | 806,288 | 367,497 | 475,544 | 495,140 | 13,205,026 | 9,106,436 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,706,252 | 806,288 | 367,497 | 476,007 | 495,222 | 13,205,968 | 9,106,656 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,706,247 | 806,288 | 367,497 | 475,965 | 495,136 | 13,206,084 | 9,105,903 |
 
 ## dispose-on
 
@@ -2267,6 +2280,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 346,497 | 487,922 | 8,902,619 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 346,497 | 487,722 | 8,903,405 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 346,497 | 487,712 | 8,902,890 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 346,497 | 487,654 | 8,902,682 |
 
 ## editable-edit
 
@@ -2429,6 +2443,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 183,506 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 183,506 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 183,506 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 183,506 |
 
 ## editable-upstream
 
@@ -2591,6 +2606,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 239,255 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 239,256 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 239,256 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 239,256 |
 
 ## fail-recompute
 
@@ -2753,6 +2769,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 65,032 | 1,420 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 65,072 | 1,420 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 65,072 | 1,420 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 65,072 | 1,420 |
 
 ## flight
 
@@ -2915,6 +2932,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 11,000 | 6,244 | 6,245 | 11,343 | 10,767 | 22,410 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 10,998 | 6,245 | 6,246 | 11,345 | 10,770 | 22,412 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 10,998 | 6,245 | 6,246 | 11,345 | 10,770 | 22,412 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 
 ## keyed-insert
 
@@ -3077,6 +3095,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,900,897 | 53,946 | 55,028 | 3,328,943 | 240,072 | 179,279 | 46,484,350 | 2,635,460 | 2,656,294 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,901,012 | 53,955 | 55,124 | 3,328,886 | 240,381 | 179,431 | 46,491,908 | 2,635,980 | 2,656,888 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,901,323 | 53,963 | 55,317 | 3,328,848 | 240,481 | 179,405 | 46,499,225 | 2,635,887 | 2,656,819 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,901,107 | 53,963 | 55,042 | 3,328,956 | 240,421 | 179,364 | 46,490,594 | 2,635,515 | 2,656,814 |
 
 ## keyed-remove
 
@@ -3239,6 +3258,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,899,909 | 43,646 | 45,357 | 3,332,879 | 592,654 | 148,393 | 46,460,273 | 1,925,392 | 1,961,076 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,900,014 | 43,654 | 45,454 | 3,332,893 | 593,202 | 148,831 | 46,453,955 | 1,925,765 | 1,961,531 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,900,236 | 43,662 | 45,623 | 3,332,862 | 592,994 | 148,536 | 46,460,763 | 1,925,546 | 1,961,497 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,900,109 | 43,662 | 45,382 | 3,332,809 | 593,071 | 148,526 | 46,453,669 | 1,925,519 | 1,961,519 |
 
 ## keyed-swap
 
@@ -3401,6 +3421,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,895,496 | 46,232 | 46,977 | 3,273,499 | 502,362 | 508,442 | 47,153,871 | 916,057 | 934,302 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,895,578 | 46,231 | 47,058 | 3,238,552 | 502,386 | 508,488 | 47,156,886 | 915,932 | 934,302 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,895,913 | 46,231 | 47,234 | 3,222,079 | 502,358 | 508,543 | 47,149,666 | 915,864 | 934,117 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,895,689 | 46,231 | 46,978 | 3,262,838 | 502,389 | 508,608 | 47,150,733 | 915,945 | 934,278 |
 
 ## mvu-dispatch
 
@@ -3563,6 +3584,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 60,281 | 794 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 60,281 | 794 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 60,281 | 794 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3725,6 +3747,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | — | — |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — |
 
 ## project-chain
 
@@ -3887,6 +3910,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 913,395 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 913,205 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 913,213 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 912,752 |
 
 ## project-churn
 
@@ -4049,6 +4073,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 36,490 | 34,262 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 36,546 | 34,280 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 36,546 | 34,280 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 36,554 | 34,280 |
 
 ## project-edit
 
@@ -4211,6 +4236,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 50,550 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 50,599 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 50,583 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 50,519 |
 
 ## project-reorder
 
@@ -4373,6 +4399,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 664,211 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 664,260 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 664,243 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 664,180 |
 
 ## server-render
 
@@ -4535,6 +4562,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | — | — | — |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — | — |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — | — |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — | — |
 
 ## shape-diamond
 
@@ -4697,6 +4725,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 62,348 | 86,309 | 1,879,598 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 62,348 | 86,309 | 1,879,598 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 62,348 | 86,309 | 1,879,598 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4859,6 +4888,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 85,079 | 109,897 | 2,055,681 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 85,079 | 109,894 | 2,055,682 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 85,079 | 109,897 | 2,055,681 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 85,079 | 109,899 | 2,055,682 |
 
 ## stream-burst-1
 
@@ -5021,6 +5051,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,919 | 49,164 | 47,367 | 57,342 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,341 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,342 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,916 | 49,162 | 47,367 | 57,344 |
 
 ## stream-burst-16
 
@@ -5183,6 +5214,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 5,085 | 25,099 | 5,765 | 10,528 | 48,309 | 16,570 | 126,487 | 745,454 | 115,693 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 5,085 | 25,099 | 5,765 | 10,540 | 48,309 | 16,568 | 126,476 | 745,455 | 115,694 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 5,085 | 25,099 | 5,765 | 10,537 | 48,308 | 16,568 | 126,481 | 745,454 | 115,688 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 5,085 | 25,099 | 5,765 | 10,539 | 48,307 | 16,570 | 126,478 | 745,454 | 115,689 |
 
 ## stream-burst-256
 
@@ -5345,6 +5377,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 54,705 | 401,383 | 57,104 | 134,343 | 816,691 | 46,264 | 1,363,844 | 11,913,637 | 1,048,710 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 54,705 | 401,383 | 57,104 | 134,287 | 816,638 | 46,288 | 1,363,844 | 11,913,577 | 1,048,727 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 54,705 | 401,383 | 57,104 | 134,270 | 816,688 | 46,267 | 1,363,883 | 11,913,725 | 1,048,715 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 54,705 | 401,383 | 57,104 | 134,387 | 816,592 | 46,288 | 1,363,917 | 11,913,638 | 1,048,714 |
 
 ## stream-restart
 
@@ -5507,6 +5540,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 4,240 | 5,072 | 5,912 | 5,407 | 44,161 | 73,511 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 4,239 | 5,070 | 5,911 | 5,409 | 44,159 | 73,500 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 4,239 | 5,070 | 5,912 | 5,406 | 44,162 | 73,508 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 4,240 | 5,071 | 5,912 | 5,411 | 44,163 | 73,512 |
 
 ## timed-admit-both
 
@@ -5669,6 +5703,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 118,607 | 130,105 | 2,697,227 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 118,607 | 130,105 | 2,697,189 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 118,607 | 130,078 | 2,697,193 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 118,607 | 130,102 | 2,697,186 |
 
 ## timed-admit-debounce
 
@@ -5831,6 +5866,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 117,512 | 128,686 | 2,657,671 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 117,512 | 128,684 | 2,657,659 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 117,512 | 128,672 | 2,657,627 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,512 | 128,683 | 2,657,618 |
 
 ## timed-admit-first
 
@@ -5993,6 +6029,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 70,263 | 79,569 | 1,617,623 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 70,263 | 79,569 | 1,617,623 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 70,263 | 79,568 | 1,617,623 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 70,263 | 79,566 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -6155,6 +6192,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 117,774 | 129,018 | 2,667,514 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 117,774 | 129,005 | 2,667,515 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 117,774 | 128,990 | 2,667,482 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,774 | 129,006 | 2,667,474 |
 
 ## timed-capture-both
 
@@ -6317,6 +6355,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 35,870 | 44,937 | 847,487 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,870 | 44,938 | 847,452 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,870 | 44,939 | 847,452 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,870 | 44,940 | 847,458 |
 
 ## timed-capture-debounce
 
@@ -6479,6 +6518,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 35,742 | 46,732 | 847,948 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,742 | 46,732 | 847,948 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,742 | 46,732 | 847,949 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,742 | 46,732 | 847,951 |
 
 ## timed-capture-first
 
@@ -6641,6 +6681,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 32,222 | 36,489 | 745,942 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 32,222 | 36,489 | 745,942 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 32,222 | 36,489 | 745,945 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 32,222 | 36,489 | 745,942 |
 
 ## timed-capture-last
 
@@ -6803,6 +6844,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 35,678 | 46,668 | 840,076 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,678 | 46,668 | 840,076 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,678 | 46,668 | 840,078 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,678 | 46,668 | 840,076 |
 
 ## update
 
@@ -6965,6 +7007,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,087,782 | 38,805 | 84,905 | 262,633 | 160,196 | 3,351,290 | 2,567,604 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,087,790 | 38,805 | 84,905 | 263,150 | 160,252 | 3,351,286 | 2,567,583 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,090,990 | 38,805 | 84,905 | 262,861 | 160,201 | 3,351,290 | 2,567,477 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,090,990 | 38,805 | 84,905 | 263,117 | 160,221 | 3,351,248 | 2,567,559 |
 
 ## update-on
 
@@ -7127,6 +7170,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 98,605 | 175,530 | 2,894,974 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 97,005 | 175,523 | 2,894,933 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 95,405 | 175,537 | 2,894,902 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 95,405 | 175,548 | 2,894,901 |
 
 ## work-form
 
@@ -7289,6 +7333,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 175,183 | 167,687 | 313,388 | 343,310 | 5,495,802 | 5,408,844 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 175,183 | 167,654 | 313,366 | 343,363 | 5,495,802 | 5,408,710 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 175,183 | 167,671 | 313,385 | 343,302 | 5,495,789 | 5,408,842 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 175,183 | 167,654 | 313,403 | 343,321 | 5,495,765 | 5,408,822 |
 
 ## work-status
 
@@ -7451,6 +7496,7 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 102,645 | 84,035 | 260,976 | 156,849 | 2,675,715 | 2,407,709 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 102,645 | 82,435 | 260,965 | 156,822 | 2,675,667 | 2,407,702 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 102,645 | 80,835 | 260,985 | 156,813 | 2,675,658 | 2,407,684 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 102,645 | 80,835 | 260,959 | 156,799 | 2,675,591 | 2,407,638 |
 
 ## work-value
 
@@ -7613,4 +7659,5 @@
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 109,769 | 124,869 | 261,221 | 284,094 | 2,660,357 | 2,984,873 |
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 109,769 | 123,269 | 261,212 | 284,194 | 2,660,358 | 2,984,862 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 109,769 | 121,671 | 261,188 | 284,340 | 2,660,305 | 2,984,783 |
+| `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 109,770 | 121,669 | 261,193 | 284,205 | 2,660,322 | 2,984,897 |
 
