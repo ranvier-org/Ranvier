@@ -19,7 +19,7 @@ Start with [Signals](signals.fsx) and [Memos](memos.md). For loading and errors,
 
 Use `createKeyedCollection keyOf` when updates arrive one item at a time. Its `Rows` property
 feeds the same views and aggregates as a projection over an immutable collection. Use
-`NewKeyReader()` for membership and order, or `NewValueReader()` for settled row changes too;
+`NewKeyReader()` for membership and order, or `NewValueReader()` for settled row changes too ([`key_changes_added_removed_cancels`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#key_changes_added_removed_cancels), [`key_changes_removed_added_replaces`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#key_changes_removed_added_replaces), [`projection_reader_cap_resets`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#projection_reader_cap_resets));
 see [Reading changes](projections.fsx#reading-changes).
 
 For renderers that create one view object per key, projections also offer create-first teardown
