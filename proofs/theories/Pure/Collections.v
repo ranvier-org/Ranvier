@@ -1152,3 +1152,64 @@ Proof.
         destruct (negb (bool_decide ([] = x :: xs))); simpl;
           (split; [reflexivity | split_and!; [reflexivity | reflexivity | reflexivity | discriminate]]).
 Qed.
+
+(** ** Pooled Lookup.Invalidate failed-and-affected union refinement *)
+
+Record lookup_pool_state (K : Type) `{Countable K} := mk_lookup_pool {
+  lps_busy : bool;
+  lps_union : gset K;
+  lps_keys : list K;
+}.
+Arguments mk_lookup_pool {K _ _} _ _ _.
+Arguments lps_busy {K _ _} _.
+Arguments lps_union {K _ _} _.
+Arguments lps_keys {K _ _} _.
+
+Definition lookup_pool_inv `{Countable K} (ps : lookup_pool_state K) : Prop :=
+  lps_busy ps = false -> lps_union ps = ∅ /\ lps_keys ps = [].
+
+Definition lookup_invalidate_step `{Countable K}
+    (ps : lookup_pool_state K) (failed : gset K) (affected : list K)
+    : lookup_pool_state K * list K :=
+  if decide (failed = ∅) then
+    (ps, affected)
+  else if lps_busy ps then
+    let u := failed ∪ list_to_set affected in
+    (ps, elements u)
+  else
+    let u := (lps_union ps ∪ failed) ∪ list_to_set affected in
+    let ks := lps_keys ps ++ elements u in
+    ({| lps_busy := false; lps_union := ∅; lps_keys := [] |}, ks).
+
+(**md
+**Pooling `unionBuf` and `revisitBuf` across `Lookup.Invalidate` error-recovery passes (with a fresh-buffer fallback on reentrant entry) revisits the exact duplicate-free union `failed ∪ affected` and restores the empty-buffer invariant.**
+
+Certifies the `Lookup.Invalidate` pooled buffer optimisation in `Projections.fs`:
+1. Whenever `failed ≠ ∅` and `lookup_pool_inv ps` holds, both the non-reentrant pooled branch (`lps_busy = false`)
+   and the reentrant fallback branch (`lps_busy = true`) produce a duplicate-free revisit list whose elements are
+   precisely `failed ∪ list_to_set affected` — identical to allocating a fresh `KeySet` and `ResizeArray` per call.
+2. Clearing `unionBuf`, `revisitBuf`, and `invalidating` in `finally` preserves `lookup_pool_inv` for subsequent transitions.
+
+- [ps:] the pool state upon entering `Lookup.Invalidate`.
+- [failed:] the non-empty set of currently failed or suspended lookup cells.
+- [affected:] the sequence of keys affected by the upstream transition.
+*)
+Theorem lookup_invalidate_pooled_refines_union `{Countable K}
+    (ps : lookup_pool_state K) (failed : gset K) (affected : list K) :
+  lookup_pool_inv ps ->
+  failed ≠ ∅ ->
+  let '(ps', revisited) := lookup_invalidate_step ps failed affected in
+  lookup_pool_inv ps' /\
+  NoDup revisited /\
+  (list_to_set revisited : gset K) = failed ∪ list_to_set affected.
+Proof.
+  intros Hinv Hne.
+  unfold lookup_invalidate_step.
+  rewrite decide_False by exact Hne.
+  destruct (lps_busy ps) eqn:Hbusy.
+  - cbv zeta. simpl.
+    split; [exact Hinv | split; [apply NoDup_elements | set_solver]].
+  - destruct (Hinv Hbusy) as [Hu Hk].
+    cbv zeta. simpl. rewrite Hu, Hk. simpl.
+    split; [unfold lookup_pool_inv; simpl; intro; split; reflexivity | split; [apply NoDup_elements | set_solver]].
+Qed.

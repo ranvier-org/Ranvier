@@ -3056,6 +3056,9 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// Keys whose cell has lost its last observer since the last eviction.
     /// </summary>
     let orphans = Platform.KeySet<'K>()
+    let mutable invalidating = false
+    let mutable unionBuf: Platform.KeySet<'K> = Unchecked.defaultof<_>
+    let mutable revisitBuf: ResizeArray<'K> = null
 
     let mutable disposed = false
     let mutable link: OwnerLink = null
@@ -3209,7 +3212,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             if failed.Count = 0 then
                 for key in affectedKeys do
                     this.Revisit key
-            else
+            elif invalidating then
                 let union = Platform.KeySet<'K>()
                 failed.Iterate (fun key -> union.Add key |> ignore)
 
@@ -3220,8 +3223,33 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                 let keys = ResizeArray<'K>(union.Count)
                 union.Iterate (fun key -> keys.Add key)
 
-                for key in keys do
-                    this.Revisit key
+                for i in 0 .. keys.Count - 1 do
+                    this.Revisit (Platform.entryAt i keys)
+            else
+                if Platform.isNull (box unionBuf) then
+                    unionBuf <- Platform.KeySet<'K>()
+                    revisitBuf <- ResizeArray<'K>()
+
+                let union = unionBuf
+                let keys = revisitBuf
+                invalidating <- true
+
+                try
+                    failed.Iterate (fun key -> union.Add key |> ignore)
+
+                    for key in affectedKeys do
+                        union.Add key |> ignore
+
+                    // Collected first: Fable miscompiles `Revisit` inlined into an `Iterate` callback.
+                    Platform.reserve keys union.Count
+                    union.Iterate (fun key -> keys.Add key)
+
+                    for i in 0 .. keys.Count - 1 do
+                        this.Revisit (Platform.entryAt i keys)
+                finally
+                    union.Clear ()
+                    keys.Clear ()
+                    invalidating <- false
 
     /// <summary>
     /// Recomputes the cell of <c>key</c>, or evicts it when unobserved.
@@ -3345,6 +3373,11 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             cells.Clear ()
             failed.Clear ()
             orphans.Clear ()
+
+            if not (Platform.isNull (box unionBuf)) then
+                unionBuf.Clear ()
+                revisitBuf.Clear ()
+
             scope.Dispose ()
 
     interface IScopeHost with

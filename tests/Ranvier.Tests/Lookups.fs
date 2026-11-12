@@ -660,4 +660,47 @@ let tests =
                 Expect.isFalse (selector.Get None) "None is no longer selected"
                 Expect.isTrue (selector.Get (Some (1, 2))) "an equal tuple is"
             }
+
+            test "repeated transitions with overlapping failed and affected keys recompute each key once and clear pooled state" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let state = createSignal (1, true)
+                let calls = System.Collections.Generic.Dictionary<int, int>()
+
+                let lookup =
+                    createLookup
+                        (fun (active, failKey2) k ->
+                            calls[k] <-
+                                (match calls.TryGetValue k with
+                                 | true, n -> n
+                                 | _ -> 0)
+                                + 1
+
+                            if k = 2 && failKey2 then invalidOp "boom 2" else active = k)
+                        (fun (prev, _) (next, _) -> [ prev; next; 2 ])
+                        (fun () -> state.Value)
+
+                let seen1 = ResizeArray<bool>()
+                let seen3 = ResizeArray<bool>()
+                createEffect (fun () -> seen1.Add (lookup.Get 1))
+                createEffect (fun () -> seen3.Add (lookup.Get 3))
+                let memo2 = createMemo (fun _ -> lookup.Get 2)
+                Expect.throws (fun () -> memo2.Value |> ignore) "key 2 starts failed"
+
+                calls.Clear ()
+                state.Value <- (3, true)
+                Expect.equal calls[1] 1 "key 1 recomputed once"
+                Expect.equal calls[2] 1 "overlapping failed and affected key 2 recomputed once"
+                Expect.equal calls[3] 1 "key 3 recomputed once"
+                Expect.throws (fun () -> memo2.Value |> ignore) "key 2 remains failed"
+
+                calls.Clear ()
+                state.Value <- (2, false)
+                Expect.equal calls[2] 1 "key 2 recomputed once on recovery"
+                Expect.equal calls[3] 1 "key 3 recomputed once"
+                Expect.isFalse (calls.ContainsKey 1) "unaffected non-failed key 1 was not revisited"
+                Expect.isTrue memo2.Value "key 2 recovered and became active"
+                Expect.sequenceEqual seen1 [ true; false ] "key 1 transitions"
+                Expect.sequenceEqual seen3 [ false; true; false ] "key 3 transitions"
+            }
         ]
