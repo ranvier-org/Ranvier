@@ -159,6 +159,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 83,823 | 128,260 | 1,768,640 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 83,828 | 128,301 | 1,768,565 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 83,822 | 128,260 | 1,775,228 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 83,827 | 128,292 | 1,768,972 |
 
 ## app-table
 
@@ -319,6 +320,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 4,444,352 | 9,640,346 | 110,039,148 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 3,705,430 | 8,774,672 | 99,476,789 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 3,705,439 | 8,850,997 | 99,484,942 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 3,701,624 | 8,678,463 | 99,713,596 |
 
 ## async-recover
 
@@ -479,6 +481,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 139,557 | 39,898 | 443,801 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 139,493 | 39,902 | 443,803 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 139,433 | 39,906 | 443,804 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 139,541 | 39,903 | 443,790 |
 
 ## async-resolve
 
@@ -639,6 +642,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,803,565 | 1,089,718 | 12,254,401 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,801,966 | 1,089,595 | 12,254,259 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,799,965 | 1,089,578 | 12,254,555 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,803,565 | 1,089,885 | 12,251,351 |
 
 ## chain
 
@@ -799,6 +803,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 13,099 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 13,099 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 
 ## chain-affinity
 
@@ -959,6 +964,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,653 | 3,176 | 2,604 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,653 | 3,176 | 2,604 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,653 | 3,176 | 2,604 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1119,6 +1125,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 74,709 | 822,214 | 2,600,945 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 74,709 | 816,673 | 2,588,327 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 74,709 | 827,057 | 2,588,482 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 74,709 | 832,075 | 2,586,310 |
 
 ## create
 
@@ -1279,6 +1286,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 13,451,552 | 2,882,678 | 2,575,409 | 2,127,184 | 4,056,781 | 33,845,026 | 50,483,851 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 13,483,401 | 2,866,679 | 2,575,409 | 2,127,429 | 4,056,184 | 33,849,528 | 50,509,748 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 13,483,522 | 2,866,678 | 2,575,376 | 2,127,869 | 4,054,593 | 33,921,649 | 50,447,540 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 13,451,431 | 2,866,742 | 2,575,393 | 2,127,941 | 4,053,526 | 33,849,537 | 50,440,840 |
 
 ## create-on
 
@@ -1439,6 +1447,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,968,489 | 4,234,904 | 55,454,777 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,968,489 | 4,234,954 | 55,454,804 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,984,488 | 4,234,920 | 55,454,692 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,968,600 | 4,234,516 | 55,454,663 |
 
 ## cutoff
 
@@ -1599,6 +1608,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1759,6 +1769,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 787 | 758 | 16,684 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 787 | 758 | 16,684 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 787 | 758 | 16,684 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1919,6 +1930,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 757 | 759 | 16,707 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 773 | 759 | 16,707 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 789 | 759 | 16,707 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 773 | 759 | 16,707 |
 
 ## dispose
 
@@ -2079,6 +2091,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,707,644 | 806,288 | 367,497 | 475,917 | 495,335 | 13,205,967 | 9,106,169 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,706,753 | 806,288 | 367,497 | 475,871 | 495,072 | 13,206,489 | 9,106,438 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 2,707,644 | 806,288 | 367,497 | 476,054 | 495,330 | 13,207,022 | 9,106,089 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,707,645 | 806,288 | 367,497 | 475,544 | 495,140 | 13,205,026 | 9,106,436 |
 
 ## dispose-on
 
@@ -2239,6 +2252,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 346,497 | 487,816 | 8,902,680 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 346,497 | 487,923 | 8,903,018 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 346,497 | 487,922 | 8,902,619 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 346,497 | 487,722 | 8,903,405 |
 
 ## editable-edit
 
@@ -2399,6 +2413,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 183,506 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 183,506 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 183,506 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 183,506 |
 
 ## editable-upstream
 
@@ -2559,6 +2574,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 239,256 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 239,255 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 239,255 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 239,256 |
 
 ## fail-recompute
 
@@ -2719,6 +2735,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 65,024 | 1,420 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 65,024 | 1,420 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 65,032 | 1,420 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 65,072 | 1,420 |
 
 ## flight
 
@@ -2879,6 +2896,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,412 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 11,000 | 6,244 | 6,245 | 11,343 | 10,767 | 22,410 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 10,998 | 6,245 | 6,246 | 11,345 | 10,770 | 22,412 |
 
 ## keyed-insert
 
@@ -3039,6 +3057,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,959,789 | 53,929 | 55,023 | 3,425,567 | 657,409 | 662,962 | 46,884,147 | 2,635,386 | 2,656,623 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,900,994 | 54,026 | 55,121 | 3,329,081 | 240,222 | 179,209 | 46,461,984 | 2,635,514 | 2,656,312 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,900,897 | 53,946 | 55,028 | 3,328,943 | 240,072 | 179,279 | 46,484,350 | 2,635,460 | 2,656,294 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,901,012 | 53,955 | 55,124 | 3,328,886 | 240,381 | 179,431 | 46,491,908 | 2,635,980 | 2,656,888 |
 
 ## keyed-remove
 
@@ -3199,6 +3218,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,958,705 | 43,628 | 45,348 | 3,431,465 | 592,964 | 608,115 | 46,855,210 | 1,925,373 | 1,961,387 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,900,002 | 43,725 | 45,437 | 3,332,883 | 592,510 | 148,145 | 46,415,738 | 1,925,438 | 1,961,337 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,899,909 | 43,646 | 45,357 | 3,332,879 | 592,654 | 148,393 | 46,460,273 | 1,925,392 | 1,961,076 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,900,014 | 43,654 | 45,454 | 3,332,893 | 593,202 | 148,831 | 46,453,955 | 1,925,765 | 1,961,531 |
 
 ## keyed-swap
 
@@ -3359,6 +3379,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,011,391 | 46,215 | 46,963 | 3,456,850 | 498,836 | 508,274 | 48,018,775 | 915,966 | 934,333 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,895,593 | 46,312 | 47,058 | 3,273,482 | 502,362 | 508,602 | 47,148,901 | 916,031 | 934,281 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,895,496 | 46,232 | 46,977 | 3,273,499 | 502,362 | 508,442 | 47,153,871 | 916,057 | 934,302 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,895,578 | 46,231 | 47,058 | 3,238,552 | 502,386 | 508,488 | 47,156,886 | 915,932 | 934,302 |
 
 ## mvu-dispatch
 
@@ -3519,6 +3540,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 60,281 | 794 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 60,281 | 794 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 60,281 | 794 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3679,6 +3701,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | — | — |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | — | — |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | — | — |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — |
 
 ## project-chain
 
@@ -3839,6 +3862,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,068,980 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 913,396 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 913,395 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 913,205 |
 
 ## project-churn
 
@@ -3999,6 +4023,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 36,405 | 34,264 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 36,491 | 34,263 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 36,490 | 34,262 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 36,546 | 34,280 |
 
 ## project-edit
 
@@ -4159,6 +4184,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 50,520 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 50,535 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 50,550 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 50,599 |
 
 ## project-reorder
 
@@ -4319,6 +4345,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 780,101 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 664,180 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 664,211 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 664,260 |
 
 ## server-render
 
@@ -4479,6 +4506,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | — | — | — |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | — | — | — |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | — | — | — |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — | — |
 
 ## shape-diamond
 
@@ -4639,6 +4667,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 62,348 | 86,309 | 1,879,598 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 62,348 | 86,309 | 1,879,598 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 62,348 | 86,309 | 1,879,598 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4799,6 +4828,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 85,079 | 109,899 | 2,055,682 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 85,079 | 109,897 | 2,055,684 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 85,079 | 109,897 | 2,055,681 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 85,079 | 109,894 | 2,055,682 |
 
 ## stream-burst-1
 
@@ -4959,6 +4989,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,341 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,919 | 49,164 | 47,367 | 57,341 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,919 | 49,164 | 47,367 | 57,342 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,341 |
 
 ## stream-burst-16
 
@@ -5119,6 +5150,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 5,085 | 25,099 | 5,765 | 10,536 | 48,307 | 16,569 | 126,487 | 745,454 | 115,695 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 5,085 | 25,099 | 5,765 | 10,536 | 48,309 | 16,565 | 126,485 | 745,455 | 115,695 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 5,085 | 25,099 | 5,765 | 10,528 | 48,309 | 16,570 | 126,487 | 745,454 | 115,693 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 5,085 | 25,099 | 5,765 | 10,540 | 48,309 | 16,568 | 126,476 | 745,455 | 115,694 |
 
 ## stream-burst-256
 
@@ -5279,6 +5311,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 54,705 | 401,383 | 57,104 | 134,292 | 816,691 | 46,288 | 1,363,806 | 11,913,636 | 1,048,724 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 54,705 | 401,383 | 57,104 | 134,303 | 816,691 | 46,264 | 1,363,785 | 11,913,667 | 1,048,726 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 54,705 | 401,383 | 57,104 | 134,343 | 816,691 | 46,264 | 1,363,844 | 11,913,637 | 1,048,710 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 54,705 | 401,383 | 57,104 | 134,287 | 816,638 | 46,288 | 1,363,844 | 11,913,577 | 1,048,727 |
 
 ## stream-restart
 
@@ -5439,6 +5472,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 4,240 | 5,072 | 5,910 | 5,408 | 44,163 | 73,509 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 4,240 | 5,074 | 5,915 | 5,407 | 44,163 | 73,509 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 4,240 | 5,072 | 5,912 | 5,407 | 44,161 | 73,511 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 4,239 | 5,070 | 5,911 | 5,409 | 44,159 | 73,500 |
 
 ## timed-admit-both
 
@@ -5599,6 +5633,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 118,607 | 130,104 | 2,697,316 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 119,631 | 130,105 | 2,697,214 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 118,607 | 130,105 | 2,697,227 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 118,607 | 130,105 | 2,697,189 |
 
 ## timed-admit-debounce
 
@@ -5759,6 +5794,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 117,512 | 128,686 | 2,657,670 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 118,536 | 128,698 | 2,657,690 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 117,512 | 128,686 | 2,657,671 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 117,512 | 128,684 | 2,657,659 |
 
 ## timed-admit-first
 
@@ -5919,6 +5955,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 70,263 | 79,568 | 1,617,623 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 71,287 | 79,568 | 1,617,623 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 70,263 | 79,569 | 1,617,623 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 70,263 | 79,569 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -6079,6 +6116,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 117,774 | 129,003 | 2,667,513 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 118,798 | 129,006 | 2,667,545 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 117,774 | 129,018 | 2,667,514 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 117,774 | 129,005 | 2,667,515 |
 
 ## timed-capture-both
 
@@ -6239,6 +6277,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 35,870 | 44,939 | 848,263 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 35,870 | 44,936 | 847,475 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 35,870 | 44,937 | 847,487 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,870 | 44,938 | 847,452 |
 
 ## timed-capture-debounce
 
@@ -6399,6 +6438,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 35,742 | 46,731 | 847,948 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 35,742 | 46,732 | 847,948 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 35,742 | 46,732 | 847,948 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,742 | 46,732 | 847,948 |
 
 ## timed-capture-first
 
@@ -6559,6 +6599,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 32,222 | 36,489 | 745,942 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 32,222 | 36,489 | 745,942 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 32,222 | 36,489 | 745,942 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 32,222 | 36,489 | 745,942 |
 
 ## timed-capture-last
 
@@ -6719,6 +6760,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 35,678 | 46,667 | 840,076 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 35,678 | 46,666 | 840,078 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 35,678 | 46,668 | 840,076 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,678 | 46,668 | 840,076 |
 
 ## update
 
@@ -6879,6 +6921,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,090,983 | 38,805 | 84,905 | 262,934 | 160,225 | 3,351,265 | 2,567,574 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,089,390 | 38,805 | 84,905 | 262,551 | 160,199 | 3,351,253 | 2,567,524 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 1,087,782 | 38,805 | 84,905 | 262,633 | 160,196 | 3,351,290 | 2,567,604 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,087,790 | 38,805 | 84,905 | 263,150 | 160,252 | 3,351,286 | 2,567,583 |
 
 ## update-on
 
@@ -7039,6 +7082,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 95,405 | 175,559 | 2,894,936 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 97,005 | 175,539 | 2,894,924 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 98,605 | 175,530 | 2,894,974 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 97,005 | 175,523 | 2,894,933 |
 
 ## work-form
 
@@ -7199,6 +7243,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 175,183 | 167,654 | 313,379 | 343,332 | 5,495,789 | 5,408,840 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 175,183 | 169,654 | 313,406 | 343,309 | 5,495,812 | 5,408,837 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 175,183 | 167,687 | 313,388 | 343,310 | 5,495,802 | 5,408,844 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 175,183 | 167,654 | 313,366 | 343,363 | 5,495,802 | 5,408,710 |
 
 ## work-status
 
@@ -7359,6 +7404,7 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 102,645 | 80,835 | 260,947 | 156,816 | 2,675,711 | 2,407,719 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 102,645 | 82,435 | 260,977 | 156,799 | 2,675,714 | 2,407,658 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 102,645 | 84,035 | 260,976 | 156,849 | 2,675,715 | 2,407,709 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 102,645 | 82,435 | 260,965 | 156,822 | 2,675,667 | 2,407,702 |
 
 ## work-value
 
@@ -7519,4 +7565,5 @@
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 109,769 | 121,670 | 261,187 | 284,113 | 2,660,337 | 2,984,865 |
 | `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 109,771 | 123,269 | 261,149 | 284,089 | 2,660,362 | 2,984,854 |
 | `7b2d241` | 2026-11-12 | perf(collections): drive ProjectionFold membership sync from key deltas (#340) | 109,769 | 124,869 | 261,221 | 284,094 | 2,660,357 | 2,984,873 |
+| `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 109,769 | 123,269 | 261,212 | 284,194 | 2,660,358 | 2,984,862 |
 
