@@ -1819,6 +1819,38 @@ let groupByTests =
                 Expect.equal (groupsOf view) [ 0, [ 5; 4; 2 ]; 1, [ 3; 1 ] ] "a group's first member moved"
             }
 
+            test "PendingKeys and UngroupedKeys readers attached while empty wake when a key suspends and settles" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let flight = createAsyncSource<int>()
+                let source = createSignal (items [ 1, 2; 2, 4 ])
+
+                let filtered =
+                    rows source
+                    |> Projection.filter (fun n -> (if n = 99 then flight.Value else n) % 2 = 0)
+
+                let grouped =
+                    rows source
+                    |> Projection.groupBy (fun n -> (if n = 99 then flight.Value else n) % 2)
+
+                let pendingLog = ResizeArray<int list>()
+                let ungroupedLog = ResizeArray<int list>()
+
+                createEffect (fun () -> pendingLog.Add (List.ofArray filtered.PendingKeys))
+                createEffect (fun () -> ungroupedLog.Add (List.ofArray grouped.UngroupedKeys))
+
+                Expect.sequenceEqual pendingLog [ [] ] "filtered PendingKeys starts empty"
+                Expect.sequenceEqual ungroupedLog [ [] ] "UngroupedKeys starts empty"
+
+                source.Value <- source.Value @ items [ 3, 99 ]
+                Expect.sequenceEqual pendingLog [ []; [ 3 ] ] "filtered PendingKeys wakes when key 3 suspends"
+                Expect.sequenceEqual ungroupedLog [ []; [ 3 ] ] "UngroupedKeys wakes when key 3 suspends"
+
+                flight.Settle 6
+                Expect.sequenceEqual pendingLog [ []; [ 3 ]; [] ] "filtered PendingKeys clears when key 3 settles"
+                Expect.sequenceEqual ungroupedLog [ []; [ 3 ]; [] ] "UngroupedKeys clears when key 3 settles"
+            }
+
             test "moving a key between groups publishes the outer Keys once and both inner views are current" {
                 use g = new Graph ()
                 use _ = g.Activate ()
