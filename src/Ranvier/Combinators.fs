@@ -48,6 +48,7 @@ module TimedCombinators =
         throttleWith TimedOptions.defaults interval read graph
 
 /// <summary>A view's pending keys absent from its <c>Keys</c>, written by the view's pass.</summary>
+[<AllowNullLiteral>]
 type internal HeldOut<'K when 'K: equality>(graph: Graph) =
     let cell = Signal<'K[]>(graph, Array.empty)
     let pass = ResizeArray<'K>()
@@ -90,60 +91,63 @@ type internal HeldOut<'K when 'K: equality>(graph: Graph) =
 /// The keys of <c>upstream</c>, in upstream order, with rows from exactly one of <c>map</c> and <c>factory</c>, as on
 /// <c>KeyedProjection</c>.
 /// </summary>
-type internal MapView<'K, 'V, 'U when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, map: 'K -> 'U, factory: (unit -> 'K) -> (unit -> 'U)) as this
-    =
-    inherit
-        RowsOf<RowEntry<'K, 'V>, 'K, 'U>(
-            graph,
-            (if Platform.isNull (box map) then
-                 Unchecked.defaultof<_>
-             else
-                 fun entry -> map entry.Key),
-            (if Platform.isNull (box factory) then
-                 Unchecked.defaultof<_>
-             else
-                 fun read -> factory (fun () -> (read ()).Key))
-        )
+type internal MapView<'K, 'V, 'U when 'K: equality>
+    (graph: Graph, upstream: Projection<'K, 'V>, map: 'K -> 'U, factory: 'K -> (unit -> 'U), withHeldOut: bool) as this =
+    inherit RowsByKey<'K, 'U>(graph, map, factory, tagged = true)
 
-    let heldOut = HeldOut<'K> graph
+    let heldOut =
+        if
+            withHeldOut
+            && not (Platform.isNull (box upstream.PendingExtra))
+        then
+            HeldOut<'K> graph
+        else
+            null
 
     let reader = graph.RunOwned (this.Scope, upstream.NewKeyReader)
 
     do
         this.ReadDelta <-
-            fun () ->
-                heldOut.Begin ()
-                let delta = reader.Read ()
-                heldOut.Publish upstream
-                delta
+            if Platform.isNull heldOut then
+                reader.Read
+            else
+                fun () ->
+                    heldOut.Begin ()
+                    let delta = reader.Read ()
+                    heldOut.Publish upstream
+                    delta
 
-        this.VisitDelta <- fun key -> this.Visit (key, upstream.Entries.Find key)
+        this.VisitDelta <- fun key -> this.VisitTagged (key, box (upstream.Entries.Find key))
 
     /// <summary>The keys <c>upstream</c> held out of its <c>Keys</c> at the last pass. A tracked read.</summary>
     member _.HeldOut = heldOut.Keys
 
     override this.Enumerate() =
-        heldOut.Begin ()
+        if not (Platform.isNull heldOut) then
+            heldOut.Begin ()
+
         let mine = this.Runs
         let keys = upstream.Keys
+        this.Reserve keys.Length
         let mutable i = 0
 
         while this.Runs = mine && i < keys.Length do
             let key = Platform.itemAt i keys
             i <- i + 1
-            let item = upstream.Entries.Find key
+            let item = box (upstream.Entries.Find key)
             let entry = this.Entries.Find key
 
             if
                 not (Platform.isNull entry)
-                && not (obj.ReferenceEquals ((entry :?> ItemRow<RowEntry<'K, 'V>, 'K, 'U>).Item.Peek, item))
+                && not (obj.ReferenceEquals ((entry :?> KeyRow<'K, 'U>).Tag, item))
             then
                 this.RetireChanged key
 
             if this.Runs = mine then
-                this.Visit (key, item)
+                this.VisitTagged (key, item)
 
-        heldOut.Publish upstream
+        if not (Platform.isNull heldOut) then
+            heldOut.Publish upstream
 
 /// <summary>
 /// The keys of <c>upstream</c> from position <c>offset ()</c>, at most <c>count ()</c> of them, in upstream order, each with
@@ -154,15 +158,20 @@ type internal MapView<'K, 'V, 'U when 'K: equality>(graph: Graph, upstream: Proj
 /// offset past the last key or a negative count gives an empty window, and a count past the last key ends it at the last key.
 /// </remarks>
 type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, offset: unit -> int, count: unit -> int) =
-    inherit RowsOf<'K, 'K, 'V>(graph, (fun key -> upstream.Get key), Unchecked.defaultof<_>)
+    inherit RowsByKey<'K, 'V>(graph, (fun key -> upstream.Get key), Unchecked.defaultof<_>)
 
-    let heldOut = HeldOut<'K> graph
+    let heldOut =
+        if not (Platform.isNull (box upstream.PendingExtra)) then
+            HeldOut<'K> graph
+        else
+            null
 
     /// <summary>The keys <c>upstream</c> held out of its <c>Keys</c> at the last pass. A tracked read.</summary>
     member _.HeldOut = heldOut.Keys
 
     override this.Enumerate() =
-        heldOut.Begin ()
+        if not (Platform.isNull heldOut) then
+            heldOut.Begin ()
 
         let offset =
             if Platform.isNull (box offset) then
@@ -184,11 +193,13 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
             elif count >= keys.Length - start then keys.Length
             else start + count
 
-        for i in start .. stop - 1 do
-            let key = Platform.itemAt i keys
-            this.Visit (key, key)
+        this.Reserve (stop - start)
 
-        heldOut.Publish upstream
+        for i in start .. stop - 1 do
+            this.Visit (Platform.itemAt i keys)
+
+        if not (Platform.isNull heldOut) then
+            heldOut.Publish upstream
 
 /// <summary>
 /// The keys of <c>inclusion</c> whose predicate row holds <c>admit</c>, each with the value of <c>read</c> at the key.
@@ -199,7 +210,7 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
 /// </remarks>
 type internal FilterView<'K, 'V, 'U when 'K: equality>
     (graph: Graph, upstream: Projection<'K, 'V>, inclusion: Projection<'K, bool> ref, read: 'K -> 'U, admit: bool) =
-    inherit RowsOf<'K, 'K, 'U>(graph, read, Unchecked.defaultof<_>)
+    inherit RowsByKey<'K, 'U>(graph, read, Unchecked.defaultof<_>)
 
     let heldOut = HeldOut<'K> graph
 
@@ -222,14 +233,14 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
                 match entry.Row.TryValue with
                 | Ready included ->
                     if included = admit then
-                        this.Visit (key, key)
+                        this.Visit key
                 | Pending ->
                     if not entry.Settled then
                         heldOut.Add key
                     elif entry.Row.Peek = admit then
-                        this.Visit (key, key)
+                        this.Visit key
                 | Failed _ ->
-                    this.Visit (key, key)
+                    this.Visit key
                     this.HideLast ()
 
         heldOut.Publish upstream
@@ -245,7 +256,7 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
 type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph: Graph, upstream: Projection<'K, 'V>, values: Projection<'K, 'G> ref)
     =
     inherit
-        RowsOf<'K, 'K, 'V>(
+        RowsByKey<'K, 'V>(
             graph,
             (fun key ->
                 values.Value.Get key |> ignore
@@ -276,14 +287,14 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                 match entry.Row.TryValue with
                 | Ready value ->
                     if taken.Add value then
-                        this.Visit (key, key)
+                        this.Visit key
                 | Pending ->
                     if not entry.Settled then
                         heldOut.Add key
                     elif taken.Add entry.Row.Peek then
-                        this.Visit (key, key)
+                        this.Visit key
                 | Failed _ ->
-                    this.Visit (key, key)
+                    this.Visit key
                     this.HideLast ()
 
         heldOut.Publish upstream
@@ -324,7 +335,7 @@ module internal Ranks =
 type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
     (graph: Graph, upstream: Projection<'K, 'V>, sortKeys: Projection<'K, 'S> ref, descending: bool) =
     inherit
-        RowsOf<'K, 'K, 'V>(
+        RowsByKey<'K, 'V>(
             graph,
             (fun key ->
                 sortKeys.Value.Get key |> ignore
@@ -447,7 +458,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
                         placed.Add key
                         ranks.Add entry.Row.Peek
                 | Failed _ ->
-                    this.Visit (key, key)
+                    this.Visit key
                     this.HideLast ()
 
         if not (unchanged ()) then
@@ -456,10 +467,11 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             sorted <- true
 
         let positions = order
+        this.Reserve positions.Length
 
         for k in 0 .. positions.Length - 1 do
             let key = placed[Platform.itemAt k positions]
-            this.Visit (key, key)
+            this.Visit key
 
         let swapKeys = lastPlaced
         lastPlaced <- placed
@@ -469,25 +481,27 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         ranks <- swapRanks
         heldOut.Publish upstream
 
+type internal GroupView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, outerKeys: unit -> unit, members: Signal<'K[]>) as this
+    =
+    inherit RowsByKey<'K, 'V>(graph, (fun key -> upstream.Get key), Unchecked.defaultof<_>)
+
+    do this.GetRaisesDisposed <- true
+
+    override this.Enumerate() =
+        outerKeys ()
+        let keys = members.Value
+        this.Reserve keys.Length
+
+        for i in 0 .. keys.Length - 1 do
+            this.Visit (Platform.itemAt i keys)
+
 /// <summary>
 /// A group of a <c>Grouping</c>: its members in upstream order and the inner view over them. The inner view's pass reads
 /// <c>outerKeys</c> first, so it follows the upstream without a reader of the outer view.
 /// </summary>
 type internal Group<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, outerKeys: unit -> unit) =
     let members = Signal<'K[]>(graph, Array.empty)
-
-    let view =
-        new KeyedProjection<'K, 'K, 'V> (
-            graph,
-            id,
-            (fun key -> upstream.Get key),
-            Unchecked.defaultof<_>,
-            fun () ->
-                outerKeys ()
-                members.Value
-        )
-
-    do view.GetRaisesDisposed <- true
+    let view = new GroupView<'K, 'V> (graph, upstream, outerKeys, members)
 
     /// <summary>The members placed by the pass in progress, in upstream order.</summary>
     member val Pass = ResizeArray<'K>()
@@ -622,6 +636,8 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
         member this.CreateAdded() =
             if adds.Count > 0 then
                 graph.RunOwned (this.Scope, this.CreateAdded)
+
+        member _.AddedCount = adds.Count
 
         member _.CommitWrites() =
             for struct (source, item) in writes do
@@ -1190,8 +1206,7 @@ module Projection =
 
     /// <summary>A projection over the keys of <c>upstream</c>, each row holding <c>f</c> of the upstream value.</summary>
     let private perKey (graph: Graph) (upstream: Projection<'K, 'V>) (f: 'V -> 'X) : Projection<'K, 'X> =
-        new KeyedProjection<'K, 'K, 'X> (graph, id, (fun key -> f (upstream.Get key)), Unchecked.defaultof<_>, fun () -> upstream.Keys)
-        :> Projection<'K, 'X>
+        new MapView<'K, 'V, 'X> (graph, upstream, (fun key -> f (upstream.Get key)), Unchecked.defaultof<_>, false) :> Projection<'K, 'X>
 
     /// <summary>
     /// A function returning the value inside <c>Some</c>, and raising one <c>KeyNotFoundException</c> instance with
@@ -1318,15 +1333,7 @@ module Projection =
             view.Scope,
             fun () ->
                 choices.Value <- perKey graph upstream chooser
-
-                inclusion.Value <-
-                    new KeyedProjection<'K, 'K, bool> (
-                        graph,
-                        id,
-                        (fun key -> Option.isSome (choices.Value.Get key)),
-                        Unchecked.defaultof<_>,
-                        fun () -> upstream.Keys
-                    )
+                inclusion.Value <- perKey graph choices.Value Option.isSome
         )
 
         view.PendingExtra <- fun () -> view.HeldOut
@@ -1335,7 +1342,7 @@ module Projection =
     /// <summary>The keys of <c>upstream</c>, in upstream order, each with the value of <c>mapping</c> at the key.</summary>
     let private mapByKey (mapping: 'K -> 'U) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
         let view =
-            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, mapping, Unchecked.defaultof<_>)
+            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, mapping, Unchecked.defaultof<_>, true)
 
         if not (Platform.isNull (box upstream.PendingExtra)) then
             view.PendingExtra <- fun () -> view.HeldOut
@@ -1370,12 +1377,11 @@ module Projection =
     let mapWith (mapping: 'K -> (unit -> 'V) -> (unit -> 'U)) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
         upstream.RequireRowMemos "Projection.mapWith"
 
-        let factory (key: unit -> 'K) =
-            let k = key ()
-            mapping k (fun () -> upstream.Get k)
+        let factory (key: 'K) =
+            mapping key (fun () -> upstream.Get key)
 
         let view =
-            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, Unchecked.defaultof<_>, factory)
+            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, Unchecked.defaultof<_>, factory, true)
 
         if not (Platform.isNull (box upstream.PendingExtra)) then
             view.PendingExtra <- fun () -> view.HeldOut

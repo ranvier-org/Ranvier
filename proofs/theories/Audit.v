@@ -402,6 +402,8 @@ Print Assumptions core_queue_drain_refines_priority.
 Print Assumptions write_signal_except_wakes_others.
 Print Assumptions notify_removed_wakes_observers.
 Print Assumptions adopt_companion_disposed_once.
+Print Assumptions apply_diff_zero_removals_iff.
+Print Assumptions key_direct_row_retire_wakes_without_item_signal.
 Print Assumptions Ranvier.Heap.Collections.world_direct_link_spec.
 Print Assumptions Ranvier.Heap.Collections.world_direct_unlink_spec.
 Print Assumptions Ranvier.Heap.Collections.forwarding_edge_moved_in_spec.
