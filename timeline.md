@@ -157,6 +157,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 83,824 | 128,236 | 1,768,655 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 83,826 | 128,273 | 1,768,608 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 83,823 | 128,260 | 1,768,640 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 83,828 | 128,301 | 1,768,565 |
 
 ## app-table
 
@@ -315,6 +316,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 4,444,335 | 9,707,777 | 109,887,910 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 4,444,367 | 9,642,992 | 109,919,871 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 4,444,352 | 9,640,346 | 110,039,148 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 3,705,430 | 8,774,672 | 99,476,789 |
 
 ## async-recover
 
@@ -473,6 +475,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 139,557 | 39,912 | 443,798 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 139,557 | 39,900 | 443,791 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 139,557 | 39,898 | 443,801 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 139,493 | 39,902 | 443,803 |
 
 ## async-resolve
 
@@ -631,6 +634,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,803,565 | 1,089,891 | 12,254,500 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,803,565 | 1,089,858 | 12,251,003 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,803,565 | 1,089,718 | 12,254,401 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,801,966 | 1,089,595 | 12,254,259 |
 
 ## chain
 
@@ -789,6 +793,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,813 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 13,099 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 
 ## chain-affinity
 
@@ -947,6 +952,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,653 | 3,176 | 2,604 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,653 | 3,176 | 2,604 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,653 | 3,176 | 2,604 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1105,6 +1111,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 74,709 | 812,690 | 2,600,863 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 74,709 | 812,571 | 2,600,890 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 74,709 | 822,214 | 2,600,945 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 74,709 | 816,673 | 2,588,327 |
 
 ## create
 
@@ -1263,6 +1270,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 13,483,418 | 2,866,678 | 2,575,408 | 2,127,179 | 4,055,023 | 33,845,834 | 50,483,955 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 13,483,414 | 2,914,678 | 2,575,393 | 2,127,439 | 4,056,627 | 33,845,546 | 50,483,830 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 13,451,552 | 2,882,678 | 2,575,409 | 2,127,184 | 4,056,781 | 33,845,026 | 50,483,851 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 13,483,401 | 2,866,679 | 2,575,409 | 2,127,429 | 4,056,184 | 33,849,528 | 50,509,748 |
 
 ## create-on
 
@@ -1421,6 +1429,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,968,488 | 4,234,805 | 55,454,774 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,952,520 | 4,234,737 | 55,454,806 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,968,489 | 4,234,904 | 55,454,777 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,968,489 | 4,234,954 | 55,454,804 |
 
 ## cutoff
 
@@ -1579,6 +1588,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1737,6 +1747,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 787 | 758 | 16,684 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 787 | 758 | 16,684 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 787 | 758 | 16,684 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1895,6 +1906,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 757 | 759 | 16,707 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 757 | 759 | 16,707 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 757 | 759 | 16,707 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 773 | 759 | 16,707 |
 
 ## dispose
 
@@ -2053,6 +2065,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,707,645 | 806,288 | 367,497 | 476,029 | 495,193 | 13,205,878 | 9,105,988 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,706,756 | 806,288 | 367,497 | 475,786 | 495,353 | 13,204,198 | 9,106,884 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,707,644 | 806,288 | 367,497 | 475,917 | 495,335 | 13,205,967 | 9,106,169 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 2,706,753 | 806,288 | 367,497 | 475,871 | 495,072 | 13,206,489 | 9,106,438 |
 
 ## dispose-on
 
@@ -2211,6 +2224,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 346,497 | 487,887 | 8,902,196 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 346,497 | 487,791 | 8,902,860 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 346,497 | 487,816 | 8,902,680 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 346,497 | 487,923 | 8,903,018 |
 
 ## editable-edit
 
@@ -2369,6 +2383,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 183,506 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 183,506 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 183,506 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 183,506 |
 
 ## editable-upstream
 
@@ -2527,6 +2542,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 239,256 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 239,256 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 239,256 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 239,255 |
 
 ## fail-recompute
 
@@ -2685,6 +2701,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 65,024 | 1,420 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 65,024 | 1,420 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 65,024 | 1,420 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 65,024 | 1,420 |
 
 ## flight
 
@@ -2843,6 +2860,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,412 |
 
 ## keyed-insert
 
@@ -3001,6 +3019,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,959,957 | 53,969 | 55,141 | 3,425,635 | 657,371 | 663,001 | 46,883,728 | 2,635,434 | 2,656,717 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,959,933 | 53,930 | 55,165 | 3,425,617 | 657,289 | 663,125 | 46,883,690 | 2,635,400 | 2,656,706 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,959,789 | 53,929 | 55,023 | 3,425,567 | 657,409 | 662,962 | 46,884,147 | 2,635,386 | 2,656,623 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,900,994 | 54,026 | 55,121 | 3,329,081 | 240,222 | 179,209 | 46,461,984 | 2,635,514 | 2,656,312 |
 
 ## keyed-remove
 
@@ -3159,6 +3178,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,958,853 | 43,668 | 45,478 | 3,431,476 | 593,126 | 608,075 | 46,848,249 | 1,925,311 | 1,961,358 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,958,831 | 43,629 | 45,494 | 3,431,444 | 593,226 | 607,974 | 46,854,050 | 1,925,311 | 1,961,480 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,958,705 | 43,628 | 45,348 | 3,431,465 | 592,964 | 608,115 | 46,855,210 | 1,925,373 | 1,961,387 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,900,002 | 43,725 | 45,437 | 3,332,883 | 592,510 | 148,145 | 46,415,738 | 1,925,438 | 1,961,337 |
 
 ## keyed-swap
 
@@ -3317,6 +3337,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,011,567 | 46,247 | 47,059 | 3,456,977 | 498,469 | 508,305 | 48,011,256 | 915,977 | 934,337 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,011,535 | 46,215 | 47,107 | 3,672,995 | 147,670 | 508,248 | 48,011,586 | 915,939 | 934,296 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 2,011,391 | 46,215 | 46,963 | 3,456,850 | 498,836 | 508,274 | 48,018,775 | 915,966 | 934,333 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,895,593 | 46,312 | 47,058 | 3,273,482 | 502,362 | 508,602 | 47,148,901 | 916,031 | 934,281 |
 
 ## mvu-dispatch
 
@@ -3475,6 +3496,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 60,281 | 794 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 60,281 | 794 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 60,281 | 794 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3633,6 +3655,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | — | — |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | — | — |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | — | — |
 
 ## project-chain
 
@@ -3791,6 +3814,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,068,948 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,068,976 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,068,980 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 913,396 |
 
 ## project-churn
 
@@ -3949,6 +3973,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 36,405 | 34,264 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 36,405 | 34,264 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 36,405 | 34,264 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 36,491 | 34,263 |
 
 ## project-edit
 
@@ -4107,6 +4132,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 50,520 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 50,505 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 50,520 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 50,535 |
 
 ## project-reorder
 
@@ -4265,6 +4291,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 780,101 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 780,085 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 780,101 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 664,180 |
 
 ## server-render
 
@@ -4423,6 +4450,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — | — |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | — | — | — |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | — | — | — |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | — | — | — |
 
 ## shape-diamond
 
@@ -4581,6 +4609,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 62,348 | 86,309 | 1,879,598 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 62,348 | 86,309 | 1,879,598 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 62,348 | 86,309 | 1,879,598 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4739,6 +4768,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 85,079 | 109,897 | 2,055,686 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 85,079 | 109,897 | 2,055,681 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 85,079 | 109,899 | 2,055,682 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 85,079 | 109,897 | 2,055,684 |
 
 ## stream-burst-1
 
@@ -4897,6 +4927,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,342 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,344 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,341 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,919 | 49,164 | 47,367 | 57,341 |
 
 ## stream-burst-16
 
@@ -5055,6 +5086,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 5,085 | 25,099 | 5,765 | 10,540 | 48,309 | 16,568 | 126,487 | 745,454 | 115,691 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 5,085 | 25,099 | 5,765 | 10,536 | 48,309 | 16,568 | 126,483 | 745,454 | 115,690 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 5,085 | 25,099 | 5,765 | 10,536 | 48,307 | 16,569 | 126,487 | 745,454 | 115,695 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 5,085 | 25,099 | 5,765 | 10,536 | 48,309 | 16,565 | 126,485 | 745,455 | 115,695 |
 
 ## stream-burst-256
 
@@ -5213,6 +5245,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 54,705 | 401,383 | 57,104 | 134,382 | 816,688 | 46,288 | 1,363,879 | 11,913,640 | 1,048,725 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 54,705 | 401,383 | 57,104 | 134,297 | 816,673 | 46,288 | 1,363,817 | 11,913,629 | 1,048,704 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 54,705 | 401,383 | 57,104 | 134,292 | 816,691 | 46,288 | 1,363,806 | 11,913,636 | 1,048,724 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 54,705 | 401,383 | 57,104 | 134,303 | 816,691 | 46,264 | 1,363,785 | 11,913,667 | 1,048,726 |
 
 ## stream-restart
 
@@ -5371,6 +5404,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 4,240 | 5,072 | 5,913 | 5,410 | 44,163 | 73,509 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 4,240 | 5,072 | 5,905 | 5,407 | 44,162 | 73,507 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 4,240 | 5,072 | 5,910 | 5,408 | 44,163 | 73,509 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 4,240 | 5,074 | 5,915 | 5,407 | 44,163 | 73,509 |
 
 ## timed-admit-both
 
@@ -5529,6 +5563,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 118,607 | 130,105 | 2,698,022 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 118,607 | 130,102 | 2,698,047 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 118,607 | 130,104 | 2,697,316 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 119,631 | 130,105 | 2,697,214 |
 
 ## timed-admit-debounce
 
@@ -5687,6 +5722,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 117,512 | 128,684 | 2,657,644 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 117,512 | 128,684 | 2,657,656 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 117,512 | 128,686 | 2,657,670 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 118,536 | 128,698 | 2,657,690 |
 
 ## timed-admit-first
 
@@ -5845,6 +5881,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 70,263 | 79,568 | 1,617,623 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 70,263 | 79,566 | 1,617,623 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 70,263 | 79,568 | 1,617,623 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 71,287 | 79,568 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -6003,6 +6040,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 117,774 | 129,003 | 2,667,512 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 117,774 | 129,006 | 2,667,512 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 117,774 | 129,003 | 2,667,513 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 118,798 | 129,006 | 2,667,545 |
 
 ## timed-capture-both
 
@@ -6161,6 +6199,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,870 | 44,938 | 848,278 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 35,870 | 44,938 | 848,278 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 35,870 | 44,939 | 848,263 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 35,870 | 44,936 | 847,475 |
 
 ## timed-capture-debounce
 
@@ -6319,6 +6358,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,742 | 46,731 | 847,948 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 35,742 | 46,731 | 847,948 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 35,742 | 46,731 | 847,948 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 35,742 | 46,732 | 847,948 |
 
 ## timed-capture-first
 
@@ -6477,6 +6517,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 32,222 | 36,489 | 745,942 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 32,222 | 36,489 | 745,942 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 32,222 | 36,489 | 745,942 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 32,222 | 36,489 | 745,942 |
 
 ## timed-capture-last
 
@@ -6635,6 +6676,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,678 | 46,667 | 840,076 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 35,678 | 46,667 | 840,076 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 35,678 | 46,667 | 840,076 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 35,678 | 46,666 | 840,078 |
 
 ## update
 
@@ -6793,6 +6835,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,087,790 | 38,805 | 84,905 | 262,934 | 160,187 | 3,351,269 | 2,567,439 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,087,790 | 38,805 | 84,905 | 262,895 | 160,224 | 3,351,258 | 2,567,583 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 1,090,983 | 38,805 | 84,905 | 262,934 | 160,225 | 3,351,265 | 2,567,574 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 1,089,390 | 38,805 | 84,905 | 262,551 | 160,199 | 3,351,253 | 2,567,524 |
 
 ## update-on
 
@@ -6951,6 +6994,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 95,405 | 175,524 | 2,894,920 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 95,405 | 175,542 | 2,894,918 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 95,405 | 175,559 | 2,894,936 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 97,005 | 175,539 | 2,894,924 |
 
 ## work-form
 
@@ -7109,6 +7153,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 175,183 | 169,654 | 313,406 | 343,351 | 5,495,788 | 5,408,803 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 175,183 | 167,654 | 313,362 | 343,353 | 5,495,792 | 5,408,826 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 175,183 | 167,654 | 313,379 | 343,332 | 5,495,789 | 5,408,840 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 175,183 | 169,654 | 313,406 | 343,309 | 5,495,812 | 5,408,837 |
 
 ## work-status
 
@@ -7267,6 +7312,7 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 102,645 | 80,835 | 260,976 | 156,817 | 2,675,673 | 2,407,681 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 102,645 | 80,835 | 260,914 | 156,816 | 2,675,677 | 2,407,699 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 102,645 | 80,835 | 260,947 | 156,816 | 2,675,711 | 2,407,719 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 102,645 | 82,435 | 260,977 | 156,799 | 2,675,714 | 2,407,658 |
 
 ## work-value
 
@@ -7425,4 +7471,5 @@
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 109,771 | 121,670 | 261,197 | 284,132 | 2,660,272 | 2,984,882 |
 | `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 109,770 | 121,669 | 261,219 | 284,097 | 2,660,335 | 2,984,883 |
 | `5f51e9f` | 2026-11-12 | fix(collections): recompute Projection.fold on pure reorders and under Fable (#342) | 109,769 | 121,670 | 261,187 | 284,113 | 2,660,337 | 2,984,865 |
+| `3423422` | 2026-11-12 | perf(collections): use key-direct view rows, delta perKey, and zero-removal diff skip (#339) | 109,771 | 123,269 | 261,149 | 284,089 | 2,660,362 | 2,984,854 |
 
