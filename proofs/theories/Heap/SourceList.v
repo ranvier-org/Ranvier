@@ -192,6 +192,19 @@ Definition sources_new_code : val :=
     ("ls" +ₗ #1) <- "ls";; ("ls" +ₗ #2) <- #0;; ("ls" +ₗ #3) <- #0;; ("ls" +ₗ #4) <- #0;;
     ("ls" +ₗ #5) <- NONE;; "ls".
 
+(** The source of slot [i] if [i < count], or [NONE]. *)
+Definition sources_slot_src_code : val :=
+  λ: "res" "self" "i",
+    let: "ls" := Snd ("res" "self") in
+    if: "i" < ! ("ls" +ₗ #3) then SOME (Fst (sources_cell_code "ls" "i"))
+    else NONE.
+
+(** [HeldInPrefix]: whether [s] is in the prefix before the cursor of [self]. *)
+Definition sources_held_in_prefix_code : val :=
+  λ: "res" "self" "s",
+    let: "ls" := Snd ("res" "self") in
+    sources_held_before_code "ls" #0 (! ("ls" +ₗ #4)) "s".
+
 (** ** Cells and worlds *)
 
 Lemma slot_fun_lookup sl j p : sl !! j = Some p -> slot_fun sl j = slot_val p.
@@ -1392,6 +1405,82 @@ Proof.
   wp_pures. wp_store. wp_pures. wp_store. wp_pures. wp_store. wp_pures. wp_store. wp_pures. wp_store.
   iModIntro. iApply "HΦ". iSplit; [done|]. iExists 0, NONEV. iSplit; [iPureIntro; simpl; lia|].
   iSplit; [iPureIntro; by left|]. iExists ls. rewrite /slot_fun /= array_nil. iFrame.
+Qed.
+
+(**md
+**Reading slot `i` returns its source when `i` is within the slots, and `NONE` past the end.**
+
+- [res:] the resolver.
+- [tbl:] the node table.
+- [self:] the computation read.
+- [i:] the slot index.
+- [w:] the edge world.
+*)
+Lemma sources_slot_src_spec (res : val) tbl (self : node_id) (i : nat) (w : EdgeWorld) :
+  self ∈ dom tbl ->
+  {{{ resolver tbl res ∗ is_world tbl w }}}
+    sources_slot_src_code res #(Z.of_nat self) #(Z.of_nat i)
+  {{{ RET match slot_at w self i with Some p => SOMEV #(Z.of_nat p.1) | None => NONEV end;
+      is_world tbl w }}}.
+Proof.
+  intros Hself. iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
+  pose proof Hself as [[lo ls] Ht]%elem_of_dom.
+  wp_lam. wp_pures. wp_bind (App (Val res) _). iApply (wp_wand with "[]"); [by iApply "Hres"|].
+  iIntros (v ->). wp_pures.
+  iDestruct (src_part_split _ _ self (lo, ls) Ht with "Hsrc") as "[(%held & %Hc & %cap & %hv & %Hcap & %Hheld & Hrep) Hsrc]".
+  set (sl := source_slots (sources_of w self)) in *.
+  iDestruct "Hrep" as (a) "(H0 & H1 & H2 & H3 & H4 & H5 & Ha)". wp_load. wp_pures.
+  iAssert (src_rep ls (slot_fun sl) cap (length sl) (source_cursor (sources_of w self)) hv)
+    with "[H0 H1 H2 H3 H4 H5 Ha]" as "Hrep"; [iExists a; iFrame|].
+  destruct (decide (i < length sl)) as [Hlt|Hge].
+  - rewrite (bool_decide_eq_true_2 (Z.of_nat i < Z.of_nat (length sl))%Z); [|lia]. wp_pures.
+    destruct (lookup_lt_is_Some_2 sl i Hlt) as [[s mh] Hs].
+    wp_apply (sources_cell_spec with "Hrep"); [lia|]. iIntros "Hrep".
+    rewrite (slot_fun_lookup _ _ _ Hs) /slot_val /=. wp_pures. iModIntro.
+    change (slot_at w self i) with (sl !! i). rewrite Hs.
+    iApply "HΦ". iApply (world_join _ _ self lo ls held Ht Hin). iFrame "Hobs Hsrc".
+    iSplit; [done|]. iExists cap, hv. by iFrame.
+  - rewrite (bool_decide_eq_false_2 (Z.of_nat i < Z.of_nat (length sl))%Z); [|lia]. wp_pures. iModIntro.
+    change (slot_at w self i) with (sl !! i). rewrite (lookup_ge_None_2 sl i ltac:(lia)).
+    iApply "HΦ". iApply (world_join _ _ self lo ls held Ht Hin). iFrame "Hobs Hsrc".
+    iSplit; [done|]. iExists cap, hv. by iFrame.
+Qed.
+
+(**md
+**`HeldInPrefix` decides whether `s` is in `read_prefix w self`.**
+
+- [res:] the resolver.
+- [tbl:] the node table.
+- [self:] the computation whose prefix is scanned.
+- [s:] the source looked for.
+- [w:] the edge world.
+*)
+Lemma sources_held_in_prefix_spec (res : val) tbl (self s : node_id) (w : EdgeWorld) :
+  self ∈ dom tbl ->
+  {{{ resolver tbl res ∗ is_world tbl w }}}
+    sources_held_in_prefix_code res #(Z.of_nat self) #(Z.of_nat s)
+  {{{ RET #(bool_decide (s ∈ read_prefix w self)); is_world tbl w }}}.
+Proof.
+  intros Hself. iIntros (Φ) "(#Hres & %Hin & Hobs & Hsrc) HΦ".
+  pose proof Hself as [[lo ls] Ht]%elem_of_dom.
+  wp_lam. wp_pures. wp_bind (App (Val res) _). iApply (wp_wand with "[]"); [by iApply "Hres"|].
+  iIntros (v ->). wp_pures.
+  iDestruct (src_part_split _ _ self (lo, ls) Ht with "Hsrc") as "[(%held & %Hc & %cap & %hv & %Hcap & %Hheld & Hrep) Hsrc]".
+  set (sl := source_slots (sources_of w self)) in *.
+  set (cur := source_cursor (sources_of w self)) in *.
+  iDestruct "Hrep" as (a) "(H0 & H1 & H2 & H3 & H4 & H5 & Ha)". wp_load.
+  iAssert (src_rep ls (slot_fun sl) cap (length sl) cur hv)
+    with "[H0 H1 H2 H3 H4 H5 Ha]" as "Hrep"; [iExists a; iFrame|].
+  wp_apply (sources_held_before_spec ls _ cap (length sl) cur hv (read_prefix w self) cur s 0 with "Hrep").
+  - rewrite /read_prefix length_fmap length_take -/sl -/cur. lia.
+  - lia.
+  - intros j x Hj. rewrite /read_prefix list_lookup_fmap -/sl -/cur in Hj.
+    destruct (take cur sl !! j) as [[y mh]|] eqn:Et; simplify_eq/=.
+    apply lookup_take_Some in Et as [Esl _].
+    exists (handle_val mh). rewrite (slot_fun_lookup sl j (x, mh) Esl) //.
+  - iIntros "Hrep". rewrite drop_0. iApply "HΦ".
+    iApply (world_join _ _ self lo ls held Ht Hin). iFrame "Hobs Hsrc".
+    iSplit; [done|]. iExists cap, hv. by iFrame.
 Qed.
 
 End heap.
