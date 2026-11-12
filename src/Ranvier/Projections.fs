@@ -657,23 +657,33 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         hidden.Add key |> ignore
 
+    member private _.RecordVisible(key: 'K, change: KeyChange) =
+        if not (Platform.isNull log) then
+            log.Record (key, change)
+
+        if not (Platform.isNull (box values)) then
+            values.Record (key, change, entries.Count)
+
     /// <summary>
     /// Records for the key readers each key that entered or left the hidden keys with its row intact, then makes this
     /// pass's hidden keys the last applied ones.
     /// </summary>
-    member private _.SettleHidden() =
-        if not (Platform.isNull log) then
+    member private this.SettleHidden() =
+        if
+            not (Platform.isNull log)
+            || not (Platform.isNull (box values))
+        then
             // A key added by this pass and hidden records Added then Removed, which cancel.
             hidden.Iterate (fun key ->
                 if not (lastHidden.Contains key) then
-                    log.Record (key, KeyChange.Removed))
+                    this.RecordVisible (key, KeyChange.Removed))
 
             lastHidden.Iterate (fun key ->
                 if
                     not (hidden.Contains key)
                     && not (Platform.isNull (entries.Find key))
                 then
-                    log.Record (key, KeyChange.Added))
+                    this.RecordVisible (key, KeyChange.Added))
 
         let swap = lastHidden
         lastHidden <- hidden
@@ -681,11 +691,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         hidden.Clear ()
 
     /// <summary>Stores the row of an added key, and records the addition for the key readers.</summary>
-    member internal _.AddEntry(key: 'K, entry: RowEntry<'K, 'V>) =
+    member internal this.AddEntry(key: 'K, entry: RowEntry<'K, 'V>) =
         entries.Set (key, entry)
-
-        if not (Platform.isNull log) then
-            log.Record (key, KeyChange.Added)
+        this.RecordVisible (key, KeyChange.Added)
 
     /// <summary>Whether a key reader is live.</summary>
     member internal _.HasKeyReaders = not (Platform.isNull log)
@@ -804,11 +812,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             values.Retire entry
 
         if
-            not (Platform.isNull log)
-            && (Platform.isNull (box lastHidden)
-                || not (lastHidden.Contains entry.Key))
+            Platform.isNull (box lastHidden)
+            || not (lastHidden.Contains entry.Key)
         then
-            log.Record (entry.Key, KeyChange.Removed)
+            this.RecordVisible (entry.Key, KeyChange.Removed)
 
         if entry.Watched then
             entry.Watched <- false
@@ -1091,7 +1098,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         inCleanup <- true
 
         try
-            for change in delta.Changes do
+            for i in 0 .. delta.ChangeCount - 1 do
+                let change = delta.ChangeAt i
+
                 if
                     runs = mine
                     && (change.Value = KeyChange.Removed
@@ -1106,7 +1115,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             inCleanup <- false
 
         if not disposed && runs = mine then
-            for change in delta.Changes do
+            for i in 0 .. delta.ChangeCount - 1 do
+                let change = delta.ChangeAt i
+
                 if
                     change.Value = KeyChange.Added
                     || change.Value = KeyChange.Replaced
@@ -1816,7 +1827,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             if not reconcile then
                 try
-                    for change in delta.Changes do
+                    for i in 0 .. delta.ChangeCount - 1 do
+                        let change = delta.ChangeAt i
                         let position = shownIndex.Value.Find change.Key
                         let accepted = values.TryAccepted change.Key
 
@@ -1846,7 +1858,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                         let current = delta.Keys
                         let replaced = Platform.KeySet<'K>()
 
-                        for change in delta.Changes do
+                        for i in 0 .. delta.ChangeCount - 1 do
+                            let change = delta.ChangeAt i
+
                             if change.Value = KeyChange.Replaced then
                                 replaced.Add change.Key |> ignore
 

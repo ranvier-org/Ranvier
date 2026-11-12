@@ -61,10 +61,7 @@ type internal KeyChanges<'K when 'K: equality>() =
                 && previous = KeyChange.Removed
             then
                 Platform.setEntryAt (slot - 1) pairs (KeyValuePair (key, KeyChange.Replaced))
-            elif change = KeyChange.Changed then
-                if previous = KeyChange.Changed then
-                    Platform.setEntryAt (slot - 1) pairs (KeyValuePair (key, change))
-            else
+            elif change <> KeyChange.Changed then
                 Platform.setEntryAt (slot - 1) pairs (KeyValuePair (key, change))
         else
             pairs.Add (KeyValuePair (key, change))
@@ -83,6 +80,19 @@ type internal KeyChanges<'K when 'K: equality>() =
 
         member _.GetEnumerator() : Collections.IEnumerator =
             (pairs :> Collections.IEnumerable).GetEnumerator()
+
+#if !FABLE_COMPILER
+type internal EmptyKeyChangesCache<'K when 'K: equality>() =
+    static member val Value = KeyChanges<'K>()
+#endif
+
+module internal KeyChanges =
+    let inline empty<'K when 'K: equality> () =
+#if FABLE_COMPILER
+        KeyChanges<'K>()
+#else
+        EmptyKeyChangesCache<'K>.Value
+#endif
 
 /// <summary>The membership, order and optional settled-value changes between two reads by a projection reader.</summary>
 #if FABLE_COMPILER
@@ -166,7 +176,7 @@ and
     [<Sealed>]
 #endif
     ProjectionReader<'K when 'K: equality> internal (host: IKeyLogHost<'K>, ?values: bool) =
-    let empty = KeyChanges<'K>()
+    let empty = KeyChanges.empty<'K>()
     let mutable changes = KeyChanges<'K>()
 
     /// <summary>The keys the previous read returned.</summary>

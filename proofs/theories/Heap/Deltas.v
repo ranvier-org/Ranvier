@@ -55,8 +55,7 @@ Definition key_change_merge_code : val :=
         else if: ("c" = #0) && ("prev" = #1) then
           "slot" <- SOME #2
         else if: "c" = #3 then
-          if: "prev" = #3 then "slot" <- SOME #3
-          else #()
+          #()
         else
           "slot" <- SOME "c"
     end.

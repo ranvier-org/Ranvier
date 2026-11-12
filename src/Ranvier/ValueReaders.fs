@@ -57,8 +57,10 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
     let equal = graph.Options.Equality.Comparer<'V>()
     let rows = Platform.KeyMap<'K, ValueRow<'K, 'V>>()
     let seen = Platform.KeySet<'K>()
+    let membership = KeyChanges<'K>()
     let removed = ResizeArray<'K>()
     let queue = ResizeArray<ValueRow<'K, 'V>>()
+    let mutable seeded = false
     let mutable keys: 'K[] = null
     let mutable disposed = false
     let mutable running = false
@@ -74,44 +76,95 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
         (row.Entry.Row :> ISource).RemoveObserverAt(row :> IComputation, row.Handle)
         row.Handle <- EdgeHandle.Unlinked
 
-    member private this.Sync(current: 'K[]) =
-        if not (obj.ReferenceEquals (keys, current)) then
-            seen.Clear ()
+    member private _.Attach(key: 'K, entry: RowEntry<'K, 'V>) =
+        let row = ValueRow (graph, entry, touched)
 
-            for i in 0 .. current.Length - 1 do
-                let key = Platform.itemAt i current
-                seen.Add key |> ignore
-                let entry = find key
-                let old = rows.Find key
+        if entry.Settled then
+            row.HasValue <- true
+            row.Value <- entry.Row.Peek
+
+        rows.Set (key, row)
+        row.Handle <- (entry.Row :> ISource).AddObserver(row :> IComputation, 0)
+        touched row
+
+    member private this.SyncFull(current: 'K[]) =
+        seen.Clear ()
+
+        for i in 0 .. current.Length - 1 do
+            let key = Platform.itemAt i current
+            seen.Add key |> ignore
+            let entry = find key
+            let old = rows.Find key
+
+            if
+                not (Platform.isNull entry)
+                && (Platform.isNull (box old)
+                    || not (obj.ReferenceEquals (old.Entry, entry)))
+            then
+                if not (Platform.isNull (box old)) then
+                    this.Detach old
+
+                this.Attach (key, entry)
+
+        rows.Iterate (fun key _ ->
+            if not (seen.Contains key) then
+                removed.Add key)
+
+        for key in removed do
+            this.Detach (rows.Find key)
+            rows.Remove key
+
+        removed.Clear ()
+        membership.Clear ()
+        seeded <- true
+        keys <- current
+
+    member private this.Sync(current: 'K[]) =
+        if not seeded then
+            this.SyncFull current
+        elif membership.Size > 0 then
+            for i in 0 .. membership.Size - 1 do
+                let change = membership.EntryAt i
 
                 if
-                    not (Platform.isNull entry)
-                    && (Platform.isNull (box old)
-                        || not (obj.ReferenceEquals (old.Entry, entry)))
+                    change.Value = KeyChange.Removed
+                    || change.Value = KeyChange.Replaced
                 then
+                    let old = rows.Find change.Key
+
                     if not (Platform.isNull (box old)) then
                         this.Detach old
+                        rows.Remove change.Key
 
-                    let row = ValueRow (graph, entry, touched)
+            for i in 0 .. membership.Size - 1 do
+                let change = membership.EntryAt i
 
-                    if entry.Settled then
-                        row.HasValue <- true
-                        row.Value <- entry.Row.Peek
+                if
+                    change.Value = KeyChange.Added
+                    || change.Value = KeyChange.Replaced
+                then
+                    let entry = find change.Key
 
-                    rows.Set (key, row)
-                    row.Handle <- (entry.Row :> ISource).AddObserver(row :> IComputation, 0)
-                    touched row
+                    if not (Platform.isNull entry) then
+                        let old = rows.Find change.Key
 
-            rows.Iterate (fun key _ ->
-                if not (seen.Contains key) then
-                    removed.Add key)
+                        if not (Platform.isNull (box old)) then
+                            this.Detach old
 
-            for key in removed do
-                this.Detach (rows.Find key)
-                rows.Remove key
+                        this.Attach (change.Key, entry)
 
-            removed.Clear ()
+            membership.Clear ()
             keys <- current
+        elif not (obj.ReferenceEquals (keys, current)) then
+            keys <- current
+
+    member _.Record(key: 'K, change: KeyChange, liveCount: int) =
+        if not disposed && seeded then
+            membership.Record (key, change)
+
+            if membership.Size > max 64 liveCount then
+                membership.Clear ()
+                seeded <- false
 
     member private this.Refresh(current: 'K[]) =
         if not disposed && not running then
@@ -150,7 +203,9 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
 
                         processed <- processed + 1
                 finally
-                    if processed > 0 then
+                    if processed = queue.Count then
+                        queue.Clear ()
+                    elif processed > 0 then
                         queue.RemoveRange (0, processed)
             finally
                 running <- false
@@ -188,6 +243,8 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
             rows.Clear ()
             queue.Clear ()
             seen.Clear ()
+            membership.Clear ()
+            seeded <- false
             keys <- null
 
     interface INode with

@@ -3,31 +3,71 @@ namespace Ranvier
 open System
 open System.Collections.Generic
 
+[<AllowNullLiteral>]
+type internal CollectionItem<'K, 'V>(key: 'K, signal: Signal<'V>) =
+    member _.Key = key
+    member _.Signal = signal
+    member val Prev: CollectionItem<'K, 'V> = null with get, set
+    member val Next: CollectionItem<'K, 'V> = null with get, set
+
 /// <summary>The rows and membership journal of an editable collection.</summary>
 type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as this =
     inherit RowsOf<Signal<'V>, 'K, 'V>(graph, (fun item -> item.Value), Unchecked.defaultof<_>)
 
-    let items = Platform.KeyMap<'K, Signal<'V>>()
-    let order = ResizeArray<'K>()
-    let keyEqual = HashIdentity.Structural<'K>
+    let empty = KeyChanges.empty<'K>()
+    let items = Platform.KeyMap<'K, CollectionItem<'K, 'V>>()
+    let mutable head: CollectionItem<'K, 'V> = null
+    let mutable tail: CollectionItem<'K, 'V> = null
+    let mutable count = 0
     let revision = Signal<int>(graph, 0, EqualityComparer<int>.Default)
     let mutable changes = KeyChanges<'K>()
     let mutable previous: 'K[] = Array.empty
     let mutable first = true
     let mutable stopped = false
 
+    let toArray () =
+        if count = 0 then
+            Array.empty
+        else
+            let arr = Array.zeroCreate<'K> count
+            let mutable node = head
+            let mutable i = 0
+
+            while not (Platform.isNull node) do
+                arr[i] <- node.Key
+                i <- i + 1
+                node <- node.Next
+
+            arr
+
     do
         this.ReadDelta <-
             fun () ->
                 revision.Value |> ignore
-                let current = order.ToArray ()
-                let delta = ProjectionDelta (changes, current, previous, first)
-                changes <- KeyChanges<'K>()
-                previous <- current
-                first <- false
-                delta
 
-        this.VisitDelta <- fun key -> this.Visit (key, items.Find key)
+                if first then
+                    let current = toArray ()
+                    changes.Clear ()
+                    let delta = ProjectionDelta (empty, current, previous, true)
+                    previous <- current
+                    first <- false
+                    delta
+                elif changes.Size = 0 then
+                    ProjectionDelta (empty, previous, previous, false)
+                else
+                    let current = toArray ()
+                    let recorded = changes
+                    changes <- KeyChanges<'K>()
+                    let delta = ProjectionDelta (recorded, current, previous, false)
+                    previous <- current
+                    delta
+
+        this.VisitDelta <-
+            fun key ->
+                let item = items.Find key
+
+                if not (Platform.isNull item) then
+                    this.Visit (key, item.Signal)
 
         graph.RunOwned (
             this.Scope,
@@ -35,7 +75,9 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
                 this.Scope.OnCleanup (fun () ->
                     stopped <- true
                     items.Clear ()
-                    order.Clear ()
+                    head <- null
+                    tail <- null
+                    count <- 0
                     changes.Clear ()
                     previous <- Array.empty)
         )
@@ -49,28 +91,49 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
             this.EnsureLive ()
             let item = items.Find key
 
-            if Platform.isNull (box item) then
-                items.Set (key, Signal<'V>(graph, value))
-                order.Add key
+            if Platform.isNull item then
+                let fresh = CollectionItem<'K, 'V>(key, Signal<'V>(graph, value))
+
+                if Platform.isNull tail then
+                    head <- fresh
+                    tail <- fresh
+                else
+                    fresh.Prev <- tail
+                    tail.Next <- fresh
+                    tail <- fresh
+
+                items.Set (key, fresh)
+                count <- count + 1
                 changes.Record (key, KeyChange.Added)
                 revision.Value <- revision.Peek + 1
             else
-                item.Value <- value)
+                item.Signal.Value <- value)
 
     member this.Remove(key: 'K) =
         graph.RunBatch (fun () ->
             this.EnsureLive ()
+            let item = items.Find key
 
-            if Platform.isNull (box (items.Find key)) then
+            if Platform.isNull item then
                 false
             else
                 items.Remove key
-                let mutable index = 0
+                let prev = item.Prev
+                let next = item.Next
 
-                while not (keyEqual.Equals (order[index], key)) do
-                    index <- index + 1
+                if Platform.isNull prev then
+                    head <- next
+                else
+                    prev.Next <- next
 
-                order.RemoveAt index
+                if Platform.isNull next then
+                    tail <- prev
+                else
+                    next.Prev <- prev
+
+                item.Prev <- null
+                item.Next <- null
+                count <- count - 1
                 changes.Record (key, KeyChange.Removed)
                 revision.Value <- revision.Peek + 1
                 true)
@@ -79,12 +142,20 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
         graph.RunBatch (fun () ->
             this.EnsureLive ()
 
-            if order.Count > 0 then
-                for key in order do
-                    changes.Record (key, KeyChange.Removed)
+            if count > 0 then
+                let mutable node = head
+
+                while not (Platform.isNull node) do
+                    let next = node.Next
+                    node.Prev <- null
+                    node.Next <- null
+                    changes.Record (node.Key, KeyChange.Removed)
+                    node <- next
 
                 items.Clear ()
-                order.Clear ()
+                head <- null
+                tail <- null
+                count <- 0
                 revision.Value <- revision.Peek + 1)
 
     member this.Edit(body: unit -> unit) =
@@ -95,23 +166,25 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
     override this.Enumerate() =
         revision.Value |> ignore
         let mine = this.Runs
-        let keys = order.ToArray ()
+        let keys = toArray ()
         let mutable i = 0
 
         while this.Runs = mine && i < keys.Length do
             let key = Platform.itemAt i keys
             i <- i + 1
             let item = items.Find key
-            let entry = this.Entries.Find key
 
-            if
-                not (Platform.isNull entry)
-                && not (obj.ReferenceEquals ((entry :?> ItemRow<Signal<'V>, 'K, 'V>).Item.Peek, item))
-            then
-                this.RetireChanged key
+            if not (Platform.isNull item) then
+                let entry = this.Entries.Find key
 
-            if this.Runs = mine then
-                this.Visit (key, item)
+                if
+                    not (Platform.isNull entry)
+                    && not (obj.ReferenceEquals ((entry :?> ItemRow<Signal<'V>, 'K, 'V>).Item.Peek, item.Signal))
+                then
+                    this.RetireChanged key
+
+                if this.Runs = mine then
+                    this.Visit (key, item.Signal)
 
 /// <summary>An editable collection with insertion order and separately observable rows.</summary>
 /// <remarks>Owned by the creating scope. Updates use the graph's value equality policy; keys use structural equality.</remarks>
