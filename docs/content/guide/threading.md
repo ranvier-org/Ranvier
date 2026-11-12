@@ -33,11 +33,11 @@ to wake that thread. With a manual dispatcher, call `graph.Pump ()` to apply que
 
 | Operation | Contract |
 |-----------|----------|
-| `Signal.Value <- v` | Guarded. Under `ThreadAffinity = Guarded` (the default) a write from another thread raises `InvalidOperationException` and the value is unchanged. An equal write raises too. |
+| `Signal.Value <- v` | Guarded. Under `ThreadAffinity = Guarded` (the default) a write from another thread raises `InvalidOperationException` and the value is unchanged ([`guarded_enter_iff_owner`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#guarded_enter_iff_owner), [`guarded_enter_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#guarded_enter_spec)). An equal write raises too. |
 | `AsyncSource.Settle` / `Fail`, a completing `AsyncMemo` flight | Marshalled through `Graph.Dispatch`. Under `ImmediateDispatcher` and `Guarded` affinity, an off-thread call raises `Pump ran on thread` instead (see [Dispatcher selection](#dispatcher-selection)). |
 | `StreamSink.Next` from another thread | Folds the item under a lock on the delivering thread, then requests one wake through `Graph.Dispatch` while none is outstanding. The graph publishes the latest state once per inbox drain; see [Streams](streams.md#threads). |
-| `Graph.Dispatch work` | Runs `work` inline on the graph thread. From another thread, queues it in the graph's inbox and asks the dispatcher to wake the graph thread. |
-| `Graph.Pump ()` | Guarded. Runs the inbox in arrival order, then flushes effects, and returns the number of items run. An item that throws is recorded in `graph.Root.Errors`, and the rest still run. |
+| `Graph.Dispatch work` | Runs `work` inline on the graph thread. From another thread, queues it in the graph's inbox and asks the dispatcher to wake the graph thread ([`post_queued_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#post_queued_spec)). |
+| `Graph.Pump ()` | Guarded. Runs the inbox in arrival order, then flushes effects, and returns the number of items run. An item that throws is recorded in `graph.Root.Errors`, and the rest still run ([`inbox_drain_fifo_fault_isolated`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#inbox_drain_fifo_fault_isolated)). |
 | `Graph.PendingWork` | The number of inbox items waiting for a pump. |
 | Creating a node, `Batch`, `Untrack`, `Flush`, `CreateRoot`, `OnCleanup`, `Dispose` | Guarded. From another thread each raises `InvalidOperationException` before it changes the graph. |
 | `.Value`, `TryValue` | Guarded when the read recomputes a stale memo or boundary. A read of a current value is not guarded. |

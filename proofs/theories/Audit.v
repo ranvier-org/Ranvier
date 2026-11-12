@@ -1,8 +1,8 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections Concurrency.
 From Ranvier.Conformance Require Check.
-From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy Collections.
+From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy Collections Concurrency.
 From Ranvier Require Extract.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -414,3 +414,15 @@ Print Assumptions Ranvier.Heap.Collections.write_signal_except_spec.
 Print Assumptions Ranvier.Heap.Collections.notify_removed_spec.
 Print Assumptions Ranvier.Heap.Collections.memo_adopt_spec.
 Print Assumptions Ranvier.Heap.Collections.memo_dispose_adopted_spec.
+Print Assumptions guarded_enter_iff_owner.
+Print Assumptions serialised_acquire_mutual_exclusion.
+Print Assumptions serialised_reentrant_preserves_holder.
+Print Assumptions serialised_release_reposts_nonempty_inbox.
+Print Assumptions inbox_drain_fifo_fault_isolated.
+Print Assumptions pending_dispatch_claim_exclusive.
+Print Assumptions Ranvier.Heap.Concurrency.guarded_enter_spec.
+Print Assumptions Ranvier.Heap.Concurrency.serialised_acquire_spec.
+Print Assumptions Ranvier.Heap.Concurrency.serialised_release_spec.
+Print Assumptions Ranvier.Heap.Concurrency.post_queued_spec.
+Print Assumptions Ranvier.Heap.Concurrency.pending_dispatch_claim_spec.
+Print Assumptions Ranvier.Heap.Concurrency.pending_dispatch_close_spec.

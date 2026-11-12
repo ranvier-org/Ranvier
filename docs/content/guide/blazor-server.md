@@ -222,7 +222,7 @@ component's `InvokeAsync`.
 
 :::warning Concurrent graph entry
 `Serialised` rejects a second thread entering while another thread is inside the graph. The
-rejected entry leaves the graph unchanged.
+rejected entry leaves the graph unchanged ([`serialised_acquire_mutual_exclusion`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#serialised_acquire_mutual_exclusion), [`serialised_acquire_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#serialised_acquire_spec)).
 :::
 
 :::details Recognise the error messages
