@@ -164,6 +164,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 83,724 | 128,270 | 1,768,991 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 83,786 | 128,297 | 1,769,018 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 83,786 | 128,338 | 1,768,974 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 83,850 | 128,334 | 1,768,951 |
 
 ## app-table
 
@@ -329,6 +330,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 3,701,348 | 8,689,446 | 99,685,144 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 3,701,356 | 8,615,804 | 99,685,941 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 3,701,363 | 8,607,928 | 99,687,544 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 3,701,347 | 8,718,968 | 99,693,056 |
 
 ## async-recover
 
@@ -494,6 +496,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 139,493 | 39,907 | 443,796 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 139,541 | 39,906 | 443,797 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 139,541 | 39,896 | 443,799 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 94,721 | 39,938 | 443,926 |
 
 ## async-resolve
 
@@ -659,6 +662,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,801,966 | 1,089,553 | 12,250,896 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,804,365 | 1,090,553 | 12,251,082 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,804,373 | 1,090,259 | 12,254,560 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,803,573 | 1,089,734 | 12,251,791 |
 
 ## chain
 
@@ -824,6 +828,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 13,099 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 
 ## chain-affinity
 
@@ -989,6 +994,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,653 | 3,176 | 2,604 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,653 | 3,176 | 2,604 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,653 | 3,176 | 2,604 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1154,6 +1160,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 74,709 | 827,832 | 2,582,903 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 74,709 | 833,384 | 2,584,482 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 74,709 | 833,322 | 2,584,415 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 74,710 | 833,422 | 2,575,510 |
 
 ## create
 
@@ -1319,6 +1326,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,702,454 | 2,882,680 | 2,575,393 | 2,128,055 | 4,055,425 | 33,824,952 | 50,452,535 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 13,467,404 | 2,866,678 | 2,575,426 | 2,127,181 | 4,055,958 | 33,895,679 | 50,465,005 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 13,451,432 | 2,866,678 | 2,575,377 | 2,128,020 | 4,054,987 | 33,824,060 | 50,449,746 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 13,451,402 | 2,866,678 | 2,591,394 | 2,127,172 | 4,055,461 | 33,823,161 | 50,461,021 |
 
 ## create-on
 
@@ -1484,6 +1492,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,968,520 | 4,234,718 | 55,455,030 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,968,488 | 4,234,758 | 55,454,754 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,968,488 | 4,234,874 | 55,454,993 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,968,504 | 4,234,940 | 55,454,744 |
 
 ## cutoff
 
@@ -1649,6 +1658,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1814,6 +1824,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 787 | 758 | 16,684 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 787 | 758 | 16,684 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 787 | 758 | 16,684 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 803 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1979,6 +1990,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 757 | 759 | 16,707 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 773 | 759 | 16,707 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 757 | 759 | 16,707 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 773 | 759 | 16,707 |
 
 ## dispose
 
@@ -2144,6 +2156,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,706,247 | 806,288 | 367,497 | 475,965 | 495,136 | 13,206,084 | 9,105,903 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,706,248 | 806,288 | 367,497 | 475,931 | 495,013 | 13,205,690 | 9,106,640 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,707,643 | 806,288 | 367,497 | 475,925 | 495,256 | 13,205,323 | 9,105,469 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,707,641 | 806,288 | 367,497 | 476,052 | 495,321 | 13,205,814 | 9,106,344 |
 
 ## dispose-on
 
@@ -2309,6 +2322,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 346,497 | 487,654 | 8,902,682 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 346,497 | 487,703 | 8,902,965 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 346,497 | 487,780 | 8,902,736 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 346,497 | 487,648 | 8,902,454 |
 
 ## editable-edit
 
@@ -2474,6 +2488,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 183,506 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 183,506 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 183,506 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 183,506 |
 
 ## editable-upstream
 
@@ -2639,6 +2654,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 239,256 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 239,256 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 239,256 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 239,255 |
 
 ## fail-recompute
 
@@ -2804,6 +2820,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 65,072 | 1,420 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 65,016 | 1,420 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 65,016 | 1,420 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 65,062 | 1,420 |
 
 ## flight
 
@@ -2969,6 +2986,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 
 ## keyed-insert
 
@@ -3134,6 +3152,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,901,107 | 53,963 | 55,042 | 3,328,956 | 240,421 | 179,364 | 46,490,594 | 2,635,515 | 2,656,814 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,900,907 | 54,051 | 55,043 | 3,329,008 | 240,565 | 179,426 | 46,491,706 | 2,635,571 | 2,656,808 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,901,347 | 53,939 | 55,091 | 3,328,826 | 240,432 | 179,446 | 46,480,251 | 2,635,536 | 2,656,784 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,916,955 | 54,059 | 55,090 | 3,328,813 | 240,571 | 179,465 | 46,487,896 | 2,635,516 | 2,656,825 |
 
 ## keyed-remove
 
@@ -3299,6 +3318,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,900,109 | 43,662 | 45,382 | 3,332,809 | 593,071 | 148,526 | 46,453,669 | 1,925,519 | 1,961,519 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,899,916 | 43,750 | 45,366 | 3,332,701 | 592,940 | 148,553 | 46,454,316 | 1,925,467 | 1,961,511 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,900,358 | 43,638 | 45,446 | 3,332,665 | 593,028 | 148,446 | 46,454,317 | 1,925,493 | 1,961,571 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,915,953 | 43,758 | 45,431 | 3,332,787 | 592,991 | 148,511 | 46,467,766 | 1,925,452 | 1,961,756 |
 
 ## keyed-swap
 
@@ -3464,6 +3484,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,895,689 | 46,231 | 46,978 | 3,262,838 | 502,389 | 508,608 | 47,150,733 | 915,945 | 934,278 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,895,497 | 46,311 | 46,978 | 3,267,796 | 502,408 | 508,564 | 47,146,615 | 915,916 | 934,222 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,895,929 | 46,215 | 47,026 | 3,222,762 | 502,408 | 508,599 | 47,151,594 | 915,795 | 934,268 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,911,545 | 46,327 | 47,026 | 3,222,096 | 502,333 | 508,556 | 47,163,199 | 915,926 | 934,272 |
 
 ## mvu-dispatch
 
@@ -3629,6 +3650,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 60,281 | 794 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 60,281 | 794 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 60,281 | 794 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3794,6 +3816,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | — | — |
 
 ## project-chain
 
@@ -3959,6 +3982,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 912,752 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 912,785 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 455,743 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 455,712 |
 
 ## project-churn
 
@@ -4124,6 +4148,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 36,554 | 34,280 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 36,566 | 34,296 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 36,580 | 34,296 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 36,641 | 34,376 |
 
 ## project-edit
 
@@ -4289,6 +4314,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 50,519 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 50,583 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 50,551 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 50,522 |
 
 ## project-reorder
 
@@ -4454,6 +4480,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 664,180 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 664,228 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 664,180 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 664,163 |
 
 ## server-render
 
@@ -4619,6 +4646,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — | — |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — | — |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — | — |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | — | — | — |
 
 ## shape-diamond
 
@@ -4784,6 +4812,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 62,348 | 86,309 | 1,879,598 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 62,348 | 86,309 | 1,879,598 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 62,348 | 86,309 | 1,879,598 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4949,6 +4978,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 85,079 | 109,899 | 2,055,682 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 85,079 | 109,892 | 2,055,681 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 85,079 | 109,899 | 2,055,682 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 85,079 | 109,899 | 2,055,691 |
 
 ## stream-burst-1
 
@@ -5114,6 +5144,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,916 | 49,162 | 47,367 | 57,344 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,341 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,163 | 47,367 | 57,341 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,342 |
 
 ## stream-burst-16
 
@@ -5279,6 +5310,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 5,085 | 25,099 | 5,765 | 10,539 | 48,307 | 16,570 | 126,478 | 745,454 | 115,689 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 5,085 | 25,099 | 5,765 | 10,538 | 48,311 | 16,568 | 126,486 | 745,457 | 115,687 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 5,085 | 25,099 | 5,765 | 10,537 | 48,307 | 16,567 | 126,486 | 745,455 | 115,688 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 5,085 | 25,099 | 5,765 | 10,540 | 48,307 | 16,568 | 126,487 | 745,455 | 115,695 |
 
 ## stream-burst-256
 
@@ -5444,6 +5476,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 54,705 | 401,383 | 57,104 | 134,387 | 816,592 | 46,288 | 1,363,917 | 11,913,638 | 1,048,714 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 54,705 | 401,383 | 57,104 | 134,300 | 816,691 | 46,288 | 1,363,879 | 11,913,544 | 1,048,728 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 54,705 | 401,383 | 57,104 | 134,381 | 816,649 | 46,265 | 1,363,875 | 11,913,637 | 1,048,727 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 54,708 | 401,383 | 57,104 | 134,389 | 816,692 | 46,288 | 1,363,881 | 11,913,637 | 1,048,728 |
 
 ## stream-restart
 
@@ -5609,6 +5642,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 4,240 | 5,071 | 5,912 | 5,411 | 44,163 | 73,512 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 4,240 | 5,087 | 5,912 | 5,407 | 44,160 | 73,510 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 4,240 | 5,071 | 5,907 | 5,404 | 44,159 | 73,508 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 4,240 | 5,072 | 5,913 | 5,408 | 44,163 | 73,510 |
 
 ## timed-admit-both
 
@@ -5774,6 +5808,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 118,607 | 130,102 | 2,697,186 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 118,607 | 130,101 | 2,697,207 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 118,607 | 130,105 | 2,697,210 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 119,631 | 130,104 | 2,697,218 |
 
 ## timed-admit-debounce
 
@@ -5939,6 +5974,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,512 | 128,683 | 2,657,618 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 117,512 | 128,684 | 2,657,623 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 117,512 | 128,699 | 2,657,682 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 118,536 | 128,696 | 2,657,677 |
 
 ## timed-admit-first
 
@@ -6104,6 +6140,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 70,263 | 79,566 | 1,617,623 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 70,263 | 79,567 | 1,617,623 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 70,263 | 79,568 | 1,617,623 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 71,287 | 79,568 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -6269,6 +6306,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,774 | 129,006 | 2,667,474 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 117,774 | 129,003 | 2,667,493 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 117,774 | 129,007 | 2,667,513 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 118,798 | 129,006 | 2,667,520 |
 
 ## timed-capture-both
 
@@ -6434,6 +6472,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,870 | 44,940 | 847,458 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,870 | 44,938 | 847,450 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,870 | 44,937 | 847,453 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 35,870 | 44,940 | 847,481 |
 
 ## timed-capture-debounce
 
@@ -6599,6 +6638,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,742 | 46,732 | 847,951 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,742 | 46,732 | 847,948 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,742 | 46,731 | 847,950 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 35,742 | 46,732 | 847,950 |
 
 ## timed-capture-first
 
@@ -6764,6 +6804,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 32,222 | 36,489 | 745,942 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 32,222 | 36,489 | 745,942 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 32,222 | 36,488 | 745,942 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 32,222 | 36,490 | 745,942 |
 
 ## timed-capture-last
 
@@ -6929,6 +6970,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,678 | 46,668 | 840,076 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,678 | 46,666 | 840,076 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,678 | 46,665 | 840,078 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 35,678 | 46,668 | 840,077 |
 
 ## update
 
@@ -7094,6 +7136,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,090,990 | 38,805 | 84,905 | 263,117 | 160,221 | 3,351,248 | 2,567,559 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,087,790 | 38,805 | 84,905 | 262,846 | 160,192 | 3,351,272 | 2,567,551 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,087,790 | 38,805 | 84,905 | 263,133 | 160,204 | 3,351,278 | 2,567,564 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,089,390 | 38,805 | 86,505 | 262,865 | 160,223 | 3,351,272 | 2,567,585 |
 
 ## update-on
 
@@ -7259,6 +7302,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 95,405 | 175,548 | 2,894,901 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 97,005 | 175,544 | 2,894,941 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 95,405 | 175,521 | 2,894,894 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 97,005 | 175,537 | 2,894,895 |
 
 ## work-form
 
@@ -7424,6 +7468,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 175,183 | 167,654 | 313,403 | 343,321 | 5,495,765 | 5,408,822 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 175,183 | 167,654 | 313,406 | 343,322 | 5,495,802 | 5,408,840 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 175,183 | 167,687 | 313,372 | 343,259 | 5,495,768 | 5,408,874 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 177,199 | 167,671 | 313,390 | 343,303 | 5,495,802 | 5,408,861 |
 
 ## work-status
 
@@ -7589,6 +7634,7 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 102,645 | 80,835 | 260,959 | 156,799 | 2,675,591 | 2,407,638 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 102,645 | 82,435 | 260,932 | 156,800 | 2,675,621 | 2,407,624 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 102,645 | 80,835 | 260,956 | 156,799 | 2,675,588 | 2,407,668 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 104,245 | 82,435 | 260,956 | 156,813 | 2,675,674 | 2,407,631 |
 
 ## work-value
 
@@ -7754,4 +7800,5 @@
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 109,770 | 121,669 | 261,193 | 284,205 | 2,660,322 | 2,984,897 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 109,770 | 123,269 | 261,228 | 284,112 | 2,660,296 | 2,984,879 |
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 109,771 | 121,669 | 261,188 | 284,056 | 2,660,370 | 2,984,837 |
+| `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 111,369 | 123,271 | 261,200 | 284,385 | 2,660,344 | 2,984,839 |
 
