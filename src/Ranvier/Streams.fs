@@ -465,7 +465,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
             let source = sources.SourceAt i
 
             if source.IsStale && source.IsActive then
-                (this :> IComputation).MarkDirty()
+                (this :> IComputation).MarkDirty() |> ignore
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ResolveCheckAgain() =
@@ -493,7 +493,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         graph.NoteActiveSkip ()
 
         if active = 2 then
-            (this :> IComputation).MarkDirty()
+            (this :> IComputation).MarkDirty() |> ignore
 
     member private this.Pull() =
         graph.EnterPull ()
@@ -597,6 +597,8 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
                 freshness <- Freshness.Dirty
                 unannounced <- false
                 observers.NotifyDirty ()
+
+            false
 
         member _.MarkCheck() =
             if freshness = Freshness.Clean then

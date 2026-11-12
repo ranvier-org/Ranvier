@@ -184,10 +184,11 @@ type private DummyComputation(id: int) =
         member _.Status = Status.None
 
     interface IComputation with
-        member _.MarkDirty() = ()
+        member _.MarkDirty() = false
         member _.MarkCheck() = ()
         member _.AddSource _ = ()
         member _.MovedIn(_, _) = ()
+        member _.HasReadSlot _ = false
 
 /// <summary>
 /// <c>AddObserver</c> and <c>RemoveObserverAt</c> on their own: the exact pair a

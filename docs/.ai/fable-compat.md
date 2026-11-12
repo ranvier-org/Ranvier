@@ -51,6 +51,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Propagation.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
+| NotifySkip.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
 | AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
 | Projections.fs | 121 | 121 | 121 | 121 | 121 | 121 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
@@ -86,7 +87,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1708 | 1694 | 1691 | 1930 | 1912 | 1909 | 148 | 1 |
+| **Total** | 1724 | 1710 | 1707 | 1946 | 1928 | 1925 | 148 | 1 |
 
 ## Tests.fs
 
@@ -1103,6 +1104,29 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an Untrack inside a batch is still untracked
 - a batch that throws is not left open
 - an explicit flush inside a batch drains it, defeating the window
+
+</details>
+
+## NotifySkip.fs
+
+<details><summary>16 passed in every build and delivery that runs them</summary>
+
+- a write to a signal whose 64 memo readers are saturated marks none of them
+- in a batch of ten writes the nine later writes perform no walk
+- a signal read by a binding walks on every write
+- an effect created after a record leaves the stamp stale, and runs on the next write
+- a binding added after a record clears the stamp through AddObserver
+- an effectOn added after a record clears the stamp through TryAddObserver
+- batched writes to an effectOn saturate on first write and advance on flush
+- batched AsyncSource Settle and Fail skip repeated notify walks
+- a mark leaving a memo with an announcement due records no stamp
+- S03, #302: each even write reaches the effect through a stale middle
+- S08: an effect's cleanup writes its own source and queues no run
+- S11: an owning memo's cleanup writes its source and reads the memo
+- S13: an effect writing its source climbs to a fixpoint
+- S14: a memo writing its own source ends its runs stale
+- S16: an effect's cleanup rewrites its source between two host writes
+- S17: a self-writing memo's announcement reaches its reader after a later write
 
 </details>
 

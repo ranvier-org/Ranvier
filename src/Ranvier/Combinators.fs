@@ -856,7 +856,7 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
             let source = Platform.entryAt i order
 
             if source.IsStale && source.IsActive then
-                (this :> IComputation).MarkDirty()
+                (this :> IComputation).MarkDirty() |> ignore
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.MovedAgain() =
@@ -931,6 +931,7 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
         member _.MarkDirty() =
             dirty <- true
             changed ()
+            false
 
         member _.MarkCheck() =
             check <- true
@@ -987,6 +988,7 @@ type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: Fo
 
         member this.MarkDirty() =
             touched this
+            false
 
         member this.MarkCheck() =
             touched this

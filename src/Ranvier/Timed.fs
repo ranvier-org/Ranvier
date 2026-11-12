@@ -312,6 +312,8 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                 freshness <- Freshness.Dirty
                 this.Enqueue ()
 
+            false
+
         member this.MarkCheck() =
             if not disposed then
                 if freshness = Freshness.Clean then
@@ -325,7 +327,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             let source = sources.SourceAt i
 
             if source.IsStale && source.IsActive then
-                (this :> IComputation).MarkDirty()
+                (this :> IComputation).MarkDirty() |> ignore
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ResolveCheckAgain() =

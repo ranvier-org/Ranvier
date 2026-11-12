@@ -177,16 +177,16 @@ Each row's symbols are in `theories/Pure/Engine.v`, and `theories/Conformance/Ch
 
 ## The saturated-write skip
 
-`Pure/Optimised.v` models the optimisation of Task 13a as its own transitions (`oexec` and the functions defined with it),
-each its namesake of `Pure/Engine.v` with three changes. The F# side is not written: `src/Ranvier` has no diff.
+`Pure/Optimised.v` models the saturated-write skip as its own transitions (`oexec` and the functions defined with it),
+each its namesake of `Pure/Engine.v`. `src/Ranvier/Core.fs` implements the `SkipAll` design on `Signal`, `AsyncSource`, `Memo`, `Effect`, and `EffectOn`.
 
 | Model symbol | Core.fs symbol | Simplification and reason |
 |---|---|---|
-| `g_skip`, `skip_mode` | none | The mode is model-only. `SkipOff` is the present engine and `SkipAll` the design. `SkipLeaveDirty` advances only at 4191, 4207 and 4807, and `SkipUnchecked` records after every walk; both are for counterexamples. The engine of `Pure/Engine.v` reads none of the three fields. |
-| `g_epoch`, `advance`, `advance_point`, `modify_node_adv`, `add_node_adv` | a graph `epoch : int64` | `nat`, so no wrap. Each `advance` is one step with its write: 4191 in `orecompute`, 4207 in `orun_memo`, 4290 in `oannounce`, 4802/4807 in `oexecute_effect` after the `Clean` and unqueued write, 4825 in `orun_effect` after `in_cleanup <- false`, and `ANewEffect` at an effect's creation. 4786 has none. |
-| `g_stamps`, `record`, `all_saturated`, `notify_write` | a `Signal` field `stamp`; `MarkDirty`'s saturation bit | The setter's walk (3817-3818) records the epoch on the signal when it returns and every observer is saturated (`walk_record_sound`). F#: `MarkDirty` returns whether it left its node saturated, and `NotifyDirty` records only if all did; since marks keep saturation, F# records only where the model does. `notify_write` skips the walk while the stamp is current, at positive fuel, and keeps the value write, the events and `RequestFlush`. `WriteExcept` has no model command. |
-| `unstamp`, `links`, `otrack` | `AddObserver`, `TryAddObserver` (3767-3780) | A tracked read clears the stamp exactly when `sources_add` takes its miss branch, the branch that calls `AddObserver` or `TryAddObserver`. |
-| `saturated`, `memo_saturated`, `effect_saturated`, `node_sat` | `Memo.MarkDirty` (4483-4504), `Effect.MarkDirty` (4742-4755) | A node a `Dirty` mark leaves unchanged (`mark_dirty_saturated_id`). A signal and an absent node count as saturated. |
+| `g_skip`, `skip_mode` | none | The mode is model-only. `SkipOff` is the pre-skip engine and `SkipAll` is what `src/Ranvier` implements. `SkipLeaveDirty` and `SkipUnchecked` are for model counterexamples. |
+| `g_epoch`, `advance`, `advance_point`, `modify_node_adv`, `add_node_adv` | `Graph.epoch` (`float` on Fable, `int64` on .NET) and `Advance()` | `nat`, so no wrap (`int64` / IEEE-754 integer `float` up to $2^{53}-1$); `Stamp.Step` (`1` / `1.0`) is separated from `Stamp.Unrecorded` and `Stamp.Walking`. Each `advance` is one step: `Memo.RecomputeScoped`, `Memo.Run` entry and post-body (`unannounced <- true`), `Memo.Announce`, `Effect.Execute` after `freshness <- Clean`, `Effect.Run` after `inCleanup <- false`, `EffectOn.Execute` after `freshness <- Clean`, and effect creation (new objects have no prior observers). |
+| `g_stamps`, `record`, `all_saturated`, `notify_write` | `Signal.stamp`, `AsyncSource.stamp`, `ObserverSet.NotifyDirtySaturating`, `IComputation.MarkDirty() : bool` | `NotifyDirtySaturating()` marks each observer and returns whether every observer stayed saturated (`MarkDirty()` returned `true`); unmodeled `IComputation` implementations (`AsyncMemo`, `Boundary`, `Binding`, projections, streams, timed) return `false` so writes to their sources never record a stamp. `Signal.Value.set` / `WriteExcept` and `AsyncSource.SettleOnGraph` / `FailOnGraph` skip the walk when `stamp = graph.Epoch` (`stamp <> graph.Epoch` check); `WriteExcept` skips when stamped but never records. |
+| `unstamp`, `links`, `otrack` | `AddObserver`, `TryAddObserver` | A tracked read clears `stamp <- Stamp.Unrecorded` only when `AddObserver` or `TryAddObserver` registers a new observer edge (the miss branch of `SourceList.Add`). |
+| `saturated`, `memo_saturated`, `effect_saturated`, `node_sat` | `Memo.MarkDirty`, `Effect.MarkDirty`, `EffectOn.MarkDirty` | `Memo` returns `not unannounced`; `Effect` and `EffectOn` return `true`. |
 
 4191 leaves `unannounced` set. A memo whose last run ended stale is `Clean` with an announcement inside its next
 `RecomputeScoped` discharge, and `MarkDirty` of it keeps the flag, so the memo ends unsaturated

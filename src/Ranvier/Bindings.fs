@@ -49,7 +49,7 @@ type internal Binding<'Target, 'T>
             Tracer.Bind (this, graph, id)
             Tracer.EdgeAdd (this, source, 0)
             handle <- source.AddObserver (this :> IComputation, 0)
-            (this :> IComputation).MarkDirty()
+            (this :> IComputation).MarkDirty() |> ignore
             graph.RequestFlush ()
 
     member private this.Run() =
@@ -140,6 +140,8 @@ type internal Binding<'Target, 'T>
                     queued <- true
                     graph.Schedule (this :> IScheduled)
 
+            false
+
         member this.MarkCheck() =
             if not disposed then
                 if freshness = Freshness.Clean then
@@ -167,7 +169,7 @@ type internal Binding<'Target, 'T>
                             && source.IsStale
                             && source.IsActive
                         then
-                            (this :> IComputation).MarkDirty()
+                            (this :> IComputation).MarkDirty() |> ignore
 
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
                 elif not (Platform.isNull (box memo)) then

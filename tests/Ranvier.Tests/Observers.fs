@@ -429,6 +429,7 @@ type private Probe(id: int) =
         member this.MarkDirty() =
             this.Dirty <- this.Dirty + 1
             this.OnDirty ()
+            false
 
         member _.MarkCheck() = ()
         member _.AddSource _ = ()
