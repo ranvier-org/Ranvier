@@ -32,7 +32,7 @@ type internal TimedMode =
 /// <summary>A tracked read-only value that captures source changes eagerly and publishes them under a timing rule.</summary>
 /// <remarks>The first ready value is immediate. Pending capture holds the published state; failure publishes immediately.</remarks>
 [<Sealed>]
-type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: TimeSpan, mode: TimedMode, read: unit -> 'T) as this =
+type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: TimeSpan, mode: TimedMode, read: unit -> 'T) =
     let id = graph.NextId ()
     let sources = SourceList ()
     let observers = ObserverSet ()
@@ -56,32 +56,12 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     let mutable hasCandidate = false
     let mutable deadline = Double.NegativeInfinity
     let mutable timer: TimedTimer = Unchecked.defaultof<_>
+#if !FABLE_COMPILER
+    let mutable wakePost: unit -> unit = Unchecked.defaultof<_>
+#endif
     let mutable armed = false
     let mutable wakePosted = 0
     let mutable runs = 0
-
-    let wake () =
-#if FABLE_COMPILER
-        wakePosted <- 0
-#else
-        Threading.Interlocked.Exchange (&wakePosted, 0)
-        |> ignore
-#endif
-        if not disposed then
-            armed <- false
-            this.Enqueue ()
-            graph.RequestFlush ()
-
-    let callback =
-        Action (fun () ->
-#if FABLE_COMPILER
-            let previous = wakePosted
-            wakePosted <- 1
-#else
-            let previous = Threading.Interlocked.Exchange (&wakePosted, 1)
-#endif
-            if previous = 0 then
-                graph.Post wake)
 
     do
         if duration < TimeSpan.Zero then
@@ -94,6 +74,36 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             nullArg (nameof read)
 #if RANVIER_COUNTERS
         Counters.MemoCreated ()
+#endif
+
+    member private this.Wake() =
+#if FABLE_COMPILER
+        wakePosted <- 0
+#else
+        Threading.Interlocked.Exchange (&wakePosted, 0)
+        |> ignore
+#endif
+        if not disposed then
+            armed <- false
+            this.Enqueue ()
+            graph.RequestFlush ()
+
+    member private this.OnTimerFired() =
+#if FABLE_COMPILER
+        let previous = wakePosted
+        wakePosted <- 1
+
+        if previous = 0 then
+            this.Wake ()
+#else
+        if Threading.Interlocked.Exchange (&wakePosted, 1) = 0 then
+            if graph.IsOnGraphThread then
+                this.Wake ()
+            else
+                if Platform.isNull (box wakePost) then
+                    wakePost <- this.Wake
+
+                graph.PostQueued wakePost
 #endif
 
     /// <summary>Attaches the node to its owner and captures its initial state.</summary>
@@ -126,13 +136,13 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     member private this.Cancel() =
         this.ClearCandidate true
 
-    member private _.Arm() =
+    member private this.ArmAt(now: float) =
         if not armed && hasCandidate then
             if Platform.isNull (box timer) then
-                timer <- clock.CreateTimer callback
+                timer <- clock.CreateTimer (Action this.OnTimerFired)
 
             armed <- true
-            timer.Arm (TimeSpan.FromMilliseconds (min 2147483647. (max 0. (deadline - clock.NowMilliseconds))))
+            timer.Arm (TimeSpan.FromMilliseconds (min 2147483647. (max 0. (deadline - now))))
 
     member private _.Notify() =
         Tracer.TimedMoved (graph, id, Failure.Payload (failure, box value))
@@ -230,7 +240,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
                                 candidate <- next
                                 hasCandidate <- true
-                                this.Arm ()
+                                this.ArmAt now
                     else
                         Tracer.TimedEvent (graph, id, 52, 1, 0, null)
             finally
@@ -373,17 +383,19 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                     this.Capture ()
 
                 if hasCandidate then
-                    if clock.NowMilliseconds >= deadline then
+                    let now = clock.NowMilliseconds
+
+                    if now >= deadline then
                         let next = candidate
                         this.ClearCandidate false
 
                         if mode = TimedMode.Both then
-                            deadline <- clock.NowMilliseconds + milliseconds
+                            deadline <- now + milliseconds
 
                         this.Admit next
                         Tracer.TimedState (graph, id, clock, this)
                     else
-                        this.Arm ()
+                        this.ArmAt now
 
     interface IScopeHost with
         member _.CanOwn = false

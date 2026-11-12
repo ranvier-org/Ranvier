@@ -81,6 +81,81 @@ type private DeadlineTimer(now: unit -> float, create: Action -> (float -> unit)
                 active <- false
                 dispose ())
 
+#if !FABLE_COMPILER
+type private SystemDeadlineTimer(callback: Action) as this =
+    inherit TimedTimer()
+
+    static let timerCallback =
+        Threading.TimerCallback (fun state -> (state :?> SystemDeadlineTimer).Fire())
+
+    let mutable active = false
+    let mutable disposed = false
+    let mutable deadline = 0.
+
+    let timer =
+        new Threading.Timer (timerCallback, this, Threading.Timeout.Infinite, Threading.Timeout.Infinite)
+
+    static let nowMilliseconds () =
+        float (Diagnostics.Stopwatch.GetTimestamp ())
+        * 1000.
+        / float Diagnostics.Stopwatch.Frequency
+
+    static let nativeDue (remaining: float) =
+        int (min 2147483647. (Math.Ceiling remaining))
+
+    static member NowMilliseconds() =
+        nowMilliseconds ()
+
+    member private this.Fire() =
+        let deliver =
+            lock this (fun () ->
+                if disposed || not active then
+                    false
+                else
+                    let remaining = deadline - nowMilliseconds ()
+
+                    if remaining > 0. then
+                        timer.Change (nativeDue remaining, Threading.Timeout.Infinite)
+                        |> ignore
+
+                        false
+                    else
+                        active <- false
+                        true)
+
+        if deliver then
+            callback.Invoke ()
+
+    override this.Arm(delay) =
+        if delay < TimeSpan.Zero then
+            raise (ArgumentOutOfRangeException (nameof delay))
+
+        lock this (fun () ->
+            if disposed then
+                raise (ObjectDisposedException (nameof TimedTimer))
+
+            deadline <- nowMilliseconds () + delay.TotalMilliseconds
+            active <- true
+
+            timer.Change (nativeDue delay.TotalMilliseconds, Threading.Timeout.Infinite)
+            |> ignore)
+
+    override this.Disarm() =
+        lock this (fun () ->
+            if not disposed then
+                active <- false
+
+                timer.Change (Threading.Timeout.Infinite, Threading.Timeout.Infinite)
+                |> ignore)
+
+    override this.Dispose() =
+        lock this (fun () ->
+            if not disposed then
+                disposed <- true
+                active <- false
+                timer.Dispose ())
+#endif
+
 /// <summary>System and .NET time-provider adapters for timed values.</summary>
 [<RequireQualifiedAccess>]
 module TimedClock =
@@ -91,16 +166,14 @@ module TimedClock =
 #if FABLE_COMPILER
                     Fable.Core.JsInterop.emitJsExpr () "performance.now()"
 #else
-                    float (Diagnostics.Stopwatch.GetTimestamp ())
-                    * 1000.
-                    / float Diagnostics.Stopwatch.Frequency
+                    SystemDeadlineTimer.NowMilliseconds ()
 #endif
                 member this.CreateTimer(callback) =
                     if Platform.isNull callback then
                         nullArg (nameof callback)
 
-                    let create (fire: Action) =
 #if FABLE_COMPILER
+                    let create (fire: Action) =
                         let mutable handle: obj = null
 
                         let stop () =
@@ -113,24 +186,11 @@ module TimedClock =
                             handle <- Fable.Core.JsInterop.emitJsExpr (fire, delay) "setTimeout($0, $1)"
 
                         start, stop, stop
-#else
-                        let timer =
-                            new Threading.Timer (
-                                Threading.TimerCallback (fun _ -> fire.Invoke ()),
-                                null,
-                                Threading.Timeout.Infinite,
-                                Threading.Timeout.Infinite
-                            )
 
-                        (fun delay ->
-                            timer.Change (int delay, Threading.Timeout.Infinite)
-                            |> ignore),
-                        (fun () ->
-                            timer.Change (Threading.Timeout.Infinite, Threading.Timeout.Infinite)
-                            |> ignore),
-                        (fun () -> timer.Dispose ())
-#endif
                     new DeadlineTimer ((fun () -> this.NowMilliseconds), create, callback) :> TimedTimer
+#else
+                    new SystemDeadlineTimer (callback) :> TimedTimer
+#endif
             }
 
     /// <summary>A reusable system clock using monotonic timestamps and one-shot native timers.</summary>

@@ -2775,7 +2775,7 @@ type Graph(options: GraphOptions) =
 #if !FABLE_COMPILER
     // Out of line, so Post stays small enough to inline into its callers.
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.PostQueued(work: unit -> unit) =
+    member internal this.PostQueued(work: unit -> unit) =
         // The work goes into the graph's inbox; the dispatcher receives
         // only the drain. ImmediateDispatcher drains on this thread: under
         // Unchecked the work runs here, and under Guarded the pump raises
@@ -4054,8 +4054,13 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 /// </remarks>
 type AsyncSource<'T>(graph: Graph) =
     let id = graph.NextId ()
+#if RANVIER_TRACE
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
+#else
+    /// <summary>The source's readers; null until the first reader arrives.</summary>
+    let mutable observers: ObserverSet = Unchecked.defaultof<_>
+#endif
     let mutable value = Unchecked.defaultof<'T>
     let mutable failure: Failure = null
 
@@ -4074,9 +4079,17 @@ type AsyncSource<'T>(graph: Graph) =
 
     interface ISource with
         member _.AddObserver(c, slot) =
+#if !RANVIER_TRACE
+            if Platform.isNull (box observers) then
+                observers <- ObserverSet ()
+#endif
             observers.Add (c, slot)
 
         member _.TryAddObserver(c, slot) =
+#if !RANVIER_TRACE
+            if Platform.isNull (box observers) then
+                observers <- ObserverSet ()
+#endif
             observers.TryAdd (c, slot)
 
         member _.RemoveObserverAt(c, handle) =
@@ -4093,6 +4106,42 @@ type AsyncSource<'T>(graph: Graph) =
 
     member _.Status = status
 
+    member private this.SettleOnGraph(v: 'T) =
+        if
+            not (
+                not (Platform.isNull graph.Journal)
+                && not (this.RecordSettle v)
+            )
+        then
+            value <- v
+            status <- Status.None
+            Tracer.SourceSettled (observers, false, box v)
+
+            if not (Platform.isNull (box observers)) then
+                observers.NotifyDirty ()
+
+            Tracer.Notified observers
+
+            graph.RequestFlush ()
+
+    member private this.FailOnGraph(reason: exn) =
+        if
+            not (
+                not (Platform.isNull graph.Journal)
+                && not (this.RecordFail reason)
+            )
+        then
+            failure <- Failure (reason, (this :> INode), true)
+            status <- Status.Error
+            Tracer.SourceSettled (observers, true, reason)
+
+            if not (Platform.isNull (box observers)) then
+                observers.NotifyDirty ()
+
+            Tracer.Notified observers
+
+            graph.RequestFlush ()
+
     /// <summary>
     /// Publishes a value and wakes every dependent.
     /// </summary>
@@ -4101,21 +4150,14 @@ type AsyncSource<'T>(graph: Graph) =
     /// is genuinely called from off-thread: it is what a completing <c>Task</c> runs.
     /// </remarks>
     member this.Settle(v: 'T) =
-        graph.Post (fun () ->
-            if
-                not (
-                    not (Platform.isNull graph.Journal)
-                    && not (this.RecordSettle v)
-                )
-            then
-                value <- v
-                status <- Status.None
-                Tracer.SourceSettled (observers, false, box v)
-
-                observers.NotifyDirty ()
-                Tracer.Notified observers
-
-                graph.RequestFlush ())
+#if FABLE_COMPILER
+        this.SettleOnGraph v
+#else
+        if graph.IsOnGraphThread then
+            this.SettleOnGraph v
+        else
+            graph.PostQueued (fun () -> this.SettleOnGraph v)
+#endif
 
     /// <summary>
     /// Publishes a failure as a settled outcome: dependents suspended on the source read <c>reason</c> as its error.
@@ -4125,21 +4167,14 @@ type AsyncSource<'T>(graph: Graph) =
         if Platform.isNull reason then
             raise (ArgumentNullException (nameof reason))
 
-        graph.Post (fun () ->
-            if
-                not (
-                    not (Platform.isNull graph.Journal)
-                    && not (this.RecordFail reason)
-                )
-            then
-                failure <- Failure (reason, (this :> INode), true)
-                status <- Status.Error
-                Tracer.SourceSettled (observers, true, reason)
-
-                observers.NotifyDirty ()
-                Tracer.Notified observers
-
-                graph.RequestFlush ())
+#if FABLE_COMPILER
+        this.FailOnGraph reason
+#else
+        if graph.IsOnGraphThread then
+            this.FailOnGraph reason
+        else
+            graph.PostQueued (fun () -> this.FailOnGraph reason)
+#endif
 
     // Out of line, so the settle and fail closures stay at one field load and a null check when the graph has no journal.
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
