@@ -38,7 +38,12 @@ specifications required by delta readers:
      `pd_is_reset = true`.
    - `fold_pure_reorder_invariants`: on a pure upstream reorder (`pd_is_reset = false`, `pairs = []`,
      `pd_order_changed = true`), `foldGroup` (`invertible = true`) performs zero row-map or fold updates,
-     whereas `fold` (`invertible = false`) marks `full = true` so `Recompute` re-folds in the new key order. *)
+     whereas `fold` (`invertible = false`) marks `full = true` so `Recompute` re-folds in the new key order.
+5. **`CollectionProjection` tail-append/remove order preservation on cancelled batches (`Collections.fs` lines 38–60)**:
+   - `append_remove_empty_changes_preserves_order`: after any sequence of tail-append `ColAdd` and
+     arbitrary-position `ColRemove` operations on a `NoDup` key list `init`, if the coalesced `KeyChanges`
+     map is `∅`, then the resulting key list is identically equal to `init` — certifying the zero-allocation
+     `changes.Size = 0` fast path in `CollectionProjection.ReadDelta`. *)
 
 (** ** 1. KeyChange and KeyChanges.Record coalescing algebra *)
 
@@ -515,4 +520,206 @@ Proof.
   unfold fold_sync_membership.
   rewrite Hres, Hord; simpl.
   split; reflexivity.
+Qed.
+
+(** ** 5. CollectionProjection tail-append/remove order preservation on cancelled batches *)
+
+Inductive col_op :=
+  | ColAdd (k : nat)
+  | ColRemove (k : nat).
+
+Definition col_step (st : list nat * gmap nat key_change) (op : col_op)
+    : list nat * gmap nat key_change :=
+  let (cur, kc) := st in
+  match op with
+  | ColAdd k =>
+      if decide (k ∈ cur) then (cur, kc)
+      else (cur ++ [k], kc_record k KcAdded kc)
+  | ColRemove k =>
+      if decide (k ∈ cur) then (filter (fun x => x <> k) cur, kc_record k KcRemoved kc)
+      else (cur, kc)
+  end.
+
+Definition col_inv (init cur : list nat) (kc : gmap nat key_change) : Prop :=
+  NoDup cur /\
+  (forall x, x ∉ init -> x ∈ cur -> kc !! x = Some KcAdded \/ kc !! x = Some KcReplaced) /\
+  (forall x, x ∈ init -> kc !! x <> Some KcAdded) /\
+  (forall x, x ∈ init -> x ∉ cur -> kc !! x = Some KcRemoved) /\
+  ((forall x, x ∈ init -> kc !! x = None) ->
+   exists sfx, cur = init ++ sfx /\ (forall y, y ∈ sfx -> y ∉ init)).
+
+Lemma filter_ne_not_elem (k : nat) (l : list nat) :
+  k ∉ l ->
+  filter (fun x => x <> k) l = l.
+Proof.
+  induction l as [|x rest IH]; intros Hnin; [reflexivity|].
+  apply not_elem_of_cons in Hnin as [Hne Hnin_rest].
+  rewrite filter_cons_True; [|symmetry; exact Hne].
+  f_equal. exact (IH Hnin_rest).
+Qed.
+
+Lemma elem_of_filter_ne_iff (k x : nat) (l : list nat) :
+  x ∈ filter (fun y => y <> k) l <-> x <> k /\ x ∈ l.
+Proof.
+  induction l as [|y rest IH]; [set_solver|].
+  destruct (decide (y <> k)) as [Hne|Hne].
+  - rewrite filter_cons_True by exact Hne. set_solver.
+  - rewrite filter_cons_False by exact Hne.
+    assert (y = k) by lia; subst y. set_solver.
+Qed.
+
+Lemma col_step_preserves_inv (init cur : list nat) (kc : gmap nat key_change) (op : col_op) :
+  col_inv init cur kc ->
+  let (cur', kc') := col_step (cur, kc) op in
+  col_inv init cur' kc'.
+Proof.
+  intros (Hnd & Hfresh & Hno_add & Hrem_init & Hord).
+  destruct op as [k | k]; simpl.
+  - destruct (decide (k ∈ cur)) as [Hin|Hnin].
+    + exact (conj Hnd (conj Hfresh (conj Hno_add (conj Hrem_init Hord)))).
+    + split_and!.
+      * apply NoDup_app; split_and!; [exact Hnd| |apply NoDup_singleton].
+        set_solver.
+      * intros x Hx_ninit Hx_cur'.
+        apply elem_of_app in Hx_cur' as [Hx_cur | Hxk].
+        -- destruct (decide (x = k)) as [->|Hne]; [contradiction|].
+           unfold kc_record. destruct (kc_merge_opt (kc !! k) KcAdded) as [nxt|].
+           ++ rewrite lookup_insert_ne; [|symmetry; exact Hne].
+              exact (Hfresh x Hx_ninit Hx_cur).
+           ++ rewrite lookup_delete_ne; [|symmetry; exact Hne].
+              exact (Hfresh x Hx_ninit Hx_cur).
+        -- assert (x = k) by set_solver; subst x.
+           unfold kc_record.
+           destruct (kc !! k) as [p|] eqn:Ekc; simpl.
+           ++ destruct p; simpl; rewrite lookup_insert_eq; [by left | by right | by left | by left].
+           ++ rewrite lookup_insert_eq. by left.
+      * intros x Hx_init.
+        destruct (decide (x = k)) as [->|Hne].
+        -- specialize (Hrem_init k Hx_init Hnin).
+           unfold kc_record. rewrite Hrem_init; simpl.
+           rewrite lookup_insert_eq. discriminate.
+        -- unfold kc_record. destruct (kc_merge_opt (kc !! k) KcAdded) as [nxt|].
+           ++ rewrite lookup_insert_ne; [|symmetry; exact Hne].
+              exact (Hno_add x Hx_init).
+           ++ rewrite lookup_delete_ne; [|symmetry; exact Hne].
+              exact (Hno_add x Hx_init).
+      * intros x Hx_init Hx_ncur'.
+        assert (Hne : x <> k) by set_solver.
+        assert (Hx_ncur : x ∉ cur) by set_solver.
+        unfold kc_record. destruct (kc_merge_opt (kc !! k) KcAdded) as [nxt|].
+        -- rewrite lookup_insert_ne; [|symmetry; exact Hne].
+           exact (Hrem_init x Hx_init Hx_ncur).
+        -- rewrite lookup_delete_ne; [|symmetry; exact Hne].
+           exact (Hrem_init x Hx_init Hx_ncur).
+      * intros Hall_none.
+        assert (Hk_ninit : k ∉ init).
+        { intros Hk_init.
+          pose proof (Hrem_init k Hk_init Hnin) as Hkr.
+          pose proof (Hall_none k Hk_init) as Hkn.
+          unfold kc_record in Hkn. rewrite Hkr in Hkn; simpl in Hkn.
+          rewrite lookup_insert_eq in Hkn. discriminate. }
+        assert (Hall_prev : forall x, x ∈ init -> kc !! x = None).
+        { intros x Hx_init.
+          assert (Hne : x <> k) by (intros ->; contradiction).
+          pose proof (Hall_none x Hx_init) as Hxn.
+          unfold kc_record in Hxn.
+          destruct (kc_merge_opt (kc !! k) KcAdded) as [nxt|].
+          - rewrite lookup_insert_ne in Hxn; [exact Hxn | symmetry; exact Hne].
+          - rewrite lookup_delete_ne in Hxn; [exact Hxn | symmetry; exact Hne]. }
+        destruct (Hord Hall_prev) as (sfx & Hcur_eq & Hsfx).
+        exists (sfx ++ [k]).
+        split.
+        -- rewrite Hcur_eq, <- app_assoc. reflexivity.
+        -- intros y Hy. apply elem_of_app in Hy as [Hy | Hy].
+           ++ exact (Hsfx y Hy).
+           ++ assert (y = k) by set_solver; subst y; exact Hk_ninit.
+  - destruct (decide (k ∈ cur)) as [Hin|Hnin].
+    + assert (Hrem_step : forall q, q <> k -> kc_record k KcRemoved kc !! q = kc !! q).
+      { intros q Hne. unfold kc_record.
+        destruct (kc_merge_opt (kc !! k) KcRemoved) as [nxt|].
+        - apply lookup_insert_ne; symmetry; exact Hne.
+        - apply lookup_delete_ne; symmetry; exact Hne. }
+      assert (Hrem_init_k : k ∈ init -> kc_record k KcRemoved kc !! k = Some KcRemoved).
+      { intros Hk_init. pose proof (Hno_add k Hk_init) as Hna.
+        unfold kc_record. destruct (kc !! k) as [p|] eqn:Ep; simpl.
+        - destruct p; [exfalso; exact (Hna eq_refl) | | |]; simpl; by rewrite lookup_insert_eq.
+        - by rewrite lookup_insert_eq. }
+      split_and!.
+      * apply NoDup_filter, Hnd.
+      * intros x Hx_ninit Hx_cur'.
+        apply elem_of_filter_ne_iff in Hx_cur' as [Hne Hx_cur].
+        rewrite (Hrem_step x Hne).
+        exact (Hfresh x Hx_ninit Hx_cur).
+      * intros x Hx_init.
+        destruct (decide (x = k)) as [->|Hne].
+        -- rewrite (Hrem_init_k Hx_init). discriminate.
+        -- rewrite (Hrem_step x Hne). exact (Hno_add x Hx_init).
+      * intros x Hx_init Hx_ncur'.
+        destruct (decide (x = k)) as [->|Hne].
+        -- exact (Hrem_init_k Hx_init).
+        -- rewrite (Hrem_step x Hne). apply Hrem_init; [exact Hx_init|].
+           intros Hx_cur. apply Hx_ncur', elem_of_filter_ne_iff. split; [exact Hne | exact Hx_cur].
+      * intros Hall_none.
+        assert (Hk_ninit : k ∉ init).
+        { intros Hk_init.
+          pose proof (Hrem_init_k Hk_init) as Hkr.
+          pose proof (Hall_none k Hk_init) as Hkn. congruence. }
+        assert (Hall_prev : forall x, x ∈ init -> kc !! x = None).
+        { intros x Hx_init.
+          assert (Hne : x <> k) by (intros ->; contradiction).
+          rewrite <- (Hrem_step x Hne). exact (Hall_none x Hx_init). }
+        destruct (Hord Hall_prev) as (sfx & Hcur_eq & Hsfx).
+        exists (filter (fun x => x <> k) sfx).
+        split.
+        -- rewrite Hcur_eq, filter_app, (filter_ne_not_elem k init Hk_ninit). reflexivity.
+        -- intros y Hy. apply elem_of_filter_ne_iff in Hy as [_ Hy]. exact (Hsfx y Hy).
+    + exact (conj Hnd (conj Hfresh (conj Hno_add (conj Hrem_init Hord)))).
+Qed.
+
+(**md
+**After any sequence of tail-append `ColAdd` and arbitrary-position `ColRemove` operations on a `NoDup` key list `init`, if the coalesced `KeyChanges` map is `∅`, the resulting key list equals `init` (`Collections.fs` lines 38–60).**
+
+- [init:] the ordered key list `previous` from the prior `ReadDelta`.
+- [ops:] any sequence of `AddOrUpdate` (new-key append) and `Remove` operations within a batch.
+*)
+Theorem append_remove_empty_changes_preserves_order (init : list nat) (ops : list col_op) :
+  NoDup init ->
+  let (cur, kc) := foldl col_step (init, ∅) ops in
+  kc = ∅ ->
+  cur = init.
+Proof.
+  intros Hnd.
+  assert (Hinv0 : col_inv init init ∅).
+  { split_and!.
+    - exact Hnd.
+    - intros x Hni Hi; contradiction.
+    - intros x _. rewrite lookup_empty. discriminate.
+    - intros x Hi Hni; contradiction.
+    - intros _. exists []. rewrite app_nil_r. split; [reflexivity | intros y Hy; inversion Hy]. }
+  assert (Hinv : forall st ops',
+            col_inv init st.1 st.2 ->
+            let (cur, kc) := foldl col_step st ops' in
+            col_inv init cur kc).
+  { intros st ops'. revert st.
+    induction ops' as [|op rest IH]; intros [c m] Hinv_cm; cbn [foldl].
+    - exact Hinv_cm.
+    - pose proof (col_step_preserves_inv init c m op Hinv_cm) as Hnext.
+      destruct (col_step (c, m) op) as [c' m'].
+      exact (IH (c', m') Hnext). }
+  specialize (Hinv (init, ∅) ops Hinv0).
+  destruct (foldl col_step (init, ∅) ops) as [cur kc].
+  intros Hkc_emp. subst kc.
+  destruct Hinv as (_ & Hfresh & _ & _ & Hord).
+  assert (Hall_none : forall x, x ∈ init -> (∅ : gmap nat key_change) !! x = None).
+  { intros x _. apply lookup_empty. }
+  destruct (Hord Hall_none) as (sfx & Hcur_eq & Hsfx).
+  destruct sfx as [|y sfx'].
+  - rewrite app_nil_r in Hcur_eq. exact Hcur_eq.
+  - exfalso.
+    assert (Hy_sfx : y ∈ y :: sfx') by left.
+    pose proof (Hsfx y Hy_sfx) as Hy_ninit.
+    assert (Hy_cur : y ∈ cur).
+    { rewrite Hcur_eq. apply elem_of_app; right; exact Hy_sfx. }
+    destruct (Hfresh y Hy_ninit Hy_cur) as [Hy1 | Hy2];
+      [rewrite lookup_empty in Hy1; discriminate | rewrite lookup_empty in Hy2; discriminate].
 Qed.

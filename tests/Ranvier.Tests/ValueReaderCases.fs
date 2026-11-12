@@ -577,6 +577,39 @@ let mappedRetryAfterFailedDelta () =
         check "the retry has the latest keys" [ 2; 3; 4 ] (List.ofArray mapped.Keys)
         check "the key reader sees the retry's changes" [ 1, KeyChange.Removed; 3, KeyChange.Added; 4, KeyChange.Added ] (changes (reader.Read ())))
 
+let editableOrderAndCancelledBatch () =
+    use graph = new Graph ()
+
+    graph.Run (fun () ->
+        use source = createKeyedCollection fst
+
+        for i in 1..5 do
+            source.AddOrUpdate (i, i * 10)
+
+        check "initial order" [ 1; 2; 3; 4; 5 ] (List.ofArray source.Rows.Keys)
+        check "remove head" true (source.Remove 1)
+        check "remove middle" true (source.Remove 3)
+        check "remove tail" true (source.Remove 5)
+        check "order after head, middle and tail removals" [ 2; 4 ] (List.ofArray source.Rows.Keys)
+
+        let keysBefore = source.Rows.Keys
+        let versionBefore = source.Rows.KeysVersion
+        let mutable keysWakes = 0
+
+        createEffect (fun () ->
+            source.Rows.Keys |> ignore
+            keysWakes <- keysWakes + 1)
+
+        keysWakes <- 0
+
+        source.Edit (fun edit ->
+            edit.AddOrUpdate (99, 990)
+            edit.Remove 99 |> ignore)
+
+        check "cancelled add+remove reuses Keys array" true (obj.ReferenceEquals (keysBefore, source.Rows.Keys))
+        check "cancelled add+remove preserves KeysVersion" versionBefore source.Rows.KeysVersion
+        check "cancelled add+remove wakes no Keys observer" 0 keysWakes)
+
 let cases =
     [|
         "value readers have independent baselines and immutable deltas", independentReaders
@@ -600,4 +633,5 @@ let cases =
         "map overflow recovery preserves replacement lifetimes", mappedOverflowReplacement
         "map cleanup failure recovery preserves replacement lifetimes", mappedCleanupRecovery
         "a map pass after a failed upstream pass has the latest keys", mappedRetryAfterFailedDelta
+        "editable collections unlink in O(1) and skip cancelled add+remove batches", editableOrderAndCancelledBatch
     |]
