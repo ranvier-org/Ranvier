@@ -619,6 +619,38 @@ let mapTests =
 
                 Expect.sequenceEqual calls [ 10 ] "the removed key's mapping never runs again"
             }
+
+            test "mapWith re-runs the factory for a replaced key across a reset burst" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+                col.AddOrUpdate { Id = 1; N = 10 }
+                let created = ref 0
+                let cleaned = ref 0
+
+                let view =
+                    col.Rows
+                    |> Projection.mapWith (fun id read ->
+                        if id = 1 then
+                            created.Value <- created.Value + 1
+                            onCleanup (fun () -> cleaned.Value <- cleaned.Value + 1)
+
+                        fun () -> (read ()).N * 2)
+
+                Expect.equal (view.Get 1) 20 "initial value"
+                Expect.equal created.Value 1 "initial factory run"
+
+                col.Edit (fun c ->
+                    c.Remove 1 |> ignore
+                    c.AddOrUpdate { Id = 1; N = 35 }
+
+                    for i in 2..80 do
+                        c.AddOrUpdate { Id = i; N = i })
+
+                Expect.equal (view.Get 1) 70 "replaced row value after reset burst"
+                Expect.equal cleaned.Value 1 "previous factory scope disposed on replacement"
+                Expect.equal created.Value 2 "factory re-ran for the replaced key"
+            }
         ]
 
 let private comparisons = ref 0

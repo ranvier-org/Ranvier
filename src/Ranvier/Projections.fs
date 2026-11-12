@@ -153,6 +153,15 @@ type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
     static member val Constructing: unit -> 'V = fun () -> Unchecked.defaultof<'V>
 
 /// <summary>
+/// A row keyed directly without a per-row item signal, optionally tagged with an upstream identity for reset detection.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal KeyRow<'K, 'V>(key: 'K, tag: obj) =
+    inherit RowEntry<'K, 'V>(key)
+
+    member val Tag = tag with get, set
+
+/// <summary>
 /// A read-only dictionary that enumerates in insertion order. Holds every key
 /// of <c>'K</c>, <c>None</c> and <c>()</c> included.
 /// </summary>
@@ -274,6 +283,11 @@ type internal IProjectionPass =
     abstract CreateAdded: unit -> unit
 
     /// <summary>
+    /// The number of distinct keys not in <c>Entries</c> staged by this pass, or negative when unknown.
+    /// </summary>
+    abstract AddedCount: int
+
+    /// <summary>
     /// Writes the item source of every survivor this pass visited.
     /// </summary>
     abstract CommitWrites: unit -> unit
@@ -305,6 +319,40 @@ module internal ProjectionFailures =
             + string key
             + " is still being created."
         )
+
+    /// <summary>
+    /// A reader that raises the failure of the factory for <c>key</c>, or raises at once when <c>raiseNow</c> holds. A
+    /// pending-source read becomes an <c>InvalidOperationException</c> whose message ends with <c>advice</c>.
+    /// </summary>
+    let factoryFailure<'K, 'V> (raiseNow: bool) (key: 'K) (error: exn) (advice: string) : unit -> 'V =
+        match error with
+        | NotReadyException _ ->
+            let message =
+                "The projection's factory for key "
+                + string key
+                + " read a pending source. The factory runs once per key, untracked, and cannot wait for a source to settle."
+                + advice
+
+            let failure =
+#if FABLE_COMPILER
+                let failure = InvalidOperationException message
+                Platform.setInner failure error
+                failure
+#else
+                InvalidOperationException (message, error)
+#endif
+
+            if raiseNow then
+                raise failure
+
+            fun () -> raise failure
+        | _ ->
+            let captured = Platform.captureFailure null error
+
+            if raiseNow then
+                Platform.rethrowStored captured
+
+            fun () -> Platform.rethrowStored captured
 
 /// <summary>
 /// A keyed collection derived from a source collection: a key set, and one row
@@ -971,9 +1019,15 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </summary>
     member private this.ApplyDiff(mine: int) =
         if not removalsStaged then
-            entries.Iterate (fun key _ ->
-                if not (seen.Contains key) then
-                    removed.Add key)
+            let addedCount = this.Pass.AddedCount
+
+            if
+                addedCount < 0
+                || entries.Count + addedCount <> seen.Count
+            then
+                entries.Iterate (fun key _ ->
+                    if not (seen.Contains key) then
+                        removed.Add key)
 
         try
             if this.CreateFirst then
@@ -2108,42 +2162,8 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
-    /// <summary>
-    /// A reader that raises the failure of the factory for <c>key</c>. Under <c>CreateFirst</c> the failure is raised at
-    /// once instead, unless the factory ran a nested pass since <c>Runs</c> was <c>before</c>. A pending-source read
-    /// becomes an <c>InvalidOperationException</c> whose message ends with <c>advice</c>.
-    /// </summary>
     member private this.FactoryFailure(key: 'K, error: exn, advice: string, before: int) : unit -> 'V =
-        let raiseNow = this.CreateFirst && this.Runs = before
-
-        match error with
-        | NotReadyException _ ->
-            let message =
-                "The projection's factory for key "
-                + string key
-                + " read a pending source. The factory runs once per key, untracked, and cannot wait for a source to settle."
-                + advice
-
-            let failure =
-#if FABLE_COMPILER
-                let failure = InvalidOperationException message
-                Platform.setInner failure error
-                failure
-#else
-                InvalidOperationException (message, error)
-#endif
-
-            if raiseNow then
-                raise failure
-
-            fun () -> raise failure
-        | _ ->
-            let captured = Platform.captureFailure null error
-
-            if raiseNow then
-                Platform.rethrowStored captured
-
-            fun () -> Platform.rethrowStored captured
+        ProjectionFailures.factoryFailure (this.CreateFirst && this.Runs = before) key error advice
 
     member private this.CreateFactored(key: 'K, item: 'T) =
         let entry = this.NewRow (key, item)
@@ -2219,6 +2239,8 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         member this.CreateAdded() =
             this.CreateAdded ()
 
+        member _.AddedCount = adds.Count
+
         member _.CommitWrites() =
             for struct (source, item) in writes do
                 source.Value <- item
@@ -2283,6 +2305,156 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                 this.Discard key
 
             reraise ()
+
+/// <summary>
+/// The rows of a derived projection whose live keys are invariant over each row's lifetime, avoiding per-row item signals.
+/// </summary>
+[<AbstractClass>]
+type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, factory: 'K -> (unit -> 'V), ?tagged: bool) =
+    inherit Projection<'K, 'V>(graph)
+
+    let tagged = defaultArg tagged false
+    let valueForm = not (Platform.isNull (box map))
+
+    let rowMode =
+        if valueForm then
+            ScopeMode.ValueRow
+        else
+            ScopeMode.FactoryRow
+
+    let adds = ResizeArray<struct ('K * obj)>()
+
+    /// <summary>Stages <c>key</c> with an upstream identity tag, creating a row only when absent from <c>Entries</c>.</summary>
+    member internal this.VisitTagged(key: 'K, tag: obj) =
+        if not (this.Seen.Add key) then
+            raise (ProjectionFailures.duplicateKey key)
+
+        this.PassKeys.Add key
+        let entry = this.Entries.Find key
+
+        if Platform.isNull entry then
+            adds.Add (struct (key, tag))
+        else
+            (entry :?> KeyRow<'K, 'V>).Tag <- tag
+
+    /// <summary>Stages <c>key</c> without an identity tag.</summary>
+    member internal this.Visit(key: 'K) =
+        if not (this.Seen.Add key) then
+            raise (ProjectionFailures.duplicateKey key)
+
+        this.PassKeys.Add key
+
+        if Platform.isNull (this.Entries.Find key) then
+            adds.Add (struct (key, null))
+
+    /// <summary>Sizes the pass's tables for <c>count</c> keys, and the staged additions for keys beyond the current rows.</summary>
+    member internal this.Reserve(count: int) =
+        this.ReservePass count
+        Platform.reserve adds (count - this.Entries.Count)
+
+    member private this.Compute(entry: RowEntry<'K, 'V>) : 'V voption -> 'V =
+        fun _ -> this.RunRow entry
+
+    member private this.CreateMapped() =
+        for struct (key, tag) in adds do
+            let entry =
+                if tagged then
+                    KeyRow<'K, 'V>(key, tag) :> RowEntry<'K, 'V>
+                else
+                    RowEntry<'K, 'V> key
+
+            this.AddEntry (key, entry)
+            entry.Reader <- fun () -> map key
+            entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
+            Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
+
+    member private this.CreateFactored(key: 'K, tag: obj) =
+        let entry =
+            if tagged then
+                KeyRow<'K, 'V>(key, tag) :> RowEntry<'K, 'V>
+            else
+                RowEntry<'K, 'V> key
+
+        this.AddEntry (key, entry)
+        let keyScope = new Owner (graph.Root)
+        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        entry.Scope <- keyScope
+        Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
+#if RANVIER_COUNTERS
+        Counters.FactoryRowCreated ()
+#endif
+        let before = this.Runs
+
+        graph.RunOwned (
+            keyScope,
+            fun () ->
+                entry.Reader <-
+                    try
+                        factory key
+                    with ex ->
+                        ProjectionFailures.factoryFailure
+                            (this.CreateFirst && this.Runs = before)
+                            key
+                            ex
+                            " Read the source inside the reader the factory returns."
+
+                entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
+                Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
+        )
+
+    member private this.CreateAdded() =
+        if adds.Count > 0 then
+            if valueForm then
+                graph.RunOwned (this.Scope, this.CreateMapped)
+            elif this.CreateFirst then
+                this.CreateAddedFirst ()
+            else
+                let mine = this.Runs
+                let mutable i = 0
+
+                while i < adds.Count && this.Runs = mine do
+                    let struct (key, tag) = Platform.entryAt i adds
+                    i <- i + 1
+                    this.CreateFactored (key, tag)
+
+    member private this.CreateAddedFirst() =
+        let mine = this.Runs
+        let mutable started = 0
+
+        try
+            while started < adds.Count
+                  && not this.IsDisposedInternal
+                  && this.Runs = mine do
+                let struct (key, tag) = Platform.entryAt started adds
+                started <- started + 1
+                this.CreateFactored (key, tag)
+        with _ ->
+            let mutable index = started - 1
+
+            while index >= 0 && this.Runs = mine do
+                let struct (key, _) = adds[index]
+                index <- index - 1
+                this.Discard key
+
+            reraise ()
+
+    abstract Enumerate: unit -> unit
+
+    interface IProjectionPass with
+        member this.Enumerate() =
+            this.Enumerate ()
+
+        member this.CreateAdded() =
+            this.CreateAdded ()
+
+        member _.AddedCount = adds.Count
+        member _.CommitWrites() = ()
+
+        member _.ClearStaged() =
+            adds.Clear ()
+
+        member _.Applied() = ()
+        member _.Abandoned() = ()
 
 /// <summary>
 /// A projection keyed by a function of the item.

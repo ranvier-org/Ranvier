@@ -28,7 +28,11 @@ This module proves the exact minimum specifications required by Ranvier's collec
    `notify_removed_wakes_observers`, `adopt_companion_disposed_once`,
    `fold_sync_recomputes_on_reorder`): proves `Signal.WriteExcept` /
    `ProjectionBeacon.NotifyFailure`, `Memo.NotifyRemoved`, `Memo.Adopt`, and non-invertible
-   `Projection.fold` recomputation on pure key reorders. *)
+   `Projection.fold` recomputation on pure key reorders.
+5. **Pass diff zero-removal cardinality skip and key-direct derived rows** (`apply_diff_zero_removals_iff`,
+   `key_direct_row_retire_wakes_without_item_signal`): certifies skipping `entries.Iterate` in
+   `Projection.ApplyDiff` whenever `entries.Count + AddedCount = seen.Count`, and certifies `RowsByKey`
+   derived rows that link directly to upstream rows without a per-row `Signal<'K>`. *)
 
 (** ** Direct-observer edge boundary *)
 
@@ -792,4 +796,129 @@ Theorem fold_sync_recomputes_on_reorder {K V S : Type} `{Countable K}
 Proof.
   unfold fold_sync_step; simpl.
   split; reflexivity.
+Qed.
+
+(** ** Pass diff zero-removal cardinality skip and key-direct derived rows *)
+
+Lemma gset_size_list_to_set_nodup `{Countable K} (l : list K) :
+  NoDup l ->
+  size (list_to_set l : gset K) = length l.
+Proof.
+  induction 1 as [|x l Hnin Hnd IH].
+  - cbn [list_to_set length]. apply (fin_sets.size_empty (C := gset K)).
+  - cbn [list_to_set length]. rewrite fin_sets.size_union.
+    + rewrite fin_sets.size_singleton, IH. lia.
+    + apply disjoint_singleton_l. by rewrite elem_of_list_to_set.
+Qed.
+
+(**md
+**In `Projection.ApplyDiff`, `size entries + length adds = size seen` holds if and only if zero live keys were removed (`dom entries ∖ seen = ∅`).**
+
+During `Enumerate`, every visited key is added to `seen` without duplicates, and `adds` collects every
+visited key absent from `entries` (`entries !! k = None`). Because `dom entries` partitions into
+`(dom entries ∩ seen) ⊎ (dom entries ∖ seen)` while `seen` partitions into
+`(dom entries ∩ seen) ⊎ list_to_set adds`, we obtain the exact removal-count identity
+`size entries + length adds = size seen + size (dom entries ∖ seen)`. Thus `ApplyDiff` (`Projections.fs`
+lines 987–993) can skip iterating `entries` altogether whenever `entries.Count + Pass.AddedCount = seen.Count`,
+including when failed rows are hidden via `HideLast` (which leaves `entries`, `seen`, and `adds` intact).
+
+- [entries:] the live row map at the start of `ApplyDiff`.
+- [seen:] the set of keys visited by `Enumerate`.
+- [adds:] the list of distinct new keys staged during `Enumerate`.
+*)
+Theorem apply_diff_zero_removals_iff `{Countable K} {V : Type}
+    (entries : gmap K V) (seen : gset K) (adds : list K) :
+  NoDup adds ->
+  (forall k, k ∈ adds -> k ∈ seen /\ entries !! k = None) ->
+  (forall k, k ∈ seen -> is_Some (entries !! k) \/ k ∈ adds) ->
+  size entries + length adds = size seen + size (dom entries ∖ seen) /\
+  size seen <= size entries + length adds /\
+  (size entries + length adds = size seen <->
+   dom entries ∖ seen = ∅ /\ (forall k, is_Some (entries !! k) -> k ∈ seen)).
+Proof.
+  intros Hnd Hadds Hseen.
+  set (I := dom entries ∩ seen).
+  set (R := dom entries ∖ seen).
+  set (A := (list_to_set adds : gset K)).
+  assert (Hdom_eq : dom entries = I ∪ R).
+  { apply leibniz_equiv. intros x. subst I R.
+    destruct (decide (x ∈ seen)); set_solver. }
+  assert (Hdom_disj : I ## R) by (subst I R; set_solver).
+  assert (Hseen_eq : seen = I ∪ A).
+  { apply leibniz_equiv. intros x. subst I A. split.
+    - intros Hx. destruct (Hseen x Hx) as [Hsome|Hadd].
+      + apply elem_of_union_l, elem_of_intersection. split; [by apply elem_of_dom|exact Hx].
+      + apply elem_of_union_r. by apply elem_of_list_to_set.
+    - intros [Hx|Hx]%elem_of_union.
+      + by apply elem_of_intersection in Hx as [_ Hx].
+      + apply elem_of_list_to_set in Hx. by destruct (Hadds x Hx) as [Hx' _]. }
+  assert (Hseen_disj : I ## A).
+  { subst I A. intros x HxI HxA.
+    apply elem_of_intersection in HxI as [Hxdom _].
+    apply elem_of_dom in Hxdom as [v Hv].
+    apply elem_of_list_to_set in HxA.
+    destruct (Hadds x HxA) as [_ Hnone]. congruence. }
+  assert (Hsz_dom : size entries = size I + size R).
+  { rewrite <- size_dom, Hdom_eq. by apply fin_sets.size_union. }
+  assert (Hsz_seen : size seen = size I + length adds).
+  { rewrite Hseen_eq, (fin_sets.size_union I A Hseen_disj).
+    subst A. rewrite (gset_size_list_to_set_nodup adds Hnd). lia. }
+  assert (Hid : size entries + length adds = size seen + size R) by lia.
+  split_and!; [exact Hid | lia |].
+  split.
+  - intros Heq.
+    assert (HszR : size R = 0) by lia.
+    apply fin_sets.size_empty_iff in HszR. apply leibniz_equiv in HszR.
+    split; [exact HszR|].
+    intros k Hk. apply elem_of_dom in Hk.
+    destruct (decide (k ∈ seen)) as [Hin|Hnin]; [exact Hin|].
+    exfalso. assert (HkR : k ∈ R) by (subst R; set_solver).
+    rewrite HszR in HkR. set_solver.
+  - intros [Hemp _]. subst R. rewrite Hemp, fin_sets.size_empty in Hid. lia.
+Qed.
+
+(**md
+**A key-direct derived row (`RowsByKey`) occupies one inline source slot for its upstream row and still wakes `Dirty` when the upstream row retires.**
+
+Certifies the `RowsByKey` optimisation in `Projections.fs` and `Combinators.fs`: derived view rows (`MapView`,
+`SliceView`, `FilterView`, `DistinctView`, `SortView`, `GroupView`, `perKey`) read `upstream` by a fixed key
+`'K` rather than through an intermediate per-row `Signal<'K>`. Linking directly to `up_row` keeps the row memo
+at a single source slot (`length = 1`) when `up_row` is its sole source, and retiring `up_row` via
+`notify_removed` marks `row_m` `Dirty` without any item-signal write.
+
+- [fuel:] the marking fuel.
+- [row_m:] the derived view's row memo id.
+- [up_row:] the upstream projection's row memo id.
+- [s:] the graph state before `up_row` retires.
+- [s1:] the graph state after `notify_removed fuel up_row`.
+*)
+Theorem key_direct_row_retire_wakes_without_item_signal
+    (fuel : nat) (row_m up_row : node_id) (s s1 : state) :
+  world_well_formed (g_edges s) ->
+  source_slots (sources_of (g_edges s) row_m) = [] ->
+  takes_marks s row_m ->
+  let w' := direct_link row_m up_row (g_edges s) in
+  let s_linked := with_edges w' s in
+  length (source_slots (sources_of w' row_m)) = 1 /\
+  held_once row_m (observers_of w' up_row) /\
+  (notify_removed fuel up_row s_linked = Some (s1, tt) -> ends_dirty s1 row_m).
+Proof.
+  intros Hwf Hempty Ht w' s_linked.
+  assert (Hnot : up_row ∉ fst <$> source_slots (sources_of (g_edges s) row_m)).
+  { rewrite Hempty. simpl. set_solver. }
+  destruct (direct_link_preserves_well_formed row_m up_row (g_edges s) Hwf Hnot)
+    as (Hwf' & Hheld & _).
+  assert (Hlen : length (source_slots (sources_of w' row_m)) = 1).
+  { subst w'. unfold direct_link, sources_append.
+    rewrite sources_of_set_observers, sources_of_set_sources, decide_True by done.
+    simpl. rewrite Hempty. reflexivity. }
+  split_and!; [exact Hlen | exact Hheld |].
+  intros Hnr.
+  eapply (notify_removed_wakes_observers fuel up_row s_linked s1 row_m).
+  - simpl. apply (held_iff_slot w' row_m up_row Hwf').
+    subst w'. unfold direct_link, sources_append.
+    rewrite sources_of_set_observers, sources_of_set_sources, decide_True by done.
+    simpl. rewrite Hempty. simpl. by left.
+  - destruct Ht as (dm & Hdm & Hkm). exists dm. simpl. done.
+  - exact Hnr.
 Qed.
