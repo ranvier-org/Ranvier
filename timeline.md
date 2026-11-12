@@ -154,6 +154,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 83,826 | 128,238 | 1,768,646 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 84,367 | 128,249 | 1,768,568 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 83,824 | 128,260 | 1,768,661 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 83,824 | 128,236 | 1,768,655 |
 
 ## app-table
 
@@ -309,6 +310,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 4,444,399 | 9,639,733 | 110,162,314 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 4,444,367 | 9,642,311 | 109,889,076 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 4,444,351 | 9,641,015 | 109,922,549 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 4,444,335 | 9,707,777 | 109,887,910 |
 
 ## async-recover
 
@@ -464,6 +466,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 139,557 | 39,910 | 443,798 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 139,557 | 39,898 | 443,797 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 139,557 | 39,907 | 443,797 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 139,557 | 39,912 | 443,798 |
 
 ## async-resolve
 
@@ -619,6 +622,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 2,803,564 | 1,090,308 | 12,250,963 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,803,566 | 1,090,485 | 12,254,458 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,803,565 | 1,090,321 | 12,254,356 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,803,565 | 1,089,891 | 12,254,500 |
 
 ## chain
 
@@ -774,6 +778,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,813 |
 
 ## chain-affinity
 
@@ -929,6 +934,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 2,653 | 3,176 | 2,604 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,653 | 3,176 | 2,604 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,653 | 3,176 | 2,604 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1084,6 +1090,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 74,709 | 812,680 | 2,600,919 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 74,709 | 812,655 | 2,600,880 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 74,709 | 812,644 | 2,600,922 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 74,709 | 812,690 | 2,600,863 |
 
 ## create
 
@@ -1239,6 +1246,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 13,451,420 | 2,882,678 | 2,575,457 | 2,128,001 | 4,056,568 | 33,845,676 | 50,483,918 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 13,451,480 | 2,866,678 | 2,575,408 | 2,127,795 | 4,056,434 | 33,845,290 | 50,484,082 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 13,451,536 | 2,914,678 | 2,575,408 | 2,128,040 | 4,056,642 | 33,845,241 | 50,484,014 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 13,483,418 | 2,866,678 | 2,575,408 | 2,127,179 | 4,055,023 | 33,845,834 | 50,483,955 |
 
 ## create-on
 
@@ -1394,6 +1402,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 2,984,504 | 4,234,673 | 55,454,809 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,968,520 | 4,234,742 | 55,454,822 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,952,521 | 4,234,609 | 55,454,797 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,968,488 | 4,234,805 | 55,454,774 |
 
 ## cutoff
 
@@ -1549,6 +1558,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1704,6 +1714,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 787 | 758 | 16,684 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 787 | 758 | 16,684 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 787 | 758 | 16,684 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1859,6 +1870,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 773 | 759 | 16,707 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 773 | 759 | 16,707 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 757 | 759 | 16,707 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 757 | 759 | 16,707 |
 
 ## dispose
 
@@ -2014,6 +2026,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 2,707,642 | 806,288 | 367,497 | 475,624 | 495,132 | 13,206,131 | 9,106,105 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,707,642 | 806,288 | 367,497 | 475,991 | 495,192 | 13,205,383 | 9,105,776 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,707,644 | 806,288 | 367,497 | 475,918 | 495,103 | 13,205,431 | 9,105,822 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,707,645 | 806,288 | 367,497 | 476,029 | 495,193 | 13,205,878 | 9,105,988 |
 
 ## dispose-on
 
@@ -2169,6 +2182,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 346,497 | 487,949 | 8,902,103 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 346,497 | 487,821 | 8,902,313 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 346,497 | 487,879 | 8,902,478 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 346,497 | 487,887 | 8,902,196 |
 
 ## editable-edit
 
@@ -2324,6 +2338,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 183,506 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 183,506 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 183,506 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 183,506 |
 
 ## editable-upstream
 
@@ -2479,6 +2494,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 239,256 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 239,256 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 239,256 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 239,256 |
 
 ## fail-recompute
 
@@ -2634,6 +2650,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 65,024 | 1,420 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 65,024 | 1,420 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 65,024 | 1,420 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 65,024 | 1,420 |
 
 ## flight
 
@@ -2789,6 +2806,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 
 ## keyed-insert
 
@@ -2944,6 +2962,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 1,959,789 | 54,025 | 55,028 | 3,425,533 | 657,315 | 663,232 | 46,883,678 | 2,635,411 | 2,656,598 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,959,877 | 54,041 | 55,115 | 3,425,590 | 657,187 | 663,216 | 46,884,152 | 2,635,389 | 2,656,573 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,959,797 | 53,961 | 55,030 | 3,425,612 | 657,479 | 663,107 | 46,884,101 | 2,635,472 | 2,656,664 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,959,957 | 53,969 | 55,141 | 3,425,635 | 657,371 | 663,001 | 46,883,728 | 2,635,434 | 2,656,717 |
 
 ## keyed-remove
 
@@ -3099,6 +3118,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 1,958,682 | 43,724 | 45,352 | 3,431,495 | 592,945 | 608,149 | 46,848,239 | 1,925,318 | 1,961,374 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,958,780 | 43,740 | 45,438 | 3,431,562 | 593,180 | 607,804 | 46,848,258 | 1,925,291 | 1,961,368 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,958,694 | 43,660 | 45,359 | 3,431,404 | 592,959 | 608,015 | 46,848,208 | 1,925,355 | 1,961,399 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,958,853 | 43,668 | 45,478 | 3,431,476 | 593,126 | 608,075 | 46,848,249 | 1,925,311 | 1,961,358 |
 
 ## keyed-swap
 
@@ -3254,6 +3274,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 2,011,375 | 46,311 | 46,947 | 3,456,878 | 498,795 | 508,240 | 48,011,242 | 915,954 | 934,254 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,011,487 | 46,327 | 47,059 | 3,675,241 | 147,504 | 508,209 | 48,011,584 | 915,969 | 934,249 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,011,407 | 46,247 | 46,979 | 3,456,918 | 498,768 | 508,300 | 48,011,594 | 916,007 | 934,334 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,011,567 | 46,247 | 47,059 | 3,456,977 | 498,469 | 508,305 | 48,011,256 | 915,977 | 934,337 |
 
 ## mvu-dispatch
 
@@ -3409,6 +3430,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 60,281 | 794 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 60,281 | 794 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 60,281 | 794 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3564,6 +3586,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | — | — |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | — | — |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | — | — |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — |
 
 ## project-chain
 
@@ -3719,6 +3742,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 1,068,992 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,068,948 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,068,976 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,068,948 |
 
 ## project-churn
 
@@ -3874,6 +3898,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 36,405 | 34,264 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 36,421 | 34,280 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 36,405 | 34,264 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 36,405 | 34,264 |
 
 ## project-edit
 
@@ -4029,6 +4054,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 50,552 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 50,600 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 50,600 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 50,520 |
 
 ## project-reorder
 
@@ -4184,6 +4210,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 780,116 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 780,181 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 780,180 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 780,101 |
 
 ## server-render
 
@@ -4339,6 +4366,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | — | — | — |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | — | — | — |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | — | — | — |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — | — |
 
 ## shape-diamond
 
@@ -4494,6 +4522,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 62,348 | 86,309 | 1,879,598 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 62,348 | 86,309 | 1,879,598 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 62,348 | 86,309 | 1,879,598 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4649,6 +4678,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 85,079 | 109,897 | 2,055,686 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 85,079 | 109,899 | 2,055,686 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 85,079 | 109,897 | 2,055,680 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 85,079 | 109,897 | 2,055,686 |
 
 ## stream-burst-1
 
@@ -4804,6 +4834,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,923 | 49,164 | 47,367 | 57,344 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,983 | 1,579 | 2,571 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,341 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,163 | 47,367 | 57,340 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,342 |
 
 ## stream-burst-16
 
@@ -4959,6 +4990,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 5,085 | 25,099 | 5,765 | 10,537 | 48,309 | 16,568 | 126,487 | 745,454 | 115,695 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 5,085 | 25,099 | 5,781 | 10,538 | 48,309 | 16,568 | 126,487 | 745,454 | 115,692 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 5,085 | 25,099 | 5,765 | 10,539 | 48,309 | 16,568 | 126,482 | 745,455 | 115,691 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 5,085 | 25,099 | 5,765 | 10,540 | 48,309 | 16,568 | 126,487 | 745,454 | 115,691 |
 
 ## stream-burst-256
 
@@ -5114,6 +5146,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 54,705 | 401,383 | 57,104 | 134,350 | 816,654 | 46,288 | 1,363,879 | 11,913,634 | 1,048,726 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 54,707 | 401,383 | 57,120 | 134,387 | 816,677 | 46,288 | 1,363,878 | 11,913,724 | 1,048,726 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 54,705 | 401,383 | 57,104 | 134,389 | 816,603 | 46,288 | 1,363,786 | 11,913,701 | 1,048,726 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 54,705 | 401,383 | 57,104 | 134,382 | 816,688 | 46,288 | 1,363,879 | 11,913,640 | 1,048,725 |
 
 ## stream-restart
 
@@ -5269,6 +5302,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 4,240 | 5,072 | 5,908 | 5,406 | 44,161 | 73,510 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 4,240 | 5,088 | 5,910 | 5,409 | 44,163 | 73,513 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 4,240 | 5,072 | 5,910 | 5,412 | 44,160 | 73,509 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 4,240 | 5,072 | 5,913 | 5,410 | 44,163 | 73,509 |
 
 ## timed-admit-both
 
@@ -5424,6 +5458,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 118,607 | 130,104 | 2,698,022 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 118,607 | 130,106 | 2,698,047 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 118,607 | 130,106 | 2,698,048 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 118,607 | 130,105 | 2,698,022 |
 
 ## timed-admit-debounce
 
@@ -5579,6 +5614,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 117,512 | 128,674 | 2,657,655 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 117,512 | 128,682 | 2,657,643 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 117,512 | 128,684 | 2,657,644 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 117,512 | 128,684 | 2,657,644 |
 
 ## timed-admit-first
 
@@ -5734,6 +5770,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 70,263 | 79,568 | 1,617,623 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 70,263 | 79,567 | 1,617,623 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 70,263 | 79,568 | 1,617,623 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 70,263 | 79,568 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -5889,6 +5926,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 117,774 | 128,990 | 2,667,512 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 117,774 | 129,004 | 2,667,500 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 117,774 | 128,993 | 2,667,500 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 117,774 | 129,003 | 2,667,512 |
 
 ## timed-capture-both
 
@@ -6044,6 +6082,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 35,870 | 44,938 | 848,277 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 35,870 | 44,938 | 848,277 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 35,870 | 44,937 | 848,278 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,870 | 44,938 | 848,278 |
 
 ## timed-capture-debounce
 
@@ -6199,6 +6238,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 35,742 | 46,731 | 847,948 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 35,742 | 46,731 | 847,948 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 35,742 | 46,731 | 847,948 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,742 | 46,731 | 847,948 |
 
 ## timed-capture-first
 
@@ -6354,6 +6394,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 32,222 | 36,489 | 745,944 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 32,222 | 36,489 | 745,942 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 32,222 | 36,489 | 745,944 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 32,222 | 36,489 | 745,942 |
 
 ## timed-capture-last
 
@@ -6509,6 +6550,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 35,678 | 46,667 | 840,076 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 35,678 | 46,667 | 840,075 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 35,678 | 46,667 | 840,076 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,678 | 46,667 | 840,076 |
 
 ## update
 
@@ -6664,6 +6706,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 1,087,790 | 38,805 | 84,905 | 262,466 | 160,222 | 3,351,253 | 2,567,568 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,087,790 | 38,805 | 84,905 | 262,334 | 160,211 | 3,351,255 | 2,567,551 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,089,390 | 38,805 | 84,905 | 262,460 | 160,218 | 3,351,174 | 2,567,487 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,087,790 | 38,805 | 84,905 | 262,934 | 160,187 | 3,351,269 | 2,567,439 |
 
 ## update-on
 
@@ -6819,6 +6862,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 97,005 | 175,536 | 2,894,866 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 97,005 | 175,504 | 2,894,971 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 95,405 | 175,521 | 2,894,985 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 95,405 | 175,524 | 2,894,920 |
 
 ## work-form
 
@@ -6974,6 +7018,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 175,183 | 167,654 | 313,399 | 343,315 | 5,495,789 | 5,408,804 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 175,183 | 167,654 | 313,390 | 343,346 | 5,495,802 | 5,408,838 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 175,183 | 167,654 | 313,388 | 343,353 | 5,495,763 | 5,408,834 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 175,183 | 169,654 | 313,406 | 343,351 | 5,495,788 | 5,408,803 |
 
 ## work-status
 
@@ -7129,6 +7174,7 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 102,645 | 82,435 | 260,934 | 156,813 | 2,675,704 | 2,407,719 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 102,645 | 82,435 | 260,978 | 156,798 | 2,675,627 | 2,407,664 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 102,645 | 80,835 | 260,965 | 156,791 | 2,675,702 | 2,407,675 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 102,645 | 80,835 | 260,976 | 156,817 | 2,675,673 | 2,407,681 |
 
 ## work-value
 
@@ -7284,4 +7330,5 @@
 | `07ae397` | 2026-11-12 | feat(proofs): complete Iris/HeapLang refinement and closed-program adequacy tier (#334) | 109,769 | 123,269 | 261,164 | 284,115 | 2,660,303 | 2,984,843 |
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 109,769 | 123,270 | 261,213 | 284,085 | 2,660,271 | 2,984,871 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 109,769 | 121,671 | 261,194 | 284,118 | 2,660,354 | 2,984,851 |
+| `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 109,771 | 121,670 | 261,197 | 284,132 | 2,660,272 | 2,984,882 |
 
