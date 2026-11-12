@@ -69,7 +69,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 :::details Membership changes and row reads
 
 A key added to or removed from `Keys` costs an O(N) key diff, then one `add` or `subtract` per changed key. Each
-aggregate reads only the rows that changed, so an edit to one row of a thousand re-runs the row's function alone.
+aggregate attaches a direct row observer per key (`FoldRow` / `FoldReads`: [`direct_link_is_sources_add`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_link_is_sources_add), [`world_direct_link_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_link_spec), [`direct_observer_walk_covered`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_observer_walk_covered)) and reads only the rows that changed, so an edit to one row of a thousand re-runs the row's function alone. Companion state adopted by an aggregate memo (`Memo.Adopt`) is disposed once when the aggregate memo is disposed ([`adopt_companion_disposed_once`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#adopt_companion_disposed_once), [`memo_dispose_adopted_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#memo_dispose_adopted_spec)).
 
 :::
 

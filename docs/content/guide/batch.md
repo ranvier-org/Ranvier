@@ -2,10 +2,10 @@
 title: Batch
 ---
 
-`batch body` groups writes and defers effects until the outermost batch ends. Several writes
-produce one run per effect, using the final values. `batch` returns the body's result.
+`batch body` groups writes and defers effects until the outermost batch ends ([`flush_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_returns_clean), [`heap_flush_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Scheduler.html#heap_flush_returns_clean)). Several writes
+produce one run per effect, using the final values ([`queued_at_most_once_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#queued_at_most_once_new_graph), [`mark_keeps_queue_once`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Marking.html#mark_keeps_queue_once)). `batch` returns the body's result.
 
-**Memos still refresh when read inside a batch**, using the writes made so far.
+**Memos still refresh when read inside a batch**, using the writes made so far ([`glitch_free_read`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#glitch_free_read)).
 
 ::::details Test your understanding
 
@@ -81,7 +81,7 @@ controls [
 `flush ()` runs queued effects immediately, including inside a batch.
 
 A batch that throws still ends. Later writes flush normally, and effects queued by the failed
-batch's writes run at the next flush.
+batch's writes run at the next flush ([`failed_batch_leaves_queue`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#failed_batch_leaves_queue)).
 :::
 
 ## Reading effect output

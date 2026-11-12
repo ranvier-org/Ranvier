@@ -102,8 +102,8 @@ name.Value <- "ADA"
 printfn "%s" name.Value // Ada: an equal signal write keeps the stored value
 ```
 
-A signal rejects an equal write. A memo caches its newly computed result but suppresses
-downstream work when it compares equal. The comparer controls settled-value cutoffs; pending,
+A signal rejects an equal write ([`signal_update_noop`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#signal_update_noop)). A memo caches its newly computed result but suppresses
+downstream work when it compares equal ([`cutoff`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#cutoff), [`resolve_clean_unmoved`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#resolve_clean_unmoved); a comparer that returns `false` on every run—such as a memo allocating a fresh reference record under `JsIdentityPolicy` or returning `nan`—always publishes a move: [`cmp_never_passes_source`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#cmp_never_passes_source)). The comparer controls settled-value cutoffs; pending,
 failed, waiting and caught-error state changes still propagate.
 
 The opt-in factories are `createSignalWithComparer`, `createMemoWithComparer`,
@@ -120,7 +120,7 @@ always compare structurally; see [Projection identity](projections.fsx#identity)
 :::details Invalid comparers and comparer failures
 Null comparers are rejected at construction. If a signal's comparer throws, the signal stays
 unchanged and the exception reaches its writer. On a computed node, a comparer exception fails
-the node through its existing error handling. A boundary's recovery handler handles body errors;
+the node through its existing error handling ([`comparer_throw_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#comparer_throw_contained), [`memo_comparer_replaces_failure`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#memo_comparer_replaces_failure)). A boundary's recovery handler handles body errors;
 a comparer exception fails the boundary directly.
 :::
 

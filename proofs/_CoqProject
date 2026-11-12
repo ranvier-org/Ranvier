@@ -19,6 +19,7 @@ theories/Pure/Refinement.v
 theories/Pure/Witnesses.v
 theories/Pure/Optimised.v
 theories/Pure/Ledger.v
+theories/Pure/Collections.v
 theories/Heap/ObserverSet.v
 theories/Heap/SourceList.v
 theories/Heap/Ghost.v
@@ -27,6 +28,7 @@ theories/Heap/Run.v
 theories/Heap/Scheduler.v
 theories/Heap/Ownership.v
 theories/Heap/Adequacy.v
+theories/Heap/Collections.v
 theories/Conformance/Expected.v
 theories/Conformance/Check.v
 theories/Audit.v

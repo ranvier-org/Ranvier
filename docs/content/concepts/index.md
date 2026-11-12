@@ -13,9 +13,8 @@ with the [guide](../guide/index.md).
 Ranvier is a fine-grained reactive computation library for .NET, written in F#. It provides a dependency graph
 of **signals** (settable sources), **memos** (cached derived values) and **effects** (side effects that re-run
 when something they read changes). Dependencies are tracked automatically: a computation depends on whatever
-it read during its last run. Derived values update in height order, so a computation does not observe a mix
-of old and new inputs. An equality cutoff stops propagation when a recomputed value is equal to the previous
-one.
+it read during its last run ([`run_end_edges_are_latest_reads`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#run_end_edges_are_latest_reads)). Derived values pull upstream dependencies on demand so that for well-behaved synchronous graphs (`well_behaved_program`), a computation never observes a mix of old and new inputs ([`glitch_free_read`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#glitch_free_read), [`convergence`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#convergence)). An equality cutoff stops propagation when a recomputed value is equal to the previous
+one ([`cutoff`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#cutoff), [`resolve_clean_unmoved`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#resolve_clean_unmoved)). See the [Rocq & Iris proof explorer](https://ranvier-org.github.io/Ranvier/proofs/) for the full set of machine-checked guarantees and exact scope premises.
 
 The **pending channel** carries a value's not-ready status through dependent reads to a boundary.
 A memo can use ordinary value expressions while the graph tracks loading state:

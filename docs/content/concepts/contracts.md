@@ -48,15 +48,15 @@ the graph. `ThreadAffinity.Serialised` replaces it with a check that one thread 
 ### Where work runs
 
 - **Effects** run on the owning thread, in the flush at the end of the write or batch that woke them, or in
-  the flush that `Pump` runs after draining the inbox.
+  the flush that `Pump` runs after draining the inbox ([`flush_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_returns_clean), [`queued_at_most_once_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#queued_at_most_once_new_graph), [`heap_flush_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Scheduler.html#heap_flush_returns_clean)).
 - **Projection passes and lookup refreshes** run first in a flush, before every queued effect, so an effect
-  reads keys, rows and lookup values from the write that woke it. A projection created in an effect's run
+  reads keys, rows and lookup values from the write that woke it ([`pass_runs_before_effect`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#pass_runs_before_effect), [`run_passes_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#run_passes_returns_clean), [`core_queue_drain_refines_priority`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#core_queue_drain_refines_priority)). A projection created in an effect's run
   therefore runs its pass before that effect re-runs, even when the re-run disposes it, and a pass whose
   source an effect in the same flush rewrites runs once more after the write.
-- **A write inside an effect body** joins the running flush. The effects it wakes run before the outer write
-  returns, and an effect that writes a signal it reads re-runs until the value stops changing.
+- **A write inside an effect body** joins the running flush ([`flush_survives_body`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_survives_body)). The effects it wakes run before the outer write
+  returns, and an effect that writes a signal it reads re-runs until the value stops changing ([`flush_reruns_dirty`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_reruns_dirty)).
 - **A write inside a memo body** wakes effects that run once the outermost body or read has finished, before
-  that read returns.
+  that read returns ([`flush_survives_memo_run`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_survives_memo_run), [`owed_settled`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#owed_settled)).
 - **Async settles** from another thread wait in the inbox until the owning thread drains it. The graph's
   dispatcher, chosen at construction, decides when that happens:
 
@@ -178,16 +178,16 @@ Recovery happens through re-runs alone.
 
 | Thrown by | Result |
 | --- | --- |
-| A memo body | The memo fails. |
+| A memo body | The memo fails ([`memo_failure_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#memo_failure_contained)). |
 | An async body, or its task faulting or being cancelled | The async value fails. Under `CancelPrevious` and `KeepLatest`, a superseded flight's outcome is discarded. Under `FinishCurrent`, a failure that settles while a trailing run is owed is discarded. Under `DropWhilePending`, a failure that settles after the flight discarded a change is discarded. |
 | A stream's source faulting, its `fold` or `start` | The stream memo fails, and the stream is cancelled. A `createStream` stream that completes without an item fails with `InvalidOperationException`. |
-| An effect body | Recorded on the effect's `Status` and `Error`. Every effect queued behind it in the flush still runs. |
+| An effect body | Recorded on the effect's `Status` and `Error`. Every effect queued behind it in the flush still runs ([`body_failure_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#body_failure_contained), [`drain_continues`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#drain_continues), [`drain_no_escape`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#drain_no_escape)). |
 | A boundary's `fallback` or `recover` | The boundary fails with that exception. |
-| A cleanup | Recorded, and the remaining cleanups and disposals still run. A `createRoot` scope keeps the error in its own `Errors`; a computation's scope records it in `graph.Root.Errors`. |
+| A cleanup | Recorded, and the remaining cleanups and disposals still run ([`cleanup_failure_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#cleanup_failure_contained), [`teardown_continues`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#teardown_continues)). A `createRoot` scope keeps the error in its own `Errors`; a computation's scope records it in `graph.Root.Errors`. |
 | Work drained from the inbox | Recorded in `graph.Root.Errors`, and the rest of the inbox still runs. |
 | `DispatchAsync` work | Faults the returned task with that exception. `graph.Root.Errors` stays unchanged, and the rest of the inbox still runs. |
 | A signal's equality comparer | The write raises to the writer. The value stays unchanged, and readers stay asleep. |
-| The equality comparer of a memo, boundary, projection row, fold or lookup cell | The node fails with that exception and keeps its previous value, and its readers wake to see the failure. A boundary's `recover` does not see it. |
+| The equality comparer of a memo, boundary, projection row, fold or lookup cell | The node fails with that exception and keeps its previous value, and its readers wake to see the failure ([`comparer_throw_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#comparer_throw_contained), [`memo_comparer_replaces_failure`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#memo_comparer_replaces_failure)). A boundary's `recover` does not see it. |
 | A `createEffectOn` comparer | Recorded on the effect as a failure of `compute`, and `act` does not run. |
 | Disposal of a pending async value | The async value fails with `ObjectDisposedException`, and its readers wake once to see it. |
 | A flight's task faulting after it was superseded, or after its async value or graph was disposed | Observed under every `FlightPolicy`. `TaskScheduler.UnobservedTaskException` does not receive it. |
@@ -282,16 +282,16 @@ run: an owning memo first read by an effect keeps its nodes when the effect re-r
 
 | Created in | Result |
 | --- | --- |
-| A `createMemo` body | The run fails with `InvalidOperationException`: *A memo created by createMemo created an owned node in its body*. The run fails even when the body catches the exception, and `untrack` blocks are included. Use `createMemoWith`. |
+| A `createMemo` body | The run fails with `InvalidOperationException`: *A memo created by createMemo created an owned node in its body*. The run fails even when the body catches the exception, and `untrack` blocks are included ([`memo_scope_violation_returns`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#memo_scope_violation_returns)). Use `createMemoWith`. |
 | A `createMemoWith` body | Owned by the run. Disposed before the next run and with the memo. |
 | An effect or boundary body | Owned by the run. Disposed before the next run and with the effect or boundary. |
 | A `createAsync` or `createAsyncWithPolicy` body | The run fails, and the message names `createAsyncWith`. |
 | A `createAsyncWith` or `createOwningAsyncWithPolicy` body, before the first `await` that suspends | Owned by the flight. Disposed before the next flight starts and with the async value. |
 | An async body, after that `await` | On the owning thread, owned by `graph.Root`. To keep it in the flight, capture `getOwner ()` before the `await` and create it inside `runWithOwner`. |
-| A projection factory | Owned by the key. Disposed when the key leaves or the projection is disposed. |
+| A projection factory | Owned by the key. Disposed when the key leaves or the projection is disposed ([`unlink_active_removes_child`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#unlink_active_removes_child), [`owner_links_active_mid_unlink_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#owner_links_active_mid_unlink_spec)). |
 | A projection row reader, or `createProjection`'s `map` | The row fails with `InvalidOperationException`. Create the node in the factory. |
 | A lookup's `f` or `affected` | The key, or every live key, fails with `InvalidOperationException`. |
-| A cleanup | Owned by the scope running the cleanup. Disposed before that computation's next run, or at once when the scope itself is being disposed. |
+| A cleanup | Owned by the scope running the cleanup. Disposed before that computation's next run, or at once when the scope itself is being disposed ([`late_registration_immediate`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#late_registration_immediate), [`late_attach_disposed`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#late_attach_disposed)). |
 
 A signal or async source created in any body is unowned, and each run creates a new one that starts from its
 initial value. State that has to survive a re-run belongs outside the body that re-runs.
@@ -302,11 +302,12 @@ An async value created and read in the same owning body restarts its flight on e
 ### Teardown order
 
 Disposing a scope, or ending a computation's run, tears down its cleanups and children together in reverse
-acquisition order, as `use` bindings are disposed. A cleanup runs while every node created before its
-registration is still live. Each child scope is torn down the same way. Cleanups run untracked. Disposal is
-idempotent.
+acquisition order, as `use` bindings are disposed ([`dispose_reverse_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#dispose_reverse_order), [`teardown_runs_in_reverse`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#teardown_runs_in_reverse), [`owners_in_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#owners_in_order)). A cleanup runs while every node created before its
+registration is still live, and each registered cleanup executes at most once ([`cleanup_once_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#cleanup_once_new_graph), [`heap_ownership_guarantees`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Ownership.html#heap_ownership_guarantees)). Each child scope is torn down the same way. Cleanups run untracked. Disposal is
+idempotent and detaches all upstream edges ([`disposed_no_edges_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_no_edges_new_graph), [`retire_unlinked_child_idempotent`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#retire_unlinked_child_idempotent)).
 
-- A disposed memo keeps its last value and stops recomputing.
+- A disposed memo keeps its last value and stops recomputing ([`disposed_memo_answers`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_memo_answers), [`disposed_memo_no_refresh`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#disposed_memo_no_refresh)).
+- A disposed effect never runs again ([`disposed_effect_never_runs`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_effect_never_runs), [`queued_effect_disposed_skipped`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#queued_effect_disposed_skipped)).
 - Disposing an async value cancels its flight's token, and disposing a stream memo cancels its stream.
 - A pending async value or stream memo that is disposed fails with `ObjectDisposedException`.
 

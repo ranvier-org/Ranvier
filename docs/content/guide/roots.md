@@ -3,7 +3,7 @@ title: Roots and owners
 ---
 
 Every memo, effect and binding belongs to an owner. Disposing that owner runs its cleanups and disposes
-its children. Disposing it again is safe.
+its children ([`dispose_reverse_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#dispose_reverse_order), [`heap_ownership_guarantees`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Ownership.html#heap_ownership_guarantees)). Disposing it again is safe ([`retire_unlinked_child_idempotent`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#retire_unlinked_child_idempotent)).
 
 The owner can be the graph's `Root`, a scope created by `createRoot`, or the current run of an
 enclosing effect, owning memo or boundary.
@@ -15,8 +15,8 @@ enclosing effect, owning memo or boundary.
 - `graph.Dispose ()` disposes every node the graph owns. Use `use graph = new Graph ()` to dispose
   the graph automatically when the enclosing scope ends.
 
-In this replay, disposing the root removes its effect's dependency. The signal remains available,
-but later writes no longer run that effect.
+In this replay, disposing the root removes its effect's dependency ([`disposed_no_edges_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_no_edges_new_graph)). The signal remains available,
+but later writes no longer run that effect ([`disposed_effect_never_runs`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_effect_never_runs)).
 
 ```fsharp map replay code=collapsed
 let count = createSignal 0
@@ -46,7 +46,7 @@ controls [
 :::details Disposal order and nested roots
 
 An owner tears down its cleanups and children together in reverse acquisition order, as `use` bindings
-are disposed. A cleanup registered after a node is created runs before that node is disposed.
+are disposed ([`dispose_reverse_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#dispose_reverse_order), [`teardown_runs_in_reverse`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#teardown_runs_in_reverse), [`owners_in_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#owners_in_order)). A cleanup registered after a node is created runs before that node is disposed.
 Nested owners apply that rule to their own children when they are reached; cleanups are not a
 separate phase that runs before or after all children.
 
