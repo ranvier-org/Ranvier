@@ -166,6 +166,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 83,786 | 128,338 | 1,768,974 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 83,850 | 128,334 | 1,768,951 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 83,740 | 128,369 | 1,769,014 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 81,333 | 123,628 | 1,753,830 |
 
 ## app-table
 
@@ -333,6 +334,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 3,701,363 | 8,607,928 | 99,687,544 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 3,701,347 | 8,718,968 | 99,693,056 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 3,701,591 | 8,679,509 | 99,686,505 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 3,705,103 | 8,604,543 | 99,674,080 |
 
 ## async-recover
 
@@ -500,6 +502,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 139,541 | 39,896 | 443,799 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 94,721 | 39,938 | 443,926 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 94,671 | 39,593 | 444,121 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 94,588 | 39,609 | 444,097 |
 
 ## async-resolve
 
@@ -667,6 +670,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,804,373 | 1,090,259 | 12,254,560 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,803,573 | 1,089,734 | 12,251,791 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,798,729 | 1,079,627 | 12,231,470 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,795,370 | 1,079,716 | 12,227,631 |
 
 ## chain
 
@@ -834,6 +838,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 13,099 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 13,165 | 318 | 2,554 | 4,491 | 3,573 | 72,781 | 71,814 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 13,035 | 318 | 2,546 | 4,491 | 3,578 | 72,781 | 71,814 |
 
 ## chain-affinity
 
@@ -1001,6 +1006,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,653 | 3,176 | 2,604 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,653 | 3,176 | 2,604 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,653 | 3,176 | 2,604 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,645 | 3,153 | 2,597 |
 
 ## control
 
@@ -1168,6 +1174,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 74,709 | 833,322 | 2,584,415 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 74,710 | 833,422 | 2,575,510 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 74,709 | 833,368 | 2,575,472 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 74,710 | 823,456 | 2,590,283 |
 
 ## create
 
@@ -1335,6 +1342,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 13,451,432 | 2,866,678 | 2,575,377 | 2,128,020 | 4,054,987 | 33,824,060 | 50,449,746 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 13,451,402 | 2,866,678 | 2,591,394 | 2,127,172 | 4,055,461 | 33,823,161 | 50,461,021 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 13,452,451 | 2,892,613 | 2,578,366 | 2,127,268 | 4,054,846 | 33,823,532 | 50,472,743 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 13,481,449 | 2,860,615 | 2,579,376 | 2,127,931 | 4,053,463 | 33,867,524 | 50,423,087 |
 
 ## create-on
 
@@ -1502,6 +1510,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,968,488 | 4,234,874 | 55,454,993 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,968,504 | 4,234,940 | 55,454,744 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,957,488 | 4,234,981 | 55,454,731 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,903,490 | 4,211,724 | 55,337,136 |
 
 ## cutoff
 
@@ -1669,6 +1678,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,184 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,182 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1836,6 +1846,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 787 | 758 | 16,684 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 803 | 758 | 16,684 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 787 | 758 | 16,684 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 777 | 758 | 16,684 |
 
 ## derive-on
 
@@ -2003,6 +2014,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 757 | 759 | 16,707 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 773 | 759 | 16,707 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 757 | 759 | 16,707 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 745 | 759 | 16,707 |
 
 ## dispose
 
@@ -2170,6 +2182,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,707,643 | 806,288 | 367,497 | 475,925 | 495,256 | 13,205,323 | 9,105,469 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 2,707,641 | 806,288 | 367,497 | 476,052 | 495,321 | 13,205,814 | 9,106,344 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,707,641 | 806,288 | 367,497 | 475,927 | 495,323 | 13,205,464 | 9,105,552 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,706,751 | 806,288 | 368,506 | 475,911 | 493,944 | 13,205,909 | 9,106,176 |
 
 ## dispose-on
 
@@ -2337,6 +2350,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 346,497 | 487,780 | 8,902,736 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 346,497 | 487,648 | 8,902,454 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 346,497 | 487,585 | 8,903,127 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 347,506 | 487,700 | 8,902,156 |
 
 ## editable-edit
 
@@ -2504,6 +2518,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 183,506 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 183,506 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 183,506 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 182,409 |
 
 ## editable-upstream
 
@@ -2671,6 +2686,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 239,256 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 239,255 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 239,255 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 230,409 |
 
 ## fail-recompute
 
@@ -2838,6 +2854,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 65,016 | 1,420 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 65,062 | 1,420 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 65,154 | 1,420 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 65,010 | 1,408 |
 
 ## flight
 
@@ -3005,6 +3022,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 10,977 | 6,221 | 6,222 | 11,323 | 10,745 | 22,387 |
 
 ## keyed-insert
 
@@ -3172,6 +3190,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,901,347 | 53,939 | 55,091 | 3,328,826 | 240,432 | 179,446 | 46,480,251 | 2,635,536 | 2,656,784 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,916,955 | 54,059 | 55,090 | 3,328,813 | 240,571 | 179,465 | 46,487,896 | 2,635,516 | 2,656,825 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,900,906 | 53,949 | 55,049 | 3,329,776 | 240,481 | 179,463 | 46,473,887 | 2,635,533 | 2,656,837 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,887,924 | 53,916 | 55,063 | 3,330,718 | 240,301 | 179,434 | 46,506,656 | 2,635,473 | 2,656,956 |
 
 ## keyed-remove
 
@@ -3339,6 +3358,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,900,358 | 43,638 | 45,446 | 3,332,665 | 593,028 | 148,446 | 46,454,317 | 1,925,493 | 1,961,571 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,915,953 | 43,758 | 45,431 | 3,332,787 | 592,991 | 148,511 | 46,467,766 | 1,925,452 | 1,961,756 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,899,911 | 43,648 | 45,365 | 3,333,796 | 592,967 | 148,489 | 46,447,268 | 1,925,471 | 1,961,793 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,886,946 | 43,599 | 45,395 | 3,334,862 | 593,748 | 148,178 | 46,460,226 | 1,925,401 | 1,961,841 |
 
 ## keyed-swap
 
@@ -3506,6 +3526,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,895,929 | 46,215 | 47,026 | 3,222,762 | 502,408 | 508,599 | 47,151,594 | 915,795 | 934,268 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,911,545 | 46,327 | 47,026 | 3,222,096 | 502,333 | 508,556 | 47,163,199 | 915,926 | 934,272 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,895,464 | 46,215 | 46,945 | 3,218,676 | 502,398 | 508,556 | 47,160,257 | 915,898 | 934,154 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,882,544 | 46,152 | 46,982 | 3,275,548 | 502,161 | 509,293 | 47,144,211 | 915,997 | 936,653 |
 
 ## mvu-dispatch
 
@@ -3673,6 +3694,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 60,281 | 794 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 60,281 | 794 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 60,281 | 794 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 60,288 | 786 |
 
 ## persist-write
 
@@ -3840,6 +3862,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | — | — |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | — | — |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | — | — |
 
 ## project-chain
 
@@ -4007,6 +4030,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 455,743 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 455,712 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 455,702 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 455,847 |
 
 ## project-churn
 
@@ -4174,6 +4198,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 36,580 | 34,296 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 36,641 | 34,376 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 36,548 | 34,279 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 36,482 | 34,211 |
 
 ## project-edit
 
@@ -4341,6 +4366,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 50,551 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 50,522 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 50,710 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 50,471 |
 
 ## project-reorder
 
@@ -4508,6 +4534,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 664,180 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 664,163 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 664,402 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 645,137 |
 
 ## server-render
 
@@ -4675,6 +4702,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — | — |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | — | — | — |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | — | — | — |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | — | — | — |
 
 ## shape-diamond
 
@@ -4842,6 +4870,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 62,348 | 86,309 | 1,879,598 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 62,348 | 86,309 | 1,879,598 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 62,348 | 86,410 | 1,879,598 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 62,340 | 86,511 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -5009,6 +5038,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 85,079 | 109,899 | 2,055,682 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 85,079 | 109,899 | 2,055,691 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 85,079 | 109,894 | 2,055,691 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 84,825 | 109,897 | 2,055,681 |
 
 ## stream-burst-1
 
@@ -5176,6 +5206,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,163 | 47,367 | 57,341 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,342 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,918 | 1,522 | 2,555 | 5,956 | 3,686 | 13,919 | 48,543 | 46,744 | 57,341 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,900 | 1,526 | 2,557 | 5,957 | 3,687 | 13,921 | 48,543 | 46,744 | 57,344 |
 
 ## stream-burst-16
 
@@ -5343,6 +5374,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 5,085 | 25,099 | 5,765 | 10,537 | 48,307 | 16,567 | 126,486 | 745,455 | 115,688 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 5,085 | 25,099 | 5,765 | 10,540 | 48,307 | 16,568 | 126,487 | 745,455 | 115,695 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 4,123 | 24,142 | 5,765 | 10,105 | 48,475 | 16,570 | 116,538 | 735,504 | 115,691 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 4,105 | 24,206 | 5,767 | 10,088 | 48,491 | 16,572 | 116,538 | 735,504 | 115,693 |
 
 ## stream-burst-256
 
@@ -5510,6 +5542,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 54,705 | 401,383 | 57,104 | 134,381 | 816,649 | 46,265 | 1,363,875 | 11,913,637 | 1,048,727 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 54,708 | 401,383 | 57,104 | 134,389 | 816,692 | 46,288 | 1,363,881 | 11,913,637 | 1,048,728 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 39,379 | 386,062 | 57,104 | 109,966 | 810,914 | 46,290 | 1,204,761 | 11,754,426 | 1,048,716 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 39,361 | 387,086 | 57,106 | 109,967 | 811,068 | 46,292 | 1,204,761 | 11,754,355 | 1,048,725 |
 
 ## stream-restart
 
@@ -5677,6 +5710,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 4,240 | 5,071 | 5,907 | 5,404 | 44,159 | 73,508 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 4,240 | 5,072 | 5,913 | 5,408 | 44,163 | 73,510 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 4,240 | 5,072 | 5,912 | 5,408 | 44,163 | 73,513 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 4,232 | 5,086 | 5,914 | 5,412 | 44,136 | 73,508 |
 
 ## timed-admit-both
 
@@ -5844,6 +5878,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 118,607 | 130,105 | 2,697,210 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 119,631 | 130,104 | 2,697,218 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 109,110 | 129,087 | 2,606,093 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 109,356 | 129,086 | 2,606,330 |
 
 ## timed-admit-debounce
 
@@ -6011,6 +6046,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 117,512 | 128,699 | 2,657,682 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 118,536 | 128,696 | 2,657,677 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 108,662 | 127,550 | 2,591,753 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 108,908 | 127,527 | 2,591,773 |
 
 ## timed-admit-first
 
@@ -6178,6 +6214,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 70,263 | 79,568 | 1,617,623 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 71,287 | 79,568 | 1,617,623 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 68,727 | 79,568 | 1,617,623 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 68,845 | 79,568 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -6345,6 +6382,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 117,774 | 129,007 | 2,667,513 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 118,798 | 129,006 | 2,667,520 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 108,918 | 127,857 | 2,601,609 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 109,164 | 127,857 | 2,601,655 |
 
 ## timed-capture-both
 
@@ -6512,6 +6550,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,870 | 44,937 | 847,453 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 35,870 | 44,940 | 847,481 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 35,038 | 40,606 | 863,093 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 35,028 | 39,988 | 863,322 |
 
 ## timed-capture-debounce
 
@@ -6679,6 +6718,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,742 | 46,731 | 847,950 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 35,742 | 46,732 | 847,950 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 34,910 | 45,406 | 863,581 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 34,900 | 45,408 | 863,583 |
 
 ## timed-capture-first
 
@@ -6846,6 +6886,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 32,222 | 36,488 | 745,942 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 32,222 | 36,490 | 745,942 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 31,262 | 36,489 | 745,942 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 31,252 | 36,490 | 745,942 |
 
 ## timed-capture-last
 
@@ -7013,6 +7054,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,678 | 46,665 | 840,078 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 35,678 | 46,668 | 840,077 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 34,846 | 45,342 | 855,711 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 34,836 | 45,343 | 855,709 |
 
 ## update
 
@@ -7180,6 +7222,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,087,790 | 38,805 | 84,905 | 263,133 | 160,204 | 3,351,278 | 2,567,564 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 1,089,390 | 38,805 | 86,505 | 262,865 | 160,223 | 3,351,272 | 2,567,585 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,089,590 | 38,805 | 84,905 | 262,843 | 160,223 | 3,351,240 | 2,567,465 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,092,490 | 38,805 | 83,909 | 263,176 | 160,241 | 3,351,273 | 2,567,529 |
 
 ## update-on
 
@@ -7347,6 +7390,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 95,405 | 175,521 | 2,894,894 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 97,005 | 175,537 | 2,894,895 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 95,405 | 175,534 | 2,894,947 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 94,209 | 175,531 | 2,894,898 |
 
 ## work-form
 
@@ -7514,6 +7558,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 175,183 | 167,687 | 313,372 | 343,259 | 5,495,768 | 5,408,874 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 177,199 | 167,671 | 313,390 | 343,303 | 5,495,802 | 5,408,861 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 175,183 | 167,654 | 313,387 | 343,320 | 5,495,797 | 5,408,841 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 171,938 | 168,024 | 313,373 | 343,380 | 5,495,839 | 5,408,836 |
 
 ## work-status
 
@@ -7681,6 +7726,7 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 102,645 | 80,835 | 260,956 | 156,799 | 2,675,588 | 2,407,668 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 104,245 | 82,435 | 260,956 | 156,813 | 2,675,674 | 2,407,631 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 102,645 | 80,835 | 260,962 | 156,809 | 2,675,622 | 2,407,618 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 101,649 | 79,639 | 260,957 | 156,835 | 2,675,570 | 2,407,693 |
 
 ## work-value
 
@@ -7848,4 +7894,5 @@
 | `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 109,771 | 121,669 | 261,188 | 284,056 | 2,660,370 | 2,984,837 |
 | `977f6d6` | 2026-11-12 | fix(core): isolate supplied exception captures, release stream token registrations, and guard runWithOwner (#348) | 111,369 | 123,271 | 261,200 | 284,385 | 2,660,344 | 2,984,839 |
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 109,769 | 121,671 | 261,183 | 284,105 | 2,660,320 | 2,984,858 |
+| `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 108,774 | 120,473 | 261,218 | 284,107 | 2,660,304 | 2,984,854 |
 
