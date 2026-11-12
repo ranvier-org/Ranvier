@@ -922,3 +922,106 @@ Proof.
   - destruct Ht as (dm & Hdm & Hkm). exists dm. simpl. done.
   - exact Hnr.
 Qed.
+
+(** ** Single-projection ChooseView boolean gate cutoff and classification *)
+
+Inductive gate_reading (T : Type) :=
+  | GR_Ready : T -> gate_reading T
+  | GR_Pending : gate_reading T
+  | GR_Failed : nat -> gate_reading T.
+Arguments GR_Ready {T} _.
+Arguments GR_Pending {T}.
+Arguments GR_Failed {T} _.
+
+Inductive choose_outcome :=
+  | CO_Visit
+  | CO_Exclude
+  | CO_HeldOut
+  | CO_HideFailed.
+
+Record choice_gate_state := mk_choice_gate {
+  cg_published : bool;
+  cg_peek : bool;
+  cg_last : option (gate_reading bool);
+}.
+
+Definition choice_gate_init : choice_gate_state :=
+  {| cg_published := false; cg_peek := false; cg_last := None |}.
+
+Definition gate_reading_bool_eqb (a b : gate_reading bool) : bool :=
+  match a, b with
+  | GR_Ready x, GR_Ready y => Bool.eqb x y
+  | GR_Pending, GR_Pending => true
+  | GR_Failed e1, GR_Failed e2 => Nat.eqb e1 e2
+  | _, _ => false
+  end.
+
+Definition step_choice_gate {U : Type}
+    (gs : choice_gate_state) (r : gate_reading (option U))
+    : choice_gate_state * gate_reading bool * bool :=
+  let gr :=
+    match r with
+    | GR_Ready (Some _) => GR_Ready true
+    | GR_Ready None => GR_Ready false
+    | GR_Pending => GR_Pending
+    | GR_Failed eid => GR_Failed eid
+    end in
+  let '(pub', peek') :=
+    match gr with
+    | GR_Ready b => (true, b)
+    | _ => (cg_published gs, cg_peek gs)
+    end in
+  let moved :=
+    match cg_last gs with
+    | None => true
+    | Some prev => negb (gate_reading_bool_eqb prev gr)
+    end in
+  ({| cg_published := pub'; cg_peek := peek'; cg_last := Some gr |}, gr, moved).
+
+Definition classify_choice_gate (gs : choice_gate_state) (gr : gate_reading bool) : choose_outcome :=
+  match gr with
+  | GR_Ready true => CO_Visit
+  | GR_Ready false => CO_Exclude
+  | GR_Pending =>
+      if negb (cg_published gs) then CO_HeldOut
+      else if cg_peek gs then CO_Visit else CO_Exclude
+  | GR_Failed _ => CO_HideFailed
+  end.
+
+(**md
+**`ChooseView`'s per-key boolean gate cuts off every `Some u1 -> Some u2` edit (`moved = false`) while classifying Ready, Pending, and Failed chooser outcomes identically to a two-projection `Option.isSome` `FilterView`.**
+
+Certifies the `ChooseView` single-projection fusion in `Combinators.fs`:
+1. After settling `GR_Ready (Some u1)`, a subsequent `GR_Ready (Some u2)` transition produces `moved = false`
+   on the boolean gate memo, resolving `ChooseView`'s `Check` walk to `Clean` with zero view passes while
+   `choices.Get` yields `Some u2`.
+2. Across every `Ready`, `Pending` (both unsettled and previously settled), and `Failed` transition,
+   `classify_choice_gate` matches `FilterView`'s `predicate = true` classification over `Option.isSome`.
+
+- [u1:] the previously published `Some` payload.
+- [u2:] the updated `Some` payload.
+- [gs:] the gate state prior to the step.
+- [r:] the chooser reading for the current step.
+*)
+Theorem choose_gate_cutoff_and_classification {U : Type}
+    (u1 u2 : U) (gs : choice_gate_state) (r : gate_reading (option U)) :
+  (let '(gs1, gr1, _) := step_choice_gate gs (GR_Ready (Some u1)) in
+   let '(gs2, gr2, moved2) := step_choice_gate gs1 (GR_Ready (Some u2)) in
+   moved2 = false /\
+   classify_choice_gate gs1 gr1 = CO_Visit /\
+   classify_choice_gate gs2 gr2 = CO_Visit) /\
+  (let '(gs', gr, _) := step_choice_gate gs r in
+   classify_choice_gate gs' gr =
+     match r with
+     | GR_Ready (Some _) => CO_Visit
+     | GR_Ready None => CO_Exclude
+     | GR_Pending =>
+         if negb (cg_published gs) then CO_HeldOut
+         else if cg_peek gs then CO_Visit else CO_Exclude
+     | GR_Failed _ => CO_HideFailed
+     end).
+Proof.
+  split.
+  - simpl. split_and!; reflexivity.
+  - destruct r as [[u|]| |eid]; simpl; reflexivity.
+Qed.

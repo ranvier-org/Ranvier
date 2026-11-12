@@ -246,6 +246,97 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
         heldOut.Publish upstream
 
 /// <summary>
+/// A boolean inclusion memo paired with a key's row in <c>choices</c>, disposed when that row is retired.
+/// </summary>
+[<Sealed; AllowNullLiteral>]
+type internal ChoiceGate<'K, 'U when 'K: equality>(key: 'K, source: Memo<'U option>, gate: Memo<bool>, gates: Platform.KeyMap<'K, ChoiceGate<'K, 'U>>)
+    =
+    let mutable disposed = false
+
+    member _.Source = source
+    member _.Gate = gate
+
+    interface System.IDisposable with
+        member this.Dispose() =
+            if not disposed then
+                disposed <- true
+
+                if obj.ReferenceEquals (gates.Find key, this) then
+                    gates.Remove key
+
+                gate.Dispose ()
+
+/// <summary>
+/// The keys of <c>choices</c> whose row holds <c>Some</c>, in upstream order, each with the value inside the <c>Some</c>.
+/// </summary>
+/// <remarks>
+/// Each key's boolean gate cuts off <c>Some</c>-to-<c>Some</c> edits before the view pass without maintaining a second
+/// projection, and retires with its <c>choices</c> row via <c>Memo.Adopt</c>.
+/// </remarks>
+type internal ChooseView<'K, 'V, 'U when 'K: equality>
+    (graph: Graph, upstream: Projection<'K, 'V>, choices: Projection<'K, 'U option> ref, read: 'K -> 'U) =
+    inherit RowsByKey<'K, 'U>(graph, read, Unchecked.defaultof<_>)
+
+    let heldOut = HeldOut<'K> graph
+    let gates = Platform.KeyMap<'K, ChoiceGate<'K, 'U>>()
+
+    /// <summary>
+    /// The upstream keys whose chooser has never settled, in upstream order, followed by the keys <c>upstream</c> holds
+    /// out of its <c>Keys</c>. A tracked read.
+    /// </summary>
+    member _.HeldOut = heldOut.Keys
+
+    override this.Enumerate() =
+        heldOut.Begin ()
+        let rows = choices.Value
+        let keys = rows.Keys
+
+        for i in 0 .. keys.Length - 1 do
+            let key = Platform.itemAt i keys
+            let entry = rows.Entries.Find key
+
+            if not (Platform.isNull entry) then
+                let row = entry.Row
+                let mutable companion = gates.Find key
+
+                if
+                    Platform.isNull companion
+                    || not (obj.ReferenceEquals (companion.Source, row))
+                then
+                    let gate =
+                        graph.RunOwned (
+                            this.Scope,
+                            fun () ->
+                                Memo<bool>
+                                    .CreateWithComparer(
+                                        graph,
+                                        (fun _ -> Option.isSome row.Value),
+                                        ScopeMode.Pure,
+                                        System.Collections.Generic.EqualityComparer<bool>.Default
+                                    )
+                        )
+
+                    companion <- new ChoiceGate<'K, 'U> (key, row, gate, gates)
+                    gates.Set (key, companion)
+                    row.Adopt companion
+
+                let gate = companion.Gate
+
+                match gate.TryValue with
+                | Ready true -> this.Visit key
+                | Ready false -> ()
+                | Pending ->
+                    if not gate.Published then
+                        heldOut.Add key
+                    elif gate.Peek then
+                        this.Visit key
+                | Failed _ ->
+                    this.Visit key
+                    this.HideLast ()
+
+        heldOut.Publish upstream
+
+/// <summary>
 /// The first key holding each distinct value of <c>values</c>, in upstream order, each with a row reading the upstream
 /// value.
 /// </summary>
@@ -1370,21 +1461,15 @@ module Projection =
         upstream.RequireRowMemos "Projection.choose"
         let graph = upstream.Graph
         let choices = ref Unchecked.defaultof<Projection<'K, 'U option>>
-        let inclusion = ref Unchecked.defaultof<Projection<'K, bool>>
 
         let read key =
             match choices.Value.Get key with
             | Some value -> value
             | None -> raise (System.Collections.Generic.KeyNotFoundException ("The projection has no key " + string key + "."))
 
-        let view = new FilterView<'K, 'V, 'U> (graph, upstream, inclusion, read, true)
+        let view = new ChooseView<'K, 'V, 'U> (graph, upstream, choices, read)
 
-        graph.RunOwned (
-            view.Scope,
-            fun () ->
-                choices.Value <- perKey graph upstream chooser
-                inclusion.Value <- perKey graph choices.Value Option.isSome
-        )
+        choices.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream chooser)
 
         view.PendingExtra <- fun () -> view.HeldOut
         view :> Projection<'K, 'U>

@@ -4894,6 +4894,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// </summary>
     member _.Peek = value
 
+    /// <summary>Whether the memo has published a value at least once. Untracked.</summary>
+    member internal _.Published = published
+
     /// <summary>
     /// How many computations currently read this memo. Exposed for tests that
     /// need to assert an edge was dropped, or not duplicated.
