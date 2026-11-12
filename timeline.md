@@ -155,6 +155,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 84,367 | 128,249 | 1,768,568 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 83,824 | 128,260 | 1,768,661 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 83,824 | 128,236 | 1,768,655 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 83,826 | 128,273 | 1,768,608 |
 
 ## app-table
 
@@ -311,6 +312,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 4,444,367 | 9,642,311 | 109,889,076 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 4,444,351 | 9,641,015 | 109,922,549 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 4,444,335 | 9,707,777 | 109,887,910 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 4,444,367 | 9,642,992 | 109,919,871 |
 
 ## async-recover
 
@@ -467,6 +469,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 139,557 | 39,898 | 443,797 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 139,557 | 39,907 | 443,797 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 139,557 | 39,912 | 443,798 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 139,557 | 39,900 | 443,791 |
 
 ## async-resolve
 
@@ -623,6 +626,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,803,566 | 1,090,485 | 12,254,458 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,803,565 | 1,090,321 | 12,254,356 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,803,565 | 1,089,891 | 12,254,500 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,803,565 | 1,089,858 | 12,251,003 |
 
 ## chain
 
@@ -779,6 +783,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,813 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,782 | 71,814 |
 
 ## chain-affinity
 
@@ -935,6 +940,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,653 | 3,176 | 2,604 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,653 | 3,176 | 2,604 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,653 | 3,176 | 2,604 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1091,6 +1097,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 74,709 | 812,655 | 2,600,880 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 74,709 | 812,644 | 2,600,922 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 74,709 | 812,690 | 2,600,863 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 74,709 | 812,571 | 2,600,890 |
 
 ## create
 
@@ -1247,6 +1254,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 13,451,480 | 2,866,678 | 2,575,408 | 2,127,795 | 4,056,434 | 33,845,290 | 50,484,082 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 13,451,536 | 2,914,678 | 2,575,408 | 2,128,040 | 4,056,642 | 33,845,241 | 50,484,014 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 13,483,418 | 2,866,678 | 2,575,408 | 2,127,179 | 4,055,023 | 33,845,834 | 50,483,955 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 13,483,414 | 2,914,678 | 2,575,393 | 2,127,439 | 4,056,627 | 33,845,546 | 50,483,830 |
 
 ## create-on
 
@@ -1403,6 +1411,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,968,520 | 4,234,742 | 55,454,822 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,952,521 | 4,234,609 | 55,454,797 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,968,488 | 4,234,805 | 55,454,774 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,952,520 | 4,234,737 | 55,454,806 |
 
 ## cutoff
 
@@ -1559,6 +1568,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1715,6 +1725,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 787 | 758 | 16,684 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 787 | 758 | 16,684 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 787 | 758 | 16,684 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1871,6 +1882,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 773 | 759 | 16,707 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 757 | 759 | 16,707 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 757 | 759 | 16,707 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 757 | 759 | 16,707 |
 
 ## dispose
 
@@ -2027,6 +2039,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,707,642 | 806,288 | 367,497 | 475,991 | 495,192 | 13,205,383 | 9,105,776 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,707,644 | 806,288 | 367,497 | 475,918 | 495,103 | 13,205,431 | 9,105,822 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,707,645 | 806,288 | 367,497 | 476,029 | 495,193 | 13,205,878 | 9,105,988 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,706,756 | 806,288 | 367,497 | 475,786 | 495,353 | 13,204,198 | 9,106,884 |
 
 ## dispose-on
 
@@ -2183,6 +2196,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 346,497 | 487,821 | 8,902,313 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 346,497 | 487,879 | 8,902,478 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 346,497 | 487,887 | 8,902,196 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 346,497 | 487,791 | 8,902,860 |
 
 ## editable-edit
 
@@ -2339,6 +2353,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 183,506 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 183,506 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 183,506 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 183,506 |
 
 ## editable-upstream
 
@@ -2495,6 +2510,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 239,256 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 239,256 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 239,256 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 239,256 |
 
 ## fail-recompute
 
@@ -2651,6 +2667,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 65,024 | 1,420 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 65,024 | 1,420 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 65,024 | 1,420 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 65,024 | 1,420 |
 
 ## flight
 
@@ -2807,6 +2824,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 
 ## keyed-insert
 
@@ -2963,6 +2981,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,959,877 | 54,041 | 55,115 | 3,425,590 | 657,187 | 663,216 | 46,884,152 | 2,635,389 | 2,656,573 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,959,797 | 53,961 | 55,030 | 3,425,612 | 657,479 | 663,107 | 46,884,101 | 2,635,472 | 2,656,664 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,959,957 | 53,969 | 55,141 | 3,425,635 | 657,371 | 663,001 | 46,883,728 | 2,635,434 | 2,656,717 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,959,933 | 53,930 | 55,165 | 3,425,617 | 657,289 | 663,125 | 46,883,690 | 2,635,400 | 2,656,706 |
 
 ## keyed-remove
 
@@ -3119,6 +3138,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,958,780 | 43,740 | 45,438 | 3,431,562 | 593,180 | 607,804 | 46,848,258 | 1,925,291 | 1,961,368 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,958,694 | 43,660 | 45,359 | 3,431,404 | 592,959 | 608,015 | 46,848,208 | 1,925,355 | 1,961,399 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,958,853 | 43,668 | 45,478 | 3,431,476 | 593,126 | 608,075 | 46,848,249 | 1,925,311 | 1,961,358 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,958,831 | 43,629 | 45,494 | 3,431,444 | 593,226 | 607,974 | 46,854,050 | 1,925,311 | 1,961,480 |
 
 ## keyed-swap
 
@@ -3275,6 +3295,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 2,011,487 | 46,327 | 47,059 | 3,675,241 | 147,504 | 508,209 | 48,011,584 | 915,969 | 934,249 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 2,011,407 | 46,247 | 46,979 | 3,456,918 | 498,768 | 508,300 | 48,011,594 | 916,007 | 934,334 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 2,011,567 | 46,247 | 47,059 | 3,456,977 | 498,469 | 508,305 | 48,011,256 | 915,977 | 934,337 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 2,011,535 | 46,215 | 47,107 | 3,672,995 | 147,670 | 508,248 | 48,011,586 | 915,939 | 934,296 |
 
 ## mvu-dispatch
 
@@ -3431,6 +3452,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 60,281 | 794 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 60,281 | 794 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 60,281 | 794 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3587,6 +3609,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | — | — |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | — | — |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | — | — |
 
 ## project-chain
 
@@ -3743,6 +3766,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,068,948 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,068,976 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,068,948 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,068,976 |
 
 ## project-churn
 
@@ -3899,6 +3923,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 36,421 | 34,280 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 36,405 | 34,264 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 36,405 | 34,264 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 36,405 | 34,264 |
 
 ## project-edit
 
@@ -4055,6 +4080,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 50,600 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 50,600 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 50,520 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 50,505 |
 
 ## project-reorder
 
@@ -4211,6 +4237,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 780,181 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 780,180 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 780,101 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 780,085 |
 
 ## server-render
 
@@ -4367,6 +4394,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | — | — | — |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | — | — | — |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | — | — | — |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | — | — | — |
 
 ## shape-diamond
 
@@ -4523,6 +4551,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 62,348 | 86,309 | 1,879,598 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 62,348 | 86,309 | 1,879,598 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 62,348 | 86,309 | 1,879,598 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4679,6 +4708,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 85,079 | 109,899 | 2,055,686 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 85,079 | 109,897 | 2,055,680 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 85,079 | 109,897 | 2,055,686 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 85,079 | 109,897 | 2,055,681 |
 
 ## stream-burst-1
 
@@ -4835,6 +4865,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,983 | 1,579 | 2,571 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,341 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,163 | 47,367 | 57,340 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,342 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,344 |
 
 ## stream-burst-16
 
@@ -4991,6 +5022,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 5,085 | 25,099 | 5,781 | 10,538 | 48,309 | 16,568 | 126,487 | 745,454 | 115,692 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 5,085 | 25,099 | 5,765 | 10,539 | 48,309 | 16,568 | 126,482 | 745,455 | 115,691 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 5,085 | 25,099 | 5,765 | 10,540 | 48,309 | 16,568 | 126,487 | 745,454 | 115,691 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 5,085 | 25,099 | 5,765 | 10,536 | 48,309 | 16,568 | 126,483 | 745,454 | 115,690 |
 
 ## stream-burst-256
 
@@ -5147,6 +5179,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 54,707 | 401,383 | 57,120 | 134,387 | 816,677 | 46,288 | 1,363,878 | 11,913,724 | 1,048,726 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 54,705 | 401,383 | 57,104 | 134,389 | 816,603 | 46,288 | 1,363,786 | 11,913,701 | 1,048,726 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 54,705 | 401,383 | 57,104 | 134,382 | 816,688 | 46,288 | 1,363,879 | 11,913,640 | 1,048,725 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 54,705 | 401,383 | 57,104 | 134,297 | 816,673 | 46,288 | 1,363,817 | 11,913,629 | 1,048,704 |
 
 ## stream-restart
 
@@ -5303,6 +5336,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 4,240 | 5,088 | 5,910 | 5,409 | 44,163 | 73,513 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 4,240 | 5,072 | 5,910 | 5,412 | 44,160 | 73,509 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 4,240 | 5,072 | 5,913 | 5,410 | 44,163 | 73,509 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 4,240 | 5,072 | 5,905 | 5,407 | 44,162 | 73,507 |
 
 ## timed-admit-both
 
@@ -5459,6 +5493,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 118,607 | 130,106 | 2,698,047 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 118,607 | 130,106 | 2,698,048 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 118,607 | 130,105 | 2,698,022 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 118,607 | 130,102 | 2,698,047 |
 
 ## timed-admit-debounce
 
@@ -5615,6 +5650,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 117,512 | 128,682 | 2,657,643 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 117,512 | 128,684 | 2,657,644 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 117,512 | 128,684 | 2,657,644 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 117,512 | 128,684 | 2,657,656 |
 
 ## timed-admit-first
 
@@ -5771,6 +5807,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 70,263 | 79,567 | 1,617,623 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 70,263 | 79,568 | 1,617,623 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 70,263 | 79,568 | 1,617,623 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 70,263 | 79,566 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -5927,6 +5964,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 117,774 | 129,004 | 2,667,500 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 117,774 | 128,993 | 2,667,500 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 117,774 | 129,003 | 2,667,512 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 117,774 | 129,006 | 2,667,512 |
 
 ## timed-capture-both
 
@@ -6083,6 +6121,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 35,870 | 44,938 | 848,277 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 35,870 | 44,937 | 848,278 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,870 | 44,938 | 848,278 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 35,870 | 44,938 | 848,278 |
 
 ## timed-capture-debounce
 
@@ -6239,6 +6278,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 35,742 | 46,731 | 847,948 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 35,742 | 46,731 | 847,948 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,742 | 46,731 | 847,948 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 35,742 | 46,731 | 847,948 |
 
 ## timed-capture-first
 
@@ -6395,6 +6435,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 32,222 | 36,489 | 745,942 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 32,222 | 36,489 | 745,944 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 32,222 | 36,489 | 745,942 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 32,222 | 36,489 | 745,942 |
 
 ## timed-capture-last
 
@@ -6551,6 +6592,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 35,678 | 46,667 | 840,075 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 35,678 | 46,667 | 840,076 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 35,678 | 46,667 | 840,076 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 35,678 | 46,667 | 840,076 |
 
 ## update
 
@@ -6707,6 +6749,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 1,087,790 | 38,805 | 84,905 | 262,334 | 160,211 | 3,351,255 | 2,567,551 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 1,089,390 | 38,805 | 84,905 | 262,460 | 160,218 | 3,351,174 | 2,567,487 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 1,087,790 | 38,805 | 84,905 | 262,934 | 160,187 | 3,351,269 | 2,567,439 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 1,087,790 | 38,805 | 84,905 | 262,895 | 160,224 | 3,351,258 | 2,567,583 |
 
 ## update-on
 
@@ -6863,6 +6906,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 97,005 | 175,504 | 2,894,971 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 95,405 | 175,521 | 2,894,985 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 95,405 | 175,524 | 2,894,920 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 95,405 | 175,542 | 2,894,918 |
 
 ## work-form
 
@@ -7019,6 +7063,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 175,183 | 167,654 | 313,390 | 343,346 | 5,495,802 | 5,408,838 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 175,183 | 167,654 | 313,388 | 343,353 | 5,495,763 | 5,408,834 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 175,183 | 169,654 | 313,406 | 343,351 | 5,495,788 | 5,408,803 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 175,183 | 167,654 | 313,362 | 343,353 | 5,495,792 | 5,408,826 |
 
 ## work-status
 
@@ -7175,6 +7220,7 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 102,645 | 82,435 | 260,978 | 156,798 | 2,675,627 | 2,407,664 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 102,645 | 80,835 | 260,965 | 156,791 | 2,675,702 | 2,407,675 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 102,645 | 80,835 | 260,976 | 156,817 | 2,675,673 | 2,407,681 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 102,645 | 80,835 | 260,914 | 156,816 | 2,675,677 | 2,407,699 |
 
 ## work-value
 
@@ -7331,4 +7377,5 @@
 | `6eaca25` | 2026-11-12 | feat(proofs,docs): verify collection-boundary primitives and link proofs in docs (#335) | 109,769 | 123,270 | 261,213 | 284,085 | 2,660,271 | 2,984,871 |
 | `6621745` | 2026-11-12 | feat(proofs): verify graph concurrency, Serialised holder, and inbox contracts (#336) | 109,769 | 121,671 | 261,194 | 284,118 | 2,660,354 | 2,984,851 |
 | `a603cf8` | 2026-11-12 | feat(proofs): verify Query and Elmish boundary contracts and link in docs (#337) | 109,771 | 121,670 | 261,197 | 284,132 | 2,660,272 | 2,984,882 |
+| `36335a6` | 2026-11-12 | feat(proofs): verify collection delta coalescing and fix proof doc markdown (#338) | 109,770 | 121,669 | 261,219 | 284,097 | 2,660,335 | 2,984,883 |
 
