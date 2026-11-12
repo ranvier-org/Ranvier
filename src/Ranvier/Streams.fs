@@ -734,6 +734,14 @@ module StreamSource =
         OperationCanceledException token
 #endif
 
+    let inline private holdObservable (gate: obj) ([<InlineIfLambda>] body: unit -> unit) =
+#if FABLE_COMPILER
+        ignore gate
+        body ()
+#else
+        lock gate body
+#endif
+
     /// <summary>Subscribes on each start: <c>OnNext</c> delivers, <c>OnCompleted</c> completes, <c>OnError</c> fails.</summary>
     /// <remarks>Cancellation disposes the subscription and faults the task with <c>OperationCanceledException</c>.</remarks>
     let ofObservable (items: IObservable<'T>) : StreamSource<'T> =
@@ -742,28 +750,87 @@ module StreamSource =
 
         create (fun sink token ->
             let finished = Platform.completion<unit>()
+            let mutable doneFlag = false
+            let mutable reg = Unchecked.defaultof<CancellationTokenRegistration>
+            let mutable sub: IDisposable = null
+            let mutable observer = Unchecked.defaultof<IObserver<'T>>
 
-            let subscription =
-                items.Subscribe
-                    { new IObserver<'T> with
-                        member _.OnNext item =
-                            sink.Next item
+            let disposeSub (s: IDisposable) =
+                if not (Platform.isNull s) then
+                    try
+                        s.Dispose ()
+                    with _ ->
+                        ()
 
-                        member _.OnCompleted() =
-                            finished.Resolve ()
+            let finish ok (error: exn) =
+                let mutable shouldFinish = false
+                let mutable toDisposeReg = Unchecked.defaultof<CancellationTokenRegistration>
+                let mutable toDisposeSub: IDisposable = null
 
-                        member _.OnError error =
-                            finished.Reject error
-                    }
+                holdObservable observer (fun () ->
+                    if not doneFlag then
+                        doneFlag <- true
+                        toDisposeReg <- reg
+                        toDisposeSub <- sub
+                        sub <- null
+                        shouldFinish <- true)
 
-            token.Register (fun () ->
-                try
-                    subscription.Dispose ()
-                with _ ->
-                    ()
+                if shouldFinish then
+                    toDisposeReg.Dispose ()
+                    disposeSub toDisposeSub
 
-                finished.Reject (cancelled token))
-            |> ignore
+                    if ok then finished.Resolve () else finished.Reject error
+
+            observer <-
+                { new IObserver<'T> with
+                    member _.OnNext item =
+                        sink.Next item
+
+                    member _.OnCompleted() =
+                        finish true null
+
+                    member _.OnError error =
+                        finish false error
+                }
+
+            let subscription = items.Subscribe observer
+            let mutable disposeSubNow = false
+
+            holdObservable observer (fun () ->
+                if doneFlag then
+                    disposeSubNow <- true
+                else
+                    sub <- subscription)
+
+            if disposeSubNow then
+                disposeSub subscription
+            else
+                let registered =
+                    token.Register (fun () ->
+                        let mutable shouldCancel = false
+                        let mutable toDisposeSub: IDisposable = null
+
+                        holdObservable observer (fun () ->
+                            if not doneFlag then
+                                doneFlag <- true
+                                toDisposeSub <- sub
+                                sub <- null
+                                shouldCancel <- true)
+
+                        if shouldCancel then
+                            disposeSub toDisposeSub
+                            finished.Reject (cancelled token))
+
+                let mutable disposeRegNow = false
+
+                holdObservable observer (fun () ->
+                    if doneFlag then
+                        disposeRegNow <- true
+                    else
+                        reg <- registered)
+
+                if disposeRegNow then
+                    registered.Dispose ()
 
             finished.Task :> Task)
 
@@ -940,28 +1007,33 @@ module StreamSource =
             let finished = Platform.completion<unit>()
             let iterator = iteratorOf items
             let mutable stopped = false
+            let mutable reg = Unchecked.defaultof<CancellationTokenRegistration>
 
-            token.Register (fun () ->
-                stopped <- true
+            reg <-
+                token.Register (fun () ->
+                    stopped <- true
 
-                try
-                    returnOf iterator
-                with _ ->
-                    ()
+                    try
+                        returnOf iterator
+                    with _ ->
+                        ()
 
-                finished.Reject (cancelled token))
-            |> ignore
+                    finished.Reject (cancelled token))
 
             let rec step () =
                 Platform.whenSettled (nextOf iterator) (fun outcome ->
                     if not stopped then
                         match outcome with
-                        | Platform.FlightOutcome.Completed result when isDone result -> finished.Resolve ()
+                        | Platform.FlightOutcome.Completed result when isDone result ->
+                            reg.Dispose ()
+                            finished.Resolve ()
                         | Platform.FlightOutcome.Completed result ->
                             sink.Next (valueOf<'T> result)
                             step ()
                         | Platform.FlightOutcome.Faulted error
-                        | Platform.FlightOutcome.Canceled error -> finished.Reject error)
+                        | Platform.FlightOutcome.Canceled error ->
+                            reg.Dispose ()
+                            finished.Reject error)
                 |> ignore
 
             step ()

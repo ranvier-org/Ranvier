@@ -1507,8 +1507,10 @@ module internal Activation =
 /// <c>ErrorOrigin</c>.
 /// </remarks>
 [<Sealed; AllowNullLiteral>]
-type internal Failure(error: exn, origin: INode) =
+type internal Failure(error: exn, origin: INode, supplied: bool) =
     let mutable captured: Platform.CapturedFailure = null
+
+    new(error: exn, origin: INode) = Failure (error, origin, false)
 
     member _.Error = error
     member _.Origin = origin
@@ -1519,7 +1521,11 @@ type internal Failure(error: exn, origin: INode) =
     /// </summary>
     member _.Rethrow() : unit =
         if Platform.isNull captured then
-            captured <- Platform.captureFailure null error
+            captured <-
+                if supplied then
+                    Platform.captureSuppliedFailure error
+                else
+                    Platform.captureFailure null error
 
         Platform.rethrowStored captured
 
@@ -4126,7 +4132,7 @@ type AsyncSource<'T>(graph: Graph) =
                     && not (this.RecordFail reason)
                 )
             then
-                failure <- Failure (reason, (this :> INode))
+                failure <- Failure (reason, (this :> INode), true)
                 status <- Status.Error
                 Tracer.SourceSettled (observers, true, reason)
 

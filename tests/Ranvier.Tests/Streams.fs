@@ -1064,6 +1064,36 @@ let converterTests =
                 memo.Dispose ()
                 Expect.equal subject.Unsubscribed 1 "unsubscribed once"
 
+            testCaseAsync "ofObservable: OnCompleted and OnError release the cancellation registration"
+            <| async {
+                use graph = new Graph ()
+                use cts = new CancellationTokenSource ()
+                let completed = Recorder<int>()
+                let faulted = Recorder<int>()
+
+                let m1 =
+                    graph.Run (fun () ->
+                        Api.createStreamFold 0 (+) (fun _ ->
+                            StreamSource.create (fun sink _ -> (StreamSource.ofObservable completed).Run(sink, cts.Token))))
+
+                let m2 =
+                    graph.Run (fun () ->
+                        Api.createStream (fun _ -> StreamSource.create (fun sink _ -> (StreamSource.ofObservable faulted).Run(sink, cts.Token))))
+
+                graph.Run (fun () -> m1.TryValue) |> ignore
+                graph.Run (fun () -> m2.TryValue) |> ignore
+                completed.Observer.OnCompleted ()
+                faulted.Observer.OnError (Exception "boom")
+#if FABLE_COMPILER
+                do! Async.Sleep 0
+#endif
+                Expect.equal completed.Unsubscribed 1 "OnCompleted disposed the subscription once"
+                Expect.equal faulted.Unsubscribed 1 "OnError disposed the subscription once"
+                cts.Cancel ()
+                Expect.equal completed.Unsubscribed 1 "completed registration was disposed before token cancel"
+                Expect.equal faulted.Unsubscribed 1 "faulted registration was disposed before token cancel"
+            }
+
             testCase "create: the function receives the sink and token"
             <| fun _ ->
                 use graph = new Graph ()

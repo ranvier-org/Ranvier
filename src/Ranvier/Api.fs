@@ -535,9 +535,17 @@ module Api =
     /// inside a pure body, as <c>onCleanup</c> does.
     /// </remarks>
     let runWithOwner (owner: Owner) (body: unit -> 'T) : 'T =
+        if Platform.isNull (box owner) then
+            nullArg (nameof owner)
+
         let graph = Graph.Current
-        graph.CurrentOwner |> ignore
-        graph.RunOwned (owner, body)
+
+        graph.Entered (
+            "Running with an owner",
+            fun () ->
+                graph.CurrentOwner |> ignore
+                graph.RunOwned (owner, body)
+        )
 
     /// <summary>
     /// Creates a nested scope and runs <c>body</c> in it, handing back the owner so
