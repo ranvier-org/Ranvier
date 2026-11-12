@@ -776,7 +776,7 @@ module StreamSource =
                         shouldFinish <- true)
 
                 if shouldFinish then
-                    toDisposeReg.Dispose ()
+                    Platform.disposeRegistration toDisposeReg
                     disposeSub toDisposeSub
 
                     if ok then finished.Resolve () else finished.Reject error
@@ -830,7 +830,7 @@ module StreamSource =
                         reg <- registered)
 
                 if disposeRegNow then
-                    registered.Dispose ()
+                    Platform.disposeRegistration registered
 
             finished.Task :> Task)
 
@@ -1025,14 +1025,14 @@ module StreamSource =
                     if not stopped then
                         match outcome with
                         | Platform.FlightOutcome.Completed result when isDone result ->
-                            reg.Dispose ()
+                            Platform.disposeRegistration reg
                             finished.Resolve ()
                         | Platform.FlightOutcome.Completed result ->
                             sink.Next (valueOf<'T> result)
                             step ()
                         | Platform.FlightOutcome.Faulted error
                         | Platform.FlightOutcome.Canceled error ->
-                            reg.Dispose ()
+                            Platform.disposeRegistration reg
                             finished.Reject error)
                 |> ignore
 

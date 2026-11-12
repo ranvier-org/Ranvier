@@ -76,6 +76,18 @@ module internal Platform =
 #endif
 
     /// <summary>
+    /// Disposes a <c>CancellationTokenRegistration</c>; a no-op on <c>Unchecked.defaultof</c> under both runtimes.
+    /// </summary>
+#if FABLE_COMPILER
+    let inline disposeRegistration (reg: CancellationTokenRegistration) =
+        if not (isNull (box reg)) then
+            (reg :> IDisposable).Dispose()
+#else
+    let inline disposeRegistration (reg: CancellationTokenRegistration) =
+        reg.Dispose ()
+#endif
+
+    /// <summary>
     /// How a flight ended.
     /// </summary>
     [<Struct; NoComparison; NoEquality>]
