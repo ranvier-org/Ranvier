@@ -2360,6 +2360,9 @@ type Graph(options: GraphOptions) =
     /// the call.
     /// </summary>
     let mutable dispatchClosed = false
+
+    /// <summary>Cached <c>Action</c> delegate targeting <c>PumpFromDispatcher</c>, allocated on first post.</summary>
+    let mutable pumpAction: Action = null
 #endif
 
     let dispatcher =
@@ -2554,9 +2557,20 @@ type Graph(options: GraphOptions) =
         Interlocked.Exchange (&holder, 0) |> ignore
 
         if not inbox.IsEmpty then
-            dispatcher.Post (Action this.PumpFromDispatcher)
+            this.PostDrain ()
 #else
         ()
+#endif
+
+#if !FABLE_COMPILER
+    member private this.PostDrain() =
+        let mutable action = pumpAction
+
+        if Platform.isNull action then
+            action <- Action this.PumpFromDispatcher
+            pumpAction <- action
+
+        dispatcher.Post action
 #endif
 
     /// <summary>
@@ -2586,13 +2600,13 @@ type Graph(options: GraphOptions) =
 #if FABLE_COMPILER
         body ()
 #else
-        if this.Enter operation then
+        if not (this.Enter operation) then
+            body ()
+        else
             try
                 body ()
             finally
                 this.Release ()
-        else
-            body ()
 #endif
 
     member internal _.CurrentOwner =
@@ -2665,7 +2679,7 @@ type Graph(options: GraphOptions) =
                 let owner = this.CurrentOwner
 
                 if owner.IsDisposed then
-                    this.Detached (owner, (fun () -> owner.AddCleanup f))
+                    this.DetachedCleanup (owner, f)
                     this.RequestFlush ()
                 else
                     owner.AddCleanup f
@@ -2791,7 +2805,7 @@ type Graph(options: GraphOptions) =
         else
             inbox.Enqueue (fun () -> journal.RunAttributed (attributed, work))
 
-        dispatcher.Post (Action this.PumpFromDispatcher)
+        this.PostDrain ()
 #endif
 
     /// <summary>
@@ -3441,6 +3455,7 @@ type Graph(options: GraphOptions) =
         this.RunBatch body.Invoke
 
     member internal this.RunBatch(body: unit -> 'T) =
+#if FABLE_COMPILER
         this.Entered (
             "A batch",
             fun () ->
@@ -3457,6 +3472,34 @@ type Graph(options: GraphOptions) =
                 this.RequestFlush ()
                 result
         )
+#else
+        if not (this.Enter "A batch") then
+            this.RunBatchCore body
+        else
+            this.RunBatchAfterAcquire body
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.RunBatchCore(body: unit -> 'T) =
+        batchDepth <- batchDepth + 1
+        Tracer.BatchEnter (this, batchDepth)
+
+        let result =
+            try
+                body ()
+            finally
+                batchDepth <- batchDepth - 1
+                Tracer.BatchExit (this, batchDepth)
+
+        this.RequestFlush ()
+        result
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RunBatchAfterAcquire(body: unit -> 'T) =
+        try
+            this.RunBatchCore body
+        finally
+            this.Release ()
+#endif
 
     /// <summary>
     /// Discharges <c>owner</c> with effects deferred. A computation discharges its
@@ -3468,7 +3511,7 @@ type Graph(options: GraphOptions) =
     /// </remarks>
     member internal this.Discharge(owner: Owner) =
         Tracer.DischargeStart owner
-        this.Detached (owner, owner.DisposeScope)
+        this.DetachedDisposeScope owner
         Tracer.DischargeEnd owner
         this.OweFlush ()
 
@@ -3477,7 +3520,7 @@ type Graph(options: GraphOptions) =
     /// its cleanups create is disposed immediately.
     /// </summary>
     member internal this.Retire(owner: Owner) =
-        this.Detached (owner, owner.Dispose)
+        this.DetachedDispose owner
 
         if queueHead < queueCount then
             this.RequestFlush ()
@@ -3534,6 +3577,60 @@ type Graph(options: GraphOptions) =
 
         try
             teardown ()
+        finally
+            detachedDepth <- detachedDepth - 1
+            batchDepth <- batchDepth - 1
+            current <- previous
+            currentOwner <- previousOwner
+            this.LeaveAmbient previousAmbient
+
+    member private this.DetachedDisposeScope(owner: Owner) =
+        let previous = current
+        let previousOwner = currentOwner
+        let previousAmbient = this.EnterAmbient ()
+        current <- Unchecked.defaultof<IComputation>
+        currentOwner <- owner
+        batchDepth <- batchDepth + 1
+        detachedDepth <- detachedDepth + 1
+
+        try
+            owner.DisposeScope ()
+        finally
+            detachedDepth <- detachedDepth - 1
+            batchDepth <- batchDepth - 1
+            current <- previous
+            currentOwner <- previousOwner
+            this.LeaveAmbient previousAmbient
+
+    member private this.DetachedDispose(owner: Owner) =
+        let previous = current
+        let previousOwner = currentOwner
+        let previousAmbient = this.EnterAmbient ()
+        current <- Unchecked.defaultof<IComputation>
+        currentOwner <- owner
+        batchDepth <- batchDepth + 1
+        detachedDepth <- detachedDepth + 1
+
+        try
+            owner.Dispose ()
+        finally
+            detachedDepth <- detachedDepth - 1
+            batchDepth <- batchDepth - 1
+            current <- previous
+            currentOwner <- previousOwner
+            this.LeaveAmbient previousAmbient
+
+    member private this.DetachedCleanup(owner: Owner, f: unit -> unit) =
+        let previous = current
+        let previousOwner = currentOwner
+        let previousAmbient = this.EnterAmbient ()
+        current <- Unchecked.defaultof<IComputation>
+        currentOwner <- owner
+        batchDepth <- batchDepth + 1
+        detachedDepth <- detachedDepth + 1
+
+        try
+            owner.AddCleanup f
         finally
             detachedDepth <- detachedDepth - 1
             batchDepth <- batchDepth - 1
@@ -3860,6 +3957,36 @@ type Graph(options: GraphOptions) =
                 journal.LeaveDerived ()
 
     /// <summary>
+    /// <c>RunUntrackedHosted</c> specialised to <c>f arg</c>, avoiding per-call closure allocation.
+    /// </summary>
+    member internal _.RunUntrackedHostedArg(host: IScopeHost, f: 'A -> 'T, arg: 'A) : 'T =
+        let previous = current
+        let previousOwner = currentOwner
+        let previousHost = untrackedHost
+        let previousInBody = untrackedInBody
+
+        if not (Platform.isNull (box previous)) then
+            untrackedInBody <- true
+
+        current <- Unchecked.defaultof<IComputation>
+        currentOwner <- Unchecked.defaultof<Owner>
+        untrackedHost <- host
+
+        if not (Platform.isNull journal) then
+            journal.EnterDerived ()
+
+        try
+            f arg
+        finally
+            current <- previous
+            currentOwner <- previousOwner
+            untrackedHost <- previousHost
+            untrackedInBody <- previousInBody
+
+            if not (Platform.isNull journal) then
+                journal.LeaveDerived ()
+
+    /// <summary>
     /// Applies <c>f</c> to <c>arg</c> with tracking suppressed and the scope rule of <c>host</c> applied to every node
     /// created by <c>f</c>.
     /// </summary>
@@ -3965,6 +4092,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             // The guard sits before the cutoff, not after: an off-thread write
             // that happens to be equal is still a bug, and one that would
             // otherwise only show up on the write that differs.
+#if FABLE_COMPILER
             graph.Entered (
                 "A signal write",
                 fun () ->
@@ -3988,11 +4116,47 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                         else
                             Tracer.Write (observers, false, box v)
             )
+#else
+            if not (graph.Enter "A signal write") then
+                this.SetCore v
+            else
+                this.SetAfterAcquire v
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.SetCore(v: 'T) =
+        // Written with && so that Fable emits a short-circuit, not a ternary, on the unjournaled path.
+        if
+            not (
+                not (Platform.isNull graph.Journal)
+                && not (this.RecordWrite v)
+            )
+        then
+            if not (equal.Equals (value, v)) then
+                value <- v
+                Tracer.Write (observers, true, box v)
+
+                if not (Platform.isNull (box observers)) then
+                    observers.NotifyDirty ()
+
+                Tracer.Notified observers
+
+                graph.RequestFlush ()
+            else
+                Tracer.Write (observers, false, box v)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SetAfterAcquire(v: 'T) =
+        try
+            this.SetCore v
+        finally
+            graph.Release ()
+#endif
 
     /// <summary>
     /// Writes <c>v</c> as the setter does, leaving <c>running</c> unmarked. For a computation that reads the new value
     /// in its current run.
     /// </summary>
+#if FABLE_COMPILER
     member internal _.WriteExcept(v: 'T, running: IComputation) =
         graph.Entered (
             "A signal write",
@@ -4009,6 +4173,34 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                 else
                     Tracer.Write (observers, false, box v)
         )
+#else
+    member internal this.WriteExcept(v: 'T, running: IComputation) =
+        if not (graph.Enter "A signal write") then
+            this.WriteExceptCore (v, running)
+        else
+            this.WriteExceptAfterAcquire (v, running)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.WriteExceptCore(v: 'T, running: IComputation) =
+        if not (equal.Equals (value, v)) then
+            value <- v
+            Tracer.Write (observers, true, box v)
+
+            if not (Platform.isNull (box observers)) then
+                observers.NotifyDirtyOther running
+
+            Tracer.Notified observers
+            graph.RequestFlush ()
+        else
+            Tracer.Write (observers, false, box v)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.WriteExceptAfterAcquire(v: 'T, running: IComputation) =
+        try
+            this.WriteExceptCore (v, running)
+        finally
+            graph.Release ()
+#endif
 
     // Out of line, so the setter's body stays at one field load and a null check when the graph has no journal.
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
@@ -4244,7 +4436,7 @@ type AsyncSource<'T>(graph: Graph) =
 /// argument keeps its dependents clean.
 /// </para>
 /// </remarks>
-type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, ?comparer: IEqualityComparer<'T>) =
+type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
@@ -4255,14 +4447,6 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// The source of the last run's last pending read.
     /// </summary>
     let mutable pendingSources: HashSet<INode> = null
-
-    /// <summary>
-    /// The typed cutoff comparer selected at construction.
-    /// </summary>
-    let equal =
-        match comparer with
-        | Some supplied -> supplied
-        | None -> graph.Options.Equality.Comparer<'T>()
 
     let mutable freshness = Freshness.Dirty
     let mutable status = Status.Uninitialized
@@ -4311,7 +4495,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// A pure memo over <c>compute</c>.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>) as this =
-        Memo<'T>(graph, compute.Invoke, ScopeMode.Pure)
+        Memo<'T>(graph, compute.Invoke, ScopeMode.Pure, graph.Options.Equality.Comparer<'T>())
         then this.Attach ()
 
     /// <summary>
@@ -4319,14 +4503,21 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// otherwise.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>, owning: bool) as this =
-        Memo<'T>(graph, compute.Invoke, (if owning then ScopeMode.Owning else ScopeMode.Pure))
+        Memo<'T>(graph, compute.Invoke, (if owning then ScopeMode.Owning else ScopeMode.Pure), graph.Options.Equality.Comparer<'T>())
+
         then this.Attach ()
 
     /// <summary>
     /// A pure memo over <c>compute</c>, which receives the value last published, or <c>seed</c> before the first.
     /// </summary>
     new(graph: Graph, seed: 'T, compute: Func<'T, 'T>) as this =
-        Memo<'T>(graph, (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)), ScopeMode.Pure)
+        Memo<'T>(
+            graph,
+            (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
+            ScopeMode.Pure,
+            graph.Options.Equality.Comparer<'T>()
+        )
+
         then this.Attach ()
 
     /// <summary>
@@ -4337,7 +4528,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         Memo<'T>(
             graph,
             (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
-            (if owning then ScopeMode.Owning else ScopeMode.Pure)
+            (if owning then ScopeMode.Owning else ScopeMode.Pure),
+            graph.Options.Equality.Comparer<'T>()
         )
 
         then this.Attach ()
@@ -4347,13 +4539,13 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// A memo over <c>compute</c>, owned by the current owner.
     /// </summary>
     static member internal Create(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode) =
-        let memo = Memo<'T>(graph, compute, mode)
+        let memo = Memo<'T>(graph, compute, mode, graph.Options.Equality.Comparer<'T>())
         memo.Attach ()
         memo
 
     /// <summary>A memo whose cutoff uses <c>comparer</c>, owned by the current owner.</summary>
     static member internal CreateWithComparer(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T>) =
-        let memo = Memo<'T>(graph, compute, mode, comparer = comparer)
+        let memo = Memo<'T>(graph, compute, mode, comparer)
         memo.Attach ()
         memo
 
@@ -5359,15 +5551,10 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 /// created by <c>act</c> belong to a reused scope, discharged before the next <c>act</c> and disposed with the effect.
 /// </remarks>
 [<Sealed>]
-type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -> unit, ?comparer: IEqualityComparer<'T>) =
+type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -> unit, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
     let sources = SourceList ()
     do Tracer.Bind (sources, graph, id)
-
-    let equal =
-        match comparer with
-        | Some supplied -> supplied
-        | None -> graph.Options.Equality.Comparer<'T>()
 
     /// <summary>
     /// The value <c>act</c> last ran with: the cutoff baseline once <c>hasActed</c>.
@@ -5398,13 +5585,15 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
     /// <summary>An effect owned by the current owner, with its first run queued.</summary>
     static member internal Create(graph: Graph, compute: unit -> 'T, act: 'T -> unit) =
-        let node = new EffectOn<'T> (graph, compute, act)
+        let node =
+            new EffectOn<'T> (graph, compute, act, graph.Options.Equality.Comparer<'T>())
+
         node.Start ()
         node
 
     /// <summary>An owned split effect whose cutoff uses <c>comparer</c>, with its first run queued.</summary>
     static member internal CreateWithComparer(graph: Graph, compute: unit -> 'T, act: 'T -> unit, comparer: IEqualityComparer<'T>) =
-        let node = new EffectOn<'T> (graph, compute, act, comparer = comparer)
+        let node = new EffectOn<'T> (graph, compute, act, comparer)
         node.Start ()
         node
 
@@ -6669,27 +6858,14 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 /// </remarks>
 type Boundary<'T>
     private
-    (
-        graph: Graph,
-        body: unit -> 'T,
-        onPending: ('T voption -> 'T) voption,
-        onError: (exn -> 'T voption -> 'T) voption,
-        ?comparer: IEqualityComparer<'T>
-    ) =
+    (graph: Graph, body: unit -> 'T, onPending: ('T voption -> 'T) voption, onError: (exn -> 'T voption -> 'T) voption, equal: IEqualityComparer<'T>)
+    =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let sources = SourceList ()
     do Tracer.Bind (sources, graph, id)
     let mutable pendingSources: HashSet<INode> = null
-
-    /// <summary>
-    /// The typed cutoff comparer selected at construction.
-    /// </summary>
-    let equal =
-        match comparer with
-        | Some supplied -> supplied
-        | None -> graph.Options.Equality.Comparer<'T>()
 
     let mutable freshness = Freshness.Dirty
     let mutable status = Status.Uninitialized
@@ -6720,7 +6896,9 @@ type Boundary<'T>
     /// A boundary over <c>body</c>, owned by the current owner.
     /// </summary>
     static member internal Create(graph: Graph, body: unit -> 'T, onPending: ('T voption -> 'T) voption, onError: (exn -> 'T voption -> 'T) voption) =
-        let boundary = Boundary<'T>(graph, body, onPending, onError)
+        let boundary =
+            Boundary<'T>(graph, body, onPending, onError, graph.Options.Equality.Comparer<'T>())
+
         boundary.Attach ()
         boundary
 
@@ -6733,7 +6911,7 @@ type Boundary<'T>
             onError: (exn -> 'T voption -> 'T) voption,
             comparer: IEqualityComparer<'T>
         ) =
-        let boundary = Boundary<'T>(graph, body, onPending, onError, comparer = comparer)
+        let boundary = Boundary<'T>(graph, body, onPending, onError, comparer)
         boundary.Attach ()
         boundary
 

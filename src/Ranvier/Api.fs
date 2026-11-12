@@ -35,10 +35,26 @@ module internal Identity =
 #endif
 
 /// <summary>A seed value with the number of its publication: 1 for the first, one more for each unequal value after it.</summary>
+#if FABLE_COMPILER
 [<Sealed; AllowNullLiteral>]
+#else
+[<Struct; NoEquality; NoComparison>]
+#endif
 type internal Stamp<'T>(version: int, value: 'T) =
     member _.Version = version
     member _.Value = value
+
+/// <summary>Compares stamps by publication version alone.</summary>
+[<Sealed>]
+type internal StampComparer<'T> private () =
+    static member val Instance: Collections.Generic.IEqualityComparer<Stamp<'T>> =
+        { new Collections.Generic.IEqualityComparer<Stamp<'T>> with
+            member _.Equals(a, b) =
+                a.Version = b.Version
+
+            member _.GetHashCode(stamp) =
+                stamp.Version
+        }
 
 /// <summary>
 /// Equality of two edits: both absent, or equal stamps whose values are equal under <c>equal</c>.
@@ -81,7 +97,7 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
     let mutable settled = 0
 
     let stamped =
-        Memo.Create (
+        Memo.CreateWithComparer (
             graph,
             (fun (previous: Stamp<'T> voption) ->
                 let next =
@@ -105,7 +121,8 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
 
                     settled <- version
                     Stamp (version, next)),
-            ScopeMode.Pure
+            ScopeMode.Pure,
+            StampComparer<'T>.Instance
         )
 
     let edit =
@@ -717,8 +734,7 @@ module Api =
     /// as the lookup's cell map does.
     /// </remarks>
     let createSelector (source: unit -> 'K) : Lookup<'K, bool> =
-        let comparer = HashIdentity.Structural<'K>
-        createLookup (fun (s: 'K) (k: 'K) -> comparer.Equals (s, k)) (fun prev next -> [ prev; next ]) source
+        new SelectorLookup<'K> (Graph.Current, source) :> Lookup<'K, bool>
 
     /// <summary>
     /// A memo holding <c>select ()</c>. While the inner value stays equal under the graph's equality policy, the memo
