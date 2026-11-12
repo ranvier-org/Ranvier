@@ -7,9 +7,10 @@ From Ranvier.Heap Require Import ObserverSet SourceList Ghost Marking Run Schedu
 
 Open Scope nat_scope.
 
-(** * Heap collection-boundary primitives
+(**md # Heap collection-boundary primitives
 
 This module lifts the four collection-boundary areas of `Pure/Collections.v` to HeapLang separation logic:
+
 1. Direct-observer edge attachment (`world_direct_link_spec`), detachment (`world_direct_unlink_spec`), and
    `ForwardingEdge` (`forwarding_edge_moved_in_spec`, `forwarding_edge_mark_spec`).
 2. Active `OwnerLink` unlinking (`owner_links_active_tail_unlink_spec` and `owner_links_active_mid_unlink_spec`)
@@ -18,7 +19,7 @@ This module lifts the four collection-boundary areas of `Pure/Collections.v` to 
 4. Collection signal and row hooks (`write_signal_except_spec` and `notify_removed_spec`), plus
    `Memo.Adopt` companion resource lifecycle (`memo_adopt_spec` and `memo_dispose_adopted_spec`). *)
 
-(** ** Two-queue scheduler heap code (`Core.fs` lines 2155–2167, 3090–3215) *)
+(** ** Two-queue scheduler heap code (Core.fs lines 2155–2167, 3090–3215) *)
 
 Definition schedule_pass_tq_code : val :=
   λ: "tq" "n",
@@ -36,7 +37,7 @@ Definition schedule_effect_tq_code : val :=
       ("tq" +ₗ #2) <- vlist_snoc_code !("tq" +ₗ #2) "n";;
       ("tq" +ₗ #5) <- SOME ("n", "es").
 
-(** ** ForwardingEdge heap representation and code (`Core.fs` lines 503–523) *)
+(** ** ForwardingEdge heap representation and code (Core.fs lines 503–523) *)
 
 Definition forwarding_edge_new_code : val :=
   λ: "target" "h",
@@ -59,7 +60,7 @@ Definition forwarding_edge_mark_check_code : val :=
     let: "target" := !"fe" in
     mark_check_code "g" "target".
 
-(** ** `Memo.Adopt` heap representation and code (`Core.fs` lines 4094, 4647–4651, 4683–4696) *)
+(** ** Memo.Adopt heap representation and code (Core.fs lines 4094, 4647–4651, 4683–4696) *)
 
 Definition adopt_new_code : val :=
   λ: <>,
@@ -98,7 +99,7 @@ Definition adopt_dispose_code : val :=
 Section heap_collections.
 Context `{!heapGS Σ, !graphG Σ}.
 
-(** ** 1. Direct-observer edge boundary and `ForwardingEdge` *)
+(** ** 1. Direct-observer edge boundary and ForwardingEdge *)
 
 (**md
 **Direct-observer edge registration (`sources_add_code`) transitions `is_world tbl w` to `is_world tbl (direct_link self s w)` and preserves `world_well_formed`.**
@@ -162,7 +163,7 @@ Proof.
   iIntros "[_ Hw]". iApply "HΦ". iFrame. iPureIntro. done.
 Qed.
 
-(** Heap representation of a `ForwardingEdge` (`Core.fs` lines 503–523): stores the downstream `target`
+(**md Heap representation of a `ForwardingEdge` (`Core.fs` lines 503–523): stores the downstream `target`
     node id and the current observer-set handle `h` in the upstream source's `ObserverSet`. *)
 Definition is_forwarding_edge (fe : loc) (target : node_id) (h : nat) : iProp Σ :=
   fe ↦ #(Z.of_nat target) ∗
@@ -221,13 +222,13 @@ Proof.
     iIntros "Hg". iApply "HΦ". iFrame.
 Qed.
 
-(** ** 2. Active `OwnerLink` unlinking for per-key child scopes *)
+(** ** 2. Active OwnerLink unlinking for per-key child scopes *)
 
 Definition link_detached (l : link) : link :=
   {| l_child := l_child l; l_owner := l_owner l; l_generation := None; l_acquired := l_acquired l |}.
 
 (**md
-**`owner_links_unlink_code` detaches an active tail `OwnerLink` (`l_generation l = Some gen`) in $O(1)$ time.**
+**`owner_links_unlink_code` detaches an active tail `OwnerLink` (`l_generation l = Some gen`) in `O(1)` time.**
 
 Covers both the single-child case (`entries = [(lk, l)]`) and the multi-child tail case
 (`entries = E0 ++ [(lk_prev, l_prev); (lk, l)]`), updating `ol`'s head/tail pointers and clearing `lk`'s
@@ -259,7 +260,7 @@ Proof.
 Qed.
 
 (**md
-**`owner_links_unlink_code` splices an active interior `OwnerLink` (`l_generation l = Some gen`) out of a doubly-linked chain in $O(1)$ time.**
+**`owner_links_unlink_code` splices an active interior `OwnerLink` (`l_generation l = Some gen`) out of a doubly-linked chain in `O(1)` time.**
 
 When a projection key or reparented child scope is unlinked from the middle of a live parent's `OwnerLink`
 list (`prev = Some lk_prev`, `next = Some lk_next`), `owner_links_unlink_code` redirects `lk_prev.next` to
@@ -454,7 +455,7 @@ Proof.
   iIntros "Hg". iApply "HΦ". by iFrame.
 Qed.
 
-(** ** 4. `Memo.Adopt` companion resource lifecycle *)
+(** ** 4. Memo.Adopt companion resource lifecycle *)
 
 Definition is_adopt (ad : loc) (st : adopt_state) : iProp Σ :=
   ad ↦ #(ad_disposed st) ∗

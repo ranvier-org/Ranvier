@@ -7,7 +7,7 @@ From Ranvier.Heap Require Import ObserverSet SourceList Ghost Marking Run.
 
 Open Scope nat_scope.
 
-(** * Heap scheduler specifications
+(**md # Heap scheduler specifications
 
 This module proves the HeapLang specifications for `request_flush_code`, `settle_flush_code`,
 `run_flush_code`, and `drain_code`, and lifts the pure scheduler invariants (`sched_inv` and

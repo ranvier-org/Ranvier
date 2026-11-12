@@ -7,7 +7,7 @@ From Ranvier.Heap Require Import ObserverSet SourceList Ghost Marking Run Schedu
 
 Open Scope nat_scope.
 
-(** * Closed-program adequacy for the HeapLang reactive core
+(**md # Closed-program adequacy for the HeapLang reactive core
 
 `heap_refines_pure` closes the Iris ghost state (`ranvierΣ`) via `heap_adequacy`, proving that any
 operational execution of `run_top_code (compile_cmd c)` from `init_heap` that terminates in a value

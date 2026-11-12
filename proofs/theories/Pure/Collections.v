@@ -5,7 +5,7 @@ From Ranvier.Pure Require Import ObserverSet SourceList State Edges Marking Engi
 
 Open Scope nat_scope.
 
-(** * Collection-boundary primitives (pure tier)
+(**md # Collection-boundary primitives (pure tier)
 
 This module proves the exact minimum specifications required by Ranvier's collection primitives
 (`Projections.fs`, `Combinators.fs`, `ValueReaders.fs`, `Bindings.fs`) at the boundary with `Core.fs`:
@@ -201,7 +201,7 @@ Proof.
   by apply observer_held_once.
 Qed.
 
-(** ** Active mid-list `OwnerLink` unlinking and per-key child scopes *)
+(** ** Active mid-list OwnerLink unlinking and per-key child scopes *)
 
 (**md
 **Unlinking an active child link from a live parent owner removes the child and preserves strict acquisition order (`acq_ok`).**
@@ -261,9 +261,9 @@ Proof.
   injection Hret as <-. done.
 Qed.
 
-(** ** Two-queue pass scheduling and `QueueDrain` equivalence *)
+(** ** Two-queue pass scheduling and QueueDrain equivalence *)
 
-(** State of the two-queue scheduler (`passes` and `queue` in `Core.fs` lines 2155–2167, 3090–3215). *)
+(**md State of the two-queue scheduler (`passes` and `queue` in `Core.fs` lines 2155–2167, 3090–3215). *)
 Record two_queue_state := {
   tq_passes : list node_id;
   tq_pass_head : nat;
@@ -279,7 +279,7 @@ Definition pending_passes (st : two_queue_state) : list node_id :=
 Definition pending_effects (st : two_queue_state) : list node_id :=
   drop (tq_queue_head st) (tq_queue st).
 
-(** [Graph.SchedulePass]: enqueues a pass-publishing node at most once. *)
+(**md `Graph.SchedulePass`: enqueues a pass-publishing node at most once. *)
 Definition schedule_pass_tq (n : node_id) (st : two_queue_state) : two_queue_state :=
   if decide (n ∈ tq_pass_set st) then st
   else {| tq_passes := tq_passes st ++ [n];
@@ -289,7 +289,7 @@ Definition schedule_pass_tq (n : node_id) (st : two_queue_state) : two_queue_sta
           tq_pass_set := {[n]} ∪ tq_pass_set st;
           tq_effect_set := tq_effect_set st |}.
 
-(** [Graph.Schedule]: enqueues a normal effect at most once. *)
+(**md `Graph.Schedule`: enqueues a normal effect at most once. *)
 Definition schedule_effect_tq (n : node_id) (st : two_queue_state) : two_queue_state :=
   if decide (n ∈ tq_effect_set st) then st
   else {| tq_passes := tq_passes st;
@@ -348,7 +348,7 @@ Proof.
       * apply list_elem_of_singleton in Hx as ->. set_solver.
 Qed.
 
-(** Next action chosen by the minimal two-queue priority scheduler: always a pass when `pending_passes` is
+(**md Next action chosen by the minimal two-queue priority scheduler: always a pass when `pending_passes` is
     non-empty, and an effect only when `pending_passes` is empty. *)
 Inductive tq_action :=
   | ActPass (p : node_id)
@@ -387,7 +387,7 @@ Proof.
   unfold next_tq_action. rewrite Hlook. split; [done|by intros].
 Qed.
 
-(** [Graph.RunPasses]: drains `tq_passes` using `run_one_pass` until no pass remains, then resets `tq_passes`
+(**md `Graph.RunPasses`: drains `tq_passes` using `run_one_pass` until no pass remains, then resets `tq_passes`
     and `tq_pass_head`. *)
 Fixpoint run_passes_loop (fuel : nat) (run_one_pass : node_id -> two_queue_state -> two_queue_state)
     (st : two_queue_state) : option (two_queue_state * list node_id) :=
@@ -443,7 +443,7 @@ Proof.
   - injection Hrun as <- <-. done.
 Qed.
 
-(** One iteration of the direct two-queue priority loop after `RunPasses` has drained initial passes:
+(**md One iteration of the direct two-queue priority loop after `RunPasses` has drained initial passes:
     dequeue effect `e`, run `run_one_effect e`, and then immediately drain any passes scheduled by `e` via
     `run_passes_loop`. *)
 Definition priority_effect_step (fuel : nat)
@@ -466,7 +466,7 @@ Definition priority_effect_step (fuel : nat)
       end
   end.
 
-(** `Core.fs`'s `QueueDrain` mechanism (`Core.fs` lines 3090–3106, 3190–3204): when a pass is scheduled
+(**md `Core.fs`'s `QueueDrain` mechanism (`Core.fs` lines 3090–3106, 3190–3204): when a pass is scheduled
     while `flushing` after dequeueing at `queueHead` (so `tq_queue_head = S h`), `QueueDrain` decrements
     `queueHead` back to `h` and places `passDrain` in slot `h`; the next dequeue pops `passDrain` (advancing
     `queueHead` back to `S h`) and invokes `RunPasses`. *)
@@ -652,9 +652,9 @@ Proof.
   eapply (notify_dirty_ends_dirty fuel n None s s' m); [done|done|by left].
 Qed.
 
-(** ** `Memo.Adopt` companion resource lifecycle *)
+(** ** Memo.Adopt companion resource lifecycle *)
 
-(** State of a memo's adopted companion (`adopted : IDisposable` in `Core.fs` lines 4094, 4647–4651,
+(**md State of a memo's adopted companion (`adopted : IDisposable` in `Core.fs` lines 4094, 4647–4651,
     4683–4696, used by `Combinators.fs` and `Projections.fs` to tie auxiliary views/readers to a memo's
     lifetime). *)
 Record adopt_state := {
@@ -666,10 +666,12 @@ Record adopt_state := {
 Definition empty_adopt_state : adopt_state :=
   {| ad_disposed := false; ad_current := None; ad_disposed_log := [] |}.
 
-(** [Memo.Adopt(companion)] (`Core.fs` lines 4683–4696):
-    - if the memo is already disposed, disposes `c` immediately;
-    - if the memo is live and holds a distinct companion `prev`, disposes `prev` and stores `Some c`;
-    - if the memo holds `None` or already holds `Some c`, stores `Some c` without disposing. *)
+(**md `Memo.Adopt(companion)` (`Core.fs` lines 4683–4696):
+
+- if the memo is already disposed, disposes `c` immediately;
+- if the memo is live and holds a distinct companion `prev`, disposes `prev` and stores `Some c`;
+- if the memo holds `None` or already holds `Some c`, stores `Some c` without disposing.
+*)
 Definition memo_adopt_step (c : nat) (st : adopt_state) : adopt_state :=
   if ad_disposed st then
     {| ad_disposed := true;
@@ -689,7 +691,7 @@ Definition memo_adopt_step (c : nat) (st : adopt_state) : adopt_state :=
              ad_disposed_log := ad_disposed_log st ++ [prev] |}
     end.
 
-(** [Memo.Dispose] companion release (`Core.fs` lines 4647–4651): clears `adopted` and disposes it once. *)
+(**md `Memo.Dispose` companion release (`Core.fs` lines 4647–4651): clears `adopted` and disposes it once. *)
 Definition memo_dispose_adopted (st : adopt_state) : adopt_state :=
   if ad_disposed st then st
   else

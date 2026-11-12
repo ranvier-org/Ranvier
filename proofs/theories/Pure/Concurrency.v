@@ -5,7 +5,7 @@ From Ranvier.Pure Require Import State Engine Scheduler.
 
 Open Scope nat_scope.
 
-(** * Graph concurrency, thread affinity, and inbox contracts (pure tier)
+(**md # Graph concurrency, thread affinity, and inbox contracts (pure tier)
 
 This module proves the exact minimum specifications for Ranvier's thread-affinity gates
 (`ThreadAffinity.Guarded`, `ThreadAffinity.Unchecked`, `ThreadAffinity.Serialised`), the
@@ -13,35 +13,37 @@ reentrant `Serialised` holder protocol (`Acquire` / `Release` / `Entered`), the 
 inbox handover (`PostQueued`, `Release`, `Pump`, `Drain`), and `PendingDispatch` three-state
 atomic claim (`TryClaim` / `Cancel` / `Abandon`) in `Core.fs` (lines 1608–1629, 2520–3087). *)
 
-(** ** 1. Thread-affinity gate and `Serialised` reentrant holder lock *)
+(** ** 1. Thread-affinity gate and Serialised reentrant holder lock *)
 
 Inductive thread_affinity :=
   | AffGuarded
   | AffUnchecked
   | AffSerialised.
 
-(** Concurrency control state of a `Graph` (`Core.fs` lines 2242–2264, 2345). *)
+(**md Concurrency control state of a `Graph` (`Core.fs` lines 2242–2264, 2345). *)
 Record concurrency_state := {
   cs_affinity : thread_affinity;
   cs_owner_thread : nat;
   cs_context : nat;
-  cs_holder : nat;          (** `0` when free, positive thread id `me > 0` when held *)
-  cs_inbox : list nat;      (** queued work item ids in FIFO arrival order *)
-  cs_pump_posted : bool     (** whether a dispatcher drain wake is pending *)
+  cs_holder : nat;          (* 0 when free, positive thread id me > 0 when held *)
+  cs_inbox : list nat;      (* queued work item ids in FIFO arrival order *)
+  cs_pump_posted : bool     (* whether a dispatcher drain wake is pending *)
 }.
 
-(** `Graph.IsOnGraphThread` (`Core.fs` lines 2734–2742). *)
+(**md `Graph.IsOnGraphThread` (`Core.fs` lines 2734–2742). *)
 Definition is_on_graph_thread (me : nat) (cs : concurrency_state) : bool :=
   match cs_affinity cs with
   | AffSerialised => bool_decide (cs_holder cs = me)
   | _ => bool_decide (me = cs_owner_thread cs)
   end.
 
-(** Result of `Graph.Enter` (`Core.fs` lines 2527–2573):
-    - `None`: raises `InvalidOperationException` (off-thread under `Guarded`, wrong context or
-      concurrent holder under `Serialised`) before any graph state is touched;
-    - `Some (cs', must_release)`: succeeds, returning the updated concurrency state and whether
-      the caller acquired a free `Serialised` graph and must pair the entry with `Release`. *)
+(**md Result of `Graph.Enter` (`Core.fs` lines 2527–2573):
+
+- `None`: raises `InvalidOperationException` (off-thread under `Guarded`, wrong context or
+  concurrent holder under `Serialised`) before any graph state is touched;
+- `Some (cs', must_release)`: succeeds, returning the updated concurrency state and whether
+  the caller acquired a free `Serialised` graph and must pair the entry with `Release`.
+*)
 Definition graph_enter (me ctx : nat) (cs : concurrency_state) : option (concurrency_state * bool) :=
   match cs_affinity cs with
   | AffGuarded =>
@@ -61,7 +63,7 @@ Definition graph_enter (me ctx : nat) (cs : concurrency_state) : option (concurr
       else None
   end.
 
-(** `Graph.Release` (`Core.fs` lines 2545–2554): clears `holder` to `0` and, if `cs_inbox` is
+(**md `Graph.Release` (`Core.fs` lines 2545–2554): clears `holder` to `0` and, if `cs_inbox` is
     non-empty, posts a dispatcher drain (`cs_pump_posted := true`). *)
 Definition graph_release (cs : concurrency_state) : concurrency_state :=
   {| cs_affinity := cs_affinity cs;
@@ -161,9 +163,9 @@ Proof.
   simpl. rewrite decide_True by done. reflexivity.
 Qed.
 
-(** ** 2. No-lost-drain handover between `PostQueued`, `PumpFromDispatcher`, and `Release` *)
+(** ** 2. No-lost-drain handover between PostQueued, PumpFromDispatcher, and Release *)
 
-(** `Graph.PostQueued` (`Core.fs` lines 2772–2788): enqueues `w` in `cs_inbox` and posts a
+(**md `Graph.PostQueued` (`Core.fs` lines 2772–2788): enqueues `w` in `cs_inbox` and posts a
     dispatcher drain (`cs_pump_posted := true`). *)
 Definition post_queued (w : nat) (cs : concurrency_state) : concurrency_state :=
   {| cs_affinity := cs_affinity cs;
@@ -173,11 +175,13 @@ Definition post_queued (w : nat) (cs : concurrency_state) : concurrency_state :=
      cs_inbox := cs_inbox cs ++ [w];
      cs_pump_posted := true |}.
 
-(** `Graph.PumpFromDispatcher` under `Serialised` (`Core.fs` lines 3002–3014):
-    - if `cs_holder = 0`, acquires `holder := me`, drains `cs_inbox`, and releases;
-    - if `cs_holder <> 0` (another thread holds the graph), the CAS `CompareExchange(&holder, me, 0)`
-      fails and consumes the dispatcher wake (`cs_pump_posted := false`), leaving the inbox for the
-      holding thread's `Release()` to re-post. *)
+(**md `Graph.PumpFromDispatcher` under `Serialised` (`Core.fs` lines 3002–3014):
+
+- if `cs_holder = 0`, acquires `holder := me`, drains `cs_inbox`, and releases;
+- if `cs_holder <> 0` (another thread holds the graph), the CAS `CompareExchange(&holder, me, 0)`
+  fails and consumes the dispatcher wake (`cs_pump_posted := false`), leaving the inbox for the
+  holding thread's `Release()` to re-post.
+*)
 Definition pump_from_dispatcher_contended (cs : concurrency_state) : concurrency_state :=
   {| cs_affinity := cs_affinity cs;
      cs_owner_thread := cs_owner_thread cs;
@@ -186,7 +190,7 @@ Definition pump_from_dispatcher_contended (cs : concurrency_state) : concurrency
      cs_inbox := cs_inbox cs;
      cs_pump_posted := false |}.
 
-(** Drain availability invariant: whenever `cs_inbox` is non-empty, either a dispatcher wake is
+(**md Drain availability invariant: whenever `cs_inbox` is non-empty, either a dispatcher wake is
     currently posted (`cs_pump_posted = true`) or a thread currently holds the `Serialised` graph
     (`cs_holder > 0`, whose `graph_release` will post a wake upon exit). *)
 Definition drain_guaranteed (cs : concurrency_state) : Prop :=
@@ -225,9 +229,9 @@ Proof.
     + reflexivity.
 Qed.
 
-(** ** 3. Fault-isolated FIFO inbox drain (`Graph.Drain`) *)
+(** ** 3. Fault-isolated FIFO inbox drain (Graph.Drain) *)
 
-(** Outcome of executing a single inbox work item (`unit -> unit` in `Graph.Drain`, `Core.fs` lines 2972–2988):
+(**md Outcome of executing a single inbox work item (`unit -> unit` in `Graph.Drain`, `Core.fs` lines 2972–2988):
     either returns normally (producing state update `eff`) or throws exception `err` (which `Drain` catches
     and passes to `root.RecordError err` so remaining inbox items still run). *)
 Inductive inbox_item_outcome :=
@@ -253,7 +257,7 @@ Fixpoint drain_inbox_loop (items : list inbox_item_outcome) (applied : list nat)
       (app', errs', S ran)
   end.
 
-(** `Graph.Drain` (`Core.fs` lines 2953–2993): drains every item in `ds_inbox` in FIFO arrival order,
+(**md `Graph.Drain` (`Core.fs` lines 2953–2993): drains every item in `ds_inbox` in FIFO arrival order,
     records any thrown exception in `ds_root_errors`, requests a flush iff `ran > 0`, and returns `ran`. *)
 Definition graph_drain_inbox (ds : drain_state) : drain_state * nat :=
   let '(app', errs', ran) := drain_inbox_loop (ds_inbox ds) (ds_applied ds) (ds_root_errors ds) in
@@ -304,12 +308,14 @@ Proof.
   intros Hne. destruct (ds_inbox ds) as [|x xs]; [contradiction|done].
 Qed.
 
-(** ** 4. `PendingDispatch` three-state atomic claim (`DispatchAsync`) *)
+(** ** 4. PendingDispatch three-state atomic claim (DispatchAsync) *)
 
-(** State of a `PendingDispatch<'T>` item (`Core.fs` lines 1608–1629, 2892–2930):
-    - `0` (`PdWaiting`): waiting in the inbox;
-    - `1` (`PdClaimed`): claimed by the inbox drain (`TryClaim` succeeded);
-    - `2` (`PdClosed`): cancelled via `CancellationToken` or abandoned by `Graph.Dispose`. *)
+(**md State of a `PendingDispatch<'T>` item (`Core.fs` lines 1608–1629, 2892–2930):
+
+- `0` (`PdWaiting`): waiting in the inbox;
+- `1` (`PdClaimed`): claimed by the inbox drain (`TryClaim` succeeded);
+- `2` (`PdClosed`): cancelled via `CancellationToken` or abandoned by `Graph.Dispose`.
+*)
 Definition pd_state := nat.
 
 Definition pd_try_claim (st : pd_state) : pd_state * bool :=

@@ -7,10 +7,11 @@ From Ranvier.Heap Require Import ObserverSet SourceList Ghost Marking Run.
 
 Open Scope nat_scope.
 
-(** * Heap `Ranvier.Query` and `Ranvier.Elmish` boundary contracts
+(**md # Heap Ranvier.Query and Ranvier.Elmish boundary contracts
 
 This module lifts the `Ranvier.Query` and `Ranvier.Elmish` boundary contracts of `Pure/Extensions.v` to
 HeapLang separation logic:
+
 1. `query_start_refresh_spec` and `query_publish_fenced_spec`: HeapLang execution of `QueryEntry.start`
    and `QueryEntry.publish` over a 7-cell `QueryEntry` control block (`is_query_entry`).
 2. `query_lease_dispose_spec`: HeapLang execution of `QueryLease.Dispose` (`is_query_lease`) with
@@ -19,7 +20,7 @@ HeapLang separation logic:
 4. `mvu_apply_spec` and `mvu_run_commands_stopped_spec`: HeapLang execution of `Mvu.Apply` and `Mvu.Run`
    over an `Mvu` control block (`is_mvu`). *)
 
-(** ** HeapLang code for `QueryEntry`, `QueryLease`, `QueryClient.commit`, and `Mvu` *)
+(** ** HeapLang code for QueryEntry, QueryLease, QueryClient.commit, and Mvu *)
 
 Definition fetch_status_val (fs : fetch_status) : val :=
   match fs with
@@ -33,14 +34,16 @@ Definition opt_z_val (oz : option Z) : val :=
   | Some z => SOMEV #z
   end.
 
-(** Layout of a 7-cell `QueryEntry` control block `qe`:
-    - `qe +ₗ 0`: `data` (`NONEV` or `SOMEV #v`)
-    - `qe +ₗ 1`: `status` (`#0` = `FsIdle`, `#1` = `FsFetching`)
-    - `qe +ₗ 2`: `error` (`NONEV` or `SOMEV #(Z.of_nat err)`)
-    - `qe +ₗ 3`: `stale` (boolean)
-    - `qe +ₗ 4`: `generation` (integer)
-    - `qe +ₗ 5`: `disposed` (boolean)
-    - `qe +ₗ 6`: `gate_faulted` (boolean) *)
+(**md Layout of a 7-cell `QueryEntry` control block `qe`:
+
+- `qe +ₗ 0`: `data` (`NONEV` or `SOMEV #v`)
+- `qe +ₗ 1`: `status` (`#0` = `FsIdle`, `#1` = `FsFetching`)
+- `qe +ₗ 2`: `error` (`NONEV` or `SOMEV #(Z.of_nat err)`)
+- `qe +ₗ 3`: `stale` (boolean)
+- `qe +ₗ 4`: `generation` (integer)
+- `qe +ₗ 5`: `disposed` (boolean)
+- `qe +ₗ 6`: `gate_faulted` (boolean)
+*)
 
 Definition query_start_code : val :=
   λ: "qe",
@@ -74,10 +77,12 @@ Definition query_publish_err_code : val :=
       end
     else #().
 
-(** Layout of a 3-cell `QueryLease` + family refcount block `ql`:
-    - `ql +ₗ 0`: `lease_disposed` (boolean)
-    - `ql +ₗ 1`: `ref_count` (integer)
-    - `ql +ₗ 2`: `entry_alive` (boolean) *)
+(**md Layout of a 3-cell `QueryLease` + family refcount block `ql`:
+
+- `ql +ₗ 0`: `lease_disposed` (boolean)
+- `ql +ₗ 1`: `ref_count` (integer)
+- `ql +ₗ 2`: `entry_alive` (boolean)
+*)
 Definition query_lease_dispose_code : val :=
   λ: "ql",
     if: !"ql" then #()
@@ -88,9 +93,11 @@ Definition query_lease_dispose_code : val :=
       if: #0 < "c" then #()
       else ("ql" +ₗ #2) <- #false.
 
-(** Layout of a 2-cell `QueryClient` staging header `qc`:
-    - `qc +ₗ 0`: `staging` (boolean)
-    - `qc +ₗ 1`: `cache_val` (integer snapshot) *)
+(**md Layout of a 2-cell `QueryClient` staging header `qc`:
+
+- `qc +ₗ 0`: `staging` (boolean)
+- `qc +ₗ 1`: `cache_val` (integer snapshot)
+*)
 Definition query_commit_staging_code : val :=
   λ: "qc" "prepared",
     "qc" <- #true;;
@@ -100,10 +107,12 @@ Definition query_commit_staging_code : val :=
     | SOME "v" => ("qc" +ₗ #1) <- "v"
     end.
 
-(** Layout of a 3-cell `Mvu` control block `mvu`:
-    - `mvu +ₗ 0`: `model` (integer)
-    - `mvu +ₗ 1`: `disposed` (boolean)
-    - `mvu +ₗ 2`: `last_cmd_seen_model` (`NONEV` or `SOMEV #m`) *)
+(**md Layout of a 3-cell `Mvu` control block `mvu`:
+
+- `mvu +ₗ 0`: `model` (integer)
+- `mvu +ₗ 1`: `disposed` (boolean)
+- `mvu +ₗ 2`: `last_cmd_seen_model` (`NONEV` or `SOMEV #m`)
+*)
 Definition mvu_apply_code : val :=
   λ: "mvu" "next_model",
     if: !("mvu" +ₗ #1) then #()

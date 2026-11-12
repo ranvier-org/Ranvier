@@ -7,9 +7,10 @@ From Ranvier.Heap Require Import ObserverSet SourceList Ghost Marking Run Schedu
 
 Open Scope nat_scope.
 
-(** * Heap ownership: doubly-linked `OwnerLink` chains and whole-graph disposal
+(**md # Heap ownership: doubly-linked OwnerLink chains and whole-graph disposal
 
 This module provides:
+
 1. The separation-logic representation and specifications for the doubly-linked `OwnerLink` list of
    `Owner` (`Core.fs` lines 955–1226) with unbounded integer generations (`is_owner_links`,
    `owner_links_new_spec`, `owner_links_append_spec`, `owner_links_detach_spec`,
@@ -20,7 +21,7 @@ This module provides:
    `cleanup_once_new_graph`, `disposed_no_edges_new_graph`, `disposed_effect_never_runs`) to the
    heap tier. *)
 
-(** ** Doubly-linked `OwnerLink` heap representation *)
+(** ** Doubly-linked OwnerLink heap representation *)
 
 Definition opt_loc_val (ml : option loc) : val :=
   match ml with None => NONEV | Some l => SOMEV #l end.

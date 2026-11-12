@@ -4,7 +4,7 @@ From Ranvier.Base Require Import Prelude Syntax.
 
 Open Scope nat_scope.
 
-(** * Collection delta coalescing and `ProjectionReader` contracts
+(**md # Collection delta coalescing and ProjectionReader contracts
 
 `Deltas.fs` implements `KeyChange`, `KeyChanges<'K>`, `ProjectionDelta<'K>`, `ProjectionReader<'K>`, and
 `KeyLog<'K>` for incremental membership, order, and settled-value observation over projections and
@@ -32,7 +32,7 @@ specifications required by delta readers:
      `pr_reset` and `pr_changes`, and advances `pr_cursor` to `current_keys`, so a subsequent read with
      no intervening changes reports `pd_is_empty = true`. *)
 
-(** ** 1. `KeyChange` and `KeyChanges.Record` coalescing algebra *)
+(** ** 1. KeyChange and KeyChanges.Record coalescing algebra *)
 
 Inductive key_change :=
   | KcAdded
@@ -43,7 +43,7 @@ Inductive key_change :=
 Global Instance key_change_eq_dec : EqDecision key_change.
 Proof. solve_decision. Defined.
 
-(** Pure transition for a single key's pending entry in `KeyChanges.Record` (`Deltas.fs` lines 37–69):
+(**md Pure transition for a single key's pending entry in `KeyChanges.Record` (`Deltas.fs` lines 37–69):
     returns `None` when `KcAdded` followed by `KcRemoved` cancels out, and `Some next` otherwise. *)
 Definition kc_merge_opt (prev : option key_change) (c : key_change) : option key_change :=
   match prev with
@@ -56,7 +56,7 @@ Definition kc_merge_opt (prev : option key_change) (c : key_change) : option key
       else Some c
   end.
 
-(** Map-level `KeyChanges.Record` over `kc : gmap nat key_change`. *)
+(**md Map-level `KeyChanges.Record` over `kc : gmap nat key_change`. *)
 Definition kc_record (k : nat) (c : key_change) (kc : gmap nat key_change) : gmap nat key_change :=
   match kc_merge_opt (kc !! k) c with
   | None => delete k kc
@@ -132,7 +132,7 @@ Qed.
 
 (** ** 2. Dense swap-remove optimization refinement *)
 
-(** Models the dense `pairs` array swap-remove in `KeyChanges.Record` (`Deltas.fs` lines 47–55):
+(**md Models the dense `pairs` array swap-remove in `KeyChanges.Record` (`Deltas.fs` lines 47–55):
     when `k` is at index `idx` of `pairs ++ [last_pair]`, moving `last_pair` into `idx` and dropping the
     last element produces `<[idx := last_pair]> pairs`. *)
 Definition swap_remove_at {A : Type} (idx : nat) (prefix : list A) (last_elem : A) : list A :=
@@ -141,7 +141,7 @@ Definition swap_remove_at {A : Type} (idx : nat) (prefix : list A) (last_elem : 
 (**md
 **Replacing index `idx` of `prefix` (where `prefix !! idx = Some (k, c)`) with `last_pair` and dropping the tail element refines `delete k (list_to_map (prefix ++ [last_pair]))` and preserves `NoDup`.**
 
-Certifies the `Deltas.fs` lines 47–55 optimization: `KeyChanges<'K>` avoids $O(N)$ shifting on
+Certifies the `Deltas.fs` lines 47–55 optimization: `KeyChanges<'K>` avoids `O(N)` shifting on
 `Added`-then-`Removed` cancellation by overwriting slot `idx` with the final entry `last_pair` and
 truncating the `ResizeArray`, which permutes enumeration order while preserving the exact `gmap` of changes.
 
@@ -222,7 +222,7 @@ Proof.
               rewrite lookup_empty. reflexivity.
 Qed.
 
-(** ** 3. `ProjectionReader` bounded cap, reset recovery, and cursor advancement *)
+(** ** 3. ProjectionReader bounded cap, reset recovery, and cursor advancement *)
 
 Record proj_reader_state := {
   pr_changes : gmap nat key_change;
@@ -239,7 +239,7 @@ Record proj_delta_state := {
   pd_is_empty : bool;
 }.
 
-(** `ProjectionReader.Record` (`Deltas.fs` lines 187–194): records `(k, c)` while `not reset`, and resets
+(**md `ProjectionReader.Record` (`Deltas.fs` lines 187–194): records `(k, c)` while `not reset`, and resets
     `changes` to `∅` with `reset := true` if `size changes > max 64 live_count`. *)
 Definition pr_record (live_count : nat) (k : nat) (c : key_change) (pr : proj_reader_state)
     : proj_reader_state :=
@@ -251,7 +251,7 @@ Definition pr_record (live_count : nat) (k : nat) (c : key_change) (pr : proj_re
     else
       {| pr_changes := kc'; pr_cursor := pr_cursor pr; pr_reset := false |}.
 
-(** `ProjectionReader.Read` (`Deltas.fs` lines 207–236): returns a `ProjectionDelta` and advances
+(**md `ProjectionReader.Read` (`Deltas.fs` lines 207–236): returns a `ProjectionDelta` and advances
     `pr_cursor` to `current_keys`, clearing `pr_reset` and `pr_changes`. *)
 Definition pr_read (current_keys : list nat) (pr : proj_reader_state)
     : proj_delta_state * proj_reader_state :=

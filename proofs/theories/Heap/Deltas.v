@@ -7,10 +7,11 @@ From Ranvier.Heap Require Import ObserverSet SourceList Ghost.
 
 Open Scope nat_scope.
 
-(** * Heap collection delta coalescing and `ProjectionReader` contracts
+(**md # Heap collection delta coalescing and ProjectionReader contracts
 
 This module lifts the `KeyChanges.Record` coalescing algebra and `ProjectionReader` cap/cursor contracts
 of `Pure/Deltas.v` to HeapLang separation logic:
+
 1. `key_change_merge_spec`: HeapLang execution of `key_change_merge_code` over a key's pending change slot
    (`NONEV` or `SOMEV #prev`), refining `kc_merge_opt`.
 2. `projection_reader_record_spec`: HeapLang execution of `projection_reader_record_code`, enforcing the
@@ -18,7 +19,7 @@ of `Pure/Deltas.v` to HeapLang separation logic:
 3. `projection_reader_read_spec`: HeapLang execution of `projection_reader_read_code`, clearing `reset` and
    `changes` and advancing `cursor` to `current_keys` (`pr_read`). *)
 
-(** ** HeapLang code for `KeyChanges.Record` and `ProjectionReader` *)
+(** ** HeapLang code for KeyChanges.Record and ProjectionReader *)
 
 Definition key_change_code_nat (c : key_change) : nat :=
   match c with
@@ -37,11 +38,13 @@ Definition opt_kc_val (oc : option key_change) : val :=
   | Some c => SOMEV (key_change_val c)
   end.
 
-(** Single-key pending slot transition (`Deltas.fs` lines 37–69):
-    - `0` = `Added`, `1` = `Removed`, `2` = `Replaced`, `3` = `Changed`.
-    - `Added` (`#0`) followed by `Removed` (`#1`) clears the slot to `NONE`.
-    - `Removed` (`#1`) followed by `Added` (`#0`) coalesces to `SOME #2` (`Replaced`).
-    - `Changed` (`#3`) preserves any existing membership change (`#0`, `#1`, `#2`). *)
+(**md Single-key pending slot transition (`Deltas.fs` lines 37–69):
+
+- `0` = `Added`, `1` = `Removed`, `2` = `Replaced`, `3` = `Changed`.
+- `Added` (`#0`) followed by `Removed` (`#1`) clears the slot to `NONE`.
+- `Removed` (`#1`) followed by `Added` (`#0`) coalesces to `SOME #2` (`Replaced`).
+- `Changed` (`#3`) preserves any existing membership change (`#0`, `#1`, `#2`).
+*)
 Definition key_change_merge_code : val :=
   λ: "slot" "c",
     match: !"slot" with
@@ -58,10 +61,12 @@ Definition key_change_merge_code : val :=
           "slot" <- SOME "c"
     end.
 
-(** Layout of a 3-cell `ProjectionReader` control block `pr`:
-    - `pr +ₗ 0`: `changes_count` (integer size of pending `KeyChanges`)
-    - `pr +ₗ 1`: `cursor` (integer version / key-list snapshot id)
-    - `pr +ₗ 2`: `reset` (boolean) *)
+(**md Layout of a 3-cell `ProjectionReader` control block `pr`:
+
+- `pr +ₗ 0`: `changes_count` (integer size of pending `KeyChanges`)
+- `pr +ₗ 1`: `cursor` (integer version / key-list snapshot id)
+- `pr +ₗ 2`: `reset` (boolean)
+*)
 Definition projection_reader_record_code : val :=
   λ: "pr" "new_size" "cap",
     if: !("pr" +ₗ #2) then #()
