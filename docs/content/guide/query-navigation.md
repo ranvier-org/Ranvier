@@ -143,8 +143,8 @@ UI events dispatch `OpenSection id`, `OpenWord(sectionId, wordId)`, `AddWord sec
 
 - Open: create a page owner; `AcquireOwned(key, owner)`; await `EnsureAsync` and
   send `Loaded`/`LoadFailed`. Copy detail into the draft only if it has no draft.
-- Back: dispose the removed owner; ensure the returning page. Fresh data needs no IO.
-- Home/logout/shutdown: dispose the session. Home starts a fresh index.
+- Back: dispose the removed owner; ensure the returning page ([`query_lease_dispose_idempotent_refcount`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#query_lease_dispose_idempotent_refcount), [`query_lease_dispose_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#query_lease_dispose_spec)). Fresh data needs no IO.
+- Home/logout/shutdown: dispose the session ([`query_publish_fenced`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#query_publish_fenced)). Home starts a fresh index.
 - Save: await `Mutate`; [handle all outcomes](queries.md#outcomes-and-contracts).
   Repair reconciliation failure by refreshing, not by repeating the write.
 - Commands catch cancellation and ignore removed page/session identities. A save

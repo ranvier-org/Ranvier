@@ -73,11 +73,11 @@ controls [
 
 - `Value`: tracked record; initial loading suspends, initial failure throws.
 - `State`: tracked `{ Data; FetchStatus; Error; IsStale }`, including during loading.
-  Metadata changes leave `Value` consumers quiet.
+  Metadata changes leave `Value` consumers quiet ([`publication_comparer_guarded_refines_cutoff`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#publication_comparer_guarded_refines_cutoff)).
 - `Ensure[Async]`: load missing/stale data or join the request; fresh data needs no IO.
-- `Refresh[Async]`: replace the request; keep accepted data on refresh/failure.
+- `Refresh[Async]`: replace the request; keep accepted data on refresh/failure ([`query_refresh_retains_data`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#query_refresh_retains_data), [`query_start_refresh_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#query_start_refresh_spec), [`query_publish_fenced_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#query_publish_fenced_spec)).
 - Async variants return `Task<T>` **after publication**. Failure faults it;
-  request retirement or lease/client disposal cancels it. Disposing one shared
+  request retirement or lease/client disposal cancels it ([`query_publish_fenced`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#query_publish_fenced)). Disposing one shared
   lease cancels only its own waiters.
 
 ## Save once, reconcile loaded queries
@@ -157,8 +157,8 @@ pages.InvalidateWhere(fun key -> key.SectionId = saved.SectionId)
   the server may already have written. Old replies cannot update a new session.
 
 Writes use one client-wide FIFO. Commit validates before publishing in one batch;
-repeated edits compose in order. Updaters must return immutable values and must not
-reenter the client. Call operations on the graph thread; completions use
+repeated edits compose in order ([`query_commit_atomic_staging`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#query_commit_atomic_staging), [`query_commit_staging_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#query_commit_staging_spec)). Updaters must return immutable values and must not
+reenter the client. Call operations on the graph thread ([`guarded_enter_iff_owner`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#guarded_enter_iff_owner)); completions use
 `Graph.Dispatch`. Await without blocking the dispatcher with `.Result`.
 
 ## View, ownership, and cost
@@ -166,7 +166,7 @@ reenter the client. Call operations on the graph thread; completions use
 [Dictionary navigation](query-navigation.md) shows the **view consuming the model**,
 page owners, independent drafts, Back/Home, and a save completing after Back.
 Use `Acquire` for ambient ownership or `AcquireOwned` for explicit page ownership;
-final release evicts the entry. Trace history can retain published values.
+final release evicts the entry ([`query_lease_dispose_idempotent_refcount`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#query_lease_dispose_idempotent_refcount), [`query_lease_dispose_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#query_lease_dispose_spec)). Trace history can retain published values.
 
 The [query benchmarks](../benchmarks/queries.md) isolate commit publication and request retirement,
 excluding I/O, acquisition, mutation tasks and rendering.

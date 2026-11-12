@@ -1,8 +1,8 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections Concurrency.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections Concurrency Extensions.
 From Ranvier.Conformance Require Check.
-From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy Collections Concurrency.
+From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy Collections Concurrency Extensions.
 From Ranvier Require Extract.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -426,3 +426,15 @@ Print Assumptions Ranvier.Heap.Concurrency.serialised_release_spec.
 Print Assumptions Ranvier.Heap.Concurrency.post_queued_spec.
 Print Assumptions Ranvier.Heap.Concurrency.pending_dispatch_claim_spec.
 Print Assumptions Ranvier.Heap.Concurrency.pending_dispatch_close_spec.
+Print Assumptions publication_comparer_guarded_refines_cutoff.
+Print Assumptions query_publish_fenced.
+Print Assumptions query_refresh_retains_data.
+Print Assumptions query_lease_dispose_idempotent_refcount.
+Print Assumptions query_commit_atomic_staging.
+Print Assumptions mvu_disposed_drops_dispatch.
+Print Assumptions mvu_apply_writes_before_commands.
+Print Assumptions Ranvier.Heap.Extensions.query_start_refresh_spec.
+Print Assumptions Ranvier.Heap.Extensions.query_publish_fenced_spec.
+Print Assumptions Ranvier.Heap.Extensions.query_lease_dispose_spec.
+Print Assumptions Ranvier.Heap.Extensions.query_commit_staging_spec.
+Print Assumptions Ranvier.Heap.Extensions.mvu_apply_spec.
