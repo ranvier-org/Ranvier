@@ -856,6 +856,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 
     let mutable disposed = false
     let mutable link: OwnerLink = null
+    let mutable keyReader: ProjectionReader<'K> = Unchecked.defaultof<_>
     let mutable memo: Memo<'S> = Unchecked.defaultof<Memo<'S>>
 
     let touch () =
@@ -870,7 +871,9 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             queue.Add row
             touch ()
 
-    do link <- graph.CurrentOwner.AttachLinked this
+    do
+        link <- graph.CurrentOwner.AttachLinked this
+        keyReader <- upstream.NewInternalKeyReader ()
 
     member _.Memo
         with get () = memo
@@ -1013,6 +1016,53 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         added.Clear ()
         removed.Clear ()
 
+    /// <summary>Applies coalesced membership changes from <c>delta</c> in O(Δ).</summary>
+    member private this.ApplyDelta(delta: ProjectionDelta<'K>) =
+        for i in 0 .. delta.ChangeCount - 1 do
+            let change = delta.ChangeAt i
+
+            if
+                change.Value = KeyChange.Removed
+                || change.Value = KeyChange.Replaced
+            then
+                let old = rows.Find change.Key
+
+                if not (Platform.isNull (box old)) then
+                    this.Detach old
+                    rows.Remove change.Key
+
+        added.Clear ()
+
+        for i in 0 .. delta.ChangeCount - 1 do
+            let change = delta.ChangeAt i
+
+            if
+                change.Value = KeyChange.Added
+                || change.Value = KeyChange.Replaced
+            then
+                let entry = upstream.Entries.Find change.Key
+
+                if not (Platform.isNull entry) then
+                    let old = rows.Find change.Key
+
+                    if not (Platform.isNull (box old)) then
+                        this.Detach old
+
+                    let fresh = FoldRow<'K, 'V>(graph, entry, touched)
+                    rows.Set (change.Key, fresh)
+                    added.Add fresh
+
+        lastKeys <- delta.Keys
+
+        for i in 0 .. added.Count - 1 do
+            let row = Platform.entryAt i added
+            row.Queued <- true
+            row.Attached <- true
+            row.Handle <- (row.Entry.Row :> ISource).AddObserver(row :> IComputation, 0)
+            this.Read row
+
+        added.Clear ()
+
     /// <summary>Folds the cached row values in <c>Keys</c> order into a fresh state. O(N).</summary>
     member private _.Recompute() =
         reads.Clear ()
@@ -1035,25 +1085,21 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         moved <- true
 
     /// <summary>
-    /// Brings the state current: the membership of <c>keys</c> when non-null, then every queued row, then a full recompute
-    /// if a read of the fold functions moved or the fold is non-invertible.
+    /// Brings the state current: the membership and order of <c>delta</c> when non-null, then every queued row, then a full
+    /// recompute if a read of the fold functions moved or the fold is non-invertible.
     /// </summary>
-    member private this.Sync(keys: 'K[]) =
+    member private this.Sync(delta: ProjectionDelta<'K>) =
         if reads.Moved () then
             full <- true
 
-        if
-            not (Platform.isNull keys)
-            && not (obj.ReferenceEquals (keys, lastKeys))
-        then
-            let prevKeys = lastKeys
-            this.Diff keys
+        if not (Platform.isNull (box delta)) then
+            let hadKeys = not (Platform.isNull lastKeys)
 
-            if
-                not invertible
-                && not (Platform.isNull prevKeys)
-                && (keys.Length > 0 || prevKeys.Length > 0)
-            then
+            if delta.IsReset then this.Diff delta.Keys
+            else if delta.ChangeCount > 0 then this.ApplyDelta delta
+            else lastKeys <- delta.Keys
+
+            if not invertible && hadKeys && delta.OrderChanged then
                 full <- true
 
         let mutable i = 0
@@ -1093,14 +1139,14 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         else
             raise failure.Error
 
-    /// <summary>The memo's body: tracks the upstream keys and this node, then returns the current state.</summary>
+    /// <summary>The memo's body: tracks the upstream key delta and this node, then returns the current state.</summary>
     member this.Compute(_: 'S voption) : 'S =
         if disposed then
             state
         else
-            let keys = upstream.Keys
+            let delta = keyReader.Read ()
             graph.Track (this :> ISource)
-            this.Sync keys
+            this.Sync delta
             moved <- false
 
             if failed > 0 then
@@ -1115,6 +1161,10 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             if not (Platform.isNull link) then
                 link.Detach ()
                 link <- null
+
+            if not (Platform.isNull (box keyReader)) then
+                keyReader.Stop ()
+                keyReader <- Unchecked.defaultof<_>
 
             rows.Iterate (fun _ row ->
                 row.Attached <- false
@@ -1147,7 +1197,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 moved <- false
 
                 try
-                    this.Sync null
+                    this.Sync Unchecked.defaultof<_>
                 with _ ->
                     moved <- true
 
@@ -1553,9 +1603,10 @@ module Projection =
     /// </summary>
     /// <remarks>
     /// <c>subtract</c> must invert <c>add</c>. A row edit costs O(1) calls and reads the edited row alone; a key change costs
-    /// an O(N) key diff. The fold covers settled values: a pending row keeps its last one, as in <c>Snapshot</c>, and
-    /// <c>AnyPending</c> reports it. A failed row makes a read raise its exception. A value read by <c>add</c> or
-    /// <c>subtract</c> re-folds the cached values on change. Disposing the memo, or the calling scope, disposes the fold.
+    /// O(Δ) up to <c>max(64, N)</c> changes, falling back to an O(N) key diff on a larger burst. The fold covers settled values:
+    /// a pending row keeps its last one, as in <c>Snapshot</c>, and <c>AnyPending</c> reports it. A failed row makes a read raise
+    /// its exception. A value read by <c>add</c> or <c>subtract</c> re-folds the cached values on change. Disposing the memo, or
+    /// the calling scope, disposes the fold.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">

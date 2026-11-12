@@ -2615,6 +2615,72 @@ let foldTests =
                 source.Value <- List.rev source.Value
                 Expect.equal ordered.Value [ 80..-1..1 ] "pure reorder after a reset-sized burst"
             }
+
+            test "foldGroup applies incremental deltas, skips pure reorders, and falls back on reset bursts" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection fst
+
+                for i in 1..10 do
+                    col.AddOrUpdate (i, i * 10)
+
+                let adds = ref 0
+                let subtracts = ref 0
+
+                let total =
+                    col.Rows
+                    |> Projection.map snd
+                    |> Projection.foldGroup
+                        (fun s n ->
+                            adds.Value <- adds.Value + 1
+                            s + n)
+                        (fun s n ->
+                            subtracts.Value <- subtracts.Value + 1
+                            s - n)
+                        0
+
+                Expect.equal total.Value 550 "initial sum"
+                adds.Value <- 0
+                subtracts.Value <- 0
+
+                col.AddOrUpdate (11, 110)
+                Expect.equal total.Value 660 "incremental add"
+                Expect.equal (adds.Value, subtracts.Value) (1, 0) "one add, zero subtracts"
+
+                batch (fun () ->
+                    col.Remove 5 |> ignore
+                    col.AddOrUpdate (5, 500))
+
+                Expect.equal total.Value 1110 "same-batch replace"
+                Expect.equal (adds.Value, subtracts.Value) (2, 1) "replace subtracts old and adds fresh"
+
+                for i in 12..90 do
+                    col.AddOrUpdate (i, i)
+
+                Expect.equal total.Value (1110 + ([ 12..90 ] |> List.sum)) "burst exceeding 64 changes"
+
+                let reorderSrc = createSignal (items [ 1, 10; 2, 20; 3, 30 ])
+                let reorderAdds = ref 0
+                let reorderSubs = ref 0
+
+                let reorderTotal =
+                    rows reorderSrc
+                    |> Projection.foldGroup
+                        (fun s n ->
+                            reorderAdds.Value <- reorderAdds.Value + 1
+                            s + n)
+                        (fun s n ->
+                            reorderSubs.Value <- reorderSubs.Value + 1
+                            s - n)
+                        0
+
+                Expect.equal reorderTotal.Value 60 "initial"
+                reorderAdds.Value <- 0
+                reorderSubs.Value <- 0
+                reorderSrc.Value <- List.rev reorderSrc.Value
+                Expect.equal reorderTotal.Value 60 "unchanged sum on pure reorder"
+                Expect.equal (reorderAdds.Value, reorderSubs.Value) (0, 0) "zero fold steps on pure reorder"
+            }
         ]
 
 /// <summary>How many nodes read the row of <c>key</c> in <c>view</c>.</summary>

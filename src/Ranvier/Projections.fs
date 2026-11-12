@@ -1979,6 +1979,18 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                     keysVersion <- keysVersion + 1
                     keys.Value <- Array.empty)
 
+    /// <summary>An unowned reader of the projection's membership and order, stopped explicitly by its internal owner.</summary>
+    member internal this.NewInternalKeyReader() : ProjectionReader<'K> =
+        let reader = new ProjectionReader<'K> (this)
+
+        if not disposed then
+            if Platform.isNull log then
+                log <- KeyLog<'K>()
+
+            log.Add reader
+
+        reader
+
     /// <summary>
     /// A new reader of the projection's membership and order, owned by the calling scope. Its first <c>Read</c> reports a
     /// reset; each later one reports the keys added, removed or replaced since the previous read.
@@ -1988,14 +2000,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// reports a reset with empty <c>Keys</c>.
     /// </remarks>
     member this.NewKeyReader() : ProjectionReader<'K> =
-        let reader = new ProjectionReader<'K> (this)
-
-        if not disposed then
-            if Platform.isNull log then
-                log <- KeyLog<'K>()
-
-            log.Add reader
-
+        let reader = this.NewInternalKeyReader ()
         reader.Link <- graph.CurrentOwner.AttachLinked reader
         reader
 

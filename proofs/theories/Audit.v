@@ -446,6 +446,8 @@ Print Assumptions key_changes_membership_precedes_changed.
 Print Assumptions key_changes_swap_remove_refines_delete.
 Print Assumptions projection_reader_cap_resets.
 Print Assumptions projection_reader_read_advances_cursor.
+Print Assumptions fold_delta_sync_refines_diff.
+Print Assumptions fold_pure_reorder_invariants.
 Print Assumptions Ranvier.Heap.Deltas.key_change_merge_spec.
 Print Assumptions Ranvier.Heap.Deltas.projection_reader_record_spec.
 Print Assumptions Ranvier.Heap.Deltas.projection_reader_read_spec.
