@@ -163,6 +163,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 83,828 | 128,243 | 1,769,023 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 83,724 | 128,270 | 1,768,991 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 83,786 | 128,297 | 1,769,018 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 83,786 | 128,338 | 1,768,974 |
 
 ## app-table
 
@@ -327,6 +328,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 3,701,631 | 8,791,828 | 99,681,189 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 3,701,348 | 8,689,446 | 99,685,144 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 3,701,356 | 8,615,804 | 99,685,941 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 3,701,363 | 8,607,928 | 99,687,544 |
 
 ## async-recover
 
@@ -491,6 +493,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 139,541 | 39,906 | 443,789 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 139,493 | 39,907 | 443,796 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 139,541 | 39,906 | 443,797 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 139,541 | 39,896 | 443,799 |
 
 ## async-resolve
 
@@ -655,6 +658,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,803,574 | 1,090,325 | 12,250,848 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,801,966 | 1,089,553 | 12,250,896 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,804,365 | 1,090,553 | 12,251,082 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,804,373 | 1,090,259 | 12,254,560 |
 
 ## chain
 
@@ -819,6 +823,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 13,099 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 
 ## chain-affinity
 
@@ -983,6 +988,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,653 | 3,176 | 2,604 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,653 | 3,176 | 2,604 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,653 | 3,176 | 2,604 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1147,6 +1153,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 74,709 | 827,928 | 2,582,730 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 74,709 | 827,832 | 2,582,903 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 74,709 | 833,384 | 2,584,482 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 74,709 | 833,322 | 2,584,415 |
 
 ## create
 
@@ -1311,6 +1318,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 13,499,388 | 2,898,678 | 2,575,408 | 2,127,786 | 4,056,408 | 33,819,810 | 50,488,688 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,702,454 | 2,882,680 | 2,575,393 | 2,128,055 | 4,055,425 | 33,824,952 | 50,452,535 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 13,467,404 | 2,866,678 | 2,575,426 | 2,127,181 | 4,055,958 | 33,895,679 | 50,465,005 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 13,451,432 | 2,866,678 | 2,575,377 | 2,128,020 | 4,054,987 | 33,824,060 | 50,449,746 |
 
 ## create-on
 
@@ -1475,6 +1483,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,968,520 | 4,234,860 | 55,454,476 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,968,520 | 4,234,718 | 55,455,030 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,968,488 | 4,234,758 | 55,454,754 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,968,488 | 4,234,874 | 55,454,993 |
 
 ## cutoff
 
@@ -1639,6 +1648,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1803,6 +1813,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 787 | 758 | 16,684 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 787 | 758 | 16,684 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 787 | 758 | 16,684 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1967,6 +1978,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 757 | 759 | 16,707 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 757 | 759 | 16,707 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 773 | 759 | 16,707 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 757 | 759 | 16,707 |
 
 ## dispose
 
@@ -2131,6 +2143,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,706,252 | 806,288 | 367,497 | 476,007 | 495,222 | 13,205,968 | 9,106,656 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,706,247 | 806,288 | 367,497 | 475,965 | 495,136 | 13,206,084 | 9,105,903 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,706,248 | 806,288 | 367,497 | 475,931 | 495,013 | 13,205,690 | 9,106,640 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 2,707,643 | 806,288 | 367,497 | 475,925 | 495,256 | 13,205,323 | 9,105,469 |
 
 ## dispose-on
 
@@ -2295,6 +2308,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 346,497 | 487,712 | 8,902,890 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 346,497 | 487,654 | 8,902,682 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 346,497 | 487,703 | 8,902,965 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 346,497 | 487,780 | 8,902,736 |
 
 ## editable-edit
 
@@ -2459,6 +2473,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 183,506 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 183,506 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 183,506 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 183,506 |
 
 ## editable-upstream
 
@@ -2623,6 +2638,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 239,256 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 239,256 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 239,256 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 239,256 |
 
 ## fail-recompute
 
@@ -2787,6 +2803,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 65,072 | 1,420 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 65,072 | 1,420 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 65,016 | 1,420 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 65,016 | 1,420 |
 
 ## flight
 
@@ -2951,6 +2968,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 10,998 | 6,245 | 6,246 | 11,345 | 10,770 | 22,412 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 
 ## keyed-insert
 
@@ -3115,6 +3133,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,901,323 | 53,963 | 55,317 | 3,328,848 | 240,481 | 179,405 | 46,499,225 | 2,635,887 | 2,656,819 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,901,107 | 53,963 | 55,042 | 3,328,956 | 240,421 | 179,364 | 46,490,594 | 2,635,515 | 2,656,814 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,900,907 | 54,051 | 55,043 | 3,329,008 | 240,565 | 179,426 | 46,491,706 | 2,635,571 | 2,656,808 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,901,347 | 53,939 | 55,091 | 3,328,826 | 240,432 | 179,446 | 46,480,251 | 2,635,536 | 2,656,784 |
 
 ## keyed-remove
 
@@ -3279,6 +3298,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,900,236 | 43,662 | 45,623 | 3,332,862 | 592,994 | 148,536 | 46,460,763 | 1,925,546 | 1,961,497 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,900,109 | 43,662 | 45,382 | 3,332,809 | 593,071 | 148,526 | 46,453,669 | 1,925,519 | 1,961,519 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,899,916 | 43,750 | 45,366 | 3,332,701 | 592,940 | 148,553 | 46,454,316 | 1,925,467 | 1,961,511 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,900,358 | 43,638 | 45,446 | 3,332,665 | 593,028 | 148,446 | 46,454,317 | 1,925,493 | 1,961,571 |
 
 ## keyed-swap
 
@@ -3443,6 +3463,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,895,913 | 46,231 | 47,234 | 3,222,079 | 502,358 | 508,543 | 47,149,666 | 915,864 | 934,117 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,895,689 | 46,231 | 46,978 | 3,262,838 | 502,389 | 508,608 | 47,150,733 | 915,945 | 934,278 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,895,497 | 46,311 | 46,978 | 3,267,796 | 502,408 | 508,564 | 47,146,615 | 915,916 | 934,222 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,895,929 | 46,215 | 47,026 | 3,222,762 | 502,408 | 508,599 | 47,151,594 | 915,795 | 934,268 |
 
 ## mvu-dispatch
 
@@ -3607,6 +3628,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 60,281 | 794 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 60,281 | 794 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 60,281 | 794 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3771,6 +3793,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — |
 
 ## project-chain
 
@@ -3935,6 +3958,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 913,213 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 912,752 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 912,785 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 455,743 |
 
 ## project-churn
 
@@ -4099,6 +4123,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 36,546 | 34,280 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 36,554 | 34,280 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 36,566 | 34,296 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 36,580 | 34,296 |
 
 ## project-edit
 
@@ -4263,6 +4288,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 50,583 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 50,519 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 50,583 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 50,551 |
 
 ## project-reorder
 
@@ -4427,6 +4453,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 664,243 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 664,180 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 664,228 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 664,180 |
 
 ## server-render
 
@@ -4591,6 +4618,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — | — |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — | — |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — | — |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | — | — | — |
 
 ## shape-diamond
 
@@ -4755,6 +4783,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 62,348 | 86,309 | 1,879,598 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 62,348 | 86,309 | 1,879,598 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 62,348 | 86,309 | 1,879,598 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4919,6 +4948,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 85,079 | 109,897 | 2,055,681 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 85,079 | 109,899 | 2,055,682 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 85,079 | 109,892 | 2,055,681 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 85,079 | 109,899 | 2,055,682 |
 
 ## stream-burst-1
 
@@ -5083,6 +5113,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,342 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,916 | 49,162 | 47,367 | 57,344 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,341 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,163 | 47,367 | 57,341 |
 
 ## stream-burst-16
 
@@ -5247,6 +5278,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 5,085 | 25,099 | 5,765 | 10,537 | 48,308 | 16,568 | 126,481 | 745,454 | 115,688 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 5,085 | 25,099 | 5,765 | 10,539 | 48,307 | 16,570 | 126,478 | 745,454 | 115,689 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 5,085 | 25,099 | 5,765 | 10,538 | 48,311 | 16,568 | 126,486 | 745,457 | 115,687 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 5,085 | 25,099 | 5,765 | 10,537 | 48,307 | 16,567 | 126,486 | 745,455 | 115,688 |
 
 ## stream-burst-256
 
@@ -5411,6 +5443,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 54,705 | 401,383 | 57,104 | 134,270 | 816,688 | 46,267 | 1,363,883 | 11,913,725 | 1,048,715 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 54,705 | 401,383 | 57,104 | 134,387 | 816,592 | 46,288 | 1,363,917 | 11,913,638 | 1,048,714 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 54,705 | 401,383 | 57,104 | 134,300 | 816,691 | 46,288 | 1,363,879 | 11,913,544 | 1,048,728 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 54,705 | 401,383 | 57,104 | 134,381 | 816,649 | 46,265 | 1,363,875 | 11,913,637 | 1,048,727 |
 
 ## stream-restart
 
@@ -5575,6 +5608,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 4,239 | 5,070 | 5,912 | 5,406 | 44,162 | 73,508 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 4,240 | 5,071 | 5,912 | 5,411 | 44,163 | 73,512 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 4,240 | 5,087 | 5,912 | 5,407 | 44,160 | 73,510 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 4,240 | 5,071 | 5,907 | 5,404 | 44,159 | 73,508 |
 
 ## timed-admit-both
 
@@ -5739,6 +5773,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 118,607 | 130,078 | 2,697,193 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 118,607 | 130,102 | 2,697,186 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 118,607 | 130,101 | 2,697,207 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 118,607 | 130,105 | 2,697,210 |
 
 ## timed-admit-debounce
 
@@ -5903,6 +5938,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 117,512 | 128,672 | 2,657,627 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,512 | 128,683 | 2,657,618 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 117,512 | 128,684 | 2,657,623 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 117,512 | 128,699 | 2,657,682 |
 
 ## timed-admit-first
 
@@ -6067,6 +6103,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 70,263 | 79,568 | 1,617,623 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 70,263 | 79,566 | 1,617,623 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 70,263 | 79,567 | 1,617,623 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 70,263 | 79,568 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -6231,6 +6268,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 117,774 | 128,990 | 2,667,482 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,774 | 129,006 | 2,667,474 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 117,774 | 129,003 | 2,667,493 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 117,774 | 129,007 | 2,667,513 |
 
 ## timed-capture-both
 
@@ -6395,6 +6433,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,870 | 44,939 | 847,452 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,870 | 44,940 | 847,458 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,870 | 44,938 | 847,450 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,870 | 44,937 | 847,453 |
 
 ## timed-capture-debounce
 
@@ -6559,6 +6598,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,742 | 46,732 | 847,949 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,742 | 46,732 | 847,951 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,742 | 46,732 | 847,948 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,742 | 46,731 | 847,950 |
 
 ## timed-capture-first
 
@@ -6723,6 +6763,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 32,222 | 36,489 | 745,945 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 32,222 | 36,489 | 745,942 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 32,222 | 36,489 | 745,942 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 32,222 | 36,488 | 745,942 |
 
 ## timed-capture-last
 
@@ -6887,6 +6928,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,678 | 46,668 | 840,078 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,678 | 46,668 | 840,076 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,678 | 46,666 | 840,076 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 35,678 | 46,665 | 840,078 |
 
 ## update
 
@@ -7051,6 +7093,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,090,990 | 38,805 | 84,905 | 262,861 | 160,201 | 3,351,290 | 2,567,477 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,090,990 | 38,805 | 84,905 | 263,117 | 160,221 | 3,351,248 | 2,567,559 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,087,790 | 38,805 | 84,905 | 262,846 | 160,192 | 3,351,272 | 2,567,551 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 1,087,790 | 38,805 | 84,905 | 263,133 | 160,204 | 3,351,278 | 2,567,564 |
 
 ## update-on
 
@@ -7215,6 +7258,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 95,405 | 175,537 | 2,894,902 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 95,405 | 175,548 | 2,894,901 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 97,005 | 175,544 | 2,894,941 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 95,405 | 175,521 | 2,894,894 |
 
 ## work-form
 
@@ -7379,6 +7423,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 175,183 | 167,671 | 313,385 | 343,302 | 5,495,789 | 5,408,842 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 175,183 | 167,654 | 313,403 | 343,321 | 5,495,765 | 5,408,822 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 175,183 | 167,654 | 313,406 | 343,322 | 5,495,802 | 5,408,840 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 175,183 | 167,687 | 313,372 | 343,259 | 5,495,768 | 5,408,874 |
 
 ## work-status
 
@@ -7543,6 +7588,7 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 102,645 | 80,835 | 260,985 | 156,813 | 2,675,658 | 2,407,684 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 102,645 | 80,835 | 260,959 | 156,799 | 2,675,591 | 2,407,638 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 102,645 | 82,435 | 260,932 | 156,800 | 2,675,621 | 2,407,624 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 102,645 | 80,835 | 260,956 | 156,799 | 2,675,588 | 2,407,668 |
 
 ## work-value
 
@@ -7707,4 +7753,5 @@
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 109,769 | 121,671 | 261,188 | 284,340 | 2,660,305 | 2,984,783 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 109,770 | 121,669 | 261,193 | 284,205 | 2,660,322 | 2,984,897 |
 | `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 109,770 | 123,269 | 261,228 | 284,112 | 2,660,296 | 2,984,879 |
+| `b16a7dc` | 2026-11-12 | perf(collections): reinsert single-key SortView rank edits in O(log N) comparisons (#346) | 109,771 | 121,669 | 261,188 | 284,056 | 2,660,370 | 2,984,837 |
 
