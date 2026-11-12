@@ -527,24 +527,6 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
                 comparer.Compare (a, b)
 #endif
 
-    /// <summary>
-    /// Whether <c>order</c> applies to this pass: the last sort completed, and this pass placed the keys and sort keys of the
-    /// last pass in the same upstream order.
-    /// </summary>
-    let unchanged () =
-        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
-        let mutable same = sorted && placed.Count = lastPlaced.Count
-        let mutable i = 0
-
-        while same && i < placed.Count do
-            same <-
-                equalKeys.Equals (Platform.entryAt i placed, Platform.entryAt i lastPlaced)
-                && compareRanks (Platform.entryAt i ranks) (Platform.entryAt i lastRanks) = 0
-
-            i <- i + 1
-
-        same
-
     let sort () =
         if order.Length <> placed.Count then
             order <- Array.zeroCreate placed.Count
@@ -556,6 +538,74 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         |> Array.sortInPlaceWith (fun i j ->
             let byRank = compareRanks (Platform.entryAt i ranks) (Platform.entryAt j ranks)
             if byRank <> 0 then byRank else compare i j)
+
+    /// <summary>
+    /// Brings <c>order</c> into output order for <c>placed</c> and <c>ranks</c>: reuses <c>order</c> when unchanged,
+    /// reinserts a single changed rank in <c>O(log N)</c> rank comparisons when placed keys match, and falls back to a full
+    /// sort otherwise.
+    /// </summary>
+    let updateOrder () =
+        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+        let n = placed.Count
+        let wasSorted = sorted
+        sorted <- false
+        let mutable diffs = if wasSorted && n = lastPlaced.Count then 0 else 2
+        let mutable changedIdx = -1
+        let mutable i = 0
+
+        while diffs < 2 && i < n do
+            if not (equalKeys.Equals (Platform.entryAt i placed, Platform.entryAt i lastPlaced)) then
+                diffs <- 2
+            elif
+                compareRanks (Platform.entryAt i ranks) (Platform.entryAt i lastRanks)
+                <> 0
+            then
+                changedIdx <- i
+                diffs <- diffs + 1
+
+            i <- i + 1
+
+        if diffs = 1 then
+            if n > 1 then
+                let mutable oldPos = 0
+
+                while Platform.itemAt oldPos order <> changedIdx do
+                    oldPos <- oldPos + 1
+
+                let newRank = Platform.entryAt changedIdx ranks
+                let mutable lo = 0
+                let mutable hi = n - 1
+
+                while lo < hi do
+                    let mid = (lo + hi) >>> 1
+                    let other = Platform.itemAt (if mid < oldPos then mid else mid + 1) order
+                    let byRank = compareRanks (Platform.entryAt other ranks) newRank
+                    let c = if byRank <> 0 then byRank else compare other changedIdx
+
+                    if c < 0 then lo <- mid + 1 else hi <- mid
+
+                let newPos = lo
+
+                if newPos < oldPos then
+                    let mutable k = oldPos
+
+                    while k > newPos do
+                        order[k] <- order[k - 1]
+                        k <- k - 1
+
+                    order[newPos] <- changedIdx
+                elif newPos > oldPos then
+                    let mutable k = oldPos
+
+                    while k < newPos do
+                        order[k] <- order[k + 1]
+                        k <- k + 1
+
+                    order[newPos] <- changedIdx
+        elif diffs >= 2 then
+            sort ()
+
+        sorted <- true
 
     /// <summary>
     /// The upstream keys whose sort key has never settled, in upstream order, followed by the keys <c>upstream</c> holds
@@ -589,10 +639,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
                     this.Visit key
                     this.HideLast ()
 
-        if not (unchanged ()) then
-            sorted <- false
-            sort ()
-            sorted <- true
+        updateOrder ()
 
         let positions = order
         this.Reserve positions.Length

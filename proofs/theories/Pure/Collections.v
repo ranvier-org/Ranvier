@@ -1213,3 +1213,110 @@ Proof.
     cbv zeta. simpl. rewrite Hu, Hk. simpl.
     split; [unfold lookup_pool_inv; simpl; intro; split; reflexivity | split; [apply NoDup_elements | set_solver]].
 Qed.
+
+(** ** Single-key SortView binary-search reinsertion refinement *)
+
+Fixpoint strictly_sorted {A : Type} (R : A -> A -> Prop) (l : list A) : Prop :=
+  match l with
+  | [] => True
+  | x :: xs => Forall (R x) xs /\ strictly_sorted R xs
+  end.
+
+Lemma perm_middle_cons {A : Type} (x : A) (u v : list A) :
+  u ++ x :: v ≡ₚ x :: (u ++ v).
+Proof.
+  induction u as [| y u' IH]; simpl.
+  - reflexivity.
+  - rewrite IH. apply Permutation_swap.
+Qed.
+
+Lemma strictly_sorted_perm_eq {A : Type} (R : A -> A -> Prop) :
+  (forall x, ~ R x x) ->
+  (forall x y z, R x y -> R y z -> R x z) ->
+  forall l1 l2,
+    strictly_sorted R l1 ->
+    strictly_sorted R l2 ->
+    l1 ≡ₚ l2 ->
+    l1 = l2.
+Proof.
+  intros Hirr Htrans l1.
+  induction l1 as [| x1 xs1 IH]; intros [| x2 xs2] Hss1 Hss2 Hp.
+  - reflexivity.
+  - pose proof (Permutation_length Hp) as Hlen. simpl in Hlen. lia.
+  - pose proof (Permutation_length Hp) as Hlen. simpl in Hlen. lia.
+  - destruct Hss1 as [Hall1 Hss1], Hss2 as [Hall2 Hss2].
+    assert (Hx1 : x1 ∈ x2 :: xs2).
+    { rewrite <- Hp. apply elem_of_cons. left. reflexivity. }
+    apply elem_of_cons in Hx1 as [-> | Hx1_in].
+    + f_equal. apply (IH xs2 Hss1 Hss2).
+      exact (Permutation_cons_inv Hp).
+    + exfalso.
+      assert (Hx2 : x2 ∈ x1 :: xs1).
+      { rewrite Hp. apply elem_of_cons. left. reflexivity. }
+      apply elem_of_cons in Hx2 as [-> | Hx2_in].
+      * rewrite Forall_forall in Hall2.
+        exact (Hirr x1 (Hall2 x1 Hx1_in)).
+      * rewrite Forall_forall in Hall1, Hall2.
+        exact (Hirr x1 (Htrans x1 x2 x1 (Hall1 x2 Hx2_in) (Hall2 x1 Hx1_in))).
+Qed.
+
+Lemma strictly_sorted_reinsert {A : Type} (R : A -> A -> Prop)
+    (x : A) (pre suf : list A) :
+  strictly_sorted R (pre ++ suf) ->
+  Forall (fun y => R y x) pre ->
+  Forall (R x) suf ->
+  strictly_sorted R (pre ++ x :: suf).
+Proof.
+  induction pre as [| y pre' IH]; intros Hrest Hpre Hsuf; simpl in *.
+  - split; [exact Hsuf | exact Hrest].
+  - destruct Hrest as [Hy_rest Hss_rest].
+    apply Forall_cons_1 in Hpre as [Hy_x Hpre'].
+    apply Forall_app in Hy_rest as [Hy_pre Hy_suf].
+    split.
+    + apply Forall_app. split; [exact Hy_pre | constructor; [exact Hy_x | exact Hy_suf]].
+    + exact (IH Hss_rest Hpre' Hsuf).
+Qed.
+
+(**md
+**Reinserting a single rank-changed key at its binary-search partition point produces the exact output array of a full lexicographic `(rank, upstreamIndex)` sort.**
+
+Certifies the `SortView.updateOrder` single-key fast path in `Combinators.fs`:
+1. When placed keys are unchanged and only `changedIdx` changed rank, removing `changedIdx` from `oldPos` leaves the
+   `n - 1` unchanged indices `before ++ after` strictly ordered under `R(i, j) := compareRanks ranks[i] ranks[j] < 0 ∨ (compareRanks = 0 ∧ i < j)`.
+2. Binary search partitions `before ++ after` into `pre ++ suf` where every index in `pre` precedes `changedIdx` under `R`
+   and `changedIdx` precedes every index in `suf` under `R`.
+3. Shifting `order` in-place to `pre ++ changedIdx :: suf` yields a strictly `R`-sorted permutation of all `n` indices,
+   which by strict-order permutation uniqueness equals (`=`) the array produced by any full sort (`Array.sortInPlaceWith`).
+
+- [R:] the strict irreflexive, transitive `(rank, upstreamIndex)` order on placed indices.
+- [changedIdx:] the unique upstream position whose sort key changed on this pass.
+- [before:] the slice of the previous `order` before `oldPos`.
+- [after:] the slice of the previous `order` after `oldPos`.
+- [pre:] the binary-search prefix of `before ++ after` preceding `(ranks[changedIdx], changedIdx)`.
+- [suf:] the binary-search suffix of `before ++ after` following `(ranks[changedIdx], changedIdx)`.
+- [full_sorted:] any full sort of `before ++ changedIdx :: after` under `R`.
+*)
+Theorem sortview_reinsert_refines_sort {A : Type} (R : A -> A -> Prop)
+    (changedIdx : A) (before after pre suf full_sorted : list A) :
+  (forall x, ~ R x x) ->
+  (forall x y z, R x y -> R y z -> R x z) ->
+  strictly_sorted R (before ++ after) ->
+  pre ++ suf = before ++ after ->
+  Forall (fun y => R y changedIdx) pre ->
+  Forall (R changedIdx) suf ->
+  strictly_sorted R full_sorted ->
+  full_sorted ≡ₚ before ++ changedIdx :: after ->
+  strictly_sorted R (pre ++ changedIdx :: suf) /\
+  pre ++ changedIdx :: suf = full_sorted.
+Proof.
+  intros Hirr Htrans Hunchanged Hpart Hpre Hsuf Hfull_ss Hfull_perm.
+  assert (Hre_ss : strictly_sorted R (pre ++ changedIdx :: suf)).
+  { rewrite <- Hpart in Hunchanged.
+    exact (strictly_sorted_reinsert R changedIdx pre suf Hunchanged Hpre Hsuf). }
+  split; [exact Hre_ss |].
+  apply (strictly_sorted_perm_eq R Hirr Htrans _ _ Hre_ss Hfull_ss).
+  rewrite (perm_middle_cons changedIdx pre suf).
+  rewrite Hpart.
+  rewrite <- (perm_middle_cons changedIdx before after).
+  symmetry. exact Hfull_perm.
+Qed.
