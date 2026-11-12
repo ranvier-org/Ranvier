@@ -3079,6 +3079,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     do link <- graph.CurrentOwner.AttachLinked this
     do Tracer.OwnerAdopt (link.Owner, scope, false)
+    let computeKey = fun (key: 'K) -> (box this :?> ILookupSource<'K, 'V>).Compute key
 
     member private this.Source = box this :?> ILookupSource<'K, 'V>
 
@@ -3166,6 +3167,27 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             violated <- outerViolated
             rule <- outerRule
 
+    member internal this.RunPureWith(message: string, body: 'A -> 'T, arg: 'A) : 'T =
+        let outerViolated = violated
+        let outerRule = rule
+        violated <- false
+        rule <- message
+
+        try
+            try
+                let result = graph.RunUntrackedHostedArg (this :> IScopeHost, body, arg)
+
+                if violated then
+                    raise (InvalidOperationException message)
+
+                result
+            with
+            | ex when violated && ScopeMessages.isViolation message ex -> reraise ()
+            | _ when violated -> raise (InvalidOperationException message)
+        finally
+            violated <- outerViolated
+            rule <- outerRule
+
     member private this.Recompute(key: 'K, cell: LookupCell<'V>) =
         let mutable v = Unchecked.defaultof<'V>
         let mutable failure: exn = null
@@ -3174,7 +3196,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         Tracer.RunStart (graph, (cell :> INode).Id, 0)
 
         try
-            v <- this.RunPure (ScopeMessages.lookup, (fun () -> this.Source.Compute key))
+            v <- this.RunPureWith (ScopeMessages.lookup, computeKey, key)
         with
         | NotReadyException _ -> suspended <- true
         | ex -> failure <- ex
@@ -3241,6 +3263,49 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                         union.Add key |> ignore
 
                     // Collected first: Fable miscompiles `Revisit` inlined into an `Iterate` callback.
+                    Platform.reserve keys union.Count
+                    union.Iterate (fun key -> keys.Add key)
+
+                    for i in 0 .. keys.Count - 1 do
+                        this.Revisit (Platform.entryAt i keys)
+                finally
+                    union.Clear ()
+                    keys.Clear ()
+                    invalidating <- false
+
+    /// <summary>
+    /// <c>Invalidate</c> specialised to a two-key pair, avoiding intermediate sequence and list allocations.
+    /// </summary>
+    member internal this.InvalidatePair(prev: 'K, next: 'K) =
+        if not disposed then
+            this.Evict ()
+
+            if failed.Count = 0 then
+                this.Revisit prev
+                this.Revisit next
+            elif invalidating then
+                let union = Platform.KeySet<'K>()
+                failed.Iterate (fun key -> union.Add key |> ignore)
+                union.Add prev |> ignore
+                union.Add next |> ignore
+                let keys = ResizeArray<'K>(union.Count)
+                union.Iterate (fun key -> keys.Add key)
+
+                for i in 0 .. keys.Count - 1 do
+                    this.Revisit (Platform.entryAt i keys)
+            else
+                if Platform.isNull (box unionBuf) then
+                    unionBuf <- Platform.KeySet<'K>()
+                    revisitBuf <- ResizeArray<'K>()
+
+                let union = unionBuf
+                let keys = revisitBuf
+                invalidating <- true
+
+                try
+                    failed.Iterate (fun key -> union.Add key |> ignore)
+                    union.Add prev |> ignore
+                    union.Add next |> ignore
                     Platform.reserve keys union.Count
                     union.Iterate (fun key -> keys.Add key)
 
@@ -3410,6 +3475,8 @@ type internal LookupOf<'S, 'K, 'V when 'K: equality>(graph: Graph, f: 'S -> 'K -
     let state =
         graph.RunOwned (this.Scope, (fun () -> Memo<'S>.Create(graph, (fun _ -> source ()), ScopeMode.Owning)))
 
+    let readState = fun () -> state.Value
+
     /// <summary>
     /// The state the live cells were computed against. Meaningful once
     /// <c>primed</c> is set.
@@ -3469,7 +3536,7 @@ type internal LookupOf<'S, 'K, 'V when 'K: equality>(graph: Graph, f: 'S -> 'K -
             let mutable moved = false
 
             try
-                next <- graph.RunUntracked (fun () -> state.Value)
+                next <- graph.RunUntracked readState
             with
             | NotReadyException _ -> pending <- true
             | ex -> failure <- ex
@@ -3522,3 +3589,105 @@ type internal LookupOf<'S, 'K, 'V when 'K: equality>(graph: Graph, f: 'S -> 'K -
                     this.Invalidate keys
                 else
                     this.FailAll (graph.FailureOf (affectedError, state, null))
+
+/// <summary>
+/// Dedicated <c>createSelector</c> lookup: invalidates <c>prev</c> and <c>next</c> directly without intermediate list or
+/// buffer allocations.
+/// </summary>
+type internal SelectorLookup<'K when 'K: equality>(graph: Graph, source: unit -> 'K) as this =
+    inherit Lookup<'K, bool>(graph)
+
+    let keyComparer = HashIdentity.Structural<'K>
+    let stateEqual = graph.Options.Equality.Comparer<'K>()
+
+    let state =
+        graph.RunOwned (this.Scope, (fun () -> Memo<'K>.Create(graph, (fun _ -> source ()), ScopeMode.Owning)))
+
+    let readState = fun () -> state.Value
+    let mutable previous = Unchecked.defaultof<'K>
+    let mutable primed = false
+    let mutable sourceError: Failure = null
+    let mutable sourcePending = false
+
+    do
+        let refresh =
+            graph.RunOwned (
+                this.Scope,
+                fun () ->
+                    Effect.Create (
+                        graph,
+                        fun () ->
+                            graph.Track (state :> ISource)
+                            this.Refresh ()
+                    )
+            )
+
+        refresh.Publishes <- true
+        Tracer.Part (graph, (refresh :> INode).Id, (state :> INode).Id, null)
+
+    do Tracer.Host (this, (state :> INode).Id)
+
+    interface ILookupSource<'K, bool> with
+        member this.Compute key =
+            this.Compute key
+
+        member this.Refresh() =
+            this.Refresh ()
+
+    member private _.Compute(key: 'K) =
+        if sourcePending then
+            raise (graph.NotReady (state :> INode))
+
+        if not (Platform.isNull sourceError) then
+            graph.Raise sourceError
+
+        keyComparer.Equals (previous, key)
+
+    member private this.Refresh() =
+        if not this.IsDisposed then
+            let mutable next = Unchecked.defaultof<'K>
+            let mutable failure: exn = null
+            let mutable pending = false
+            let mutable moved = false
+
+            try
+                next <- graph.RunUntracked readState
+            with
+            | NotReadyException _ -> pending <- true
+            | ex -> failure <- ex
+
+            if primed && not pending && Platform.isNull failure then
+                if sourcePending || not (Platform.isNull sourceError) then
+                    moved <- true
+                else
+                    try
+                        moved <- not (stateEqual.Equals (previous, next))
+                    with ex ->
+                        failure <- ex
+
+            if pending then
+                if not sourcePending then
+                    sourcePending <- true
+                    sourceError <- null
+                    this.SuspendAll ()
+            elif not (Platform.isNull failure) then
+                if
+                    sourcePending
+                    || not (obj.ReferenceEquals (failure, Failure.ErrorOf sourceError))
+                then
+                    sourcePending <- false
+                    sourceError <- graph.FailureOf (failure, state, null)
+                    this.FailAll sourceError
+            elif not primed then
+                primed <- true
+                previous <- next
+                sourcePending <- false
+                sourceError <- null
+                this.Invalidate Seq.empty
+            elif moved then
+                let prev = previous
+                let current = next
+                previous <- current
+                sourcePending <- false
+                sourceError <- null
+                this.InvalidatePair (prev, current)
