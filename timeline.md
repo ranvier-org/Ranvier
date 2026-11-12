@@ -162,6 +162,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 83,827 | 128,292 | 1,768,972 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 83,828 | 128,243 | 1,769,023 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 83,724 | 128,270 | 1,768,991 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 83,786 | 128,297 | 1,769,018 |
 
 ## app-table
 
@@ -325,6 +326,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 3,701,624 | 8,678,463 | 99,713,596 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 3,701,631 | 8,791,828 | 99,681,189 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 3,701,348 | 8,689,446 | 99,685,144 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 3,701,356 | 8,615,804 | 99,685,941 |
 
 ## async-recover
 
@@ -488,6 +490,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 139,541 | 39,903 | 443,790 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 139,541 | 39,906 | 443,789 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 139,493 | 39,907 | 443,796 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 139,541 | 39,906 | 443,797 |
 
 ## async-resolve
 
@@ -651,6 +654,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,803,565 | 1,089,885 | 12,251,351 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,803,574 | 1,090,325 | 12,250,848 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,801,966 | 1,089,553 | 12,250,896 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,804,365 | 1,090,553 | 12,251,082 |
 
 ## chain
 
@@ -814,6 +818,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 13,035 | 318 | 2,554 | 4,491 | 3,570 | 72,781 | 71,814 |
 
 ## chain-affinity
 
@@ -977,6 +982,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,653 | 3,176 | 2,604 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,653 | 3,176 | 2,604 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,653 | 3,176 | 2,604 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,653 | 3,176 | 2,604 |
 
 ## control
 
@@ -1140,6 +1146,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 74,709 | 832,075 | 2,586,310 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 74,709 | 827,928 | 2,582,730 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 74,709 | 827,832 | 2,582,903 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 74,709 | 833,384 | 2,584,482 |
 
 ## create
 
@@ -1303,6 +1310,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 13,451,431 | 2,866,742 | 2,575,393 | 2,127,941 | 4,053,526 | 33,849,537 | 50,440,840 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 13,499,388 | 2,898,678 | 2,575,408 | 2,127,786 | 4,056,408 | 33,819,810 | 50,488,688 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 13,702,454 | 2,882,680 | 2,575,393 | 2,128,055 | 4,055,425 | 33,824,952 | 50,452,535 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 13,467,404 | 2,866,678 | 2,575,426 | 2,127,181 | 4,055,958 | 33,895,679 | 50,465,005 |
 
 ## create-on
 
@@ -1466,6 +1474,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,968,600 | 4,234,516 | 55,454,663 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,968,520 | 4,234,860 | 55,454,476 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,968,520 | 4,234,718 | 55,455,030 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,968,488 | 4,234,758 | 55,454,754 |
 
 ## cutoff
 
@@ -1629,6 +1638,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,182 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1792,6 +1802,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 787 | 758 | 16,684 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 787 | 758 | 16,684 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 787 | 758 | 16,684 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 787 | 758 | 16,684 |
 
 ## derive-on
 
@@ -1955,6 +1966,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 773 | 759 | 16,707 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 757 | 759 | 16,707 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 757 | 759 | 16,707 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 773 | 759 | 16,707 |
 
 ## dispose
 
@@ -2118,6 +2130,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 2,707,645 | 806,288 | 367,497 | 475,544 | 495,140 | 13,205,026 | 9,106,436 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 2,706,252 | 806,288 | 367,497 | 476,007 | 495,222 | 13,205,968 | 9,106,656 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 2,706,247 | 806,288 | 367,497 | 475,965 | 495,136 | 13,206,084 | 9,105,903 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 2,706,248 | 806,288 | 367,497 | 475,931 | 495,013 | 13,205,690 | 9,106,640 |
 
 ## dispose-on
 
@@ -2281,6 +2294,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 346,497 | 487,722 | 8,903,405 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 346,497 | 487,712 | 8,902,890 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 346,497 | 487,654 | 8,902,682 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 346,497 | 487,703 | 8,902,965 |
 
 ## editable-edit
 
@@ -2444,6 +2458,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 183,506 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 183,506 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 183,506 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 183,506 |
 
 ## editable-upstream
 
@@ -2607,6 +2622,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 239,256 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 239,256 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 239,256 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 239,256 |
 
 ## fail-recompute
 
@@ -2770,6 +2786,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 65,072 | 1,420 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 65,072 | 1,420 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 65,072 | 1,420 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 65,016 | 1,420 |
 
 ## flight
 
@@ -2933,6 +2950,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 10,998 | 6,245 | 6,246 | 11,345 | 10,770 | 22,412 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 10,998 | 6,245 | 6,246 | 11,345 | 10,770 | 22,412 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 
 ## keyed-insert
 
@@ -3096,6 +3114,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,901,012 | 53,955 | 55,124 | 3,328,886 | 240,381 | 179,431 | 46,491,908 | 2,635,980 | 2,656,888 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,901,323 | 53,963 | 55,317 | 3,328,848 | 240,481 | 179,405 | 46,499,225 | 2,635,887 | 2,656,819 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,901,107 | 53,963 | 55,042 | 3,328,956 | 240,421 | 179,364 | 46,490,594 | 2,635,515 | 2,656,814 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,900,907 | 54,051 | 55,043 | 3,329,008 | 240,565 | 179,426 | 46,491,706 | 2,635,571 | 2,656,808 |
 
 ## keyed-remove
 
@@ -3259,6 +3278,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,900,014 | 43,654 | 45,454 | 3,332,893 | 593,202 | 148,831 | 46,453,955 | 1,925,765 | 1,961,531 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,900,236 | 43,662 | 45,623 | 3,332,862 | 592,994 | 148,536 | 46,460,763 | 1,925,546 | 1,961,497 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,900,109 | 43,662 | 45,382 | 3,332,809 | 593,071 | 148,526 | 46,453,669 | 1,925,519 | 1,961,519 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,899,916 | 43,750 | 45,366 | 3,332,701 | 592,940 | 148,553 | 46,454,316 | 1,925,467 | 1,961,511 |
 
 ## keyed-swap
 
@@ -3422,6 +3442,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,895,578 | 46,231 | 47,058 | 3,238,552 | 502,386 | 508,488 | 47,156,886 | 915,932 | 934,302 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,895,913 | 46,231 | 47,234 | 3,222,079 | 502,358 | 508,543 | 47,149,666 | 915,864 | 934,117 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,895,689 | 46,231 | 46,978 | 3,262,838 | 502,389 | 508,608 | 47,150,733 | 915,945 | 934,278 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,895,497 | 46,311 | 46,978 | 3,267,796 | 502,408 | 508,564 | 47,146,615 | 915,916 | 934,222 |
 
 ## mvu-dispatch
 
@@ -3585,6 +3606,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 60,281 | 794 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 60,281 | 794 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 60,281 | 794 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 60,281 | 794 |
 
 ## persist-write
 
@@ -3748,6 +3770,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — |
 
 ## project-chain
 
@@ -3911,6 +3934,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 913,205 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 913,213 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 912,752 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 912,785 |
 
 ## project-churn
 
@@ -4074,6 +4098,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 36,546 | 34,280 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 36,546 | 34,280 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 36,554 | 34,280 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 36,566 | 34,296 |
 
 ## project-edit
 
@@ -4237,6 +4262,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 50,599 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 50,583 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 50,519 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 50,583 |
 
 ## project-reorder
 
@@ -4400,6 +4426,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 664,260 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 664,243 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 664,180 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 664,228 |
 
 ## server-render
 
@@ -4563,6 +4590,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | — | — | — |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | — | — | — |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | — | — | — |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | — | — | — |
 
 ## shape-diamond
 
@@ -4726,6 +4754,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 62,348 | 86,309 | 1,879,598 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 62,348 | 86,309 | 1,879,598 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 62,348 | 86,309 | 1,879,598 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 62,348 | 86,309 | 1,879,598 |
 
 ## shape-dynamic
 
@@ -4889,6 +4918,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 85,079 | 109,894 | 2,055,682 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 85,079 | 109,897 | 2,055,681 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 85,079 | 109,899 | 2,055,682 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 85,079 | 109,892 | 2,055,681 |
 
 ## stream-burst-1
 
@@ -5052,6 +5082,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,918 | 49,164 | 47,367 | 57,341 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,342 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,916 | 49,162 | 47,367 | 57,344 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,983 | 1,579 | 2,555 | 5,427 | 3,674 | 13,917 | 49,164 | 47,367 | 57,341 |
 
 ## stream-burst-16
 
@@ -5215,6 +5246,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 5,085 | 25,099 | 5,765 | 10,540 | 48,309 | 16,568 | 126,476 | 745,455 | 115,694 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 5,085 | 25,099 | 5,765 | 10,537 | 48,308 | 16,568 | 126,481 | 745,454 | 115,688 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 5,085 | 25,099 | 5,765 | 10,539 | 48,307 | 16,570 | 126,478 | 745,454 | 115,689 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 5,085 | 25,099 | 5,765 | 10,538 | 48,311 | 16,568 | 126,486 | 745,457 | 115,687 |
 
 ## stream-burst-256
 
@@ -5378,6 +5410,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 54,705 | 401,383 | 57,104 | 134,287 | 816,638 | 46,288 | 1,363,844 | 11,913,577 | 1,048,727 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 54,705 | 401,383 | 57,104 | 134,270 | 816,688 | 46,267 | 1,363,883 | 11,913,725 | 1,048,715 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 54,705 | 401,383 | 57,104 | 134,387 | 816,592 | 46,288 | 1,363,917 | 11,913,638 | 1,048,714 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 54,705 | 401,383 | 57,104 | 134,300 | 816,691 | 46,288 | 1,363,879 | 11,913,544 | 1,048,728 |
 
 ## stream-restart
 
@@ -5541,6 +5574,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 4,239 | 5,070 | 5,911 | 5,409 | 44,159 | 73,500 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 4,239 | 5,070 | 5,912 | 5,406 | 44,162 | 73,508 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 4,240 | 5,071 | 5,912 | 5,411 | 44,163 | 73,512 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 4,240 | 5,087 | 5,912 | 5,407 | 44,160 | 73,510 |
 
 ## timed-admit-both
 
@@ -5704,6 +5738,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 118,607 | 130,105 | 2,697,189 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 118,607 | 130,078 | 2,697,193 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 118,607 | 130,102 | 2,697,186 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 118,607 | 130,101 | 2,697,207 |
 
 ## timed-admit-debounce
 
@@ -5867,6 +5902,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 117,512 | 128,684 | 2,657,659 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 117,512 | 128,672 | 2,657,627 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,512 | 128,683 | 2,657,618 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 117,512 | 128,684 | 2,657,623 |
 
 ## timed-admit-first
 
@@ -6030,6 +6066,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 70,263 | 79,569 | 1,617,623 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 70,263 | 79,568 | 1,617,623 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 70,263 | 79,566 | 1,617,623 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 70,263 | 79,567 | 1,617,623 |
 
 ## timed-admit-last
 
@@ -6193,6 +6230,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 117,774 | 129,005 | 2,667,515 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 117,774 | 128,990 | 2,667,482 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 117,774 | 129,006 | 2,667,474 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 117,774 | 129,003 | 2,667,493 |
 
 ## timed-capture-both
 
@@ -6356,6 +6394,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,870 | 44,938 | 847,452 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,870 | 44,939 | 847,452 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,870 | 44,940 | 847,458 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,870 | 44,938 | 847,450 |
 
 ## timed-capture-debounce
 
@@ -6519,6 +6558,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,742 | 46,732 | 847,948 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,742 | 46,732 | 847,949 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,742 | 46,732 | 847,951 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,742 | 46,732 | 847,948 |
 
 ## timed-capture-first
 
@@ -6682,6 +6722,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 32,222 | 36,489 | 745,942 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 32,222 | 36,489 | 745,945 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 32,222 | 36,489 | 745,942 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 32,222 | 36,489 | 745,942 |
 
 ## timed-capture-last
 
@@ -6845,6 +6886,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 35,678 | 46,668 | 840,076 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 35,678 | 46,668 | 840,078 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 35,678 | 46,668 | 840,076 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 35,678 | 46,666 | 840,076 |
 
 ## update
 
@@ -7008,6 +7050,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 1,087,790 | 38,805 | 84,905 | 263,150 | 160,252 | 3,351,286 | 2,567,583 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 1,090,990 | 38,805 | 84,905 | 262,861 | 160,201 | 3,351,290 | 2,567,477 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 1,090,990 | 38,805 | 84,905 | 263,117 | 160,221 | 3,351,248 | 2,567,559 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 1,087,790 | 38,805 | 84,905 | 262,846 | 160,192 | 3,351,272 | 2,567,551 |
 
 ## update-on
 
@@ -7171,6 +7214,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 97,005 | 175,523 | 2,894,933 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 95,405 | 175,537 | 2,894,902 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 95,405 | 175,548 | 2,894,901 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 97,005 | 175,544 | 2,894,941 |
 
 ## work-form
 
@@ -7334,6 +7378,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 175,183 | 167,654 | 313,366 | 343,363 | 5,495,802 | 5,408,710 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 175,183 | 167,671 | 313,385 | 343,302 | 5,495,789 | 5,408,842 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 175,183 | 167,654 | 313,403 | 343,321 | 5,495,765 | 5,408,822 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 175,183 | 167,654 | 313,406 | 343,322 | 5,495,802 | 5,408,840 |
 
 ## work-status
 
@@ -7497,6 +7542,7 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 102,645 | 82,435 | 260,965 | 156,822 | 2,675,667 | 2,407,702 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 102,645 | 80,835 | 260,985 | 156,813 | 2,675,658 | 2,407,684 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 102,645 | 80,835 | 260,959 | 156,799 | 2,675,591 | 2,407,638 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 102,645 | 82,435 | 260,932 | 156,800 | 2,675,621 | 2,407,624 |
 
 ## work-value
 
@@ -7660,4 +7706,5 @@
 | `e763add` | 2026-11-12 | perf(collections): O(1) KeyedCollection removal, cancelled-batch skip, and delta ProjectionValues (#341) | 109,769 | 123,269 | 261,212 | 284,194 | 2,660,358 | 2,984,862 |
 | `8d9c364` | 2026-11-12 | perf(collections): fuse Projection.choose into a single-projection ChooseView (#343) | 109,769 | 121,671 | 261,188 | 284,340 | 2,660,305 | 2,984,783 |
 | `9258ad3` | 2026-11-12 | perf(collections): lazily allocate HeldOut signal cell and staging buffer (#347) | 109,770 | 121,669 | 261,193 | 284,205 | 2,660,322 | 2,984,897 |
+| `bd385fa` | 2026-11-12 | perf(collections): pool Lookup.Invalidate union and revisit buffers (#345) | 109,770 | 123,269 | 261,228 | 284,112 | 2,660,296 | 2,984,879 |
 
