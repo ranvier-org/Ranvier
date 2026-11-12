@@ -50,42 +50,79 @@ module TimedCombinators =
 /// <summary>A view's pending keys absent from its <c>Keys</c>, written by the view's pass.</summary>
 [<AllowNullLiteral>]
 type internal HeldOut<'K when 'K: equality>(graph: Graph) =
-    let cell = Signal<'K[]>(graph, Array.empty)
-    let pass = ResizeArray<'K>()
+    let mutable cell: Signal<'K[]> = Unchecked.defaultof<_>
+    let mutable pass: ResizeArray<'K> = null
+
+    member private _.EnsureCell() =
+        if Platform.isNull (box cell) then
+            cell <- Signal<'K[]>(graph, Array.empty)
+
+        cell
 
     /// <summary>The keys the last pass held out, in upstream order. A tracked read.</summary>
-    member _.Keys = cell.Value
+    member this.Keys = this.EnsureCell().Value
 
     /// <summary>The cell behind <c>Keys</c>.</summary>
-    member _.Cell = cell
+    member this.Cell = this.EnsureCell ()
+
+    /// <summary>Whether any computation currently observes <c>Cell</c>.</summary>
+    member _.HasObservers =
+        not (Platform.isNull (box cell))
+        && cell.ObserverCount > 0
 
     /// <summary>Discards the keys a failed pass staged.</summary>
     member _.Begin() =
-        pass.Clear ()
+        if not (Platform.isNull pass) then
+            pass.Clear ()
 
     /// <summary>Stages <c>key</c> for the pass in progress.</summary>
     member _.Add(key: 'K) =
+        if Platform.isNull pass then
+            pass <- ResizeArray<'K>()
+
         pass.Add key
 
     /// <summary>
     /// Stages the keys <c>upstream</c> holds out of its <c>Keys</c>, after those already staged, then writes the staged
     /// keys when they differ from the last pass.
     /// </summary>
-    member _.Publish(upstream: Projection<'K, 'V>) =
+    member this.Publish(upstream: Projection<'K, 'V>) =
         let inherited = upstream.PendingExtra
 
         if not (Platform.isNull (box inherited)) then
-            pass.AddRange (inherited ())
+            let extra = inherited ()
 
-        let current = cell.Peek
+            if extra.Length > 0 then
+                if Platform.isNull pass then
+                    pass <- ResizeArray<'K>(extra.Length)
 
-        if
-            current.Length <> pass.Count
-            || not (Seq.forall2 (=) current pass)
-        then
-            cell.Value <- pass.ToArray ()
+                pass.AddRange extra
 
-        pass.Clear ()
+        let count = if Platform.isNull pass then 0 else pass.Count
+
+        if count = 0 then
+            if
+                not (Platform.isNull (box cell))
+                && cell.Peek.Length > 0
+            then
+                cell.Value <- Array.empty
+        else
+            let target = this.EnsureCell ()
+            let current = target.Peek
+            let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+            let mutable same = current.Length = count
+            let mutable i = 0
+
+            while same && i < count do
+                if not (equalKeys.Equals (Platform.itemAt i current, Platform.entryAt i pass)) then
+                    same <- false
+
+                i <- i + 1
+
+            if not same then
+                target.Value <- pass.ToArray ()
+
+            pass.Clear ()
 
 /// <summary>
 /// The keys of <c>upstream</c>, in upstream order, with rows from exactly one of <c>map</c> and <c>factory</c>, as on
@@ -630,7 +667,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
     let adds = ResizeArray<struct ('G * Group<'K, 'V>)>()
     let writes = ResizeArray<struct (Signal<Projection<'K, 'V>> * Projection<'K, 'V>)>()
 
-    do this.ExtraObserved <- fun () -> heldOut.Cell.ObserverCount > 0
+    do this.ExtraObserved <- fun () -> heldOut.HasObservers
 
     member private this.Place(key: 'K, groupKey: 'G) =
         let mutable group = groups.Find groupKey

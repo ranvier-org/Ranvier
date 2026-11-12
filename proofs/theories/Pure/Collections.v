@@ -1025,3 +1025,130 @@ Proof.
   - simpl. split_and!; reflexivity.
   - destruct r as [[u|]| |eid]; simpl; reflexivity.
 Qed.
+
+(** ** Lazy HeldOut cell and staging buffer refinement *)
+
+Record eager_held_out (K : Type) := mk_eager_ho {
+  eho_cell : list K;
+  eho_pass : list K;
+  eho_observed : bool;
+}.
+Arguments mk_eager_ho {K} _ _ _.
+Arguments eho_cell {K} _.
+Arguments eho_pass {K} _.
+Arguments eho_observed {K} _.
+
+Record lazy_held_out (K : Type) := mk_lazy_ho {
+  lho_cell : option (list K);
+  lho_pass : option (list K);
+  lho_observed : bool;
+}.
+Arguments mk_lazy_ho {K} _ _ _.
+Arguments lho_cell {K} _.
+Arguments lho_pass {K} _.
+Arguments lho_observed {K} _.
+
+Definition held_out_rel {K : Type} (e : eager_held_out K) (l : lazy_held_out K) : Prop :=
+  eho_cell e = default [] (lho_cell l) /\
+  eho_pass e = default [] (lho_pass l) /\
+  eho_observed e = (match lho_cell l with Some _ => lho_observed l | None => false end) /\
+  (lho_cell l = None -> lho_observed l = false).
+
+Definition eager_ho_read {K : Type} (e : eager_held_out K) : eager_held_out K * list K :=
+  ({| eho_cell := eho_cell e; eho_pass := eho_pass e; eho_observed := true |}, eho_cell e).
+
+Definition lazy_ho_read {K : Type} (l : lazy_held_out K) : lazy_held_out K * list K :=
+  let c := default [] (lho_cell l) in
+  ({| lho_cell := Some c; lho_pass := lho_pass l; lho_observed := true |}, c).
+
+Definition eager_ho_publish `{EqDecision K}
+    (e : eager_held_out K) (extra : list K) : eager_held_out K * bool :=
+  let staged := eho_pass e ++ extra in
+  let moved := negb (bool_decide (eho_cell e = staged)) in
+  let cell' := if moved then staged else eho_cell e in
+  ({| eho_cell := cell'; eho_pass := []; eho_observed := eho_observed e |},
+   moved && eho_observed e).
+
+Definition lazy_ho_publish `{EqDecision K}
+    (l : lazy_held_out K) (extra : list K) : lazy_held_out K * bool :=
+  let pass1 :=
+    match extra with
+    | [] => lho_pass l
+    | _ => Some (default [] (lho_pass l) ++ extra)
+    end in
+  let staged := default [] pass1 in
+  match staged with
+  | [] =>
+      match lho_cell l with
+      | None => ({| lho_cell := None; lho_pass := None; lho_observed := lho_observed l |}, false)
+      | Some [] => ({| lho_cell := Some []; lho_pass := None; lho_observed := lho_observed l |}, false)
+      | Some (_ :: _) =>
+          ({| lho_cell := Some []; lho_pass := None; lho_observed := lho_observed l |}, lho_observed l)
+      end
+  | _ :: _ =>
+      let cur := default [] (lho_cell l) in
+      let moved := negb (bool_decide (cur = staged)) in
+      let cell' := if moved then staged else cur in
+      ({| lho_cell := Some cell'; lho_pass := None; lho_observed := lho_observed l |},
+       moved && lho_observed l)
+  end.
+
+(**md
+**Lazily allocating `HeldOut`'s signal cell and staging list refines an eager `Signal<'K[]>` initialized to `Array.empty`, preserving read values, observer status, and wake notifications while allocating nothing on empty passes.**
+
+Certifies the `HeldOut<'K>` lazy cell and pass-buffer optimisation in `Combinators.fs`:
+1. Initially `(eho = ([], [], false), lho = (None, None, false))` satisfies `held_out_rel` with zero allocated signal or buffer.
+2. Reading `Keys`/`Cell` allocates `Some []` on demand, marks it observed, returns the exact same slice as the eager cell, and preserves `held_out_rel`.
+3. Publishing any combination of staged keys and inherited `PendingExtra` keys preserves `held_out_rel`, leaves `lho_cell = None` whenever no key has ever been held out or read, and wakes observers iff the eager cell wakes observers.
+
+- [e:] the reference eager `HeldOut` state.
+- [l:] the lazy `HeldOut` state.
+- [extra:] the upstream `PendingExtra` slice for the current pass.
+*)
+Theorem lazy_held_out_refines_eager `{EqDecision K}
+    (e : eager_held_out K) (l : lazy_held_out K) (extra : list K) :
+  @held_out_rel K {| eho_cell := []; eho_pass := []; eho_observed := false |}
+                  {| lho_cell := None; lho_pass := None; lho_observed := false |} /\
+  (held_out_rel e l ->
+   let '(e_r, kr_e) := eager_ho_read e in
+   let '(l_r, kr_l) := lazy_ho_read l in
+   kr_l = kr_e /\ held_out_rel e_r l_r) /\
+  (held_out_rel e l ->
+   let '(e_p, wake_e) := eager_ho_publish e extra in
+   let '(l_p, wake_l) := lazy_ho_publish l extra in
+   wake_l = wake_e /\ held_out_rel e_p l_p).
+Proof.
+  destruct e as [ec ep eo], l as [lc lp lo].
+  split_and!.
+  - unfold held_out_rel. simpl. done.
+  - intros (Hc & Hp & _ & _). unfold eager_ho_read, lazy_ho_read, held_out_rel in *.
+    simpl in *. split; [symmetry; exact Hc |].
+    split_and!; [exact Hc | exact Hp | reflexivity | discriminate].
+  - intros (Hc & Hp & Hobs & Hnone).
+    unfold held_out_rel, eager_ho_publish, lazy_ho_publish in *. simpl in *.
+    assert (Hstaged :
+      default [] (match extra with [] => lp | _ => Some (default [] lp ++ extra) end) =
+      ep ++ extra).
+    { destruct extra; simpl; [rewrite Hp, app_nil_r; reflexivity | rewrite Hp; reflexivity]. }
+    rewrite Hstaged.
+    destruct (ep ++ extra) as [|x xs] eqn:Hst.
+    + destruct lc as [[|y ys]|]; simpl in Hc, Hobs.
+      * subst. rewrite bool_decide_eq_true_2 by reflexivity. simpl.
+        split; [reflexivity|].
+        split_and!; [reflexivity | reflexivity | reflexivity | discriminate].
+      * subst. rewrite bool_decide_eq_false_2 by discriminate. simpl.
+        split; [reflexivity|].
+        split_and!; [reflexivity | reflexivity | reflexivity | discriminate].
+      * subst. rewrite Hnone by reflexivity.
+        rewrite bool_decide_eq_true_2 by reflexivity. simpl.
+        split; [reflexivity|].
+        split_and!; [reflexivity | reflexivity | reflexivity | reflexivity].
+    + rewrite <- Hc.
+      destruct lc as [c|]; simpl in Hobs.
+      * subst. destruct (negb (bool_decide (c = x :: xs))); simpl;
+          (split; [reflexivity | split_and!; [reflexivity | reflexivity | reflexivity | discriminate]]).
+      * rewrite Hc, Hnone by reflexivity. rewrite Hobs.
+        rewrite !andb_false_r.
+        destruct (negb (bool_decide ([] = x :: xs))); simpl;
+          (split; [reflexivity | split_and!; [reflexivity | reflexivity | reflexivity | discriminate]]).
+Qed.
