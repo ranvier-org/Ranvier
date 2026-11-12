@@ -2,7 +2,7 @@
 title: Untrack
 ---
 
-`untrack body` reads values without making them dependencies of the surrounding computation.
+`untrack body` reads values without making them dependencies of the surrounding computation ([`run_end_edges_are_latest_reads`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#run_end_edges_are_latest_reads), [`untracked_read_reached`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#untracked_read_reached)).
 Use it when you need a value but do not want changes to that value to trigger another run.
 
 Unlike `Peek`, an untracked read of `memo.Value` refreshes a stale memo.

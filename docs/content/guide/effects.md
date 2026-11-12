@@ -27,7 +27,7 @@ controls [
 ```
 
 Outside a batch or an existing flush, the first run is immediate, and effects triggered by a write
-run before that write returns. Inside a [batch](batch.md), effects wait until the batch ends.
+run before that write returns ([`flush_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_returns_clean), [`queued_at_most_once_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#queued_at_most_once_new_graph), [`heap_flush_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Scheduler.html#heap_flush_returns_clean)). Inside a [batch](batch.md), effects wait until the batch ends.
 
 ::::details Test your understanding
 
@@ -76,7 +76,7 @@ Both run before the outer write returns.
 :::details Creating or writing from inside a flush
 
 An effect created inside a batch or a running flush first runs when that batch or flush reaches it.
-A write inside an effect joins the flush already running; the effects it wakes run before the
+A write inside an effect joins the flush already running ([`flush_survives_body`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_survives_body)); the effects it wakes run before the
 outer write returns.
 :::
 
@@ -132,9 +132,9 @@ It runs on construction and on the first write. Disposal stops it responding to 
 
 :::details Changes made during a flush
 
-- An effect that disposes itself, or disposes an effect queued after it, stops that effect running.
-- An effect that writes a signal it reads re-runs until the value stops changing.
-- `flush ()` called from inside an effect body joins the flush already running.
+- An effect that disposes itself, or disposes an effect queued after it, stops that effect running ([`disposed_effect_never_runs`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_effect_never_runs), [`queued_effect_disposed_skipped`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#queued_effect_disposed_skipped)).
+- An effect that writes a signal it reads re-runs until the value stops changing ([`flush_reruns_dirty`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_reruns_dirty), [`marks_survive_body_end`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#marks_survive_body_end)).
+- `flush ()` called from inside an effect body joins the flush already running ([`flush_no_nest`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_no_nest)).
 
 ```fsharp
 let convergedAt, convergeRuns =
@@ -174,9 +174,9 @@ let name = createSignal "Ada"
 bindSignal name label (fun target value -> target.Text <- value)
 ```
 
-The binding writes `"Ada"` on the next flush and follows changes to `name`. Reads inside `write`
+The binding attaches directly to `name`'s observer set ([`direct_link_is_sources_add`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_link_is_sources_add), [`world_direct_link_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_link_spec)), writes `"Ada"` on the next flush and follows changes to `name`. Reads inside `write`
 are untracked; the callback must not create nodes or register cleanup. A pending or failed memo
-leaves the target unchanged. The current owner disposes the binding.
+leaves the target unchanged. The current owner disposes the binding ([`world_direct_unlink_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_unlink_spec)).
 
 See [Fixed-dependency bindings](bindings.md) for flush timing, equality, writer failures and lifetime, and the
 [binding benchmarks](../benchmarks/effects.md#bindingbenchmarks) for measurements and limitations.
@@ -186,7 +186,7 @@ See [Fixed-dependency bindings](bindings.md) for flush timing, equality, writer 
 :::warning Missing effect errors
 
 An exception in an effect body is stored in `Effect.Error`. It does not escape the write or flush,
-and later effects still run.
+and later effects still run ([`body_failure_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#body_failure_contained), [`drain_continues`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#drain_continues), [`drain_no_escape`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#drain_no_escape)).
 
 `createEffect` returns `unit`. Use `new Effect (graph, body)` when you need to inspect errors.
 :::

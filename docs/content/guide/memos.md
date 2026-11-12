@@ -34,7 +34,7 @@ controls [
 
 ### Glitch-free
 
-Propagation is glitch-free. In a diamond, where two memos read one signal and an effect reads both
+For well-behaved synchronous graphs (`well_behaved_program`), propagation is glitch-free ([`glitch_free_read`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#glitch_free_read), [`convergence`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#convergence)). In a diamond, where two memos read one signal and an effect reads both
 memos, the effect runs once per write and always sees both memos at the same write. One exception: a memo
 over a projection's keys or rows, or over a lookup's `Get`, read inside a `batch` or in a body after its own
 write, can hold the value from before the write until the flush. See
@@ -123,12 +123,12 @@ controls [
 owned node** (a memo, effect, async value, boundary, root, projection, lookup or `onCleanup`) **fails**
 the run with `InvalidOperationException`.
 
-`untrack` blocks are included, and the run fails even when the body catches the exception.
+`untrack` blocks are included, and the run fails even when the body catches the exception ([`memo_scope_violation_returns`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#memo_scope_violation_returns)).
 :::
 
 :::tip Owning
 `createMemoWith` is the owning memo. The **nodes and cleanups its body creates belong to the run
-that created them**: they are disposed before the next run and when the memo is disposed.
+that created them**: they are disposed in reverse acquisition order before the next run and when the memo is disposed ([`dispose_reverse_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#dispose_reverse_order)).
 
 A __read__ of the memo from one of those cleanups returns the __previous__ value.
 :::
@@ -334,11 +334,11 @@ that memo from the effect.
 
 ## Equality cutoff
 
-A write equal to the current value stops there: it does not schedule its readers.
+A write equal to the current value stops there: it does not schedule its readers ([`signal_update_noop`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#signal_update_noop)).
 
-A memo that recomputes to an equal value stops downstream bodies from running. Unlike an equal
+A memo that recomputes to an equal value stops downstream bodies from running ([`cutoff`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#cutoff), [`check_cutoff_settled`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#check_cutoff_settled)). Unlike an equal
 signal write, the upstream change has already marked its readers for **check**. Those checks
-bring their dependencies current and resolve clean when no dependency publishes a change.
+bring their dependencies current and resolve clean when no dependency publishes a change ([`resolve_clean_unmoved`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#resolve_clean_unmoved)).
 This can happen at any level of a chain. [Equality](equality.md) describes the graph-wide policy.
 
 ::::details Test your understanding
@@ -402,10 +402,10 @@ controls [
 
 ## Dynamic dependencies
 
-A memo or effect tracks its reads afresh on every run. If a branch stops reading a source, that
-source stops triggering the computation. Taking the branch again restores the dependency.
+A memo or effect tracks its reads afresh on every run (`run` without nested self-reentry: [`run_end_edges_are_latest_reads`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#run_end_edges_are_latest_reads)). If a branch stops reading a source, that
+source stops triggering the computation ([`sources_end_run_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.SourceList.html#sources_end_run_spec)). Taking the branch again restores the dependency.
 
-Reading the same source twice in one run records one dependency.
+Reading the same source twice in one run records one dependency ([`sources_no_duplicate_edge`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.SourceList.html#sources_no_duplicate_edge), [`observer_held_once`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.SourceList.html#observer_held_once)).
 
 ::::details Test your understanding
 
@@ -470,8 +470,8 @@ controls [
 
 ### Read a disposed memo
 
-A disposed memo keeps its last computed value. It stops recomputing and stops waking its readers,
-even if it was stale when disposed.
+A disposed memo keeps its last computed value ([`disposed_memo_answers`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_memo_answers)). It detaches its upstream edges, stops recomputing and stops waking its readers,
+even if it was stale when disposed ([`disposed_memo_no_refresh`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#disposed_memo_no_refresh), [`disposed_no_edges_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#disposed_no_edges_new_graph)).
 
 ::::details Test your understanding
 

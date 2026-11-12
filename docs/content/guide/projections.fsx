@@ -220,7 +220,7 @@ collection can be checked before it is published.
 3. The reader refreshes when stale and read, following changes to the item or its dependencies.
 
 The factory runs inside a scope that lives until the key is removed. Nodes created in the factory
-body belong to that scope, and cleanups registered there run when the key is removed.
+body belong to that scope, and cleanups registered there run when the key is removed: retiring a key unlinks its child scope from the parent owner while preserving sibling acquisition order, notifies any live readers of the departing row memo, and tears down the key's scope in reverse acquisition order ([`unlink_active_removes_child`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#unlink_active_removes_child), [`owner_links_active_mid_unlink_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#owner_links_active_mid_unlink_spec), [`notify_removed_wakes_observers`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#notify_removed_wakes_observers), [`dispose_reverse_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#dispose_reverse_order)).
 
 
 *)
@@ -371,7 +371,7 @@ exception. Use a boundary around each row or the whole collection to handle unav
 
 :::details Pending summaries, snapshots and read costs
 
-- `AnyPending` wakes its reader only when the answer changes. A read is O(1) while no row is pending, and
+- `AnyPending` wakes its reader only when the answer changes ([`write_signal_except_wakes_others`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#write_signal_except_wakes_others), [`write_signal_except_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#write_signal_except_spec), [`forwarding_edge_mark_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#forwarding_edge_mark_spec)). A read is O(1) while no row is pending, and
   costs a pass over the pending rows otherwise.
 - `PendingKeys` lists the pending rows in key order, and costs a pass over the keys on every read while
   any row is pending.
@@ -390,11 +390,11 @@ The pending channel itself is described in [Async and pending](async-and-pending
 
 A projection with no observed row, key set or pending summary is lazy: writes to its source run no pass,
 and the next read runs one pass. Once an effect or memo observes it, a write to the source schedules
-the pass eagerly.
+the pass eagerly ([`schedule_pass_tq_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#schedule_pass_tq_spec), [`pass_queue_once`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#pass_queue_once)).
 
-A flush runs every scheduled pass before the effects the write woke, so an effect that reads a memo over
+A flush runs every scheduled pass before the effects the write woke ([`pass_runs_before_effect`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#pass_runs_before_effect), [`core_queue_drain_refines_priority`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#core_queue_drain_refines_priority)), so an effect that reads a memo over
 the keys or a row, and the source, sees both from the same write. A pass that publishes new keys schedules
-the passes of the projections that read them, and those run before the effects as well. Inside a `batch`,
+the passes of the projections that read them, and those run before the effects as well ([`run_passes_returns_clean`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#run_passes_returns_clean)). Inside a `batch`,
 or in a body after the write, a memo over the keys or a row holds the previous pass's value until the
 flush or a direct read of `Keys` or `Get`. That read runs the pass, and the memo is current from then on.
 
@@ -520,7 +520,7 @@ take precedence over `Changed` for the same key, so an added or replaced row nee
 - Settled values compare under `GraphOptions.Equality`. Status changes alone do not report
   `Changed`. Pending or failed rows retain their last accepted settled value; their next unequal
   settled value, or their first settled value, reports a change.
-- Value readers share row observation and accepted values, while each keeps its own bounded
+- Value readers share row observation (`ValueRow` direct observer edges: [`direct_link_is_sources_add`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_link_is_sources_add), [`world_direct_link_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_link_spec)) and accepted values, while each keeps its own bounded
   cursor. The first value read evaluates all visible rows. Later value-only pulls
   evaluate suspect rows; membership processing can still scan keys.
 - `Read` tracks membership and the value observation, so it can drive an effect on row changes.
@@ -528,7 +528,7 @@ take precedence over `Changed` for the same key, so an added or replaced row nee
 - First reads, overflow and projection disposal report `IsReset` with empty `Changes`;
   rebuild from `delta.Keys`. `Positional` handles membership and order, not row-value refreshes.
 - Readers belong to the scope that created them. Dispose a reader to stop it early; disposing
-  the last value reader releases shared observation. Reading a disposed reader raises
+  the last value reader releases shared observation ([`direct_unlink_preserves_well_formed`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_unlink_preserves_well_formed), [`world_direct_unlink_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_unlink_spec)). Reading a disposed reader raises
   `ObjectDisposedException`.
 
 :::

@@ -5,9 +5,9 @@ title: Cleanup
 Use [roots and owners](roots.md) to control the lifetime of reactive nodes.
 
 `onCleanup f` registers cleanup with the innermost scope. Inside an effect, owning memo or boundary,
-it runs **before the next run** and **on disposal**.
+it runs **before the next run** and **on disposal**, and each registered cleanup executes at most once ([`cleanup_once_new_graph`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#cleanup_once_new_graph), [`heap_ownership_guarantees`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Ownership.html#heap_ownership_guarantees)).
 
-Cleanups and owned nodes share one reverse acquisition order. If you register a cleanup, create a
+Cleanups and owned nodes share one reverse acquisition order ([`dispose_reverse_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#dispose_reverse_order), [`teardown_runs_in_reverse`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#teardown_runs_in_reverse), [`owners_in_order`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#owners_in_order)). If you register a cleanup, create a
 child node, then register another cleanup, teardown runs the last cleanup, disposes the child,
 then runs the first cleanup. This lets a later resource release while an earlier resource is
 still alive. The same rule applies before a computation re-runs and when its owner is disposed.
@@ -39,7 +39,7 @@ controls [
 ```
 
 :::info Pure memos
-`onCleanup` inside a `createMemo` body raises `InvalidOperationException`. Use `createMemoWith`
+`onCleanup` inside a `createMemo` body raises `InvalidOperationException` ([`memo_scope_violation_returns`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#memo_scope_violation_returns)). Use `createMemoWith`
 when the computation needs to own nodes or cleanups.
 :::
 
@@ -89,14 +89,14 @@ cleans up Grace and removes the effect, so the last write does nothing.
 
 :::details Cleanup failures
 
-A cleanup that throws has its error recorded; the remaining cleanups still run. A `createRoot`
+A cleanup that throws has its error recorded; the remaining cleanups still run ([`cleanup_failure_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#cleanup_failure_contained), [`teardown_continues`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#teardown_continues)). A `createRoot`
 scope stores the error in its own `Errors`. An effect or memo's scope records it in
 `graph.Root.Errors`.
 :::
 
 :::details Writes made during cleanup
 
-A write inside a cleanup is visible to the effect's next run and does not start another run.
+A write inside a cleanup is visible to the effect's next run and does not start another run ([`in_cleanup_ignores_marks`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Marking.html#in_cleanup_ignores_marks), [`flush_survives_cleanup`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#flush_survives_cleanup)).
 
 ```fsharp
 let cleanupWriteSeen =

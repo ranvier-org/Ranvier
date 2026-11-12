@@ -1,8 +1,8 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections.
 From Ranvier.Conformance Require Check.
-From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy.
+From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy Collections.
 From Ranvier Require Extract.
 
 (** One [Print Assumptions] per theorem; [check.sh] compares the output with its allowlist. *)
@@ -388,3 +388,29 @@ Print Assumptions Ranvier.Heap.Ownership.attach_spec.
 Print Assumptions Ranvier.Heap.Ownership.heap_ownership_guarantees.
 Print Assumptions Ranvier.Heap.Adequacy.heap_refines_pure.
 Print Assumptions Ranvier.Heap.Adequacy.heap_no_lost_wakeups.
+Print Assumptions direct_link_preserves_well_formed.
+Print Assumptions direct_link_is_sources_add.
+Print Assumptions direct_unlink_preserves_well_formed.
+Print Assumptions direct_slot_remove_preserves_match.
+Print Assumptions direct_observer_walk_covered.
+Print Assumptions unlink_active_removes_child.
+Print Assumptions retire_unlinked_child_idempotent.
+Print Assumptions pass_queue_once.
+Print Assumptions pass_runs_before_effect.
+Print Assumptions run_passes_returns_clean.
+Print Assumptions core_queue_drain_refines_priority.
+Print Assumptions write_signal_except_wakes_others.
+Print Assumptions notify_removed_wakes_observers.
+Print Assumptions adopt_companion_disposed_once.
+Print Assumptions Ranvier.Heap.Collections.world_direct_link_spec.
+Print Assumptions Ranvier.Heap.Collections.world_direct_unlink_spec.
+Print Assumptions Ranvier.Heap.Collections.forwarding_edge_moved_in_spec.
+Print Assumptions Ranvier.Heap.Collections.forwarding_edge_mark_spec.
+Print Assumptions Ranvier.Heap.Collections.owner_links_active_tail_unlink_spec.
+Print Assumptions Ranvier.Heap.Collections.owner_links_active_mid_unlink_spec.
+Print Assumptions Ranvier.Heap.Collections.schedule_pass_tq_spec.
+Print Assumptions Ranvier.Heap.Collections.schedule_effect_tq_spec.
+Print Assumptions Ranvier.Heap.Collections.write_signal_except_spec.
+Print Assumptions Ranvier.Heap.Collections.notify_removed_spec.
+Print Assumptions Ranvier.Heap.Collections.memo_adopt_spec.
+Print Assumptions Ranvier.Heap.Collections.memo_dispose_adopted_spec.
