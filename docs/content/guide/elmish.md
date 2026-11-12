@@ -128,7 +128,7 @@ let update msg model =
 let app = Mvu.withCmd (initial, [ fun dispatch -> dispatch Load ]) update
 ```
 
-Each command receives `Dispatch` and runs in list order after the accompanying model write.
+Each command receives `Dispatch` and runs in list order after the accompanying model write ([`mvu_apply_writes_before_commands`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#mvu_apply_writes_before_commands), [`mvu_apply_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#mvu_apply_spec)).
 Initial commands run before `withCmd` returns.
 
 ## Dispatch and threads
@@ -247,7 +247,7 @@ Selectors and effects belong to the scope active when they are created. Create a
 `createRoot` or an owning memo to dispose its nodes, including selectors, with that scope.
 
 An `Mvu` belongs to the scope active at `Mvu.create` or `Mvu.withCmd`. Once that scope is
-disposed, `Dispatch` drops every message. A command, callback or timer still holding `dispatch`
+disposed, `Dispatch` drops every message ([`mvu_disposed_drops_dispatch`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#mvu_disposed_drops_dispatch), [`mvu_apply_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#mvu_apply_spec)). A command, callback or timer still holding `dispatch`
 leaves the model as it was, a message queued from another thread is dropped when it drains, and
 the rest of a command list is skipped. An `Mvu` created in an effect's body stops at the effect's
 next run, and one created in the graph's root scope lives as long as the graph.
