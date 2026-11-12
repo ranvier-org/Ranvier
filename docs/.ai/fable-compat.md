@@ -27,41 +27,41 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | AmbientGraph.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Owners.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
-| ValueReaders.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
-| Async.fs | 56 | 45 | 45 | 56 | 45 | 45 | 4 | 0 |
+| ValueReaders.fs | 22 | 22 | 22 | 22 | 22 | 22 | 0 | 0 |
+| Async.fs | 56 | 50 | 50 | 56 | 50 | 50 | 4 | 0 |
 | Boundaries.fs | 27 | 27 | 27 | 27 | 27 | 27 | 1 | 0 |
-| Threading.fs | 9 | 9 | 9 | 9 | 9 | 9 | 41 | 0 |
+| Threading.fs | 9 | 9 | 9 | 9 | 9 | 9 | 42 | 0 |
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
-| Invalidation.fs | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 |
+| Invalidation.fs | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 18 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 106 | 101 | 101 | 3 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 107 | 103 | 103 | 3 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | TraceContractTests.fs | 0 | 0 | 0 | 34 | 34 | 34 | 0 | 0 |
 | TraceJsonTests.fs | 0 | 0 | 0 | 8 | 8 | 8 | 9 | 0 |
 | TraceDumpTests.fs | 0 | 0 | 0 | 4 | 4 | 4 | 10 | 0 |
 | TraceExportStreams.fs | 0 | 0 | 0 | 6 | 6 | 6 | 0 | 0 |
-| Observers.fs | 102 | 102 | 102 | 102 | 102 | 102 | 0 | 0 |
+| Observers.fs | 103 | 103 | 103 | 103 | 103 | 103 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
 | FanOut.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
-| Reentrancy.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
+| Reentrancy.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
 | Cutoff.fs | 16 | 14 | 14 | 16 | 14 | 14 | 0 | 0 |
 | SuspensionEdges.fs | 21 | 20 | 20 | 21 | 20 | 20 | 0 | 0 |
 | Scopes.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
 | Propagation.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
-| AsyncEdges.fs | 25 | 22 | 19 | 25 | 22 | 19 | 4 | 0 |
+| AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
 | Projections.fs | 121 | 121 | 121 | 121 | 121 | 121 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
-| Lookups.fs | 31 | 31 | 31 | 31 | 31 | 31 | 0 | 0 |
-| MemoScopes.fs | 24 | 24 | 24 | 24 | 24 | 24 | 0 | 0 |
+| Lookups.fs | 32 | 32 | 32 | 32 | 32 | 32 | 0 | 0 |
+| MemoScopes.fs | 28 | 28 | 28 | 28 | 28 | 28 | 0 | 0 |
 | MemoPurity.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
 | ScopeContexts.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
-| DischargeReentry.fs | 29 | 29 | 29 | 29 | 29 | 29 | 1 | 0 |
+| DischargeReentry.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 242 | 242 | 242 | 242 | 242 | 242 | 3 | 0 |
+| Combinators.fs | 248 | 248 | 248 | 248 | 248 | 248 | 3 | 0 |
 | Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -84,17 +84,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DateTimeOffsetCodec.fs | 54 | 54 | 54 | 54 | 54 | 54 | 1 | 0 |
 | NumberText.fs | 36 | 36 | 36 | 36 | 36 | 36 | 2 | 0 |
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
-| Streams.fs (sources) | 9 | 9 | 9 | 9 | 9 | 9 | 0 | 0 |
-| Persistence/Scaffold.fs | 1 | 1 | 1 | 1 | 1 | 1 | 0 | 0 |
-| Persistence/MemoryStore.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
-| Persistence/Loading.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
-| Persistence/Coalescing.fs | 16 | 16 | 16 | 16 | 16 | 16 | 0 | 0 |
-| Persistence/Durability.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
-| Persistence/Collections.fs | 13 | 13 | 13 | 13 | 13 | 13 | 0 | 0 |
-| Persistence/Position.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
-| Persistence/LocalStorage.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
+| Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1725 | 1703 | 1700 | 1946 | 1919 | 1916 | 147 | 1 |
+| **Total** | 1708 | 1694 | 1691 | 1930 | 1912 | 1909 | 148 | 1 |
 
 ## Tests.fs
 
@@ -278,7 +270,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## ValueReaders.fs
 
-<details><summary>21 passed in every build and delivery that runs them</summary>
+<details><summary>22 passed in every build and delivery that runs them</summary>
 
 - value readers have independent baselines and immutable deltas
 - a value reader merges repeated changes to a key in place
@@ -301,6 +293,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - map overflow recovery preserves replacement lifetimes
 - map cleanup failure recovery preserves replacement lifetimes
 - a map pass after a failed upstream pass has the latest keys
+- editable collections unlink in O(1) and skip cancelled add+remove batches
 
 </details>
 
@@ -314,22 +307,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | untraced | an effect run inside a continuation keeps the edges it reads after settling another flight | failed | failed | Every `await` suspends |
 | untraced | a memo run inside a continuation keeps the edges it reads after settling another flight | failed | failed | Every `await` suspends |
 | untraced | a read after an await on a completed task is tracked | failed | failed | Every `await` suspends |
-| untraced | Queue applies every result in the order the flights started | failed | failed | A `Queue` flight applies on a later microtask |
-| untraced | Queue shows an applied outcome while a later flight is in progress | failed | failed | A `Queue` flight applies on a later microtask |
-| untraced | async memos with different policies in one graph fly independently | failed | failed | A `Queue` flight applies on a later microtask |
-| untraced | a node without a policy follows the graph's beside one with its own | failed | failed | A `Queue` flight applies on a later microtask |
-| untraced | an owning async memo takes its own policy | failed | failed | A `Queue` flight applies on a later microtask |
 | traced | a continuation run inside another computation's body leaves that computation's edges alone | failed | failed | Every `await` suspends |
 | traced | a cleanup registered in a continuation run inside an effect belongs to the root | failed | failed | Every `await` suspends |
 | traced | a pending read in a continuation run inside an effect does not suspend the effect | failed | failed | Every `await` suspends |
 | traced | an effect run inside a continuation keeps the edges it reads after settling another flight | failed | failed | Every `await` suspends |
 | traced | a memo run inside a continuation keeps the edges it reads after settling another flight | failed | failed | Every `await` suspends |
 | traced | a read after an await on a completed task is tracked | failed | failed | Every `await` suspends |
-| traced | Queue applies every result in the order the flights started | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | Queue shows an applied outcome while a later flight is in progress | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | async memos with different policies in one graph fly independently | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | a node without a policy follows the graph's beside one with its own | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | an owning async memo takes its own policy | failed | failed | A `Queue` flight applies on a later microtask |
 
 | Excluded | Reason |
 | --- | --- |
@@ -338,7 +321,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Drop hands the settled value to the next run as Previous | reads Settled's completion synchronously, and under Fable it is a promise. |
 | DropWhilePending hands the replacing run the value published before the failed flight | reads Settled's completion synchronously, and under Fable it is a promise. |
 
-<details><summary>45 passed in every build and delivery that runs them</summary>
+<details><summary>50 passed in every build and delivery that runs them</summary>
 
 - reading an unsettled flight suspends
 - a flight starts only when something reads it
@@ -348,6 +331,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a superseded flight does not publish
 - CancelPrevious cancels the superseded token
 - KeepLatest leaves the superseded flight running
+- Queue applies every result in the order the flights started
+- Queue shows an applied outcome while a later flight is in progress
 - FinishCurrent folds the changes during a flight into one trailing run
 - FinishCurrent discards a failure that settles with a run owed
 - FinishCurrent disposed with a run owed runs nothing more
@@ -384,7 +369,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a settle after disposal does not publish
 - a boundary whose fallback returns its last value shows stale data while refreshing
 - a boundary tells a loaded empty list from a value not yet known
+- async memos with different policies in one graph fly independently
 - a node's policy overrides the graph's
+- a node without a policy follows the graph's beside one with its own
+- an owning async memo takes its own policy
 
 </details>
 
@@ -446,6 +434,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | during a flush an off-thread write raises, and Dispatch and Settle return without waiting | JavaScript has one thread. |
 | an off-thread read of a stale memo raises and leaves it stale | JavaScript has one thread. |
 | every off-thread entry point raises on a guarded graph | JavaScript has one thread. |
+| runWithOwner rejects concurrent entry under Serialised affinity | JavaScript has one thread. |
 | Unchecked affinity lets an off-thread stale read through | JavaScript has one thread. |
 | an activation inside an async body is invisible to the starting thread while suspended | JavaScript has one thread. |
 | graphs owned by separate threads update in parallel | JavaScript has one thread. |
@@ -500,11 +489,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Invalidation.fs
 
-<details><summary>4 passed in every build and delivery that runs them</summary>
+<details><summary>7 passed in every build and delivery that runs them</summary>
 
 - a memo sees a write its own body made
 - a boundary sees a write its own body made
 - a memo that reads itself yields a default rather than overflowing
+- a running memo that marks and reads itself does not start a nested recomputation
+- a memo in Check with a self-edge resolves without overflowing
+- two memos in Check with mutual edges resolve without overflowing
 - an unrelated write still invalidates normally
 
 </details>
@@ -560,7 +552,6 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | traced | a node created through a combinator reports the user's line | failed | failed | Trace records carry less |
 | traced | why steps, history runs and snapshot nodes carry recorded values | failed | failed | Trace records carry less |
 | traced | valueText renders a value as one line | failed | failed | Trace records carry less |
-| traced | Queue drops a failure that settles while the newest run waits on a source as Suspended | failed | failed | A `Queue` flight applies on a later microtask |
 
 | Excluded | Reason |
 | --- | --- |
@@ -568,7 +559,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a checkpoint releases the collected signals and async sources of disposed roots | Fable holds every signal for the log's lifetime. |
 | a checkpointed dump parses back to the live snapshot | TraceModel.parseDump is .NET only. |
 
-<details><summary>101 passed in every build and delivery that runs them</summary>
+<details><summary>103 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -632,6 +623,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - why through an async memo walks past the settle to the flight's run (traced only)
 - FinishCurrent records a deferred run and a settle held for the trailing run (traced only)
 - FinishCurrent drops a failure that settles with a run owed as Trailing (traced only)
+- Queue drops a failure that settles while the newest run waits on a source as Suspended (traced only)
 - FinishCurrent's trailing run is notified with the dropped failure as its cause (traced only)
 - Drop records a run dropped at a read and a change dropped at the settle (traced only)
 - Drop records one run dropped for a change discarded at a read and settled with no later change (traced only)
@@ -671,6 +663,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Cursors and checkpoints / a signal that outlives its creating root stays live across a checkpoint (traced only)
 - Cursors and checkpoints / a signal created in a run stays live when the run's computation runs again (traced only)
 - Cursors and checkpoints / a checkpoint keeps the incarnations of a live host's children (traced only)
+- Cursors and checkpoints / createEffectOn records 1-based monotonic RunStart numbers (traced only)
 
 </details>
 
@@ -805,7 +798,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Observers.fs
 
-<details><summary>102 passed in every build and delivery that runs them</summary>
+<details><summary>103 passed in every build and delivery that runs them</summary>
 
 - every one of 3 observers is woken
 - a body reading its source twice does not grow the list of 3
@@ -839,6 +832,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a, b, a after 10 other reads of a source with 10 other readers links a once
 - a reader of 3 sources in a changing order keeps one edge to each
 - a reader of 12 sources in a changing order keeps one edge to each
+- a walk can miss an observer held at two positions
 - removal during notification among 3 skips no survivor
 - an observer added during notification among 3 is not marked
 - the count of 3 is exact after removals in any order
@@ -948,7 +942,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Reentrancy.fs
 
-<details><summary>12 passed in every build and delivery that runs them</summary>
+<details><summary>19 passed in every build and delivery that runs them</summary>
 
 - an effect that disposes itself mid-body does not run again
 - observers are notified in reverse subscription order
@@ -956,12 +950,19 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an effect that writes the signal it reads settles rather than looping
 - a write inside a cleanup is seen by the next run
 - a nested batch does not flush until the outer one ends
-- a batch that throws still flushes the writes it made
+- a batch that throws leaves the graph able to flush later writes
 - flushing from inside an effect body is absorbed
 - an untracked body that throws does not leave tracking off
 - disposing a root from inside an effect it owns does not strand the flush
 - a cleanup registered during a root's teardown runs at once
 - effects woken by a write in a memo body run after the body, before the read returns
+- a read whose pull settles an owed flush returns the value computed before the flush's effects write
+- a stale read whose recomputation moves a memo owes a flush and drains woken effects on ExitPull
+- a memo dirtied by a cleanup during its own run in a check walk is re-pulled before the reader resolves Check
+- a check walk restarts when a later source's cleanup marks an already-passed source Dirty
+- memos returning fresh records across a shared diamond do not leave a downstream effect asleep
+- a memo whose earlier-read source moves during a later source's check walk is marked Dirty
+- an effect whose earlier-read source moves during a later source's check walk re-runs in the same flush
 
 </details>
 
@@ -1107,15 +1108,6 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## AsyncEdges.fs
 
-| Build | Failed | Inline | Promise | Difference |
-| --- | --- | --- | --- | --- |
-| untraced | the Queue policy applies a failure in the middle without losing what follows | failed | failed | A `Queue` flight applies on a later microtask |
-| untraced | the Queue policy applies a synchronous failure after the flight started before it | failed | failed | A `Queue` flight applies on a later microtask |
-| untraced | the Queue policy keeps a run suspended on a source pending when an older flight lands | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | the Queue policy applies a failure in the middle without losing what follows | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | the Queue policy applies a synchronous failure after the flight started before it | failed | failed | A `Queue` flight applies on a later microtask |
-| traced | the Queue policy keeps a run suspended on a source pending when an older flight lands | failed | failed | A `Queue` flight applies on a later microtask |
-
 | Build | Skipped under promise delivery | Reason |
 | --- | --- | --- |
 | untraced | a flight that is already complete never makes the reader pending | a completed task settles on a later microtask, so its first read is Pending |
@@ -1132,7 +1124,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | the harness reports a faulted task that nothing observes | JavaScript has no finalizer thread and no UnobservedTaskException. |
 | a late fault is observed: %A{policy}, %A{fault} | JavaScript has no finalizer thread and no UnobservedTaskException. |
 
-<details><summary>19 passed in every build and delivery that runs them</summary>
+<details><summary>68 passed in every build and delivery that runs them</summary>
 
 - an effect over an already-complete flight runs once per write
 - three supersessions deep, only the last one publishes
@@ -1141,6 +1133,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a current flight that cancels itself settles as Failed
 - a flight cancelled after its first await keeps the cancellation's exception
 - a superseded flight's cancellation publishes nothing
+- the Queue policy applies a failure in the middle without losing what follows
+- the Queue policy applies a synchronous failure after the flight started before it
+- the Queue policy keeps a run suspended on a source pending when an older flight lands
 - a re-run after a failure clears the Error flag
 - a re-run that suspends on a pending source clears the Error flag
 - a flight settling after its node is disposed changes nothing
@@ -1153,6 +1148,52 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Runs counts body runs, including runs that start no flight
 - Peek on a flight in progress is the previous value, not the default
 - a flight started inside a root is cancelled when that root is torn down
+- a reader that links a node dirtied during its own run still wakes: AsyncMiddle, AsyncReader
+- a reader that links a node dirtied during its own run still wakes: AsyncMiddle, MemoReader
+- a reader that links a node dirtied during its own run still wakes: AsyncMiddle, EffectReader
+- a reader that links a node dirtied during its own run still wakes: MemoMiddle, AsyncReader
+- a reader that links a node dirtied during its own run still wakes: MemoMiddle, MemoReader
+- a reader that links a node dirtied during its own run still wakes: MemoMiddle, EffectReader
+- a reader that links a node dirtied during its own run still wakes: StreamMiddle, AsyncReader
+- a reader that links a node dirtied during its own run still wakes: StreamMiddle, MemoReader
+- a reader that links a node dirtied during its own run still wakes: StreamMiddle, EffectReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryValue, AsyncReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryValue, MemoReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryValue, EffectReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryIsWaiting, AsyncReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryIsWaiting, MemoReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryIsWaiting, EffectReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryCaught, AsyncReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryCaught, MemoReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryCaught, EffectReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryCaughtFrom, AsyncReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryCaughtFrom, MemoReader
+- a reader that links a node dirtied during its own run still wakes: BoundaryCaughtFrom, EffectReader
+- a reader that links a node which invalidates itself settles on its fixpoint
+- a node marked by an inline settle during its own run still wakes its reader: AsyncMiddle, Direct
+- a pending node marked during its own run wakes its reader when its source settles: AsyncMiddle, Direct
+- a node marked by an inline settle during its own run still wakes its reader: AsyncMiddle, ThroughMemo
+- a pending node marked during its own run wakes its reader when its source settles: AsyncMiddle, ThroughMemo
+- a node marked by an inline settle during its own run still wakes its reader: AsyncMiddle, ThroughAsync
+- a pending node marked during its own run wakes its reader when its source settles: AsyncMiddle, ThroughAsync
+- a node marked by an inline settle during its own run still wakes its reader: MemoMiddle, Direct
+- a pending node marked during its own run wakes its reader when its source settles: MemoMiddle, Direct
+- a node marked by an inline settle during its own run still wakes its reader: MemoMiddle, ThroughMemo
+- a pending node marked during its own run wakes its reader when its source settles: MemoMiddle, ThroughMemo
+- a node marked by an inline settle during its own run still wakes its reader: MemoMiddle, ThroughAsync
+- a pending node marked during its own run wakes its reader when its source settles: MemoMiddle, ThroughAsync
+- a node marked by an inline settle during its own run still wakes its reader: StreamMiddle, Direct
+- a pending node marked during its own run wakes its reader when its source settles: StreamMiddle, Direct
+- a node marked by an inline settle during its own run still wakes its reader: StreamMiddle, ThroughMemo
+- a pending node marked during its own run wakes its reader when its source settles: StreamMiddle, ThroughMemo
+- a node marked by an inline settle during its own run still wakes its reader: StreamMiddle, ThroughAsync
+- a pending node marked during its own run wakes its reader when its source settles: StreamMiddle, ThroughAsync
+- a node marked by an inline settle during its own run still wakes its reader: BoundaryValue, Direct
+- a pending node marked during its own run wakes its reader when its source settles: BoundaryValue, Direct
+- a node marked by an inline settle during its own run still wakes its reader: BoundaryValue, ThroughMemo
+- a pending node marked during its own run wakes its reader when its source settles: BoundaryValue, ThroughMemo
+- a node marked by an inline settle during its own run still wakes its reader: BoundaryValue, ThroughAsync
+- a pending node marked during its own run wakes its reader when its source settles: BoundaryValue, ThroughAsync
 
 </details>
 
@@ -1365,7 +1406,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Lookups.fs
 
-<details><summary>31 passed in every build and delivery that runs them</summary>
+<details><summary>32 passed in every build and delivery that runs them</summary>
 
 - a lookup reads through to the source
 - only the affected keys are recomputed
@@ -1398,12 +1439,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a reader that moves between keys keeps its current cell
 - a selector over record keys matches them by structure
 - a lookup keeps None and Some cells apart
+- repeated transitions with overlapping failed and affected keys recompute each key once and clear pooled state
 
 </details>
 
 ## MemoScopes.fs
 
-<details><summary>24 passed in every build and delivery that runs them</summary>
+<details><summary>28 passed in every build and delivery that runs them</summary>
 
 - a memo's cleanup runs before its re-run and at its disposal
 - a node a memo returns is disposed when the memo re-runs
@@ -1418,6 +1460,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an effect created after an await under runWithOwner is disposed with the flight
 - a node created under runWithOwner on a disposed owner is disposed at once
 - runWithOwner inside a pure memo raises
+- runWithOwner rejects a null owner
 - a projection's source owns the nodes it creates, and discharges them before the next pass
 - N2 a cleanup that reads its own memo sees the previous value, and the body runs once
 - N2b an effect's cleanup inside an owning memo reads the memo's previous value
@@ -1429,6 +1472,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a throwing cleanup in a projection key's scope reaches the graph root's errors
 - an effect woken by a cleanup during a nested pull runs after the memo re-ran, exactly once
 - a signal created in a memo body starts from its initial value on every run
+- tryGetOwner inside a createEffectOn compute is ValueNone and the effect still acts
+- tryGetOwner inside a pure memo is ValueNone and the memo keeps its value
+- tryGetOwner returns the scope getOwner returns where a body can own
 
 </details>
 
@@ -1476,7 +1522,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | a scope created and disposed by a cleanup is released at once | JavaScript exposes no forced collection. |
 
-<details><summary>29 passed in every build and delivery that runs them</summary>
+<details><summary>30 passed in every build and delivery that runs them</summary>
 
 - N2e a memo cleanup that writes a source and reads the memo runs the body once per change
 - a memo cleanup that writes a source without reading the memo still re-runs it with the write
@@ -1507,6 +1553,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an async memo that disposes itself in its body and then reads a source holds no edge
 - a boundary that disposes itself in its body and then reads a source holds no edge
 - a projection that disposes itself in its source and then reads a signal holds no edge
+- an owning memo disposed by a cleanup during RecomputeScoped after a stale replacement run settles clean
 
 </details>
 
@@ -1607,7 +1654,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>242 passed in every build and delivery that runs them</summary>
+<details><summary>248 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1628,12 +1675,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pending chooser keeps membership; a never-settled key is only in PendingKeys
 - a throwing chooser excludes the key, and Get and TryGet raise its error
 - disposing the view detaches it from the upstream
+- removing a key disposes its chooser and gate
 - choose composes with filter and sortBy
 - choose composes with choose, and keeps a Some None value
 - map follows upstream keys and order, and re-runs one mapping per edit
 - an effect reading Keys and Get runs exactly once per write
 - a throwing mapping keeps the key, and Get raises its error
 - removing a key disposes the key's memo
+- mapWith re-runs the factory for a replaced key across a reset burst
 - sorts ascending, and equal sort keys keep upstream order
 - ties keep upstream order at 40 keys, across reorder and removal
 - NaN sort keys sort after every other key, across updates
@@ -1657,6 +1706,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - tests reading the shared comparison counter / a pass whose sort keys and upstream order are unchanged does not re-sort
 - tests reading the shared comparison counter / a sortByDescending pass whose sort keys and upstream order are unchanged does not re-sort
 - tests reading the shared comparison counter / removing a non-extreme row costs no comparison; removing the extreme re-folds once
+- tests reading the shared comparison counter / a single changed sort key reinserts in O(log N) search comparisons across moves and ties
 - string, ordinal
 - float with NaN
 - float32 with NaN
@@ -1697,6 +1747,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a node the mapping creates is disposed with its key
 - an effect reading Keys and Get runs exactly once per write
 - groups follow each group's first member, and members keep upstream order
+- PendingKeys and UngroupedKeys readers attached while empty wake when a key suspends and settles
 - moving a key between groups publishes the outer Keys once and both inner views are current
 - an edit that keeps a key's group wakes no Keys reader
 - a held inner view of an emptied group is disposed
@@ -1760,6 +1811,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - sumBy over floats reads zero once every row leaves
 - a throwing add recomputes from the cached values on the next read
 - a batch of edits reads the combined result
+- fold re-folds on a pure upstream reorder and head insertion
+- foldGroup applies incremental deltas, skips pure reorders, and falls back on reset bursts
 - disposing the foldGroup memo releases the upstream rows
 - disposing the foldGroup memo twice, then its scope, records no error
 - disposing the fold memo releases the upstream rows
@@ -2670,161 +2723,18 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Streams.fs (sources)
 
-<details><summary>9 passed in every build and delivery that runs them</summary>
+<details><summary>10 passed in every build and delivery that runs them</summary>
 
 - ofObservable: OnNext publishes, OnCompleted keeps the state, restart unsubscribes once
 - ofObservable: OnError publishes Failed
 - ofObservable: disposing the memo unsubscribes exactly once
+- ofObservable: OnCompleted and OnError release the cancellation registration
 - create: the function receives the sink and token
 - ofObservable: cancellation ends Run with OperationCanceledException
 - ofAsyncIterable: items fold and done completes
 - ofAsyncIterable: a rejected next fails the stream
 - ofAsyncIterable: disposing while next is pending calls return once and ignores the later value
 - ofAsyncIterable: cancellation ends Run with OperationCanceledException
-
-</details>
-
-## Persistence/Scaffold.fs
-
-<details><summary>1 passed in every build and delivery that runs them</summary>
-
-- a load exception names the key
-
-</details>
-
-## Persistence/MemoryStore.fs
-
-<details><summary>10 passed in every build and delivery that runs them</summary>
-
-- an empty store loads no records
-- saved records load back
-- a load returns the requested keys only
-- a later save of a key replaces its record
-- deleted keys load nothing and absent keys are skipped
-- a cleared store loads no records and takes later saves
-- keys and payloads with separators, reserved prefixes and non-ASCII text round trip
-- a record of an older version loads through its migrations
-- a record of a newer version fails the load naming the key
-- a matching buster keeps the records and a different one discards them
-
-</details>
-
-## Persistence/Loading.fs
-
-<details><summary>16 passed in every build and delivery that runs them</summary>
-
-- a key under the reserved prefix is rejected
-- an empty key is rejected
-- two declarations of one key are rejected
-- a stored value restores and an absent key uses the fallback
-- an older version runs its migrations in version order
-- a current version runs no migration
-- a newer version fails the load naming the key
-- a missing migration fails the load naming the key
-- a failed migration fails the load naming the key
-- a decode failure fails the load naming the key
-- with the discard option an undecodable record uses the fallback
-- with the discard option a newer version still fails the load
-- with the discard option a missing migration still fails the load
-- with the discard option a failed migration still fails the load
-- a buster mismatch discards every record
-- a buster set on a store saved without one discards every record
-
-</details>
-
-## Persistence/Coalescing.fs
-
-<details><summary>16 passed in every build and delivery that runs them</summary>
-
-- the first read returns the stored value and creating the signal saves nothing
-- a signal created and written in one batch saves the write
-- a second live signal of one key is rejected
-- a key is free again once its signal's owner is disposed
-- a signal re-created for a key starts from its last written value
-- a write in the batch that disposes its signal's owner is saved and restored
-- a session serves one graph
-- ManualDispatcher / a batch writing three persisted signals saves once with three records
-- ManualDispatcher / a key written twice in one batch is saved once with its last value
-- ManualDispatcher / unbatched writes save once each
-- ImmediateDispatcher / a batch writing three persisted signals saves once with three records
-- ImmediateDispatcher / a key written twice in one batch is saved once with its last value
-- ImmediateDispatcher / unbatched writes save once each
-- default dispatcher / a batch writing three persisted signals saves once with three records
-- default dispatcher / a key written twice in one batch is saved once with its last value
-- default dispatcher / unbatched writes save once each
-
-</details>
-
-## Persistence/Durability.fs
-
-<details><summary>10 passed in every build and delivery that runs them</summary>
-
-- a buster mismatch keeps the unwritten records discarded on the next load
-- a buster mismatch discards the records of keys the busting load did not declare
-- two sessions loaded against a stale buster keep each other's saves
-- a buster set on a store saved without one keeps the old records discarded on the next load
-- a buster removed from the options keeps the old records discarded on the next load
-- a buster mismatch removes the stored journal position
-- FlushAsync faults with the first faulted save's exception, and later saves still run
-- FlushAsync reports a fault once, and the next FlushAsync covers the later saves
-- a faulted first save after a bust keeps the later saves on the next load
-- a faulted delete after a bust keeps the old records discarded on the next load
-
-</details>
-
-## Persistence/Collections.fs
-
-<details><summary>13 passed in every build and delivery that runs them</summary>
-
-- row layout / editing one row saves that row's record only
-- row layout / adding a row saves its record and the order
-- row layout / removing a row saves the order and deletes the row's record
-- row layout / a restored collection keeps insertion order
-- row layout / a row re-added at the end restores at the end
-- row layout / an edit in the batch that disposes the collection's owner is saved
-- row layout / a collection re-created for the key starts from its last rows
-- row layout / an undecodable row fails the load naming the row's key
-- row layout / with the discard option an undecodable row is left out
-- document layout / editing one row saves the one document record
-- document layout / a restored collection keeps insertion order
-- document layout / an older document runs its migrations on every row
-- declaring / a collection key under the reserved prefix is rejected
-
-</details>
-
-## Persistence/Position.fs
-
-<details><summary>8 passed in every build and delivery that runs them</summary>
-
-- a save records the position of the last journal entry in the same SaveMany
-- a load exposes the saved position
-- inputs journaled after the last save are not included in the position
-- the wrapper forwards every entry to the inner journal
-- a session without a journal saves no position
-- a save that faults part way leaves no position ahead of the records
-- a save without a journal deletes an earlier session's position
-- a persisted signal written by an effect saves in the flush's one SaveMany
-
-</details>
-
-## Persistence/LocalStorage.fs
-
-<details><summary>14 passed in every build and delivery that runs them</summary>
-
-- a record and a union round trip through Wire codecs
-- items live under the prefix as the version and the payload
-- a clear removes the items under the prefix only
-- an item that is not a record fails the load naming the key
-- conformance / an empty store loads no records
-- conformance / saved records load back
-- conformance / a load returns the requested keys only
-- conformance / a later save of a key replaces its record
-- conformance / deleted keys load nothing and absent keys are skipped
-- conformance / a cleared store loads no records and takes later saves
-- conformance / keys and payloads with separators, reserved prefixes and non-ASCII text round trip
-- conformance / a record of an older version loads through its migrations
-- conformance / a record of a newer version fails the load naming the key
-- conformance / a matching buster keeps the records and a different one discards them
 
 </details>
 

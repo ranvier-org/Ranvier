@@ -646,7 +646,8 @@ let tests =
                 Expect.isFalse (a.Status.HasFlag Status.Error) "and did not fail the node"
             }
 
-            test "the Queue policy applies a failure in the middle without losing what follows" {
+            testCaseAsync "the Queue policy applies a failure in the middle without losing what follows"
+            <| async {
                 let g =
                     new Graph (
                         { GraphOptions.Default with
@@ -676,19 +677,23 @@ let tests =
                 Expect.equal flights.Count 3 "three flights queued"
 
                 flights[0].Settle 10
+                do! drained ()
                 Expect.equal a.TryValue (Ready 10) "the first applied"
 
                 flights[1].Fail(InvalidOperationException "middle")
+                do! drained ()
 
                 match a.TryValue with
                 | Failed ex -> Expect.stringContains ex.Message "middle" "the failure applied in its turn"
                 | other -> failtestf "expected Failed, got %A" other
 
                 flights[2].Settle 30
+                do! drained ()
                 Expect.equal a.TryValue (Ready 30) "and the one behind it still arrived"
             }
 
-            test "the Queue policy applies a synchronous failure after the flight started before it" {
+            testCaseAsync "the Queue policy applies a synchronous failure after the flight started before it"
+            <| async {
                 let g =
                     new Graph (
                         { GraphOptions.Default with
@@ -716,13 +721,15 @@ let tests =
                 let early = a.TryValue
 
                 flights[0].Settle 10
+                do! drained ()
 
                 match early, a.TryValue with
                 | Pending, Failed ex -> Expect.equal ex.Message "sync-fail" "the newer run's failure is the last result"
                 | e, other -> failtestf "expected Pending then Failed, got %A then %A" e other
             }
 
-            test "the Queue policy keeps a run suspended on a source pending when an older flight lands" {
+            testCaseAsync "the Queue policy keeps a run suspended on a source pending when an older flight lands"
+            <| async {
                 let g =
                     new Graph (
                         { GraphOptions.Default with
@@ -751,11 +758,14 @@ let tests =
                 a.TryValue |> ignore
 
                 flights[0].Settle 10
+                do! drained ()
 
                 Expect.equal a.TryValue Pending "the newest run is still waiting on its source"
                 Expect.equal (Seq.length a.PendingSources) 1 "on that source"
 
                 upstream.Settle 4
+                a.TryValue |> ignore
+                do! drained ()
                 Expect.equal a.TryValue (Ready 4) "and settles with it"
             }
 

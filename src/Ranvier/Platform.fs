@@ -156,13 +156,21 @@ module internal Platform =
         with ex ->
             ex
 
-    let private settled (t: Task<'T>) =
+    let internal settledOutcome (t: Task<'T>) =
         if t.IsCanceled then
             FlightOutcome.Canceled (cancellation t)
         elif t.IsFaulted then
             FlightOutcome.Faulted (t.Exception.GetBaseException ())
         else
             FlightOutcome.Completed t.Result
+
+    let internal settledUnitOutcome (t: Task) =
+        if t.IsCanceled then
+            FlightOutcome.Canceled (cancellation t)
+        elif t.IsFaulted then
+            FlightOutcome.Faulted (t.Exception.GetBaseException ())
+        else
+            FlightOutcome.Completed ()
 #endif
 
     /// <summary>
@@ -174,7 +182,11 @@ module internal Platform =
 #if FABLE_COMPILER
         thenBoth flight (fun v -> settle (FlightOutcome.Completed v)) (fun reason -> settle (rejected reason))
 #else
-        flight.ContinueWith (Action<Task<'T>>(fun t -> settle (settled t)), TaskContinuationOptions.ExecuteSynchronously)
+        if flight.IsCompleted then
+            settle (settledOutcome flight)
+            completedTask
+        else
+            flight.ContinueWith (Action<Task<'T>>(fun t -> settle (settledOutcome t)), TaskContinuationOptions.ExecuteSynchronously)
 #endif
 
     /// <summary>
@@ -186,19 +198,11 @@ module internal Platform =
         thenBoth (unbox<Task<unit>> work) (fun _ -> settle (FlightOutcome.Completed ())) (fun reason -> settle (rejected reason))
         |> ignore
 #else
-        work.ContinueWith (
-            Action<Task>(fun t ->
-                settle (
-                    if t.IsCanceled then
-                        FlightOutcome.Canceled (cancellation t)
-                    elif t.IsFaulted then
-                        FlightOutcome.Faulted (t.Exception.GetBaseException ())
-                    else
-                        FlightOutcome.Completed ()
-                )),
-            TaskContinuationOptions.ExecuteSynchronously
-        )
-        |> ignore
+        if work.IsCompleted then
+            settle (settledUnitOutcome work)
+        else
+            work.ContinueWith (Action<Task>(fun t -> settle (settledUnitOutcome t)), TaskContinuationOptions.ExecuteSynchronously)
+            |> ignore
 #endif
 
     /// <summary>
@@ -210,7 +214,10 @@ module internal Platform =
 #if FABLE_COMPILER
         thenBoth flight FlightOutcome.Completed rejected
 #else
-        flight.ContinueWith (Func<Task<'T>, FlightOutcome<'T>>(settled), TaskContinuationOptions.ExecuteSynchronously)
+        if flight.IsCompleted then
+            Task.FromResult (settledOutcome flight)
+        else
+            flight.ContinueWith (Func<Task<'T>, FlightOutcome<'T>>(settledOutcome), TaskContinuationOptions.ExecuteSynchronously)
 #endif
 
     /// <summary>
@@ -274,6 +281,7 @@ module internal Platform =
         d.TrySetResult value |> ignore
 #endif
 
+#if FABLE_COMPILER
     /// <summary>A task completed or faulted by hand, once.</summary>
     type Completion<'T> =
         {
@@ -282,7 +290,6 @@ module internal Platform =
             Reject: exn -> unit
         }
 
-#if FABLE_COMPILER
     [<Emit("new Promise((resolve, reject) => $0(resolve, reject))")>]
     let private promiseWith (executor: ('T -> unit) -> (exn -> unit) -> unit) : Task<'T> = jsNative
 
@@ -302,15 +309,20 @@ module internal Platform =
             Reject = rejecter
         }
 #else
-    /// <summary>A task that completes or faults when <c>Resolve</c> or <c>Reject</c> is called. Continuations run inline on the calling thread.</summary>
-    let completion<'T> () : Completion<'T> =
-        let source = TaskCompletionSource<'T>()
+    /// <summary>A task completed or faulted by hand, once.</summary>
+    [<Struct; NoEquality; NoComparison>]
+    type Completion<'T>(source: TaskCompletionSource<'T>) =
+        member _.Task: Task<'T> = source.Task
 
-        {
-            Task = source.Task
-            Resolve = source.TrySetResult >> ignore
-            Reject = source.TrySetException >> ignore
-        }
+        member _.Resolve(value: 'T) =
+            source.TrySetResult value |> ignore
+
+        member _.Reject(error: exn) =
+            source.TrySetException error |> ignore
+
+    /// <summary>A task that completes or faults when <c>Resolve</c> or <c>Reject</c> is called. Continuations run inline on the calling thread.</summary>
+    let inline completion<'T> () : Completion<'T> =
+        Completion<'T>(TaskCompletionSource<'T>())
 #endif
 
     /// <summary>A task already completed with <c>value</c>.</summary>
@@ -365,6 +377,11 @@ module internal Platform =
         ignore enter
         ignore leave
         body ()
+
+    let inline runFlightBodyWith (enter: obj -> bool) (leave: obj -> unit) (f: 'A -> 'B -> 'T) (a: 'A) (b: 'B) : 'T =
+        ignore enter
+        ignore leave
+        f a b
 #else
     let runFlightBody (enter: obj -> bool) (leave: obj -> unit) (body: unit -> 'T) : 'T =
         let frame = FlightFrame (enter, leave)
@@ -373,6 +390,17 @@ module internal Platform =
 
         try
             body ()
+        finally
+            frame.Live <- false
+            flightFrame.Value <- previous
+
+    let runFlightBodyWith (enter: obj -> bool) (leave: obj -> unit) (f: 'A -> 'B -> 'T) (a: 'A) (b: 'B) : 'T =
+        let frame = FlightFrame (enter, leave)
+        let previous = flightFrame.Value
+        flightFrame.Value <- frame
+
+        try
+            f a b
         finally
             frame.Live <- false
             flightFrame.Value <- previous

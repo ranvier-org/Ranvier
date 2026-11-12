@@ -2140,6 +2140,15 @@ type internal JournalRecorder(journal: IInputJournal) =
             unflushed <- false
             this.Emit (JournalEntryKind.Flush, None, "", JournalPayload.Empty)
 
+#if !FABLE_COMPILER
+/// <summary>Saved tracking, owner, and pending-read context around a hosted computation run.</summary>
+[<Struct; NoEquality; NoComparison>]
+type internal HostedFrame(previous: IComputation, previousOwner: Owner, previousRaised: INode) =
+    member _.Previous = previous
+    member _.PreviousOwner = previousOwner
+    member _.PreviousRaised = previousRaised
+#endif
+
 /// <summary>
 /// Owns the tracking context and the construction-time policy. One graph is a
 /// single consistency domain; on .NET that also means a single thread of
@@ -2308,6 +2317,9 @@ type Graph(options: GraphOptions) =
     /// </summary>
     let mutable continuations: ResizeArray<struct (obj * IComputation * Owner * INode)> =
         null
+
+    let mutable enterContinuationDelegate: obj -> bool = Unchecked.defaultof<_>
+    let mutable leaveContinuationDelegate: obj -> unit = Unchecked.defaultof<_>
 #endif
 
     /// <summary>
@@ -3710,6 +3722,24 @@ type Graph(options: GraphOptions) =
             this.NoteStaleTransition ()
             current.MarkCheck ()
 
+#if !FABLE_COMPILER
+    member internal _.EnterHosted(host: IComputation) : HostedFrame =
+        let saved = HostedFrame (current, currentOwner, raisedPending)
+        current <- host
+        currentOwner <- Unchecked.defaultof<Owner>
+        raisedPending <- Unchecked.defaultof<INode>
+        saved
+
+    member internal _.LeaveHosted(saved: HostedFrame) =
+        current <- saved.Previous
+
+        if not (obj.ReferenceEquals (currentOwner, saved.PreviousOwner)) then
+            currentOwner <- saved.PreviousOwner
+
+        if not (obj.ReferenceEquals (raisedPending, saved.PreviousRaised)) then
+            raisedPending <- saved.PreviousRaised
+#endif
+
     /// <summary>
     /// Evaluates <c>body</c> with <c>host</c> as the tracking context and its scope as
     /// the owner of every node <c>body</c> creates. <c>host</c> implements <c>IScopeHost</c>.
@@ -3827,6 +3857,24 @@ type Graph(options: GraphOptions) =
 
                 if not (Platform.isNull journal) then
                     journal.LeaveDerived ()
+
+    member internal this.EnterContinuationDelegate =
+        let mutable fn = enterContinuationDelegate
+
+        if Platform.isNull (box fn) then
+            fn <- this.EnterContinuation
+            enterContinuationDelegate <- fn
+
+        fn
+
+    member internal this.LeaveContinuationDelegate =
+        let mutable fn = leaveContinuationDelegate
+
+        if Platform.isNull (box fn) then
+            fn <- this.LeaveContinuation
+            leaveContinuationDelegate <- fn
+
+        fn
 #endif
 
     /// <summary>
@@ -3924,6 +3972,33 @@ type Graph(options: GraphOptions) =
                     untrackedHost <- previousHost
                     untrackedInBody <- previousInBody
         )
+
+#if !FABLE_COMPILER
+    /// <summary>Evaluates <c>f arg</c> with tracking suppressed, avoiding per-call closure allocation.</summary>
+    member internal this.RunUntrackedWith(f: 'A -> 'T, arg: 'A) : 'T =
+        this.Entered (
+            "An untracked read",
+            fun () ->
+                let previous = current
+                let previousHost = untrackedHost
+                let previousInBody = untrackedInBody
+
+                if not (Platform.isNull (box previous)) then
+                    untrackedInBody <- true
+
+                    if Platform.isNull (box currentOwner) then
+                        untrackedHost <- previous :?> IScopeHost
+
+                current <- Unchecked.defaultof<IComputation>
+
+                try
+                    f arg
+                finally
+                    current <- previous
+                    untrackedHost <- previousHost
+                    untrackedInBody <- previousInBody
+        )
+#endif
 
     /// <summary>
     /// Evaluates <c>body</c> with tracking suppressed and <c>host</c>'s scope rule
@@ -4446,7 +4521,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// <summary>
     /// The source of the last run's last pending read.
     /// </summary>
-    let mutable pendingSources: HashSet<INode> = null
+    let mutable pendingSource: INode = Unchecked.defaultof<INode>
 
     let mutable freshness = Freshness.Dirty
     let mutable status = Status.Uninitialized
@@ -4607,11 +4682,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         unannounced <- false
         sources.BeginRun ()
 
-        if
-            not (Platform.isNull pendingSources)
-            && pendingSources.Count > 0
-        then
-            pendingSources.Clear ()
+        if not (Platform.isNull (box pendingSource)) then
+            pendingSource <- Unchecked.defaultof<INode>
 
         // Captured before the body overwrites them: whether the observers this
         // memo told `Check` should now be told `Dirty` is exactly the question
@@ -4652,11 +4724,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             failure <- graph.FailureOf (ScopeMessages.failure mode ex, this, previousFailure)
             status <- Status.Error
         | NotReadyException source ->
-            if Platform.isNull pendingSources then
-                pendingSources <- HashSet<INode>(HashIdentity.Reference)
-
-            pendingSources.Add source |> ignore
-
+            pendingSource <- source
             status <- Status.Pending
         | ex ->
             failure <- graph.FailureOf (ex, this, previousFailure)
@@ -5030,11 +5098,13 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// <remarks>
     /// A body that catches several pending reads lists only the last; a body that does not catch one stops at it.
     /// </remarks>
+    member internal _.PendingSource = pendingSource
+
     member _.PendingSources =
-        if Platform.isNull pendingSources then
+        if Platform.isNull (box pendingSource) then
             Seq.empty
         else
-            pendingSources :> seq<INode>
+            [| pendingSource |] :> seq<INode>
 
     /// <summary>
     /// How many times the body has executed. Exposed for tests that need to
@@ -5170,7 +5240,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     let id = graph.NextId ()
     let sources = SourceList ()
     do Tracer.Bind (sources, graph, id)
-    let mutable pendingSources: HashSet<INode> = null
+    let mutable pendingSource: INode = Unchecked.defaultof<INode>
 
     /// <summary>
     /// This run's scope. Cleanups registered by the body land here and are
@@ -5420,11 +5490,8 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
             this.RunBody ()
 
     member private this.RunBody() =
-        if
-            not (Platform.isNull pendingSources)
-            && pendingSources.Count > 0
-        then
-            pendingSources.Clear ()
+        if not (Platform.isNull (box pendingSource)) then
+            pendingSource <- Unchecked.defaultof<INode>
 
         status <- Status.None
         failure <- null
@@ -5447,11 +5514,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                     sources.EndRun (this :> IComputation)
         with
         | NotReadyException source ->
-            if Platform.isNull pendingSources then
-                pendingSources <- HashSet<INode>(HashIdentity.Reference)
-
-            pendingSources.Add source |> ignore
-
+            pendingSource <- source
             status <- Status.Pending
         | ex ->
             // Never rethrow into the flush loop: one failing effect must
@@ -5531,11 +5594,13 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     /// <remarks>
     /// A body that catches several pending reads lists only the last; a body that does not catch one stops at it.
     /// </remarks>
+    member internal _.PendingSource = pendingSource
+
     member _.PendingSources =
-        if Platform.isNull pendingSources then
+        if Platform.isNull (box pendingSource) then
             Seq.empty
         else
-            pendingSources :> seq<INode>
+            [| pendingSource |] :> seq<INode>
 
     /// <summary>
     /// How many times the body has executed.
@@ -5903,7 +5968,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     do Tracer.Bind (observers, graph, id)
     let sources = SourceList ()
     do Tracer.Bind (sources, graph, id)
-    let mutable pendingSources: HashSet<INode> = null
+    let mutable pendingSource: INode = Unchecked.defaultof<INode>
 
     let mutable freshness = Freshness.Dirty
     let mutable status = Status.Pending ||| Status.Uninitialized
@@ -5943,7 +6008,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     /// </summary>
     let mutable cts: CancellationTokenSource = null
 
-    /// <summary>The number of flights started and not yet settled, under <c>KeepLatest</c>.</summary>
+    /// <summary>The number of flights started and not yet settled, under <c>CancelPrevious</c> and <c>KeepLatest</c>.</summary>
     let mutable flying = 0
 
     /// <summary>The number of bodies executing. The shared source is retained while it is nonzero.</summary>
@@ -5951,12 +6016,13 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     let mutable checking = false
 
     /// <summary>
-    /// The end of the serialised chain, under <c>Queue</c>.
+    /// Out-of-order settled outcomes awaiting an earlier sequence slot under <c>Queue</c>; null until needed.
     /// </summary>
-    let mutable tail: Task = Platform.completedTask
+    let mutable pendingQueue: Dictionary<int, struct (int * Platform.FlightOutcome<'T>)> =
+        null
 
     /// <summary>
-    /// Under <c>Queue</c>, the number of results chained onto <c>tail</c> and not yet applied. Under
+    /// Under <c>Queue</c>, the number of results queued and not yet applied. Under
     /// <c>FinishCurrent</c>, <c>Drop</c> and <c>DropWhilePending</c>, 0 with no flight in progress, 1 with a flight in
     /// progress, 2 with a flight in progress that has deferred or discarded a change. Zero under the other policies.
     /// </summary>
@@ -6035,15 +6101,21 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 waiters.Remove applied |> ignore
                 Platform.resolve waiter (lastSettled ())
 
-    /// <summary>Disposes the flight token's source without cancelling it. The next flight allocates another.</summary>
+    /// <summary>Resets or disposes the flight token's source without cancelling it.</summary>
     let retireSource () =
         if not (Platform.isNull cts) then
+#if NET6_0_OR_GREATER && !FABLE_COMPILER
+            if not (cts.TryReset ()) then
+                cts.Dispose ()
+                cts <- null
+#else
             cts.Dispose ()
             cts <- null
+#endif
 
     /// <summary>
-    /// Retires the shared source under every policy except <c>CancelPrevious</c> once no body is executing and every
-    /// flight holding it has settled. Registrations left on the token are released with it.
+    /// Retires the flight token's source once no body is executing and every flight holding it has settled.
+    /// Registrations left on the token are released with it.
     /// </summary>
     let retireIfQuiet () =
         if running = 0 then
@@ -6052,6 +6124,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             | FinishCurrent
             | Drop
             | DropWhilePending when queued = 0 -> retireSource ()
+#if !FABLE_COMPILER
+            | CancelPrevious
+#endif
             | KeepLatest when flying = 0 -> retireSource ()
             | _ -> ()
 
@@ -6099,7 +6174,13 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             | KeepLatest ->
                 flying <- flying - 1
                 gen = generation
+#if FABLE_COMPILER
             | CancelPrevious -> gen = generation
+#else
+            | CancelPrevious ->
+                flying <- flying - 1
+                gen = generation
+#endif
             | Drop ->
                 if
                     not disposed
@@ -6140,10 +6221,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         retireIfQuiet ()
 
         // An owed trailing run holds the node pending as a pending source does.
-        let suspended =
-            owed
-            || not (Platform.isNull pendingSources)
-               && pendingSources.Count > 0
+        let suspended = owed || not (Platform.isNull (box pendingSource))
 
         if current && not disposed then
             match outcome with
@@ -6210,15 +6288,28 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         | Drop
         | DropWhilePending -> ()
 
+    let applyQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+        if seqNum = applied + 1 then
+            applyResult gen outcome
+
+            while not (Platform.isNull pendingQueue)
+                  && pendingQueue.Count > 0
+                  && pendingQueue.ContainsKey (applied + 1) do
+                let nextSeq = applied + 1
+                let struct (nextGen, nextOutcome) = pendingQueue[nextSeq]
+                pendingQueue.Remove nextSeq |> ignore
+                applyResult nextGen nextOutcome
+        else
+            if Platform.isNull pendingQueue then
+                pendingQueue <- Dictionary<int, struct (int * Platform.FlightOutcome<'T>)>()
+
+            pendingQueue[seqNum] <- struct (gen, outcome)
+
     let publish (gen: int) (outcome: Platform.FlightOutcome<'T>) =
         graph.Post (fun () -> applyResult gen outcome)
 
-    /// <summary>
-    /// Publishes a result chained under <c>Queue</c>. The returned task completes once the
-    /// result is applied, so the next result in the chain applies after it on any thread.
-    /// </summary>
-    let publishQueued (gen: int) (outcome: Platform.FlightOutcome<'T>) =
-        graph.DispatchApplied (fun () -> applyResult gen outcome)
+    let publishQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+        graph.Post (fun () -> applyQueued seqNum gen outcome)
 
     // Fable cannot translate a secondary constructor of a type with a
     // self-identifier. Under Fable the `Api` functions construct this type.
@@ -6308,16 +6399,31 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 unannounced <- false
 
 
+    member private this.FailLaunch(gen: int, ex: exn) =
+        match policy with
+        | FlightPolicy.Queue when queued > 0 ->
+            queued <- queued + 1
+            chained <- chained + 1
+            let seqNum = chained
+#if !FABLE_COMPILER
+            if graph.IsOnGraphThread then
+                applyQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
+            else
+                publishQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
+#else
+            publishQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
+#endif
+        | _ ->
+            failure <- graph.FailureOf (ex, this, null)
+            status <- Status.Error
+
     member private this.Launch() =
         freshness <- Freshness.Clean
         unannounced <- false
         sources.BeginRun ()
 
-        if
-            not (Platform.isNull pendingSources)
-            && pendingSources.Count > 0
-        then
-            pendingSources.Clear ()
+        if not (Platform.isNull (box pendingSource)) then
+            pendingSource <- Unchecked.defaultof<INode>
 
         // Bumped before the cancel: a superseded flight settled inline by its
         // own cancellation must already be out of date when it publishes.
@@ -6326,11 +6432,22 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         match policy with
         | CancelPrevious ->
+#if FABLE_COMPILER
             if not (Platform.isNull cts) then
                 cts.Cancel ()
                 cts.Dispose ()
 
             cts <- new CancellationTokenSource ()
+#else
+            if flying > 0 && not (Platform.isNull cts) then
+                let superseded = cts
+                cts <- null
+                superseded.Cancel ()
+                superseded.Dispose ()
+
+            if Platform.isNull cts then
+                cts <- new CancellationTokenSource ()
+#endif
         | KeepLatest
         | FlightPolicy.Queue
         | FinishCurrent
@@ -6352,19 +6469,6 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         let mutable flight = null
 
-        // A synchronous failure is a result like a faulted flight's. Under
-        // `Queue` it takes its turn behind the flights started before it.
-        let fail (ex: exn) =
-            match policy with
-            | FlightPolicy.Queue when queued > 0 ->
-                queued <- queued + 1
-                chained <- chained + 1
-                let outcome = Task.FromResult (Platform.FlightOutcome<'T>.Faulted ex)
-                tail <- Platform.after tail (fun () -> Platform.apply outcome (publishQueued gen))
-            | _ ->
-                failure <- graph.FailureOf (ex, this, null)
-                status <- Status.Error
-
         running <- running + 1
 
         try
@@ -6372,23 +6476,40 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 // A flight dropped for a pending read or a violation gets a
                 // continuation, so its rejection is handled; under Fable an
                 // unhandled rejection ends the node process.
-                let run () =
-                    let started =
 #if FABLE_COMPILER
-                        compute previous token
+                let started =
+                    graph.RunHosted (
+                        this :> IComputation,
+                        fun () ->
+                            let s = compute previous token
+
+                            if
+                                (violated || graph.RaisedPending)
+                                && not (Platform.isNull s)
+                            then
+                                Platform.outcomeOf s |> ignore
+
+                            s
+                    )
 #else
-                        Platform.runFlightBody graph.EnterContinuation graph.LeaveContinuation (fun () -> compute previous token)
+                let saved = graph.EnterHosted (this :> IComputation)
+
+                let started =
+                    try
+                        let s =
+                            Platform.runFlightBodyWith graph.EnterContinuationDelegate graph.LeaveContinuationDelegate compute previous token
+
+                        if
+                            (violated || graph.RaisedPending)
+                            && not (Platform.isNull s)
+                        then
+                            Platform.outcomeOf s |> ignore
+
+                        graph.CheckRaised ()
+                        s
+                    finally
+                        graph.LeaveHosted saved
 #endif
-
-                    if
-                        (violated || graph.RaisedPending)
-                        && not (Platform.isNull started)
-                    then
-                        Platform.outcomeOf started |> ignore
-
-                    started
-
-                let started = graph.RunHosted (this :> IComputation, run)
 
                 if violated then
                     raise (InvalidOperationException (ScopeMessages.forMode mode))
@@ -6404,39 +6525,86 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         with
         | ex when violated ->
             violated <- false
-            fail (ScopeMessages.failure mode ex)
+            this.FailLaunch (gen, ScopeMessages.failure mode ex)
         | NotReadyException source ->
             // The body suspended before it could start a flight: it read a
             // source that is itself pending. There is nothing to await, only
             // another source to wait on.
-            if Platform.isNull pendingSources then
-                pendingSources <- HashSet<INode>(HashIdentity.Reference)
-
-            pendingSources.Add source |> ignore
-        | ex -> fail ex
+            pendingSource <- source
+        | ex -> this.FailLaunch (gen, ex)
 
         if not (Platform.isNull flight) then
             let flight = flight
             Tracer.FlightStart (graph, id, gen)
-            let settle = publish gen
             launching <- true
 
             try
+#if !FABLE_COMPILER
+                if flight.IsCompleted && graph.IsOnGraphThread then
+                    let outcome = Platform.settledOutcome flight
+
+                    match policy with
+                    | FlightPolicy.Queue ->
+                        queued <- queued + 1
+                        chained <- chained + 1
+                        let seqNum = chained
+                        applyQueued seqNum gen outcome
+                    | KeepLatest
+                    | CancelPrevious ->
+                        flying <- flying + 1
+                        applyResult gen outcome
+                    | FinishCurrent
+                    | Drop
+                    | DropWhilePending ->
+                        queued <- 1
+                        applyResult gen outcome
+                else
+                    match policy with
+                    | FlightPolicy.Queue ->
+                        queued <- queued + 1
+                        chained <- chained + 1
+                        let seqNum = chained
+
+                        Platform.whenSettled flight (publishQueued seqNum gen)
+                        |> ignore
+                    | KeepLatest
+                    | CancelPrevious ->
+                        flying <- flying + 1
+
+                        Platform.whenSettled flight (publish gen)
+                        |> ignore
+                    | FinishCurrent
+                    | Drop
+                    | DropWhilePending ->
+                        queued <- 1
+
+                        Platform.whenSettled flight (publish gen)
+                        |> ignore
+#else
                 match policy with
                 | FlightPolicy.Queue ->
                     queued <- queued + 1
                     chained <- chained + 1
-                    let outcome = Platform.outcomeOf flight
-                    tail <- Platform.after tail (fun () -> Platform.apply outcome (publishQueued gen))
+                    let seqNum = chained
+
+                    Platform.whenSettled flight (publishQueued seqNum gen)
+                    |> ignore
                 | KeepLatest ->
                     flying <- flying + 1
-                    Platform.whenSettled flight settle |> ignore
+
+                    Platform.whenSettled flight (publish gen)
+                    |> ignore
+                | CancelPrevious ->
+                    Platform.whenSettled flight (publish gen)
+                    |> ignore
                 | FinishCurrent
                 | Drop
                 | DropWhilePending ->
                     queued <- 1
-                    Platform.whenSettled flight settle |> ignore
-                | CancelPrevious -> Platform.whenSettled flight settle |> ignore
+
+                    Platform.whenSettled flight (publish gen)
+                    |> ignore
+#endif
             finally
                 launching <- false
 
@@ -6708,8 +6876,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                         source.Dispose ()
 
                     if status.HasFlag Status.Pending then
-                        if not (Platform.isNull pendingSources) then
-                            pendingSources.Clear ()
+                        pendingSource <- Unchecked.defaultof<INode>
 
                         failure <- Failure (ObjectDisposedException (this.GetType().Name), (this :> INode))
                         status <- Status.Error
@@ -6758,11 +6925,13 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     /// Under <c>FinishCurrent</c>, <c>Drop</c> and <c>DropWhilePending</c>, a source is listed only by a run that started
     /// no flight.
     /// </remarks>
+    member internal _.PendingSource = pendingSource
+
     member _.PendingSources =
-        if Platform.isNull pendingSources then
+        if Platform.isNull (box pendingSource) then
             Seq.empty
         else
-            pendingSources :> seq<INode>
+            [| pendingSource |] :> seq<INode>
 
     /// <summary>
     /// How many times the body has run, including runs that suspended or threw before starting a flight.
@@ -6865,7 +7034,8 @@ type Boundary<'T>
     do Tracer.Bind (observers, graph, id)
     let sources = SourceList ()
     do Tracer.Bind (sources, graph, id)
-    let mutable pendingSources: HashSet<INode> = null
+    let mutable pendingFirst: INode = Unchecked.defaultof<INode>
+    let mutable pendingSecond: INode = Unchecked.defaultof<INode>
 
     let mutable freshness = Freshness.Dirty
     let mutable status = Status.Uninitialized
@@ -6946,6 +7116,52 @@ type Boundary<'T>
                 unannounced <- false
 
 
+    member private _.RecordPending(source: INode) =
+        if Platform.isNull (box pendingFirst) then
+            pendingFirst <- source
+        elif not (obj.ReferenceEquals (pendingFirst, source)) then
+            pendingSecond <- source
+
+    // Nothing to show and nothing to report: what this is, is waiting.
+    // Keeps the previous value, which is all `Peek` ever promised.
+    member private this.Suspend(source: INode) : 'T =
+        graph.ClearRaised ()
+        this.RecordPending source
+        status <- Status.Pending
+        value
+
+    member private this.RecoverOrFail(ex: exn, last: 'T voption, previousFailure: Failure, previousCaught: Failure) : 'T =
+        graph.ClearRaised ()
+
+        match onError with
+        | ValueSome recover ->
+            // Taken before `recover` runs: a failed read inside it replaces the last failed read.
+            let from = graph.FailureOf (ex, this, previousCaught)
+
+            try
+                let recovered = recover ex last
+                graph.CheckRaised ()
+                caught <- from
+                recovered
+            with
+            | NotReadyException inner -> this.Suspend inner
+            | rethrown ->
+                graph.ClearRaised ()
+
+                failure <-
+                    if obj.ReferenceEquals (rethrown, ex) then
+                        from
+                    else
+                        graph.FailureOf (rethrown, this, previousFailure)
+
+                status <- Status.Error
+                value
+
+        | ValueNone ->
+            failure <- graph.FailureOf (ex, this, previousFailure)
+            status <- Status.Error
+            value
+
     member private this.Run() =
         // Clean before the body runs, for the reason given on Memo.Recompute:
         // an invalidation raised while the body is running has to survive it.
@@ -6953,11 +7169,11 @@ type Boundary<'T>
         unannounced <- false
         sources.BeginRun ()
 
-        if
-            not (Platform.isNull pendingSources)
-            && pendingSources.Count > 0
-        then
-            pendingSources.Clear ()
+        if not (Platform.isNull (box pendingFirst)) then
+            pendingFirst <- Unchecked.defaultof<INode>
+
+            if not (Platform.isNull (box pendingSecond)) then
+                pendingSecond <- Unchecked.defaultof<INode>
 
         // Captured before the run overwrites them, to decide at the end whether
         // the observers told `Check` are owed a `Dirty`. `waiting` is part of
@@ -6980,97 +7196,77 @@ type Boundary<'T>
 
         let last = if shown then ValueSome previous else ValueNone
 
-        let recordPending (source: INode) =
-            if Platform.isNull pendingSources then
-                pendingSources <- HashSet<INode>(HashIdentity.Reference)
-
-            pendingSources.Add source |> ignore
-
-        // A handler is ordinary caller code and can do anything the body can,
-        // including read a source that has not settled and throw. Running it in
-        // the `with` of the body's own `try` put it outside every handler this
-        // boundary has, so a fallback that suspended threw straight out of
-        // `TryValue` — a boundary failing in the exact way it exists to
-        // prevent. Both handlers therefore run under their own guard, and their
-        // outcome is classified the way the body's is.
-        //
-        // They also run inside the tracked region, because the boundary's value
-        // *is* the handler's value: whatever the fallback reads has to be able
-        // to wake the boundary, or a fallback waiting on its own source waits
-        // for ever.
-        let rec recoverOrFail (ex: exn) =
-            graph.ClearRaised ()
-
-            match onError with
-            | ValueSome recover ->
-                // Taken before `recover` runs: a failed read inside it replaces the last failed read.
-                let from = graph.FailureOf (ex, this, previousCaught)
-
-                try
-                    let recovered = recover ex last
-                    graph.CheckRaised ()
-                    caught <- from
-                    recovered
-                with
-                | NotReadyException inner -> suspend inner
-                | rethrown ->
-                    graph.ClearRaised ()
-
-                    failure <-
-                        if obj.ReferenceEquals (rethrown, ex) then
-                            from
-                        else
-                            graph.FailureOf (rethrown, this, previousFailure)
-
-                    status <- Status.Error
-                    value
-
-            | ValueNone ->
-                failure <- graph.FailureOf (ex, this, previousFailure)
-                status <- Status.Error
-                value
-
-        // Nothing to show and nothing to report: what this is, is waiting.
-        // Keeps the previous value, which is all `Peek` ever promised.
-        and suspend (source: INode) =
-            graph.ClearRaised ()
-            recordPending source
-            status <- Status.Pending
-            value
-
-        let run () =
-            try
-                let result = body ()
-                graph.CheckRaised ()
-                result
-            with
-            | NotReadyException source ->
-                graph.ClearRaised ()
-                recordPending source
-
-                match onPending with
-                | ValueSome fallback ->
-                    // Caught: the status stays clear, so nothing downstream
-                    // ever sees Pending. The edge to `source` is already
-                    // linked, which is what brings us back here when it
-                    // settles.
-                    try
-                        let substitute = fallback last
-                        graph.CheckRaised ()
-                        waiting <- true
-                        substitute
-                    with
-                    | NotReadyException inner -> suspend inner
-                    | ex -> recoverOrFail ex
-
-                | ValueNone -> suspend source
-
-            | ex -> recoverOrFail ex
-
         active <- 1
 
         try
-            value <- graph.RunHosted (this :> IComputation, run)
+#if FABLE_COMPILER
+            value <-
+                graph.RunHosted (
+                    this :> IComputation,
+                    fun () ->
+                        try
+                            let result = body ()
+                            graph.CheckRaised ()
+                            result
+                        with
+                        | NotReadyException source ->
+                            graph.ClearRaised ()
+                            this.RecordPending source
+
+                            match onPending with
+                            | ValueSome fallback ->
+                                // Caught: the status stays clear, so nothing downstream
+                                // ever sees Pending. The edge to `source` is already
+                                // linked, which is what brings us back here when it
+                                // settles.
+                                try
+                                    let substitute = fallback last
+                                    graph.CheckRaised ()
+                                    waiting <- true
+                                    substitute
+                                with
+                                | NotReadyException inner -> this.Suspend inner
+                                | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
+
+                            | ValueNone -> this.Suspend source
+
+                        | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
+                )
+#else
+            let saved = graph.EnterHosted (this :> IComputation)
+
+            try
+                value <-
+                    try
+                        let result = body ()
+                        graph.CheckRaised ()
+                        result
+                    with
+                    | NotReadyException source ->
+                        graph.ClearRaised ()
+                        this.RecordPending source
+
+                        match onPending with
+                        | ValueSome fallback ->
+                            // Caught: the status stays clear, so nothing downstream
+                            // ever sees Pending. The edge to `source` is already
+                            // linked, which is what brings us back here when it
+                            // settles.
+                            try
+                                let substitute = fallback last
+                                graph.CheckRaised ()
+                                waiting <- true
+                                substitute
+                            with
+                            | NotReadyException inner -> this.Suspend inner
+                            | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
+
+                        | ValueNone -> this.Suspend source
+
+                    | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
+            finally
+                graph.LeaveHosted saved
+#endif
         finally
             active <- 0
 
@@ -7481,10 +7677,12 @@ type Boundary<'T>
     /// recover suspended on; empty when the run did not suspend.
     /// </summary>
     member _.PendingSources =
-        if Platform.isNull pendingSources then
+        if Platform.isNull (box pendingFirst) then
             Seq.empty
+        elif Platform.isNull (box pendingSecond) then
+            [| pendingFirst |] :> seq<INode>
         else
-            pendingSources :> seq<INode>
+            [| pendingFirst; pendingSecond |] :> seq<INode>
 
     /// <summary>
     /// How many times the body has run.

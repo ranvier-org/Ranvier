@@ -39,17 +39,6 @@ const differences = {
         "an async memo whose task captures a pending read is pending",
         "a write after an await in an async memo's body is not journaled",
     ],
-    "A `Queue` flight applies on a later microtask": [
-        "Queue applies every result in the order the flights started",
-        "Queue shows an applied outcome while a later flight is in progress",
-        "the Queue policy applies a failure in the middle without losing what follows",
-        "the Queue policy applies a synchronous failure after the flight started before it",
-        "the Queue policy keeps a run suspended on a source pending when an older flight lands",
-        "Queue drops a failure that settles while the newest run waits on a source as Suspended",
-        "async memos with different policies in one graph fly independently",
-        "a node without a policy follows the graph's beside one with its own",
-        "an owning async memo takes its own policy",
-    ],
     "Trace records carry less": [
         "a node reports the test's file:line",
         "a node created through a combinator reports the user's line",
