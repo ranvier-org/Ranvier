@@ -2540,6 +2540,27 @@ let tests =
                         Expect.equal (incarnations true) twin "the live child keeps its incarnation"
                     }
 
+                    test "createEffectOn records 1-based monotonic RunStart numbers" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let s = Signal (g, 1)
+                        let seen = ResizeArray<int>()
+                        Api.createEffectOn (fun () -> s.Value) (fun v -> seen.Add v)
+                        s.Value <- 2
+                        s.Value <- 3
+
+                        let effectNode =
+                            ofKind TraceEventKind.NodeNew g
+                            |> Array.find (fun e -> enum<TraceNodeKind> e.Arg = TraceNodeKind.Effect)
+
+                        let runArgs =
+                            ofKind TraceEventKind.RunStart g
+                            |> Array.filter (fun e -> e.Node = effectNode.Node)
+                            |> Array.map _.Arg
+
+                        Expect.sequenceEqual runArgs [| 1; 2; 3 |] "RunStart numbers are 1, 2, 3"
+                    }
+
 #if !FABLE_COMPILER
                     // .NET only: TraceModel.parseDump is .NET only.
                     test "a checkpointed dump parses back to the live snapshot" {

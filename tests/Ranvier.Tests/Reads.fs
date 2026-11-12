@@ -274,5 +274,24 @@ let tests =
                 Expect.stringContains second.StackTrace (nameof failInNamedHelper) "the trace names the throw site"
                 Expect.equal second.StackTrace firstTrace "a repeated read leaves the trace unchanged"
             }
+
+            test "reusing one exception across AsyncSource.Fail calls does not accumulate rethrow frames" {
+                let g = new Graph ()
+                let shared = exn "load failed"
+
+                let readOnce () =
+                    let s = AsyncSource<int> g
+                    s.Fail shared
+                    let m = Make.Memo (g, (fun _ -> s.Value + 1))
+                    (readFailure (fun () -> m.Value)).StackTrace
+
+                let firstTrace = readOnce ()
+
+                for _ in 1..20 do
+                    readOnce () |> ignore
+
+                let laterTrace = readOnce ()
+                Expect.equal laterTrace firstTrace "each source rethrows from the same baseline capture"
+            }
 #endif
         ]

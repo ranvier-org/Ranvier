@@ -599,6 +599,50 @@ let tests =
                 s.Value <- 2
                 Expect.equal m.Value 2 "the graph is intact after the rejected calls"
             }
+
+            test "runWithOwner rejects concurrent entry under Serialised affinity" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            ThreadAffinity = Serialised
+                        }
+                    )
+
+                use _ = g.Activate ()
+                let owner = Api.createRoot id
+                use entered = new ManualResetEventSlim false
+                use release = new ManualResetEventSlim false
+                let mutable concurrentMessage: string option = None
+
+                let holder =
+                    Thread (
+                        ThreadStart (fun () ->
+                            g.Batch (fun () ->
+                                entered.Set ()
+                                release.Wait () |> ignore))
+                    )
+
+                holder.Start ()
+                entered.Wait () |> ignore
+
+                let waiter =
+                    Thread (
+                        ThreadStart (fun () ->
+                            try
+                                Api.runWithOwner owner (fun () -> ())
+                            with :? InvalidOperationException as ex ->
+                                concurrentMessage <- Some ex.Message)
+                    )
+
+                waiter.Start ()
+                waiter.Join ()
+                release.Set ()
+                holder.Join ()
+
+                match concurrentMessage with
+                | Some text -> Expect.stringContains text "Running with an owner ran on thread" "concurrent entry is rejected"
+                | None -> failtest "runWithOwner entered concurrently without raising"
+            }
 #endif
 
 #if !FABLE_COMPILER

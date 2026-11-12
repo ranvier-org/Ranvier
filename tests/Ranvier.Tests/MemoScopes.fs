@@ -282,6 +282,17 @@ let tests =
                 Expect.throwsT<InvalidOperationException> (fun () -> m.Value |> ignore) "a pure body cannot own nodes"
             }
 
+            test "runWithOwner rejects a null owner" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        runWithOwner Unchecked.defaultof<Owner> (fun () -> 1)
+                        |> ignore)
+                    "null owner raises"
+            }
+
             test "a projection's source owns the nodes it creates, and discharges them before the next pass" {
                 use g = new Graph ()
                 use _ = g.Activate ()

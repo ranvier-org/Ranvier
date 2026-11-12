@@ -76,6 +76,18 @@ module internal Platform =
 #endif
 
     /// <summary>
+    /// Disposes a <c>CancellationTokenRegistration</c>; a no-op on <c>Unchecked.defaultof</c> under both runtimes.
+    /// </summary>
+#if FABLE_COMPILER
+    let inline disposeRegistration (reg: CancellationTokenRegistration) =
+        if not (isNull (box reg)) then
+            (reg :> IDisposable).Dispose()
+#else
+    let inline disposeRegistration (reg: CancellationTokenRegistration) =
+        reg.Dispose ()
+#endif
+
+    /// <summary>
     /// How a flight ended.
     /// </summary>
     [<Struct; NoComparison; NoEquality>]
@@ -401,7 +413,17 @@ module internal Platform =
     let inline captureFailure (held: CapturedFailure) (error: exn) : CapturedFailure =
         ignore held
         error
+
+    let inline captureSuppliedFailure (error: exn) : CapturedFailure = error
 #else
+    let private suppliedFailures =
+        System.Runtime.CompilerServices.ConditionalWeakTable<exn, System.Runtime.ExceptionServices.ExceptionDispatchInfo>()
+
+    let private createSuppliedFailure =
+        System.Runtime.CompilerServices.ConditionalWeakTable<exn, System.Runtime.ExceptionServices.ExceptionDispatchInfo>.CreateValueCallback(
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture
+        )
+
     let captureFailure (held: CapturedFailure) (error: exn) : CapturedFailure =
         if
             not (isNull held)
@@ -410,6 +432,14 @@ module internal Platform =
             held
         else
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture error
+
+    /// <summary>
+    /// The baseline capture of an exception supplied as a value rather than caught at a synchronous throw site, cached
+    /// weakly per instance so repeated <c>Fail</c> or fault deliveries of the same exception do not accumulate rethrow
+    /// frames.
+    /// </summary>
+    let captureSuppliedFailure (error: exn) : CapturedFailure =
+        suppliedFailures.GetValue (error, createSuppliedFailure)
 #endif
 
     /// <summary>
