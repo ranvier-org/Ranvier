@@ -36,14 +36,14 @@ dispatch runs inline, affinity checks are omitted, `IsOnGraphThread` is true, an
 | `Journal.key`, `Journal.keySource`, `Journal.messages`, `Journal.replay`, `Journal.work` | Owning | Raise `InvalidOperationException` on a graph with a journal. | As a write. |
 | `Journal.produce` | Any | `produce` queues its input, as `Dispatch` does. On the owning thread, it runs inline. | As `Dispatch`. |
 
-Under `Guarded`, the affinity check compares the calling thread with the thread that constructed the graph.
+Under `Guarded`, the affinity check compares the calling thread with the thread that constructed the graph ([`guarded_enter_iff_owner`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#guarded_enter_iff_owner), [`guarded_enter_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#guarded_enter_spec)).
 The check depends on the thread alone: a second thread that has the owning thread's
 `SynchronizationContext` installed still fails the check. The check therefore holds on hosts where a context
 can be installed on more than one thread, such as a Blazor Server renderer
 ([aspnetcore#69323](https://github.com/dotnet/aspnetcore/issues/69323)).
 
 `ThreadAffinity.Unchecked` removes the check. The caller then guarantees that one thread at a time touches
-the graph. `ThreadAffinity.Serialised` replaces it with a check that one thread at a time is inside the graph.
+the graph. `ThreadAffinity.Serialised` replaces it with a check that one thread at a time is inside the graph ([`serialised_acquire_mutual_exclusion`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#serialised_acquire_mutual_exclusion), [`serialised_acquire_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#serialised_acquire_spec)).
 
 ### Where work runs
 
@@ -88,10 +88,10 @@ thread pool against a graph owned by a dedicated thread.
 | Called on the owning thread | `work` runs before the call returns, and the task is already complete or faulted. |
 | Called from another thread | `work` joins the inbox behind earlier `Dispatch`, `DispatchAsync`, settle and flight items, and runs in arrival order. Under `ManualDispatcher` the task completes at the owner's next `Pump ()`. |
 | Graph disposed at the call | Faults with `ObjectDisposedException`; `work` does not run and nothing is queued. |
-| Graph disposed while the item waits | Faults with `ObjectDisposedException` during `Dispose`; a later drain skips `work`. |
+| Graph disposed while the item waits | Faults with `ObjectDisposedException` during `Dispose`; a later drain skips `work` ([`pending_dispatch_claim_exclusive`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#pending_dispatch_claim_exclusive), [`pending_dispatch_close_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#pending_dispatch_close_spec)). |
 | `cancellationToken` cancelled at the call | Cancelled; nothing is queued. |
-| `cancellationToken` cancelled while the item waits | Cancelled at once; the drain skips `work`. |
-| `cancellationToken` cancelled after `work` starts | Completes with `work`'s outcome. |
+| `cancellationToken` cancelled while the item waits | Cancelled at once; the drain skips `work` ([`pending_dispatch_claim_exclusive`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#pending_dispatch_claim_exclusive)). |
+| `cancellationToken` cancelled after `work` starts | Completes with `work`'s outcome ([`pending_dispatch_claim_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#pending_dispatch_claim_spec)). |
 
 - **Effects.** Completion marks the end of `work`, not of what it triggers. Effects woken by its writes run as
   they do for `Dispatch` work: at the write, or at the end of a batch `work` opens, before the task completes.
@@ -124,13 +124,13 @@ run on a different pool thread. A graph for such a host is constructed with
 `GraphOptions.Default.WithThreadAffinity Serialised`, on that context:
 
 - **Entry.** Each operation in the table above enters the graph for its duration. The calling thread must
-  have the construction context installed, and no other thread may be inside the graph. Either failure raises
-  `InvalidOperationException` before the graph changes. Nested entries on the thread inside the graph proceed.
+  have the construction context installed, and no other thread may be inside the graph ([`serialised_acquire_mutual_exclusion`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#serialised_acquire_mutual_exclusion), [`serialised_acquire_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#serialised_acquire_spec)). Either failure raises
+  `InvalidOperationException` before the graph changes. Nested entries on the thread inside the graph proceed ([`serialised_reentrant_preserves_holder`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#serialised_reentrant_preserves_holder)).
 - **Queued work.** `Dispatch`, `Settle`, `Fail` and flight completions run inline only on the thread inside
   the graph. From any other thread they wait in the inbox for a drain on the context, so settles run
-  serialised with the host's other work.
+  serialised with the host's other work ([`post_queued_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#post_queued_spec)).
 - **Held graph.** A drain that finds another thread inside the graph leaves the work queued. The thread
-  inside posts a new drain when it leaves.
+  inside posts a new drain when it leaves ([`serialised_release_reposts_nonempty_inbox`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#serialised_release_reposts_nonempty_inbox), [`serialised_release_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#serialised_release_spec)).
 - **Node creation** outside an enclosing entry checks the caller and does not hold the graph. Inside
   `createRoot`, a body or a batch, the enclosing entry holds it.
 - **`IsOnGraphThread`** is true on the thread inside the graph.
@@ -184,7 +184,7 @@ Recovery happens through re-runs alone.
 | An effect body | Recorded on the effect's `Status` and `Error`. Every effect queued behind it in the flush still runs ([`body_failure_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#body_failure_contained), [`drain_continues`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#drain_continues), [`drain_no_escape`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Scheduler.html#drain_no_escape)). |
 | A boundary's `fallback` or `recover` | The boundary fails with that exception. |
 | A cleanup | Recorded, and the remaining cleanups and disposals still run ([`cleanup_failure_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#cleanup_failure_contained), [`teardown_continues`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#teardown_continues)). A `createRoot` scope keeps the error in its own `Errors`; a computation's scope records it in `graph.Root.Errors`. |
-| Work drained from the inbox | Recorded in `graph.Root.Errors`, and the rest of the inbox still runs. |
+| Work drained from the inbox | Recorded in `graph.Root.Errors`, and the rest of the inbox still runs ([`inbox_drain_fifo_fault_isolated`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#inbox_drain_fifo_fault_isolated)). |
 | `DispatchAsync` work | Faults the returned task with that exception. `graph.Root.Errors` stays unchanged, and the rest of the inbox still runs. |
 | A signal's equality comparer | The write raises to the writer. The value stays unchanged, and readers stay asleep. |
 | The equality comparer of a memo, boundary, projection row, fold or lookup cell | The node fails with that exception and keeps its previous value, and its readers wake to see the failure ([`comparer_throw_contained`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#comparer_throw_contained), [`memo_comparer_replaces_failure`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Ownership.html#memo_comparer_replaces_failure)). A boundary's `recover` does not see it. |
