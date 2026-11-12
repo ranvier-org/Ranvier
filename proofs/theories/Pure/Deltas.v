@@ -30,7 +30,15 @@ specifications required by delta readers:
      `pd_is_reset = true` with `pd_changes = ∅`.
    - `projection_reader_read_advances_cursor`: `pr_read` delivers `(current_keys, pr_cursor)`, clears
      `pr_reset` and `pr_changes`, and advances `pr_cursor` to `current_keys`, so a subsequent read with
-     no intervening changes reports `pd_is_empty = true`. *)
+     no intervening changes reports `pd_is_empty = true`.
+4. **Delta-driven `ProjectionFold` membership sync and non-invertible reorder completeness (`Combinators.fs` lines 1004–1085)**:
+   - `fold_delta_sync_refines_diff`: applying two-phase `KcRemoved`/`KcReplaced` detach and
+     `KcAdded`/`KcReplaced` attach over any `NoDup` enumeration of `pd_changes` yields the exact
+     upstream `cur_entries` map in $O(\Delta)$, matching the $O(N)$ `Diff` fallback used when
+     `pd_is_reset = true`.
+   - `fold_pure_reorder_invariants`: on a pure upstream reorder (`pd_is_reset = false`, `pairs = []`,
+     `pd_order_changed = true`), `foldGroup` (`invertible = true`) performs zero row-map or fold updates,
+     whereas `fold` (`invertible = false`) marks `full = true` so `Recompute` re-folds in the new key order. *)
 
 (** ** 1. KeyChange and KeyChanges.Record coalescing algebra *)
 
@@ -338,4 +346,173 @@ Proof.
     rewrite (bool_decide_eq_false_2 (current_keys ≠ current_keys) (fun H => H eq_refl));
     rewrite map_size_empty; simpl;
     repeat split; reflexivity.
+Qed.
+
+(** ** 4. Delta-driven ProjectionFold membership sync and non-invertible reorder completeness *)
+
+Definition fold_detach_one {E : Type} (m : gmap nat E) (kc : nat * key_change) : gmap nat E :=
+  match kc.2 with
+  | KcRemoved | KcReplaced => delete kc.1 m
+  | KcAdded | KcChanged => m
+  end.
+
+Definition fold_attach_one {E : Type} (cur_entries : gmap nat E)
+    (m : gmap nat E) (kc : nat * key_change) : gmap nat E :=
+  match kc.2 with
+  | KcAdded | KcReplaced =>
+      match cur_entries !! kc.1 with
+      | Some e => <[kc.1 := e]> m
+      | None => m
+      end
+  | KcRemoved | KcChanged => m
+  end.
+
+Definition fold_apply_delta {E : Type} (cur_entries : gmap nat E)
+    (pairs : list (nat * key_change)) (rows : gmap nat E) : gmap nat E :=
+  let m1 := foldl fold_detach_one rows pairs in
+  foldl (fold_attach_one cur_entries) m1 pairs.
+
+Definition fold_sync_membership {E : Type}
+    (invertible had_keys : bool) (cur_entries : gmap nat E)
+    (pairs : list (nat * key_change)) (d : proj_delta_state)
+    (rows : gmap nat E) (full : bool) : gmap nat E * bool :=
+  let rows' :=
+    if pd_is_reset d then cur_entries
+    else if decide (length pairs = 0) then rows
+    else fold_apply_delta cur_entries pairs rows in
+  let full' :=
+    if negb invertible && had_keys && pd_order_changed d then true else full in
+  (rows', full').
+
+Lemma fold_detach_lookup {E : Type}
+    (pairs : list (nat * key_change)) (rows : gmap nat E) (q : nat) :
+  NoDup (fst <$> pairs) ->
+  foldl fold_detach_one rows pairs !! q =
+    match (list_to_map pairs : gmap nat key_change) !! q with
+    | Some KcRemoved | Some KcReplaced => None
+    | _ => rows !! q
+    end.
+Proof.
+  revert rows.
+  induction pairs as [|[k c] rest IH]; intros rows Hnd; simpl in *.
+  - by rewrite lookup_empty.
+  - inversion Hnd as [|x l Hnin Hnd_rest]; subst x l.
+    rewrite (IH _ Hnd_rest).
+    destruct (decide (q = k)) as [->|Hne].
+    + rewrite lookup_insert_eq.
+      rewrite (not_elem_of_list_to_map_1 rest k Hnin).
+      unfold fold_detach_one; simpl.
+      destruct c; simpl; try reflexivity; by rewrite lookup_delete_eq.
+    + rewrite lookup_insert_ne; [|symmetry; exact Hne].
+      assert (Hq : fold_detach_one rows (k, c) !! q = rows !! q).
+      { unfold fold_detach_one; simpl.
+        destruct c; try reflexivity; apply lookup_delete_ne; symmetry; exact Hne. }
+      by rewrite Hq.
+Qed.
+
+Lemma fold_attach_lookup {E : Type}
+    (cur_entries : gmap nat E) (pairs : list (nat * key_change)) (m1 : gmap nat E) (q : nat) :
+  NoDup (fst <$> pairs) ->
+  foldl (fold_attach_one cur_entries) m1 pairs !! q =
+    match (list_to_map pairs : gmap nat key_change) !! q with
+    | Some KcAdded | Some KcReplaced =>
+        match cur_entries !! q with
+        | Some e => Some e
+        | None => m1 !! q
+        end
+    | _ => m1 !! q
+    end.
+Proof.
+  revert m1.
+  induction pairs as [|[k c] rest IH]; intros m1 Hnd; simpl in *.
+  - by rewrite lookup_empty.
+  - inversion Hnd as [|x l Hnin Hnd_rest]; subst x l.
+    rewrite (IH _ Hnd_rest).
+    destruct (decide (q = k)) as [->|Hne].
+    + rewrite lookup_insert_eq.
+      rewrite (not_elem_of_list_to_map_1 rest k Hnin).
+      unfold fold_attach_one; simpl.
+      destruct c; simpl; try reflexivity;
+        destruct (cur_entries !! k) as [e|]; try reflexivity;
+        by rewrite lookup_insert_eq.
+    + rewrite lookup_insert_ne; [|symmetry; exact Hne].
+      assert (Hq : fold_attach_one cur_entries m1 (k, c) !! q = m1 !! q).
+      { unfold fold_attach_one; simpl.
+        destruct c; try reflexivity;
+          destruct (cur_entries !! k) as [e|]; try reflexivity;
+          apply lookup_insert_ne; symmetry; exact Hne. }
+      by rewrite Hq.
+Qed.
+
+(**md
+**`ProjectionFold.Sync` refines `upstream.Entries` in $O(\Delta)$ on normal deltas (for any `NoDup` enumeration order of `pd_changes`) and via `Diff` when `pd_is_reset = true` (`Combinators.fs` lines 1004–1085).**
+
+- [E:] the upstream row-entry type (`RowEntry<'K, 'V>`).
+- [invertible:] `true` for `foldGroup`, `false` for `fold`.
+- [had_keys:] `true` after the fold's initial read.
+- [cur_entries:] the current `upstream.Entries` map.
+- [rows:] the fold's `rows` map from the previous read.
+- [pairs:] the dense `KeyChanges` array entries enumerated by `0 .. delta.ChangeCount - 1`.
+- [d:] the `ProjectionDelta` returned by `keyReader.Read()`.
+- [full:] the `full` recompute flag entering `Sync`.
+*)
+Theorem fold_delta_sync_refines_diff {E : Type}
+    (invertible had_keys : bool) (cur_entries rows : gmap nat E)
+    (pairs : list (nat * key_change)) (d : proj_delta_state) (full : bool) :
+  (pd_is_reset d = false ->
+   NoDup (fst <$> pairs) /\
+   pd_changes d = list_to_map pairs /\
+   (forall q,
+      (pd_changes d !! q = Some KcRemoved -> cur_entries !! q = None) /\
+      (pd_changes d !! q = Some KcAdded -> is_Some (cur_entries !! q)) /\
+      (pd_changes d !! q = Some KcReplaced -> is_Some (cur_entries !! q)) /\
+      (pd_changes d !! q = None \/ pd_changes d !! q = Some KcChanged ->
+       cur_entries !! q = rows !! q))) ->
+  fst (fold_sync_membership invertible had_keys cur_entries pairs d rows full) = cur_entries.
+Proof.
+  intros Hcoh.
+  unfold fold_sync_membership; simpl.
+  destruct (pd_is_reset d) eqn:Eres; [reflexivity|].
+  destruct (Hcoh eq_refl) as (Hnd & Hmap & Hkeys).
+  destruct (decide (length pairs = 0)) as [Hlen|Hlen].
+  - apply nil_length_inv in Hlen; subst pairs.
+    simpl in Hmap.
+    apply map_eq; intros q.
+    destruct (Hkeys q) as (_ & _ & _ & Hsame).
+    symmetry. apply Hsame. left. rewrite Hmap. apply lookup_empty.
+  - unfold fold_apply_delta.
+    apply map_eq; intros q.
+    rewrite (fold_attach_lookup cur_entries pairs _ q Hnd).
+    rewrite (fold_detach_lookup pairs rows q Hnd).
+    rewrite <- Hmap.
+    destruct (Hkeys q) as (Hrem & Hadd & Hrep & Hsame).
+    destruct (pd_changes d !! q) as [c|] eqn:Eqc.
+    + destruct c.
+      * destruct (Hadd eq_refl) as [e He]. by rewrite He.
+      * symmetry. exact (Hrem eq_refl).
+      * destruct (Hrep eq_refl) as [e He]. by rewrite He.
+      * symmetry. apply Hsame. by right.
+    + symmetry. apply Hsame. by left.
+Qed.
+
+(**md
+**On a pure upstream reorder (`pd_is_reset d = false`, `pairs = []`, `had_keys = true`, `pd_order_changed d = true`), `foldGroup` (`invertible = true`) leaves `(rows, full)` untouched, whereas `fold` (`invertible = false`) sets `full = true` so `Recompute` folds in the new key order (`Combinators.fs` lines 1072–1085).**
+
+- [E:] the upstream row-entry type.
+- [cur_entries:] the current `upstream.Entries` map.
+- [rows:] the fold's `rows` map.
+- [d:] a pure-reorder `ProjectionDelta`.
+- [full:] the `full` recompute flag entering `Sync`.
+*)
+Theorem fold_pure_reorder_invariants {E : Type}
+    (cur_entries rows : gmap nat E) (d : proj_delta_state) (full : bool) :
+  pd_is_reset d = false ->
+  pd_order_changed d = true ->
+  fold_sync_membership true true cur_entries [] d rows full = (rows, full) /\
+  fold_sync_membership false true cur_entries [] d rows full = (rows, true).
+Proof.
+  intros Hres Hord.
+  unfold fold_sync_membership.
+  rewrite Hres, Hord; simpl.
+  split; reflexivity.
 Qed.

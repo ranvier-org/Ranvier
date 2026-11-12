@@ -30,6 +30,9 @@ type internal KeyChanges<'K when 'K: equality>() =
 
     member _.Size = pairs.Count
 
+    member internal _.EntryAt(index: int) =
+        Platform.entryAt index pairs
+
     /// <summary>
     /// Merges <c>change</c> into the key's pending change: <c>Added</c> then <c>Removed</c> drops the key, and <c>Removed</c>
     /// then <c>Added</c> gives <c>Replaced</c>.
@@ -92,6 +95,11 @@ type ProjectionDelta<'K when 'K: equality> internal (changes: KeyChanges<'K>, ke
 
     /// <summary>One entry per changed key, in an unspecified order. Empty on a reset.</summary>
     member _.Changes: IReadOnlyCollection<KeyValuePair<'K, KeyChange>> = changes
+
+    member internal _.ChangeCount = changes.Size
+
+    member internal _.ChangeAt(index: int) =
+        changes.EntryAt index
 
     /// <summary>The key order at this read: the array the projection's <c>Keys</c> returned. Empty after the projection is disposed.</summary>
     member _.Keys = keys
@@ -234,7 +242,7 @@ and
             idle <- Unchecked.defaultof<ProjectionDelta<'K>>
             delta
 
-    member private this.Stop() =
+    member internal this.Stop() =
         if not disposed then
             disposed <- true
 
