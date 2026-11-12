@@ -407,6 +407,7 @@ Print Assumptions key_direct_row_retire_wakes_without_item_signal.
 Print Assumptions choose_gate_cutoff_and_classification.
 Print Assumptions lazy_held_out_refines_eager.
 Print Assumptions lookup_invalidate_pooled_refines_union.
+Print Assumptions sortview_reinsert_refines_sort.
 Print Assumptions Ranvier.Heap.Collections.world_direct_link_spec.
 Print Assumptions Ranvier.Heap.Collections.world_direct_unlink_spec.
 Print Assumptions Ranvier.Heap.Collections.forwarding_edge_moved_in_spec.

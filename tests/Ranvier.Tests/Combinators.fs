@@ -934,6 +934,42 @@ let sortByTests =
                             source.Value <- setN 10 5000 source.Value
                             Expect.isLessThan comparisons.Value 10 "an edit of a non-holder costs O(1) comparisons"
                         }
+
+                        test "a single changed sort key reinserts in O(log N) search comparisons across moves and ties" {
+                            use g = new Graph ()
+                            use _ = g.Activate ()
+                            let source = createSignal (items [ for i in 1..1000 -> i, i * 2 ])
+                            let asc = rows source |> Projection.sortBy Counted
+                            let desc = rows source |> Projection.sortByDescending Counted
+
+                            keysAndRows asc |> ignore
+                            keysAndRows desc |> ignore
+
+                            let check label key nextVal =
+                                comparisons.Value <- 0
+                                source.Value <- setN key nextVal source.Value
+                                // Per view: 1000 rank-diff checks + at most ceil(log2 999) = 10 binary-search comparisons (+ 1 memo cutoff).
+                                Expect.isLessThan comparisons.Value 2050 $"{label}: O(N + log N) comparisons across both views, not O(N log N)"
+
+                                let expectedAsc =
+                                    source.Value
+                                    |> List.sortBy (fun x -> x.N)
+                                    |> List.map (fun x -> x.Id)
+
+                                let expectedDesc =
+                                    source.Value
+                                    |> List.sortByDescending (fun x -> x.N)
+                                    |> List.map (fun x -> x.Id)
+
+                                Expect.sequenceEqual asc.Keys expectedAsc $"{label}: sortBy matches full sort"
+                                Expect.sequenceEqual desc.Keys expectedDesc $"{label}: sortByDescending matches full sort"
+
+                            check "first to last" 1 5000
+                            check "last to first" 1 0
+                            check "middle forward into tie" 500 1500
+                            check "middle backward into tie" 500 500
+                            check "in-place rank change keeping slot" 500 501
+                        }
                     ]
             )
 
