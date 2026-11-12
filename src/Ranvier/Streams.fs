@@ -41,6 +41,8 @@ type internal IStreamRequester =
     /// <summary>Posts one wake to the graph while none is outstanding. Called off the graph thread.</summary>
     abstract RequestOffGraph: unit -> unit
 #endif
+    /// <summary>Reports an exception thrown by the fold for run <c>gen</c>.</summary>
+    abstract ReportFoldFailure: gen: int * error: exn -> unit
 
 /// <summary>The state of one started stream, shared by its producer and the graph thread.</summary>
 type internal IStreamRun<'S> =
@@ -52,6 +54,8 @@ type internal IStreamRun<'S> =
     abstract Received: bool
     /// <summary>Ignores every later item.</summary>
     abstract Close: unit -> unit
+    /// <summary>Starts the producer against this run's sink and token.</summary>
+    abstract RunSource: unit -> Task
 
 /// <summary>The mutual exclusion guarding a stream run's state; a no-op under Fable.</summary>
 #if NET9_0_OR_GREATER && !FABLE_COMPILER
@@ -92,7 +96,8 @@ module internal StreamGate =
 /// lock elsewhere.
 /// </summary>
 [<Sealed>]
-type internal StreamRun<'S, 'T>(graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, requester: IStreamRequester, failed: exn -> unit) =
+type internal StreamRun<'S, 'T>
+    (graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, requester: IStreamRequester, gen: int, source: StreamSource<'T>, token: CancellationToken) =
     inherit StreamInlet<'T>()
     let gate = StreamGate.create ()
     let mutable state = seed
@@ -125,7 +130,7 @@ type internal StreamRun<'S, 'T>(graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, re
         if outcome = 1 then
             requester.RequestOnGraph ()
         elif outcome = 2 then
-            failed foldError
+            requester.ReportFoldFailure (gen, foldError)
 #else
         // The graph thread folds without the lock; this depends on StreamSink.Next calls never overlapping.
         if graph.IsOnGraphThread then
@@ -134,14 +139,14 @@ type internal StreamRun<'S, 'T>(graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, re
             if outcome = 1 then
                 requester.RequestOnGraph ()
             elif outcome = 2 then
-                failed foldError
+                requester.ReportFoldFailure (gen, foldError)
         else
             let outcome = StreamGate.hold gate (fun () -> this.Fold item)
 
             if outcome = 1 then
                 requester.RequestOffGraph ()
             elif outcome = 2 then
-                failed foldError
+                requester.ReportFoldFailure (gen, foldError)
 #endif
 
     interface IStreamRun<'S> with
@@ -163,6 +168,9 @@ type internal StreamRun<'S, 'T>(graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, re
 
         member _.Close() =
             StreamGate.hold gate (fun () -> closed <- true)
+
+        member this.RunSource() =
+            source.Run (StreamSink<'T> this, token)
 
 /// <summary>How a publication reaches the stream memo's readers when its state moved.</summary>
 type internal StreamNotice =
@@ -189,20 +197,17 @@ type internal StreamEnd =
 /// pending node becomes failed with <c>ObjectDisposedException</c>.
 /// </remarks>
 [<Sealed>]
-type StreamMemo<'S>
-    internal
-    (
-        graph: Graph,
-        seed: 'S,
-        emptyFails: bool,
-        launch: IStreamRequester -> (exn -> unit) -> CancellationToken -> struct (IStreamRun<'S> * (unit -> Task))
-    ) as this =
+type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: IStreamRequester -> int -> CancellationToken -> IStreamRun<'S>) as this
+    =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let sources = SourceList ()
     do Tracer.Bind (sources, graph, id)
     let equal = graph.Options.Equality.Comparer<'S>()
+#if !FABLE_COMPILER
+    let runSource = fun (started: IStreamRun<'S>) -> started.RunSource ()
+#endif
     let mutable freshness = Freshness.Dirty
     let mutable status = Status.Pending ||| Status.Uninitialized
     let mutable value = Unchecked.defaultof<'S>
@@ -360,11 +365,19 @@ type StreamMemo<'S>
 
         try
             try
-                let struct (started, body) =
-                    graph.RunHosted (
-                        this :> IComputation,
-                        fun () -> launch (this :> IStreamRequester) (fun error -> graph.Post (fun () -> this.FoldFailed (gen, error))) source.Token
-                    )
+                let started =
+#if FABLE_COMPILER
+                    graph.RunHosted (this :> IComputation, fun () -> launch (this :> IStreamRequester) gen source.Token)
+#else
+                    let saved = graph.EnterHosted (this :> IComputation)
+
+                    try
+                        let s = launch (this :> IStreamRequester) gen source.Token
+                        graph.CheckRaised ()
+                        s
+                    finally
+                        graph.LeaveHosted saved
+#endif
 
                 if violated then
                     raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
@@ -378,7 +391,11 @@ type StreamMemo<'S>
                     let work =
                         try
                             try
-                                graph.RunUntracked body
+#if FABLE_COMPILER
+                                graph.RunUntracked (fun () -> started.RunSource ())
+#else
+                                graph.RunUntrackedWith (runSource, started)
+#endif
                             with NotReadyException _ as pending ->
                                 let failure = InvalidOperationException "StreamSource.Run read a pending source."
 #if FABLE_COMPILER
@@ -393,7 +410,14 @@ type StreamMemo<'S>
                     if Platform.isNull work then
                         raise (InvalidOperationException "StreamSource.Run returned null.")
 
+#if !FABLE_COMPILER
+                    if work.IsCompleted && graph.IsOnGraphThread then
+                        this.Ended (gen, Platform.settledUnitOutcome work)
+                    else
+                        Platform.whenDone work (fun outcome -> graph.Post (fun () -> this.Ended (gen, outcome)))
+#else
                     Platform.whenDone work (fun outcome -> graph.Post (fun () -> this.Ended (gen, outcome)))
+#endif
 
                     if gen = generation && running && started.Received then
                         this.PublishLatest StreamNotice.Silent
@@ -517,14 +541,13 @@ type StreamMemo<'S>
         if Platform.isNull (box start) then
             nullArg (nameof start)
 
-        let launch requester failed (token: CancellationToken) =
+        let launch requester (gen: int) (token: CancellationToken) =
             let source = start token
 
             if Platform.isNull (box source) then
                 raise (InvalidOperationException "The stream's start function returned null.")
 
-            let started = StreamRun<'S, 'T>(graph, seed, fold, requester, failed)
-            struct (started :> IStreamRun<'S>, (fun () -> source.Run (StreamSink<'T> started, token)))
+            StreamRun<'S, 'T>(graph, seed, fold, requester, gen, source, token) :> IStreamRun<'S>
 
         let memo = new StreamMemo<'S> (graph, seed, emptyFails, launch)
         memo.Attach ()
@@ -643,6 +666,8 @@ type StreamMemo<'S>
         member this.RequestOffGraph() =
             this.RequestOffGraph ()
 #endif
+        member this.ReportFoldFailure(gen, error) =
+            graph.Post (fun () -> this.FoldFailed (gen, error))
 
     interface IScopeHost with
         member _.CanOwn = false
@@ -835,6 +860,119 @@ module StreamSource =
             finished.Task :> Task)
 
 #if !FABLE_COMPILER
+    [<Sealed>]
+    type private AsyncEnumerablePump<'T>
+        (enumerator: Collections.Generic.IAsyncEnumerator<'T>, sink: StreamSink<'T>, token: CancellationToken, finished: Platform.Completion<unit>) as this
+        =
+        let mutable pendingAwaiter =
+            Unchecked.defaultof<Runtime.CompilerServices.ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter>
+
+        let onMoveNext = Action this.OnMoveNext
+        let mutable onDisposed: Action<Task> = null
+        let mutable terminalError: exn = null
+
+        member private this.ClassifyError(error: exn) : exn =
+            if
+                (error :? OperationCanceledException)
+                && token.IsCancellationRequested
+            then
+                cancelled token
+            else
+                error
+
+        member private _.OnDisposed(d: Task) =
+            let err = terminalError
+
+            if not (isNull err) then
+                finished.Reject err
+            elif d.IsFaulted then
+                finished.Reject (d.Exception.GetBaseException ())
+            else
+                finished.Resolve ()
+
+        member private this.Finish(error: exn) =
+            let mutable disposal = Unchecked.defaultof<ValueTask>
+            let mutable disposeFault: exn = null
+
+            try
+                disposal <- enumerator.DisposeAsync ()
+            with ex ->
+                disposeFault <- ex
+
+            if not (isNull disposeFault) then
+                if not (isNull error) then
+                    finished.Reject error
+                else
+                    finished.Reject disposeFault
+            elif disposal.IsCompletedSuccessfully then
+                disposal.GetAwaiter().GetResult()
+
+                if not (isNull error) then
+                    finished.Reject error
+                else
+                    finished.Resolve ()
+            else
+                terminalError <- error
+
+                if isNull onDisposed then
+                    onDisposed <- Action<Task> this.OnDisposed
+
+                disposal.AsTask().ContinueWith(onDisposed, TaskContinuationOptions.ExecuteSynchronously)
+                |> ignore
+
+        member private this.OnMoveNext() =
+            let a = pendingAwaiter
+            pendingAwaiter <- Unchecked.defaultof<_>
+            let mutable hasMore = false
+            let mutable fault: exn = null
+
+            try
+                hasMore <- a.GetResult ()
+            with error ->
+                fault <- error
+
+            if not (isNull fault) then
+                this.Finish (this.ClassifyError fault)
+            elif hasMore then
+                try
+                    sink.Next enumerator.Current
+                    this.Pump ()
+                with error ->
+                    this.Finish error
+            else
+                this.Finish null
+
+        member this.Pump() =
+            try
+                let mutable next = enumerator.MoveNextAsync ()
+                let mutable go = true
+
+                while go && next.IsCompleted do
+                    let mutable hasMore = false
+                    let mutable fault: exn = null
+
+                    try
+                        hasMore <- next.GetAwaiter().GetResult()
+                    with error ->
+                        fault <- error
+
+                    if not (isNull fault) then
+                        go <- false
+                        this.Finish (this.ClassifyError fault)
+                    elif hasMore then
+                        sink.Next enumerator.Current
+                        next <- enumerator.MoveNextAsync ()
+                    else
+                        go <- false
+                        this.Finish null
+
+                if go then
+                    let a = next.ConfigureAwait(false).GetAwaiter()
+                    pendingAwaiter <- a
+                    a.UnsafeOnCompleted onMoveNext
+            with error ->
+                this.Finish (this.ClassifyError error)
+
     /// <summary>
     /// Enumerates on each start with the stream's token. Items already available are delivered without an
     /// intervening continuation. <c>DisposeAsync</c> runs once, on completion, failure or cancellation.
@@ -846,67 +984,103 @@ module StreamSource =
         create (fun sink token ->
             let finished = Platform.completion<unit>()
             let enumerator = items.GetAsyncEnumerator token
-
-            let finish (error: exn) =
-                let disposal =
-                    try
-                        enumerator.DisposeAsync().AsTask()
-                    with disposeError ->
-                        Task.FromException disposeError
-
-                disposal.ContinueWith (
-                    Action<Task>(fun d ->
-                        if not (isNull error) then
-                            finished.Reject error
-                        elif d.IsFaulted then
-                            finished.Reject (d.Exception.GetBaseException ())
-                        else
-                            finished.Resolve ()),
-                    TaskContinuationOptions.ExecuteSynchronously
-                )
-                |> ignore
-
-            let rec pump () =
-                try
-                    let mutable next = enumerator.MoveNextAsync ()
-                    let mutable go = true
-
-                    while go && next.IsCompleted do
-                        if next.Result then
-                            sink.Next enumerator.Current
-                            next <- enumerator.MoveNextAsync ()
-                        else
-                            go <- false
-                            finish null
-
-                    if go then
-                        next
-                            .AsTask()
-                            .ContinueWith(
-                                Action<Task<bool>>(fun t ->
-                                    if t.IsFaulted then
-                                        finish (t.Exception.GetBaseException ())
-                                    elif t.IsCanceled then
-                                        finish (cancelled token)
-                                    elif t.Result then
-                                        try
-                                            sink.Next enumerator.Current
-                                            pump ()
-                                        with error ->
-                                            finish error
-                                    else
-                                        finish null),
-                                TaskContinuationOptions.ExecuteSynchronously
-                            )
-                        |> ignore
-                with error ->
-                    finish error
-
-            pump ()
+            let pump = AsyncEnumerablePump<'T>(enumerator, sink, token, finished)
+            pump.Pump ()
             finished.Task :> Task)
 #endif
 
 #if NET8_0_OR_GREATER && !FABLE_COMPILER
+    [<Sealed>]
+    type private ChannelPump<'T>
+        (reader: Channels.ChannelReader<'T>, sink: StreamSink<'T>, token: CancellationToken, finished: Platform.Completion<unit>) as this =
+        let mutable pendingAwaiter =
+            Unchecked.defaultof<Runtime.CompilerServices.ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter>
+
+        let onWaitReady = Action this.OnWaitReady
+
+        member private _.Drain() =
+            let mutable item = Unchecked.defaultof<'T>
+
+            while not token.IsCancellationRequested
+                  && reader.TryRead &item do
+                sink.Next item
+
+        member private _.FinishCompleted(wait: ValueTask<bool>) =
+            let mutable fault: exn = null
+
+            try
+                wait.GetAwaiter().GetResult() |> ignore
+            with error ->
+                fault <- error
+
+            if not (isNull fault) then
+                if
+                    (fault :? OperationCanceledException)
+                    || token.IsCancellationRequested
+                then
+                    finished.Reject (cancelled token)
+                else
+                    finished.Reject fault
+            elif token.IsCancellationRequested then
+                finished.Reject (cancelled token)
+            else
+                finished.Resolve ()
+
+        member private this.OnWaitReady() =
+            let a = pendingAwaiter
+            pendingAwaiter <- Unchecked.defaultof<_>
+            let mutable hasMore = false
+            let mutable fault: exn = null
+
+            try
+                hasMore <- a.GetResult ()
+            with error ->
+                fault <- error
+
+            if not (isNull fault) then
+                if
+                    (fault :? OperationCanceledException)
+                    || token.IsCancellationRequested
+                then
+                    finished.Reject (cancelled token)
+                else
+                    finished.Reject fault
+            elif token.IsCancellationRequested then
+                finished.Reject (cancelled token)
+            elif hasMore then
+                try
+                    this.Drain ()
+                    this.Pump ()
+                with error ->
+                    finished.Reject error
+            else
+                finished.Resolve ()
+
+        member this.Pump() =
+            try
+                let mutable wait = reader.WaitToReadAsync token
+
+                while wait.IsCompletedSuccessfully
+                      && wait.Result
+                      && not token.IsCancellationRequested do
+                    this.Drain ()
+                    wait <- reader.WaitToReadAsync token
+
+                if wait.IsCompleted then
+                    this.FinishCompleted wait
+                else
+                    let a = wait.ConfigureAwait(false).GetAwaiter()
+                    pendingAwaiter <- a
+                    a.UnsafeOnCompleted onWaitReady
+            with error ->
+                if
+                    (error :? OperationCanceledException)
+                    && token.IsCancellationRequested
+                then
+                    finished.Reject (cancelled token)
+                else
+                    finished.Reject error
+
     /// <summary>
     /// Reads on each start: waits with the stream's token, then delivers every buffered item before waiting again, and
     /// reads nothing once the token is cancelled. The stream completes when the channel completes, and fails with the
@@ -918,59 +1092,8 @@ module StreamSource =
 
         create (fun sink token ->
             let finished = Platform.completion<unit>()
-
-            let drain () =
-                let mutable item = Unchecked.defaultof<'T>
-
-                while not token.IsCancellationRequested
-                      && reader.TryRead &item do
-                    sink.Next item
-
-            let ready (wait: Task<bool>) =
-                wait.Status = TaskStatus.RanToCompletion
-                && wait.Result
-                && not token.IsCancellationRequested
-
-            let ended (wait: Task<bool>) =
-                if wait.IsFaulted then
-                    finished.Reject (wait.Exception.GetBaseException ())
-                elif wait.IsCanceled || token.IsCancellationRequested then
-                    finished.Reject (cancelled token)
-                else
-                    finished.Resolve ()
-
-            let rec pump () =
-                try
-                    let mutable wait = reader.WaitToReadAsync token
-
-                    while wait.IsCompletedSuccessfully
-                          && wait.Result
-                          && not token.IsCancellationRequested do
-                        drain ()
-                        wait <- reader.WaitToReadAsync token
-
-                    if wait.IsCompleted then
-                        ended (wait.AsTask ())
-                    else
-                        wait
-                            .AsTask()
-                            .ContinueWith(
-                                Action<Task<bool>>(fun t ->
-                                    if ready t then
-                                        try
-                                            drain ()
-                                            pump ()
-                                        with error ->
-                                            finished.Reject error
-                                    else
-                                        ended t),
-                                TaskContinuationOptions.ExecuteSynchronously
-                            )
-                        |> ignore
-                with error ->
-                    finished.Reject error
-
-            pump ()
+            let pump = ChannelPump<'T>(reader, sink, token, finished)
+            pump.Pump ()
             finished.Task :> Task)
 #endif
 

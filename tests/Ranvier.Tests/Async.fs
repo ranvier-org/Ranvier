@@ -672,7 +672,8 @@ let tests =
                 Expect.isFalse tokens[0].IsCancellationRequested "KeepLatest does not cancel; it discards the result"
             }
 
-            test "Queue applies every result in the order the flights started" {
+            testCaseAsync "Queue applies every result in the order the flights started"
+            <| async {
                 let g =
                     new Graph (
                         { GraphOptions.Default with
@@ -695,13 +696,16 @@ let tests =
                 // for the one that started before it, so the graph never shows a
                 // later value being overtaken by an earlier one.
                 second.Settle 20
+                do! drained ()
                 Expect.equal a.TryValue Pending "nothing may be applied before the first flight lands"
 
                 first.Settle 10
+                do! drained ()
                 Expect.equal a.TryValue (Ready 20) "both applied, in start order, ending on the latest"
             }
 
-            test "Queue shows an applied outcome while a later flight is in progress" {
+            testCaseAsync "Queue shows an applied outcome while a later flight is in progress"
+            <| async {
                 let g =
                     new Graph (
                         { GraphOptions.Default with
@@ -726,10 +730,12 @@ let tests =
                 s.Value <- 2
                 Expect.equal a.TryValue Pending "no outcome applied yet"
                 flights[0].Settle 10
+                do! drained ()
                 Expect.equal a.TryValue (Ready 10) "the first outcome is readable while the second flight runs"
                 s.Value <- 3
                 Expect.equal a.TryValue Pending "a new run is pending until the next outcome"
                 flights[1].Settle 20
+                do! drained ()
                 Expect.equal a.TryValue (Ready 20) "the second outcome, with the third flight in progress"
             }
 
@@ -1523,7 +1529,8 @@ let tests =
                 do! drained ()
                 Expect.equal (results.Value, results.IsWaiting) (Loaded [], false) "loaded, and empty"
             }
-            test "async memos with different policies in one graph fly independently" {
+            testCaseAsync "async memos with different policies in one graph fly independently"
+            <| async {
                 let g = new Graph ()
 
                 let s, (queued, queuedFlights, queuedTokens), (cancelling, cancellingFlights, cancellingTokens) =
@@ -1542,11 +1549,13 @@ let tests =
 
                 queuedFlights[1].Settle 20
                 cancellingFlights[1].Settle 20
+                do! drained ()
                 Expect.equal queued.TryValue Pending "the queued result waits for the flight started before it"
                 Expect.equal cancelling.TryValue (Ready 20) "the newest flight publishes at once"
 
                 queuedFlights[0].Settle 10
                 cancellingFlights[0].Settle 10
+                do! drained ()
                 Expect.equal queued.TryValue (Ready 20) "both queued results applied, in start order"
                 Expect.equal cancelling.TryValue (Ready 20) "the superseded result is discarded"
             }
@@ -1578,7 +1587,8 @@ let tests =
                 Expect.equal a.TryValue (Ready 20) "the superseded result is discarded"
             }
 
-            test "a node without a policy follows the graph's beside one with its own" {
+            testCaseAsync "a node without a policy follows the graph's beside one with its own"
+            <| async {
                 let g =
                     new Graph (
                         { GraphOptions.Default with
@@ -1599,12 +1609,15 @@ let tests =
                 Expect.isFalse tokens[0].IsCancellationRequested "the graph's Queue leaves the earlier flight running"
 
                 flights[1].Settle 20
+                do! drained ()
                 Expect.equal a.TryValue Pending "the later result waits under the graph's Queue"
                 flights[0].Settle 10
+                do! drained ()
                 Expect.equal a.TryValue (Ready 20) "both results applied, in start order"
             }
 
-            test "an owning async memo takes its own policy" {
+            testCaseAsync "an owning async memo takes its own policy"
+            <| async {
                 let g = new Graph ()
 
                 let s, (a, flights, tokens) =
@@ -1618,8 +1631,10 @@ let tests =
                 Expect.isFalse tokens[0].IsCancellationRequested "Queue leaves the earlier flight running"
 
                 flights[1].Settle 20
+                do! drained ()
                 Expect.equal a.TryValue Pending "the later result waits for the earlier one"
                 flights[0].Settle 10
+                do! drained ()
                 Expect.equal a.TryValue (Ready 20) "both results applied, in start order"
             }
         ]

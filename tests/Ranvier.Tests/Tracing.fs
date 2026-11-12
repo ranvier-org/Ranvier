@@ -1452,7 +1452,8 @@ let tests =
                 | other -> failtestf "expected one dropped flight, got %A" other
             }
 
-            test "Queue drops a failure that settles while the newest run waits on a source as Suspended" {
+            testCaseAsync "Queue drops a failure that settles while the newest run waits on a source as Suspended"
+            <| async {
                 use g =
                     new Graph (
                         { GraphOptions.Default with
@@ -1479,6 +1480,7 @@ let tests =
                 s.Value <- 2
                 a.TryValue |> ignore
                 flights[0].SetException(exn "stale")
+                do! drained ()
 
                 match (Trace.waitingOn g a).Flights with
                 | [ {

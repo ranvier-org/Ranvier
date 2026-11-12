@@ -1480,11 +1480,13 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                 try
                     entry.Row.Value
                 with NotReadyException _ ->
-                    let mutable awaited = entry.Row :> INode
-                    let mutable e = entry.Row.PendingSources.GetEnumerator ()
+                    let pending = entry.Row.PendingSource
 
-                    if e.MoveNext () then
-                        awaited <- e.Current
+                    let awaited =
+                        if Platform.isNull (box pending) then
+                            entry.Row :> INode
+                        else
+                            pending
 
                     match Awaited.source awaited with
                     | ValueSome source -> graph.Track source
