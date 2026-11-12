@@ -2558,6 +2558,31 @@ let foldTests =
 
                 Expect.sequenceEqual seen [ 10; 65 ] "one run for the batch"
             }
+
+            test "fold re-folds on a pure upstream reorder and head insertion" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 20; 3, 30 ])
+
+                let ordered =
+                    rows source
+                    |> Projection.fold (fun acc n -> acc @ [ n ]) []
+
+                Expect.equal ordered.Value [ 10; 20; 30 ] "initial order"
+                source.Value <- List.rev source.Value
+                Expect.equal ordered.Value [ 30; 20; 10 ] "pure reorder without value edits"
+                source.Value <- items [ 0, 99 ] @ source.Value
+                Expect.equal ordered.Value [ 99; 30; 20; 10 ] "head insertion folds in Keys order"
+                source.Value <- setN 2 200 source.Value
+                Expect.equal ordered.Value [ 99; 30; 200; 10 ] "value edit preserves Keys order"
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 3)
+                Expect.equal ordered.Value [ 99; 200; 10 ] "removal re-folds remaining Keys"
+
+                source.Value <- items [ for i in 1..80 -> i, i ]
+                Expect.equal ordered.Value [ 1..80 ] "after a reset-sized burst"
+                source.Value <- List.rev source.Value
+                Expect.equal ordered.Value [ 80..-1..1 ] "pure reorder after a reset-sized burst"
+            }
         ]
 
 /// <summary>How many nodes read the row of <c>key</c> in <c>view</c>.</summary>

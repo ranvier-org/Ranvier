@@ -25,8 +25,10 @@ This module proves the exact minimum specifications required by Ranvier's collec
    proves that `Core.fs`'s `queueHead - 1` `PassDrain` slot preemption refines the direct two-queue
    priority loop.
 4. **Collection signal and row hooks** (`write_signal_except_wakes_others`,
-   `notify_removed_wakes_observers`, `adopt_companion_disposed_once`): proves `Signal.WriteExcept` /
-   `ProjectionBeacon.NotifyFailure`, `Memo.NotifyRemoved`, and `Memo.Adopt`. *)
+   `notify_removed_wakes_observers`, `adopt_companion_disposed_once`,
+   `fold_sync_recomputes_on_reorder`): proves `Signal.WriteExcept` /
+   `ProjectionBeacon.NotifyFailure`, `Memo.NotifyRemoved`, `Memo.Adopt`, and non-invertible
+   `Projection.fold` recomputation on pure key reorders. *)
 
 (** ** Direct-observer edge boundary *)
 
@@ -755,4 +757,39 @@ Proof.
       by rewrite (adopt_many_live_distinct cs' c0 [] Hnd). }
   rewrite Hst. simpl.
   split_and!; [done|done|done|exact Hnd|intros c; unfold memo_adopt_step; simpl; done].
+Qed.
+
+(** ** Non-invertible Projection.fold order sensitivity *)
+
+Definition fold_cached_keys {K V S : Type} `{Countable K}
+    (folder : S -> V -> S) (zero : S) (vals : gmap K V) (keys : list K) : S :=
+  foldl (fun acc k => match vals !! k with Some v => folder acc v | None => acc end) zero keys.
+
+Definition fold_sync_step {K V S : Type} `{Countable K}
+    (invertible had_keys order_changed full : bool)
+    (folder : S -> V -> S) (zero state : S) (vals : gmap K V) (next_keys : list K) : S * bool :=
+  let full' := if negb invertible && had_keys && order_changed then true else full in
+  if full' then (fold_cached_keys folder zero vals next_keys, false) else (state, false).
+
+(**md
+**When `invertible = false` (`Projection.fold`), any non-empty key-order change (`had_keys = true`, `order_changed = true`) triggers `Recompute` so the state equals `fold_cached_keys folder zero vals next_keys` even when zero keys were added, removed, or edited (`Combinators.fs` lines 1030–1060).**
+
+Conversely, when `invertible = true` (`Projection.foldGroup`), a pure reorder with `full = false` preserves `state` without invoking `Recompute`.
+
+- [folder:] the fold accumulator function.
+- [zero:] the initial fold seed.
+- [state:] the fold state prior to `Sync`.
+- [vals:] the settled cached row values.
+- [next_keys:] the new upstream `Keys` sequence.
+- [full:] the `full` recompute flag entering `Sync`.
+*)
+Theorem fold_sync_recomputes_on_reorder {K V S : Type} `{Countable K}
+    (folder : S -> V -> S) (zero state : S) (vals : gmap K V) (next_keys : list K) (full : bool) :
+  fold_sync_step false true true full folder zero state vals next_keys =
+    (fold_cached_keys folder zero vals next_keys, false) /\
+  fold_sync_step true true true false folder zero state vals next_keys =
+    (state, false).
+Proof.
+  unfold fold_sync_step; simpl.
+  split; reflexivity.
 Qed.
