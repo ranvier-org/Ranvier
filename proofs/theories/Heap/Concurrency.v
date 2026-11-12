@@ -108,13 +108,14 @@ Theorem guarded_enter_spec (cs_loc : loc) (me ctx : nat) (cs : concurrency_state
 Proof.
   intros Haff.
   iIntros (Φ) "(H0 & H1 & H2 & H3 & H4 & H5) HΦ".
-  rewrite /guarded_enter_code /graph_enter Haff.
+  rewrite /guarded_enter_code /graph_enter Haff /=.
   wp_lam. wp_pures. wp_load. wp_pures.
   destruct (decide (me = cs_owner_thread cs)) as [->|Hne].
   - rewrite bool_decide_eq_true_2 //. wp_pures. iModIntro.
-    iApply "HΦ". iFrame.
-  - rewrite bool_decide_eq_false_2; [|intros Heq; apply Hne; lia].
-    wp_pures. iModIntro. iApply "HΦ". iFrame.
+    iApply "HΦ". rewrite /is_concurrency_state Haff /=. iFrame.
+  - rewrite bool_decide_eq_false_2; [|intros Heq; injection Heq as Heq; apply Hne; lia].
+    wp_pures. iModIntro.
+    iApply "HΦ". rewrite /is_concurrency_state Haff /=. iFrame.
 Qed.
 
 (**md
@@ -141,25 +142,25 @@ Theorem serialised_acquire_spec (cs_loc : loc) (me ctx : nat) (cs : concurrency_
 Proof.
   intros Haff.
   iIntros (Φ) "(H0 & H1 & H2 & H3 & H4 & H5) HΦ".
-  rewrite /serialised_enter_code /graph_enter Haff.
+  rewrite /serialised_enter_code /graph_enter Haff /=.
   wp_lam. wp_pures. wp_load. wp_pures.
   destruct (decide (cs_holder cs = me)) as [Hhold|Hne].
   - rewrite Hhold bool_decide_eq_true_2 //. wp_pures. iModIntro.
-    iApply "HΦ". rewrite /is_concurrency_state Hhold. iFrame.
-  - rewrite bool_decide_eq_false_2; [|intros Heq; apply Hne; lia].
+    iApply "HΦ". rewrite /is_concurrency_state Haff Hhold /=. iFrame.
+  - rewrite bool_decide_eq_false_2; [|intros Heq; injection Heq as Heq; apply Hne; lia].
     wp_pures. wp_load. wp_pures.
     destruct (decide (ctx = cs_context cs /\ cs_holder cs = 0)) as [[Hctx Hfree]|Hbad].
     + rewrite Hctx bool_decide_eq_true_2 //. wp_pures.
-      rewrite Hfree /=.
-      wp_cmpxchg_suc. wp_pures. iModIntro.
+      rewrite Hfree.
+      wp_cmpxchg_suc; [done|]. wp_pures. iModIntro.
       iApply "HΦ". rewrite /is_concurrency_state /=. iFrame.
     + destruct (decide (ctx = cs_context cs)) as [Hctx|Hctx_ne].
       * assert (Hnh : cs_holder cs ≠ 0) by (intros H0; apply Hbad; split; done).
         rewrite Hctx bool_decide_eq_true_2 //. wp_pures.
-        wp_cmpxchg_fail; [intros Heq; apply Hnh; lia|].
-        wp_pures. iModIntro. iApply "HΦ". iFrame.
-      * rewrite bool_decide_eq_false_2; [|intros Heq; apply Hctx_ne; lia].
-        wp_pures. iModIntro. iApply "HΦ". iFrame.
+        wp_cmpxchg_fail; [intros Heq; injection Heq as Heq; apply Hnh; lia|].
+        wp_pures. iModIntro. iApply "HΦ". rewrite /is_concurrency_state Haff /=. iFrame.
+      * rewrite bool_decide_eq_false_2; [|intros Heq; injection Heq as Heq; apply Hctx_ne; lia].
+        wp_pures. iModIntro. iApply "HΦ". rewrite /is_concurrency_state Haff /=. iFrame.
 Qed.
 
 (**md
@@ -177,8 +178,8 @@ Proof.
   rewrite /serialised_release_code /graph_release.
   wp_lam. wp_pures. wp_store. wp_load.
   destruct (cs_inbox cs) as [|w ws] eqn:Einb; simpl; wp_pures.
-  - iModIntro. iApply "HΦ". rewrite /is_concurrency_state /= Einb /=. iFrame.
-  - wp_store. iModIntro. iApply "HΦ". rewrite /is_concurrency_state /= Einb /=. iFrame.
+  - iModIntro. iApply "HΦ". rewrite /is_concurrency_state /=. iFrame.
+  - wp_store. iModIntro. iApply "HΦ". rewrite /is_concurrency_state /=. iFrame.
 Qed.
 
 (**md
@@ -197,7 +198,7 @@ Theorem post_queued_spec (cs_loc : loc) (w : nat) (cs : concurrency_state) :
 Proof.
   iIntros (Φ) "(H0 & H1 & H2 & H3 & H4 & H5) HΦ".
   rewrite /post_queued_code /post_queued.
-  wp_lam. wp_pures. wp_load.
+  wp_lam. wp_pures. wp_load. wp_pures.
   rewrite (list_val_eq (cs_inbox cs)).
   wp_apply (vlist_snoc_spec (fun k : nat => #(Z.of_nat k)) (cs_inbox cs) w); [done|].
   iIntros "_". wp_store. wp_store. iModIntro.
@@ -221,8 +222,8 @@ Proof.
   rewrite /pd_try_claim_code /pd_try_claim.
   wp_lam.
   destruct (decide (st = 0)) as [->|Hne].
-  - wp_cmpxchg_suc. wp_pures. iModIntro. by iApply "HΦ".
-  - wp_cmpxchg_fail; [intros Heq; apply Hne; lia|].
+  - wp_cmpxchg_suc; [done|]. wp_pures. iModIntro. by iApply "HΦ".
+  - wp_cmpxchg_fail; [intros Heq; injection Heq as Heq; apply Hne; lia|].
     wp_pures. iModIntro. by iApply "HΦ".
 Qed.
 
@@ -241,8 +242,8 @@ Proof.
   rewrite /pd_try_close_code /pd_try_close.
   wp_lam.
   destruct (decide (st = 0)) as [->|Hne].
-  - wp_cmpxchg_suc. wp_pures. iModIntro. by iApply "HΦ".
-  - wp_cmpxchg_fail; [intros Heq; apply Hne; lia|].
+  - wp_cmpxchg_suc; [done|]. wp_pures. iModIntro. by iApply "HΦ".
+  - wp_cmpxchg_fail; [intros Heq; injection Heq as Heq; apply Hne; lia|].
     wp_pures. iModIntro. by iApply "HΦ".
 Qed.
 

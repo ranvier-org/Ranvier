@@ -339,6 +339,11 @@ Theorem pending_dispatch_claim_exclusive :
   snd (pd_try_close (fst (pd_try_close 0))) = false.
 Proof.
   unfold pd_try_claim, pd_try_close.
-  split_and!; try done.
-  intros st Hne. rewrite decide_False by done. done.
+  split_and!.
+  - reflexivity.
+  - reflexivity.
+  - intros st Hne. split; rewrite decide_False by done; reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
 Qed.
