@@ -811,10 +811,9 @@ type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: Fo
 /// </remarks>
 [<Sealed>]
 type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S) as this =
+    (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool) as this =
     let id = graph.NextId ()
     let observers = ObserverSet ()
-    let invertible = not (Platform.isNull (box subtract))
     let equal = graph.Options.Equality.Comparer<'V>()
     let rows = Platform.KeyMap<'K, FoldRow<'K, 'V>>()
     let queue = ResizeArray<FoldRow<'K, 'V>>()
@@ -1031,7 +1030,15 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             not (Platform.isNull keys)
             && not (obj.ReferenceEquals (keys, lastKeys))
         then
+            let prevKeys = lastKeys
             this.Diff keys
+
+            if
+                not invertible
+                && not (Platform.isNull prevKeys)
+                && (keys.Length > 0 || prevKeys.Length > 0)
+            then
+                full <- true
 
         let mutable i = 0
 
@@ -1526,7 +1533,7 @@ module Projection =
         let owner = ownedScope graph
 
         let aggregate =
-            graph.RunOwned (owner, fun () -> new ProjectionFold<'K, 'U, 'S> (graph, rows (), add, subtract, zero))
+            graph.RunOwned (owner, fun () -> new ProjectionFold<'K, 'U, 'S> (graph, rows (), add, subtract, zero, true))
 
         let memo =
             Memo<'R>.Create(graph, (fun _ -> result (aggregate.Compute ValueNone)), ScopeMode.Pure)
@@ -1559,7 +1566,7 @@ module Projection =
         let graph = upstream.Graph
 
         let aggregate =
-            new ProjectionFold<'K, 'V, 'S> (graph, upstream, add, subtract, zero)
+            new ProjectionFold<'K, 'V, 'S> (graph, upstream, add, subtract, zero, true)
 
         let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
         aggregate.Memo <- memo
@@ -1576,7 +1583,7 @@ module Projection =
         let graph = upstream.Graph
 
         let aggregate =
-            new ProjectionFold<'K, 'V, 'S> (graph, upstream, folder, Unchecked.defaultof<_>, state)
+            new ProjectionFold<'K, 'V, 'S> (graph, upstream, folder, Unchecked.defaultof<_>, state, false)
 
         let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
         aggregate.Memo <- memo
