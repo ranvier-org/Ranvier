@@ -492,6 +492,32 @@ let chooseTests =
                 Expect.isEmpty view.Keys "a disposed view is empty"
             }
 
+            test "removing a key disposes its chooser and gate" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 20; 3, 30 ])
+                let threshold = createSignal 15
+                let calls = ResizeArray<int>()
+
+                let view =
+                    rows source
+                    |> Projection.choose (fun n ->
+                        calls.Add n
+
+                        if n > threshold.Value then
+                            Some (n - threshold.Value)
+                        else
+                            None)
+
+                keysAndRows view |> ignore
+                source.Value <- source.Value |> List.filter (fun x -> x.Id <> 2)
+                calls.Clear ()
+                threshold.Value <- 25
+
+                Expect.sequenceEqual (Seq.sort calls) [ 10; 30 ] "the removed key's chooser never runs again"
+                Expect.sequenceEqual view.Keys [ 3 ] "the remaining chosen key"
+            }
+
             test "choose composes with filter and sortBy" {
                 use g = new Graph ()
                 use _ = g.Activate ()
