@@ -328,7 +328,7 @@ Proof. vm_compute. reflexivity. Qed.
 Example check_stale_source_reader :
   trace_of 100000 current_flags prog_stale_source_reader = Some exp_stale_source_reader.
 Proof. vm_compute. reflexivity. Qed.
-(** `BUGS.md`, `disposed_memo_keeps_observers`: a disposed memo keeps its observer and wakes none. *)
+(**md `BUGS.md`, `disposed_memo_keeps_observers`: a disposed memo keeps its observer and wakes none. *)
 Example check_disposed_memo_keeps_observers :
   trace_of 100000 current_flags prog_disposed_memo_keeps_observers = Some exp_disposed_memo_keeps_observers.
 Proof. vm_compute. reflexivity. Qed.

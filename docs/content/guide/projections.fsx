@@ -472,14 +472,14 @@ let delta = reader.Read ()
 :::details Key deltas, resets and read costs
 
 - `Changes` holds one `KeyChange` per key: `Added`, `Removed`, or `Replaced` for a key removed and
-  re-added between two reads. A key added and then removed between two reads cancels out. The order is
-  unspecified; `Keys` gives the order.
-- `Keys` and `PreviousKeys` are the key arrays at this read and at the previous one. `OrderChanged` is
+  re-added between two reads ([`key_changes_removed_added_replaces`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#key_changes_removed_added_replaces), [`key_change_merge_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Deltas.html#key_change_merge_spec)). A key added and then removed between two reads cancels out ([`key_changes_added_removed_cancels`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#key_changes_added_removed_cancels)). The order is
+  unspecified ([`key_changes_swap_remove_refines_delete`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#key_changes_swap_remove_refines_delete)); `Keys` gives the order.
+- `Keys` and `PreviousKeys` are the key arrays at this read and at the previous one ([`projection_reader_read_advances_cursor`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#projection_reader_read_advances_cursor), [`projection_reader_read_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Deltas.html#projection_reader_read_spec)). `OrderChanged` is
   false when both are the same array.
 - `Positional` lists the `RemoveAt`, `InsertAt` and `Move` edits that turn `PreviousKeys` into `Keys`,
   computed on first use in O(N log N).
 - `IsReset` is true on the first read, after the projection is disposed, and once more than
-  `max(64, N)` changes are unread. `Changes` is then empty: rebuild from `Keys`.
+  `max(64, N)` changes are unread ([`projection_reader_cap_resets`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#projection_reader_cap_resets), [`projection_reader_record_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Deltas.html#projection_reader_record_spec)). `Changes` is then empty: rebuild from `Keys`.
 - `Read` is a tracked read of `Keys`, so an effect that reads the reader wakes on every change it
   reports. While the pass is pending or failed, `Read` raises what `Keys` raises and keeps the changes
   for the next read.
@@ -513,7 +513,7 @@ let valueDelta = valueReader.Read ()
 `Changes` contains keys rather than value snapshots. Read the current row through `Get` or
 `TryGet` and handle its pending/error state there. Multiple writes between reads coalesce:
 these deltas are refresh hints, not a history of every intermediate value. Membership changes
-take precedence over `Changed` for the same key, so an added or replaced row needs one refresh.
+take precedence over `Changed` for the same key ([`key_changes_membership_precedes_changed`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Deltas.html#key_changes_membership_precedes_changed), [`key_change_merge_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Deltas.html#key_change_merge_spec)), so an added or replaced row needs one refresh.
 
 :::details Observation, equality and lifetime
 

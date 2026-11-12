@@ -7,10 +7,11 @@ From Ranvier.Heap Require Import ObserverSet SourceList Ghost Marking Run Schedu
 
 Open Scope nat_scope.
 
-(** * Heap concurrency, thread affinity, and inbox contracts
+(**md # Heap concurrency, thread affinity, and inbox contracts
 
 This module lifts the concurrency, `Serialised` reentrant holder, inbox handover, and `PendingDispatch`
 contracts of `Pure/Concurrency.v` to HeapLang separation logic:
+
 1. `guarded_enter_spec`: `Guarded` thread-affinity gate (`AssertOnGraphThread` / `Enter`).
 2. `serialised_acquire_spec` and `serialised_release_spec`: `Serialised` reentrant holder lock (`CAS` on
    `holder`, context check, and `Release` with non-empty inbox drain re-post).
@@ -18,15 +19,17 @@ contracts of `Pure/Concurrency.v` to HeapLang separation logic:
 4. `pending_dispatch_claim_spec` and `pending_dispatch_close_spec`: atomic `CAS` claim (`TryClaim`) and
    cancellation/abandon (`TryClose`) on `PendingDispatch`. *)
 
-(** ** HeapLang code for concurrency, holder lock, inbox, and `PendingDispatch` *)
+(** ** HeapLang code for concurrency, holder lock, inbox, and PendingDispatch *)
 
-(** Layout of a 6-cell concurrency control block `cs`:
-    - `cs +ₗ 0`: affinity (`0` = `Guarded`, `1` = `Unchecked`, `2` = `Serialised`)
-    - `cs +ₗ 1`: `ownerThread`
-    - `cs +ₗ 2`: `context`
-    - `cs +ₗ 3`: `holder` (`0` when free, `me > 0` when held)
-    - `cs +ₗ 4`: `inbox` (HeapLang list of work item ids)
-    - `cs +ₗ 5`: `pumpPosted` (boolean) *)
+(**md Layout of a 6-cell concurrency control block `cs`:
+
+- `cs +ₗ 0`: affinity (`0` = `Guarded`, `1` = `Unchecked`, `2` = `Serialised`)
+- `cs +ₗ 1`: `ownerThread`
+- `cs +ₗ 2`: `context`
+- `cs +ₗ 3`: `holder` (`0` when free, `me > 0` when held)
+- `cs +ₗ 4`: `inbox` (HeapLang list of work item ids)
+- `cs +ₗ 5`: `pumpPosted` (boolean)
+*)
 
 Definition affinity_val (aff : thread_affinity) : val :=
   match aff with

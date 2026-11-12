@@ -5,7 +5,7 @@ From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine.
 
 Open Scope nat_scope.
 
-(** * `Ranvier.Query` and `Ranvier.Elmish` boundary contracts
+(**md # Ranvier.Query and Ranvier.Elmish boundary contracts
 
 `Ranvier.Query` (`Types.fs`, `Entry.fs`, `Queries.fs`, `Mutations.fs`) and `Ranvier.Elmish` (`Mvu.fs`)
 build higher-level state management on top of the core reactive graph. To keep their implementation open
@@ -38,9 +38,9 @@ exact minimum specifications required at their boundaries:
    - `mvu_apply_writes_before_commands`: `mvu_apply` writes the updated model before running commands, so
      every synchronous command observes the new model state. *)
 
-(** ** 1. `PublicationComparer` (`CmpNever`) with explicit equality gating *)
+(** ** 1. PublicationComparer (CmpNever) with explicit equality gating *)
 
-(** Models the `Entry.fs` lines 55–65 / 231–249 publication pattern: the signal `n` is constructed with
+(**md Models the `Entry.fs` lines 55–65 / 231–249 publication pattern: the signal `n` is constructed with
     `PublicationComparer` (`CmpNever`), and the caller evaluates `changed` before the batch, writing `n`
     only when `changed = true`. *)
 Definition guarded_pub_write (changed : bool) (fuel : nat) (n : node_id) (v : Z) (s : state)
@@ -97,7 +97,7 @@ Proof.
     + right. rewrite Hedges. done.
 Qed.
 
-(** ** 2. `QueryEntry` generation-fenced publication and stale-while-revalidate *)
+(** ** 2. QueryEntry generation-fenced publication and stale-while-revalidate *)
 
 Inductive fetch_status :=
   | FsIdle
@@ -106,14 +106,16 @@ Inductive fetch_status :=
 Global Instance fetch_status_eq_dec : EqDecision fetch_status.
 Proof. solve_decision. Defined.
 
-(** Pure state of a `QueryEntry<'T>` (`Entry.fs` lines 9–21):
-    - `qe_data`: accepted cached record (`None` before initial load settles, `Some v` afterwards).
-    - `qe_status`: `FsIdle` or `FsFetching`.
-    - `qe_error`: failure from the latest attempt, or `None`.
-    - `qe_stale`: whether `Ensure` should start a fresh request.
-    - `qe_gen`: monotonic flight generation counter (`generation` in `Entry.fs`).
-    - `qe_disposed`: whether `Dispose` has retired the entry.
-    - `qe_gate_faulted`: whether the initial-load suspension gate (`AsyncSource`) was faulted. *)
+(**md Pure state of a `QueryEntry<'T>` (`Entry.fs` lines 9–21):
+
+- `qe_data`: accepted cached record (`None` before initial load settles, `Some v` afterwards).
+- `qe_status`: `FsIdle` or `FsFetching`.
+- `qe_error`: failure from the latest attempt, or `None`.
+- `qe_stale`: whether `Ensure` should start a fresh request.
+- `qe_gen`: monotonic flight generation counter (`generation` in `Entry.fs`).
+- `qe_disposed`: whether `Dispose` has retired the entry.
+- `qe_gate_faulted`: whether the initial-load suspension gate (`AsyncSource`) was faulted.
+*)
 Record query_entry_state := {
   qe_data : option Z;
   qe_status : fetch_status;
@@ -124,7 +126,7 @@ Record query_entry_state := {
   qe_gate_faulted : bool;
 }.
 
-(** `Entry.start` (`Entry.fs` lines 145–159): increments `qe_gen`, cancels any superseded flight,
+(**md `Entry.start` (`Entry.fs` lines 145–159): increments `qe_gen`, cancels any superseded flight,
     replaces `gate` only when `qe_data = None`, and transitions metadata to `(FsFetching, None, true)`
     while retaining `qe_data`. *)
 Definition qe_start (qe : query_entry_state) : query_entry_state :=
@@ -138,7 +140,7 @@ Definition qe_start (qe : query_entry_state) : query_entry_state :=
        qe_disposed := false;
        qe_gate_faulted := false |}.
 
-(** `Entry.publish` (`Entry.fs` lines 48–106): accepts `outcome` (`inl v` for `Result.Ok v`,
+(**md `Entry.publish` (`Entry.fs` lines 48–106): accepts `outcome` (`inl v` for `Result.Ok v`,
     `inr err` for `Result.Error err`) if and only if `not (qe_disposed qe)` and `flight_gen = qe_gen qe`. *)
 Definition qe_publish (flight_gen : nat) (outcome : Z + nat) (qe : query_entry_state) : query_entry_state :=
   if decide (qe_disposed qe = false /\ flight_gen = qe_gen qe) then
@@ -162,7 +164,7 @@ Definition qe_publish (flight_gen : nat) (outcome : Z + nat) (qe : query_entry_s
     end
   else qe.
 
-(** `Entry.Dispose` (`Entry.fs` lines 275–281): marks `qe_disposed = true` and advances `qe_gen`. *)
+(**md `Entry.Dispose` (`Entry.fs` lines 275–281): marks `qe_disposed = true` and advances `qe_gen`. *)
 Definition qe_dispose (qe : query_entry_state) : query_entry_state :=
   if qe_disposed qe then qe
   else
@@ -241,19 +243,21 @@ Proof.
   rewrite bool_decide_eq_false_2; [done|discriminate].
 Qed.
 
-(** ** 3. Reference-counted `QueryLease` lifecycle *)
+(** ** 3. Reference-counted QueryLease lifecycle *)
 
-(** State of a `QueryFamily` entry slot and a `QueryLease` (`Queries.fs` lines 11–83, 113–144):
-    - `ql_lease_disposed`: whether this `QueryLease` has already been disposed.
-    - `ql_ref_count`: number of active leases holding the key's `QueryEntry`.
-    - `ql_entry_alive`: whether the key remains in `entries` with an active `QueryEntry`. *)
+(**md State of a `QueryFamily` entry slot and a `QueryLease` (`Queries.fs` lines 11–83, 113–144):
+
+- `ql_lease_disposed`: whether this `QueryLease` has already been disposed.
+- `ql_ref_count`: number of active leases holding the key's `QueryEntry`.
+- `ql_entry_alive`: whether the key remains in `entries` with an active `QueryEntry`.
+*)
 Record query_lease_state := {
   ql_lease_disposed : bool;
   ql_ref_count : nat;
   ql_entry_alive : bool;
 }.
 
-(** `QueryLease.Dispose` (`Queries.fs` lines 66–79, 127–132): if `ql_lease_disposed = false`, sets
+(**md `QueryLease.Dispose` (`Queries.fs` lines 66–79, 127–132): if `ql_lease_disposed = false`, sets
     `ql_lease_disposed := true`, decrements `ql_ref_count`, and evicts/disposes the entry when the
     decremented count reaches `0`. *)
 Definition query_lease_dispose (st : query_lease_state) : query_lease_state :=
@@ -293,12 +297,14 @@ Proof.
     rewrite Nat.sub_0_r, andb_true_r. split; reflexivity.
 Qed.
 
-(** ** 4. Two-phase atomic `QueryStaging` commit and reentrancy guard *)
+(** ** 4. Two-phase atomic QueryStaging commit and reentrancy guard *)
 
-(** A staged edit on a single `QueryDraft` (`Types.fs` lines 52–69):
-    - `DraftUpdate f`: patches a loaded value `Some v` to `Some (f v)` and marks `stale = false, updated = true`;
-      leaves an unloaded entry (`None`) as `None` with `stale = true`.
-    - `DraftInvalidate`: marks the draft `stale = true` while preserving its data. *)
+(**md A staged edit on a single `QueryDraft` (`Types.fs` lines 52–69):
+
+- `DraftUpdate f`: patches a loaded value `Some v` to `Some (f v)` and marks `stale = false, updated = true`;
+  leaves an unloaded entry (`None`) as `None` with `stale = true`.
+- `DraftInvalidate`: marks the draft `stale = true` while preserving its data.
+*)
 Inductive draft_edit :=
   | DraftUpdate (f : Z -> Z)
   | DraftInvalidate.
@@ -329,7 +335,7 @@ Fixpoint apply_draft_edits (es : list draft_edit) (d : query_draft_state) : quer
   | e :: rest => apply_draft_edits rest (apply_draft_edit e d)
   end.
 
-(** Two-phase commit (`Queries.fs` lines 252–273): `prepare_all` runs all draft validations while
+(**md Two-phase commit (`Queries.fs` lines 252–273): `prepare_all` runs all draft validations while
     `staging = true`. If `prepare_all` returns `None` (an updater or guard threw during staging),
     `commit_staging` leaves `cache` untouched; only when `prepare_all` succeeds (`Some next_cache`)
     does `Publish()` replace `cache` with `next_cache`. *)
@@ -377,24 +383,26 @@ Proof.
   - intros A cache. reflexivity.
 Qed.
 
-(** ** 5. `Ranvier.Elmish` (`Mvu.fs`) scope-gated dispatch and command ordering *)
+(** ** 5. Ranvier.Elmish (Mvu.fs) scope-gated dispatch and command ordering *)
 
-(** State of an `Mvu<'Model, 'Msg>` loop (`Mvu.fs` lines 27–68):
-    - `mvu_model`: current value of the `root` model signal.
-    - `mvu_disposed`: set to `true` when the constructing scope's `onCleanup` runs.
-    - `mvu_trace`: sequence of `(observed_model, cmd_id)` pairs recording the model value visible to each
-      executed command. *)
+(**md State of an `Mvu<'Model, 'Msg>` loop (`Mvu.fs` lines 27–68):
+
+- `mvu_model`: current value of the `root` model signal.
+- `mvu_disposed`: set to `true` when the constructing scope's `onCleanup` runs.
+- `mvu_trace`: sequence of `(observed_model, cmd_id)` pairs recording the model value visible to each
+  executed command.
+*)
 Record mvu_state := {
   mvu_model : Z;
   mvu_disposed : bool;
   mvu_trace : list (Z * nat);
 }.
 
-(** A command in `Mvu.Run` (`Mvu.fs` lines 60–65): inspects the current `mvu_state` (observing `mvu_model`
+(**md A command in `Mvu.Run` (`Mvu.fs` lines 60–65): inspects the current `mvu_state` (observing `mvu_model`
     after the model write) and may synchronously dispatch or dispose the owning scope. *)
 Definition mvu_cmd := mvu_state -> mvu_state.
 
-(** `Mvu.Run` (`Mvu.fs` lines 60–65): `while not disposed && not rest.IsEmpty do rest.Head dispatch; rest <- rest.Tail`. *)
+(**md `Mvu.Run` (`Mvu.fs` lines 60–65): `while not disposed && not rest.IsEmpty do rest.Head dispatch; rest <- rest.Tail`. *)
 Fixpoint mvu_run_cmds (cmds : list mvu_cmd) (st : mvu_state) : mvu_state :=
   match cmds with
   | [] => st
@@ -403,7 +411,7 @@ Fixpoint mvu_run_cmds (cmds : list mvu_cmd) (st : mvu_state) : mvu_state :=
       else mvu_run_cmds rest (c st)
   end.
 
-(** `Mvu.Apply` (`Mvu.fs` lines 38–46): if `not disposed`, computes `(next_model, cmds) := step msg (mvu_model st)`,
+(**md `Mvu.Apply` (`Mvu.fs` lines 38–46): if `not disposed`, computes `(next_model, cmds) := step msg (mvu_model st)`,
     writes `mvu_model := next_model`, and then runs `mvu_run_cmds cmds`. *)
 Definition mvu_apply (step : nat -> Z -> Z * list mvu_cmd) (msg : nat) (st : mvu_state) : mvu_state :=
   if mvu_disposed st then st
@@ -447,7 +455,7 @@ Proof.
     destruct rest as [|r rs]; simpl; [done|by rewrite Hc_disp].
 Qed.
 
-(** An observational command `obs_cmd cid` that records `(mvu_model st, cid)` into `mvu_trace`. *)
+(**md An observational command `obs_cmd cid` that records `(mvu_model st, cid)` into `mvu_trace`. *)
 Definition obs_cmd (cid : nat) (st : mvu_state) : mvu_state :=
   {| mvu_model := mvu_model st;
      mvu_disposed := mvu_disposed st;
