@@ -168,6 +168,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 83,740 | 128,369 | 1,769,014 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 81,333 | 123,628 | 1,753,830 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 81,222 | 123,643 | 1,754,026 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 77,194 | 103,954 | 1,652,804 |
 
 ## app-table
 
@@ -337,6 +338,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 3,701,591 | 8,679,509 | 99,686,505 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 3,705,103 | 8,604,543 | 99,674,080 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 3,703,904 | 8,579,257 | 99,627,584 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 3,651,230 | 8,658,321 | 98,226,428 |
 
 ## async-recover
 
@@ -506,6 +508,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 94,671 | 39,593 | 444,121 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 94,588 | 39,609 | 444,097 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 94,845 | 33,145 | 398,900 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 93,890 | 30,544 | 372,800 |
 
 ## async-resolve
 
@@ -675,6 +678,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,798,729 | 1,079,627 | 12,231,470 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,795,370 | 1,079,716 | 12,227,631 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 2,790,518 | 783,590 | 10,423,618 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 2,764,546 | 749,331 | 9,747,686 |
 
 ## chain
 
@@ -844,6 +848,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 13,165 | 318 | 2,554 | 4,491 | 3,573 | 72,781 | 71,814 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 13,035 | 318 | 2,546 | 4,491 | 3,578 | 72,781 | 71,814 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 13,037 | 318 | 2,542 | 4,491 | 3,578 | 72,781 | 71,814 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 13,037 | 318 | 2,450 | 4,491 | 3,219 | 72,781 | 68,354 |
 
 ## chain-affinity
 
@@ -1013,6 +1018,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,653 | 3,176 | 2,604 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,645 | 3,153 | 2,597 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 2,641 | 3,149 | 2,593 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 2,549 | 3,057 | 2,501 |
 
 ## control
 
@@ -1182,6 +1188,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 74,709 | 833,368 | 2,575,472 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 74,710 | 823,456 | 2,590,283 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 74,709 | 823,425 | 2,587,829 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 74,709 | 823,414 | 2,587,780 |
 
 ## create
 
@@ -1351,6 +1358,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 13,452,451 | 2,892,613 | 2,578,366 | 2,127,268 | 4,054,846 | 33,823,532 | 50,472,743 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 13,481,449 | 2,860,615 | 2,579,376 | 2,127,931 | 4,053,463 | 33,867,524 | 50,423,087 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 13,483,476 | 2,857,614 | 2,581,375 | 2,127,396 | 4,054,665 | 33,900,572 | 50,477,389 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 13,576,982 | 2,857,614 | 2,405,777 | 2,127,985 | 3,111,132 | 33,778,836 | 46,542,609 |
 
 ## create-on
 
@@ -1520,6 +1528,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,957,488 | 4,234,981 | 55,454,731 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,903,490 | 4,211,724 | 55,337,136 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 2,908,488 | 4,211,781 | 55,349,873 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 2,732,625 | 3,316,827 | 51,471,102 |
 
 ## cutoff
 
@@ -1689,6 +1698,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,184 | 50 | 114 | 65 | 51 | 1,095 | 1,006 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,182 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1858,6 +1868,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 787 | 758 | 16,684 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 777 | 758 | 16,684 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 776 | 758 | 16,684 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 764 | 723 | 16,243 |
 
 ## derive-on
 
@@ -2027,6 +2038,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 757 | 759 | 16,707 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 745 | 759 | 16,707 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 745 | 759 | 16,707 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 733 | 729 | 16,266 |
 
 ## dispose
 
@@ -2196,6 +2208,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 2,707,641 | 806,288 | 367,497 | 475,927 | 495,323 | 13,205,464 | 9,105,552 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 2,706,751 | 806,288 | 368,506 | 475,911 | 493,944 | 13,205,909 | 9,106,176 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 2,706,245 | 806,288 | 368,506 | 475,968 | 493,597 | 13,205,450 | 9,106,084 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 2,706,752 | 806,288 | 358,486 | 491,928 | 506,570 | 13,205,941 | 9,105,390 |
 
 ## dispose-on
 
@@ -2365,6 +2378,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 346,497 | 487,585 | 8,903,127 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 347,506 | 487,700 | 8,902,156 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 347,506 | 487,601 | 8,902,097 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 337,486 | 498,260 | 8,901,415 |
 
 ## editable-edit
 
@@ -2534,6 +2548,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 183,506 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 182,409 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 182,209 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 178,109 |
 
 ## editable-upstream
 
@@ -2703,6 +2718,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 239,255 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 230,409 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 230,109 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 223,509 |
 
 ## fail-recompute
 
@@ -2872,6 +2888,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 65,154 | 1,420 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 65,010 | 1,408 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 65,232 | 1,406 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 65,232 | 1,368 |
 
 ## flight
 
@@ -3041,6 +3058,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 11,000 | 6,244 | 6,245 | 11,343 | 10,768 | 22,410 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 10,977 | 6,221 | 6,222 | 11,323 | 10,745 | 22,387 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 10,178 | 5,784 | 5,786 | 10,453 | 9,982 | 10,636 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 
 ## keyed-insert
 
@@ -3210,6 +3228,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,900,906 | 53,949 | 55,049 | 3,329,776 | 240,481 | 179,463 | 46,473,887 | 2,635,533 | 2,656,837 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,887,924 | 53,916 | 55,063 | 3,330,718 | 240,301 | 179,434 | 46,506,656 | 2,635,473 | 2,656,956 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 1,886,833 | 53,919 | 54,973 | 3,330,645 | 240,635 | 179,348 | 46,494,123 | 2,635,482 | 2,657,052 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 1,861,659 | 53,765 | 54,780 | 3,246,641 | 660,232 | 176,896 | 45,598,801 | 2,633,748 | 2,652,823 |
 
 ## keyed-remove
 
@@ -3379,6 +3398,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,899,911 | 43,648 | 45,365 | 3,333,796 | 592,967 | 148,489 | 46,447,268 | 1,925,471 | 1,961,793 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,886,946 | 43,599 | 45,395 | 3,334,862 | 593,748 | 148,178 | 46,460,226 | 1,925,401 | 1,961,841 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 1,885,866 | 43,609 | 45,296 | 3,334,717 | 593,744 | 148,112 | 46,446,303 | 1,925,458 | 1,961,903 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 1,860,685 | 43,554 | 45,108 | 3,248,587 | 595,263 | 147,623 | 45,555,271 | 1,923,597 | 1,956,926 |
 
 ## keyed-swap
 
@@ -3548,6 +3568,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,895,464 | 46,215 | 46,945 | 3,218,676 | 502,398 | 508,556 | 47,160,257 | 915,898 | 934,154 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,882,544 | 46,152 | 46,982 | 3,275,548 | 502,161 | 509,293 | 47,144,211 | 915,997 | 936,653 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 1,881,465 | 46,155 | 46,883 | 3,276,405 | 502,416 | 509,246 | 47,149,466 | 916,030 | 936,645 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 1,856,466 | 46,203 | 46,898 | 3,218,005 | 502,310 | 512,192 | 46,266,625 | 916,116 | 933,891 |
 
 ## mvu-dispatch
 
@@ -3717,6 +3738,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 60,281 | 794 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 60,288 | 786 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 60,223 | 785 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 59,439 | 773 |
 
 ## persist-write
 
@@ -3886,6 +3908,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | — | — |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | — | — |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | — | — |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | — | — |
 
 ## project-chain
 
@@ -4055,6 +4078,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 455,702 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 455,847 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 455,669 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 454,407 |
 
 ## project-churn
 
@@ -4224,6 +4248,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 36,548 | 34,279 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 36,482 | 34,211 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 36,482 | 34,226 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 36,495 | 34,191 |
 
 ## project-edit
 
@@ -4393,6 +4418,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 50,710 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 50,471 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 50,469 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 50,527 |
 
 ## project-reorder
 
@@ -4562,6 +4588,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 664,402 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 645,137 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 645,128 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 645,220 |
 
 ## server-render
 
@@ -4731,6 +4758,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | — | — | — |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | — | — | — |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | — | — | — |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | — | — | — |
 
 ## shape-diamond
 
@@ -4900,6 +4928,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 62,348 | 86,410 | 1,879,598 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 62,340 | 86,511 | 1,879,598 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 62,238 | 86,511 | 1,879,598 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 59,609 | 80,097 | 1,781,072 |
 
 ## shape-dynamic
 
@@ -5069,6 +5098,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 85,079 | 109,894 | 2,055,691 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 84,825 | 109,897 | 2,055,681 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 84,725 | 109,899 | 2,055,682 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 83,024 | 107,130 | 2,005,078 |
 
 ## stream-burst-1
 
@@ -5238,6 +5268,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,918 | 1,522 | 2,555 | 5,956 | 3,686 | 13,919 | 48,543 | 46,744 | 57,341 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,900 | 1,526 | 2,557 | 5,957 | 3,687 | 13,921 | 48,543 | 46,744 | 57,344 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 1,886 | 1,512 | 2,525 | 4,639 | 2,426 | 12,251 | 39,226 | 37,425 | 48,049 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 1,845 | 1,471 | 2,482 | 4,353 | 6,788 | 11,734 | 37,636 | 35,840 | 46,463 |
 
 ## stream-burst-16
 
@@ -5407,6 +5438,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 4,123 | 24,142 | 5,765 | 10,105 | 48,475 | 16,570 | 116,538 | 735,504 | 115,691 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 4,105 | 24,206 | 5,767 | 10,088 | 48,491 | 16,572 | 116,538 | 735,504 | 115,693 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 4,091 | 23,982 | 5,735 | 8,788 | 28,830 | 14,902 | 107,221 | 586,563 | 106,402 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 3,870 | 23,326 | 5,692 | 8,178 | 27,198 | 14,385 | 99,016 | 561,190 | 104,810 |
 
 ## stream-burst-256
 
@@ -5576,6 +5608,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 39,379 | 386,062 | 57,104 | 109,966 | 810,914 | 46,290 | 1,204,761 | 11,754,426 | 1,048,716 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 39,361 | 387,086 | 57,106 | 109,967 | 811,068 | 46,292 | 1,204,761 | 11,754,355 | 1,048,725 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 39,347 | 383,502 | 57,074 | 104,816 | 485,564 | 41,470 | 1,195,458 | 9,371,497 | 1,039,424 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 36,246 | 373,006 | 57,031 | 96,971 | 431,089 | 40,858 | 1,081,332 | 8,965,444 | 1,037,775 |
 
 ## stream-restart
 
@@ -5745,6 +5778,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 4,240 | 5,072 | 5,912 | 5,408 | 44,163 | 73,513 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 4,232 | 5,086 | 5,914 | 5,412 | 44,136 | 73,508 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 3,907 | 4,916 | 5,255 | 6,628 | 43,919 | 73,669 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 3,882 | 4,877 | 14,814 | 6,290 | 43,170 | 72,335 |
 
 ## timed-admit-both
 
@@ -5914,6 +5948,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 109,110 | 129,087 | 2,606,093 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 109,356 | 129,086 | 2,606,330 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 109,292 | 129,022 | 2,606,386 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 108,458 | 132,725 | 2,572,232 |
 
 ## timed-admit-debounce
 
@@ -6083,6 +6118,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 108,662 | 127,550 | 2,591,753 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 108,908 | 127,527 | 2,591,773 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 108,844 | 127,484 | 2,591,774 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 108,010 | 131,638 | 2,557,699 |
 
 ## timed-admit-first
 
@@ -6252,6 +6288,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 68,727 | 79,568 | 1,617,623 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 68,845 | 79,568 | 1,617,623 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 68,781 | 79,505 | 1,617,623 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 67,947 | 77,257 | 1,583,470 |
 
 ## timed-admit-last
 
@@ -6421,6 +6458,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 108,918 | 127,857 | 2,601,609 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 109,164 | 127,857 | 2,601,655 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 109,100 | 127,796 | 2,601,608 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 108,266 | 131,943 | 2,567,529 |
 
 ## timed-capture-both
 
@@ -6590,6 +6628,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 35,038 | 40,606 | 863,093 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 35,028 | 39,988 | 863,322 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 35,028 | 40,601 | 863,341 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 35,090 | 43,698 | 865,816 |
 
 ## timed-capture-debounce
 
@@ -6759,6 +6798,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 34,910 | 45,406 | 863,581 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 34,900 | 45,408 | 863,583 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 34,900 | 45,407 | 863,581 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 34,962 | 46,806 | 866,055 |
 
 ## timed-capture-first
 
@@ -6928,6 +6968,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 31,262 | 36,489 | 745,942 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 31,252 | 36,490 | 745,942 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 31,252 | 36,489 | 745,942 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 31,314 | 36,734 | 748,414 |
 
 ## timed-capture-last
 
@@ -7097,6 +7138,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 34,846 | 45,342 | 855,711 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 34,836 | 45,343 | 855,709 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 34,836 | 45,342 | 855,709 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 34,898 | 46,740 | 858,181 |
 
 ## update
 
@@ -7266,6 +7308,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 1,089,590 | 38,805 | 84,905 | 262,843 | 160,223 | 3,351,240 | 2,567,465 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 1,092,490 | 38,805 | 83,909 | 263,176 | 160,241 | 3,351,273 | 2,567,529 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 1,087,990 | 38,805 | 83,809 | 263,047 | 155,980 | 3,351,249 | 2,567,528 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 1,091,189 | 38,805 | 81,509 | 262,885 | 152,605 | 3,351,152 | 2,523,370 |
 
 ## update-on
 
@@ -7435,6 +7478,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 95,405 | 175,534 | 2,894,947 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 94,209 | 175,531 | 2,894,898 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 94,209 | 175,512 | 2,894,959 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 93,009 | 172,525 | 2,850,766 |
 
 ## work-form
 
@@ -7604,6 +7648,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 175,183 | 167,654 | 313,387 | 343,320 | 5,495,797 | 5,408,841 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 171,938 | 168,024 | 313,373 | 343,380 | 5,495,839 | 5,408,836 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 171,812 | 170,023 | 313,280 | 342,515 | 5,495,763 | 5,408,867 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 170,299 | 164,511 | 309,205 | 338,421 | 5,440,200 | 5,353,198 |
 
 ## work-status
 
@@ -7773,6 +7818,7 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 102,645 | 80,835 | 260,962 | 156,809 | 2,675,622 | 2,407,618 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 101,649 | 79,639 | 260,957 | 156,835 | 2,675,570 | 2,407,693 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 101,549 | 79,639 | 260,952 | 156,829 | 2,675,647 | 2,407,722 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 100,349 | 78,439 | 257,144 | 153,210 | 2,631,520 | 2,363,498 |
 
 ## work-value
 
@@ -7942,4 +7988,5 @@
 | `3a355da` | 2026-11-12 | perf: fast-path AsyncSource, Timed, and TimedClock.system (#349) | 109,769 | 121,671 | 261,183 | 284,105 | 2,660,320 | 2,984,858 |
 | `1a81419` | 2026-11-12 | perf: fast-path signal writes, editable stamps, and selector lookup (#350) | 108,774 | 120,473 | 261,218 | 284,107 | 2,660,304 | 2,984,854 |
 | `ce79d97` | 2026-11-12 | perf: eliminate AsyncMemo Queue task chains, Boundary closures, and Stream awaiter tasks (#351) | 108,673 | 120,475 | 261,180 | 284,063 | 2,660,335 | 2,984,880 |
+| `4f4bec0` | 2026-11-13 | perf(core): inline ObserverSet slot 0 and replace Status.HasFlag with StatusBits (#353) | 107,473 | 119,273 | 257,458 | 280,498 | 2,616,201 | 2,940,674 |
 
