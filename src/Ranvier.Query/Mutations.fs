@@ -8,20 +8,46 @@ open Fable.Core
 /// <summary>Client-owned remote writes and their atomic query reconciliation.</summary>
 [<AutoOpen>]
 module QueryMutationExtensions =
-    let private observeRequest (graph: Ranvier.Graph) (remote: Task<'T>) (apply: Result<'T, exn> -> unit) =
+    let private observeAsync (graph: Ranvier.Graph) (remote: Task<'T>) (applyOk: 'T -> unit) (applyError: exn -> unit) =
         task {
-            let! outcome =
-                task {
-                    try
-                        let! value = remote
-                        return Result.Ok value
-                    with error ->
-                        return Result.Error error
-                }
+            try
+                let! value = remote
 
-            graph.Dispatch (fun () -> apply outcome)
+                if graph.IsOnGraphThread then
+                    applyOk value
+                else
+                    graph.Post (fun () -> applyOk value)
+            with error ->
+                if graph.IsOnGraphThread then
+                    applyError error
+                else
+                    graph.Post (fun () -> applyError error)
         }
         |> ignore
+
+    let private observeRequest (graph: Ranvier.Graph) (remote: Task<'T>) (applyOk: 'T -> unit) (applyError: exn -> unit) =
+#if !FABLE_COMPILER
+        if remote.IsCompleted then
+            if remote.IsCompletedSuccessfully then
+                let value = remote.GetAwaiter().GetResult()
+
+                if graph.IsOnGraphThread then
+                    applyOk value
+                else
+                    graph.Post (fun () -> applyOk value)
+            else
+                try
+                    remote.GetAwaiter().GetResult() |> ignore
+                with error ->
+                    if graph.IsOnGraphThread then
+                        applyError error
+                    else
+                        graph.Post (fun () -> applyError error)
+        else
+            observeAsync graph remote applyOk applyError
+#else
+        observeAsync graph remote applyOk applyError
+#endif
 
     /// <summary>Settles cancellation using each target's completion-source spelling.</summary>
     [<Emit("$0.SetCancelled()")>]
@@ -50,47 +76,52 @@ module QueryMutationExtensions =
                             try
                                 cancellation.Cancel ()
                             with error ->
-                                graph.Root.OnCleanup (fun () -> raise error)
+                                graph.Root.AddCleanup (fun () -> raise error)
 
                             cancellation.Dispose ()
 
                     member _.Start(finished) =
-                        let apply outcome =
+                        let finishApply (accepted: MutationOutcome<'Result>) =
+                            if not cancelled then
+                                terminal <- true
+                                result.SetResult accepted
+
+                            cancellation.Dispose ()
+                            finished ()
+
+                        let applyError (error: exn) =
+                            if not cancelled && not client.IsDisposed then
+                                finishApply (MutationOutcome.RequestFailed error)
+
+                        let applyOk (value: 'Result) =
                             if not cancelled && not client.IsDisposed then
                                 let accepted =
-                                    match outcome with
-                                    | Result.Error error -> MutationOutcome.RequestFailed error
-                                    | Result.Ok value ->
-                                        try
-                                            client.Reconcile (fun () -> reconcile value)
-                                            MutationOutcome.Applied value
-                                        with error ->
-                                            if not client.IsDisposed then
-                                                client.InvalidateAll ()
+                                    try
+                                        client.Reconcile (fun () -> reconcile value)
+                                        MutationOutcome.Applied value
+                                    with error ->
+                                        if not client.IsDisposed then
+                                            client.InvalidateAll ()
 
-                                            MutationOutcome.ReconciliationFailed (value, error)
+                                        MutationOutcome.ReconciliationFailed (value, error)
 
-                                if not cancelled then
-                                    terminal <- true
-                                    result.SetResult accepted
+                                finishApply accepted
 
-                                cancellation.Dispose ()
-                                finished ()
+                        let mutable remote: Task<'Result> = null
+                        let mutable syncError: exn = null
 
-                        let request =
-                            try
-                                let remote = graph.Untrack (fun () -> execute input cancellation.Token)
+                        try
+                            remote <- graph.RunUntracked (fun () -> execute input cancellation.Token)
 
-                                if isNull remote then
-                                    invalidOp "The mutation execute function returned a null task."
+                            if isNull remote then
+                                syncError <- InvalidOperationException "The mutation execute function returned a null task."
+                        with error ->
+                            syncError <- error
 
-                                Result.Ok remote
-                            with error ->
-                                Result.Error error
-
-                        match request with
-                        | Result.Error error -> apply (Result.Error error)
-                        | Result.Ok remote -> observeRequest graph remote apply
+                        if not (isNull syncError) then
+                            applyError syncError
+                        else
+                            observeRequest graph remote applyOk applyError
                 }
 
             try

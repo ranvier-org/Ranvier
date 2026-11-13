@@ -188,3 +188,47 @@ type QueryReconciliationBenchmarks() =
     member this.QueryCommit() =
         client.Commit (this.Edits (this.NextSave ()))
         consume home.Value section.Value detail.Value
+
+[<MemoryDiagnoser>]
+[<BenchmarkCategory("Query")>]
+type QueryLifecycleBenchmarks() =
+    let mutable graph = Unchecked.defaultof<Graph>
+    let mutable client = Unchecked.defaultof<QueryClient>
+    let mutable family = Unchecked.defaultof<QueryFamily<int, int>>
+    let mutable held = Unchecked.defaultof<QueryLease<int>>
+    let mutable singleEdit: QueryEdit list = []
+
+    [<GlobalSetup>]
+    member _.Setup() =
+        graph <-
+            new Graph (
+                { GraphOptions.Default with
+                    Dispatcher = Some (ImmediateDispatcher ())
+                }
+            )
+
+        client <- new QueryClient (graph)
+        family <- client.Define (EqualityComparer<int>.Default, fun key _ -> Task.FromResult key)
+        held <- family.Acquire 1
+        singleEdit <- [ family.UpdateIfLoaded (1, fun v -> v + 1) ]
+
+    [<GlobalCleanup>]
+    member _.Cleanup() =
+        held.Dispose ()
+        client.Dispose ()
+        graph.Dispose ()
+
+    [<Benchmark>]
+    member _.AcquireSyncAndDispose() =
+        use lease = family.Acquire 2
+        lease.Value
+
+    [<Benchmark>]
+    member _.RefreshSync() =
+        held.Refresh ()
+        held.Value
+
+    [<Benchmark>]
+    member _.CommitSingleEdit() =
+        client.Commit singleEdit
+        held.Value
