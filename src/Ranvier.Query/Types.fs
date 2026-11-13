@@ -1,6 +1,7 @@
 namespace Ranvier.Query
 
 open System.Collections.Generic
+open System.Threading
 open System.Threading.Tasks
 open Fable.Core
 
@@ -43,18 +44,32 @@ type internal QueryAwaiter<'T>(completed: QueryAwaiter<'T> -> unit) as this =
         this.Finish (fun () -> QueryTask.cancel source)
 
 /// <summary>A staged entry whose validation precedes all publication.</summary>
+[<AllowNullLiteral>]
 type internal IQueryDraft =
     abstract Prepare: unit -> unit
     abstract Publish: unit -> unit
     abstract Cancel: unit -> unit
 
+/// <summary>An entry contract driven by a typed draft without per-stage closures.</summary>
+[<AllowNullLiteral>]
+type internal IQueryEntry<'T> =
+    abstract PrepareDraft: initial: 'T option * next: 'T option * updated: bool -> bool
+    abstract PublishDraft: next: 'T option * changed: bool * stale: bool * draft: QueryDraft<'T> -> unit
+    abstract CancelDraft: waiters: QueryAwaiter<'T>[] * cancellation: CancellationTokenSource -> unit
+
 /// <summary>A typed editable draft shared by ordered descriptions targeting one entry.</summary>
-type internal QueryDraft<'T>(initial: 'T option, prepare: 'T option -> bool -> bool -> (unit -> unit) * (unit -> unit)) =
+and [<AllowNullLiteral>] internal QueryDraft<'T>(entry: IQueryEntry<'T>, initial: 'T option) =
     let mutable data = initial
     let mutable stale = true
     let mutable updated = false
-    let mutable publish = ignore
-    let mutable cancel = ignore
+    let mutable changed = false
+    let mutable retiredWaiters: QueryAwaiter<'T>[] = null
+    let mutable retiredCancellation: CancellationTokenSource = null
+
+    /// <summary>Records wait and cancellation handles retired during publish for deferred teardown.</summary>
+    member internal _.SetRetired(waiters: QueryAwaiter<'T>[], cancellation: CancellationTokenSource) =
+        retiredWaiters <- waiters
+        retiredCancellation <- cancellation
 
     member _.Update(updater: 'T -> 'T) =
         match data with
@@ -69,30 +84,45 @@ type internal QueryDraft<'T>(initial: 'T option, prepare: 'T option -> bool -> b
 
     interface IQueryDraft with
         member _.Prepare() =
-            let write, retire = prepare data stale updated in
-            publish <- write
-            cancel <- retire
+            changed <- entry.PrepareDraft (initial, data, updated)
 
-        member _.Publish() =
-            publish ()
+        member this.Publish() =
+            entry.PublishDraft (data, changed, stale, this)
 
-        member _.Cancel() = cancel ()
+        member _.Cancel() =
+            if
+                not (isNull retiredWaiters)
+                || not (isNull retiredCancellation)
+            then
+                let waiters = retiredWaiters
+                let cts = retiredCancellation
+                retiredWaiters <- null
+                retiredCancellation <- null
+                entry.CancelDraft (waiters, cts)
 
 /// <summary>A transaction's heterogeneous drafts; family lookup remains fully typed.</summary>
+[<AllowNullLiteral>]
 type internal QueryStaging() =
     let entries = Dictionary<obj, obj>(HashIdentity.Reference)
     let drafts = ResizeArray<IQueryDraft>()
 
-    member _.Get<'T>(identity: obj, create: unit -> QueryDraft<'T>) =
+    member _.TryGet(identity: obj) : obj =
         match entries.TryGetValue identity with
-        | true, value -> unbox<QueryDraft<'T>> value
-        | false, _ ->
-            let draft = create ()
-            entries.Add (identity, box draft)
-            drafts.Add draft
-            draft
+        | true, value -> value
+        | false, _ -> null
+
+    member _.Add(identity: obj, draft: IQueryDraft) =
+        entries.Add (identity, box draft)
+        drafts.Add draft
 
     member _.Drafts = drafts
+
+    member _.Reset() =
+        if entries.Count > 0 then
+            entries.Clear ()
+
+        if drafts.Count > 0 then
+            drafts.Clear ()
 
 /// <summary>An opaque, client-bound description of a cache update or invalidation.</summary>
 [<Sealed>]
@@ -113,6 +143,19 @@ type FetchStatus =
     | Idle
     | Fetching
 
+/// <summary>Internal request state without tuple allocation on .NET.</summary>
+#if !FABLE_COMPILER
+[<Struct; NoEquality; NoComparison>]
+#else
+[<NoEquality; NoComparison>]
+#endif
+type internal QueryMeta =
+    {
+        FetchStatus: FetchStatus
+        Error: exn option
+        IsStale: bool
+    }
+
 /// <summary>Cached data and request state. A refresh failure retains the last accepted data.</summary>
 type QuerySnapshot<'T> =
     {
@@ -131,6 +174,10 @@ type MutationOutcome<'T> =
 
 /// <summary>A publication comparer that accepts prevalidated source writes.</summary>
 type internal PublicationComparer<'T>() =
+    static let instance = PublicationComparer<'T>() :> IEqualityComparer<'T>
+
+    static member Instance = instance
+
     interface IEqualityComparer<'T> with
         member _.Equals(_, _) = false
         member _.GetHashCode(_) = 0

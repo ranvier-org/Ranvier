@@ -6,141 +6,197 @@ open System.Threading.Tasks
 open Ranvier
 
 /// <summary>Cached data, request state, and the initial-load suspension source for an entry.</summary>
-type internal QueryEntry<'T>(graph: Graph, fetch: CancellationToken -> Task<'T>, guard: unit -> unit) =
-    let source initial =
-        graph.Run (fun () -> createSignalWithComparer (PublicationComparer<_>()) initial)
+[<AllowNullLiteral>]
+type internal QueryEntry<'T>(graph: Graph, fetch: CancellationToken -> Task<'T>, guard: unit -> unit, onEvict: unit -> unit) =
+    let data = Signal<'T option>(graph, None, PublicationComparer<_>.Instance)
 
-    let data = source None
-    let metadata = source (FetchStatus.Idle, None, true)
-    let gate = source (AsyncSource<'T>(graph))
+    let metadata =
+        Signal<QueryMeta>(
+            graph,
+            {
+                FetchStatus = FetchStatus.Idle
+                Error = None
+                IsStale = true
+            },
+            PublicationComparer<_>.Instance
+        )
+
+    let gate =
+        Signal<AsyncSource<'T>>(graph, AsyncSource<'T>(graph), PublicationComparer<_>.Instance)
+
     let comparer = graph.Options.Equality.Comparer<'T>()
     let mutable generation = 0L
     let mutable disposed = false
-    let mutable cancellation: CancellationTokenSource option = None
-    let waiters = ResizeArray<QueryAwaiter<'T>>()
+    let mutable freshGate = true
+    let mutable leaseCount = 0
+    let mutable cancellation: CancellationTokenSource = null
+    let mutable waiters: ResizeArray<QueryAwaiter<'T>> = null
 
-    let takeWaiters () =
-        if waiters.Count = 0 then
-            Array.empty
+    let takeWaiters () : QueryAwaiter<'T>[] =
+        if isNull waiters || waiters.Count = 0 then
+            null
         else
             let current = waiters.ToArray ()
             waiters.Clear ()
             current
 
-    let cancelWaiters pending =
-        for waiter: QueryAwaiter<'T> in pending do
-            waiter.Cancel ()
+    let cancelWaiters (pending: QueryAwaiter<'T>[]) =
+        if not (isNull pending) then
+            for i = 0 to pending.Length - 1 do
+                pending[i].Cancel()
 
-    let cancel () =
-        let old = cancellation
-        cancellation <- None
-
-        match old with
-        | None -> ()
-        | Some cts ->
+    let cancelCancellation (cts: CancellationTokenSource) =
+        if not (isNull cts) then
             try
                 cts.Cancel ()
             with error ->
-                graph.Root.OnCleanup (fun () -> raise error)
+                graph.Root.AddCleanup (fun () -> raise error)
 
             cts.Dispose ()
 
-    let publish current outcome =
+    let cancel () =
+        let old = cancellation
+        cancellation <- null
+        cancelCancellation old
+
+    let publishError current (error: exn) =
         if not disposed && generation = current then
-            match outcome with
-            | Result.Ok value ->
-                try
-                    let initial = data.Peek.IsNone
+            let pending = takeWaiters ()
 
-                    let changed =
-                        match data.Peek with
-                        | None -> true
-                        | Some old -> not (comparer.Equals (old, value))
+            graph.RunBatch (fun () ->
+                metadata.Value <-
+                    {
+                        FetchStatus = FetchStatus.Idle
+                        Error = Some error
+                        IsStale = true
+                    }
 
-                    if not disposed && generation = current then
-                        let pending = takeWaiters ()
+                if data.Peek.IsNone then
+                    gate.Peek.Fail error)
 
-                        graph.Batch (fun () ->
-                            if changed then
-                                data.Value <- Some value
+            if disposed || generation <> current then
+                cancelWaiters pending
+            elif not (isNull pending) then
+                for i = 0 to pending.Length - 1 do
+                    pending[i].Fail error
 
-                            metadata.Value <- FetchStatus.Idle, None, false
+    let publishOk current (value: 'T) =
+        if not disposed && generation = current then
+            try
+                let initial = data.Peek.IsNone
 
-                            if initial then
-                                gate.Peek.Settle value)
+                let changed =
+                    match data.Peek with
+                    | None -> true
+                    | Some old -> not (comparer.Equals (old, value))
 
-                        if disposed || generation <> current then
-                            cancelWaiters pending
-                        else
-                            for waiter in pending do
-                                waiter.Settle value
-                with error ->
-                    if not disposed && generation = current then
-                        let pending = takeWaiters ()
+                if not disposed && generation = current then
+                    let pending = takeWaiters ()
 
-                        graph.Batch (fun () ->
-                            metadata.Value <- FetchStatus.Idle, Some error, true
+                    graph.RunBatch (fun () ->
+                        if changed then
+                            data.Value <- Some value
 
-                            if data.Peek.IsNone then
-                                gate.Peek.Fail error)
+                        metadata.Value <-
+                            {
+                                FetchStatus = FetchStatus.Idle
+                                Error = None
+                                IsStale = false
+                            }
 
-                        if disposed || generation <> current then
-                            cancelWaiters pending
-                        else
-                            for waiter in pending do
-                                waiter.Fail error
-            | Result.Error error ->
-                let pending = takeWaiters ()
+                        if initial then
+                            gate.Peek.Settle value)
 
-                graph.Batch (fun () ->
-                    metadata.Value <- FetchStatus.Idle, Some error, true
+                    if disposed || generation <> current then
+                        cancelWaiters pending
+                    elif not (isNull pending) then
+                        for i = 0 to pending.Length - 1 do
+                            pending[i].Settle value
+            with error ->
+                publishError current error
 
-                    if data.Peek.IsNone then
-                        gate.Peek.Fail error)
+    let observeRequest current (request: Task<'T>) =
+        task {
+            try
+                let! value = request
 
-                if disposed || generation <> current then
-                    cancelWaiters pending
+                if graph.IsOnGraphThread then
+                    publishOk current value
                 else
-                    for waiter in pending do
-                        waiter.Fail error
+                    graph.Post (fun () -> publishOk current value)
+            with error ->
+                if graph.IsOnGraphThread then
+                    publishError current error
+                else
+                    graph.Post (fun () -> publishError current error)
+        }
+        |> ignore
+
+    let dispatchRequest current (request: Task<'T>) =
+#if !FABLE_COMPILER
+        if request.IsCompleted then
+            if request.IsCompletedSuccessfully then
+                let value = request.GetAwaiter().GetResult()
+
+                if graph.IsOnGraphThread then
+                    publishOk current value
+                else
+                    graph.Post (fun () -> publishOk current value)
+            else
+                try
+                    request.GetAwaiter().GetResult() |> ignore
+                with error ->
+                    if graph.IsOnGraphThread then
+                        publishError current error
+                    else
+                        graph.Post (fun () -> publishError current error)
+        else
+            observeRequest current request
+#else
+        observeRequest current request
+#endif
 
     let beginRequest current =
         let cts = new CancellationTokenSource ()
-        cancellation <- Some cts
+        cancellation <- cts
 
-        graph.Batch (fun () ->
+        graph.RunBatch (fun () ->
             if data.Peek.IsNone then
-                gate.Value <- AsyncSource<'T>(graph)
+                if freshGate then
+                    freshGate <- false
+                else
+                    gate.Value <- AsyncSource<'T>(graph)
 
-            metadata.Value <- FetchStatus.Fetching, None, true)
+            metadata.Value <-
+                {
+                    FetchStatus = FetchStatus.Fetching
+                    Error = None
+                    IsStale = true
+                })
 
-        let request =
-            try
-                let result = graph.Untrack (fun () -> fetch cts.Token)
+        let mutable request: Task<'T> = null
+        let mutable syncError: exn = null
 
-                if isNull result then
-                    raise (InvalidOperationException "The query fetch returned a null task.")
+        try
+            request <- graph.RunUntracked (fun () -> fetch cts.Token)
 
-                Result.Ok result
-            with error ->
-                Result.Error error
+            if isNull request then
+                syncError <- InvalidOperationException "The query fetch returned a null task."
+        with error ->
+            syncError <- error
 
-        match request with
-        | Result.Error error -> publish current (Result.Error error)
-        | Result.Ok request ->
-            task {
-                let! outcome =
-                    task {
-                        try
-                            let! value = request
-                            return Result.Ok value
-                        with error ->
-                            return Result.Error error
-                    }
+        if not (isNull syncError) then
+            publishError current syncError
+        else
+            dispatchRequest current request
 
-                graph.Dispatch (fun () -> publish current outcome)
-            }
-            |> ignore
+    let disposeEntry () =
+        if not disposed then
+            disposed <- true
+            generation <- generation + 1L
+            let pending = takeWaiters ()
+            cancel ()
+            cancelWaiters pending
 
     let start () =
         guard ()
@@ -156,6 +212,18 @@ type internal QueryEntry<'T>(graph: Graph, fetch: CancellationToken -> Task<'T>,
 
         if not disposed && generation = current then
             beginRequest current
+
+    /// <summary>Increments the active lease count for this entry.</summary>
+    member internal _.AcquireLease() =
+        leaseCount <- leaseCount + 1
+
+    /// <summary>Decrements the active lease count, evicting and disposing when zero.</summary>
+    member internal _.ReleaseLease() =
+        leaseCount <- leaseCount - 1
+
+        if leaseCount = 0 then
+            onEvict ()
+            disposeEntry ()
 
     /// <summary>A tracked value read; suspends until initial data arrives and retains data during refresh.</summary>
     member _.Value =
@@ -175,23 +243,23 @@ type internal QueryEntry<'T>(graph: Graph, fetch: CancellationToken -> Task<'T>,
         if disposed then
             raise (ObjectDisposedException "QueryEntry")
 
-        let status, error, stale = metadata.Value
+        let meta = metadata.Value
 
         {
             Data = data.Value
-            FetchStatus = status
-            Error = error
-            IsStale = stale
+            FetchStatus = meta.FetchStatus
+            Error = meta.Error
+            IsStale = meta.IsStale
         }
 
     /// <summary>Starts a missing or stale query and joins an existing request.</summary>
     member _.Ensure() =
         guard ()
-        let status, _, stale = metadata.Peek
+        let meta = metadata.Peek
 
         if
-            status <> FetchStatus.Fetching
-            && (data.Peek.IsNone || stale)
+            meta.FetchStatus <> FetchStatus.Fetching
+            && (data.Peek.IsNone || meta.IsStale)
         then
             start ()
 
@@ -204,78 +272,68 @@ type internal QueryEntry<'T>(graph: Graph, fetch: CancellationToken -> Task<'T>,
 
         let waiter =
             QueryAwaiter<'T>(fun current ->
-                waiters.Remove current |> ignore
+                if not (isNull waiters) then
+                    waiters.Remove current |> ignore
+
                 completed current)
 
-        let status, error, stale = metadata.Peek
+        let meta = metadata.Peek
 
-        match status, error, data.Peek with
-        | FetchStatus.Fetching, _, _ -> waiters.Add waiter
+        match meta.FetchStatus, meta.Error, data.Peek with
+        | FetchStatus.Fetching, _, _ ->
+            if isNull waiters then
+                waiters <- ResizeArray<QueryAwaiter<'T>>()
+
+            waiters.Add waiter
         | _, Some failure, _ -> waiter.Fail failure
-        | _, _, Some value when not stale -> waiter.Settle value
+        | _, _, Some value when not meta.IsStale -> waiter.Settle value
         | _ -> waiter.Cancel ()
 
         waiter
 
     /// <summary>Creates a typed draft without modifying requests or sources.</summary>
     member this.Draft(context: QueryStaging) =
-        context.Get (
-            this,
-            fun () ->
-                let initial = data.Peek
-                let _, error, _ = metadata.Peek
+        match context.TryGet this with
+        | null ->
+            let draft = QueryDraft<'T>(this, data.Peek)
+            context.Add (this, draft)
+            draft
+        | existing -> unbox<QueryDraft<'T>> existing
 
-                QueryDraft (
-                    initial,
-                    fun next stale updated ->
-                        let changed =
-                            match updated, initial, next with
-                            | false, _, _ -> false
-                            | true, Some old, Some value -> not (comparer.Equals (old, value))
-                            | true, None, None -> false
-                            | _ -> true
+    interface IQueryEntry<'T> with
+        member _.PrepareDraft(initial, next, updated) =
+            match updated, initial, next with
+            | false, _, _ -> false
+            | true, Some old, Some value -> not (comparer.Equals (old, value))
+            | true, None, None -> false
+            | _ -> true
 
-                        let replacement = if next.IsNone then Some (AsyncSource<'T>(graph)) else None
-                        let mutable retired = None
-                        let mutable retiredWaiters = Array.empty
+        member _.PublishDraft(next, changed, stale, draft) =
+            let priorError = metadata.Peek.Error
+            generation <- generation + 1L
+            let retiredWaiters = takeWaiters ()
+            let retiredCts = cancellation
+            cancellation <- null
+            draft.SetRetired (retiredWaiters, retiredCts)
 
-                        let write () =
-                            generation <- generation + 1L
-                            retiredWaiters <- takeWaiters ()
-                            retired <- cancellation
-                            cancellation <- None
+            if changed then
+                data.Value <- next
 
-                            if changed then
-                                data.Value <- next
+            metadata.Value <-
+                {
+                    FetchStatus = FetchStatus.Idle
+                    Error = (if stale then priorError else None)
+                    IsStale = stale
+                }
 
-                            metadata.Value <- FetchStatus.Idle, (if stale then error else None), stale
+            if next.IsNone then
+                freshGate <- false
+                gate.Value <- AsyncSource<'T>(graph)
 
-                            match replacement with
-                            | Some pending -> gate.Value <- pending
-                            | None -> ()
-
-                        let stop () =
-                            cancelWaiters retiredWaiters
-
-                            match retired with
-                            | Some cts ->
-                                try
-                                    cts.Cancel ()
-                                with failure ->
-                                    graph.Root.OnCleanup (fun () -> raise failure)
-
-                                cts.Dispose ()
-                            | None -> ()
-
-                        write, stop
-                )
-        )
+        member _.CancelDraft(retiredWaiters, retiredCts) =
+            cancelWaiters retiredWaiters
+            cancelCancellation retiredCts
 
     /// <summary>Retires outstanding completion and requests cancellation.</summary>
     member _.Dispose() =
-        if not disposed then
-            disposed <- true
-            generation <- generation + 1L
-            let pending = takeWaiters ()
-            cancel ()
-            cancelWaiters pending
+        disposeEntry ()
