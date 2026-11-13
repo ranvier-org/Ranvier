@@ -27,13 +27,12 @@ For runtime-specific suspension costs, see the
 ## From NuGet
 
 Install `Ranvier` for F#, `Ranvier.CSharp` for C#, or `Ranvier.Elmish` for the MVU bridge.
-Versions are previews, so pass `--prerelease`.
 
 The guide describes the current source. The current versions are
-[`Ranvier` 0.1.1-preview.3](https://www.nuget.org/packages/Ranvier/0.1.1-preview.3),
-[`Ranvier.CSharp` 0.1.1-preview.1](https://www.nuget.org/packages/Ranvier.CSharp/0.1.1-preview.1),
-[`Ranvier.Elmish` 0.1.1-preview.1](https://www.nuget.org/packages/Ranvier.Elmish/0.1.1-preview.1), and
-[`Ranvier.Query` 0.1.1-preview.1](https://www.nuget.org/packages/Ranvier.Query/0.1.1-preview.1).
+[`Ranvier` 0.2.0](https://www.nuget.org/packages/Ranvier/0.2.0),
+[`Ranvier.CSharp` 0.2.0](https://www.nuget.org/packages/Ranvier.CSharp/0.2.0),
+[`Ranvier.Elmish` 0.2.0](https://www.nuget.org/packages/Ranvier.Elmish/0.2.0), and
+[`Ranvier.Query` 0.2.0](https://www.nuget.org/packages/Ranvier.Query/0.2.0).
 
 ::::::tabs
 :::::tab Core
@@ -41,7 +40,7 @@ The guide describes the current source. The current versions are
 :::tab NuGet
 
 ```bash
-dotnet add package Ranvier --prerelease
+dotnet add package Ranvier
 ```
 
 :::
@@ -49,7 +48,7 @@ dotnet add package Ranvier --prerelease
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier" Version="0.1.1-preview.3" />
+<PackageReference Include="Ranvier" Version="0.2.0" />
 ```
 
 :::
@@ -63,13 +62,13 @@ dotnet add package Ranvier --prerelease
 :::tab NuGet
 
 ```bash
-dotnet add package Ranvier.CSharp --prerelease
+dotnet add package Ranvier.CSharp
 ```
 :::
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier.CSharp" Version="0.1.1-preview.1" />
+<PackageReference Include="Ranvier.CSharp" Version="0.2.0" />
 ```
 :::
 ::::
@@ -81,7 +80,7 @@ C# projects use `Ranvier.CSharp`; see [C#](csharp.md).
 :::tab NuGet
 
 ```bash
-dotnet add package Ranvier.Elmish --prerelease
+dotnet add package Ranvier.Elmish
 ```
 
 :::
@@ -89,7 +88,7 @@ dotnet add package Ranvier.Elmish --prerelease
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier.Elmish" Version="0.1.1-preview.1" />
+<PackageReference Include="Ranvier.Elmish" Version="0.2.0" />
 ```
 
 :::
@@ -102,7 +101,7 @@ The MVU bridge, `Mvu`, ships as its own package, `Ranvier.Elmish`, which depends
 ::::::
 
 For typed reactive queries and mutation reconciliation, install `Ranvier.Query` with
-`dotnet add package Ranvier.Query --prerelease`; see [Queries](queries.md).
+`dotnet add package Ranvier.Query`; see [Queries](queries.md).
 
 ## Views
 

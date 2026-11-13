@@ -21,7 +21,7 @@ application with commands, undo/redo and revision-aware saves.
 `Mvu` ships in its own package, `Ranvier.Elmish`, which depends on `Ranvier`:
 
 ```bash
-dotnet add package Ranvier.Elmish --prerelease
+dotnet add package Ranvier.Elmish
 ```
 
 :::info Existing commands work unchanged
