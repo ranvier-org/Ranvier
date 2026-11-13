@@ -191,15 +191,16 @@ and
     /// <summary>The delta a read returns while nothing changed since the previous read, or null.</summary>
     let mutable idle: ProjectionDelta<'K> = Unchecked.defaultof<ProjectionDelta<'K>>
     let mutable disposed = false
-    let mutable link: OwnerLink = null
+
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
 
     member internal _.ReadsValues = defaultArg values false
-
-    /// <summary>The owner link, kept only while the reader runs.</summary>
-    member internal _.Link
-        with set (value: OwnerLink) =
-            if not disposed then
-                link <- value
 
     /// <summary>Records <c>change</c> to <c>key</c>, or flags a reset once the pending changes exceed the cap.</summary>
     member internal _.Record(key: 'K, change: KeyChange) =
@@ -256,9 +257,7 @@ and
         if not disposed then
             disposed <- true
 
-            if not (Platform.isNull link) then
-                link.Detach ()
-                link <- null
+            OwnedSlot.Detach (this :> IOwned)
 
             host.Detach this
             changes.Clear ()
@@ -278,8 +277,28 @@ and
 
     interface IOwned with
         member this.Release() =
-            link <- null
             this.Stop ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
 /// <summary>The readers of one projection, each recording every membership change.</summary>
 [<Sealed; AllowNullLiteral>]

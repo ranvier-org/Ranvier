@@ -190,6 +190,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
 /// <remarks>Owned by the creating scope. Updates use the graph's value equality policy; keys use structural equality.</remarks>
 type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V -> 'K) =
     let rows = new CollectionProjection<'K, 'V> (graph)
+    do rows.Attach ()
 
     /// <summary>The reactive view used by collection operators and readers.</summary>
     member _.Rows = rows :> Projection<'K, 'V>

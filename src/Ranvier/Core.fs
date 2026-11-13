@@ -156,6 +156,20 @@ module internal EdgeHandle =
     let ScanLimit = 8
 
 /// <summary>
+/// Single-bitmask predicates over <see cref="Status"/> so hot reads inspect the status byte without calling <c>Enum.HasFlag</c>.
+/// </summary>
+module internal StatusBits =
+    let inline isUnready (status: Status) =
+        (status &&& (Status.Pending ||| Status.Error))
+        <> Status.None
+
+    let inline isPending (status: Status) =
+        (status &&& Status.Pending) <> Status.None
+
+    let inline isError (status: Status) =
+        (status &&& Status.Error) <> Status.None
+
+/// <summary>
 /// One slot in an observer list.
 /// </summary>
 /// <remarks>
@@ -208,15 +222,17 @@ module internal ObserverSlots =
 /// </para>
 /// </remarks>
 type internal ObserverSet() =
+    let mutable first: IComputation = Unchecked.defaultof<IComputation>
+    let mutable firstSlot = EdgeHandle.Unlinked
 #if FABLE_COMPILER
-    let mutable items: ObserverSlot[] = ObserverSlots.none
+    let mutable rest: ObserverSlot[] = ObserverSlots.none
 
     /// <summary>
-    /// The slot of each observer. Grown and blanked together with <c>items</c>, and never read past <c>count</c>.
+    /// The slot of each overflow observer beyond slot 0. Grown and blanked together with <c>rest</c>, and never read past <c>count - 1</c>.
     /// </summary>
-    let mutable slots: int[] = ObserverSlots.noSlots
+    let mutable restSlots: int[] = ObserverSlots.noSlots
 #else
-    let mutable items: ObserverSlot[] = ObserverSlots.none
+    let mutable rest: ObserverSlot[] = ObserverSlots.none
 #endif
     let mutable count = 0
 
@@ -232,21 +248,21 @@ type internal ObserverSet() =
 #endif
 
     /// <summary>
-    /// Doubles the capacity of every array, a first observer getting a single slot: most sources keep exactly one.
+    /// Doubles the capacity of the overflow arrays once a source gains a second observer.
     /// </summary>
-    let grow () =
-        let size = if count = 0 then 1 else max 4 (count * 2)
+    let growRest (restCount: int) =
+        let size = max 4 (restCount * 2)
 #if FABLE_COMPILER
         let grownObservers = Array.zeroCreate size
         let grownSlots = Platform.positions size
-        Array.blit items 0 grownObservers 0 count
-        Platform.copyPositions slots grownSlots count
-        items <- grownObservers
-        slots <- grownSlots
+        Array.blit rest 0 grownObservers 0 restCount
+        Platform.copyPositions restSlots grownSlots restCount
+        rest <- grownObservers
+        restSlots <- grownSlots
 #else
         let grown = Array.zeroCreate size
-        Array.blit items 0 grown 0 count
-        items <- grown
+        Array.blit rest 0 grown 0 restCount
+        rest <- grown
 #endif
 
     /// <summary>
@@ -260,18 +276,27 @@ type internal ObserverSet() =
     /// Appends <c>c</c>, recording <c>slot</c> for its <c>MovedIn</c>, and returns its handle.
     /// </summary>
     member this.Add(c: IComputation, slot: int) =
-        if count = items.Length then
-            grow ()
-
         let handle = count
+
+        if handle = 0 then
+            first <- c
+            firstSlot <- slot
+            count <- 1
+            latest <- 0
+        else
+            let restIdx = handle - 1
+
+            if restIdx = rest.Length then
+                growRest restIdx
+
 #if FABLE_COMPILER
-        Platform.setItemAt handle items (ObserverSlot c)
-        Platform.setItemAt handle slots slot
+            Platform.setItemAt restIdx rest (ObserverSlot c)
+            Platform.setItemAt restIdx restSlots slot
 #else
-        items[handle] <- ObserverSlot (c, slot)
+            rest[restIdx] <- ObserverSlot (c, slot)
 #endif
-        count <- handle + 1
-        latest <- handle
+            count <- handle + 1
+            latest <- handle
 #if RANVIER_COUNTERS
         Counters.ObserverInserted ()
 #endif
@@ -287,20 +312,35 @@ type internal ObserverSet() =
             this.Add (c, slot)
         elif
             latest < count
-            && obj.ReferenceEquals ((Platform.itemAt latest items).Observer, c)
+            && obj.ReferenceEquals (
+                (if latest = 0 then
+                     first
+                 else
+                     (Platform.itemAt (latest - 1) rest).Observer),
+                c
+            )
         then
             EdgeHandle.Unlinked
-        elif count <= EdgeHandle.ScanLimit then
-            let mutable i = 0
-
-            while i < count
-                  && not (obj.ReferenceEquals ((Platform.itemAt i items).Observer, c)) do
-                i <- i + 1
-
-            if i < count then
+        elif count = 1 then
+            if obj.ReferenceEquals (first, c) then
                 EdgeHandle.Unlinked
             else
                 this.Add (c, slot)
+        elif count <= EdgeHandle.ScanLimit then
+            if obj.ReferenceEquals (first, c) then
+                EdgeHandle.Unlinked
+            else
+                let restCount = count - 1
+                let mutable i = 0
+
+                while i < restCount
+                      && not (obj.ReferenceEquals ((Platform.itemAt i rest).Observer, c)) do
+                    i <- i + 1
+
+                if i < restCount then
+                    EdgeHandle.Unlinked
+                else
+                    this.Add (c, slot)
         else
             EdgeHandle.Unknown
 
@@ -317,7 +357,12 @@ type internal ObserverSet() =
         if handle >= 0 then
             if
                 handle >= count
-                || not (obj.ReferenceEquals ((Platform.itemAt handle items).Observer, c))
+                || not (
+                    if handle = 0 then
+                        obj.ReferenceEquals (first, c)
+                    else
+                        obj.ReferenceEquals ((Platform.itemAt (handle - 1) rest).Observer, c)
+                )
             then
                 raise (
                     InvalidOperationException (
@@ -335,34 +380,54 @@ type internal ObserverSet() =
             Tracer.ObserverRemove (this, c)
             let last = count - 1
 
-            if handle = last then
-                // Blanked so a dropped observer is not kept alive by a slot past
-                // the end of the list.
+            if handle = 0 then
+                if last = 0 then
+                    // Blanked so a dropped observer is not kept alive after removal.
+                    first <- Unchecked.defaultof<IComputation>
+                    firstSlot <- EdgeHandle.Unlinked
+                    count <- 0
+                else
+                    let lastRest = last - 1
+                    let moved = (Platform.itemAt lastRest rest).Observer
 #if FABLE_COMPILER
-                Platform.setItemAt last items (ObserverSlot Unchecked.defaultof<IComputation>)
-                Platform.setItemAt last slots EdgeHandle.Unlinked
+                    let movedSlot = Platform.itemAt lastRest restSlots
+                    Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                    Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
 #else
-                items[last] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+                    let movedSlot = (Platform.itemAt lastRest rest).Slot
+                    rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
+                    first <- moved
+                    firstSlot <- movedSlot
+                    count <- last
+
+                    if latest = last then
+                        latest <- 0
+
+                    moved.MovedIn (movedSlot, 0)
+            elif handle = last then
+                let lastRest = last - 1
+#if FABLE_COMPILER
+                Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
+#else
+                rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
 #endif
                 count <- last
             else
-                let moved = (Platform.itemAt last items).Observer
+                let handleRest = handle - 1
+                let lastRest = last - 1
+                let moved = (Platform.itemAt lastRest rest).Observer
 #if FABLE_COMPILER
-                let movedSlot = Platform.itemAt last slots
+                let movedSlot = Platform.itemAt lastRest restSlots
+                Platform.setItemAt handleRest rest (ObserverSlot moved)
+                Platform.setItemAt handleRest restSlots movedSlot
+                Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
 #else
-                let movedSlot = (Platform.itemAt last items).Slot
-#endif
-#if FABLE_COMPILER
-                Platform.setItemAt handle items (ObserverSlot moved)
-                Platform.setItemAt handle slots movedSlot
-#else
-                items[handle] <- ObserverSlot (moved, movedSlot)
-#endif
-#if FABLE_COMPILER
-                Platform.setItemAt last items (ObserverSlot Unchecked.defaultof<IComputation>)
-                Platform.setItemAt last slots EdgeHandle.Unlinked
-#else
-                items[last] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+                let movedSlot = (Platform.itemAt lastRest rest).Slot
+                rest[handleRest] <- ObserverSlot (moved, movedSlot)
+                rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
 #endif
                 count <- last
 
@@ -385,16 +450,27 @@ type internal ObserverSet() =
     /// node returns immediately. Forwards, the same removal would skip.
     /// </remarks>
     member this.NotifyDirty() =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
+            Tracer.Mark (this, observer, true)
+            observer.MarkDirty ()
+        elif count > 1 then
+            let mutable i = count - 1
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
 
-            if i >= 0 then
-                Tracer.Mark (this, (Platform.itemAt i items).Observer, true)
-                (Platform.itemAt i items).Observer.MarkDirty()
-                i <- i - 1
+                if i > 0 then
+                    let observer = (Platform.itemAt (i - 1) rest).Observer
+                    Tracer.Mark (this, observer, true)
+                    observer.MarkDirty ()
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+                    Tracer.Mark (this, observer, true)
+                    observer.MarkDirty ()
+                    i <- -1
 
     /// <summary>
     /// <c>NotifyDirty</c>, skipping <c>running</c> when its current run has not yet read its edge to this source.
@@ -410,56 +486,101 @@ type internal ObserverSet() =
     /// the slot and it must be marked <c>Dirty</c>.
     /// </remarks>
     member this.NotifyDirtyExcept(running: IComputation) =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            if
+                not (obj.ReferenceEquals (observer, running))
+                || running.HasReadSlot firstSlot
+            then
+                Tracer.Mark (this, observer, true)
+                observer.MarkDirty ()
+            else
+                Tracer.MarkSkip (this, observer)
+        elif count > 1 then
+            let mutable i = count - 1
 
-            if i >= 0 then
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
+
+                if i > 0 then
 #if FABLE_COMPILER
-                let observer = (Platform.itemAt i items).Observer
+                    let idx = i - 1
+                    let observer = (Platform.itemAt idx rest).Observer
 
-                if
-                    not (obj.ReferenceEquals (observer, running))
-                    || running.HasReadSlot (Platform.itemAt i slots)
-                then
+                    if
+                        not (obj.ReferenceEquals (observer, running))
+                        || running.HasReadSlot (Platform.itemAt idx restSlots)
+                    then
 #else
-                let item = Platform.itemAt i items
-                let observer = item.Observer
+                    let item = Platform.itemAt (i - 1) rest
+                    let observer = item.Observer
 
-                if
-                    not (obj.ReferenceEquals (observer, running))
-                    || running.HasReadSlot item.Slot
-                then
+                    if
+                        not (obj.ReferenceEquals (observer, running))
+                        || running.HasReadSlot item.Slot
+                    then
 #endif
-                    Tracer.Mark (this, observer, true)
-                    observer.MarkDirty ()
-                else
-                    Tracer.MarkSkip (this, observer)
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
 
-                i <- i - 1
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+
+                    if
+                        not (obj.ReferenceEquals (observer, running))
+                        || running.HasReadSlot firstSlot
+                    then
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
+
+                    i <- -1
 
     /// <summary>
     /// <c>NotifyDirty</c>, unconditionally skipping <c>running</c>.
     /// </summary>
     member this.NotifyDirtyOther(running: IComputation) =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            if not (obj.ReferenceEquals (observer, running)) then
+                Tracer.Mark (this, observer, true)
+                observer.MarkDirty ()
+            else
+                Tracer.MarkSkip (this, observer)
+        elif count > 1 then
+            let mutable i = count - 1
 
-            if i >= 0 then
-                let observer = (Platform.itemAt i items).Observer
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
 
-                if not (obj.ReferenceEquals (observer, running)) then
-                    Tracer.Mark (this, observer, true)
-                    observer.MarkDirty ()
-                else
-                    Tracer.MarkSkip (this, observer)
+                if i > 0 then
+                    let observer = (Platform.itemAt (i - 1) rest).Observer
 
-                i <- i - 1
+                    if not (obj.ReferenceEquals (observer, running)) then
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
+
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+
+                    if not (obj.ReferenceEquals (observer, running)) then
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
+
+                    i <- -1
 
     /// <summary>
     /// <c>NotifyDirty</c>'s weaker sibling: tells every observer that something
@@ -467,16 +588,27 @@ type internal ObserverSet() =
     /// backwards re-clamped walk, for the same reason.
     /// </summary>
     member this.NotifyCheck() =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
+            Tracer.Mark (this, observer, false)
+            observer.MarkCheck ()
+        elif count > 1 then
+            let mutable i = count - 1
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
 
-            if i >= 0 then
-                Tracer.Mark (this, (Platform.itemAt i items).Observer, false)
-                (Platform.itemAt i items).Observer.MarkCheck()
-                i <- i - 1
+                if i > 0 then
+                    let observer = (Platform.itemAt (i - 1) rest).Observer
+                    Tracer.Mark (this, observer, false)
+                    observer.MarkCheck ()
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+                    Tracer.Mark (this, observer, false)
+                    observer.MarkCheck ()
+                    i <- -1
 
 #if RANVIER_TRACE
     interface ITraced with
@@ -491,7 +623,13 @@ type internal ObserverSet() =
     interface ITracedEdges with
         member _.Owner = traceId
         member _.IsSources = false
-        member _.Ids = Array.init count (fun i -> (Platform.itemAt i items).Observer.Id)
+
+        member _.Ids =
+            Array.init count (fun i ->
+                if i = 0 then
+                    first.Id
+                else
+                    (Platform.itemAt (i - 1) rest).Observer.Id)
 #endif
 
 /// <summary>
@@ -897,48 +1035,20 @@ type internal SourceList() =
 /// <summary>
 /// A child disposed with its owner's scope.
 /// </summary>
+[<AllowNullLiteral>]
 type internal IOwned =
     /// <summary>
     /// Called only by the owner, after the child's link has left the owner's
     /// list. The child disposes without unlinking.
     /// </summary>
     abstract Release: unit -> unit
-
-/// <summary>
-/// One child's place in its owner's list.
-/// </summary>
-/// <remarks>
-/// A flat list cannot serve: removing one entry by identity is a linear scan,
-/// and an index is invalidated by every removal before it. Most children are
-/// disposed individually rather than with their scope — re-running an effect
-/// disposes its own scope, and a memo can outlive nothing at all — so a child
-/// has to be able to leave its owner in constant time. Without that the list
-/// only grows, and it retains every computation the graph has ever created,
-/// closure included, long after disposal.
-/// </remarks>
-[<AllowNullLiteral>]
-type internal OwnerLink(child: IOwned, owner: Owner) =
-    member _.Child = child
-    member _.Owner = owner
-
-    member this.Detach() =
-        owner.Unlink this
-
-    member val Prev: OwnerLink = null with get, set
-    member val Next: OwnerLink = null with get, set
-
-    /// <summary>
-    /// The owner's list generation the link joined, or -1 once the link has left the list.
-    /// </summary>
-    /// <remarks>
-    /// A link at -1 is ignored by a later unlink, which would otherwise null out the owner's head.
-    /// </remarks>
-    member val Generation = 0 with get, set
-
-    /// <summary>
-    /// The owner's acquisition count when the link joined.
-    /// </summary>
-    member val Acquired = 0 with get, set
+#if !FABLE_COMPILER
+    abstract OwnerPrev: IOwned with get, set
+    abstract OwnerNext: IOwned with get, set
+    abstract OwnerHost: Owner with get, set
+    abstract OwnerGeneration: int with get, set
+    abstract OwnerAcquired: int with get, set
+#endif
 
 /// <summary>
 /// A disposal scope.
@@ -960,8 +1070,8 @@ type internal OwnerLink(child: IOwned, owner: Owner) =
 /// </para>
 /// </remarks>
 and Owner internal (sink: Owner) =
-    let mutable head: OwnerLink = null
-    let mutable tail: OwnerLink = null
+    let mutable head: IOwned = null
+    let mutable tail: IOwned = null
 
     /// <summary>
     /// The earliest cleanup registered since the last teardown, or null.
@@ -997,15 +1107,17 @@ and Owner internal (sink: Owner) =
 
     /// <summary>
     /// Bumped each time a teardown detaches the child list. A link from an
-    /// earlier generation belongs to a detached list. Always non-negative.
+    /// earlier generation belongs to a detached list. Starts at 1 so 0 means unlinked.
     /// </summary>
-    let mutable generation = 0
+    let mutable generation = 1
 
-    /// <summary>
-    /// Where this scope sits in its own parent, so it can leave in constant
-    /// time when disposed on its own rather than with the parent.
-    /// </summary>
-    let mutable parentLink: OwnerLink = null
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
 
 #if RANVIER_TRACE
     let mutable traceLog: TraceLog = null
@@ -1020,9 +1132,9 @@ and Owner internal (sink: Owner) =
 
     member _.IsDisposed = disposed
 
-    member internal this.SetParent(link: OwnerLink) =
-        Tracer.OwnerAdopt (link.Owner, this, (this :? RootScope))
-        parentLink <- link
+    member internal this.AttachTo(parent: Owner) =
+        parent.AttachLinked this
+        Tracer.OwnerAdopt (parent, this, (this :? RootScope))
 
     /// <summary>
     /// Exceptions recorded by this scope: from its cleanups, and on <c>Graph.Root</c> from the inbox.
@@ -1060,27 +1172,19 @@ and Owner internal (sink: Owner) =
     /// </summary>
     member this.Attach(child: IDisposable) =
         Tracer.OwnerAdopt (this, child, false)
+        this.AttachLinked (DisposableOwned child)
 
-        this.AttachLinked
-            { new IOwned with
-                member _.Release() =
-                    child.Dispose ()
-            }
-        |> ignore
-
-    member internal this.AttachLinked(child: IOwned) =
+    member internal this.AttachLinked(child: IOwned) : unit =
         if disposed then
             this.DisposeLate child
         else
             this.Append child
 
     /// <summary>
-    /// Disposes a child attached after the scope was disposed, handing back
-    /// an unlinked link.
+    /// Disposes a child attached after the scope was disposed.
     /// </summary>
     member private this.DisposeLate(child: IOwned) =
         this.RunLate child.Release
-        OwnerLink (child, this, Generation = -1)
 
     /// <summary>
     /// Runs <c>f</c> on behalf of the disposed scope: under the graph's teardown
@@ -1097,43 +1201,49 @@ and Owner internal (sink: Owner) =
                 this.RecordError ex
 
     member private this.Append(child: IOwned) =
-        let link = OwnerLink (child, this, Generation = generation, Acquired = acquisitions)
+        OwnedSlot.SetHost (child, this)
+        OwnedSlot.SetGeneration (child, generation)
+        OwnedSlot.SetAcquired (child, acquisitions)
         acquisitions <- acquisitions + 1
 
         if Platform.isNull tail then
-            head <- link
-            tail <- link
+            OwnedSlot.SetPrev (child, null)
+            OwnedSlot.SetNext (child, null)
+            head <- child
+            tail <- child
         else
-            link.Prev <- tail
-            tail.Next <- link
-            tail <- link
-
-        link
+            OwnedSlot.SetPrev (child, tail)
+            OwnedSlot.SetNext (child, null)
+            OwnedSlot.SetNext (tail, child)
+            tail <- child
 
     /// <summary>
-    /// Releases a child that was disposed on its own. A no-op for a link on a
+    /// Releases a child that was disposed on its own. A no-op for a child on a
     /// list a teardown detached: the teardown's walk follows those pointers,
     /// and discards the list when it finishes.
     /// </summary>
-    member internal _.Unlink(link: OwnerLink) =
+    member internal _.Unlink(child: IOwned) =
         if
-            not (Platform.isNull link)
-            && link.Generation = generation
+            not (Platform.isNull child)
+            && OwnedSlot.Generation child = generation
         then
-            link.Generation <- -1
+            OwnedSlot.SetGeneration (child, -1)
+            OwnedSlot.SetHost (child, Unchecked.defaultof<Owner>)
+            let prev = OwnedSlot.Prev child
+            let next = OwnedSlot.Next child
 
-            if Platform.isNull link.Prev then
-                head <- link.Next
+            if Platform.isNull prev then
+                head <- next
             else
-                link.Prev.Next <- link.Next
+                OwnedSlot.SetNext (prev, next)
 
-            if Platform.isNull link.Next then
-                tail <- link.Prev
+            if Platform.isNull next then
+                tail <- prev
             else
-                link.Next.Prev <- link.Prev
+                OwnedSlot.SetPrev (next, prev)
 
-            link.Prev <- null
-            link.Next <- null
+            OwnedSlot.SetPrev (child, null)
+            OwnedSlot.SetNext (child, null)
 
     /// <summary>
     /// Records a failure from teardown or the inbox instead of rethrowing it.
@@ -1207,7 +1317,8 @@ and Owner internal (sink: Owner) =
         let mutable node = tail
         head <- null
         tail <- null
-        generation <- (generation + 1) &&& 0x7FFFFFFF
+        let nextGen = (generation + 1) &&& 0x7FFFFFFF
+        generation <- if nextGen = 0 then 1 else nextGen
         acquisitions <- 0
         firstCleanup <- Unchecked.defaultof<_>
         cleanups <- null
@@ -1225,16 +1336,20 @@ and Owner internal (sink: Owner) =
             if
                 not (Platform.isNull node)
                 && (index < 0
-                    || node.Acquired >
+                    || OwnedSlot.Acquired node >
                         (if index < offset then
                              firstAcquired
                          else
                              Platform.entryAt (index - offset) detachedOrder))
             then
-                let prev = node.Prev
+                let prev = OwnedSlot.Prev node
+                OwnedSlot.SetGeneration (node, -1)
+                OwnedSlot.SetHost (node, Unchecked.defaultof<Owner>)
+                OwnedSlot.SetPrev (node, null)
+                OwnedSlot.SetNext (node, null)
 
                 try
-                    node.Child.Release ()
+                    node.Release ()
                 with ex ->
                     this.RecordError ex
 
@@ -1300,9 +1415,7 @@ and Owner internal (sink: Owner) =
         else
             runner.RunDetached (this, this.DisposeScope)
 
-        if not (Platform.isNull parentLink) then
-            parentLink.Detach ()
-            parentLink <- null
+        OwnedSlot.Detach this
 
     interface IDisposable with
         member this.Dispose() =
@@ -1310,8 +1423,28 @@ and Owner internal (sink: Owner) =
 
     interface IOwned with
         member this.Release() =
-            parentLink <- null
             this.Dispose ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
 #if RANVIER_TRACE
     interface ITraced with
@@ -1356,6 +1489,133 @@ and [<Sealed>] internal RootScope(runner: ILateRunner) =
     inherit Owner(Unchecked.defaultof<Owner>)
 
     member _.Runner: ILateRunner = runner
+
+/// <summary>
+/// Reads and writes intrusive doubly-linked owner slots on <see cref="IOwned"/> instances.
+/// </summary>
+and [<AbstractClass; Sealed>] internal OwnedSlot =
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0._lp")>]
+    static member Prev(_: IOwned) : IOwned =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._lp = $1")>]
+    static member SetPrev(_: IOwned, _: IOwned) : unit =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._ln")>]
+    static member Next(_: IOwned) : IOwned =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._ln = $1")>]
+    static member SetNext(_: IOwned, _: IOwned) : unit =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._lo")>]
+    static member Host(_: IOwned) : Owner =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._lo = $1")>]
+    static member SetHost(_: IOwned, _: Owner) : unit =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._lg")>]
+    static member Generation(_: IOwned) : int =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._lg = $1")>]
+    static member SetGeneration(_: IOwned, _: int) : unit =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._la")>]
+    static member Acquired(_: IOwned) : int =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0._la = $1")>]
+    static member SetAcquired(_: IOwned, _: int) : unit =
+        Fable.Core.Util.jsNative
+#else
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member Prev(o: IOwned) =
+        o.OwnerPrev
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member SetPrev(o: IOwned, v: IOwned) =
+        o.OwnerPrev <- v
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member Next(o: IOwned) =
+        o.OwnerNext
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member SetNext(o: IOwned, v: IOwned) =
+        o.OwnerNext <- v
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member Host(o: IOwned) =
+        o.OwnerHost
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member SetHost(o: IOwned, v: Owner) =
+        o.OwnerHost <- v
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member Generation(o: IOwned) =
+        o.OwnerGeneration
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member SetGeneration(o: IOwned, v: int) =
+        o.OwnerGeneration <- v
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member Acquired(o: IOwned) =
+        o.OwnerAcquired
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member SetAcquired(o: IOwned, v: int) =
+        o.OwnerAcquired <- v
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member Detach(child: IOwned) =
+        let host = OwnedSlot.Host child
+
+        if not (Platform.isNull (box host)) then
+            host.Unlink child
+
+and [<Sealed>] private DisposableOwned(child: IDisposable) =
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
+
+    interface IOwned with
+        member _.Release() =
+            child.Dispose ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
 /// <summary>
 /// What a computation's body may create. Fixed at construction.
@@ -2664,7 +2924,7 @@ type Graph(options: GraphOptions) =
             "Creating a root",
             fun () ->
                 let owner = new RootScope (this) :> Owner
-                owner.SetParent (this.CurrentOwner.AttachLinked owner)
+                owner.AttachTo this.CurrentOwner
                 let previous = currentOwner
                 currentOwner <- owner
 
@@ -3901,6 +4161,14 @@ type Graph(options: GraphOptions) =
         this.Raised failure
         failure.Rethrow ()
 
+    /// <summary>Cold path for unready reads; kept out of line so hot getters avoid throw helpers and inline cleanly.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member internal this.RaiseUnready(status: Status, node: INode, failure: Failure) : unit =
+        if StatusBits.isPending status then
+            raise (this.NotReady node)
+
+        this.Raise failure
+
     /// <summary>
     /// The failure a run records for <c>error</c>: the last failed read's when it holds <c>error</c>, else
     /// <c>previous</c> when it holds <c>error</c>, else a new failure originating in <c>origin</c>. Clears the last
@@ -4458,11 +4726,8 @@ type AsyncSource<'T>(graph: Graph) =
     member this.Value: 'T =
         graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
-
-        if status.HasFlag Status.Error then
-            graph.Raise failure
+        if StatusBits.isUnready status then
+            graph.RaiseUnready (status, (this :> INode), failure)
 
         value
 
@@ -4473,13 +4738,17 @@ type AsyncSource<'T>(graph: Graph) =
     member this.TryValue: Reading<'T> =
         graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+        if StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                Pending
+            else
+                Failed failure.Error
+        else
+            Ready value
 
     /// <summary>The source itself while <c>Status</c> has <c>Error</c>, otherwise null.</summary>
     member this.ErrorOrigin: INode =
-        if status.HasFlag Status.Error then
+        if StatusBits.isError status then
             this :> INode
         else
             Unchecked.defaultof<INode>
@@ -4542,7 +4811,13 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// </summary>
     let mutable published = false
 
-    let mutable link: OwnerLink = null
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
 
     /// <summary>The companion disposed with the memo, or null.</summary>
     let mutable adopted: IDisposable = null
@@ -4631,8 +4906,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
 
     member private this.Attach() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.MemoNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        owner.AttachLinked this
+        Tracer.MemoNew (graph, id, owner)
 
     /// <summary>
     /// Dependencies are re-collected on every run, so the old edges have to go.
@@ -4848,11 +5124,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
-
-        if currentStatus.HasFlag Status.Error then
-            graph.Raise currentFailure
+        if StatusBits.isUnready currentStatus then
+            graph.RaiseUnready (currentStatus, (this :> INode), currentFailure)
 
         currentValue
 
@@ -4867,10 +5140,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -4881,10 +5155,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         let currentValue = value
         graph.FinishPullSettle ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -4949,9 +5224,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    if not (Platform.isNull link) then
-                        link.Detach ()
-                        link <- null
+                    OwnedSlot.Detach (this :> IOwned)
 
                     this.DetachSources ()
 
@@ -4996,8 +5269,28 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
     interface IOwned with
         member this.Release() =
-            link <- null
             this.Dispose ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
     interface IScopeHost with
         member _.CanOwn =
@@ -5130,11 +5423,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then
-                raise (graph.NotReady (this :> INode))
-
-            if status.HasFlag Status.Error then
-                graph.Raise failure
+            if StatusBits.isUnready status then
+                graph.RaiseUnready (status, (this :> INode), failure)
 
             value
 
@@ -5155,9 +5445,13 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then Pending
-            elif status.HasFlag Status.Error then Failed failure.Error
-            else Ready value
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    Pending
+                else
+                    Failed failure.Error
+            else
+                Ready value
 
     /// <summary>
     /// Non-throwing read that brings the memo up to date without recording a dependency.
@@ -5173,10 +5467,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     this.PullWithoutSettle ())
         then
             this.SettlePullAndReadUntracked ()
-        elif status.HasFlag Status.Pending then
-            Pending
-        elif status.HasFlag Status.Error then
-            Failed failure.Error
+        elif StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                Pending
+            else
+                Failed failure.Error
         else
             Ready value
 
@@ -5261,8 +5556,15 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     let mutable failure: Failure = null
     let mutable queued = false
     let mutable disposed = false
-    let mutable link: OwnerLink = null
     let mutable runs = 0
+
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
 
     /// <summary>
     /// Set while this run's cleanups are being discharged, and read by
@@ -5322,8 +5624,9 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
         // Attaching to the enclosing scope is what makes disposal structural:
         // the caller tears down one owner, not a list of effects it had to
         // remember to collect.
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.EffectNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        owner.AttachLinked this
+        Tracer.EffectNew (graph, id, owner)
         (this :> IComputation).MarkDirty()
         graph.RequestFlush ()
 
@@ -5336,8 +5639,28 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
     interface IOwned with
         member this.Release() =
-            link <- null
             this.Dispose ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -5546,9 +5869,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    if not (Platform.isNull link) then
-                        link.Detach ()
-                        link <- null
+                    OwnedSlot.Detach (this :> IOwned)
 
                     this.DetachSources ()
 
@@ -5642,7 +5963,14 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
     let mutable error: exn = null
     let mutable queued = false
     let mutable disposed = false
-    let mutable link: OwnerLink = null
+
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
 
 #if RANVIER_COUNTERS
     do Counters.EffectCreated ()
@@ -5663,8 +5991,9 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
         node
 
     member private this.Start() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.EffectNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        owner.AttachLinked this
+        Tracer.EffectNew (graph, id, owner)
         (this :> IComputation).MarkDirty()
         graph.RequestFlush ()
 
@@ -5771,9 +6100,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    if not (Platform.isNull link) then
-                        link.Detach ()
-                        link <- null
+                    OwnedSlot.Detach (this :> IOwned)
 
                     sources.Clear (this :> IComputation)
 
@@ -5790,8 +6117,28 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
     interface IOwned with
         member this.Release() =
-            link <- null
             this.Dispose ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -5976,7 +6323,14 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     let mutable failure: Failure = null
     let mutable runs = 0
     let mutable disposed = false
-    let mutable link: OwnerLink = null
+
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
 
     /// <summary>Set when a run ends stale, as on <c>Memo</c>. The next mark notifies the observers and clears it.</summary>
     let mutable unannounced = false
@@ -6158,8 +6512,52 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         freshness <- Freshness.Clean
 
+    // Fable cannot translate a secondary constructor of a type with a
+    // self-identifier. Under Fable the `Api` functions construct this type.
+#if !FABLE_COMPILER
+    /// <summary>
+    /// A pure async memo over <c>compute</c>.
+    /// </summary>
+    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>) as this =
+        new AsyncMemo<'T> (graph, (fun previous token -> compute.Invoke (previous, token)), ScopeMode.PureAsync, graph.Options.FlightPolicy)
+        then this.Attach ()
+
+    /// <summary>
+    /// An owning async memo over <c>compute</c> when <c>owning</c> is true, a pure one
+    /// otherwise.
+    /// </summary>
+    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>, owning: bool) as this =
+        new AsyncMemo<'T> (
+            graph,
+            (fun previous token -> compute.Invoke (previous, token)),
+            (if owning then ScopeMode.Owning else ScopeMode.PureAsync),
+            graph.Options.FlightPolicy
+        )
+
+        then this.Attach ()
+#endif
+
+    /// <summary>
+    /// An async memo over <c>compute</c>, owned by the current owner.
+    /// </summary>
+    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode) =
+        AsyncMemo<'T>.Create(graph, compute, mode, graph.Options.FlightPolicy)
+
+    /// <summary>
+    /// An async memo over <c>compute</c> under <c>policy</c>, owned by the current owner.
+    /// </summary>
+    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode, policy: FlightPolicy) =
+        let memo = new AsyncMemo<'T> (graph, compute, mode, policy)
+        memo.Attach ()
+        memo
+
+    member private this.Attach() =
+        let owner = graph.CurrentOwner
+        owner.AttachLinked this
+        Tracer.AsyncMemoNew (graph, id, owner)
+
     /// <summary>Applies the result of the run numbered <c>gen</c>. Runs on the graph thread.</summary>
-    let applyResult (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+    member private this.ApplyResult(gen: int, outcome: Platform.FlightOutcome<'T>) =
         // True under `FinishCurrent` when a change arrived during the flight, and under `DropWhilePending` when a
         // failed flight discarded a change.
         let mutable owed = false
@@ -6263,8 +6661,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     0,
                     ex
                 )
-                // The owner link is the one reference to this node in reach of a let-bound function.
-                failure <- graph.FailureOf (ex, (link.Child :?> INode), null)
+
+                failure <- graph.FailureOf (ex, (this :> INode), null)
                 status <- Status.Error
                 wake ()
         else
@@ -6288,9 +6686,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         | Drop
         | DropWhilePending -> ()
 
-    let applyQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+    member private this.ApplyQueued(seqNum: int, gen: int, outcome: Platform.FlightOutcome<'T>) =
         if seqNum = applied + 1 then
-            applyResult gen outcome
+            this.ApplyResult (gen, outcome)
 
             while not (Platform.isNull pendingQueue)
                   && pendingQueue.Count > 0
@@ -6298,61 +6696,18 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 let nextSeq = applied + 1
                 let struct (nextGen, nextOutcome) = pendingQueue[nextSeq]
                 pendingQueue.Remove nextSeq |> ignore
-                applyResult nextGen nextOutcome
+                this.ApplyResult (nextGen, nextOutcome)
         else
             if Platform.isNull pendingQueue then
                 pendingQueue <- Dictionary<int, struct (int * Platform.FlightOutcome<'T>)>()
 
             pendingQueue[seqNum] <- struct (gen, outcome)
 
-    let publish (gen: int) (outcome: Platform.FlightOutcome<'T>) =
-        graph.Post (fun () -> applyResult gen outcome)
+    member private this.Publish(gen: int) =
+        fun (outcome: Platform.FlightOutcome<'T>) -> graph.Post (fun () -> this.ApplyResult (gen, outcome))
 
-    let publishQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
-        graph.Post (fun () -> applyQueued seqNum gen outcome)
-
-    // Fable cannot translate a secondary constructor of a type with a
-    // self-identifier. Under Fable the `Api` functions construct this type.
-#if !FABLE_COMPILER
-    /// <summary>
-    /// A pure async memo over <c>compute</c>.
-    /// </summary>
-    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>) as this =
-        new AsyncMemo<'T> (graph, (fun previous token -> compute.Invoke (previous, token)), ScopeMode.PureAsync, graph.Options.FlightPolicy)
-        then this.Attach ()
-
-    /// <summary>
-    /// An owning async memo over <c>compute</c> when <c>owning</c> is true, a pure one
-    /// otherwise.
-    /// </summary>
-    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>, owning: bool) as this =
-        new AsyncMemo<'T> (
-            graph,
-            (fun previous token -> compute.Invoke (previous, token)),
-            (if owning then ScopeMode.Owning else ScopeMode.PureAsync),
-            graph.Options.FlightPolicy
-        )
-
-        then this.Attach ()
-#endif
-
-    /// <summary>
-    /// An async memo over <c>compute</c>, owned by the current owner.
-    /// </summary>
-    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode) =
-        AsyncMemo<'T>.Create(graph, compute, mode, graph.Options.FlightPolicy)
-
-    /// <summary>
-    /// An async memo over <c>compute</c> under <c>policy</c>, owned by the current owner.
-    /// </summary>
-    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode, policy: FlightPolicy) =
-        let memo = new AsyncMemo<'T> (graph, compute, mode, policy)
-        memo.Attach ()
-        memo
-
-    member private this.Attach() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.AsyncMemoNew (graph, id, link.Owner)
+    member private this.PublishQueued(seqNum: int, gen: int) =
+        fun (outcome: Platform.FlightOutcome<'T>) -> graph.Post (fun () -> this.ApplyQueued (seqNum, gen, outcome))
 
     member private this.DetachSources() =
         sources.Clear (this :> IComputation)
@@ -6407,11 +6762,11 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             let seqNum = chained
 #if !FABLE_COMPILER
             if graph.IsOnGraphThread then
-                applyQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
+                this.ApplyQueued (seqNum, gen, Platform.FlightOutcome<'T>.Faulted ex)
             else
-                publishQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
+                this.PublishQueued (seqNum, gen) (Platform.FlightOutcome<'T>.Faulted ex)
 #else
-            publishQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
+            this.PublishQueued (seqNum, gen) (Platform.FlightOutcome<'T>.Faulted ex)
 #endif
         | _ ->
             failure <- graph.FailureOf (ex, this, null)
@@ -6548,16 +6903,16 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                         queued <- queued + 1
                         chained <- chained + 1
                         let seqNum = chained
-                        applyQueued seqNum gen outcome
+                        this.ApplyQueued (seqNum, gen, outcome)
                     | KeepLatest
                     | CancelPrevious ->
                         flying <- flying + 1
-                        applyResult gen outcome
+                        this.ApplyResult (gen, outcome)
                     | FinishCurrent
                     | Drop
                     | DropWhilePending ->
                         queued <- 1
-                        applyResult gen outcome
+                        this.ApplyResult (gen, outcome)
                 else
                     match policy with
                     | FlightPolicy.Queue ->
@@ -6565,20 +6920,20 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                         chained <- chained + 1
                         let seqNum = chained
 
-                        Platform.whenSettled flight (publishQueued seqNum gen)
+                        Platform.whenSettled flight (this.PublishQueued (seqNum, gen))
                         |> ignore
                     | KeepLatest
                     | CancelPrevious ->
                         flying <- flying + 1
 
-                        Platform.whenSettled flight (publish gen)
+                        Platform.whenSettled flight (this.Publish gen)
                         |> ignore
                     | FinishCurrent
                     | Drop
                     | DropWhilePending ->
                         queued <- 1
 
-                        Platform.whenSettled flight (publish gen)
+                        Platform.whenSettled flight (this.Publish gen)
                         |> ignore
 #else
                 match policy with
@@ -6587,22 +6942,22 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     chained <- chained + 1
                     let seqNum = chained
 
-                    Platform.whenSettled flight (publishQueued seqNum gen)
+                    Platform.whenSettled flight (this.PublishQueued (seqNum, gen))
                     |> ignore
                 | KeepLatest ->
                     flying <- flying + 1
 
-                    Platform.whenSettled flight (publish gen)
+                    Platform.whenSettled flight (this.Publish gen)
                     |> ignore
                 | CancelPrevious ->
-                    Platform.whenSettled flight (publish gen)
+                    Platform.whenSettled flight (this.Publish gen)
                     |> ignore
                 | FinishCurrent
                 | Drop
                 | DropWhilePending ->
                     queued <- 1
 
-                    Platform.whenSettled flight (publish gen)
+                    Platform.whenSettled flight (this.Publish gen)
                     |> ignore
 #endif
             finally
@@ -6634,11 +6989,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderDirty ()
 
-        if currentStatus.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
-
-        if currentStatus.HasFlag Status.Error then
-            graph.Raise currentFailure
+        if StatusBits.isUnready currentStatus then
+            graph.RaiseUnready (currentStatus, (this :> INode), currentFailure)
 
         currentValue
 
@@ -6653,10 +7005,11 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderDirty ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -6757,8 +7110,28 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
     interface IOwned with
         member this.Release() =
-            link <- null
             this.Dispose ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
     interface IScopeHost with
         member _.CanOwn =
@@ -6859,9 +7232,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    if not (Platform.isNull link) then
-                        link.Detach ()
-                        link <- null
+                    OwnedSlot.Detach (this :> IOwned)
 
                     this.DetachSources ()
 
@@ -6875,7 +7246,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                         source.Cancel ()
                         source.Dispose ()
 
-                    if status.HasFlag Status.Pending then
+                    if StatusBits.isPending status then
                         pendingSource <- Unchecked.defaultof<INode>
 
                         failure <- Failure (ObjectDisposedException (this.GetType().Name), (this :> INode))
@@ -6955,11 +7326,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then
-                raise (graph.NotReady (this :> INode))
-
-            if status.HasFlag Status.Error then
-                graph.Raise failure
+            if StatusBits.isUnready status then
+                graph.RaiseUnready (status, (this :> INode), failure)
 
             value
 
@@ -6976,9 +7344,13 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then Pending
-            elif status.HasFlag Status.Error then Failed failure.Error
-            else Ready value
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    Pending
+                else
+                    Failed failure.Error
+            else
+                Ready value
 
     /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.
@@ -7046,7 +7418,14 @@ type Boundary<'T>
     let mutable runs = 0
     let mutable active = 0
     let mutable disposed = false
-    let mutable link: OwnerLink = null
+
+#if !FABLE_COMPILER
+    let mutable ownerPrev: IOwned = null
+    let mutable ownerNext: IOwned = null
+    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
+    let mutable ownerGeneration = 0
+    let mutable ownerAcquired = 0
+#endif
 
     /// <summary>Set when a run ends stale, as on <c>Memo</c>. The next mark notifies the observers and clears it.</summary>
     let mutable unannounced = false
@@ -7087,8 +7466,9 @@ type Boundary<'T>
 
     // Owned through `IOwned`, for the reason given on Memo.
     member private this.Attach() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.BoundaryNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        owner.AttachLinked this
+        Tracer.BoundaryNew (graph, id, owner)
 
     member private this.DetachSources() =
         sources.Clear (this :> IComputation)
@@ -7329,11 +7709,8 @@ type Boundary<'T>
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
-
-        if currentStatus.HasFlag Status.Error then
-            graph.Raise currentFailure
+        if StatusBits.isUnready currentStatus then
+            graph.RaiseUnready (currentStatus, (this :> INode), currentFailure)
 
         currentValue
 
@@ -7348,10 +7725,11 @@ type Boundary<'T>
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -7483,9 +7861,7 @@ type Boundary<'T>
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    if not (Platform.isNull link) then
-                        link.Detach ()
-                        link <- null
+                    OwnedSlot.Detach (this :> IOwned)
 
                     this.DetachSources ()
 
@@ -7542,8 +7918,28 @@ type Boundary<'T>
 
     interface IOwned with
         member this.Release() =
-            link <- null
             this.Dispose ()
+#if !FABLE_COMPILER
+        member _.OwnerPrev
+            with get () = ownerPrev
+            and set v = ownerPrev <- v
+
+        member _.OwnerNext
+            with get () = ownerNext
+            and set v = ownerNext <- v
+
+        member _.OwnerHost
+            with get () = ownerHost
+            and set v = ownerHost <- v
+
+        member _.OwnerGeneration
+            with get () = ownerGeneration
+            and set v = ownerGeneration <- v
+
+        member _.OwnerAcquired
+            with get () = ownerAcquired
+            and set v = ownerAcquired <- v
+#endif
 
     interface IScopeHost with
         member _.CanOwn = true
@@ -7707,11 +8103,8 @@ type Boundary<'T>
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then
-                raise (graph.NotReady (this :> INode))
-
-            if status.HasFlag Status.Error then
-                graph.Raise failure
+            if StatusBits.isUnready status then
+                graph.RaiseUnready (status, (this :> INode), failure)
 
             value
 
@@ -7728,9 +8121,13 @@ type Boundary<'T>
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then Pending
-            elif status.HasFlag Status.Error then Failed failure.Error
-            else Ready value
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    Pending
+                else
+                    Failed failure.Error
+            else
+                Ready value
 
     /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.

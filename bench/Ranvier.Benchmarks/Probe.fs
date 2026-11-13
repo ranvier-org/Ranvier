@@ -188,6 +188,7 @@ type private DummyComputation(id: int) =
         member _.MarkCheck() = ()
         member _.AddSource _ = ()
         member _.MovedIn(_, _) = ()
+        member _.HasReadSlot _ = false
 
 /// <summary>
 /// <c>AddObserver</c> and <c>RemoveObserverAt</c> on their own: the exact pair a
