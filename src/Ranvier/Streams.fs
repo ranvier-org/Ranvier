@@ -218,15 +218,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     /// <summary>Set when a run ends stale, as on <c>Memo</c>. The next mark notifies the observers and clears it.</summary>
     let mutable unannounced = false
     let mutable violated = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
-
+    let mutable link: OwnerLink = null
     let mutable generation = 0
     let mutable run: IStreamRun<'S> = Unchecked.defaultof<_>
     let mutable cts: CancellationTokenSource = null
@@ -246,9 +238,8 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 #endif
 
     member private this.Attach() =
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.StreamNew (graph, id, owner)
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.StreamNew (graph, id, link.Owner)
 
     member private this.Enqueue() =
         if not queued then
@@ -687,28 +678,8 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
     /// <summary>The graph that owns this value.</summary>
     member _.Graph = graph
@@ -726,7 +697,10 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         this.TrackCurrent ()
 
         if StatusBits.isUnready status then
-            graph.RaiseUnready (status, (this :> INode), failure)
+            if StatusBits.isPending status then
+                raise (graph.NotReady (this :> INode))
+
+            graph.Raise failure
 
         value
 
@@ -751,7 +725,9 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     sources.Clear (this :> IComputation)
                     this.Stop StreamEnd.Disposed

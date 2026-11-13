@@ -417,16 +417,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let mutable suspension: Platform.CapturedFailure = null
     let mutable status = Status.None
     let mutable disposed = false
+    let mutable link: OwnerLink = null
     let mutable runs = 0
     let mutable queued = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
 
     /// <summary>
     /// Set while the diff disposes removed keys. An invalidation arriving then
@@ -507,7 +500,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     let watch = RowWatch (graph, (fun () -> this.RefreshSummary ()), touchSummary)
 
-    do Tracer.ProjectionNew (graph, id, graph.CurrentOwner)
+    do link <- graph.CurrentOwner.AttachLinked this
+    do Tracer.ProjectionNew (graph, id, link.Owner)
     do Tracer.ScopeNew (scope, graph, id)
     do Tracer.Part (graph, (keys :> INode).Id, id, null)
     do Tracer.Part (graph, (beacon :> INode).Id, id, null)
@@ -625,9 +619,6 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                     + " reads row memos, and a projection from createProjectionOnce has none. Use createProjectionWith."
                 )
             )
-
-    member internal this.Attach() =
-        graph.CurrentOwner.AttachLinked this
 
     member internal _.IsDisposedInternal = disposed
 
@@ -1972,7 +1963,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             this.Pass.Abandoned ()
             Tracer.NodeDispose (graph, id)
 
-            OwnedSlot.Detach (this :> IOwned)
+            if not (Platform.isNull link) then
+                link.Detach ()
+                link <- null
 
             sources.Clear (this :> IComputation)
 
@@ -2024,7 +2017,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </remarks>
     member this.NewKeyReader() : ProjectionReader<'K> =
         let reader = this.NewInternalKeyReader ()
-        graph.CurrentOwner.AttachLinked reader
+        reader.Link <- graph.CurrentOwner.AttachLinked reader
         reader
 
     /// <summary>A reader of membership, order and settled row-value changes, owned by the calling scope.</summary>
@@ -2070,7 +2063,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             log.Add reader
 
-        graph.CurrentOwner.AttachLinked reader
+        reader.Link <- graph.CurrentOwner.AttachLinked reader
         reader
 
     member private _.DetachReader(reader: ProjectionReader<'K>) =
@@ -2101,28 +2094,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
 /// <summary>
 /// The rows of a projection over items of type <c>'T</c>: one item source per key,
@@ -2217,7 +2190,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         let entry = this.NewRow (key, item)
         let source = entry.Item
         let keyScope = new Owner (graph.Root)
-        keyScope.AttachTo this.Scope
+        keyScope.SetParent (this.Scope.AttachLinked keyScope)
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -2259,7 +2232,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         Tracer.Part (graph, (entry.Item :> INode).Id, (this :> INode).Id, box key)
         this.AddEntry (key, entry)
         let keyScope = new Owner (graph.Root)
-        keyScope.AttachTo this.Scope
+        keyScope.SetParent (this.Scope.AttachLinked keyScope)
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -2425,7 +2398,7 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
 
         this.AddEntry (key, entry)
         let keyScope = new Owner (graph.Root)
-        keyScope.AttachTo this.Scope
+        keyScope.SetParent (this.Scope.AttachLinked keyScope)
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -3090,14 +3063,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let mutable revisitBuf: ResizeArray<'K> = null
 
     let mutable disposed = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
+    let mutable link: OwnerLink = null
 
     /// <summary>
     /// Set when the pure body in progress creates an owned node.
@@ -3113,11 +3079,9 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let mutable traceHost = 0
 #endif
 
-    do Tracer.OwnerAdopt (graph.CurrentOwner, scope, false)
+    do link <- graph.CurrentOwner.AttachLinked this
+    do Tracer.OwnerAdopt (link.Owner, scope, false)
     let computeKey = fun (key: 'K) -> (box this :?> ILookupSource<'K, 'V>).Compute key
-
-    member internal this.Attach() =
-        graph.CurrentOwner.AttachLinked this
 
     member private this.Source = box this :?> ILookupSource<'K, 'V>
 
@@ -3469,7 +3433,9 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         if not disposed then
             disposed <- true
 
-            OwnedSlot.Detach (this :> IOwned)
+            if not (Platform.isNull link) then
+                link.Detach ()
+                link <- null
 
             cells.Clear ()
             failed.Clear ()
@@ -3494,28 +3460,8 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
 /// <summary>
 /// A lookup over a source of type <c>'S</c>. The source is held in a memo; an

@@ -19,16 +19,9 @@ type internal Binding<'Target, 'T>
     let mutable failure: Failure = null
     let mutable queued = false
     let mutable disposed = false
+    let mutable link: OwnerLink = null
     let mutable runs = 0
     let mutable handle = EdgeHandle.Unlinked
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
 #if RANVIER_TRACE
     let mutable traceLog: TraceLog = null
     let mutable traceId = 0
@@ -49,9 +42,8 @@ type internal Binding<'Target, 'T>
         binding
 
     member private this.Start() =
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.BindingNew (graph, id, owner)
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.BindingNew (graph, id, link.Owner)
 
         if not disposed then
             Tracer.Bind (this, graph, id)
@@ -106,7 +98,9 @@ type internal Binding<'Target, 'T>
                     Tracer.EdgesRemove (this, 0)
                     disposed <- true
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     source.RemoveObserverAt (this :> IComputation, handle)
                     handle <- EdgeHandle.Unlinked
@@ -118,28 +112,8 @@ type internal Binding<'Target, 'T>
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
 #if RANVIER_TRACE
     interface ITracedNode with

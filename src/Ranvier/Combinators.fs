@@ -677,7 +677,6 @@ type internal GroupView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
 type internal Group<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, outerKeys: unit -> unit) =
     let members = Signal<'K[]>(graph, Array.empty)
     let view = new GroupView<'K, 'V> (graph, upstream, outerKeys, members)
-    do view.Attach ()
 
     /// <summary>The members placed by the pass in progress, in upstream order.</summary>
     member val Pass = ResizeArray<'K>()
@@ -1003,7 +1002,7 @@ type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: Fo
 /// </remarks>
 [<Sealed>]
 type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool) =
+    (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool) as this =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     let equal = graph.Options.Equality.Comparer<'V>()
@@ -1031,15 +1030,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     let mutable moved = false
 
     let mutable disposed = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
-
+    let mutable link: OwnerLink = null
     let mutable keyReader: ProjectionReader<'K> = Unchecked.defaultof<_>
     let mutable memo: Memo<'S> = Unchecked.defaultof<Memo<'S>>
 
@@ -1055,10 +1046,9 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             queue.Add row
             touch ()
 
-    do keyReader <- upstream.NewInternalKeyReader ()
-
-    member internal this.Attach() =
-        graph.CurrentOwner.AttachLinked this
+    do
+        link <- graph.CurrentOwner.AttachLinked this
+        keyReader <- upstream.NewInternalKeyReader ()
 
     member _.Memo
         with get () = memo
@@ -1343,7 +1333,9 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         if not disposed then
             disposed <- true
 
-            OwnedSlot.Detach (this :> IOwned)
+            if not (Platform.isNull link) then
+                link.Detach ()
+                link <- null
 
             if not (Platform.isNull (box keyReader)) then
                 keyReader.Stop ()
@@ -1393,28 +1385,8 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
     interface System.IDisposable with
         member this.Dispose() =
@@ -1454,16 +1426,12 @@ module Projection =
     let private ownedScope (graph: Graph) =
         let parent = graph.CurrentOwner
         let owner = new Owner (graph.Root)
-        owner.AttachTo parent
+        owner.SetParent (parent.AttachLinked owner)
         owner
 
     /// <summary>A projection over the keys of <c>upstream</c>, each row holding <c>f</c> of the upstream value.</summary>
     let private perKey (graph: Graph) (upstream: Projection<'K, 'V>) (f: 'V -> 'X) : Projection<'K, 'X> =
-        let view =
-            new MapView<'K, 'V, 'X> (graph, upstream, (fun key -> f (upstream.Get key)), Unchecked.defaultof<_>, false)
-
-        view.Attach ()
-        view :> Projection<'K, 'X>
+        new MapView<'K, 'V, 'X> (graph, upstream, (fun key -> f (upstream.Get key)), Unchecked.defaultof<_>, false) :> Projection<'K, 'X>
 
     /// <summary>
     /// A function returning the value inside <c>Some</c>, and raising one <c>KeyNotFoundException</c> instance with
@@ -1550,7 +1518,6 @@ module Projection =
             upstream.Get key
 
         let view = new FilterView<'K, 'V, 'V> (graph, upstream, inclusion, read, true)
-        view.Attach ()
 
         inclusion.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream predicate)
 
@@ -1585,7 +1552,6 @@ module Projection =
             | None -> raise (System.Collections.Generic.KeyNotFoundException ("The projection has no key " + string key + "."))
 
         let view = new ChooseView<'K, 'V, 'U> (graph, upstream, choices, read)
-        view.Attach ()
 
         choices.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream chooser)
 
@@ -1596,8 +1562,6 @@ module Projection =
     let private mapByKey (mapping: 'K -> 'U) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
         let view =
             new MapView<'K, 'V, 'U> (upstream.Graph, upstream, mapping, Unchecked.defaultof<_>, true)
-
-        view.Attach ()
 
         if not (Platform.isNull (box upstream.PendingExtra)) then
             view.PendingExtra <- fun () -> view.HeldOut
@@ -1638,8 +1602,6 @@ module Projection =
         let view =
             new MapView<'K, 'V, 'U> (upstream.Graph, upstream, Unchecked.defaultof<_>, factory, true)
 
-        view.Attach ()
-
         if not (Platform.isNull (box upstream.PendingExtra)) then
             view.PendingExtra <- fun () -> view.HeldOut
 
@@ -1650,7 +1612,6 @@ module Projection =
         let graph = upstream.Graph
         let sortKeys = ref Unchecked.defaultof<Projection<'K, 'S>>
         let view = new SortView<'K, 'V, 'S> (graph, upstream, sortKeys, descending)
-        view.Attach ()
 
         sortKeys.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream projection)
 
@@ -1695,7 +1656,6 @@ module Projection =
     let private slice (offset: unit -> int) (count: unit -> int) (upstream: Projection<'K, 'V>) : Projection<'K, 'V> =
         upstream.RequireRowMemos "Projection.slice"
         let view = new SliceView<'K, 'V> (upstream.Graph, upstream, offset, count)
-        view.Attach ()
 
         if not (Platform.isNull (box upstream.PendingExtra)) then
             view.PendingExtra <- fun () -> view.HeldOut
@@ -1778,7 +1738,6 @@ module Projection =
         let graph = upstream.Graph
         let groupKeys = ref Unchecked.defaultof<Projection<'K, 'G>>
         let view = new Grouping<'G, 'K, 'V> (graph, upstream, groupKeys)
-        view.Attach ()
 
         groupKeys.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream projection)
 
@@ -1799,13 +1758,7 @@ module Projection =
         let owner = ownedScope graph
 
         let aggregate =
-            graph.RunOwned (
-                owner,
-                fun () ->
-                    let f = new ProjectionFold<'K, 'U, 'S> (graph, rows (), add, subtract, zero, true)
-                    f.Attach ()
-                    f
-            )
+            graph.RunOwned (owner, fun () -> new ProjectionFold<'K, 'U, 'S> (graph, rows (), add, subtract, zero, true))
 
         let memo =
             Memo<'R>.Create(graph, (fun _ -> result (aggregate.Compute ValueNone)), ScopeMode.Pure)
@@ -1841,8 +1794,6 @@ module Projection =
         let aggregate =
             new ProjectionFold<'K, 'V, 'S> (graph, upstream, add, subtract, zero, true)
 
-        aggregate.Attach ()
-
         let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
         aggregate.Memo <- memo
         memo.Adopt aggregate
@@ -1859,8 +1810,6 @@ module Projection =
 
         let aggregate =
             new ProjectionFold<'K, 'V, 'S> (graph, upstream, folder, Unchecked.defaultof<_>, state, false)
-
-        aggregate.Attach ()
 
         let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
         aggregate.Memo <- memo
@@ -2333,7 +2282,6 @@ module Projection =
 
         let half admit =
             let view = new FilterView<'K, 'V, 'V> (graph, upstream, inclusion, read, admit)
-            view.Attach ()
             view.PendingExtra <- fun () -> view.HeldOut
             view :> Projection<'K, 'V>
 
@@ -2359,7 +2307,6 @@ module Projection =
         let graph = upstream.Graph
         let values = ref Unchecked.defaultof<Projection<'K, 'G>>
         let view = new DistinctView<'K, 'V, 'G> (graph, upstream, values)
-        view.Attach ()
 
         values.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream projection)
 

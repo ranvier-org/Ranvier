@@ -1035,20 +1035,48 @@ type internal SourceList() =
 /// <summary>
 /// A child disposed with its owner's scope.
 /// </summary>
-[<AllowNullLiteral>]
 type internal IOwned =
     /// <summary>
     /// Called only by the owner, after the child's link has left the owner's
     /// list. The child disposes without unlinking.
     /// </summary>
     abstract Release: unit -> unit
-#if !FABLE_COMPILER
-    abstract OwnerPrev: IOwned with get, set
-    abstract OwnerNext: IOwned with get, set
-    abstract OwnerHost: Owner with get, set
-    abstract OwnerGeneration: int with get, set
-    abstract OwnerAcquired: int with get, set
-#endif
+
+/// <summary>
+/// One child's place in its owner's list.
+/// </summary>
+/// <remarks>
+/// A flat list cannot serve: removing one entry by identity is a linear scan,
+/// and an index is invalidated by every removal before it. Most children are
+/// disposed individually rather than with their scope — re-running an effect
+/// disposes its own scope, and a memo can outlive nothing at all — so a child
+/// has to be able to leave its owner in constant time. Without that the list
+/// only grows, and it retains every computation the graph has ever created,
+/// closure included, long after disposal.
+/// </remarks>
+[<AllowNullLiteral>]
+type internal OwnerLink(child: IOwned, owner: Owner) =
+    member _.Child = child
+    member _.Owner = owner
+
+    member this.Detach() =
+        owner.Unlink this
+
+    member val Prev: OwnerLink = null with get, set
+    member val Next: OwnerLink = null with get, set
+
+    /// <summary>
+    /// The owner's list generation the link joined, or -1 once the link has left the list.
+    /// </summary>
+    /// <remarks>
+    /// A link at -1 is ignored by a later unlink, which would otherwise null out the owner's head.
+    /// </remarks>
+    member val Generation = 0 with get, set
+
+    /// <summary>
+    /// The owner's acquisition count when the link joined.
+    /// </summary>
+    member val Acquired = 0 with get, set
 
 /// <summary>
 /// A disposal scope.
@@ -1070,8 +1098,8 @@ type internal IOwned =
 /// </para>
 /// </remarks>
 and Owner internal (sink: Owner) =
-    let mutable head: IOwned = null
-    let mutable tail: IOwned = null
+    let mutable head: OwnerLink = null
+    let mutable tail: OwnerLink = null
 
     /// <summary>
     /// The earliest cleanup registered since the last teardown, or null.
@@ -1107,17 +1135,15 @@ and Owner internal (sink: Owner) =
 
     /// <summary>
     /// Bumped each time a teardown detaches the child list. A link from an
-    /// earlier generation belongs to a detached list. Starts at 1 so 0 means unlinked.
+    /// earlier generation belongs to a detached list. Always non-negative.
     /// </summary>
-    let mutable generation = 1
+    let mutable generation = 0
 
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
+    /// <summary>
+    /// Where this scope sits in its own parent, so it can leave in constant
+    /// time when disposed on its own rather than with the parent.
+    /// </summary>
+    let mutable parentLink: OwnerLink = null
 
 #if RANVIER_TRACE
     let mutable traceLog: TraceLog = null
@@ -1132,9 +1158,9 @@ and Owner internal (sink: Owner) =
 
     member _.IsDisposed = disposed
 
-    member internal this.AttachTo(parent: Owner) =
-        parent.AttachLinked this
-        Tracer.OwnerAdopt (parent, this, (this :? RootScope))
+    member internal this.SetParent(link: OwnerLink) =
+        Tracer.OwnerAdopt (link.Owner, this, (this :? RootScope))
+        parentLink <- link
 
     /// <summary>
     /// Exceptions recorded by this scope: from its cleanups, and on <c>Graph.Root</c> from the inbox.
@@ -1172,19 +1198,27 @@ and Owner internal (sink: Owner) =
     /// </summary>
     member this.Attach(child: IDisposable) =
         Tracer.OwnerAdopt (this, child, false)
-        this.AttachLinked (DisposableOwned child)
 
-    member internal this.AttachLinked(child: IOwned) : unit =
+        this.AttachLinked
+            { new IOwned with
+                member _.Release() =
+                    child.Dispose ()
+            }
+        |> ignore
+
+    member internal this.AttachLinked(child: IOwned) =
         if disposed then
             this.DisposeLate child
         else
             this.Append child
 
     /// <summary>
-    /// Disposes a child attached after the scope was disposed.
+    /// Disposes a child attached after the scope was disposed, handing back
+    /// an unlinked link.
     /// </summary>
     member private this.DisposeLate(child: IOwned) =
         this.RunLate child.Release
+        OwnerLink (child, this, Generation = -1)
 
     /// <summary>
     /// Runs <c>f</c> on behalf of the disposed scope: under the graph's teardown
@@ -1201,49 +1235,43 @@ and Owner internal (sink: Owner) =
                 this.RecordError ex
 
     member private this.Append(child: IOwned) =
-        OwnedSlot.SetHost (child, this)
-        OwnedSlot.SetGeneration (child, generation)
-        OwnedSlot.SetAcquired (child, acquisitions)
+        let link = OwnerLink (child, this, Generation = generation, Acquired = acquisitions)
         acquisitions <- acquisitions + 1
 
         if Platform.isNull tail then
-            OwnedSlot.SetPrev (child, null)
-            OwnedSlot.SetNext (child, null)
-            head <- child
-            tail <- child
+            head <- link
+            tail <- link
         else
-            OwnedSlot.SetPrev (child, tail)
-            OwnedSlot.SetNext (child, null)
-            OwnedSlot.SetNext (tail, child)
-            tail <- child
+            link.Prev <- tail
+            tail.Next <- link
+            tail <- link
+
+        link
 
     /// <summary>
-    /// Releases a child that was disposed on its own. A no-op for a child on a
+    /// Releases a child that was disposed on its own. A no-op for a link on a
     /// list a teardown detached: the teardown's walk follows those pointers,
     /// and discards the list when it finishes.
     /// </summary>
-    member internal _.Unlink(child: IOwned) =
+    member internal _.Unlink(link: OwnerLink) =
         if
-            not (Platform.isNull child)
-            && OwnedSlot.Generation child = generation
+            not (Platform.isNull link)
+            && link.Generation = generation
         then
-            OwnedSlot.SetGeneration (child, -1)
-            OwnedSlot.SetHost (child, Unchecked.defaultof<Owner>)
-            let prev = OwnedSlot.Prev child
-            let next = OwnedSlot.Next child
+            link.Generation <- -1
 
-            if Platform.isNull prev then
-                head <- next
+            if Platform.isNull link.Prev then
+                head <- link.Next
             else
-                OwnedSlot.SetNext (prev, next)
+                link.Prev.Next <- link.Next
 
-            if Platform.isNull next then
-                tail <- prev
+            if Platform.isNull link.Next then
+                tail <- link.Prev
             else
-                OwnedSlot.SetPrev (next, prev)
+                link.Next.Prev <- link.Prev
 
-            OwnedSlot.SetPrev (child, null)
-            OwnedSlot.SetNext (child, null)
+            link.Prev <- null
+            link.Next <- null
 
     /// <summary>
     /// Records a failure from teardown or the inbox instead of rethrowing it.
@@ -1317,8 +1345,7 @@ and Owner internal (sink: Owner) =
         let mutable node = tail
         head <- null
         tail <- null
-        let nextGen = (generation + 1) &&& 0x7FFFFFFF
-        generation <- if nextGen = 0 then 1 else nextGen
+        generation <- (generation + 1) &&& 0x7FFFFFFF
         acquisitions <- 0
         firstCleanup <- Unchecked.defaultof<_>
         cleanups <- null
@@ -1336,20 +1363,16 @@ and Owner internal (sink: Owner) =
             if
                 not (Platform.isNull node)
                 && (index < 0
-                    || OwnedSlot.Acquired node >
+                    || node.Acquired >
                         (if index < offset then
                              firstAcquired
                          else
                              Platform.entryAt (index - offset) detachedOrder))
             then
-                let prev = OwnedSlot.Prev node
-                OwnedSlot.SetGeneration (node, -1)
-                OwnedSlot.SetHost (node, Unchecked.defaultof<Owner>)
-                OwnedSlot.SetPrev (node, null)
-                OwnedSlot.SetNext (node, null)
+                let prev = node.Prev
 
                 try
-                    node.Release ()
+                    node.Child.Release ()
                 with ex ->
                     this.RecordError ex
 
@@ -1415,7 +1438,9 @@ and Owner internal (sink: Owner) =
         else
             runner.RunDetached (this, this.DisposeScope)
 
-        OwnedSlot.Detach this
+        if not (Platform.isNull parentLink) then
+            parentLink.Detach ()
+            parentLink <- null
 
     interface IDisposable with
         member this.Dispose() =
@@ -1423,28 +1448,8 @@ and Owner internal (sink: Owner) =
 
     interface IOwned with
         member this.Release() =
+            parentLink <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
 #if RANVIER_TRACE
     interface ITraced with
@@ -1489,133 +1494,6 @@ and [<Sealed>] internal RootScope(runner: ILateRunner) =
     inherit Owner(Unchecked.defaultof<Owner>)
 
     member _.Runner: ILateRunner = runner
-
-/// <summary>
-/// Reads and writes intrusive doubly-linked owner slots on <see cref="IOwned"/> instances.
-/// </summary>
-and [<AbstractClass; Sealed>] internal OwnedSlot =
-#if FABLE_COMPILER
-    [<Fable.Core.Emit("$0._lp")>]
-    static member Prev(_: IOwned) : IOwned =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._lp = $1")>]
-    static member SetPrev(_: IOwned, _: IOwned) : unit =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._ln")>]
-    static member Next(_: IOwned) : IOwned =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._ln = $1")>]
-    static member SetNext(_: IOwned, _: IOwned) : unit =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._lo")>]
-    static member Host(_: IOwned) : Owner =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._lo = $1")>]
-    static member SetHost(_: IOwned, _: Owner) : unit =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._lg")>]
-    static member Generation(_: IOwned) : int =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._lg = $1")>]
-    static member SetGeneration(_: IOwned, _: int) : unit =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._la")>]
-    static member Acquired(_: IOwned) : int =
-        Fable.Core.Util.jsNative
-
-    [<Fable.Core.Emit("$0._la = $1")>]
-    static member SetAcquired(_: IOwned, _: int) : unit =
-        Fable.Core.Util.jsNative
-#else
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member Prev(o: IOwned) =
-        o.OwnerPrev
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member SetPrev(o: IOwned, v: IOwned) =
-        o.OwnerPrev <- v
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member Next(o: IOwned) =
-        o.OwnerNext
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member SetNext(o: IOwned, v: IOwned) =
-        o.OwnerNext <- v
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member Host(o: IOwned) =
-        o.OwnerHost
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member SetHost(o: IOwned, v: Owner) =
-        o.OwnerHost <- v
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member Generation(o: IOwned) =
-        o.OwnerGeneration
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member SetGeneration(o: IOwned, v: int) =
-        o.OwnerGeneration <- v
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member Acquired(o: IOwned) =
-        o.OwnerAcquired
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member SetAcquired(o: IOwned, v: int) =
-        o.OwnerAcquired <- v
-#endif
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member Detach(child: IOwned) =
-        let host = OwnedSlot.Host child
-
-        if not (Platform.isNull (box host)) then
-            host.Unlink child
-
-and [<Sealed>] private DisposableOwned(child: IDisposable) =
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
-
-    interface IOwned with
-        member _.Release() =
-            child.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
 /// <summary>
 /// What a computation's body may create. Fixed at construction.
@@ -2924,7 +2802,7 @@ type Graph(options: GraphOptions) =
             "Creating a root",
             fun () ->
                 let owner = new RootScope (this) :> Owner
-                owner.AttachTo this.CurrentOwner
+                owner.SetParent (this.CurrentOwner.AttachLinked owner)
                 let previous = currentOwner
                 currentOwner <- owner
 
@@ -4161,14 +4039,6 @@ type Graph(options: GraphOptions) =
         this.Raised failure
         failure.Rethrow ()
 
-    /// <summary>Cold path for unready reads; kept out of line so hot getters avoid throw helpers and inline cleanly.</summary>
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member internal this.RaiseUnready(status: Status, node: INode, failure: Failure) : unit =
-        if StatusBits.isPending status then
-            raise (this.NotReady node)
-
-        this.Raise failure
-
     /// <summary>
     /// The failure a run records for <c>error</c>: the last failed read's when it holds <c>error</c>, else
     /// <c>previous</c> when it holds <c>error</c>, else a new failure originating in <c>origin</c>. Clears the last
@@ -4727,7 +4597,10 @@ type AsyncSource<'T>(graph: Graph) =
         graph.Track (this :> ISource)
 
         if StatusBits.isUnready status then
-            graph.RaiseUnready (status, (this :> INode), failure)
+            if StatusBits.isPending status then
+                raise (graph.NotReady (this :> INode))
+
+            graph.Raise failure
 
         value
 
@@ -4811,13 +4684,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// </summary>
     let mutable published = false
 
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
+    let mutable link: OwnerLink = null
 
     /// <summary>The companion disposed with the memo, or null.</summary>
     let mutable adopted: IDisposable = null
@@ -4906,9 +4773,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
 
     member private this.Attach() =
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.MemoNew (graph, id, owner)
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.MemoNew (graph, id, link.Owner)
 
     /// <summary>
     /// Dependencies are re-collected on every run, so the old edges have to go.
@@ -5125,7 +4991,10 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             graph.MarkReaderCheck ()
 
         if StatusBits.isUnready currentStatus then
-            graph.RaiseUnready (currentStatus, (this :> INode), currentFailure)
+            if StatusBits.isPending currentStatus then
+                raise (graph.NotReady (this :> INode))
+
+            graph.Raise currentFailure
 
         currentValue
 
@@ -5224,7 +5093,9 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     this.DetachSources ()
 
@@ -5269,28 +5140,8 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
     interface IScopeHost with
         member _.CanOwn =
@@ -5424,7 +5275,10 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             graph.Track (this :> ISource)
 
             if StatusBits.isUnready status then
-                graph.RaiseUnready (status, (this :> INode), failure)
+                if StatusBits.isPending status then
+                    raise (graph.NotReady (this :> INode))
+
+                graph.Raise failure
 
             value
 
@@ -5556,15 +5410,8 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     let mutable failure: Failure = null
     let mutable queued = false
     let mutable disposed = false
+    let mutable link: OwnerLink = null
     let mutable runs = 0
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
 
     /// <summary>
     /// Set while this run's cleanups are being discharged, and read by
@@ -5624,9 +5471,8 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
         // Attaching to the enclosing scope is what makes disposal structural:
         // the caller tears down one owner, not a list of effects it had to
         // remember to collect.
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.EffectNew (graph, id, owner)
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.EffectNew (graph, id, link.Owner)
         (this :> IComputation).MarkDirty()
         graph.RequestFlush ()
 
@@ -5639,28 +5485,8 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -5869,7 +5695,9 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     this.DetachSources ()
 
@@ -5963,14 +5791,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
     let mutable error: exn = null
     let mutable queued = false
     let mutable disposed = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
+    let mutable link: OwnerLink = null
 
 #if RANVIER_COUNTERS
     do Counters.EffectCreated ()
@@ -5991,9 +5812,8 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
         node
 
     member private this.Start() =
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.EffectNew (graph, id, owner)
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.EffectNew (graph, id, link.Owner)
         (this :> IComputation).MarkDirty()
         graph.RequestFlush ()
 
@@ -6100,7 +5920,9 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     sources.Clear (this :> IComputation)
 
@@ -6117,28 +5939,8 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -6323,14 +6125,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     let mutable failure: Failure = null
     let mutable runs = 0
     let mutable disposed = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
+    let mutable link: OwnerLink = null
 
     /// <summary>Set when a run ends stale, as on <c>Memo</c>. The next mark notifies the observers and clears it.</summary>
     let mutable unannounced = false
@@ -6512,52 +6307,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         freshness <- Freshness.Clean
 
-    // Fable cannot translate a secondary constructor of a type with a
-    // self-identifier. Under Fable the `Api` functions construct this type.
-#if !FABLE_COMPILER
-    /// <summary>
-    /// A pure async memo over <c>compute</c>.
-    /// </summary>
-    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>) as this =
-        new AsyncMemo<'T> (graph, (fun previous token -> compute.Invoke (previous, token)), ScopeMode.PureAsync, graph.Options.FlightPolicy)
-        then this.Attach ()
-
-    /// <summary>
-    /// An owning async memo over <c>compute</c> when <c>owning</c> is true, a pure one
-    /// otherwise.
-    /// </summary>
-    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>, owning: bool) as this =
-        new AsyncMemo<'T> (
-            graph,
-            (fun previous token -> compute.Invoke (previous, token)),
-            (if owning then ScopeMode.Owning else ScopeMode.PureAsync),
-            graph.Options.FlightPolicy
-        )
-
-        then this.Attach ()
-#endif
-
-    /// <summary>
-    /// An async memo over <c>compute</c>, owned by the current owner.
-    /// </summary>
-    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode) =
-        AsyncMemo<'T>.Create(graph, compute, mode, graph.Options.FlightPolicy)
-
-    /// <summary>
-    /// An async memo over <c>compute</c> under <c>policy</c>, owned by the current owner.
-    /// </summary>
-    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode, policy: FlightPolicy) =
-        let memo = new AsyncMemo<'T> (graph, compute, mode, policy)
-        memo.Attach ()
-        memo
-
-    member private this.Attach() =
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.AsyncMemoNew (graph, id, owner)
-
     /// <summary>Applies the result of the run numbered <c>gen</c>. Runs on the graph thread.</summary>
-    member private this.ApplyResult(gen: int, outcome: Platform.FlightOutcome<'T>) =
+    let applyResult (gen: int) (outcome: Platform.FlightOutcome<'T>) =
         // True under `FinishCurrent` when a change arrived during the flight, and under `DropWhilePending` when a
         // failed flight discarded a change.
         let mutable owed = false
@@ -6661,8 +6412,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     0,
                     ex
                 )
-
-                failure <- graph.FailureOf (ex, (this :> INode), null)
+                // The owner link is the one reference to this node in reach of a let-bound function.
+                failure <- graph.FailureOf (ex, (link.Child :?> INode), null)
                 status <- Status.Error
                 wake ()
         else
@@ -6686,9 +6437,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         | Drop
         | DropWhilePending -> ()
 
-    member private this.ApplyQueued(seqNum: int, gen: int, outcome: Platform.FlightOutcome<'T>) =
+    let applyQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
         if seqNum = applied + 1 then
-            this.ApplyResult (gen, outcome)
+            applyResult gen outcome
 
             while not (Platform.isNull pendingQueue)
                   && pendingQueue.Count > 0
@@ -6696,18 +6447,61 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 let nextSeq = applied + 1
                 let struct (nextGen, nextOutcome) = pendingQueue[nextSeq]
                 pendingQueue.Remove nextSeq |> ignore
-                this.ApplyResult (nextGen, nextOutcome)
+                applyResult nextGen nextOutcome
         else
             if Platform.isNull pendingQueue then
                 pendingQueue <- Dictionary<int, struct (int * Platform.FlightOutcome<'T>)>()
 
             pendingQueue[seqNum] <- struct (gen, outcome)
 
-    member private this.Publish(gen: int) =
-        fun (outcome: Platform.FlightOutcome<'T>) -> graph.Post (fun () -> this.ApplyResult (gen, outcome))
+    let publish (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+        graph.Post (fun () -> applyResult gen outcome)
 
-    member private this.PublishQueued(seqNum: int, gen: int) =
-        fun (outcome: Platform.FlightOutcome<'T>) -> graph.Post (fun () -> this.ApplyQueued (seqNum, gen, outcome))
+    let publishQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+        graph.Post (fun () -> applyQueued seqNum gen outcome)
+
+    // Fable cannot translate a secondary constructor of a type with a
+    // self-identifier. Under Fable the `Api` functions construct this type.
+#if !FABLE_COMPILER
+    /// <summary>
+    /// A pure async memo over <c>compute</c>.
+    /// </summary>
+    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>) as this =
+        new AsyncMemo<'T> (graph, (fun previous token -> compute.Invoke (previous, token)), ScopeMode.PureAsync, graph.Options.FlightPolicy)
+        then this.Attach ()
+
+    /// <summary>
+    /// An owning async memo over <c>compute</c> when <c>owning</c> is true, a pure one
+    /// otherwise.
+    /// </summary>
+    new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>, owning: bool) as this =
+        new AsyncMemo<'T> (
+            graph,
+            (fun previous token -> compute.Invoke (previous, token)),
+            (if owning then ScopeMode.Owning else ScopeMode.PureAsync),
+            graph.Options.FlightPolicy
+        )
+
+        then this.Attach ()
+#endif
+
+    /// <summary>
+    /// An async memo over <c>compute</c>, owned by the current owner.
+    /// </summary>
+    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode) =
+        AsyncMemo<'T>.Create(graph, compute, mode, graph.Options.FlightPolicy)
+
+    /// <summary>
+    /// An async memo over <c>compute</c> under <c>policy</c>, owned by the current owner.
+    /// </summary>
+    static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode, policy: FlightPolicy) =
+        let memo = new AsyncMemo<'T> (graph, compute, mode, policy)
+        memo.Attach ()
+        memo
+
+    member private this.Attach() =
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.AsyncMemoNew (graph, id, link.Owner)
 
     member private this.DetachSources() =
         sources.Clear (this :> IComputation)
@@ -6762,11 +6556,11 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             let seqNum = chained
 #if !FABLE_COMPILER
             if graph.IsOnGraphThread then
-                this.ApplyQueued (seqNum, gen, Platform.FlightOutcome<'T>.Faulted ex)
+                applyQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
             else
-                this.PublishQueued (seqNum, gen) (Platform.FlightOutcome<'T>.Faulted ex)
+                publishQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
 #else
-            this.PublishQueued (seqNum, gen) (Platform.FlightOutcome<'T>.Faulted ex)
+            publishQueued seqNum gen (Platform.FlightOutcome<'T>.Faulted ex)
 #endif
         | _ ->
             failure <- graph.FailureOf (ex, this, null)
@@ -6903,16 +6697,16 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                         queued <- queued + 1
                         chained <- chained + 1
                         let seqNum = chained
-                        this.ApplyQueued (seqNum, gen, outcome)
+                        applyQueued seqNum gen outcome
                     | KeepLatest
                     | CancelPrevious ->
                         flying <- flying + 1
-                        this.ApplyResult (gen, outcome)
+                        applyResult gen outcome
                     | FinishCurrent
                     | Drop
                     | DropWhilePending ->
                         queued <- 1
-                        this.ApplyResult (gen, outcome)
+                        applyResult gen outcome
                 else
                     match policy with
                     | FlightPolicy.Queue ->
@@ -6920,20 +6714,20 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                         chained <- chained + 1
                         let seqNum = chained
 
-                        Platform.whenSettled flight (this.PublishQueued (seqNum, gen))
+                        Platform.whenSettled flight (publishQueued seqNum gen)
                         |> ignore
                     | KeepLatest
                     | CancelPrevious ->
                         flying <- flying + 1
 
-                        Platform.whenSettled flight (this.Publish gen)
+                        Platform.whenSettled flight (publish gen)
                         |> ignore
                     | FinishCurrent
                     | Drop
                     | DropWhilePending ->
                         queued <- 1
 
-                        Platform.whenSettled flight (this.Publish gen)
+                        Platform.whenSettled flight (publish gen)
                         |> ignore
 #else
                 match policy with
@@ -6942,22 +6736,22 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     chained <- chained + 1
                     let seqNum = chained
 
-                    Platform.whenSettled flight (this.PublishQueued (seqNum, gen))
+                    Platform.whenSettled flight (publishQueued seqNum gen)
                     |> ignore
                 | KeepLatest ->
                     flying <- flying + 1
 
-                    Platform.whenSettled flight (this.Publish gen)
+                    Platform.whenSettled flight (publish gen)
                     |> ignore
                 | CancelPrevious ->
-                    Platform.whenSettled flight (this.Publish gen)
+                    Platform.whenSettled flight (publish gen)
                     |> ignore
                 | FinishCurrent
                 | Drop
                 | DropWhilePending ->
                     queued <- 1
 
-                    Platform.whenSettled flight (this.Publish gen)
+                    Platform.whenSettled flight (publish gen)
                     |> ignore
 #endif
             finally
@@ -6990,7 +6784,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             graph.MarkReaderDirty ()
 
         if StatusBits.isUnready currentStatus then
-            graph.RaiseUnready (currentStatus, (this :> INode), currentFailure)
+            if StatusBits.isPending currentStatus then
+                raise (graph.NotReady (this :> INode))
+
+            graph.Raise currentFailure
 
         currentValue
 
@@ -7110,28 +6907,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
     interface IScopeHost with
         member _.CanOwn =
@@ -7232,7 +7009,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     this.DetachSources ()
 
@@ -7327,7 +7106,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             graph.Track (this :> ISource)
 
             if StatusBits.isUnready status then
-                graph.RaiseUnready (status, (this :> INode), failure)
+                if StatusBits.isPending status then
+                    raise (graph.NotReady (this :> INode))
+
+                graph.Raise failure
 
             value
 
@@ -7418,14 +7200,7 @@ type Boundary<'T>
     let mutable runs = 0
     let mutable active = 0
     let mutable disposed = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
+    let mutable link: OwnerLink = null
 
     /// <summary>Set when a run ends stale, as on <c>Memo</c>. The next mark notifies the observers and clears it.</summary>
     let mutable unannounced = false
@@ -7466,9 +7241,8 @@ type Boundary<'T>
 
     // Owned through `IOwned`, for the reason given on Memo.
     member private this.Attach() =
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.BoundaryNew (graph, id, owner)
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.BoundaryNew (graph, id, link.Owner)
 
     member private this.DetachSources() =
         sources.Clear (this :> IComputation)
@@ -7710,7 +7484,10 @@ type Boundary<'T>
             graph.MarkReaderCheck ()
 
         if StatusBits.isUnready currentStatus then
-            graph.RaiseUnready (currentStatus, (this :> INode), currentFailure)
+            if StatusBits.isPending currentStatus then
+                raise (graph.NotReady (this :> INode))
+
+            graph.Raise currentFailure
 
         currentValue
 
@@ -7861,7 +7638,9 @@ type Boundary<'T>
                     disposed <- true
                     Tracer.NodeDispose (graph, id)
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     this.DetachSources ()
 
@@ -7918,28 +7697,8 @@ type Boundary<'T>
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
     interface IScopeHost with
         member _.CanOwn = true
@@ -8104,7 +7863,10 @@ type Boundary<'T>
             graph.Track (this :> ISource)
 
             if StatusBits.isUnready status then
-                graph.RaiseUnready (status, (this :> INode), failure)
+                if StatusBits.isPending status then
+                    raise (graph.NotReady (this :> INode))
+
+                graph.Raise failure
 
             value
 

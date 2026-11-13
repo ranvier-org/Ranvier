@@ -45,15 +45,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     let mutable queued = false
     let mutable disposed = false
     let mutable violated = false
-
-#if !FABLE_COMPILER
-    let mutable ownerPrev: IOwned = null
-    let mutable ownerNext: IOwned = null
-    let mutable ownerHost: Owner = Unchecked.defaultof<Owner>
-    let mutable ownerGeneration = 0
-    let mutable ownerAcquired = 0
-#endif
-
+    let mutable link: OwnerLink = null
     let mutable status = Status.Uninitialized
     let mutable captureStatus = Status.Uninitialized
     let mutable failure: Failure = null
@@ -116,9 +108,8 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
     /// <summary>Attaches the node to its owner and captures its initial state.</summary>
     member internal this.Start() =
-        let owner = graph.CurrentOwner
-        owner.AttachLinked this
-        Tracer.TimedNew (graph, id, owner, clock)
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.TimedNew (graph, id, link.Owner, clock)
         graph.EnterPull ()
 
         try
@@ -415,28 +406,8 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
     interface IOwned with
         member this.Release() =
+            link <- null
             this.Dispose ()
-#if !FABLE_COMPILER
-        member _.OwnerPrev
-            with get () = ownerPrev
-            and set v = ownerPrev <- v
-
-        member _.OwnerNext
-            with get () = ownerNext
-            and set v = ownerNext <- v
-
-        member _.OwnerHost
-            with get () = ownerHost
-            and set v = ownerHost <- v
-
-        member _.OwnerGeneration
-            with get () = ownerGeneration
-            and set v = ownerGeneration <- v
-
-        member _.OwnerAcquired
-            with get () = ownerAcquired
-            and set v = ownerAcquired <- v
-#endif
 
     /// <summary>The graph that owns this value.</summary>
     member _.Graph = graph
@@ -454,7 +425,10 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         graph.Track (this :> ISource)
 
         if StatusBits.isUnready status then
-            graph.RaiseUnready (status, (this :> INode), failure)
+            if StatusBits.isPending status then
+                raise (graph.NotReady (this :> INode))
+
+            graph.Raise failure
 
         value
 
@@ -484,7 +458,9 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
                     sources.Clear (this :> IComputation)
 
-                    OwnedSlot.Detach (this :> IOwned)
+                    if not (Platform.isNull link) then
+                        link.Detach ()
+                        link <- null
 
                     Tracer.NodeDispose (graph, id)
                     Tracer.TimedState (graph, id, clock, this)

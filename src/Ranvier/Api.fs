@@ -624,11 +624,7 @@ module Api =
     /// </para>
     /// </remarks>
     let createProjectionWith (keyOf: 'T -> 'K) (factory: (unit -> 'T) -> (unit -> 'V)) (source: unit -> 'T seq) : Projection<'K, 'V> =
-        let rows =
-            new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, Unchecked.defaultof<'T -> 'V>, factory, source)
-
-        rows.Attach ()
-        rows :> Projection<'K, 'V>
+        new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, Unchecked.defaultof<'T -> 'V>, factory, source) :> Projection<'K, 'V>
 
     /// <summary>
     /// <c>createProjectionWith</c> with <c>options</c>.
@@ -649,7 +645,6 @@ module Api =
         let rows =
             new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, Unchecked.defaultof<'T -> 'V>, factory, source)
 
-        rows.Attach ()
         rows.CreateFirst <- (options &&& ProjectionOptions.CreateFirst) = ProjectionOptions.CreateFirst
         rows :> Projection<'K, 'V>
 
@@ -677,7 +672,6 @@ module Api =
         let rows =
             new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, Unchecked.defaultof<'T -> 'V>, Unchecked.defaultof<_>, source)
 
-        rows.Attach ()
         rows.CreateFirst <- (options &&& ProjectionOptions.CreateFirst) = ProjectionOptions.CreateFirst
         rows.UseOnce factory
         rows :> Projection<'K, 'V>
@@ -690,11 +684,7 @@ module Api =
     /// factory.
     /// </summary>
     let createProjection (keyOf: 'T -> 'K) (map: 'T -> 'V) (source: unit -> 'T seq) : Projection<'K, 'V> =
-        let rows =
-            new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, map, Unchecked.defaultof<_>, source)
-
-        rows.Attach ()
-        rows :> Projection<'K, 'V>
+        new KeyedProjection<'T, 'K, 'V> (Graph.Current, keyOf, map, Unchecked.defaultof<_>, source) :> Projection<'K, 'V>
 
     /// <summary>
     /// <c>createProjectionWith</c> keyed by position: Solid's <c>indexArray</c>. The
@@ -702,22 +692,14 @@ module Api =
     /// item.
     /// </summary>
     let createIndexProjectionWith (factory: (unit -> 'T) -> (unit -> 'V)) (source: unit -> 'T seq) : Projection<int, 'V> =
-        let rows =
-            new IndexProjection<'T, 'V> (Graph.Current, Unchecked.defaultof<'T -> 'V>, factory, source)
-
-        rows.Attach ()
-        rows :> Projection<int, 'V>
+        new IndexProjection<'T, 'V> (Graph.Current, Unchecked.defaultof<'T -> 'V>, factory, source) :> Projection<int, 'V>
 
     /// <summary>
     /// <c>createProjection</c> keyed by position: the row at a slot survives its
     /// item changing.
     /// </summary>
     let createIndexProjection (map: 'T -> 'V) (source: unit -> 'T seq) : Projection<int, 'V> =
-        let rows =
-            new IndexProjection<'T, 'V> (Graph.Current, map, Unchecked.defaultof<_>, source)
-
-        rows.Attach ()
-        rows :> Projection<int, 'V>
+        new IndexProjection<'T, 'V> (Graph.Current, map, Unchecked.defaultof<_>, source) :> Projection<int, 'V>
 
     /// <summary>
     /// A pointwise derived collection over an open key domain: a cell is built
@@ -739,9 +721,7 @@ module Api =
     /// </para>
     /// </remarks>
     let createLookup (f: 'S -> 'K -> 'V) (affected: 'S -> 'S -> 'K seq) (source: unit -> 'S) : Lookup<'K, 'V> =
-        let lookup = new LookupOf<'S, 'K, 'V> (Graph.Current, f, affected, source)
-        lookup.Attach ()
-        lookup :> Lookup<'K, 'V>
+        new LookupOf<'S, 'K, 'V> (Graph.Current, f, affected, source) :> Lookup<'K, 'V>
 
     /// <summary>
     /// Membership in a single-valued selection: <c>selector.Get k</c> is true for
@@ -754,9 +734,7 @@ module Api =
     /// as the lookup's cell map does.
     /// </remarks>
     let createSelector (source: unit -> 'K) : Lookup<'K, bool> =
-        let lookup = new SelectorLookup<'K> (Graph.Current, source)
-        lookup.Attach ()
-        lookup :> Lookup<'K, bool>
+        new SelectorLookup<'K> (Graph.Current, source) :> Lookup<'K, bool>
 
     /// <summary>
     /// A memo holding <c>select ()</c>. While the inner value stays equal under the graph's equality policy, the memo
