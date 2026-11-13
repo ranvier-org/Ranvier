@@ -78,7 +78,7 @@ The sample runs as a test in `tests/Ranvier.CSharp.Tests/HeadlineSampleTests.cs`
 Reference `Ranvier.CSharp`; it brings `Ranvier` with it:
 
 ```bash
-dotnet add package Ranvier.CSharp --prerelease
+dotnet add package Ranvier.CSharp
 ```
 
 :::details Reference a source build

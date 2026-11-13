@@ -61,7 +61,7 @@ doubled = 10
 
 ## Guide
 
-- [Installation](installation.md): preview packages, supported targets and Native AOT.
+- [Installation](installation.md): packages, supported targets and Native AOT.
 - [Getting started](getting-started.md): a short walkthrough of a reactive graph.
 - [Examples](examples.md): complete F# and C# console and Avalonia applications for real workflows.
 - [Ranvier or Adaptive for a desktop app?](../blog/desktop-adaptive.md): a blog walkthrough with a complete F# window and comparisons of state, bindings, collections, async work and lifetime.
@@ -104,5 +104,5 @@ The core packages are built here. The packages below build on them in their own 
 ## Source and package status
 
 The guide describes the current source. [Installation](installation.md) distinguishes published
-previews from local package builds. [Roadmap](../concepts/roadmap.md) lists implemented areas and
+packages from local package builds. [Roadmap](../concepts/roadmap.md) lists implemented areas and
 ideas under consideration.

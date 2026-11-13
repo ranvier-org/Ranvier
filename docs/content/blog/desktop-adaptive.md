@@ -169,7 +169,7 @@ This complete **Windows-only WinForms counter** keeps the graph active throughou
 ```shell
 dotnet new console -lang F# -n RanvierDesktop
 cd RanvierDesktop
-dotnet add package Ranvier --prerelease
+dotnet add package Ranvier
 ```
 
 Change the generated property group in `RanvierDesktop.fsproj`:
@@ -292,7 +292,7 @@ Set a WPF view's `DataContext` to that instance:
 </StackPanel>
 ```
 
-Install `Ranvier.CSharp --prerelease` and create the graph/view model on the GUI thread. Dispose the view model when its window closes, and the graph when its owning window or application exits.
+Install `Ranvier.CSharp` and create the graph/view model on the GUI thread. Dispose the view model when its window closes, and the graph when its owning window or application exits.
 
 For Adaptive, use your UI stack's adapter or bridge callbacks to `INotifyPropertyChanged`.
 
