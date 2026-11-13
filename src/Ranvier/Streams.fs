@@ -696,10 +696,10 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     member this.Value: 'S =
         this.TrackCurrent ()
 
-        if status.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+        if StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                raise (graph.NotReady (this :> INode))
 
-        if status.HasFlag Status.Error then
             graph.Raise failure
 
         value
@@ -708,9 +708,13 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     member this.TryValue: Reading<'S> =
         this.TrackCurrent ()
 
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+        if StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                Pending
+            else
+                Failed failure.Error
+        else
+            Ready value
 
     /// <summary>Cancels the stream and detaches from its sources; repeated disposal is harmless.</summary>
     member this.Dispose() =
@@ -728,7 +732,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
                     sources.Clear (this :> IComputation)
                     this.Stop StreamEnd.Disposed
 
-                    if status.HasFlag Status.Pending then
+                    if StatusBits.isPending status then
                         failure <- Failure (ObjectDisposedException (this.GetType().Name), (this :> INode))
                         status <- Status.Error
                         this.Notify ()

@@ -424,10 +424,10 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     member this.Value =
         graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+        if StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                raise (graph.NotReady (this :> INode))
 
-        if status.HasFlag Status.Error then
             graph.Raise failure
 
         value
@@ -436,9 +436,13 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     member this.TryValue =
         graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+        if StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                Pending
+            else
+                Failed failure.Error
+        else
+            Ready value
 
     /// <summary>Detaches dependencies, cancels timing and releases ownership; repeated disposal is harmless.</summary>
     member this.Dispose() =

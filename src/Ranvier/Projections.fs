@@ -947,7 +947,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             status <- Status.Pending
             suspension <- Platform.captureFailure null ex
 
-            if not (previousStatus.HasFlag Status.Pending) then
+            if not (StatusBits.isPending previousStatus) then
                 Tracer.Moved (graph, id, null)
                 beacon.NotifyFailure this.Running
                 Tracer.Notified graph
@@ -966,7 +966,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             status <- Status.Error
 
             if
-                not (previousStatus.HasFlag Status.Error)
+                not (StatusBits.isError previousStatus)
                 || (not retry
                     && Failure.Moved (recorded, previousFailure))
             then

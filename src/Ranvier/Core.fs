@@ -156,6 +156,20 @@ module internal EdgeHandle =
     let ScanLimit = 8
 
 /// <summary>
+/// Single-bitmask predicates over <see cref="Status"/> so hot reads inspect the status byte without calling <c>Enum.HasFlag</c>.
+/// </summary>
+module internal StatusBits =
+    let inline isUnready (status: Status) =
+        (status &&& (Status.Pending ||| Status.Error))
+        <> Status.None
+
+    let inline isPending (status: Status) =
+        (status &&& Status.Pending) <> Status.None
+
+    let inline isError (status: Status) =
+        (status &&& Status.Error) <> Status.None
+
+/// <summary>
 /// One slot in an observer list.
 /// </summary>
 /// <remarks>
@@ -208,15 +222,17 @@ module internal ObserverSlots =
 /// </para>
 /// </remarks>
 type internal ObserverSet() =
+    let mutable first: IComputation = Unchecked.defaultof<IComputation>
+    let mutable firstSlot = EdgeHandle.Unlinked
 #if FABLE_COMPILER
-    let mutable items: ObserverSlot[] = ObserverSlots.none
+    let mutable rest: ObserverSlot[] = ObserverSlots.none
 
     /// <summary>
-    /// The slot of each observer. Grown and blanked together with <c>items</c>, and never read past <c>count</c>.
+    /// The slot of each overflow observer beyond slot 0. Grown and blanked together with <c>rest</c>, and never read past <c>count - 1</c>.
     /// </summary>
-    let mutable slots: int[] = ObserverSlots.noSlots
+    let mutable restSlots: int[] = ObserverSlots.noSlots
 #else
-    let mutable items: ObserverSlot[] = ObserverSlots.none
+    let mutable rest: ObserverSlot[] = ObserverSlots.none
 #endif
     let mutable count = 0
 
@@ -232,21 +248,21 @@ type internal ObserverSet() =
 #endif
 
     /// <summary>
-    /// Doubles the capacity of every array, a first observer getting a single slot: most sources keep exactly one.
+    /// Doubles the capacity of the overflow arrays once a source gains a second observer.
     /// </summary>
-    let grow () =
-        let size = if count = 0 then 1 else max 4 (count * 2)
+    let growRest (restCount: int) =
+        let size = max 4 (restCount * 2)
 #if FABLE_COMPILER
         let grownObservers = Array.zeroCreate size
         let grownSlots = Platform.positions size
-        Array.blit items 0 grownObservers 0 count
-        Platform.copyPositions slots grownSlots count
-        items <- grownObservers
-        slots <- grownSlots
+        Array.blit rest 0 grownObservers 0 restCount
+        Platform.copyPositions restSlots grownSlots restCount
+        rest <- grownObservers
+        restSlots <- grownSlots
 #else
         let grown = Array.zeroCreate size
-        Array.blit items 0 grown 0 count
-        items <- grown
+        Array.blit rest 0 grown 0 restCount
+        rest <- grown
 #endif
 
     /// <summary>
@@ -260,18 +276,27 @@ type internal ObserverSet() =
     /// Appends <c>c</c>, recording <c>slot</c> for its <c>MovedIn</c>, and returns its handle.
     /// </summary>
     member this.Add(c: IComputation, slot: int) =
-        if count = items.Length then
-            grow ()
-
         let handle = count
+
+        if handle = 0 then
+            first <- c
+            firstSlot <- slot
+            count <- 1
+            latest <- 0
+        else
+            let restIdx = handle - 1
+
+            if restIdx = rest.Length then
+                growRest restIdx
+
 #if FABLE_COMPILER
-        Platform.setItemAt handle items (ObserverSlot c)
-        Platform.setItemAt handle slots slot
+            Platform.setItemAt restIdx rest (ObserverSlot c)
+            Platform.setItemAt restIdx restSlots slot
 #else
-        items[handle] <- ObserverSlot (c, slot)
+            rest[restIdx] <- ObserverSlot (c, slot)
 #endif
-        count <- handle + 1
-        latest <- handle
+            count <- handle + 1
+            latest <- handle
 #if RANVIER_COUNTERS
         Counters.ObserverInserted ()
 #endif
@@ -287,20 +312,35 @@ type internal ObserverSet() =
             this.Add (c, slot)
         elif
             latest < count
-            && obj.ReferenceEquals ((Platform.itemAt latest items).Observer, c)
+            && obj.ReferenceEquals (
+                (if latest = 0 then
+                     first
+                 else
+                     (Platform.itemAt (latest - 1) rest).Observer),
+                c
+            )
         then
             EdgeHandle.Unlinked
-        elif count <= EdgeHandle.ScanLimit then
-            let mutable i = 0
-
-            while i < count
-                  && not (obj.ReferenceEquals ((Platform.itemAt i items).Observer, c)) do
-                i <- i + 1
-
-            if i < count then
+        elif count = 1 then
+            if obj.ReferenceEquals (first, c) then
                 EdgeHandle.Unlinked
             else
                 this.Add (c, slot)
+        elif count <= EdgeHandle.ScanLimit then
+            if obj.ReferenceEquals (first, c) then
+                EdgeHandle.Unlinked
+            else
+                let restCount = count - 1
+                let mutable i = 0
+
+                while i < restCount
+                      && not (obj.ReferenceEquals ((Platform.itemAt i rest).Observer, c)) do
+                    i <- i + 1
+
+                if i < restCount then
+                    EdgeHandle.Unlinked
+                else
+                    this.Add (c, slot)
         else
             EdgeHandle.Unknown
 
@@ -317,7 +357,12 @@ type internal ObserverSet() =
         if handle >= 0 then
             if
                 handle >= count
-                || not (obj.ReferenceEquals ((Platform.itemAt handle items).Observer, c))
+                || not (
+                    if handle = 0 then
+                        obj.ReferenceEquals (first, c)
+                    else
+                        obj.ReferenceEquals ((Platform.itemAt (handle - 1) rest).Observer, c)
+                )
             then
                 raise (
                     InvalidOperationException (
@@ -335,34 +380,54 @@ type internal ObserverSet() =
             Tracer.ObserverRemove (this, c)
             let last = count - 1
 
-            if handle = last then
-                // Blanked so a dropped observer is not kept alive by a slot past
-                // the end of the list.
+            if handle = 0 then
+                if last = 0 then
+                    // Blanked so a dropped observer is not kept alive after removal.
+                    first <- Unchecked.defaultof<IComputation>
+                    firstSlot <- EdgeHandle.Unlinked
+                    count <- 0
+                else
+                    let lastRest = last - 1
+                    let moved = (Platform.itemAt lastRest rest).Observer
 #if FABLE_COMPILER
-                Platform.setItemAt last items (ObserverSlot Unchecked.defaultof<IComputation>)
-                Platform.setItemAt last slots EdgeHandle.Unlinked
+                    let movedSlot = Platform.itemAt lastRest restSlots
+                    Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                    Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
 #else
-                items[last] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+                    let movedSlot = (Platform.itemAt lastRest rest).Slot
+                    rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
+                    first <- moved
+                    firstSlot <- movedSlot
+                    count <- last
+
+                    if latest = last then
+                        latest <- 0
+
+                    moved.MovedIn (movedSlot, 0)
+            elif handle = last then
+                let lastRest = last - 1
+#if FABLE_COMPILER
+                Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
+#else
+                rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
 #endif
                 count <- last
             else
-                let moved = (Platform.itemAt last items).Observer
+                let handleRest = handle - 1
+                let lastRest = last - 1
+                let moved = (Platform.itemAt lastRest rest).Observer
 #if FABLE_COMPILER
-                let movedSlot = Platform.itemAt last slots
+                let movedSlot = Platform.itemAt lastRest restSlots
+                Platform.setItemAt handleRest rest (ObserverSlot moved)
+                Platform.setItemAt handleRest restSlots movedSlot
+                Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
 #else
-                let movedSlot = (Platform.itemAt last items).Slot
-#endif
-#if FABLE_COMPILER
-                Platform.setItemAt handle items (ObserverSlot moved)
-                Platform.setItemAt handle slots movedSlot
-#else
-                items[handle] <- ObserverSlot (moved, movedSlot)
-#endif
-#if FABLE_COMPILER
-                Platform.setItemAt last items (ObserverSlot Unchecked.defaultof<IComputation>)
-                Platform.setItemAt last slots EdgeHandle.Unlinked
-#else
-                items[last] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+                let movedSlot = (Platform.itemAt lastRest rest).Slot
+                rest[handleRest] <- ObserverSlot (moved, movedSlot)
+                rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
 #endif
                 count <- last
 
@@ -385,16 +450,27 @@ type internal ObserverSet() =
     /// node returns immediately. Forwards, the same removal would skip.
     /// </remarks>
     member this.NotifyDirty() =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
+            Tracer.Mark (this, observer, true)
+            observer.MarkDirty ()
+        elif count > 1 then
+            let mutable i = count - 1
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
 
-            if i >= 0 then
-                Tracer.Mark (this, (Platform.itemAt i items).Observer, true)
-                (Platform.itemAt i items).Observer.MarkDirty()
-                i <- i - 1
+                if i > 0 then
+                    let observer = (Platform.itemAt (i - 1) rest).Observer
+                    Tracer.Mark (this, observer, true)
+                    observer.MarkDirty ()
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+                    Tracer.Mark (this, observer, true)
+                    observer.MarkDirty ()
+                    i <- -1
 
     /// <summary>
     /// <c>NotifyDirty</c>, skipping <c>running</c> when its current run has not yet read its edge to this source.
@@ -410,56 +486,101 @@ type internal ObserverSet() =
     /// the slot and it must be marked <c>Dirty</c>.
     /// </remarks>
     member this.NotifyDirtyExcept(running: IComputation) =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            if
+                not (obj.ReferenceEquals (observer, running))
+                || running.HasReadSlot firstSlot
+            then
+                Tracer.Mark (this, observer, true)
+                observer.MarkDirty ()
+            else
+                Tracer.MarkSkip (this, observer)
+        elif count > 1 then
+            let mutable i = count - 1
 
-            if i >= 0 then
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
+
+                if i > 0 then
 #if FABLE_COMPILER
-                let observer = (Platform.itemAt i items).Observer
+                    let idx = i - 1
+                    let observer = (Platform.itemAt idx rest).Observer
 
-                if
-                    not (obj.ReferenceEquals (observer, running))
-                    || running.HasReadSlot (Platform.itemAt i slots)
-                then
+                    if
+                        not (obj.ReferenceEquals (observer, running))
+                        || running.HasReadSlot (Platform.itemAt idx restSlots)
+                    then
 #else
-                let item = Platform.itemAt i items
-                let observer = item.Observer
+                    let item = Platform.itemAt (i - 1) rest
+                    let observer = item.Observer
 
-                if
-                    not (obj.ReferenceEquals (observer, running))
-                    || running.HasReadSlot item.Slot
-                then
+                    if
+                        not (obj.ReferenceEquals (observer, running))
+                        || running.HasReadSlot item.Slot
+                    then
 #endif
-                    Tracer.Mark (this, observer, true)
-                    observer.MarkDirty ()
-                else
-                    Tracer.MarkSkip (this, observer)
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
 
-                i <- i - 1
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+
+                    if
+                        not (obj.ReferenceEquals (observer, running))
+                        || running.HasReadSlot firstSlot
+                    then
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
+
+                    i <- -1
 
     /// <summary>
     /// <c>NotifyDirty</c>, unconditionally skipping <c>running</c>.
     /// </summary>
     member this.NotifyDirtyOther(running: IComputation) =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            if not (obj.ReferenceEquals (observer, running)) then
+                Tracer.Mark (this, observer, true)
+                observer.MarkDirty ()
+            else
+                Tracer.MarkSkip (this, observer)
+        elif count > 1 then
+            let mutable i = count - 1
 
-            if i >= 0 then
-                let observer = (Platform.itemAt i items).Observer
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
 
-                if not (obj.ReferenceEquals (observer, running)) then
-                    Tracer.Mark (this, observer, true)
-                    observer.MarkDirty ()
-                else
-                    Tracer.MarkSkip (this, observer)
+                if i > 0 then
+                    let observer = (Platform.itemAt (i - 1) rest).Observer
 
-                i <- i - 1
+                    if not (obj.ReferenceEquals (observer, running)) then
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
+
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+
+                    if not (obj.ReferenceEquals (observer, running)) then
+                        Tracer.Mark (this, observer, true)
+                        observer.MarkDirty ()
+                    else
+                        Tracer.MarkSkip (this, observer)
+
+                    i <- -1
 
     /// <summary>
     /// <c>NotifyDirty</c>'s weaker sibling: tells every observer that something
@@ -467,16 +588,27 @@ type internal ObserverSet() =
     /// backwards re-clamped walk, for the same reason.
     /// </summary>
     member this.NotifyCheck() =
-        let mutable i = count - 1
+        if count = 1 then
+            let observer = first
+            Tracer.Mark (this, observer, false)
+            observer.MarkCheck ()
+        elif count > 1 then
+            let mutable i = count - 1
 
-        while i >= 0 do
-            if i >= count then
-                i <- count - 1
+            while i >= 0 do
+                if i >= count then
+                    i <- count - 1
 
-            if i >= 0 then
-                Tracer.Mark (this, (Platform.itemAt i items).Observer, false)
-                (Platform.itemAt i items).Observer.MarkCheck()
-                i <- i - 1
+                if i > 0 then
+                    let observer = (Platform.itemAt (i - 1) rest).Observer
+                    Tracer.Mark (this, observer, false)
+                    observer.MarkCheck ()
+                    i <- i - 1
+                elif i = 0 then
+                    let observer = first
+                    Tracer.Mark (this, observer, false)
+                    observer.MarkCheck ()
+                    i <- -1
 
 #if RANVIER_TRACE
     interface ITraced with
@@ -491,7 +623,13 @@ type internal ObserverSet() =
     interface ITracedEdges with
         member _.Owner = traceId
         member _.IsSources = false
-        member _.Ids = Array.init count (fun i -> (Platform.itemAt i items).Observer.Id)
+
+        member _.Ids =
+            Array.init count (fun i ->
+                if i = 0 then
+                    first.Id
+                else
+                    (Platform.itemAt (i - 1) rest).Observer.Id)
 #endif
 
 /// <summary>
@@ -4458,10 +4596,10 @@ type AsyncSource<'T>(graph: Graph) =
     member this.Value: 'T =
         graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+        if StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                raise (graph.NotReady (this :> INode))
 
-        if status.HasFlag Status.Error then
             graph.Raise failure
 
         value
@@ -4473,13 +4611,17 @@ type AsyncSource<'T>(graph: Graph) =
     member this.TryValue: Reading<'T> =
         graph.Track (this :> ISource)
 
-        if status.HasFlag Status.Pending then Pending
-        elif status.HasFlag Status.Error then Failed failure.Error
-        else Ready value
+        if StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                Pending
+            else
+                Failed failure.Error
+        else
+            Ready value
 
     /// <summary>The source itself while <c>Status</c> has <c>Error</c>, otherwise null.</summary>
     member this.ErrorOrigin: INode =
-        if status.HasFlag Status.Error then
+        if StatusBits.isError status then
             this :> INode
         else
             Unchecked.defaultof<INode>
@@ -4848,10 +4990,10 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                raise (graph.NotReady (this :> INode))
 
-        if currentStatus.HasFlag Status.Error then
             graph.Raise currentFailure
 
         currentValue
@@ -4867,10 +5009,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -4881,10 +5024,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         let currentValue = value
         graph.FinishPullSettle ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -5130,10 +5274,10 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then
-                raise (graph.NotReady (this :> INode))
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    raise (graph.NotReady (this :> INode))
 
-            if status.HasFlag Status.Error then
                 graph.Raise failure
 
             value
@@ -5155,9 +5299,13 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then Pending
-            elif status.HasFlag Status.Error then Failed failure.Error
-            else Ready value
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    Pending
+                else
+                    Failed failure.Error
+            else
+                Ready value
 
     /// <summary>
     /// Non-throwing read that brings the memo up to date without recording a dependency.
@@ -5173,10 +5321,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     this.PullWithoutSettle ())
         then
             this.SettlePullAndReadUntracked ()
-        elif status.HasFlag Status.Pending then
-            Pending
-        elif status.HasFlag Status.Error then
-            Failed failure.Error
+        elif StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                Pending
+            else
+                Failed failure.Error
         else
             Ready value
 
@@ -6634,10 +6783,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderDirty ()
 
-        if currentStatus.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                raise (graph.NotReady (this :> INode))
 
-        if currentStatus.HasFlag Status.Error then
             graph.Raise currentFailure
 
         currentValue
@@ -6653,10 +6802,11 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderDirty ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -6875,7 +7025,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                         source.Cancel ()
                         source.Dispose ()
 
-                    if status.HasFlag Status.Pending then
+                    if StatusBits.isPending status then
                         pendingSource <- Unchecked.defaultof<INode>
 
                         failure <- Failure (ObjectDisposedException (this.GetType().Name), (this :> INode))
@@ -6955,10 +7105,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then
-                raise (graph.NotReady (this :> INode))
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    raise (graph.NotReady (this :> INode))
 
-            if status.HasFlag Status.Error then
                 graph.Raise failure
 
             value
@@ -6976,9 +7126,13 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then Pending
-            elif status.HasFlag Status.Error then Failed failure.Error
-            else Ready value
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    Pending
+                else
+                    Failed failure.Error
+            else
+                Ready value
 
     /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.
@@ -7329,10 +7483,10 @@ type Boundary<'T>
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            raise (graph.NotReady (this :> INode))
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                raise (graph.NotReady (this :> INode))
 
-        if currentStatus.HasFlag Status.Error then
             graph.Raise currentFailure
 
         currentValue
@@ -7348,10 +7502,11 @@ type Boundary<'T>
         if freshness <> Freshness.Clean && not disposed then
             graph.MarkReaderCheck ()
 
-        if currentStatus.HasFlag Status.Pending then
-            Pending
-        elif currentStatus.HasFlag Status.Error then
-            Failed currentFailure.Error
+        if StatusBits.isUnready currentStatus then
+            if StatusBits.isPending currentStatus then
+                Pending
+            else
+                Failed currentFailure.Error
         else
             Ready currentValue
 
@@ -7707,10 +7862,10 @@ type Boundary<'T>
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then
-                raise (graph.NotReady (this :> INode))
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    raise (graph.NotReady (this :> INode))
 
-            if status.HasFlag Status.Error then
                 graph.Raise failure
 
             value
@@ -7728,9 +7883,13 @@ type Boundary<'T>
         else
             graph.Track (this :> ISource)
 
-            if status.HasFlag Status.Pending then Pending
-            elif status.HasFlag Status.Error then Failed failure.Error
-            else Ready value
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    Pending
+                else
+                    Failed failure.Error
+            else
+                Ready value
 
     /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.
