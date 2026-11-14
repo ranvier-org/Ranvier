@@ -457,3 +457,9 @@ Print Assumptions Ranvier.Heap.Deltas.key_change_merge_spec.
 Print Assumptions Ranvier.Heap.Deltas.projection_reader_record_spec.
 Print Assumptions Ranvier.Heap.Deltas.projection_reader_read_spec.
 Print Assumptions fold_sync_recomputes_on_reorder.
+Print Assumptions row_slot_check_cutoff_skips_pass.
+Print Assumptions prefix_count_point_update.
+Print Assumptions filter_incremental_step_refines_scan.
+Print Assumptions filter_hidden_transition_cancels_or_emits.
+Print Assumptions Ranvier.Heap.Collections.fenwick_sum_spec.
+Print Assumptions Ranvier.Heap.Collections.fenwick_add_spec.

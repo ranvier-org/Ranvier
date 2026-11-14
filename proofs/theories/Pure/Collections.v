@@ -1,5 +1,5 @@
 From stdpp Require Import prelude gmap.
-From Stdlib Require Import ZArith Sorted.
+From Stdlib Require Import ZArith Sorted PArith NArith.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Edges Marking Engine Check Runs Scheduler Ownership.
 
@@ -1319,4 +1319,435 @@ Proof.
   rewrite Hpart.
   rewrite <- (perm_middle_cons changedIdx before after).
   symmetry. exact Hfull_perm.
+Qed.
+
+(** * Incremental Filter, Choose, and 1-Based Fenwick Primitives *)
+
+Inductive col_view_freshness : Type := CVClean | CVCheck | CVDirty.
+
+Record inclusion_view_state : Type := {
+  ivs_fresh : col_view_freshness;
+  ivs_runs : nat;
+  ivs_values : list bool;
+}.
+
+Definition resolve_check_slots (old_vals new_vals : list bool) : bool :=
+  bool_decide (new_vals = old_vals).
+
+Definition ensure_current_step (st : inclusion_view_state) (new_vals : list bool) : inclusion_view_state :=
+  match st.(ivs_fresh) with
+  | CVClean => st
+  | CVCheck =>
+      if resolve_check_slots st.(ivs_values) new_vals then
+        {| ivs_fresh := CVClean; ivs_runs := st.(ivs_runs); ivs_values := st.(ivs_values) |}
+      else
+        {| ivs_fresh := CVClean; ivs_runs := S st.(ivs_runs); ivs_values := new_vals |}
+  | CVDirty =>
+      {| ivs_fresh := CVClean; ivs_runs := S st.(ivs_runs); ivs_values := new_vals |}
+  end.
+
+(**md
+**An unchanged `Check` pass resolves clean without advancing view runs.**
+
+When every per-row `InclusionSlot` predicate or chooser re-evaluates to its
+previously cached boolean inclusion flag, `ensure_current_step` resolves
+`CVCheck` directly back to `CVClean` while leaving `ivs_runs` and
+`ivs_values` unchanged.
+
+- [st:] current view freshness state, run counter, and cached boolean flags.
+- [new_vals:] re-evaluated per-row boolean flags on the current check pass.
+*)
+Theorem row_slot_check_cutoff_skips_pass
+  (st : inclusion_view_state) (new_vals : list bool) :
+  st.(ivs_fresh) = CVCheck ->
+  new_vals = st.(ivs_values) ->
+  (ensure_current_step st new_vals).(ivs_fresh) = CVClean /\
+  (ensure_current_step st new_vals).(ivs_runs) = st.(ivs_runs) /\
+  (ensure_current_step st new_vals).(ivs_values) = st.(ivs_values).
+Proof.
+  intros Hchk Heq. unfold ensure_current_step, resolve_check_slots.
+  rewrite Hchk, Heq, bool_decide_eq_true_2; [|reflexivity].
+  repeat split; reflexivity.
+Qed.
+
+Fixpoint count_true (bits : list bool) : nat :=
+  match bits with
+  | [] => 0
+  | b :: rest => (if b then 1 else 0) + count_true rest
+  end.
+
+Definition prefix_count (bits : list bool) (k : nat) : nat :=
+  count_true (take k bits).
+
+Lemma count_true_app (l1 l2 : list bool) :
+  count_true (l1 ++ l2) = count_true l1 + count_true l2.
+Proof.
+  induction l1 as [|b l1' IH]; cbn; [reflexivity|].
+  rewrite IH. lia.
+Qed.
+
+Lemma prefix_count_lookup_true (bits : list bool) (idx k : nat) :
+  bits !! idx = Some true ->
+  idx < k ->
+  1 <= prefix_count bits k.
+Proof.
+  revert idx k.
+  induction bits as [|b rest IH]; intros idx k Hlu Hlt; [discriminate|].
+  destruct k as [|k']; [lia|].
+  unfold prefix_count in *. cbn [take].
+  destruct idx as [|idx'].
+  - cbn in Hlu. injection Hlu as ->. cbn [count_true]. lia.
+  - cbn [count_true].
+    pose proof (IH idx' k' Hlu ltac:(lia)). lia.
+Qed.
+
+(**md
+**Point flipping a boolean slot updates every prefix count by exact +/-1.**
+
+Flipping entry `idx` from `b_old` to `b_new` alters `prefix_count bits k`
+only when `idx < k`, adding `1` if `b_new` is `true` and subtracting `1` if
+`b_old` is `true`.
+
+- [bits:] boolean inclusion mask indexed by upstream slot position.
+- [idx:] slot index being updated.
+- [k:] prefix bound at which the count is queried.
+- [b_old:] prior inclusion flag at slot `idx`.
+- [b_new:] new inclusion flag written at slot `idx`.
+*)
+Theorem prefix_count_point_update
+  (bits : list bool) (idx k : nat) (b_old b_new : bool) :
+  bits !! idx = Some b_old ->
+  prefix_count (<[idx := b_new]> bits) k =
+    (if decide (idx < k) then
+       prefix_count bits k + (if b_new then 1 else 0) - (if b_old then 1 else 0)
+     else prefix_count bits k).
+Proof.
+  revert idx k.
+  induction bits as [|x rest IH]; intros idx k Hlu; [discriminate|].
+  destruct k as [|k'].
+  - destruct (decide (idx < 0)); [lia|]. reflexivity.
+  - destruct idx as [|idx'].
+    + cbn in Hlu. injection Hlu as ->.
+      destruct (decide (0 < S k')); [|lia].
+      unfold prefix_count. cbn.
+      destruct b_old, b_new; lia.
+    + cbn [lookup] in Hlu.
+      unfold prefix_count.
+      change (<[S idx' := b_new]> (x :: rest)) with (x :: <[idx' := b_new]> rest).
+      cbn [take count_true].
+      destruct (decide (S idx' < S k')) as [Hlt|Hge].
+      * specialize (IH idx' k' Hlu).
+        unfold prefix_count in IH.
+        rewrite IH.
+        destruct (decide (idx' < k')); [|lia].
+        destruct b_old.
+        -- pose proof (prefix_count_lookup_true rest idx' k' Hlu ltac:(lia)) as Hpos.
+           unfold prefix_count in Hpos. lia.
+        -- lia.
+      * specialize (IH idx' k' Hlu).
+        unfold prefix_count in IH.
+        rewrite IH.
+        destruct (decide (idx' < k')); [lia|].
+        reflexivity.
+Qed.
+
+Fixpoint filter_scan {K : Type} (rows : list (K * bool)) : list K :=
+  match rows with
+  | [] => []
+  | (k, true) :: rest => k :: filter_scan rest
+  | (_, false) :: rest => filter_scan rest
+  end.
+
+Definition splice_insert_at {K : Type} (pos : nat) (k : K) (out : list K) : list K :=
+  take pos out ++ k :: drop pos out.
+
+Definition splice_remove_at {K : Type} (pos : nat) (out : list K) : list K :=
+  take pos out ++ drop (S pos) out.
+
+Definition filter_flip_at {K : Type} (rows : list (K * bool)) (idx : nat) (b_new : bool) (out : list K) : list K :=
+  match rows !! idx with
+  | None => out
+  | Some (k, b_old) =>
+      if Bool.eqb b_old b_new then out
+      else
+        let pos := prefix_count (snd <$> rows) idx in
+        if b_new then splice_insert_at pos k out else splice_remove_at pos out
+  end.
+
+Lemma prefix_count_snd_length {K : Type} (rows : list (K * bool)) (idx : nat) :
+  prefix_count (snd <$> rows) idx = length (filter_scan (take idx rows)).
+Proof.
+  revert idx.
+  induction rows as [|[k b] rest IH]; intros [|idx']; unfold prefix_count in *;
+    [reflexivity|reflexivity|reflexivity|].
+  change (snd <$> (k, b) :: rest) with (b :: (snd <$> rest)).
+  cbn [take filter_scan length count_true].
+  destruct b; cbn [count_true filter_scan length]; specialize (IH idx'); rewrite IH; lia.
+Qed.
+
+Lemma filter_scan_app {K : Type} (l1 l2 : list (K * bool)) :
+  filter_scan (l1 ++ l2) = filter_scan l1 ++ filter_scan l2.
+Proof.
+  induction l1 as [|[k [|]] rest IH]; cbn; [reflexivity| | ]; rewrite IH; reflexivity.
+Qed.
+
+Lemma take_prefix_filter {K : Type} (n : nat) (l : list (K * bool)) :
+  take (length (filter_scan (take n l))) (filter_scan l) = filter_scan (take n l).
+Proof.
+  rewrite <- (take_drop n l) at 2.
+  rewrite filter_scan_app, take_app_length. reflexivity.
+Qed.
+
+Lemma drop_prefix_filter {K : Type} (n : nat) (l : list (K * bool)) :
+  drop (length (filter_scan (take n l))) (filter_scan l) = filter_scan (drop n l).
+Proof.
+  rewrite <- (take_drop n l) at 2.
+  rewrite filter_scan_app, drop_app_length. reflexivity.
+Qed.
+
+Lemma drop_split_lookup {A : Type} (l : list A) (i : nat) (x : A) :
+  l !! i = Some x -> drop i l = x :: drop (S i) l.
+Proof.
+  revert i. induction l as [|y rest IH]; intros [|i'] Hlu; cbn in *; [discriminate|discriminate| |].
+  - injection Hlu as ->. reflexivity.
+  - apply IH, Hlu.
+Qed.
+
+Lemma filter_flip_at_correct {K : Type} (rows : list (K * bool)) (idx : nat) (b_new : bool) :
+  filter_flip_at rows idx b_new (filter_scan rows) =
+  filter_scan
+    (match rows !! idx with
+     | None => rows
+     | Some (k, _) => <[idx := (k, b_new)]> rows
+     end).
+Proof.
+  unfold filter_flip_at.
+  destruct (rows !! idx) as [[k b_old]|] eqn:Hlu; [|reflexivity].
+  pose proof (drop_split_lookup rows idx (k, b_old) Hlu) as Hdrop.
+  replace (<[idx := (k, b_new)]> rows) with (take idx rows ++ (k, b_new) :: drop (S idx) rows); last first.
+  { clear Hdrop. revert rows Hlu. induction idx as [|i IH]; intros [|x xs] Hlu; cbn in *; try discriminate.
+    - injection Hlu as _. reflexivity.
+    - f_equal. apply IH, Hlu. }
+  destruct (Bool.eqb b_old b_new) eqn:Heq.
+  - destruct b_old, b_new; cbn in Heq; try discriminate;
+      rewrite <- (take_drop idx rows) at 1;
+      rewrite !filter_scan_app, Hdrop; cbn; reflexivity.
+  - rewrite prefix_count_snd_length.
+    destruct b_old, b_new; cbn in Heq; try discriminate; cbv zeta.
+    + unfold splice_remove_at.
+      rewrite take_prefix_filter.
+      pose proof (drop_prefix_filter idx rows) as Hdr.
+      rewrite Hdrop in Hdr.
+      assert (Htail : drop (S (length (filter_scan (take idx rows)))) (filter_scan rows) =
+                      filter_scan (drop (S idx) rows)).
+      { replace (S (length (filter_scan (take idx rows))))
+          with (length (filter_scan (take idx rows)) + 1) by lia.
+        rewrite <- drop_drop. rewrite Hdr. reflexivity. }
+      rewrite Htail, filter_scan_app. cbn. reflexivity.
+    + unfold splice_insert_at.
+      rewrite take_prefix_filter, drop_prefix_filter, Hdrop, filter_scan_app.
+      cbn. reflexivity.
+Qed.
+
+Fixpoint apply_row_updates {K : Type} (rows : list (K * bool)) (flips : list (nat * bool)) : list (K * bool) :=
+  match flips with
+  | [] => rows
+  | (idx, b_new) :: rest =>
+      let rows' :=
+        match rows !! idx with
+        | None => rows
+        | Some (k, _) => <[idx := (k, b_new)]> rows
+        end in
+      apply_row_updates rows' rest
+  end.
+
+Fixpoint apply_filter_flips {K : Type} (rows : list (K * bool)) (flips : list (nat * bool)) (out : list K) : list K :=
+  match flips with
+  | [] => out
+  | (idx, b_new) :: rest =>
+      let out' := filter_flip_at rows idx b_new out in
+      let rows' :=
+        match rows !! idx with
+        | None => rows
+        | Some (k, _) => <[idx := (k, b_new)]> rows
+        end in
+      apply_filter_flips rows' rest out'
+  end.
+
+(**md
+**Splicing a batch of inclusion flips refines full `filter_scan`.**
+
+Starting from `filter_scan rows`, applying each flip `(idx, b_new)` via
+prefix-count splice insertion or removal produces the exact key list computed
+by scanning the updated row table `apply_row_updates rows flips`.
+
+- [K:] key type carried by upstream rows.
+- [rows:] initial sequence of keyed inclusion flags in upstream order.
+- [flips:] ordered batch of `(slot_index, new_flag)` dirty transitions.
+*)
+Theorem filter_incremental_step_refines_scan
+  {K : Type} (rows : list (K * bool)) (flips : list (nat * bool)) :
+  apply_filter_flips rows flips (filter_scan rows) =
+  filter_scan (apply_row_updates rows flips).
+Proof.
+  revert rows.
+  induction flips as [|[idx b_new] rest IH]; intros rows; [reflexivity|].
+  cbn [apply_filter_flips apply_row_updates].
+  rewrite filter_flip_at_correct.
+  apply IH.
+Qed.
+
+Inductive incl_state : Type := ISExcluded | ISIncluded | ISFailed.
+Inductive incl_kc : Type := IKCAdded | IKCRemoved | IKCChanged.
+
+Definition incl_kc_merge_opt (prev : option incl_kc) (next : incl_kc) : option incl_kc :=
+  match prev, next with
+  | None, _ => Some next
+  | Some IKCAdded, IKCRemoved => None
+  | Some IKCAdded, _ => Some IKCAdded
+  | Some IKCRemoved, IKCAdded => Some IKCChanged
+  | Some IKCRemoved, _ => Some IKCRemoved
+  | Some IKCChanged, IKCRemoved => Some IKCRemoved
+  | Some IKCChanged, _ => Some IKCChanged
+  end.
+
+Definition incl_transition_delta (s1 s2 : incl_state) (val_changed : bool) : option incl_kc :=
+  match s1, s2 with
+  | ISExcluded, ISExcluded => None
+  | ISExcluded, ISFailed => None
+  | ISFailed, ISExcluded => None
+  | ISFailed, ISFailed => None
+  | ISExcluded, ISIncluded => Some IKCAdded
+  | ISFailed, ISIncluded => Some IKCAdded
+  | ISIncluded, ISExcluded => Some IKCRemoved
+  | ISIncluded, ISFailed => Some IKCRemoved
+  | ISIncluded, ISIncluded => if val_changed then Some IKCChanged else None
+  end.
+
+Definition incl_step_acc (acc : option incl_kc) (s1 s2 : incl_state) (vc : bool) : option incl_kc :=
+  match incl_transition_delta s1 s2 vc with
+  | None => acc
+  | Some kc => incl_kc_merge_opt acc kc
+  end.
+
+(**md
+**Hidden `Excluded` / `Failed` / `Included` transitions cancel or coalesce exactly.**
+
+Over two sequential slot transitions `s0 -> s1 -> s2`, merging per-step
+membership changes keeps `ISExcluded <-> ISFailed` silent, cancels
+`ISExcluded -> ISIncluded -> ISFailed` back to `None`, and coalesces
+`ISIncluded -> ISFailed -> ISIncluded` to `Some IKCChanged`.
+
+- [s0:] initial inclusion state at pass start.
+- [s1:] intermediate inclusion state after the first transition.
+- [s2:] final inclusion state after the second transition.
+*)
+Theorem filter_hidden_transition_cancels_or_emits
+  (s0 s1 s2 : incl_state) :
+  incl_step_acc (incl_step_acc None s0 s1 false) s1 s2 false =
+  incl_transition_delta s0 s2
+    (match s0, s1, s2 with
+     | ISIncluded, ISExcluded, ISIncluded
+     | ISIncluded, ISFailed, ISIncluded => true
+     | _, _, _ => false
+     end).
+Proof.
+  destruct s0, s1, s2; reflexivity.
+Qed.
+
+Fixpoint pos_lsb (p : positive) : positive :=
+  match p with | xH => xH | xI _ => xH | xO q => xO (pos_lsb q) end.
+
+Lemma pos_lsb_le (p : positive) : (Pos.to_nat (pos_lsb p) <= Pos.to_nat p)%nat.
+Proof. induction p as [q _|q IH|]; cbn; lia. Qed.
+
+Definition nat_lsb (i : nat) : nat :=
+  match i with | 0 => 0 | S _ => Pos.to_nat (pos_lsb (Pos.of_nat i)) end.
+
+Lemma nat_lsb_bounds (i : nat) : (1 <= i -> 1 <= nat_lsb i /\ nat_lsb i <= i)%nat.
+Proof.
+  intro Hi. destruct i as [|i']; [lia|]. unfold nat_lsb. split.
+  - pose proof (Pos2Nat.is_pos (pos_lsb (Pos.of_nat (S i')))). lia.
+  - pose proof (pos_lsb_le (Pos.of_nat (S i'))) as Hle.
+    rewrite Nat2Pos.id in Hle; [exact Hle | lia].
+Qed.
+
+Lemma z_land_opp_pos (p : positive) : Z.land (Z.pos p) (- Z.pos p) = Z.pos (pos_lsb p).
+Proof.
+  change (- Z.pos p)%Z with (Z.neg p).
+  induction p as [q _|q IH|]; cbn [pos_lsb].
+  - change (Z.land (Z.pos (q~1)) (Z.neg (q~1))) with (Z.of_N (Pos.ldiff (q~1) (q~0))).
+    assert (Hdiag : Pos.ldiff q q = 0%N)
+      by (apply N.bits_inj => n; rewrite N.pos_ldiff_spec; rewrite N.bits_0; by rewrite andb_negb_r).
+    cbn. by rewrite Hdiag.
+  - change (Z.land (Z.pos (q~0)) (Z.neg (q~0)))
+      with (Z.of_N (N.ldiff (N.pos (q~0)) (Pos.pred_N (q~0)))).
+    replace (Z.pos (pos_lsb q)~0) with (Z.of_N (N.double (N.pos (pos_lsb q)))) by reflexivity.
+    assert (IH' : N.ldiff (N.pos q) (Pos.pred_N q) = N.pos (pos_lsb q))
+      by (apply N2Z.inj; exact IH).
+    rewrite <- IH'. f_equal. apply N.bits_inj => n.
+    destruct n as [|p0] using N.peano_ind.
+    + rewrite N.ldiff_spec; rewrite N.double_spec; rewrite N.testbit_even_0. reflexivity.
+    + clear IHp0.
+      rewrite N.ldiff_spec; rewrite N.double_spec; rewrite N.double_bits_succ; rewrite N.ldiff_spec.
+      rewrite <- N.div2_bits. rewrite <- N.div2_bits.
+      rewrite <- N.div2_div. rewrite <- N.div2_div.
+      cbn; destruct q; reflexivity.
+  - reflexivity.
+Qed.
+
+Lemma z_land_opp_nat (i : nat) :
+  (1 <= i)%nat -> Z.land (Z.of_nat i) (- Z.of_nat i)%Z = Z.of_nat (nat_lsb i).
+Proof.
+  intro Hi. destruct i as [|i']; [lia|]. unfold nat_lsb.
+  replace (Z.of_nat (S i')) with (Z.pos (Pos.of_nat (S i'))) by lia.
+  rewrite z_land_opp_pos. lia.
+Qed.
+
+Fixpoint fenwick_sum_go (fuel : nat) (tree : list Z) (i : nat) (acc : Z) : Z :=
+  match fuel with
+  | 0 => acc
+  | S fuel' =>
+      if decide (1 <= i)%nat then
+        fenwick_sum_go fuel' tree (i - nat_lsb i) (acc + default 0%Z (tree !! i))%Z
+      else acc
+  end.
+
+Definition fenwick_sum_pure (tree : list Z) (i : nat) : Z :=
+  fenwick_sum_go i tree i 0%Z.
+
+Lemma fenwick_sum_go_fuel_irrel (f1 f2 : nat) (tree : list Z) (i : nat) (acc : Z) :
+  (i <= f1)%nat -> (i <= f2)%nat ->
+  fenwick_sum_go f1 tree i acc = fenwick_sum_go f2 tree i acc.
+Proof.
+  revert f2 i acc. induction f1 as [|f1' IH]; intros [|f2'] i acc Hf1 Hf2.
+  - reflexivity.
+  - assert (i = 0)%nat as -> by lia. reflexivity.
+  - assert (i = 0)%nat as -> by lia. reflexivity.
+  - cbn [fenwick_sum_go]. destruct (decide (1 <= i)%nat) as [Hi|_]; [|reflexivity].
+    destruct (nat_lsb_bounds i Hi). apply IH; lia.
+Qed.
+
+Fixpoint fenwick_add_go (fuel : nat) (tree : list Z) (n i : nat) (delta : Z) : list Z :=
+  match fuel with
+  | 0 => tree
+  | S fuel' =>
+      if decide (1 <= i /\ i <= n)%nat then
+        fenwick_add_go fuel' (<[i := (default 0%Z (tree !! i) + delta)%Z]> tree) n (i + nat_lsb i) delta
+      else tree
+  end.
+
+Definition fenwick_add_pure (tree : list Z) (n i : nat) (delta : Z) : list Z :=
+  fenwick_add_go (S n - i) tree n i delta.
+
+Lemma fenwick_add_go_fuel_irrel (f1 f2 : nat) (tree : list Z) (n i : nat) (delta : Z) :
+  (1 <= i)%nat -> (S n - i <= f1)%nat -> (S n - i <= f2)%nat ->
+  fenwick_add_go f1 tree n i delta = fenwick_add_go f2 tree n i delta.
+Proof.
+  revert f2 tree i. induction f1 as [|f1' IH]; intros [|f2'] tree i Hi Hf1 Hf2.
+  - reflexivity.
+  - cbn [fenwick_add_go]. destruct (decide (1 <= i /\ i <= n)%nat); [lia|reflexivity].
+  - cbn [fenwick_add_go]. destruct (decide (1 <= i /\ i <= n)%nat); [lia|reflexivity].
+  - cbn [fenwick_add_go]. destruct (decide (1 <= i /\ i <= n)%nat) as [[_ Hle]|_]; [|reflexivity].
+    destruct (nat_lsb_bounds i Hi). apply IH; lia.
 Qed.
