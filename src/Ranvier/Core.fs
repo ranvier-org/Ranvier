@@ -5330,6 +5330,32 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             Ready value
 
     /// <summary>
+    /// Brings the memo up to date without recording a dependency, returning its <see cref="Status"/> with
+    /// <c>Status.Stale</c> set when the memo remains live and stale after the refresh.
+    /// </summary>
+    member internal this.EnsureCurrentUntracked() : Status =
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    false
+                else
+                    this.PullWithoutSettle ())
+        then
+            let currentStatus = status
+            graph.FinishPullSettle ()
+
+            if freshness <> Freshness.Clean && not disposed then
+                currentStatus ||| Status.Stale
+            else
+                currentStatus
+        elif freshness <> Freshness.Clean && not disposed then
+            status ||| Status.Stale
+        else
+            status
+
+    /// <summary>
     /// The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null. Untracked.
     /// </summary>
     /// <remarks>

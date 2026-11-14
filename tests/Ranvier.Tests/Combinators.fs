@@ -281,6 +281,288 @@ let filterTests =
                 Expect.equal calls.Value 0 "no predicate runs after disposal"
                 Expect.isEmpty view.Keys "a disposed view is empty"
             }
+
+            test "check cutoff leaves filter Runs unchanged when predicate booleans stay equal" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+                col.AddOrUpdate { Id = 1; N = 1 }
+                col.AddOrUpdate { Id = 2; N = 2 }
+                let calls = ref 0
+
+                let view =
+                    col.Rows
+                    |> Projection.filter (fun x ->
+                        calls.Value <- calls.Value + 1
+                        x.N % 2 = 0)
+
+                let keysRuns = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    keysRuns.Value <- keysRuns.Value + 1)
+
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+                let baseRuns = view.Runs
+                let baseKeysRuns = keysRuns.Value
+                calls.Value <- 0
+
+                col.AddOrUpdate { Id = 2; N = 4 }
+                col.AddOrUpdate { Id = 1; N = 3 }
+
+                Expect.equal calls.Value 2 "only the two edited keys ran"
+                Expect.equal view.Runs baseRuns "no view pass ran when booleans stayed equal"
+                Expect.equal keysRuns.Value baseKeysRuns "Keys reader stayed asleep"
+                Expect.equal (kr.Read ()).Changes.Count 0 "no key delta emitted"
+                Expect.equal (view.Get 2).N 4 "upstream value still updated"
+            }
+
+            test "N=1000 single-key and 3-key flips over KeyedCollection update in O(Delta) calls and exact deltas" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..1000 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let calls = ref 0
+
+                let view =
+                    col.Rows
+                    |> Projection.filter (fun x ->
+                        calls.Value <- calls.Value + 1
+                        x.N % 2 = 0)
+
+                keysAndRows view |> ignore
+                let kr = view.NewKeyReader ()
+                let initial = kr.Read ()
+                Expect.equal initial.Keys.Length 500 "500 initial even keys"
+                calls.Value <- 0
+
+                col.AddOrUpdate { Id = 501; N = 502 }
+                Expect.equal calls.Value 1 "single edit calls predicate once"
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "single flip is incremental"
+                Expect.equal [ for c in d1.Changes -> c.Key, c.Value ] [ 501, KeyChange.Added ] "key 501 added"
+                Expect.equal d1.Keys.Length 501 "501 included keys"
+                Expect.equal d1.Keys[249] 500 "predecessor in output"
+                Expect.equal d1.Keys[250] 501 "inserted at Fenwick rank"
+                Expect.equal d1.Keys[251] 502 "successor in output"
+
+                calls.Value <- 0
+                col.AddOrUpdate { Id = 501; N = 501 }
+                Expect.equal calls.Value 1 "single revert calls predicate once"
+                let d2 = kr.Read ()
+                Expect.isFalse d2.IsReset "single removal flip is incremental"
+                Expect.equal [ for c in d2.Changes -> c.Key, c.Value ] [ 501, KeyChange.Removed ] "key 501 removed"
+                Expect.equal d2.Keys.Length 500 "back to 500 keys"
+
+                calls.Value <- 0
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 2 }
+                    edit.AddOrUpdate { Id = 2; N = 3 }
+                    edit.AddOrUpdate { Id = 1000; N = 1001 })
+
+                Expect.equal calls.Value 3 "3-key batch calls predicate 3 times"
+                let d3 = kr.Read ()
+                Expect.isFalse d3.IsReset "3-key batch is incremental"
+                Expect.equal d3.Changes.Count 3 "three changes"
+
+                let changes =
+                    [ for c in d3.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes [ 1, KeyChange.Added; 2, KeyChange.Removed; 1000, KeyChange.Removed ] "exact 3-key change set"
+
+                Expect.equal d3.Keys.Length 499 "499 included keys"
+                Expect.equal d3.Keys[0] 1 "key 1 first"
+                Expect.equal d3.Keys[1] 4 "key 4 second"
+                Expect.equal (Array.last d3.Keys) 998 "key 998 last"
+            }
+
+            test "simultaneous multi-slot Check batch drains remaining checkSlots inside Enumerate" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s1 = createSignal 1
+                let s2 = createSignal 2
+                let s3 = createSignal 4
+
+                let upstream =
+                    createProjection
+                        id
+                        (fun k ->
+                            if k = 1 then s1.Value
+                            elif k = 2 then s2.Value
+                            else s3.Value)
+                        (fun () -> [ 1; 2; 3 ])
+
+                let view = upstream |> Projection.filter (fun n -> n % 2 = 0)
+                keysAndRows view |> ignore
+                let kr = view.NewKeyReader ()
+                Expect.sequenceEqual (kr.Read ()).Keys [ 2; 3 ] "initial keys"
+
+                batch (fun () ->
+                    s1.Value <- 2
+                    s2.Value <- 1)
+
+                Expect.sequenceEqual view.Keys [ 1; 3 ] "both flips applied in one batch"
+                let d1 = kr.Read ()
+
+                let changes1 =
+                    [ for c in d1.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes1 [ 1, KeyChange.Added; 2, KeyChange.Removed ] "both Check-queued flips in delta"
+
+                batch (fun () ->
+                    s2.Value <- 2
+                    s1.Value <- 1)
+
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "reverse queued order also drains both"
+                let d2 = kr.Read ()
+
+                let changes2 =
+                    [ for c in d2.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes2 [ 1, KeyChange.Removed; 2, KeyChange.Added ] "reverse delta matches"
+            }
+
+            test "filter Failed state machine suppresses Excluded<->Failed deltas while keeping throwing rows" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+                col.AddOrUpdate { Id = 1; N = 1 }
+                col.AddOrUpdate { Id = 2; N = 2 }
+                col.AddOrUpdate { Id = 3; N = 1 }
+
+                let view =
+                    col.Rows
+                    |> Projection.filter (fun x -> if x.N < 0 then failwith "neg" else x.N % 2 = 0)
+
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+
+                col.AddOrUpdate { Id = 1; N = -1 }
+                Expect.sequenceEqual view.Keys [ 2 ] "Excluded -> Failed leaves Keys alone"
+                Expect.equal (kr.Read ()).Changes.Count 0 "Excluded -> Failed emits no key delta"
+
+                let err1 = ref ""
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> err1.Value <- e.Message)
+                Expect.equal err1.Value "neg" "Failed row still raises"
+
+                col.AddOrUpdate { Id = 3; N = 4 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "unrelated flip adds key 3"
+                let d2 = kr.Read ()
+                Expect.equal [ for c in d2.Changes -> c.Key, c.Value ] [ 3, KeyChange.Added ] "only key 3 reported while key 1 remains Failed"
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> err1.Value <- e.Message)
+                Expect.equal err1.Value "neg" "key 1 still Failed"
+
+                col.AddOrUpdate { Id = 1; N = 2 }
+                Expect.sequenceEqual view.Keys [ 1; 2; 3 ] "Failed -> Included joins in upstream order"
+                let d3 = kr.Read ()
+                Expect.equal [ for c in d3.Changes -> c.Key, c.Value ] [ 1, KeyChange.Added ] "Failed -> Included emits Added"
+                Expect.equal (view.Get 1).N 2 "key 1 readable"
+
+                col.AddOrUpdate { Id = 1; N = -2 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "Included -> Failed removes from Keys"
+                let d4 = kr.Read ()
+                Expect.equal [ for c in d4.Changes -> c.Key, c.Value ] [ 1, KeyChange.Removed ] "Included -> Failed emits Removed"
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> err1.Value <- e.Message)
+
+                col.AddOrUpdate { Id = 1; N = 1 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "Failed -> Excluded stays out of Keys"
+                Expect.equal (kr.Read ()).Changes.Count 0 "Failed -> Excluded emits no delta"
+                Expect.throwsT<System.Collections.Generic.KeyNotFoundException> (fun () -> view.Get 1 |> ignore) "excluded row retired"
+            }
+
+            test "async HeldOut / PendingKeys and KeyedCollection tail append, removal, and >64 reset" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let a1 = createAsyncSource<int>()
+                let a2 = createAsyncSource<int>()
+
+                let u =
+                    createProjection
+                        id
+                        (fun k ->
+                            if k = 1 then a1.Value
+                            elif k = 2 then a2.Value
+                            else 4)
+                        (fun () -> [ 1; 2; 3 ])
+
+                let v = u |> Projection.filter (fun n -> n % 2 = 0)
+                let downstream = v |> Projection.map (fun n -> n * 10)
+
+                Expect.sequenceEqual v.Keys [ 3 ] "only settled included key in Keys"
+                Expect.sequenceEqual v.PendingKeys [ 1; 2 ] "unsettled keys held out in PendingKeys"
+                Expect.sequenceEqual downstream.PendingKeys [ 1; 2 ] "downstream inherits PendingKeys"
+                Expect.isFalse v.AnyPending "unsettled held-out rows do not mark AnyPending"
+
+                a1.Settle 1
+                Expect.sequenceEqual v.Keys [ 3 ] "excluded settle leaves Keys alone"
+                Expect.sequenceEqual v.PendingKeys [ 2 ] "key 1 leaves PendingKeys"
+                Expect.sequenceEqual downstream.PendingKeys [ 2 ] "downstream PendingKeys updates"
+
+                a2.Settle 2
+                Expect.sequenceEqual v.Keys [ 2; 3 ] "included settle inserts in upstream order"
+                Expect.isEmpty v.PendingKeys "PendingKeys empty"
+                Expect.isEmpty downstream.PendingKeys "downstream PendingKeys empty"
+
+                let col = createKeyedCollection (fun x -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..50 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let fv =
+                    col.Rows
+                    |> Projection.filter (fun x -> x.N % 2 = 0)
+
+                createEffect (fun () -> fv.Keys |> ignore)
+                let kr = fv.NewKeyReader ()
+                kr.Read () |> ignore
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 51; N = 51 }
+                    edit.AddOrUpdate { Id = 52; N = 52 }
+                    edit.AddOrUpdate { Id = 53; N = 53 })
+
+                let tailDelta = kr.Read ()
+                Expect.isFalse tailDelta.IsReset "tail append is incremental"
+                Expect.equal [ for c in tailDelta.Changes -> c.Key, c.Value ] [ 52, KeyChange.Added ] "one included key added"
+                Expect.equal (Array.last fv.Keys) 52 "tail key 52 at end"
+
+                col.Edit (fun edit ->
+                    edit.Remove 20 |> ignore
+                    edit.Remove 21 |> ignore)
+
+                let remDelta = kr.Read ()
+                Expect.isFalse remDelta.IsReset "middle removal is incremental"
+                Expect.equal [ for c in remDelta.Changes -> c.Key, c.Value ] [ 20, KeyChange.Removed ] "only included removed key reported"
+
+                col.Edit (fun edit ->
+                    for i in 54..140 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                Expect.equal (kr.Read ()).Keys fv.Keys "reader matches keys after >64 reset rebuild"
+
+                let expected =
+                    [|
+                        for i in 1..53 do
+                            if i <> 20 && i <> 21 && i % 2 = 0 then
+                                yield i
+                        for i in 54..140 do
+                            if i % 2 = 0 then
+                                yield i
+                    |]
+
+                Expect.sequenceEqual fv.Keys expected "Keys exact after reset rebuild"
+            }
         ]
 
 [<Tests>]
@@ -564,6 +846,122 @@ let chooseTests =
                 source.Value <- items [ 1, 8; 2, 6; 3, 4 ]
                 Expect.sequenceEqual twice.Keys [ 1; 2; 3 ] "key 2 joins once its value is even"
                 Expect.equal (twice.Get 2) 6 "the unwrapped value"
+            }
+
+            test "choose Check cutoff leaves Runs unchanged on Some->Some and N=1000 delta flips match" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..1000 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let calls = ref 0
+
+                let view =
+                    col.Rows
+                    |> Projection.choose (fun x ->
+                        calls.Value <- calls.Value + 1
+                        if x.N % 2 = 0 then Some (x.N * 10) else None)
+
+                let keysRuns = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    keysRuns.Value <- keysRuns.Value + 1)
+
+                let kr = view.NewKeyReader ()
+                Expect.equal (kr.Read ()).Keys.Length 500 "initial 500 Some keys"
+                let baseRuns = view.Runs
+                let baseKeysRuns = keysRuns.Value
+                calls.Value <- 0
+
+                col.AddOrUpdate { Id = 2; N = 4 }
+                Expect.equal calls.Value 1 "single edit calls chooser once"
+                Expect.equal view.Runs baseRuns "Some -> Some gate cutoff skips view pass"
+                Expect.equal keysRuns.Value baseKeysRuns "Keys reader stayed asleep"
+                Expect.equal (view.Get 2) 40 "value updated inside row"
+                Expect.equal (kr.Read ()).Changes.Count 0 "no membership delta"
+
+                calls.Value <- 0
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 10 }
+                    edit.AddOrUpdate { Id = 2; N = 3 }
+                    edit.AddOrUpdate { Id = 999; N = 1000 })
+
+                Expect.equal calls.Value 3 "3-key edit runs chooser 3 times"
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "3-key choose batch is incremental"
+
+                let changes =
+                    [ for c in d1.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes [ 1, KeyChange.Added; 2, KeyChange.Removed; 999, KeyChange.Added ] "exact choose membership delta"
+
+                Expect.equal (view.Get 1) 100 "newly added chosen value"
+                Expect.equal (view.Get 999) 10000 "second newly added chosen value"
+            }
+
+            test "choose handles Failed transitions and async PendingKeys" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let a3 = createAsyncSource<int option>()
+                let a4 = createAsyncSource<int option>()
+                let col = createKeyedCollection (fun x -> x.Id)
+                col.AddOrUpdate { Id = 1; N = 1 }
+                col.AddOrUpdate { Id = 2; N = 2 }
+                col.AddOrUpdate { Id = 3; N = 0 }
+                col.AddOrUpdate { Id = 4; N = 0 }
+
+                let view =
+                    col.Rows
+                    |> Projection.choose (fun x ->
+                        if x.Id = 3 then a3.Value
+                        elif x.Id = 4 then a4.Value
+                        elif x.N < 0 then failwith "bad"
+                        elif x.N % 2 = 0 then Some (x.N * 10)
+                        else None)
+
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+                Expect.sequenceEqual view.Keys [ 2 ] "pending keys 3 and 4 held out, key 1 None"
+                Expect.sequenceEqual view.PendingKeys [ 3; 4 ] "pending keys in PendingKeys"
+
+                col.AddOrUpdate { Id = 1; N = -1 }
+                Expect.sequenceEqual view.Keys [ 2 ] "None -> Failed leaves Keys alone"
+                Expect.equal (kr.Read ()).Changes.Count 0 "None -> Failed emits no delta"
+                let msg = ref ""
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> msg.Value <- e.Message)
+                Expect.equal msg.Value "bad" "Failed key raises"
+
+                a4.Settle None
+                Expect.sequenceEqual view.Keys [ 2 ] "settling None clears PendingKeys without joining Keys"
+                Expect.sequenceEqual view.PendingKeys [ 3 ] "key 4 leaves PendingKeys"
+
+                a3.Settle (Some 60)
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "settling Some adds key 3"
+                Expect.equal (view.Get 3) 60 "settled value"
+                Expect.isEmpty view.PendingKeys "PendingKeys cleared"
+                Expect.equal (kr.Read ()).Changes.Count 1 "key 3 added"
+
+                col.AddOrUpdate { Id = 1; N = 4 }
+                Expect.sequenceEqual view.Keys [ 1; 2; 3 ] "Failed -> Some joins in order"
+                Expect.equal (view.Get 1) 40 "value ready"
+                let d3 = kr.Read ()
+                Expect.equal [ for c in d3.Changes -> c.Key, c.Value ] [ 1, KeyChange.Added ] "Added"
+
+                col.AddOrUpdate { Id = 1; N = -2 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "Some -> Failed removes from Keys"
+                let d4 = kr.Read ()
+                Expect.equal [ for c in d4.Changes -> c.Key, c.Value ] [ 1, KeyChange.Removed ] "Removed"
+
+                col.AddOrUpdate { Id = 1; N = 3 }
+                Expect.equal (kr.Read ()).Changes.Count 0 "Failed -> None emits no delta"
+                Expect.throwsT<System.Collections.Generic.KeyNotFoundException> (fun () -> view.Get 1 |> ignore) "retired"
             }
         ]
 
