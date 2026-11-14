@@ -6,6 +6,16 @@ open System.Threading.Tasks
 open Expecto
 open Ranvier
 
+#if FABLE_COMPILER
+/// <summary>
+/// The error a task was rejected with, or null when it completed. <c>Async.AwaitTask</c> cancels the awaiting workflow
+/// for an <c>OperationCanceledException</c>, which <c>Async.Catch</c> does not observe.
+/// </summary>
+[<Fable.Core.Emit("$0.then(() => null, error => error)")>]
+let private rejectionOf (task: Task<'T>) : Task<exn> =
+    Fable.Core.Util.jsNative
+#endif
+
 #if !FABLE_COMPILER
 // .NET only: JavaScript has one thread.
 /// <summary>
@@ -1279,12 +1289,13 @@ let tests =
 #if !FABLE_COMPILER
                         Expect.equal result.Status TaskStatus.Canceled "the task is cancelled"
 #else
-                        let! outcome = Async.Catch (Async.AwaitTask result)
+                        let! caught = Async.AwaitTask (rejectionOf result)
 
-                        match outcome with
-                        // Fable's type test does not distinguish OperationCanceledException from Exception.
-                        | Choice2Of2 caught -> Expect.equal caught.Message "The operation was canceled." "the task is cancelled"
-                        | Choice1Of2 _ -> failtest "the task must be cancelled"
+                        if isNull (box caught) then
+                            failtest "the task must be cancelled"
+
+                        Expect.isTrue (caught :? OperationCanceledException) "the task is cancelled"
+                        Expect.equal caught.Message "The operation was canceled." "the cancellation carries its message"
 #endif
                     }
 

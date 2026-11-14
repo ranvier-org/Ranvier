@@ -8,7 +8,7 @@ Install Fickl in the site's tool manifest, then reference this project from the 
 
 ```shell
 dotnet new tool-manifest
-dotnet tool install fickl --version 0.6.9
+dotnet tool install fickl
 ```
 
 Register after HTML minification so it cannot remove the inserted hydration markers:
