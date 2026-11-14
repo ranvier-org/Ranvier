@@ -43,12 +43,29 @@ updates:
       - dependency-name: "FSharp.Core"
       - dependency-name: "Fable*"
       - dependency-name: "fable"
+      # Rolled daily by the entry below.
       - dependency-name: "Fickl"
       - dependency-name: "Xantham.*"
       # Local-feed builds committed under docs/feed.
       - dependency-name: "Partas.Solid"
       - dependency-name: "Partas.Nacara.Plugins.Solid"
       - dependency-name: "Nacara.Plugin.LiveExample"
+
+  # Fickl alone, daily, so the tool manifest always names the latest release. Blocks for one branch may not share a
+  # directory, so this one starts in /.config: Dependabot finds .config/dotnet-tools.json from there by walking up
+  # to the repository root, and finds no project files.
+  - package-ecosystem: nuget
+    directory: "/.config"
+    registries:
+      - partas-build
+      - xantham-cloudsmith
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "chore(deps)"
+    allow:
+      - dependency-name: "fickl"
 
   - package-ecosystem: github-actions
     directory: "/"
