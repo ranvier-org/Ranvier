@@ -6,7 +6,7 @@ open Fable.Core
 open global.Ranvier
 open Fable.Ranvier.Anime
 open Ranvier.View
-open Ranvier.View.Sugar
+open Ranvier.View.Dsl
 
 /// <summary>The browser operations of a mounted map; each runs only in a browser hook or handler.</summary>
 module internal Browser =
@@ -99,62 +99,62 @@ module internal ControlBar =
     let private pressArm =
         armOf (
             button (
-                Attrs.attribute ("type", "button"),
-                Attrs.className "rv-map__button",
-                Events.onClick (fun (row: unit -> ControlRow) _ -> (row().Current()).Press())
+                button.attribute ("type", "button"),
+                button.className "rv-map__button",
+                button.onClick (fun (row: unit -> ControlRow) _ -> (row().Current()).Press())
             ) {
                 fun (row: unit -> ControlRow) -> (row().Current()).Label
             }
         )
 
     let private caption () =
-        span (Attrs.className "rv-map__input-label") { fun (row: unit -> ControlRow) -> (row().Current()).Label }
+        span (span.className "rv-map__input-label") { fun (row: unit -> ControlRow) -> (row().Current()).Label }
 
     let private rangeArm =
         armOf (
-            label (Attrs.className "rv-map__input rv-map__input--slider") {
+            label (label.className "rv-map__input rv-map__input--slider") {
                 caption ()
 
                 input (
-                    Attrs.className "rv-map__input-field",
-                    Attrs.attribute ("type", "range"),
-                    Attrs.attribute (
+                    input.className "rv-map__input-field",
+                    input.attribute ("type", "range"),
+                    input.attribute (
                         "min",
                         fun (row: unit -> ControlRow) ->
                             match (row().Current()).Kind with
                             | WidgetKind.Range (min, _) -> Some (string min)
                             | _ -> None
                     ),
-                    Attrs.attribute (
+                    input.attribute (
                         "max",
                         fun (row: unit -> ControlRow) ->
                             match (row().Current()).Kind with
                             | WidgetKind.Range (_, max) -> Some (string max)
                             | _ -> None
                     ),
-                    Attrs.attribute ("step", "1"),
-                    Props.Input.value (fun (row: unit -> ControlRow) -> shownText (row ())),
-                    Events.onInput (fun (row: unit -> ControlRow) event ->
+                    input.attribute ("step", "1"),
+                    input.props.value (fun (row: unit -> ControlRow) -> shownText (row ())),
+                    input.onInput (fun (row: unit -> ControlRow) event ->
                         match Int32.TryParse (inputValue event) with
                         | true, value -> (row().Current()).Write(Shown.Integer value)
                         | _ -> ())
                 )
 
-                output (Attrs.className "rv-map__input-value") { fun (row: unit -> ControlRow) -> shownText (row ()) }
+                output (output.className "rv-map__input-value") { fun (row: unit -> ControlRow) -> shownText (row ()) }
             }
         )
 
     let private numberArm =
         armOf (
-            label (Attrs.className "rv-map__input rv-map__input--number") {
+            label (label.className "rv-map__input rv-map__input--number") {
                 caption ()
 
                 input (
-                    Attrs.className "rv-map__input-field",
-                    Attrs.attribute ("type", "number"),
-                    Attrs.attribute ("step", "any"),
-                    Props.Input.value (fun (row: unit -> ControlRow) -> shownText (row ())),
-                    Events.onChange (fun (row: unit -> ControlRow) event ->
+                    input.className "rv-map__input-field",
+                    input.attribute ("type", "number"),
+                    input.attribute ("step", "any"),
+                    input.props.value (fun (row: unit -> ControlRow) -> shownText (row ())),
+                    input.onChange (fun (row: unit -> ControlRow) event ->
                         Controls.parseNumber (inputValue event)
                         |> Option.iter (fun value -> (row().Current()).Write(Shown.Number value)))
                 )
@@ -163,31 +163,31 @@ module internal ControlBar =
 
     let private textArm =
         armOf (
-            label (Attrs.className "rv-map__input rv-map__input--text") {
+            label (label.className "rv-map__input rv-map__input--text") {
                 caption ()
 
                 input (
-                    Attrs.className "rv-map__input-field",
-                    Attrs.attribute ("type", "text"),
-                    Props.Input.value (fun (row: unit -> ControlRow) -> shownText (row ())),
-                    Events.onChange (fun (row: unit -> ControlRow) event -> (row().Current()).Write(Shown.Text (inputValue event)))
+                    input.className "rv-map__input-field",
+                    input.attribute ("type", "text"),
+                    input.props.value (fun (row: unit -> ControlRow) -> shownText (row ())),
+                    input.onChange (fun (row: unit -> ControlRow) event -> (row().Current()).Write(Shown.Text (inputValue event)))
                 )
             }
         )
 
     let private checkArm =
         armOf (
-            label (Attrs.className "rv-map__input rv-map__input--toggle") {
+            label (label.className "rv-map__input rv-map__input--toggle") {
                 caption ()
 
                 input (
-                    Attrs.className "rv-map__input-field",
-                    Attrs.attribute ("type", "checkbox"),
-                    Props.Input.``checked`` (fun (row: unit -> ControlRow) ->
+                    input.className "rv-map__input-field",
+                    input.attribute ("type", "checkbox"),
+                    input.props.``checked`` (fun (row: unit -> ControlRow) ->
                         match row().Shown.Value with
                         | Shown.Toggle value -> value
                         | _ -> false),
-                    Events.onChange (fun (row: unit -> ControlRow) event -> (row().Current()).Write(Shown.Toggle (inputOf event).``checked``))
+                    input.onChange (fun (row: unit -> ControlRow) event -> (row().Current()).Write(Shown.Toggle (inputOf event).``checked``))
                 )
             }
         )
@@ -1255,21 +1255,21 @@ module internal MapView =
 
     let private nodeRow: TemplateView<unit -> NodeItem> =
         g (
-            Attrs.className (fun (n: unit -> NodeItem) -> (n ()).Look.Classes),
-            Attrs.attribute ("tabindex", "0"),
-            Attrs.attribute ("aria-label", (fun (n: unit -> NodeItem) -> Some (n ()).Look.Label)),
-            Events.onMouseenter (fun (n: unit -> NodeItem) _ ->
+            g.className (fun (n: unit -> NodeItem) -> (n ()).Look.Classes),
+            g.attribute ("tabindex", "0"),
+            g.attribute ("aria-label", (fun (n: unit -> NodeItem) -> Some (n ()).Look.Label)),
+            g.onMouseenter (fun (n: unit -> NodeItem) _ ->
                 let item = n ()
                 item.Actions.Inspect item.Look.Id),
-            Events.onMouseleave (fun (n: unit -> NodeItem) _ -> (n ()).Actions.Leave()),
-            Events.onClick (fun (n: unit -> NodeItem) _ ->
+            g.onMouseleave (fun (n: unit -> NodeItem) _ -> (n ()).Actions.Leave()),
+            g.onClick (fun (n: unit -> NodeItem) _ ->
                 let item = n ()
                 item.Actions.Explain item.Look.Id),
-            Events.onKeydown (fun (n: unit -> NodeItem) event ->
+            g.onKeydown (fun (n: unit -> NodeItem) event ->
                 if event.key = "Enter" then
                     let item = n ()
                     item.Actions.Explain item.Look.Id),
-            Hooks.mounted (fun (n: unit -> NodeItem) group ->
+            g.mounted (fun (n: unit -> NodeItem) group ->
                 let first = ref true
 
                 createEffectOn
@@ -1284,8 +1284,8 @@ module internal MapView =
                 ignore)
         ) {
             g (
-                Attrs.className "rv-map-node__cue",
-                Hooks.mounted (fun (n: unit -> NodeItem) fx ->
+                g.className "rv-map-node__cue",
+                g.mounted (fun (n: unit -> NodeItem) fx ->
                     let item = n ()
 
                     item.Actions.Node
@@ -1294,56 +1294,56 @@ module internal MapView =
                         (Browser.query (box fx) ".rv-map-node__value")
                         (box fx))
             ) {
-                circle (Attrs.className "rv-map-node__flight", Attrs.attribute ("r", (fun (n: unit -> NodeItem) -> Some (n ()).Look.Ring))) { () }
+                circle (circle.className "rv-map-node__flight", circle.attribute ("r", (fun (n: unit -> NodeItem) -> Some (n ()).Look.Ring))) { () }
 
                 rect (
-                    Attrs.className "rv-map-node__open",
-                    Attrs.attribute (
+                    rect.className "rv-map-node__open",
+                    rect.attribute (
                         "x",
                         (fun (n: unit -> NodeItem) ->
                             let x, _, _, _ = (n ()).Look.Outline
                             Some x)
                     ),
-                    Attrs.attribute (
+                    rect.attribute (
                         "y",
                         (fun (n: unit -> NodeItem) ->
                             let _, y, _, _ = (n ()).Look.Outline
                             Some y)
                     ),
-                    Attrs.attribute (
+                    rect.attribute (
                         "width",
                         (fun (n: unit -> NodeItem) ->
                             let _, _, width, _ = (n ()).Look.Outline
                             Some width)
                     ),
-                    Attrs.attribute (
+                    rect.attribute (
                         "height",
                         (fun (n: unit -> NodeItem) ->
                             let _, _, _, height = (n ()).Look.Outline
                             Some height)
                     ),
-                    Attrs.attribute ("rx", "12")
+                    rect.attribute ("rx", "12")
                 ) {
                     ()
                 }
 
-                path (Attrs.className "rv-map-node__shape", Attrs.attribute ("d", (fun (n: unit -> NodeItem) -> Some (n ()).Look.Body))) { () }
+                path (path.className "rv-map-node__shape", path.attribute ("d", (fun (n: unit -> NodeItem) -> Some (n ()).Look.Body))) { () }
 
                 text' (
-                    Attrs.className "rv-map-node__name",
-                    Attrs.attribute (
+                    text'.className "rv-map-node__name",
+                    text'.attribute (
                         "x",
                         (fun (n: unit -> NodeItem) ->
                             let x, _, _ = (n ()).Look.Name
                             Some x)
                     ),
-                    Attrs.attribute (
+                    text'.attribute (
                         "y",
                         (fun (n: unit -> NodeItem) ->
                             let _, y, _ = (n ()).Look.Name
                             Some y)
                     ),
-                    Attrs.attribute (
+                    text'.attribute (
                         "text-anchor",
                         (fun (n: unit -> NodeItem) ->
                             let _, _, anchor = (n ()).Look.Name
@@ -1354,20 +1354,20 @@ module internal MapView =
                 }
 
                 text' (
-                    Attrs.className "rv-map-node__value",
-                    Attrs.attribute (
+                    text'.className "rv-map-node__value",
+                    text'.attribute (
                         "x",
                         (fun (n: unit -> NodeItem) ->
                             let x, _, _ = (n ()).Look.ValueAt
                             Some x)
                     ),
-                    Attrs.attribute (
+                    text'.attribute (
                         "y",
                         (fun (n: unit -> NodeItem) ->
                             let _, y, _ = (n ()).Look.ValueAt
                             Some y)
                     ),
-                    Attrs.attribute (
+                    text'.attribute (
                         "text-anchor",
                         (fun (n: unit -> NodeItem) ->
                             let _, _, anchor = (n ()).Look.ValueAt
@@ -1377,7 +1377,7 @@ module internal MapView =
                     fun (n: unit -> NodeItem) -> (n ()).Look.Value
                 }
 
-                text' (Attrs.className "rv-map-node__timing", Attrs.attribute ("y", "51"), Attrs.attribute ("text-anchor", "middle")) {
+                text' (text'.className "rv-map-node__timing", text'.attribute ("y", "51"), text'.attribute ("text-anchor", "middle")) {
                     fun (n: unit -> NodeItem) -> (n ()).Look.Timing
                 }
             }
@@ -1385,9 +1385,9 @@ module internal MapView =
 
     let private edgeRow: TemplateView<unit -> EdgeItem> =
         path (
-            Attrs.className "rv-map-edge",
-            Attrs.attribute ("d", (fun (e: unit -> EdgeItem) -> Some (e ()).Path)),
-            Hooks.mounted (fun (e: unit -> EdgeItem) element ->
+            path.className "rv-map-edge",
+            path.attribute ("d", (fun (e: unit -> EdgeItem) -> Some (e ()).Path)),
+            path.mounted (fun (e: unit -> EdgeItem) element ->
                 let item = e ()
                 item.Actions.Edge item.Key (box element))
         ) {
@@ -1396,13 +1396,13 @@ module internal MapView =
 
     let private dotRow: TemplateView<unit -> DotItem> =
         circle (
-            Attrs.className (fun (d: unit -> DotItem) ->
+            circle.className (fun (d: unit -> DotItem) ->
                 if (d ()).Bright then
                     "rv-map-dot rv-map-dot--bright"
                 else
                     "rv-map-dot"),
-            Attrs.attribute ("r", (fun (d: unit -> DotItem) -> Some (if (d ()).Bright then "4.5" else "3.5"))),
-            Hooks.mounted (fun (d: unit -> DotItem) element ->
+            circle.attribute ("r", (fun (d: unit -> DotItem) -> Some (if (d ()).Bright then "4.5" else "3.5"))),
+            circle.mounted (fun (d: unit -> DotItem) element ->
                 let item = d ()
                 item.Actions.Travel item.Id item.Edge item.Bright (box element))
         ) {
@@ -1411,37 +1411,37 @@ module internal MapView =
 
     let private boxRow: TemplateView<unit -> SceneView.Box> =
         rect (
-            Attrs.className "rv-map-group",
-            Attrs.attribute ("x", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).X))),
-            Attrs.attribute ("y", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).Y))),
-            Attrs.attribute ("width", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).Width))),
-            Attrs.attribute ("height", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).Height))),
-            Attrs.attribute ("rx", "12")
+            rect.className "rv-map-group",
+            rect.attribute ("x", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).X))),
+            rect.attribute ("y", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).Y))),
+            rect.attribute ("width", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).Width))),
+            rect.attribute ("height", (fun (b: unit -> SceneView.Box) -> Some (string (b ()).Height))),
+            rect.attribute ("rx", "12")
         ) {
             ()
         }
 
     let private columnRow: TemplateView<unit -> SceneView.Column> =
         text' (
-            Attrs.className "rv-map-group__column",
-            Attrs.attribute ("x", (fun (c: unit -> SceneView.Column) -> Some (string (c ()).X))),
-            Attrs.attribute ("y", (fun (c: unit -> SceneView.Column) -> Some (string (c ()).Y))),
-            Attrs.attribute ("text-anchor", "middle")
+            text'.className "rv-map-group__column",
+            text'.attribute ("x", (fun (c: unit -> SceneView.Column) -> Some (string (c ()).X))),
+            text'.attribute ("y", (fun (c: unit -> SceneView.Column) -> Some (string (c ()).Y))),
+            text'.attribute ("text-anchor", "middle")
         ) {
             fun (c: unit -> SceneView.Column) -> (c ()).Text
         }
 
     let private logRow: TemplateView<unit -> LogLine> =
-        li (Attrs.className (fun (l: unit -> LogLine) -> (l ()).Class)) { fun (l: unit -> LogLine) -> (l ()).Text }
+        li (li.className (fun (l: unit -> LogLine) -> (l ()).Class)) { fun (l: unit -> LogLine) -> (l ()).Text }
 
     let private tickRow: TemplateView<unit -> Tick> =
-        span (Attrs.className "rv-map__tick", Attrs.attribute ("style", (fun (t: unit -> Tick) -> Some (t ()).Left))) { () }
+        span (span.className "rv-map__tick", span.attribute ("style", (fun (t: unit -> Tick) -> Some (t ()).Left))) { () }
 
     let private resetButton (press: MapMachine -> unit) =
         button (
-            Attrs.attribute ("type", "button"),
-            Attrs.className "rv-map__button rv-map__button--reset",
-            Events.onClick (fun (m: MapMachine) _ -> press m)
+            button.attribute ("type", "button"),
+            button.className "rv-map__button rv-map__button--reset",
+            button.onClick (fun (m: MapMachine) _ -> press m)
         ) {
             "Reset"
         }
@@ -1452,31 +1452,31 @@ module internal MapView =
         |> List.sort
 
     let private timelineRow (settings: MapSettings) =
-        div (Attrs.className "rv-map__timeline") {
+        div (div.className "rv-map__timeline") {
             button (
-                Attrs.attribute ("type", "button"),
-                Attrs.className "rv-map__button",
-                Attrs.attribute ("disabled", (fun (m: MapMachine) -> if m.Preparing.Value then Some "" else None)),
-                Events.onClick (fun (m: MapMachine) _ -> m.Toggle ())
+                button.attribute ("type", "button"),
+                button.className "rv-map__button",
+                button.attribute ("disabled", (fun (m: MapMachine) -> if m.Preparing.Value then Some "" else None)),
+                button.onClick (fun (m: MapMachine) _ -> m.Toggle ())
             ) {
                 fun (m: MapMachine) -> if m.Playing.Value then "Pause" else "Play"
             }
 
             button (
-                Attrs.attribute ("type", "button"),
-                Attrs.className "rv-map__button",
-                Attrs.attribute ("disabled", (fun (m: MapMachine) -> if m.Preparing.Value then Some "" else None)),
-                Events.onClick (fun (m: MapMachine) _ -> m.Step ())
+                button.attribute ("type", "button"),
+                button.className "rv-map__button",
+                button.attribute ("disabled", (fun (m: MapMachine) -> if m.Preparing.Value then Some "" else None)),
+                button.onClick (fun (m: MapMachine) _ -> m.Step ())
             ) {
                 "Step"
             }
 
-            label (Attrs.className "rv-map__speed") {
-                span (Attrs.className "rv-map__speed-label") { "Speed" }
+            label (label.className "rv-map__speed") {
+                span (span.className "rv-map__speed-label") { "Speed" }
 
                 select (
-                    Attrs.className "rv-map__speed-select",
-                    Events.onChange (fun (m: MapMachine) event ->
+                    select.className "rv-map__speed-select",
+                    select.onChange (fun (m: MapMachine) event ->
                         let chosen = (unbox<Ranvier.Dom.HTMLSelectElement>(targetOf event)).value
 
                         match Double.TryParse (chosen, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
@@ -1485,27 +1485,27 @@ module internal MapView =
                 ) {
                     for value in speeds settings.Speed do
                         option' (
-                            Attrs.attribute ("value", MapLook.speedText value),
-                            Attrs.attribute ("selected", (fun (_: MapMachine) -> if value = settings.Speed then Some "" else None))
+                            option'.attribute ("value", MapLook.speedText value),
+                            option'.attribute ("selected", (fun (_: MapMachine) -> if value = settings.Speed then Some "" else None))
                         ) {
                             MapLook.speedText value + "×"
                         }
                 }
             }
 
-            div (Attrs.className "rv-map__track") {
-                div (Attrs.className "rv-map__ticks") { forEach (fun (t: Tick) -> t.Index) (fun (m: MapMachine) -> m.Ticks.Value) tickRow }
+            div (div.className "rv-map__track") {
+                div (div.className "rv-map__ticks") { forEach (fun (t: Tick) -> t.Index) (fun (m: MapMachine) -> m.Ticks.Value) tickRow }
 
                 input (
-                    Attrs.className "rv-map__scrub",
-                    Attrs.attribute ("disabled", (fun (m: MapMachine) -> if m.Preparing.Value then Some "" else None)),
-                    Attrs.attribute ("type", "range"),
-                    Attrs.attribute ("step", "1"),
-                    Attrs.attribute ("aria-label", "Event"),
-                    Attrs.attribute ("min", (fun (m: MapMachine) -> Some (string m.Setup.Value))),
-                    Attrs.attribute ("max", (fun (m: MapMachine) -> Some (string m.Count.Value))),
-                    Props.Input.value (fun (m: MapMachine) -> string (m.Cursor.Value + 1)),
-                    Events.onInput (fun (m: MapMachine) event ->
+                    input.className "rv-map__scrub",
+                    input.attribute ("disabled", (fun (m: MapMachine) -> if m.Preparing.Value then Some "" else None)),
+                    input.attribute ("type", "range"),
+                    input.attribute ("step", "1"),
+                    input.attribute ("aria-label", "Event"),
+                    input.attribute ("min", (fun (m: MapMachine) -> Some (string m.Setup.Value))),
+                    input.attribute ("max", (fun (m: MapMachine) -> Some (string m.Count.Value))),
+                    input.props.value (fun (m: MapMachine) -> string (m.Cursor.Value + 1)),
+                    input.onInput (fun (m: MapMachine) event ->
                         match Int32.TryParse (inputValue event) with
                         | true, index -> m.Scrub (index - 1)
                         | _ -> ())
@@ -1521,13 +1521,13 @@ module internal MapView =
             | Live _ -> false
 
         div (
-            Attrs.attribute ("aria-busy", (fun (m: MapMachine) -> Some (if m.Preparing.Value then "true" else "false"))),
-            Attrs.className (fun (m: MapMachine) ->
+            div.attribute ("aria-busy", (fun (m: MapMachine) -> Some (if m.Preparing.Value then "true" else "false"))),
+            div.className (fun (m: MapMachine) ->
                 if m.Error.Value = "" then
                     "rv-map"
                 else
                     "rv-map rv-map--failed"),
-            Attrs.attribute (
+            div.attribute (
                 "style",
                 (fun (m: MapMachine) ->
                     Some (
@@ -1535,21 +1535,21 @@ module internal MapView =
                         + MapLook.speedText m.Speed.Value
                     ))
             ),
-            Hooks.mounted (fun (m: MapMachine) root -> m.Mount (box root))
+            div.mounted (fun (m: MapMachine) root -> m.Mount (box root))
         ) {
-            div (Attrs.className "rv-map__stage") {
+            div (div.className "rv-map__stage") {
                 svg (
-                    Attrs.className "rv-map__svg",
-                    Attrs.attribute ("role", "img"),
-                    Attrs.attribute ("aria-label", "Signal map"),
-                    Attrs.attribute (
+                    svg.className "rv-map__svg",
+                    svg.attribute ("role", "img"),
+                    svg.attribute ("aria-label", "Signal map"),
+                    svg.attribute (
                         "viewBox",
                         (fun (m: MapMachine) ->
                             let projection = m.Projection.Value
                             Some $"0 0 {projection.Width} {projection.Height}")
                     )
                 ) {
-                    g (Attrs.className "rv-map__groups") {
+                    g (g.className "rv-map__groups") {
                         forEach (fun (b: SceneView.Box) -> b.Host) (fun (m: MapMachine) -> Array.ofList m.Projection.Value.Boxes) boxRow
 
                         forEach
@@ -1558,16 +1558,16 @@ module internal MapView =
                             columnRow
                     }
 
-                    g (Attrs.className "rv-map__edges") { forEach (fun (e: EdgeItem) -> e.Key) (fun (m: MapMachine) -> m.Edges) edgeRow }
-                    g (Attrs.className "rv-map__dots") { forEach (fun (d: DotItem) -> d.Id) (fun (m: MapMachine) -> m.Dots.Value) dotRow }
-                    g (Attrs.className "rv-map__nodes") { forEach (fun (n: NodeItem) -> n.Look.Id) (fun (m: MapMachine) -> m.Nodes) nodeRow }
+                    g (g.className "rv-map__edges") { forEach (fun (e: EdgeItem) -> e.Key) (fun (m: MapMachine) -> m.Edges) edgeRow }
+                    g (g.className "rv-map__dots") { forEach (fun (d: DotItem) -> d.Id) (fun (m: MapMachine) -> m.Dots.Value) dotRow }
+                    g (g.className "rv-map__nodes") { forEach (fun (n: NodeItem) -> n.Look.Id) (fun (m: MapMachine) -> m.Nodes) nodeRow }
                 }
 
-                div (Attrs.className "rv-map__inspect") { fun (m: MapMachine) -> m.Inspect.Value }
+                div (div.className "rv-map__inspect") { fun (m: MapMachine) -> m.Inspect.Value }
             }
 
-            div (Attrs.className "rv-map__bar") {
-                div (Attrs.className "rv-map__controls") {
+            div (div.className "rv-map__bar") {
+                div (div.className "rv-map__controls") {
                     ControlBar.rows (fun (m: MapMachine) -> m.Controls.Value)
 
                     if not replayed then
@@ -1581,20 +1581,20 @@ module internal MapView =
                     resetButton (fun m -> m.Rewind ())
             }
 
-            p (Attrs.className "rv-map__caption", Attrs.attribute ("aria-live", "polite")) { fun (m: MapMachine) -> m.Caption.Value }
+            p (p.className "rv-map__caption", p.attribute ("aria-live", "polite")) { fun (m: MapMachine) -> m.Caption.Value }
 
             ol (
-                Attrs.className "rv-map__log",
-                Attrs.attribute ("aria-live", "polite"),
-                Hooks.mounted (fun (m: MapMachine) element ->
+                ol.className "rv-map__log",
+                ol.attribute ("aria-live", "polite"),
+                ol.mounted (fun (m: MapMachine) element ->
                     createEffectOn (fun () -> m.Log.Value) (fun _ -> Browser.scrollToEnd (box element))
                     ignore)
             ) {
                 forEach (fun (l: LogLine) -> l.Id) (fun (m: MapMachine) -> m.Log.Value) logRow
             }
 
-            pre (Attrs.className "rv-map__why") { fun (m: MapMachine) -> m.Why.Value }
-            div (Attrs.className "rv-map__error", Attrs.attribute ("role", "alert")) { fun (m: MapMachine) -> m.Error.Value }
+            pre (pre.className "rv-map__why") { fun (m: MapMachine) -> m.Why.Value }
+            div (div.className "rv-map__error", div.attribute ("role", "alert")) { fun (m: MapMachine) -> m.Error.Value }
         }
 
 [<AutoOpen>]

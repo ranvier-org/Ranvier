@@ -2,7 +2,7 @@ namespace Ranvier.Docs.Maps
 
 open global.Ranvier
 open Ranvier.View
-open Ranvier.View.Sugar
+open Ranvier.View.Dsl
 
 /// <summary>A deterministic counter for checking the documentation's server rendering and hydration of components.</summary>
 [<RequireQualifiedAccess>]
@@ -16,11 +16,11 @@ module PipelineFixture =
             { Count = createSignal 0 }
 
         static member View =
-            div (Attrs.className "rv-map-fixture") {
+            div (div.className "rv-map-fixture") {
                 button (
-                    Attrs.attribute ("type", "button"),
-                    Attrs.className "rv-map-fixture__count",
-                    Events.onClick (fun c _ -> c.Count.Value <- c.Count.Value + 1)
+                    button.attribute ("type", "button"),
+                    button.className "rv-map-fixture__count",
+                    button.onClick (fun c _ -> c.Count.Value <- c.Count.Value + 1)
                 ) {
                     fun c -> string c.Count.Value
                 }

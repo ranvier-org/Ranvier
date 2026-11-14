@@ -14,8 +14,6 @@
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <!-- Fable.Package.SDK sets DebugType=embedded: the PDB (with SourceLink) lives in each dll, so no .snupkg is produced. nuget.org rejects an empty one. -->
         <IncludeSymbols>false</IncludeSymbols>
-        <!-- Ranvier.Css packages, published from ranvier-org/Ranvier.Css. -->
-        <RanvierCssVersion>0.1.1-alpha.1</RanvierCssVersion>
         <!-- A ranvier-org/Ranvier.View checkout built against this repository's core: the docs maps compile its
              view projects, and `RanvierAnalyze` runs its analyzers. .github/scripts/view-sibling.sh sets one up. -->
         <RanvierViewRoot Condition="'$(RanvierViewRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../Ranvier.View'))</RanvierViewRoot>
