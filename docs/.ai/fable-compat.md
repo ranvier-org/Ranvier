@@ -61,7 +61,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 248 | 248 | 248 | 248 | 248 | 248 | 3 | 0 |
+| Combinators.fs | 255 | 255 | 255 | 255 | 255 | 255 | 3 | 0 |
 | Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1708 | 1694 | 1691 | 1930 | 1912 | 1909 | 148 | 1 |
+| **Total** | 1715 | 1701 | 1698 | 1937 | 1919 | 1916 | 148 | 1 |
 
 ## Tests.fs
 
@@ -1654,7 +1654,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>248 passed in every build and delivery that runs them</summary>
+<details><summary>255 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1667,6 +1667,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Get outside Keys raises KeyNotFoundException
 - removing a key disposes the key's memo
 - disposing the view detaches it from the upstream
+- check cutoff leaves filter Runs unchanged when predicate booleans stay equal
+- N=1000 single-key and 3-key flips over KeyedCollection update in O(Delta) calls and exact deltas
+- simultaneous multi-slot Check batch drains remaining checkSlots inside Enumerate
+- filter Failed state machine suppresses Excluded<->Failed deltas while keeping throwing rows
+- async HeldOut / PendingKeys and KeyedCollection tail append, removal, and >64 reset
 - choose keeps the Some keys in upstream order with their values
 - 200 single edits at N=1000 make 200 chooser calls
 - a Keys reader wakes only when membership flips, and a Get reader when the value changes
@@ -1678,6 +1683,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - removing a key disposes its chooser and gate
 - choose composes with filter and sortBy
 - choose composes with choose, and keeps a Some None value
+- choose Check cutoff leaves Runs unchanged on Some->Some and N=1000 delta flips match
+- choose handles Failed transitions and async PendingKeys
 - map follows upstream keys and order, and re-runs one mapping per edit
 - an effect reading Keys and Get runs exactly once per write
 - a throwing mapping keeps the key, and Get raises its error

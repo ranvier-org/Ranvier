@@ -589,6 +589,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member internal _.ScopeRequests = scopeRequests
     member internal _.Removed = removed
     member internal _.PublishedKeys = keys.Peek
+    member internal _.IsCheck = freshness = Freshness.Check
+    member internal _.IsInvalidated = invalidated
 
     /// <summary>Marks <c>Removed</c> as the pass's removed keys; the diff skips its walk of the entries.</summary>
     member internal _.StageRemovals() =
@@ -641,6 +643,12 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member val internal ReadDelta: unit -> ProjectionDelta<'K> = Unchecked.defaultof<_> with get, set
     /// <summary>Stages an added or replaced key from the input delta.</summary>
     member val internal VisitDelta: 'K -> unit = Unchecked.defaultof<_> with get, set
+    /// <summary>Resolves extra check sources alongside <c>sources</c> while the projection is in <c>Check</c>.</summary>
+    member val internal ExtraCheck: unit -> unit = Unchecked.defaultof<_> with get, set
+    /// <summary>Whether extra check sources remain queued.</summary>
+    member val internal HasExtraCheck: unit -> bool = Unchecked.defaultof<_> with get, set
+    /// <summary>Resolves extra check sources while a failed projection retries after a source moves.</summary>
+    member val internal ExtraFailedCheck: unit -> unit = Unchecked.defaultof<_> with get, set
 
     /// <summary>
     /// Leaves the last key of <c>PassKeys</c> out of <c>Keys</c> while keeping its row. The key readers see the key as
@@ -651,6 +659,17 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         let key = passKeys[last]
         passKeys.RemoveAt last
 
+        if Platform.isNull (box hidden) then
+            hidden <- Platform.KeySet<'K>()
+            lastHidden <- Platform.KeySet<'K>()
+
+        hidden.Add key |> ignore
+
+    /// <summary>
+    /// Marks <c>key</c> hidden for this pass without touching <c>PassKeys</c>: its row stays in <c>Entries</c> while
+    /// key readers see it as absent until a pass stops hiding it.
+    /// </summary>
+    member internal _.StageHidden(key: 'K) =
         if Platform.isNull (box hidden) then
             hidden <- Platform.KeySet<'K>()
             lastHidden <- Platform.KeySet<'K>()
@@ -1165,7 +1184,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ResolveCheckAgain() =
-        let mutable again = sources.HasStaleSource ()
+        let mutable again =
+            sources.HasStaleSource ()
+            || (not (Platform.isNull (box this.HasExtraCheck))
+                && this.HasExtraCheck ())
 
         while again do
             let before = graph.StaleTransitions
@@ -1179,10 +1201,18 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
                 i <- i + 1
 
+            if
+                freshness = Freshness.Check
+                && not (Platform.isNull (box this.ExtraCheck))
+            then
+                this.ExtraCheck ()
+
             again <-
                 freshness = Freshness.Check
                 && graph.StaleTransitions <> before
-                && sources.HasStaleSource ()
+                && (sources.HasStaleSource ()
+                    || (not (Platform.isNull (box this.HasExtraCheck))
+                        && this.HasExtraCheck ()))
 
     member private this.ResolveCheck() =
         Tracer.CheckStart (graph, id)
@@ -1196,6 +1226,12 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                 this.CheckActiveSource i
 
             i <- i + 1
+
+        if
+            freshness = Freshness.Check
+            && not (Platform.isNull (box this.ExtraCheck))
+        then
+            this.ExtraCheck ()
 
         if
             freshness = Freshness.Check
@@ -1218,7 +1254,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ResolveFailedCheckAgain() =
-        let mutable again = sources.HasStaleSource ()
+        let mutable again =
+            sources.HasStaleSource ()
+            || (not (Platform.isNull (box this.HasExtraCheck))
+                && this.HasExtraCheck ())
 
         while again do
             let before = graph.StaleTransitions
@@ -1232,10 +1271,18 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
                 i <- i + 1
 
+            if
+                not invalidated
+                && not (Platform.isNull (box this.ExtraFailedCheck))
+            then
+                this.ExtraFailedCheck ()
+
             again <-
                 not invalidated
                 && graph.StaleTransitions <> before
-                && sources.HasStaleSource ()
+                && (sources.HasStaleSource ()
+                    || (not (Platform.isNull (box this.HasExtraCheck))
+                        && this.HasExtraCheck ()))
 
     /// <summary>
     /// Brings the sources of a failed projection current, so a source that
@@ -1253,6 +1300,12 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
                 this.CheckActiveSourceFailed i
 
             i <- i + 1
+
+        if
+            not invalidated
+            && not (Platform.isNull (box this.ExtraFailedCheck))
+        then
+            this.ExtraFailedCheck ()
 
         if
             not invalidated
@@ -2368,6 +2421,11 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
         if Platform.isNull (this.Entries.Find key) then
             adds.Add (struct (key, null))
 
+    /// <summary>Stages creation of <c>key</c>'s row when absent from <c>Entries</c>, without adding to <c>PassKeys</c>.</summary>
+    member internal this.StageAdd(key: 'K) =
+        if Platform.isNull (this.Entries.Find key) then
+            adds.Add (struct (key, null))
+
     /// <summary>Sizes the pass's tables for <c>count</c> keys, and the staged additions for keys beyond the current rows.</summary>
     member internal this.Reserve(count: int) =
         this.ReservePass count
@@ -2460,6 +2518,10 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
             reraise ()
 
     abstract Enumerate: unit -> unit
+    abstract Applied: unit -> unit
+    default _.Applied() = ()
+    abstract Abandoned: unit -> unit
+    default _.Abandoned() = ()
 
     interface IProjectionPass with
         member this.Enumerate() =
@@ -2474,8 +2536,11 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
         member _.ClearStaged() =
             adds.Clear ()
 
-        member _.Applied() = ()
-        member _.Abandoned() = ()
+        member this.Applied() =
+            this.Applied ()
+
+        member this.Abandoned() =
+            this.Abandoned ()
 
 /// <summary>
 /// A projection keyed by a function of the item.

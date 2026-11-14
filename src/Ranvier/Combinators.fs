@@ -239,6 +239,836 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
             heldOut.Publish upstream
 
 /// <summary>
+/// One-based Fenwick prefix-sum table over binary inclusion indicators, used to compute output key positions in
+/// <c>O(log N)</c> time without rescanning unchanged prefix elements.
+/// </summary>
+module internal Fenwick =
+    let ensureCapacity (tree: int[]) (oldCount: int) (neededCount: int) : int[] =
+        let required = neededCount + 1
+
+        if Platform.isNull tree then
+            Array.zeroCreate<int>(max 16 required)
+        elif tree.Length < required then
+            let grown = Array.zeroCreate<int>(max (max 16 required) (tree.Length * 2))
+
+            if oldCount > 0 then
+                Array.blit tree 0 grown 0 (oldCount + 1)
+
+            grown
+        else
+            tree
+
+    let sumPrefix (tree: int[]) (count: int) =
+        let mutable sum = 0
+        let mutable i = count
+
+        while i > 0 do
+            sum <- sum + Platform.itemAt i tree
+            i <- i - (i &&& -i)
+
+        sum
+
+    let add (tree: int[]) (n: int) (idx0: int) (delta: int) =
+        let mutable i = idx0 + 1
+
+        while i <= n do
+            Platform.setItemAt i tree (Platform.itemAt i tree + delta)
+            i <- i + (i &&& -i)
+
+    let append (tree: int[]) (idx0: int) (bit: int) =
+        let idx1 = idx0 + 1
+
+        if (idx1 &&& 1) = 1 then
+            Platform.setItemAt idx1 tree bit
+        else
+            let low = idx1 - (idx1 &&& -idx1)
+            let range = sumPrefix tree (idx1 - 1) - sumPrefix tree low
+            Platform.setItemAt idx1 tree (range + bit)
+
+    let clearRange (tree: int[]) (count: int) =
+        for i in 0..count do
+            Platform.setItemAt i tree 0
+
+    let propagate (tree: int[]) (count: int) =
+        for i in 1..count do
+            let v = Platform.itemAt i tree
+            let parent = i + (i &&& -i)
+
+            if parent <= count then
+                Platform.setItemAt parent tree (Platform.itemAt parent tree + v)
+
+type internal InclusionState =
+    | Excluded = 0uy
+    | Included = 1uy
+    | Failed = 2uy
+
+type internal IInclusionSink<'K> =
+    abstract ViewNode: IComputation
+    abstract EnqueueDirty: slot: InclusionSlot<'K> -> unit
+    abstract EnqueueCheck: slot: InclusionSlot<'K> -> unit
+
+/// <summary>
+/// Observes one key's boolean inclusion memo on behalf of an incremental filter or choose view, forwarding
+/// <c>Check</c> and <c>Dirty</c> notifications without retaining every row memo in the view's <c>sources</c> list.
+/// </summary>
+and [<Sealed>] internal InclusionSlot<'K>(key: 'K, source: Memo<bool>, sink: IInclusionSink<'K>) =
+    member _.Key = key
+    member val Source = source with get, set
+    member val Handle = EdgeHandle.Unlinked with get, set
+    member val Index = 0 with get, set
+    member val State = InclusionState.Excluded with get, set
+    member val Unsettled = false with get, set
+    member val QueuedDirty = false with get, set
+    member val QueuedCheck = false with get, set
+    member val Reading = false with get, set
+    member val Disposed = false with get, set
+
+    member this.Attach() =
+        this.Handle <- (this.Source :> ISource).AddObserver(this, 0)
+
+    member this.Detach() =
+        if not this.Disposed then
+            this.Disposed <- true
+
+            if this.Handle <> EdgeHandle.Unlinked then
+                (this.Source :> ISource).RemoveObserverAt(this, this.Handle)
+                this.Handle <- EdgeHandle.Unlinked
+
+    interface INode with
+        member _.Id = sink.ViewNode.Id
+        member _.Status = sink.ViewNode.Status
+
+    interface IComputation with
+        member _.AddSource _ = ()
+        member _.HasReadSlot _ = false
+
+        member this.MovedIn(_, handle) =
+            if not this.Disposed then
+                this.Handle <- handle
+
+        member this.MarkDirty() =
+            if not this.Disposed && not this.Reading then
+                if not this.QueuedDirty then
+                    this.QueuedDirty <- true
+                    sink.EnqueueDirty this
+
+                sink.ViewNode.MarkDirty ()
+
+        member this.MarkCheck() =
+            if not this.Disposed && not this.Reading then
+                if not this.QueuedDirty && not this.QueuedCheck then
+                    this.QueuedCheck <- true
+                    sink.EnqueueCheck this
+
+                sink.ViewNode.MarkCheck ()
+
+/// <summary>
+/// Shared incremental membership engine for <c>FilterView</c> and <c>ChooseView</c>: resolves <c>Check</c> on queued
+/// row slots without running a pass, splices small delta batches in <c>O(Δ log N)</c> via a Fenwick prefix-rank index,
+/// and switches to a dense linear slot scan for large batches.
+/// </summary>
+type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
+    (
+        graph: Graph,
+        upstream: Projection<'K, 'V>,
+        view: RowsByKey<'K, 'U>,
+        heldOut: HeldOut<'K>,
+        helper: unit -> Projection<'K, 'T>,
+        resolveSource: 'K -> Memo<bool> voption,
+        admit: bool
+    ) as this =
+    let viewNode = view :> IComputation
+    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+    let mutable initialized = false
+    let mutable disposed = false
+    let mutable synced = false
+
+    let mutable keyReader: ProjectionReader<'K> =
+        Unchecked.defaultof<ProjectionReader<'K>>
+
+    let mutable slots: InclusionSlot<'K>[] = Array.empty
+    let mutable count = 0
+    let byKey = Platform.KeyMap<'K, InclusionSlot<'K>>()
+    let failedKeys = Platform.KeySet<'K>()
+    let mutable fenwick: int[] = Array.empty
+    let mutable includedCount = 0
+    let mutable unsettledCount = 0
+    let dirtySlots = ResizeArray<InclusionSlot<'K>>()
+    let checkSlots = ResizeArray<InclusionSlot<'K>>()
+    let mutable checkIndex = 0
+    let flipIndices = Array.zeroCreate<int> 64
+    let flipDirs = Array.zeroCreate<int> 64
+    let flipKeys = Array.zeroCreate<'K> 64
+
+    let incrementalLimit n =
+        max 8 (min 64 (n >>> 4))
+
+    let ensureSlotsCapacity needed =
+        if slots.Length < needed then
+            let grown =
+                Array.zeroCreate<InclusionSlot<'K>>(max (max 16 needed) (slots.Length * 2))
+
+            if count > 0 then
+                Array.blit slots 0 grown 0 count
+
+            slots <- grown
+
+    let clearQueues () =
+        for i in 0 .. dirtySlots.Count - 1 do
+            (Platform.entryAt i dirtySlots).QueuedDirty <- false
+
+        for i in checkIndex .. checkSlots.Count - 1 do
+            (Platform.entryAt i checkSlots).QueuedCheck <- false
+
+        dirtySlots.Clear ()
+        checkSlots.Clear ()
+        checkIndex <- 0
+
+    let enqueueCheckSlot (slot: InclusionSlot<'K>) =
+        if not slot.QueuedDirty && not slot.QueuedCheck then
+            slot.QueuedCheck <- true
+            checkSlots.Add slot
+
+    let evaluateSlot (slot: InclusionSlot<'K>) =
+        slot.Reading <- true
+
+        let outcome =
+            try
+                slot.Source.ReadUntracked ()
+            finally
+                slot.Reading <- false
+
+        let source = slot.Source :> ISource
+
+        if not slot.Disposed && source.IsStale then
+            enqueueCheckSlot slot
+            viewNode.MarkCheck ()
+
+        match outcome with
+        | Ready included ->
+            struct ((if included = admit then
+                         InclusionState.Included
+                     else
+                         InclusionState.Excluded),
+                    false)
+        | Pending ->
+            if not slot.Source.Published then
+                struct (InclusionState.Excluded, true)
+            elif slot.Source.Peek = admit then
+                struct (InclusionState.Included, false)
+            else
+                struct (InclusionState.Excluded, false)
+        | Failed _ -> struct (InclusionState.Failed, false)
+
+    let recordStateChange (key: 'K) (prevState: InclusionState) (nextState: InclusionState) =
+        if prevState <> nextState then
+            if prevState = InclusionState.Failed then
+                failedKeys.Remove key
+
+            if nextState = InclusionState.Excluded then
+                view.Removed.Add key
+            else
+                if nextState = InclusionState.Failed then
+                    failedKeys.Add key |> ignore
+
+                if prevState = InclusionState.Excluded then
+                    view.StageAdd key
+
+    let refreshSlot (slot: InclusionSlot<'K>) =
+        let prevState = slot.State
+        let prevUnsettled = slot.Unsettled
+        let struct (nextState, nextUnsettled) = evaluateSlot slot
+
+        if prevUnsettled <> nextUnsettled then
+            unsettledCount <- unsettledCount + (if nextUnsettled then 1 else -1)
+            slot.Unsettled <- nextUnsettled
+
+        recordStateChange slot.Key prevState nextState
+        slot.State <- nextState
+        prevState
+
+    let resolveCheckStep (keepRunning: unit -> bool) =
+        while keepRunning () && checkIndex < checkSlots.Count do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        if source.IsActive then
+                            (slot :> IComputation).MarkDirty()
+                        else
+                            enqueueCheckSlot slot
+
+        if checkIndex >= checkSlots.Count then
+            checkSlots.Clear ()
+            checkIndex <- 0
+
+    let drainCheckSlots (limit: int) =
+        while checkIndex < checkSlots.Count
+              && dirtySlots.Count <= limit do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        slot.QueuedDirty <- true
+                        dirtySlots.Add slot
+
+        if checkIndex >= checkSlots.Count then
+            checkSlots.Clear ()
+            checkIndex <- 0
+
+    let applyDirtySplice (prevKeys: 'K[]) (treeCount: int) =
+        let mutable flipCount = 0
+        let mutable deltaIncluded = 0
+
+        for i in 0 .. dirtySlots.Count - 1 do
+            let slot = Platform.entryAt i dirtySlots
+
+            if not slot.Disposed then
+                slot.QueuedDirty <- false
+                let prevState = refreshSlot slot
+                let nextState = slot.State
+
+                if
+                    (prevState = InclusionState.Included)
+                    <> (nextState = InclusionState.Included)
+                then
+                    let dir = if nextState = InclusionState.Included then 1 else -1
+                    Platform.setItemAt flipCount flipIndices slot.Index
+                    Platform.setItemAt flipCount flipDirs dir
+                    Platform.setItemAt flipCount flipKeys slot.Key
+                    flipCount <- flipCount + 1
+                    deltaIncluded <- deltaIncluded + dir
+
+        dirtySlots.Clear ()
+
+        if flipCount = 0 then
+            struct (false, prevKeys)
+        else
+            for i in 1 .. flipCount - 1 do
+                let idx = Platform.itemAt i flipIndices
+                let dir = Platform.itemAt i flipDirs
+                let key = Platform.itemAt i flipKeys
+                let mutable j = i - 1
+
+                while j >= 0 && Platform.itemAt j flipIndices > idx do
+                    Platform.setItemAt (j + 1) flipIndices (Platform.itemAt j flipIndices)
+                    Platform.setItemAt (j + 1) flipDirs (Platform.itemAt j flipDirs)
+                    Platform.setItemAt (j + 1) flipKeys (Platform.itemAt j flipKeys)
+                    j <- j - 1
+
+                Platform.setItemAt (j + 1) flipIndices idx
+                Platform.setItemAt (j + 1) flipDirs dir
+                Platform.setItemAt (j + 1) flipKeys key
+
+            let nextLen = includedCount + deltaIncluded
+
+            let nextKeys =
+                if nextLen = 0 then
+                    Array.empty
+                else
+                    let arr = Array.zeroCreate<'K> nextLen
+                    let mutable oldPos = 0
+                    let mutable newPos = 0
+
+                    for f in 0 .. flipCount - 1 do
+                        let uIdx = Platform.itemAt f flipIndices
+                        let dir = Platform.itemAt f flipDirs
+                        let oldRank = Fenwick.sumPrefix fenwick uIdx
+                        let segLen = oldRank - oldPos
+
+                        if segLen > 0 then
+                            Array.blit prevKeys oldPos arr newPos segLen
+                            oldPos <- oldRank
+                            newPos <- newPos + segLen
+
+                        if dir > 0 then
+                            Platform.setItemAt newPos arr (Platform.itemAt f flipKeys)
+                            newPos <- newPos + 1
+                        else
+                            oldPos <- oldPos + 1
+
+                    let tailLen = prevKeys.Length - oldPos
+
+                    if tailLen > 0 then
+                        Array.blit prevKeys oldPos arr newPos tailLen
+
+                    arr
+
+            for f in 0 .. flipCount - 1 do
+                Fenwick.add fenwick treeCount (Platform.itemAt f flipIndices) (Platform.itemAt f flipDirs)
+
+            includedCount <- nextLen
+            struct (true, nextKeys)
+
+    let runDenseBulk () =
+        clearQueues ()
+        let mutable nextIncluded = 0
+        let mutable nextUnsettled = 0
+        Fenwick.clearRange fenwick count
+
+        for i in 0 .. count - 1 do
+            let slot = Platform.itemAt i slots
+            let prevState = slot.State
+            let struct (nextState, nextUnsettledFlag) = evaluateSlot slot
+            slot.State <- nextState
+            slot.Unsettled <- nextUnsettledFlag
+
+            if prevState <> nextState then
+                recordStateChange slot.Key prevState nextState
+
+            if nextUnsettledFlag then
+                nextUnsettled <- nextUnsettled + 1
+
+            if nextState = InclusionState.Included then
+                view.PassKeys.Add slot.Key
+                Platform.setItemAt (i + 1) fenwick 1
+                nextIncluded <- nextIncluded + 1
+
+        Fenwick.propagate fenwick count
+        includedCount <- nextIncluded
+        unsettledCount <- nextUnsettled
+        view.StageRemovals ()
+
+    let rebuildFull (newKeys: 'K[]) =
+        clearQueues ()
+        failedKeys.Clear ()
+        let oldCount = count
+        let newCount = newKeys.Length
+
+        for i in 0 .. oldCount - 1 do
+            let slot = Platform.itemAt i slots
+            slot.Index <- -1
+
+        ensureSlotsCapacity newCount
+        fenwick <- Fenwick.ensureCapacity fenwick 0 newCount
+        Fenwick.clearRange fenwick newCount
+
+        let mutable outCount = 0
+        let mutable nextIncluded = 0
+        let mutable nextUnsettled = 0
+
+        for i in 0 .. newCount - 1 do
+            let key = Platform.itemAt i newKeys
+
+            match resolveSource key with
+            | ValueNone -> ()
+            | ValueSome resolved ->
+                let mutable slot = byKey.Find key
+
+                if
+                    not (Platform.isNull (box slot))
+                    && not (obj.ReferenceEquals (slot.Source, resolved))
+                then
+                    slot.Detach ()
+                    slot <- Unchecked.defaultof<_>
+
+                if Platform.isNull (box slot) then
+                    slot <- InclusionSlot<'K>(key, resolved, this)
+                    slot.Attach ()
+                    byKey.Set (key, slot)
+
+                slot.Index <- outCount
+                let struct (nextState, nextUnsettledFlag) = evaluateSlot slot
+                slot.State <- nextState
+                slot.Unsettled <- nextUnsettledFlag
+                Platform.setItemAt outCount slots slot
+
+                if nextUnsettledFlag then
+                    nextUnsettled <- nextUnsettled + 1
+
+                if nextState = InclusionState.Included then
+                    view.PassKeys.Add key
+                    Platform.setItemAt (outCount + 1) fenwick 1
+                    nextIncluded <- nextIncluded + 1
+                    view.StageAdd key
+                elif nextState = InclusionState.Failed then
+                    failedKeys.Add key |> ignore
+                    view.StageAdd key
+
+                outCount <- outCount + 1
+
+        for i in 0 .. oldCount - 1 do
+            let slot = Platform.itemAt i slots
+
+            if slot.Index < 0 && not slot.Disposed then
+                if obj.ReferenceEquals (byKey.Find slot.Key, slot) then
+                    byKey.Remove slot.Key
+
+                slot.Detach ()
+
+        for i in outCount .. oldCount - 1 do
+            Platform.setItemAt i slots Unchecked.defaultof<_>
+
+        count <- outCount
+        Fenwick.propagate fenwick count
+        includedCount <- nextIncluded
+        unsettledCount <- nextUnsettled
+
+        if view.Entries.Count > 0 then
+            view.Entries.Iterate (fun key _ ->
+                let slot = byKey.Find key
+
+                if
+                    Platform.isNull (box slot)
+                    || slot.State = InclusionState.Excluded
+                then
+                    view.Removed.Add key)
+
+        view.StageRemovals ()
+
+    let tryTailAppend (delta: ProjectionDelta<'K>) (limit: int) =
+        let newKeys = delta.Keys
+        let addedCount = delta.ChangeCount
+
+        if
+            addedCount <= 0
+            || addedCount > limit
+            || newKeys.Length <> count + addedCount
+            || (dirtySlots.Count + (checkSlots.Count - checkIndex)) > limit
+        then
+            false
+        else
+            let mutable allAdded = true
+            let mutable c = 0
+
+            while allAdded && c < addedCount do
+                if (delta.ChangeAt c).Value <> KeyChange.Added then
+                    allAdded <- false
+
+                c <- c + 1
+
+            if not allAdded then
+                false
+            else
+                let mutable samePrefix = true
+                let mutable i = 0
+
+                while samePrefix && i < count do
+                    if not (equalKeys.Equals ((Platform.itemAt i slots).Key, Platform.itemAt i newKeys)) then
+                        samePrefix <- false
+
+                    i <- i + 1
+
+                if not samePrefix then
+                    false
+                else
+                    drainCheckSlots limit
+
+                    if dirtySlots.Count > limit then
+                        false
+                    else
+                        let oldCount = count
+                        let prevKeys = view.PublishedKeys
+                        let struct (baseChanged, baseKeys) = applyDirtySplice prevKeys oldCount
+                        let addedIncluded = ResizeArray<'K>(addedCount)
+
+                        ensureSlotsCapacity (oldCount + addedCount)
+                        fenwick <- Fenwick.ensureCapacity fenwick oldCount (oldCount + addedCount)
+                        let mutable nextCount = oldCount
+
+                        for j in 0 .. addedCount - 1 do
+                            let key = Platform.itemAt (oldCount + j) newKeys
+
+                            match resolveSource key with
+                            | ValueNone -> ()
+                            | ValueSome resolved ->
+                                let slot = InclusionSlot<'K>(key, resolved, this)
+                                slot.Attach ()
+                                slot.Index <- nextCount
+                                let struct (nextState, nextUnsettledFlag) = evaluateSlot slot
+                                slot.State <- nextState
+                                slot.Unsettled <- nextUnsettledFlag
+                                byKey.Set (key, slot)
+                                Platform.setItemAt nextCount slots slot
+
+                                if nextUnsettledFlag then
+                                    unsettledCount <- unsettledCount + 1
+
+                                let bit =
+                                    if nextState = InclusionState.Included then
+                                        view.StageAdd key
+                                        addedIncluded.Add key
+                                        1
+                                    elif nextState = InclusionState.Failed then
+                                        view.StageAdd key
+                                        failedKeys.Add key |> ignore
+                                        0
+                                    else
+                                        0
+
+                                Fenwick.append fenwick nextCount bit
+                                nextCount <- nextCount + 1
+
+                        count <- nextCount
+
+                        if not baseChanged && addedIncluded.Count = 0 then
+                            view.StageKeys null
+                        else
+                            let nextKeys = Array.zeroCreate<'K>(baseKeys.Length + addedIncluded.Count)
+
+                            if baseKeys.Length > 0 then
+                                Array.blit baseKeys 0 nextKeys 0 baseKeys.Length
+
+                            for k in 0 .. addedIncluded.Count - 1 do
+                                Platform.setItemAt (baseKeys.Length + k) nextKeys (Platform.entryAt k addedIncluded)
+
+                            includedCount <- nextKeys.Length
+                            view.StageKeys nextKeys
+
+                        view.StageRemovals ()
+                        true
+
+    let applyGeneralDelta (delta: ProjectionDelta<'K>) =
+        let oldSlots = slots
+        let oldCount = count
+        let changeCount = delta.ChangeCount
+
+        for c in 0 .. changeCount - 1 do
+            let change = delta.ChangeAt c
+            let key = change.Key
+
+            match change.Value with
+            | KeyChange.Removed ->
+                let slot = byKey.Find key
+
+                if not (Platform.isNull (box slot)) then
+                    byKey.Remove key
+                    slot.Detach ()
+
+                    if slot.Unsettled then
+                        unsettledCount <- unsettledCount - 1
+
+                    if slot.State = InclusionState.Failed then
+                        failedKeys.Remove key
+                        view.Removed.Add key
+                    elif slot.State = InclusionState.Included then
+                        view.Removed.Add key
+            | KeyChange.Replaced ->
+                let oldSlot = byKey.Find key
+
+                let struct (prevState, prevUnsettled) =
+                    if Platform.isNull (box oldSlot) then
+                        struct (InclusionState.Excluded, false)
+                    else
+                        let st = oldSlot.State
+                        let un = oldSlot.Unsettled
+                        oldSlot.Detach ()
+                        struct (st, un)
+
+                match resolveSource key with
+                | ValueNone ->
+                    if not (Platform.isNull (box oldSlot)) then
+                        byKey.Remove key
+
+                        if prevUnsettled then
+                            unsettledCount <- unsettledCount - 1
+
+                        if prevState = InclusionState.Failed then
+                            failedKeys.Remove key
+                            view.Removed.Add key
+                        elif prevState = InclusionState.Included then
+                            view.Removed.Add key
+                | ValueSome resolved ->
+                    let slot = InclusionSlot<'K>(key, resolved, this)
+                    slot.Attach ()
+                    let struct (nextState, nextUnsettled) = evaluateSlot slot
+                    slot.State <- nextState
+                    slot.Unsettled <- nextUnsettled
+                    byKey.Set (key, slot)
+
+                    if prevUnsettled <> nextUnsettled then
+                        unsettledCount <- unsettledCount + (if nextUnsettled then 1 else -1)
+
+                    recordStateChange key prevState nextState
+            | KeyChange.Added ->
+                match resolveSource key with
+                | ValueNone -> ()
+                | ValueSome resolved ->
+                    let slot = InclusionSlot<'K>(key, resolved, this)
+                    slot.Attach ()
+                    let struct (nextState, nextUnsettled) = evaluateSlot slot
+                    slot.State <- nextState
+                    slot.Unsettled <- nextUnsettled
+                    byKey.Set (key, slot)
+
+                    if nextUnsettled then
+                        unsettledCount <- unsettledCount + 1
+
+                    recordStateChange key InclusionState.Excluded nextState
+            | _ -> ()
+
+        let newKeys = delta.Keys
+        let newCount = newKeys.Length
+
+        let nextSlots =
+            if newCount = 0 then
+                Array.empty
+            else
+                Array.zeroCreate<InclusionSlot<'K>>(max 16 newCount)
+
+        fenwick <- Fenwick.ensureCapacity fenwick 0 newCount
+        Fenwick.clearRange fenwick newCount
+
+        let mutable cursor = 0
+        let mutable outCount = 0
+        let mutable nextIncluded = 0
+
+        for i in 0 .. newCount - 1 do
+            let key = Platform.itemAt i newKeys
+
+            while cursor < oldCount
+                  && (Platform.itemAt cursor oldSlots).Disposed do
+                cursor <- cursor + 1
+
+            let mutable slot =
+                if
+                    cursor < oldCount
+                    && equalKeys.Equals ((Platform.itemAt cursor oldSlots).Key, key)
+                then
+                    let hit = Platform.itemAt cursor oldSlots
+                    cursor <- cursor + 1
+                    hit
+                else
+                    byKey.Find key
+
+            if not (Platform.isNull (box slot)) then
+                if slot.QueuedDirty || slot.QueuedCheck then
+                    slot.QueuedDirty <- false
+                    slot.QueuedCheck <- false
+                    refreshSlot slot |> ignore
+
+                slot.Index <- outCount
+                Platform.setItemAt outCount nextSlots slot
+
+                if slot.State = InclusionState.Included then
+                    view.PassKeys.Add key
+                    Platform.setItemAt (outCount + 1) fenwick 1
+                    nextIncluded <- nextIncluded + 1
+
+                outCount <- outCount + 1
+
+        slots <- nextSlots
+        count <- outCount
+        clearQueues ()
+        Fenwick.propagate fenwick count
+        includedCount <- nextIncluded
+        view.StageRemovals ()
+
+    let finishPass () =
+        if failedKeys.Count > 0 then
+            failedKeys.Iterate (fun key -> view.StageHidden key)
+
+        if unsettledCount > 0 then
+            for i in 0 .. count - 1 do
+                let slot = Platform.itemAt i slots
+
+                if slot.Unsettled then
+                    heldOut.Add slot.Key
+
+        heldOut.Publish upstream
+
+    let init () =
+        initialized <- true
+        let rows = helper ()
+        keyReader <- rows.NewInternalKeyReader ()
+        view.ExtraCheck <- fun () -> resolveCheckStep (fun () -> view.IsCheck)
+        view.HasExtraCheck <- fun () -> checkIndex < checkSlots.Count
+        view.ExtraFailedCheck <- fun () -> resolveCheckStep (fun () -> not view.IsInvalidated)
+        graph.RunUntracked (fun () -> view.Scope.OnCleanup (fun () -> this.Dispose ()))
+
+    member _.Dispose() =
+        if not disposed then
+            disposed <- true
+            synced <- false
+            view.ExtraCheck <- Unchecked.defaultof<_>
+            view.HasExtraCheck <- Unchecked.defaultof<_>
+            view.ExtraFailedCheck <- Unchecked.defaultof<_>
+
+            for i in 0 .. count - 1 do
+                (Platform.itemAt i slots).Detach()
+
+            if not (Platform.isNull (box keyReader)) then
+                keyReader.Stop ()
+                keyReader <- Unchecked.defaultof<ProjectionReader<'K>>
+
+            dirtySlots.Clear ()
+            checkSlots.Clear ()
+            checkIndex <- 0
+            byKey.Clear ()
+            failedKeys.Clear ()
+            slots <- Array.empty
+            fenwick <- Array.empty
+            count <- 0
+            includedCount <- 0
+            unsettledCount <- 0
+
+    member _.Enumerate() =
+        if not initialized then
+            init ()
+
+        let wasSynced = synced
+        synced <- false
+        heldOut.Begin ()
+        let delta = keyReader.Read ()
+
+        if not wasSynced || delta.IsReset then
+            rebuildFull delta.Keys
+        elif delta.IsEmpty then
+            let limit = incrementalLimit count
+            drainCheckSlots limit
+
+            if dirtySlots.Count <= limit then
+                let struct (changed, nextKeys) = applyDirtySplice view.PublishedKeys count
+                view.StageRemovals ()
+                view.StageKeys (if changed then nextKeys else null)
+            else
+                runDenseBulk ()
+        else
+            let limit = incrementalLimit count
+
+            if not (tryTailAppend delta limit) then
+                applyGeneralDelta delta
+
+        finishPass ()
+
+    member _.Applied() =
+        synced <- true
+
+    member _.Abandoned() =
+        synced <- false
+
+    interface IInclusionSink<'K> with
+        member _.ViewNode = viewNode
+
+        member _.EnqueueDirty slot =
+            dirtySlots.Add slot
+
+        member _.EnqueueCheck slot =
+            checkSlots.Add slot
+
+/// <summary>
 /// The keys of <c>inclusion</c> whose predicate row holds <c>admit</c>, each with the value of <c>read</c> at the key.
 /// </summary>
 /// <remarks>
@@ -246,10 +1076,21 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
 /// keeps its row, which raises the failure. <c>read</c> raises when the key's predicate row is pending or failed.
 /// </remarks>
 type internal FilterView<'K, 'V, 'U when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, inclusion: Projection<'K, bool> ref, read: 'K -> 'U, admit: bool) =
+    (graph: Graph, upstream: Projection<'K, 'V>, inclusion: Projection<'K, bool> ref, read: 'K -> 'U, admit: bool) as this =
     inherit RowsByKey<'K, 'U>(graph, read, Unchecked.defaultof<_>)
 
     let heldOut = HeldOut<'K> graph
+
+    let core =
+        let resolve key =
+            let entry = inclusion.Value.Entries.Find key
+
+            if Platform.isNull entry then
+                ValueNone
+            else
+                ValueSome entry.Row
+
+        InclusionCore<'K, 'V, 'U, bool>(graph, upstream, this, heldOut, (fun () -> inclusion.Value), resolve, admit)
 
     /// <summary>
     /// The upstream keys whose predicate has never settled, in upstream order, followed by the keys <c>upstream</c> holds
@@ -257,30 +1098,14 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
     /// </summary>
     member _.HeldOut = heldOut.Keys
 
-    override this.Enumerate() =
-        heldOut.Begin ()
-        let rows = inclusion.Value
-        let keys = rows.Keys
+    override _.Enumerate() =
+        core.Enumerate ()
 
-        for i in 0 .. keys.Length - 1 do
-            let key = Platform.itemAt i keys
-            let entry = rows.Entries.Find key
+    override _.Applied() =
+        core.Applied ()
 
-            if not (Platform.isNull entry) then
-                match entry.Row.TryValue with
-                | Ready included ->
-                    if included = admit then
-                        this.Visit key
-                | Pending ->
-                    if not entry.Settled then
-                        heldOut.Add key
-                    elif entry.Row.Peek = admit then
-                        this.Visit key
-                | Failed _ ->
-                    this.Visit key
-                    this.HideLast ()
-
-        heldOut.Publish upstream
+    override _.Abandoned() =
+        core.Abandoned ()
 
 /// <summary>
 /// A boolean inclusion memo paired with a key's row in <c>choices</c>, disposed when that row is retired.
@@ -311,28 +1136,19 @@ type internal ChoiceGate<'K, 'U when 'K: equality>(key: 'K, source: Memo<'U opti
 /// projection, and retires with its <c>choices</c> row via <c>Memo.Adopt</c>.
 /// </remarks>
 type internal ChooseView<'K, 'V, 'U when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, choices: Projection<'K, 'U option> ref, read: 'K -> 'U) =
+    (graph: Graph, upstream: Projection<'K, 'V>, choices: Projection<'K, 'U option> ref, read: 'K -> 'U) as this =
     inherit RowsByKey<'K, 'U>(graph, read, Unchecked.defaultof<_>)
 
     let heldOut = HeldOut<'K> graph
     let gates = Platform.KeyMap<'K, ChoiceGate<'K, 'U>>()
 
-    /// <summary>
-    /// The upstream keys whose chooser has never settled, in upstream order, followed by the keys <c>upstream</c> holds
-    /// out of its <c>Keys</c>. A tracked read.
-    /// </summary>
-    member _.HeldOut = heldOut.Keys
+    let core =
+        let resolve key =
+            let entry = choices.Value.Entries.Find key
 
-    override this.Enumerate() =
-        heldOut.Begin ()
-        let rows = choices.Value
-        let keys = rows.Keys
-
-        for i in 0 .. keys.Length - 1 do
-            let key = Platform.itemAt i keys
-            let entry = rows.Entries.Find key
-
-            if not (Platform.isNull entry) then
+            if Platform.isNull entry then
+                ValueNone
+            else
                 let row = entry.Row
                 let mutable companion = gates.Find key
 
@@ -357,21 +1173,24 @@ type internal ChooseView<'K, 'V, 'U when 'K: equality>
                     gates.Set (key, companion)
                     row.Adopt companion
 
-                let gate = companion.Gate
+                ValueSome companion.Gate
 
-                match gate.TryValue with
-                | Ready true -> this.Visit key
-                | Ready false -> ()
-                | Pending ->
-                    if not gate.Published then
-                        heldOut.Add key
-                    elif gate.Peek then
-                        this.Visit key
-                | Failed _ ->
-                    this.Visit key
-                    this.HideLast ()
+        InclusionCore<'K, 'V, 'U, 'U option>(graph, upstream, this, heldOut, (fun () -> choices.Value), resolve, true)
 
-        heldOut.Publish upstream
+    /// <summary>
+    /// The upstream keys whose chooser has never settled, in upstream order, followed by the keys <c>upstream</c> holds
+    /// out of its <c>Keys</c>. A tracked read.
+    /// </summary>
+    member _.HeldOut = heldOut.Keys
+
+    override _.Enumerate() =
+        core.Enumerate ()
+
+    override _.Applied() =
+        core.Applied ()
+
+    override _.Abandoned() =
+        core.Abandoned ()
 
 /// <summary>
 /// The first key holding each distinct value of <c>values</c>, in upstream order, each with a row reading the upstream
