@@ -172,6 +172,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 77,194 | 103,955 | 1,652,836 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 77,192 | 103,947 | 1,652,761 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 77,194 | 103,972 | 1,652,746 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 77,192 | 100,804 | 1,620,011 |
 
 ## app-table
 
@@ -345,6 +346,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 3,651,222 | 8,656,689 | 98,143,957 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 3,651,212 | 8,557,977 | 98,227,787 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 3,651,260 | 8,658,293 | 98,146,262 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 3,651,356 | 12,027,139 | 85,509,058 |
 
 ## async-recover
 
@@ -518,6 +520,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 93,890 | 30,544 | 372,800 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 93,890 | 30,540 | 372,791 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 93,890 | 30,539 | 372,798 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 93,890 | 30,378 | 367,104 |
 
 ## async-resolve
 
@@ -691,6 +694,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 2,764,551 | 749,318 | 9,747,684 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 2,764,551 | 749,309 | 9,747,683 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,764,551 | 749,345 | 9,747,680 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,764,551 | 716,732 | 9,366,583 |
 
 ## chain
 
@@ -864,6 +868,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 13,037 | 318 | 2,450 | 4,491 | 3,219 | 72,781 | 68,354 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 13,037 | 318 | 2,450 | 4,491 | 3,219 | 72,781 | 68,354 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 13,037 | 318 | 2,450 | 4,491 | 3,219 | 72,781 | 68,354 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,912 |
 
 ## chain-affinity
 
@@ -1037,6 +1042,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 2,549 | 3,057 | 2,501 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 2,549 | 3,057 | 2,501 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,549 | 3,057 | 2,501 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,549 | 3,057 | 2,501 |
 
 ## control
 
@@ -1210,6 +1216,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 74,709 | 823,454 | 2,587,896 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 74,709 | 823,468 | 2,587,830 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 74,709 | 823,495 | 2,587,828 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 74,709 | 463,368 | 2,270,297 |
 
 ## create
 
@@ -1383,6 +1390,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 13,499,446 | 2,857,615 | 2,405,776 | 2,128,075 | 3,111,335 | 33,778,842 | 46,542,403 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 13,467,510 | 2,857,616 | 2,405,773 | 2,127,238 | 3,112,155 | 33,778,642 | 46,542,533 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 13,577,010 | 2,857,614 | 2,405,776 | 2,127,038 | 3,111,605 | 33,778,919 | 46,542,685 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 13,576,997 | 2,857,614 | 2,405,776 | 4,454,499 | 3,052,706 | 33,074,082 | 46,263,765 |
 
 ## create-on
 
@@ -1556,6 +1564,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 2,748,627 | 3,316,839 | 51,470,856 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 2,732,609 | 3,316,973 | 51,471,013 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,732,609 | 3,317,160 | 51,470,802 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,732,560 | 3,356,433 | 52,080,821 |
 
 ## cutoff
 
@@ -1729,6 +1738,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1902,6 +1912,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 764 | 723 | 16,243 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 764 | 723 | 16,243 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 764 | 723 | 16,243 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 764 | 686 | 15,806 |
 
 ## derive-on
 
@@ -2075,6 +2086,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 749 | 729 | 16,266 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 733 | 729 | 16,266 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 733 | 729 | 16,266 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 733 | 690 | 15,824 |
 
 ## dispose
 
@@ -2248,6 +2260,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 2,706,246 | 806,288 | 358,486 | 492,000 | 506,729 | 13,206,201 | 9,104,780 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 2,706,244 | 806,288 | 358,486 | 491,975 | 506,484 | 13,206,092 | 9,105,284 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,706,245 | 806,288 | 358,486 | 492,156 | 506,806 | 13,205,729 | 9,104,833 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,706,244 | 806,288 | 358,486 | 479,840 | 500,780 | 11,184,958 | 8,962,762 |
 
 ## dispose-on
 
@@ -2421,6 +2434,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 337,486 | 498,423 | 8,901,227 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 337,486 | 498,543 | 8,900,840 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 337,486 | 498,407 | 8,901,427 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 337,486 | 492,267 | 8,758,821 |
 
 ## editable-edit
 
@@ -2594,6 +2608,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 178,109 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 178,109 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 178,109 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 178,109 |
 
 ## editable-upstream
 
@@ -2767,6 +2782,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 223,509 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 223,509 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 223,509 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 223,509 |
 
 ## fail-recompute
 
@@ -2940,6 +2956,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 65,232 | 1,368 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 65,232 | 1,368 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 65,232 | 1,368 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 65,232 | 1,368 |
 
 ## flight
 
@@ -3113,6 +3130,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 
 ## keyed-insert
 
@@ -3286,6 +3304,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 1,861,707 | 53,765 | 54,830 | 3,246,641 | 660,293 | 176,798 | 45,598,789 | 2,633,735 | 2,652,910 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 1,861,627 | 53,765 | 54,743 | 3,246,674 | 660,191 | 176,892 | 45,598,862 | 2,633,781 | 2,651,665 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,861,675 | 53,861 | 54,796 | 3,246,696 | 660,229 | 176,842 | 45,598,818 | 2,633,718 | 2,651,708 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,861,643 | 53,860 | 54,764 | 2,516,316 | 660,746 | 236,035 | 41,881,967 | 3,000,446 | 3,020,170 |
 
 ## keyed-remove
 
@@ -3459,6 +3478,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 1,860,743 | 43,554 | 45,156 | 3,248,454 | 595,252 | 147,714 | 45,555,285 | 1,923,628 | 1,956,865 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 1,860,657 | 43,554 | 45,076 | 3,248,699 | 595,346 | 147,690 | 45,555,266 | 1,923,662 | 1,956,892 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,860,716 | 43,650 | 45,126 | 3,248,292 | 595,382 | 147,752 | 45,555,269 | 1,923,637 | 1,956,902 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,860,672 | 43,650 | 45,092 | 2,521,879 | 600,277 | 140,096 | 41,843,961 | 2,141,130 | 2,176,191 |
 
 ## keyed-swap
 
@@ -3632,6 +3652,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 1,856,514 | 46,205 | 46,945 | 3,218,120 | 502,253 | 512,119 | 46,265,961 | 916,149 | 933,910 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 1,856,434 | 46,205 | 46,865 | 3,218,061 | 502,270 | 512,207 | 46,266,605 | 915,956 | 933,842 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,856,484 | 46,268 | 46,914 | 3,218,097 | 502,252 | 512,201 | 46,273,327 | 916,001 | 933,877 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,856,450 | 46,267 | 46,881 | 2,542,423 | 518,724 | 528,331 | 42,569,680 | 914,357 | 932,145 |
 
 ## mvu-dispatch
 
@@ -3805,6 +3826,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 59,439 | 773 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 59,439 | 773 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 59,439 | 773 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 59,439 | 773 |
 
 ## persist-write
 
@@ -3978,6 +4000,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | — | — |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | — | — |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | — | — |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | — | — |
 
 ## project-chain
 
@@ -4151,6 +4174,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 454,424 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 454,413 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 454,444 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 454,490 |
 
 ## project-churn
 
@@ -4324,6 +4348,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 36,495 | 34,191 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 36,496 | 34,191 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 36,496 | 34,191 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 36,493 | 34,191 |
 
 ## project-edit
 
@@ -4497,6 +4522,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 50,527 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 50,463 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 50,447 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 50,559 |
 
 ## project-reorder
 
@@ -4670,6 +4696,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 645,236 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 645,156 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 645,124 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 645,268 |
 
 ## server-render
 
@@ -4843,6 +4870,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | — | — | — |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | — | — | — |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | — | — | — |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | — | — | — |
 
 ## shape-diamond
 
@@ -5016,6 +5044,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 59,609 | 80,097 | 1,781,072 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 59,609 | 80,097 | 1,781,072 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 59,609 | 80,097 | 1,781,072 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 59,609 | 79,993 | 1,744,544 |
 
 ## shape-dynamic
 
@@ -5189,6 +5218,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 83,024 | 107,128 | 2,005,078 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 83,024 | 107,131 | 2,005,078 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 83,024 | 107,132 | 2,005,078 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 83,024 | 105,983 | 1,945,036 |
 
 ## stream-burst-1
 
@@ -5362,6 +5392,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 1,845 | 1,471 | 2,482 | 4,350 | 6,788 | 11,734 | 37,636 | 35,840 | 46,463 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 1,845 | 1,471 | 2,482 | 4,354 | 6,788 | 11,734 | 37,636 | 35,840 | 46,463 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,845 | 1,471 | 2,482 | 4,344 | 6,788 | 11,734 | 37,636 | 35,840 | 46,463 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,688 | 37,062 | 35,267 | 45,893 |
 
 ## stream-burst-16
 
@@ -5535,6 +5566,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 3,870 | 23,326 | 5,692 | 8,178 | 27,198 | 14,385 | 99,016 | 561,190 | 104,812 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 3,870 | 23,326 | 5,692 | 8,178 | 27,198 | 14,385 | 99,016 | 561,190 | 104,814 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 3,870 | 23,326 | 5,692 | 8,178 | 27,198 | 14,385 | 99,016 | 561,190 | 104,814 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,160 | 91,895 | 552,050 | 101,975 |
 
 ## stream-burst-256
 
@@ -5708,6 +5740,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 36,246 | 373,006 | 57,031 | 96,971 | 431,089 | 40,858 | 1,081,332 | 8,965,444 | 1,037,825 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 36,246 | 373,006 | 57,031 | 96,971 | 431,089 | 40,858 | 1,081,337 | 8,965,446 | 1,037,828 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 36,246 | 373,006 | 57,031 | 96,971 | 431,089 | 40,858 | 1,081,332 | 8,965,444 | 1,037,825 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 36,246 | 373,006 | 57,031 | 89,873 | 418,285 | 36,687 | 969,374 | 8,819,188 | 998,681 |
 
 ## stream-restart
 
@@ -5881,6 +5914,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 3,882 | 4,877 | 14,814 | 6,293 | 43,163 | 72,347 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 3,882 | 4,877 | 14,813 | 6,288 | 43,166 | 72,344 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 3,882 | 4,877 | 14,814 | 6,291 | 43,163 | 72,347 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 3,882 | 4,877 | 14,710 | 6,205 | 41,889 | 71,200 |
 
 ## timed-admit-both
 
@@ -6054,6 +6088,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 108,458 | 132,724 | 2,572,194 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 108,458 | 132,726 | 2,572,220 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 109,482 | 132,707 | 2,572,245 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 108,458 | 132,596 | 2,532,507 |
 
 ## timed-admit-debounce
 
@@ -6227,6 +6262,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 108,010 | 131,641 | 2,557,699 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 108,010 | 131,638 | 2,557,697 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 109,034 | 131,639 | 2,557,673 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 108,010 | 131,187 | 2,518,224 |
 
 ## timed-admit-first
 
@@ -6400,6 +6436,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 67,947 | 77,253 | 1,583,470 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 67,947 | 77,255 | 1,583,470 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 68,971 | 77,255 | 1,583,470 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 67,947 | 77,253 | 1,583,488 |
 
 ## timed-admit-last
 
@@ -6573,6 +6610,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 108,266 | 131,947 | 2,567,532 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 108,266 | 131,958 | 2,567,529 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 109,290 | 131,955 | 2,567,555 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 108,266 | 131,508 | 2,528,105 |
 
 ## timed-capture-both
 
@@ -6746,6 +6784,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 35,090 | 43,693 | 865,816 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 35,090 | 43,708 | 865,816 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 35,090 | 43,695 | 865,817 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 35,090 | 43,795 | 865,675 |
 
 ## timed-capture-debounce
 
@@ -6919,6 +6958,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 34,962 | 46,805 | 866,053 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 34,962 | 46,805 | 866,053 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 34,962 | 46,806 | 866,053 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 34,962 | 46,807 | 866,053 |
 
 ## timed-capture-first
 
@@ -7092,6 +7132,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 31,314 | 36,736 | 748,414 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 31,314 | 36,736 | 748,414 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 31,314 | 36,736 | 748,416 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 31,314 | 36,735 | 748,414 |
 
 ## timed-capture-last
 
@@ -7265,6 +7306,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 34,898 | 46,740 | 858,181 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 34,898 | 46,740 | 858,181 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 34,898 | 46,743 | 858,181 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 34,898 | 46,740 | 858,181 |
 
 ## update
 
@@ -7438,6 +7480,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 1,087,990 | 38,805 | 81,509 | 263,320 | 152,660 | 3,351,291 | 2,523,454 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 1,087,990 | 38,805 | 81,509 | 263,183 | 152,645 | 3,351,254 | 2,523,377 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,091,190 | 38,805 | 81,509 | 263,073 | 152,642 | 3,351,259 | 2,523,468 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,089,589 | 38,805 | 81,509 | 196,969 | 95,681 | 2,533,209 | 1,773,728 |
 
 ## update-on
 
@@ -7611,6 +7654,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 94,609 | 172,512 | 2,850,918 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 93,009 | 172,543 | 2,850,873 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 93,009 | 172,543 | 2,850,819 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 93,009 | 115,597 | 2,101,116 |
 
 ## work-form
 
@@ -7784,6 +7828,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 170,299 | 164,511 | 309,247 | 338,485 | 5,440,202 | 5,353,235 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 170,299 | 164,511 | 309,228 | 338,481 | 5,440,196 | 5,353,224 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 170,299 | 164,511 | 309,222 | 338,442 | 5,440,194 | 5,353,204 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 170,299 | 164,511 | 297,877 | 293,066 | 4,997,447 | 4,910,506 |
 
 ## work-status
 
@@ -7957,6 +8002,7 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 100,349 | 80,039 | 257,188 | 153,226 | 2,631,580 | 2,363,578 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 100,349 | 78,439 | 257,147 | 153,205 | 2,631,567 | 2,363,552 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 100,349 | 78,439 | 257,160 | 153,225 | 2,631,569 | 2,363,548 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 100,348 | 78,439 | 200,143 | 92,538 | 1,881,849 | 1,613,856 |
 
 ## work-value
 
@@ -8130,4 +8176,5 @@
 | `dd848c3` | 2026-11-13 | perf(query): cut Ranvier.Query staging, entry, lease, and sync-task allocations (#354) | 107,474 | 120,873 | 257,513 | 280,487 | 2,616,218 | 2,940,737 |
 | `c1d03dd` | 2026-11-14 | chore(release): bump Dom packages to 0.1.0 (#356) | 107,474 | 119,273 | 257,480 | 280,485 | 2,616,192 | 2,940,703 |
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 107,473 | 119,275 | 257,514 | 280,506 | 2,616,125 | 2,940,730 |
+| `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 107,473 | 119,273 | 200,520 | 219,872 | 1,866,485 | 2,191,009 |
 
