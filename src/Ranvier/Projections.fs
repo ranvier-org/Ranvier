@@ -590,6 +590,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member internal _.Removed = removed
     member internal _.PublishedKeys = keys.Peek
     member internal _.IsCheck = freshness = Freshness.Check
+    member internal _.IsCheckQueued = checkPending && freshness <> Freshness.Clean
     member internal _.IsInvalidated = invalidated
 
     /// <summary>Marks <c>Removed</c> as the pass's removed keys; the diff skips its walk of the entries.</summary>
@@ -1243,6 +1244,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
         if freshness = Freshness.Check then
             freshness <- Freshness.Clean
+            checkPending <- false
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.CheckActiveSourceFailed(i: int) =
@@ -1312,6 +1314,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             && graph.StaleTransitions <> before
         then
             this.ResolveFailedCheckAgain ()
+
+        if not invalidated then
+            checkPending <- false
 
         Tracer.CheckResolved (graph, id, invalidated)
 
