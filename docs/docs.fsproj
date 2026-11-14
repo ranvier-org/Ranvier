@@ -43,7 +43,7 @@
         <!-- The Partas.Nacara packages were built with the .NET 11 SDK and need FSharp.Core 11;
              without this, the implicit FSharp.Core of an older SDK wins and the site fails to start. -->
         <PackageReference Include="FSharp.Core" Version="11.0.101-rc1.26425.128" />
-        <PackageReference Include="Partas.Nacara.Theme" Version="0.2.0" />
+        <PackageReference Include="Partas.Nacara.Theme" Version="0.3.0" />
         <PackageReference Include="Partas.Nacara.Plugins.Directives" Version="0.1.0" />
         <PackageReference Include="Partas.Nacara.Plugins.AgentFriendly" Version="0.1.0" />
         <PackageReference Include="Partas.Nacara.Plugins.OgImage" Version="0.1.0" />
