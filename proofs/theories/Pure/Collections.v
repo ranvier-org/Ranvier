@@ -1751,3 +1751,406 @@ Proof.
   - cbn [fenwick_add_go]. destruct (decide (1 <= i /\ i <= n)%nat) as [[_ Hle]|_]; [|reflexivity].
     destruct (nat_lsb_bounds i Hi). apply IH; lia.
 Qed.
+
+(** ** 7. Incremental `SortView` inverse-order permutation and splice refinement *)
+
+(**md
+Inverse-permutation coherence between `SortView`'s `order` array (output position
+-> placed index) and `orderPos` array (placed index -> output position).
+*)
+Definition inv_order (order order_pos : list nat) : Prop :=
+  length order = length order_pos /\
+  (forall pos p, order !! pos = Some p -> order_pos !! p = Some pos) /\
+  (forall p pos, order_pos !! p = Some pos -> order !! pos = Some p).
+
+Definition inv_order_hole (hole free_p : nat) (order order_pos : list nat) : Prop :=
+  length order = length order_pos /\
+  (hole < length order)%nat /\
+  (free_p < length order_pos)%nat /\
+  (forall pos p, pos <> hole -> order !! pos = Some p -> p <> free_p /\ order_pos !! p = Some pos) /\
+  (forall p pos, p <> free_p -> order_pos !! p = Some pos -> pos <> hole /\ order !! pos = Some p).
+
+Fixpoint shift_right_steps (steps k : nat) (order order_pos : list nat) : list nat * list nat :=
+  match steps with
+  | 0 => (order, order_pos)
+  | S steps' =>
+      match order !! (k - 1)%nat with
+      | Some moved =>
+          shift_right_steps steps' (k - 1)%nat (<[k := moved]> order) (<[moved := k]> order_pos)
+      | None => (order, order_pos)
+      end
+  end.
+
+Definition reinsert_left_pure (old_pos new_pos p_idx : nat) (order order_pos : list nat) : list nat * list nat :=
+  let '(order1, order_pos1) := shift_right_steps (old_pos - new_pos)%nat old_pos order order_pos in
+  (<[new_pos := p_idx]> order1, <[p_idx := new_pos]> order_pos1).
+
+Lemma inv_order_to_hole (order order_pos : list nat) (old_pos p_idx : nat) :
+  inv_order order order_pos ->
+  order !! old_pos = Some p_idx ->
+  inv_order_hole old_pos p_idx order order_pos.
+Proof.
+  intros [Hlen [Hfw Hbw]] Hold.
+  assert (Hold_lt : (old_pos < length order)%nat) by (eapply lookup_lt_Some; exact Hold).
+  assert (Hp_ok : order_pos !! p_idx = Some old_pos) by (apply Hfw; exact Hold).
+  assert (Hp_lt : (p_idx < length order_pos)%nat) by (eapply lookup_lt_Some; exact Hp_ok).
+  split_and!; [exact Hlen | exact Hold_lt | exact Hp_lt | |].
+  - intros pos p Hne Hpos. pose proof (Hfw pos p Hpos) as Hpos'. split; [|exact Hpos'].
+    intro Heq. subst p. rewrite Hp_ok in Hpos'. congruence.
+  - intros p pos Hne Hp. pose proof (Hbw p pos Hp) as Hpos'. split; [|exact Hpos'].
+    intro Heq. subst pos. rewrite Hold in Hpos'. congruence.
+Qed.
+
+Lemma inv_order_hole_step (k free_p moved : nat) (order order_pos : list nat) :
+  (1 <= k)%nat ->
+  inv_order_hole k free_p order order_pos ->
+  order !! (k - 1)%nat = Some moved ->
+  inv_order_hole (k - 1)%nat free_p (<[k := moved]> order) (<[moved := k]> order_pos).
+Proof.
+  intros Hk (Hlen & Hk_lt & Hfree_lt & Hfw & Hbw) Hprev.
+  assert (Hmoved : moved <> free_p /\ order_pos !! moved = Some (k - 1)%nat).
+  { apply Hfw; [lia | exact Hprev]. }
+  destruct Hmoved as [Hmoved_ne Hmoved_pos].
+  assert (Hmoved_lt : (moved < length order_pos)%nat) by (eapply lookup_lt_Some; exact Hmoved_pos).
+  split_and!.
+  - rewrite !length_insert. exact Hlen.
+  - rewrite length_insert. lia.
+  - rewrite length_insert. exact Hfree_lt.
+  - intros pos p Hne Hpos.
+    destruct (decide (pos = k)) as [->|Hnek].
+    + rewrite list_lookup_insert_eq in Hpos; [|exact Hk_lt].
+      injection Hpos as <-. split; [exact Hmoved_ne|].
+      rewrite list_lookup_insert_eq; [reflexivity | exact Hmoved_lt].
+    + rewrite list_lookup_insert_ne in Hpos; [|lia].
+      destruct (Hfw pos p Hnek Hpos) as [Hp_ne Hpos_old].
+      split; [exact Hp_ne|].
+      assert (Hp_ne_moved : p <> moved).
+      { intro Heq. subst p. rewrite Hmoved_pos in Hpos_old. apply Hne. congruence. }
+      rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+  - intros p pos Hne Hp.
+    destruct (decide (p = moved)) as [->|Hnem].
+    + rewrite list_lookup_insert_eq in Hp; [|exact Hmoved_lt].
+      injection Hp as <-. split; [lia|].
+      rewrite list_lookup_insert_eq; [reflexivity | exact Hk_lt].
+    + rewrite list_lookup_insert_ne in Hp; [|lia].
+      destruct (Hbw p pos Hne Hp) as [Hpos_nek Hpos_old].
+      split.
+      * intro Heq. subst pos. rewrite Hprev in Hpos_old. apply Hnem. congruence.
+      * rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+Qed.
+
+Lemma shift_right_steps_hole (steps k free_p : nat) (order order_pos : list nat) :
+  (steps <= k)%nat ->
+  inv_order_hole k free_p order order_pos ->
+  let '(order', order_pos') := shift_right_steps steps k order order_pos in
+  inv_order_hole (k - steps)%nat free_p order' order_pos'.
+Proof.
+  revert k order order_pos.
+  induction steps as [|steps' IH]; intros k order order_pos Hle Hinv.
+  - cbn [shift_right_steps]. replace (k - 0)%nat with k by lia. exact Hinv.
+  - cbn [shift_right_steps].
+    destruct Hinv as (Hlen & Hk_lt & Hfree_lt & Hfw & Hbw).
+    assert (Hkm1_lt : (k - 1 < length order)%nat) by lia.
+    destruct (lookup_lt_is_Some_2 order (k - 1)%nat Hkm1_lt) as [moved Hprev].
+    rewrite Hprev.
+    pose proof (inv_order_hole_step k free_p moved order order_pos ltac:(lia) (conj Hlen (conj Hk_lt (conj Hfree_lt (conj Hfw Hbw)))) Hprev) as Hstep.
+    replace (k - S steps')%nat with ((k - 1) - steps')%nat by lia.
+    apply IH; [lia | exact Hstep].
+Qed.
+
+Lemma inv_order_close_hole (hole free_p : nat) (order order_pos : list nat) :
+  inv_order_hole hole free_p order order_pos ->
+  inv_order (<[hole := free_p]> order) (<[free_p := hole]> order_pos) /\
+  (<[hole := free_p]> order) !! hole = Some free_p.
+Proof.
+  intros (Hlen & Hhole_lt & Hfree_lt & Hfw & Hbw).
+  split.
+  - split_and!.
+    + rewrite !length_insert. exact Hlen.
+    + intros pos p Hpos.
+      destruct (decide (pos = hole)) as [->|Hne].
+      * rewrite list_lookup_insert_eq in Hpos; [|exact Hhole_lt].
+        injection Hpos as <-.
+        rewrite list_lookup_insert_eq; [reflexivity | exact Hfree_lt].
+      * rewrite list_lookup_insert_ne in Hpos; [|lia].
+        destruct (Hfw pos p Hne Hpos) as [Hp_ne Hpos_old].
+        rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+    + intros p pos Hpos.
+      destruct (decide (p = free_p)) as [->|Hne].
+      * rewrite list_lookup_insert_eq in Hpos; [|exact Hfree_lt].
+        injection Hpos as <-.
+        rewrite list_lookup_insert_eq; [reflexivity | exact Hhole_lt].
+      * rewrite list_lookup_insert_ne in Hpos; [|lia].
+        destruct (Hbw p pos Hne Hpos) as [Hpos_ne Hpos_old].
+        rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+  - rewrite list_lookup_insert_eq; [reflexivity | exact Hhole_lt].
+Qed.
+
+(**md
+**Leftward reinsertion preserves inverse-order array coherence (`inv_order`).**
+
+Mirrors `SortView.reinsertPlacedSlot`'s `newPos < oldPos` loop: shifting
+`order[old_pos - 1 .. new_pos]` right by one slot while updating `orderPos`
+and placing `p_idx` at `new_pos` preserves the bijection `order <-> orderPos`
+and installs `order' !! new_pos = Some p_idx`.
+
+- [order:] output-position to placed-index permutation before reinsertion.
+- [order_pos:] inverse placed-index to output-position map before reinsertion.
+- [old_pos:] prior output position holding `p_idx`.
+- [new_pos:] target output position (`new_pos <= old_pos`).
+- [p_idx:] placed-slot index moved from `old_pos` to `new_pos`.
+*)
+Theorem inv_order_reinsert_coherent
+  (order order_pos : list nat) (old_pos new_pos p_idx : nat) :
+  inv_order order order_pos ->
+  (new_pos <= old_pos)%nat ->
+  order !! old_pos = Some p_idx ->
+  let '(order', order_pos') := reinsert_left_pure old_pos new_pos p_idx order order_pos in
+  inv_order order' order_pos' /\ order' !! new_pos = Some p_idx.
+Proof.
+  intros Hinv Hle Hold.
+  unfold reinsert_left_pure.
+  pose proof (shift_right_steps_hole (old_pos - new_pos)%nat old_pos p_idx order order_pos ltac:(lia) (inv_order_to_hole order order_pos old_pos p_idx Hinv Hold)) as Hshift.
+  destruct (shift_right_steps (old_pos - new_pos)%nat old_pos order order_pos) as [order1 order_pos1].
+  replace (old_pos - (old_pos - new_pos))%nat with new_pos in Hshift by lia.
+  exact (inv_order_close_hole new_pos p_idx order1 order_pos1 Hshift).
+Qed.
+
+Definition rank_up_le (a b : nat * Z * nat) : Prop :=
+  (a.1.2 < b.1.2)%Z \/ (a.1.2 = b.1.2 /\ (a.2 <= b.2)%nat).
+
+Definition rank_up_le_b (a b : nat * Z * nat) : bool :=
+  bool_decide ((a.1.2 < b.1.2)%Z \/ (a.1.2 = b.1.2 /\ (a.2 <= b.2)%nat)).
+
+Lemma rank_up_le_b_spec (a b : nat * Z * nat) :
+  if rank_up_le_b a b then rank_up_le a b else rank_up_le b a.
+Proof.
+  unfold rank_up_le_b, rank_up_le.
+  destruct (bool_decide_reflect ((a.1.2 < b.1.2)%Z \/ (a.1.2 = b.1.2 /\ (a.2 <= b.2)%nat))); lia.
+Qed.
+
+Lemma rank_up_le_refl (a : nat * Z * nat) : rank_up_le a a.
+Proof. unfold rank_up_le. lia. Qed.
+
+Lemma rank_up_le_trans (a b c : nat * Z * nat) :
+  rank_up_le a b -> rank_up_le b c -> rank_up_le a c.
+Proof. unfold rank_up_le. lia. Qed.
+
+Fixpoint sorted_insert (x : nat * Z * nat) (l : list (nat * Z * nat)) : list (nat * Z * nat) :=
+  match l with
+  | [] => [x]
+  | y :: ys => if rank_up_le_b x y then x :: y :: ys else y :: sorted_insert x ys
+  end.
+
+Definition full_insertion_sort (xs : list (nat * Z * nat)) : list (nat * Z * nat) :=
+  foldr sorted_insert [] xs.
+
+Fixpoint sorted_remove_key (k : nat) (l : list (nat * Z * nat)) : list (nat * Z * nat) :=
+  match l with
+  | [] => []
+  | y :: ys =>
+      if decide (y.1.1 <> k) then y :: sorted_remove_key k ys
+      else sorted_remove_key k ys
+  end.
+
+Lemma sorted_insert_perm (x : nat * Z * nat) (l : list (nat * Z * nat)) :
+  sorted_insert x l ≡ₚ x :: l.
+Proof.
+  induction l as [|y ys IH]; cbn [sorted_insert].
+  - reflexivity.
+  - destruct (rank_up_le_b x y).
+    + reflexivity.
+    + rewrite IH. apply perm_swap.
+Qed.
+
+Lemma full_insertion_sort_perm (xs : list (nat * Z * nat)) :
+  full_insertion_sort xs ≡ₚ xs.
+Proof.
+  induction xs as [|x xs IH]; cbn [full_insertion_sort foldr].
+  - reflexivity.
+  - rewrite sorted_insert_perm, IH. reflexivity.
+Qed.
+
+Lemma sorted_insert_sorts (x : nat * Z * nat) (l : list (nat * Z * nat)) :
+  StronglySorted rank_up_le l ->
+  StronglySorted rank_up_le (sorted_insert x l).
+Proof.
+  induction l as [|y ys IH]; intro Hsort; cbn [sorted_insert].
+  - constructor; [constructor | constructor].
+  - inversion Hsort as [|? ? Hsys Hfy]; subst.
+    pose proof (rank_up_le_b_spec x y) as Hcmp.
+    destruct (rank_up_le_b x y).
+    + constructor; [exact Hsort|].
+      constructor; [exact Hcmp|].
+      eapply Forall_impl; [exact Hfy|].
+      intros z Hyz. eapply rank_up_le_trans; [exact Hcmp | exact Hyz].
+    + constructor; [apply IH; exact Hsys|].
+      rewrite Forall_forall. intros z Hz.
+      assert (Hz_in : z ∈ x :: ys).
+      { rewrite <- (sorted_insert_perm x ys). exact Hz. }
+      apply elem_of_cons in Hz_in as [-> | Hys].
+      * exact Hcmp.
+      * rewrite Forall_forall in Hfy. apply Hfy; exact Hys.
+Qed.
+
+Lemma full_insertion_sort_sorts (xs : list (nat * Z * nat)) :
+  StronglySorted rank_up_le (full_insertion_sort xs).
+Proof.
+  induction xs as [|x xs IH]; cbn [full_insertion_sort foldr].
+  - constructor.
+  - apply sorted_insert_sorts; exact IH.
+Qed.
+
+Lemma sorted_remove_key_eq_filter (k : nat) (l : list (nat * Z * nat)) :
+  sorted_remove_key k l = filter (fun y : nat * Z * nat => y.1.1 <> k) l.
+Proof.
+  induction l as [|y ys IH]; cbn [sorted_remove_key].
+  - rewrite filter_nil. reflexivity.
+  - destruct (decide (y.1.1 <> k)) as [Hy|Hy].
+    + rewrite filter_cons_True by exact Hy. rewrite IH. reflexivity.
+    + rewrite filter_cons_False by exact Hy. exact IH.
+Qed.
+
+Lemma filter_elem_of {A : Type} (P : A -> Prop) `{!forall x, Decision (P x)}
+  (l : list A) (z : A) :
+  z ∈ filter P l -> P z /\ z ∈ l.
+Proof.
+  induction l as [|y ys IH]; intro Hz.
+  - rewrite filter_nil in Hz. inversion Hz.
+  - destruct (decide (P y)) as [HPy|HPy].
+    + rewrite filter_cons_True in Hz by exact HPy.
+      apply elem_of_cons in Hz as [-> | Hz].
+      * split; [exact HPy | left].
+      * destruct (IH Hz) as [HPz Hz']. split; [exact HPz | right; exact Hz'].
+    + rewrite filter_cons_False in Hz by exact HPy.
+      destruct (IH Hz) as [HPz Hz']. split; [exact HPz | right; exact Hz'].
+Qed.
+
+Lemma strongly_sorted_filter (P : nat * Z * nat -> Prop) `{!forall y, Decision (P y)}
+  (l : list (nat * Z * nat)) :
+  StronglySorted rank_up_le l ->
+  StronglySorted rank_up_le (filter P l).
+Proof.
+  induction l as [|y ys IH]; intro Hsort.
+  - rewrite filter_nil. constructor.
+  - inversion Hsort as [|? ? Hsys Hfy]; subst.
+    destruct (decide (P y)) as [HPy|HPy].
+    + rewrite filter_cons_True by exact HPy.
+      constructor; [apply IH; exact Hsys|].
+      rewrite Forall_forall in Hfy |- *.
+      intros z Hz. apply filter_elem_of in Hz as [_ Hz].
+      apply Hfy; exact Hz.
+    + rewrite filter_cons_False by exact HPy.
+      apply IH; exact Hsys.
+Qed.
+
+Lemma list_filter_perm {A : Type} (P : A -> Prop) `{!forall x, Decision (P x)}
+  (l1 l2 : list A) :
+  l1 ≡ₚ l2 -> filter P l1 ≡ₚ filter P l2.
+Proof.
+  intro Hp. induction Hp as [|x l1 l2 Hsub IH|x y l|l1 l2 l3 Hsub1 IH1 Hsub2 IH2].
+  - rewrite filter_nil. reflexivity.
+  - destruct (decide (P x)) as [HPx|HPx].
+    + rewrite !filter_cons_True by exact HPx. constructor. exact IH.
+    + rewrite !filter_cons_False by exact HPx. exact IH.
+  - destruct (decide (P x)) as [HPx|HPx], (decide (P y)) as [HPy|HPy];
+      repeat first [ rewrite filter_cons_True by done | rewrite filter_cons_False by done ];
+      try apply perm_swap; reflexivity.
+  - etrans; [exact IH1 | exact IH2].
+Qed.
+
+Lemma list_fmap_perm {A B : Type} (f : A -> B) (l1 l2 : list A) :
+  l1 ≡ₚ l2 -> (f <$> l1) ≡ₚ (f <$> l2).
+Proof.
+  intro Hp. induction Hp as [|x l1 l2 Hsub IH|x y l|l1 l2 l3 Hsub1 IH1 Hsub2 IH2];
+    cbn [fmap list_fmap].
+  - reflexivity.
+  - constructor. exact IH.
+  - apply perm_swap.
+  - etrans; [exact IH1 | exact IH2].
+Qed.
+
+Lemma nodup_snd_filter (P : nat * Z * nat -> Prop) `{!forall y, Decision (P y)}
+  (xs : list (nat * Z * nat)) :
+  NoDup (snd <$> xs) ->
+  NoDup (snd <$> filter P xs).
+Proof.
+  induction xs as [|y ys IH]; intro Hnd.
+  - rewrite filter_nil. constructor.
+  - cbn [fmap list_fmap] in Hnd. inversion Hnd as [|? ? Hnot Hnd']; subst.
+    destruct (decide (P y)) as [HPy|HPy].
+    + rewrite filter_cons_True by exact HPy.
+      cbn [fmap list_fmap]. constructor.
+      * intro Hin. apply Hnot.
+        apply list_elem_of_fmap in Hin as [z [Heq Hz]].
+        apply filter_elem_of in Hz as [_ Hz].
+        subst. apply list_elem_of_fmap. eauto.
+      * apply IH; exact Hnd'.
+    + rewrite filter_cons_False by exact HPy.
+      apply IH; exact Hnd'.
+Qed.
+
+Lemma strongly_sorted_nodup_unique (l1 l2 : list (nat * Z * nat)) :
+  StronglySorted rank_up_le l1 ->
+  StronglySorted rank_up_le l2 ->
+  l1 ≡ₚ l2 ->
+  NoDup (snd <$> l1) ->
+  l1 = l2.
+Proof.
+  revert l2. induction l1 as [|a l1' IH]; intros l2 Hs1 Hs2 Hperm Hnd1.
+  - symmetry. apply Permutation_nil. exact Hperm.
+  - destruct l2 as [|b l2']; [exfalso; eapply Permutation_nil_cons; symmetry; exact Hperm|].
+    inversion Hs1 as [|? ? Hs1' Hfa]; subst.
+    inversion Hs2 as [|? ? Hs2' Hfb]; subst.
+    cbn [fmap list_fmap] in Hnd1. inversion Hnd1 as [|? ? Ha_not Hnd1']; subst.
+    assert (Hb_in : b ∈ a :: l1') by (rewrite Hperm; constructor).
+    assert (Ha_in : a ∈ b :: l2') by (rewrite <- Hperm; constructor).
+    assert (Hab : rank_up_le a b).
+    { apply elem_of_cons in Hb_in as [-> | Hb_in].
+      - apply rank_up_le_refl.
+      - rewrite Forall_forall in Hfa. apply Hfa; exact Hb_in. }
+    assert (Hba : rank_up_le b a).
+    { apply elem_of_cons in Ha_in as [-> | Ha_in].
+      - apply rank_up_le_refl.
+      - rewrite Forall_forall in Hfb. apply Hfb; exact Ha_in. }
+    assert (Heq_rk : a.1.2 = b.1.2 /\ a.2 = b.2) by (unfold rank_up_le in Hab, Hba; lia).
+    destruct Heq_rk as [_ Heq_snd].
+    apply elem_of_cons in Hb_in as [Heq | Hb_l1'].
+    + subst b. f_equal. apply IH; [exact Hs1' | exact Hs2' | | exact Hnd1'].
+      eapply Permutation_cons_inv; exact Hperm.
+    + exfalso. apply Ha_not. rewrite Heq_snd.
+      apply list_elem_of_fmap. exists b. split; [reflexivity | exact Hb_l1'].
+Qed.
+
+(**md
+**Incremental single-slot insertion and key removal refine full upstream-tie-broken sorting.**
+
+Under distinct upstream indices (`NoDup (snd <$> ...)`), `sorted_insert` on
+the already-sorted list equals `full_insertion_sort` of `(x :: xs)`, and
+`sorted_remove_key k` equals `full_insertion_sort` over the filtered list
+with key `k` removed.
+
+- [x:] newly placed or reinserted `(key, rank, up_idx)` triple.
+- [k:] removed upstream key.
+- [xs:] sorted upstream triple collection prior to the incremental edit.
+*)
+Theorem sortview_insert_remove_refines_sort
+  (x : nat * Z * nat) (k : nat) (xs : list (nat * Z * nat)) :
+  (NoDup (snd <$> (x :: xs)) ->
+   sorted_insert x (full_insertion_sort xs) = full_insertion_sort (x :: xs)) /\
+  (NoDup (snd <$> xs) ->
+   sorted_remove_key k (full_insertion_sort xs) =
+     full_insertion_sort (filter (fun y : nat * Z * nat => y.1.1 <> k) xs)).
+Proof.
+  split.
+  - intros _. reflexivity.
+  - intro Hnd. rewrite sorted_remove_key_eq_filter.
+    set (P := fun y : nat * Z * nat => y.1.1 <> k).
+    apply strongly_sorted_nodup_unique.
+    + apply strongly_sorted_filter. apply full_insertion_sort_sorts.
+    + apply full_insertion_sort_sorts.
+    + rewrite (list_filter_perm P _ _ (full_insertion_sort_perm xs)).
+      symmetry. apply full_insertion_sort_perm.
+    + rewrite (list_fmap_perm snd _ _ (list_filter_perm P _ _ (full_insertion_sort_perm xs))).
+      exact (nodup_snd_filter P xs Hnd).
+Qed.

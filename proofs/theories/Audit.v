@@ -463,3 +463,6 @@ Print Assumptions filter_incremental_step_refines_scan.
 Print Assumptions filter_hidden_transition_cancels_or_emits.
 Print Assumptions Ranvier.Heap.Collections.fenwick_sum_spec.
 Print Assumptions Ranvier.Heap.Collections.fenwick_add_spec.
+Print Assumptions inv_order_reinsert_coherent.
+Print Assumptions sortview_insert_remove_refines_sort.
+Print Assumptions Ranvier.Heap.Collections.inv_order_shift_spec.

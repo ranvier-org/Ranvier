@@ -1641,6 +1641,315 @@ let sortByTests =
                 Expect.equal calls.Value 0 "no sort-key runs after disposal"
                 Expect.isEmpty view.Keys "a disposed view is empty"
             }
+
+            test "incremental sortBy and sortByDescending resolve Check cutoff without running a pass" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..20 -> i, i * 10 ])
+                let gateRuns = ref 0
+
+                let asc =
+                    rows source
+                    |> Projection.sortBy (fun n ->
+                        gateRuns.Value <- gateRuns.Value + 1
+                        n / 100)
+
+                let desc =
+                    rows source
+                    |> Projection.sortByDescending (fun n -> n / 100)
+
+                let ascEffects = ref 0
+                let descEffects = ref 0
+
+                createEffect (fun () ->
+                    asc.Keys |> ignore
+                    ascEffects.Value <- ascEffects.Value + 1)
+
+                createEffect (fun () ->
+                    desc.Keys |> ignore
+                    descEffects.Value <- descEffects.Value + 1)
+
+                let initialAscKeys = asc.Keys
+                let initialDescKeys = desc.Keys
+                let ascPasses = asc.Runs
+                let descPasses = desc.Runs
+                gateRuns.Value <- 0
+
+                source.Value <- setN 3 35 source.Value
+
+                Expect.equal gateRuns.Value 1 "only the edited row's sort-key memo ran"
+                Expect.equal asc.Runs ascPasses "sortBy resolved Check without running a pass"
+                Expect.equal desc.Runs descPasses "sortByDescending resolved Check without running a pass"
+                Expect.equal ascEffects.Value 1 "sortBy Keys observer stayed asleep"
+                Expect.equal descEffects.Value 1 "sortByDescending Keys observer stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (asc.Keys, initialAscKeys)) "sortBy kept same Keys array reference"
+                Expect.isTrue (obj.ReferenceEquals (desc.Keys, initialDescKeys)) "sortByDescending kept same Keys array reference"
+            }
+
+            test
+                "incremental sortBy and sortByDescending splice sparse single and multi-row edits on N=1000 matching List.sortWith with IsReset = false" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                let pairs = [ for i in 1..1000 -> i, (i * 7919) % 251 ]
+
+                col.Edit (fun edit ->
+                    for id, n in pairs do
+                        edit.AddOrUpdate { Id = id; N = n })
+
+                let current = Collections.Generic.Dictionary<int, int>()
+
+                for id, n in pairs do
+                    current[id] <- n
+
+                let orderedIds = ResizeArray<int>(pairs |> List.map fst)
+
+                let expected (desc: bool) =
+                    orderedIds
+                    |> Seq.map (fun id -> id, current[id])
+                    |> Seq.toList
+                    |> (if desc then List.sortByDescending snd else List.sortBy snd)
+                    |> List.map fst
+
+                let asc = col.Rows |> Projection.sortBy (fun x -> x.N)
+
+                let desc =
+                    col.Rows
+                    |> Projection.sortByDescending (fun x -> x.N)
+
+                let ascCalls = ref 0
+                let descCalls = ref 0
+
+                createEffect (fun () ->
+                    asc.Keys |> ignore
+                    ascCalls.Value <- ascCalls.Value + 1)
+
+                createEffect (fun () ->
+                    desc.Keys |> ignore
+                    descCalls.Value <- descCalls.Value + 1)
+
+                let ascReader = asc.NewKeyReader ()
+                let descReader = desc.NewKeyReader ()
+                ascReader.Read () |> ignore
+                descReader.Read () |> ignore
+
+                // Single-row edit
+                col.AddOrUpdate { Id = 17; N = 500 }
+                current[17] <- 500
+                let d1Asc = ascReader.Read ()
+                let d1Desc = descReader.Read ()
+                Expect.isFalse d1Asc.IsReset "single edit sortBy is incremental"
+                Expect.isFalse d1Desc.IsReset "single edit sortByDescending is incremental"
+                Expect.sequenceEqual asc.Keys (expected false) "single edit sortBy matches List.sortWith"
+                Expect.sequenceEqual desc.Keys (expected true) "single edit sortByDescending matches List.sortWith"
+
+                // Multi-row sparse batch (Delta = 5)
+                col.Edit (fun edit ->
+                    for k, v in [ 5, -10; 120, 999; 450, 0; 777, 125; 999, 125 ] do
+                        edit.AddOrUpdate { Id = k; N = v }
+                        current[k] <- v)
+
+                let d2Asc = ascReader.Read ()
+                let d2Desc = descReader.Read ()
+                Expect.isFalse d2Asc.IsReset "multi-row sparse sortBy is incremental"
+                Expect.isFalse d2Desc.IsReset "multi-row sparse sortByDescending is incremental"
+                Expect.sequenceEqual asc.Keys (expected false) "multi-row sparse sortBy matches List.sortWith"
+                Expect.sequenceEqual desc.Keys (expected true) "multi-row sparse sortByDescending matches List.sortWith"
+            }
+
+            test "incremental sortBy preserves upstream tie-breaking across equal-rank collisions, swap-removals, and tail appends" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                let initial = [ for i in 1..40 -> i, (i % 5) ]
+
+                col.Edit (fun edit ->
+                    for id, n in initial do
+                        edit.AddOrUpdate { Id = id; N = n })
+
+                let listOrder = ResizeArray<int>(initial |> List.map fst)
+                let ranks = Collections.Generic.Dictionary<int, int>()
+
+                for id, n in initial do
+                    ranks[id] <- n
+
+                let expected () =
+                    [ for id in listOrder -> id, ranks[id] ]
+                    |> List.sortBy snd
+                    |> List.map fst
+
+                let view = col.Rows |> Projection.sortBy (fun x -> x.N)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+
+                // Equal-rank collision edits
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 2; N = 2 }
+                    ranks[2] <- 2
+                    edit.AddOrUpdate { Id = 37; N = 2 }
+                    ranks[37] <- 2)
+
+                let dCol = kr.Read ()
+                Expect.isFalse dCol.IsReset "collision update is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tie-break preserves upstream order after collisions"
+
+                // Remove middle key and test swap-removal in placedSlots
+                col.Edit (fun edit ->
+                    edit.Remove 12 |> ignore
+                    edit.Remove 13 |> ignore)
+
+                listOrder.Remove 12 |> ignore
+                listOrder.Remove 13 |> ignore
+                ranks.Remove 12 |> ignore
+                ranks.Remove 13 |> ignore
+                let dRem = kr.Read ()
+                Expect.isFalse dRem.IsReset "middle removal is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tie-break preserves upstream order after middle removals"
+
+                // Tail append with ties matching earlier elements
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 41; N = 2 }
+                    listOrder.Add 41
+                    ranks[41] <- 2
+                    edit.AddOrUpdate { Id = 42; N = 0 }
+                    listOrder.Add 42
+                    ranks[42] <- 0)
+
+                let dTail = kr.Read ()
+                Expect.isFalse dTail.IsReset "tail append is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tie-break places tail appends after earlier equal ranks"
+
+                // Another collision edit after swap-removals and tail append
+                col.AddOrUpdate { Id = 42; N = 2 }
+                ranks[42] <- 2
+                Expect.sequenceEqual view.Keys (expected ()) "post-tail reinsert preserves exact tie order"
+            }
+
+            test "incremental sortBy and sortByDescending handle NaN transitions (NaN <-> finite and NaN -> NaN no-op)" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let ranks64 = [| 2.0; nan; -1.0; nan; 0.0 |]
+                let ranks32 = [| 2.0f; nanf; -1.0f; nanf; 0.0f |]
+                let s64 = createSignal [ for i in 0 .. ranks64.Length - 1 -> i, ranks64[i] ]
+                let s32 = createSignal [ for i in 0 .. ranks32.Length - 1 -> i, ranks32[i] ]
+                let up64 = createProjection fst snd (fun () -> s64.Value)
+                let up32 = createProjection fst snd (fun () -> s32.Value)
+
+                let v64Asc = up64 |> Projection.sortBy id
+                let v64Desc = up64 |> Projection.sortByDescending id
+                let v32Asc = up32 |> Projection.sortBy id
+
+                let ascRuns = ref 0
+
+                createEffect (fun () ->
+                    v64Asc.Keys |> ignore
+                    ascRuns.Value <- ascRuns.Value + 1)
+
+                let kBefore = v64Asc.Keys
+                let passesBefore = v64Asc.Runs
+
+                // NaN -> NaN edit cuts off (compareRanks = 0)
+                s64.Value <- [ for i in 0 .. ranks64.Length - 1 -> i, (if i = 1 then -nan else ranks64[i]) ]
+                Expect.isTrue (obj.ReferenceEquals (v64Asc.Keys, kBefore)) "NaN -> NaN keeps exact Keys array"
+                Expect.equal ascRuns.Value 1 "NaN -> NaN does not wake Keys reader"
+                ignore passesBefore
+
+                let sortNan64 (desc: bool) (xs: (int * float) list) =
+                    xs
+                    |> List.mapi (fun i (k, v) -> i, k, v)
+                    |> List.sortWith (fun (i1, _, v1) (i2, _, v2) ->
+                        match Double.IsNaN v1, Double.IsNaN v2 with
+                        | true, true -> compare i1 i2
+                        | true, false -> 1
+                        | false, true -> -1
+                        | false, false ->
+                            let c = if desc then compare v2 v1 else compare v1 v2
+                            if c <> 0 then c else compare i1 i2)
+                    |> List.map (fun (_, k, _) -> k)
+
+                let sortNan32 (xs: (int * float32) list) =
+                    xs
+                    |> List.mapi (fun i (k, v) -> i, k, v)
+                    |> List.sortWith (fun (i1, _, v1) (i2, _, v2) ->
+                        match Single.IsNaN v1, Single.IsNaN v2 with
+                        | true, true -> compare i1 i2
+                        | true, false -> 1
+                        | false, true -> -1
+                        | false, false ->
+                            let c = compare v1 v2
+                            if c <> 0 then c else compare i1 i2)
+                    |> List.map (fun (_, k, _) -> k)
+
+                // finite -> NaN -> finite in asc/desc
+                let next1 = [| nan; nan; -1.0; 10.0; 0.0 |]
+                s64.Value <- [ for i in 0 .. next1.Length - 1 -> i, next1[i] ]
+
+                Expect.sequenceEqual v64Asc.Keys (sortNan64 false [ for i in 0 .. next1.Length - 1 -> i, next1[i] ]) "float64 NaN <-> finite asc"
+
+                Expect.sequenceEqual v64Desc.Keys (sortNan64 true [ for i in 0 .. next1.Length - 1 -> i, next1[i] ]) "float64 NaN <-> finite desc"
+
+                let next32 = [| nanf; 3.0f; -1.0f; nanf; 0.0f |]
+                s32.Value <- [ for i in 0 .. next32.Length - 1 -> i, next32[i] ]
+
+                Expect.sequenceEqual v32Asc.Keys (sortNan32 [ for i in 0 .. next32.Length - 1 -> i, next32[i] ]) "float32 NaN <-> finite asc"
+            }
+
+            test "incremental sortBy handles Pending and Failed transitions in sparse batches" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                let flights =
+                    dict
+                        [
+                            for i in 1..200 do
+                                let src = createAsyncSource<int>()
+
+                                if i <> 10 then
+                                    src.Settle (200 - i)
+
+                                yield i, src
+                        ]
+
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..200 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let failKey15 = createSignal false
+
+                let view =
+                    col.Rows
+                    |> Projection.sortBy (fun x ->
+                        if x.Id = 15 && failKey15.Value then
+                            invalidOp "rank boom 15"
+                        elif x.Id = 10 then
+                            flights[10].Value
+                        else
+                            x.N * -1)
+
+                Expect.sequenceEqual view.PendingKeys [ 10 ] "initial unsettled key 10 held out"
+                Expect.isFalse (Array.contains 10 view.Keys) "unsettled key 10 excluded from Keys"
+                Expect.equal view.Keys.Length 199 "199 settled keys sorted"
+
+                // Settle key 10 to rank -1000 (first!)
+                flights[10].Settle -1000
+                Expect.isEmpty view.PendingKeys "key 10 settled"
+                Expect.equal view.Keys[0] 10 "key 10 promoted to first position"
+
+                // Sparse transition to Failed and recovery
+                failKey15.Value <- true
+                Expect.isFalse (Array.contains 15 view.Keys) "failed key 15 removed from Keys"
+                Expect.equal view.Keys.Length 199 "199 remaining included keys"
+                Expect.throwsT<InvalidOperationException> (fun () -> view.Get 15 |> ignore) "failed key row raises"
+
+                failKey15.Value <- false
+                Expect.isTrue (Array.contains 15 view.Keys) "recovered key 15 back in Keys"
+                Expect.equal view.Keys.Length 200 "all 200 keys included"
+                Expect.equal (view.Get 15).N 15 "recovered row readable"
+            }
         ]
 
 type private Ranked = { Name: string; Rank: int }
