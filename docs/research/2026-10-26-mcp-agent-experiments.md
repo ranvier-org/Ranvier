@@ -4,7 +4,7 @@ order: 14
 ---
 
 :::info
-Research record — the measurements behind [Inspecting a running graph over MCP](mcp.md). The figures come from
+Research record — the measurements behind [Inspecting a running graph over MCP](../content/guide/mcp.md). The figures come from
 `claude -p` sessions with Opus on two sample tasks; the full notes are in
 [docs/.ai/research](https://github.com/ranvier-org/Ranvier/tree/master/docs/.ai/research).
 :::
@@ -83,7 +83,7 @@ measures the method, not the transport alone.
 ## Recommendations
 
 1. **Give agents the tools through the shell.** Describe `tools/mcp-call.fsx` and the server's instructions in the
-   project's `CLAUDE.md` or `AGENTS.md`; see [Calling the tools from the shell](mcp.md). Keep the MCP server for
+   project's `CLAUDE.md` or `AGENTS.md`; see [Calling the tools from the shell](../content/guide/mcp.md). Keep the MCP server for
    clients without a shell.
 2. **Keep `AlwaysLoad` off.** The tool search it removes costs less than the cold cache it causes.
 3. **Point the tools at defects the source hides.** On a task where reading two files reveals the cause, the tools add

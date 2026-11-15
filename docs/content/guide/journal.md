@@ -4,8 +4,7 @@ order: 8
 ---
 
 :::info
-Preview — Ranvier is pre-release; its APIs may change. The input journal is a research feature: its entry
-format and replay rules may change before the first release.
+The input journal is a research feature: its entry format and replay rules may change before the first release.
 :::
 
 Record external signal writes, async-source outcomes and MVU messages with an input journal.

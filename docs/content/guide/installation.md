@@ -3,11 +3,7 @@ title: Installation
 order: 2
 ---
 
-:::info
-Preview — Ranvier is pre-release; its APIs may change.
-:::
-
-Choose the package for your language, then continue with [Getting started](getting-started.md).
+Choose the package for your language or host, then continue with [Getting started](getting-started.md).
 
 ## Supported targets
 
@@ -18,21 +14,24 @@ Choose the package for your language, then continue with [Getting started](getti
 | `netstandard2.1` | Yes | No |
 :::
 
-Applications on .NET 8 and .NET 9 use the `netstandard2.1` build. That build omits
+Applications on .NET 8 and .NET 9 use the `netstandard2.1` build, which omits
 `TimedClock.ofTimeProvider` and carries no trimming or Native AOT annotations.
-
-For runtime-specific suspension costs, see the
-[pending-throw measurements](../concepts/suspension.md#what-a-throw-costs).
 
 ## From NuGet
 
-Install `Ranvier` for F#, `Ranvier.CSharp` for C#, or `Ranvier.Elmish` for the MVU bridge.
+The guide describes the current source. Packable libraries here carry `0.2.1` (`Ranvier`,
+`Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`, `Ranvier.Wire`) or `0.1.0` (`Ranvier.Dom`,
+`Fable.Ranvier.Dom`), each with a `.Traced` variant (`Ranvier.Mcp` is source/tooling only).
 
-The guide describes the current source. The current versions are
-[`Ranvier` 0.2.1](https://www.nuget.org/packages/Ranvier/0.2.1),
-[`Ranvier.CSharp` 0.2.1](https://www.nuget.org/packages/Ranvier.CSharp/0.2.1),
-[`Ranvier.Elmish` 0.2.1](https://www.nuget.org/packages/Ranvier.Elmish/0.2.1), and
-[`Ranvier.Query` 0.2.1](https://www.nuget.org/packages/Ranvier.Query/0.2.1).
+| Package | Version | Purpose | Guide |
+| --- | --- | --- | --- |
+| `Ranvier` | `0.2.1` | Core reactive graph, signals, memos, async, collections | [Getting started](getting-started.md) |
+| `Ranvier.CSharp` | `0.2.1` | C# delegates, LINQ collections, XAML bindings, commands | [C#](csharp.md) |
+| `Ranvier.Elmish` | `0.2.1` | MVU bridge (`Mvu`) | [Migrating from Elmish](elmish.md) |
+| `Ranvier.Query` | `0.2.1` | Typed reactive query cache, leases, mutations | [Queries](queries.md) |
+| `Ranvier.Wire` | `0.2.1` | Cross-target JSON wire codecs (.NET + Fable) | — |
+| `Ranvier.Dom` | `0.1.0` | Shared WebKit-derived DOM contracts (.NET host) | — |
+| `Fable.Ranvier.Dom` | `0.1.0` | Browser DOM contracts sharing `Ranvier.Dom` sources | [Fable](../fable/index.md) |
 
 ::::::tabs
 :::::tab Core
@@ -129,32 +128,25 @@ The view packages, `Ranvier.View`, `Ranvier.View.Dom` and `Ranvier.View.Anime`, 
 
 ## Fable
 
-Package builds include Fable sources and a standalone source project for `Ranvier`,
-`Ranvier.Elmish`, `Ranvier.CSharp`, `Ranvier.Query` and the four [view packages](#views), including
-their `.Traced` variants.
-F# projects compiled with Fable use normal NuGet package references. CI compiles and runs
-consumers restored from locally packed packages, so this path does not depend on repository
-build imports. See [Fable](../fable/index.md) for package details, available APIs and JavaScript
-timing and equality differences. The browser renderer is `Ranvier.View.Dom`.
-
-The versions listed above and the view packages include standalone Fable project files.
-See [package sources and CI](../fable/index.md#package-sources-and-ci).
+`Ranvier`, `Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`, `Ranvier.Wire`, `Fable.Ranvier.Dom`,
+the view packages, and their `.Traced` variants include Fable sources and a standalone
+`fable/<package>.fsproj`. Reference the NuGet package normally from a Fable project compiled with
+`dotnet fickl`. See [Fable (JavaScript)](../fable/index.md#package-sources-and-ci) for target
+differences and verification.
 
 ## Native AOT and trimming
 
-The `Ranvier`, `Ranvier.CSharp`, `Ranvier.Elmish` and `Ranvier.Query` packages, including their
-`.Traced` variants, support trimming and Native AOT. CI publishes traced and untraced smoke
-applications on .NET 10 for `linux-x64` and treats trim/AOT warnings as errors.
-That validates this configuration; test your own deployment target and dependencies. Publish with
-`<PublishAot>true</PublishAot>`. The view packages carry no trimming or Native AOT annotations.
+All packable runtime libraries (`Ranvier`, `Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`,
+`Ranvier.Wire`, and `Ranvier.Dom`, plus their `.Traced` variants) support trimming and Native AOT on
+`net10.0`. CI publishes traced and untraced smoke applications on .NET 10 for `linux-x64` and treats
+trim and AOT warnings as errors. Publish with `<PublishAot>true</PublishAot>`. The view packages
+carry no trimming or Native AOT annotations.
 
-Trace types print their fields with explicit formatters. On .NET, payload previews use the
-application value's `ToString` implementation, which must also support Native AOT. Arrays and
-collections preview up to 64 elements and four levels of nesting; previews fit on one line of
-at most 60 characters. An application's records and unions can provide their own `ToString`
-overrides to keep useful diagnostic text after trimming.
+Trace payload previews rely on each application type's `ToString` implementation (arrays/collections
+preview up to 64 elements, 4 levels deep, within 60 characters per line); override `ToString` on
+custom records or unions to preserve diagnostic text when trimmed.
 
 ## Traced packages
 
-Runtime libraries have a `.Traced` variant for diagnostics; `Ranvier.Analyzers` does not. See [Tracing](tracing.md#from-nuget) for
-switching between traced and untraced builds.
+Runtime libraries have a `.Traced` variant (`<PackageId>.Traced`); `Ranvier.Analyzers` does not. See
+[Tracing](tracing.md#from-nuget) for switching between traced and untraced builds.

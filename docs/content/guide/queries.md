@@ -17,8 +17,9 @@ let loading = page.EnsureAsync()
 ```
 
 Loaders: `key -> CancellationToken -> Task<record>`. Define families once per client;
-acquire once per page. Only acquired keys load. Same key, same accepted record/request.
-Reads never start IO.
+acquire once per page (`Acquire` and `AcquireOwned` call `Ensure()` synchronously to start
+missing or stale loads; call `EnsureAsync()` when you need a `Task<T>` to await publication).
+Only acquired keys load. Same key, same accepted record/request. Reads never start IO.
 
 ## Loading without losing cached data
 
@@ -151,15 +152,15 @@ pages.InvalidateWhere(fun key -> key.SectionId = saved.SectionId)
 
 - `Applied saved`: accept the saved draft.
 - `RequestFailed error`: show the error; no reconciliation or automatic retry.
-- `ReconciliationFailed(saved, error)`: retain the receipt and refresh stale queries.
-  **The server saved it—do not repeat the write to repair the cache.**
+- `ReconciliationFailed(saved, error)`: `Mutate` invalidates every cached query; retain
+  the receipt and refresh active queries. **The server saved it—do not repeat the write to repair the cache.**
 - Client disposal cancels the `Mutate` task: catch `OperationCanceledException`;
   the server may already have written. Old replies cannot update a new session.
 
 Writes use one client-wide FIFO. Commit validates before publishing in one batch;
 repeated edits compose in order ([`query_commit_atomic_staging`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Extensions.html#query_commit_atomic_staging), [`query_commit_staging_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Extensions.html#query_commit_staging_spec)). Updaters must return immutable values and must not
-reenter the client. Call operations on the graph thread ([`guarded_enter_iff_owner`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#guarded_enter_iff_owner)); completions use
-`Graph.Dispatch`. Await without blocking the dispatcher with `.Result`.
+reenter the client. Call operations on the graph thread ([`guarded_enter_iff_owner`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#guarded_enter_iff_owner)); async continuations
+post back through the graph's dispatcher. Await without blocking the dispatcher with `.Result`.
 
 ## View, ownership, and cost
 

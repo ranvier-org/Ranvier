@@ -5,7 +5,7 @@ description: Live, animated maps of the graph behind a docs example.
 ---
 
 :::info
-Preview — signal maps follow the trace log, which may change before the first release.
+Signal maps follow the trace log, which may change before the first release.
 :::
 
 A signal map shows the graph behind an example. Writes flash, dependency marks travel along
@@ -181,8 +181,7 @@ for replay; playback speed does not change these example deadlines.
 publication), `feed.Complete ()`, `feed.Fail message`. Return `feed.Source` from the start function of
 `createStream` or `createStreamFold`; see [Streams](streams.md).
 
-Top-level projection aggregates also receive their binding's name: `Projection.sumBy`, `countBy`,
-`exists`, `forall`, `fold` and `foldGroup`, called directly or at the end of a pipeline. For example:
+Top-level projection aggregates also receive their binding's name: `Projection.sumBy`, `countBy`, `exists`, `forall`, `fold`, `foldGroup`, `foldGroupBy`, `length`, `isEmpty`, `tryHead`, `head`, `tryLast`, `last`, `tryItem`, `item`, `tryFind`, `find`, `tryFindKey`, `findKey`, `tryPick`, `pick`, `tryAverageBy`, `averageBy`, `tryMinBy`, `minBy`, `tryMaxBy`, and `maxBy`, called directly or at the end of a pipeline. For example:
 
 ```fsharp
 let total =
@@ -547,8 +546,7 @@ Keep maps small: beyond about ten nodes, edges cross and text shrinks.
 
 :::details Layout, values and tracing limits
 
-- **Small graphs.** Nodes are layered by longest path, with no crossing minimisation. Beyond about ten
-  nodes, edges cross and text shrinks.
+- **Small graphs.** Nodes are layered by longest path, with no crossing minimisation.
 - **Initial values are not drawn.** The log records a node's value when it moves, not when it is
   created. A signal shows its value from its first write.
 - **Boundaries and projections share the memo mark.** A boundary's fallback or recovered state shows

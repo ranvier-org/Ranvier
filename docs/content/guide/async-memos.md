@@ -28,7 +28,7 @@ let newGraph () =
 ```
 
 When a completion arrives from another thread, pump the graph on its owning thread. See
-[Threading and dispatch](threading.md) and the `pumpUntil` helper in [Testing async state](testing.md).
+[Threading and dispatch](threading.md), the `pumpUntil` helper below, and [Testing async state](testing.md).
 
 The body runs synchronously up to its first `await` that suspends. Only the reactive reads made in
 that part are tracked. On .NET, an `await` on a task that has already completed does not suspend,
@@ -292,12 +292,17 @@ control when requests start, and choose the flight policy separately to handle r
 
 :::details Cancellation costs
 
-- `CancelPrevious` allocates a `CancellationTokenSource` per launch, cancelling and disposing the
-  previous source.
-- `KeepLatest` and `Queue` share a source across overlapping flights. It is disposed without
-  cancellation once all flights using it settle; the next flight allocates another.
-- `FinishCurrent`, `Drop` and `DropWhilePending` allocate one source per non-overlapping flight,
-  disposed without cancellation at settlement. A change during the flight allocates nothing.
+On .NET 6 and later (`net10.0`), an async memo calls `CancellationTokenSource.TryReset()` when a
+non-cancelled flight settles and no overlapping flight shares its source, reusing that source on
+the next flight under all six policies (`netstandard2.1` disposes on settlement). An allocation occurs
+when starting fresh or when an active token cannot be reset:
+
+- `CancelPrevious` cancels and disposes the previous source when superseding an active flight, so an
+  overlapping restart allocates a new source while settled sequential flights reuse it.
+- `KeepLatest` and `Queue` share one source across overlapping flights, retiring (`TryReset` or
+  dispose) once every flight using it settles.
+- `FinishCurrent`, `Drop`, and `DropWhilePending` reuse or retire a single source per settled cycle;
+  a change ignored during a flight allocates nothing.
 
 Disposing the memo cancels its live source. Cancellation also runs registered callbacks, including
 those installed by I/O APIs. Signals, memos and effects carry no cancellation token.
@@ -306,16 +311,18 @@ those installed by I/O APIs. Signals, memos and effects carry no cancellation to
 
 :::details Token registrations and lifetime
 
-A registration on the token lives as long as its source. `use _ = token.Register ...`, and every API
+A registration on the token lives until it is disposed or its underlying `CancellationTokenSource` is
+retired (disposed or reset via `TryReset`). `use _ = token.Register ...`, and every API
 that takes the token and completes (`Task.Delay`, `HttpClient`, `SemaphoreSlim.WaitAsync`,
-`cancellableTask` binds), releases its registration when the operation ends. A registration left
-undisposed is released with the source: under `CancelPrevious` at the next launch, under `FinishCurrent`,
-`Drop` and `DropWhilePending` when its flight settles, under `KeepLatest` and `Queue` once the flights sharing the source have all settled, so a stream of overlapping flights
-keeps each one's registration until the stream goes quiet. A flight that completes only on
+`cancellableTask` binds), releases its registration when the operation ends. Any un-disposed
+registration is cleared when the source retires: under `CancelPrevious` on superseding launch
+(dispose) or non-overlapping settle (`TryReset`/dispose), under `FinishCurrent`,
+`Drop` and `DropWhilePending` when its flight settles, and under `KeepLatest` and `Queue` once the
+overlapping flights sharing the source have all settled. A flight that completes only on
 cancellation stays in progress under `KeepLatest` and `Queue` until the memo is disposed, together
 with everything its task and registrations hold; use `CancelPrevious` for such bodies. Work that
-outlives its flight and keeps the token sees a disposed source once the source is released: it is
-not cancelled when the memo is disposed, and `token.WaitHandle` throws `ObjectDisposedException`.
+outlives its flight and keeps an un-reset disposed token sees a disposed source once retired (not
+cancelled when the memo is disposed, and `token.WaitHandle` throws `ObjectDisposedException`).
 `FlightPolicyBenchmarks` in the [suspension bench](../benchmarks/suspension.md#flightpolicybenchmarks)
 compares a launch under `CancelPrevious` with one under `KeepLatest`, and `FlightBenchmarks`
 compares every policy, with and without changes during a flight.

@@ -91,7 +91,7 @@ individually.
 `createEffectNode body` creates the same effect as `createEffect` on the active graph, owned by the
 enclosing scope, and returns it as an `INode`. Use it when code that creates effects through the
 ambient graph needs to read an effect's `Status`, for example to tell whether its last run is
-pending, failed or [stale](pending.md):
+pending, failed or [stale](async-and-pending.md):
 
 ```fsharp
 let price = createSignal 2
@@ -160,26 +160,8 @@ converged at 3 after 4 runs
 
 ## Binding a source to a target
 
-`bindSignal source target write` and `bindMemo source target write` connect one signal or memo to
-one target. `write` receives the target and the source's value. Use a binding instead of an effect
-when the only job is to copy a single source into a target, such as a node property in a view.
-Use an effect when the work reads several sources or depends on what it reads.
-
-```fsharp
-type Label () =
-    member val Text = "" with get, set
-
-let label = Label ()
-let name = createSignal "Ada"
-bindSignal name label (fun target value -> target.Text <- value)
-```
-
-The binding attaches directly to `name`'s observer set ([`direct_link_is_sources_add`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_link_is_sources_add), [`world_direct_link_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_link_spec)), writes `"Ada"` on the next flush and follows changes to `name`. Reads inside `write`
-are untracked; the callback must not create nodes or register cleanup. A pending or failed memo
-leaves the target unchanged. The current owner disposes the binding ([`world_direct_unlink_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_unlink_spec)).
-
-See [Fixed-dependency bindings](bindings.md) for flush timing, equality, writer failures and lifetime, and the
-[binding benchmarks](../benchmarks/effects.md#bindingbenchmarks) for measurements and limitations.
+To copy a single signal or memo into a view property or other target without reading other reactive
+nodes, use `bindSignal` or `bindMemo` from [Fixed-dependency bindings](bindings.md).
 
 ## Failures
 

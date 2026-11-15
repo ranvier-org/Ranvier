@@ -7,18 +7,10 @@ description: Fold a stream of items into a node that restarts when its inputs ch
 A stream memo folds the items of a running stream into one state. Readers see the latest state; the
 stream starts on the first read and restarts when a value read by its `start` function changes.
 
-## Choosing a node
-
-| Node | Items | Result | Use it when |
-| --- | --- | --- | --- |
-| `createAsyncSource` | One, settled by hand | The settled value | Application code decides when the value arrives. |
-| `createAsync` | One per flight | The latest flight's result | A request is computed from the graph's values. |
-| `createStream` | Many | The latest item | Only the newest item matters. |
-| `createStreamFold` | Many | A state folded from a seed | Items accumulate, such as token deltas. |
-
-`createStream` and `createStreamFold` take `start`, a function from a `CancellationToken` to a
-`StreamSource<'T>`. `start` runs once per stream start, and the values it reads are the node's
-dependencies.
+`createStream` and `createStreamFold` subscribe to multi-item producers (`StreamSource<'T>`) and
+restart when a value read by `start` changes; see [Async and pending](async-and-pending.md#choosing-an-async-primitive)
+to compare stream memos with async sources and async memos. `start` receives a `CancellationToken`
+and its reactive reads are the node's dependencies.
 
 ## The latest item
 

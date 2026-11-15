@@ -2,12 +2,8 @@
 title: Getting started
 ---
 
-:::info
-Preview — Ranvier is pre-release; its APIs may change.
-:::
-
 Create a graph, store state in signals, derive values with memos, and use effects to connect
-that state to your application.
+that state to your application. Install a package first via [Installation](installation.md).
 
 Starting a desktop app, or comparing this with FSharp.Data.Adaptive? Read
 [Ranvier or Adaptive for a desktop app?](../blog/desktop-adaptive.md) for a complete window and practical workflows.

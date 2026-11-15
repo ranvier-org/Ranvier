@@ -4,8 +4,7 @@ order: 7
 ---
 
 :::info
-Preview — Ranvier is pre-release; its APIs may change. Tracing is a research
-feature: its queries and dump schema may change before the first release.
+Tracing is a research feature: its queries and dump schema may change before the first release.
 :::
 
 Use `Trace` to find why a node ran, why it stayed unchanged, or where it was created. A traced
@@ -321,9 +320,9 @@ the node, which tells apart a node created at startup from one re-created by eac
 :::details Creation sites and resolving paths
 
 The site is the innermost stack frame with file information outside the Ranvier libraries,
-FSharp.Core and `System.*`. The Ranvier libraries are the core and every Ranvier package built from
-`src/` (Ranvier.Elmish, Ranvier.Query, Ranvier.Mcp, Ranvier.View and the others), each marked
-`AssemblyMetadata("RanvierLibrary", "true")`. A frame whose source file sits in a library's `src/`
+FSharp.Core and `System.*`. The Ranvier libraries built from `src/` (`Ranvier`,
+`Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`, `Ranvier.Wire`, `Ranvier.Dom`, `Ranvier.Mcp`),
+along with downstream packages carrying `AssemblyMetadata("RanvierLibrary", "true")`, are skipped. A frame whose source file sits in a library's `src/`
 directory is skipped too, for library code inlined into the caller's assembly. A node created by
 `Mvu.create`, `GraphHost.Start`'s setup or a view binding reports the application's line that led
 to it. A node a library creates from a deferred callback, with no application frame on the stack,
@@ -707,8 +706,6 @@ Ship against the untraced `Ranvier` package.
 - **Fable records and text dumps.** A Fable build records the log that [signal maps](signal-maps.md)
   draw and exposes `Trace.dumpText` and `Trace.export` with the memory sink; file-writing `Trace.dump`,
   `TraceSinks.jsonl` and `TraceModel.parseDump` are absent.
-- **Development builds only.** A traced build is slower and allocates per event. Ship against the
-  untraced `Ranvier` package.
 - **The log retains events.** Events stay in memory until a [checkpoint](#incremental-reads-and-checkpoints)
   drops them, up to the implementation's sequence limit. Only an [export](#exporting-the-trace) with
   `Enqueued` or `Acknowledged` checkpoints drops events automatically.
@@ -748,7 +745,7 @@ Ship against the untraced `Ranvier` package.
 `tools/verify-trace.fsx` checks untraced IL, label overhead, Fable imports, deterministic sample
 dumps and agreement between trace events and graph counters. Its optional counter run compares
 allocations and instruction counts. CI also runs the traced suite and traced/untraced Native AOT
-smoke applications. See [trace benchmarks](../benchmarks/index.md) for measurements and methodology.
+smoke applications. See [trace benchmarks](../benchmarks/tracing.md) for measurements and methodology.
 
 ## Next
 
