@@ -45,8 +45,7 @@ What the comparison leaves out, each reported by `run.sh`:
 
 - **Pure-scope violations.** A pure memo's body creates no node or cleanup, by construction: the F# raises a new exception
   each time, and the model has one failure identity. `run.sh` prints how many draws this drops.
-- **Repeated zero divisors.** The same reason applies: a program raising more than one is excluded when it runs, up to a cap
-  of 1%.
+- **Repeated zero divisors and 32-bit integer overflows.** The same reason applies: the F# harness evaluates arithmetic in checked 32-bit `int` while the model computes over unbounded `Z`, so a program raising more than one zero divisor or overflowing `int` is excluded when it runs, up to a cap of 1%.
 - **Programs that diverge on both sides.** The model has no result, and the F# passed its budget or ended its process
   by a stack overflow or the watchdog (`fatal`). Any other exit of the F# process fails the check. Neither has a
   complete trace to compare. `self_read_check_overflow` in `BUGS.md` is how a generated program overflows. One side
