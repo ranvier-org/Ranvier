@@ -176,6 +176,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 77,194 | 100,758 | 1,619,919 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 77,194 | 100,792 | 1,620,025 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 77,194 | 100,758 | 1,619,855 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 77,194 | 100,774 | 1,619,922 |
 
 ## app-table
 
@@ -353,6 +354,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 3,495,285 | 6,176,274 | 82,168,259 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,248,184 | 6,039,584 | 78,191,638 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 3,248,136 | 6,038,141 | 78,191,912 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 3,248,232 | 6,038,127 | 78,339,890 |
 
 ## async-recover
 
@@ -530,6 +532,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 93,882 | 30,385 | 367,107 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 93,834 | 30,385 | 367,106 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 93,834 | 30,381 | 367,111 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 93,834 | 30,381 | 367,109 |
 
 ## async-resolve
 
@@ -707,6 +710,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,763,747 | 716,710 | 9,366,674 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,762,146 | 716,708 | 9,366,648 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,762,145 | 716,802 | 9,366,698 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,762,145 | 716,756 | 9,366,694 |
 
 ## chain
 
@@ -884,6 +888,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,911 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,912 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,911 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,912 |
 
 ## chain-affinity
 
@@ -1061,6 +1066,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,549 | 3,057 | 2,501 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,549 | 3,057 | 2,501 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,549 | 3,057 | 2,501 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,549 | 3,057 | 2,501 |
 
 ## control
 
@@ -1238,6 +1244,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 74,709 | 463,645 | 2,260,265 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 74,709 | 461,273 | 2,263,451 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 74,709 | 471,278 | 2,265,946 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 74,709 | 468,746 | 2,270,986 |
 
 ## create
 
@@ -1415,6 +1422,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 13,467,487 | 2,857,614 | 2,405,777 | 4,454,855 | 3,052,686 | 33,074,975 | 46,263,843 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 13,467,495 | 2,857,614 | 2,405,777 | 4,455,432 | 3,052,538 | 33,074,964 | 46,263,796 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 13,624,985 | 2,857,614 | 2,405,777 | 4,454,802 | 3,052,583 | 33,075,216 | 46,263,970 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 13,483,522 | 2,873,614 | 2,405,777 | 4,455,453 | 3,052,743 | 33,074,995 | 46,264,050 |
 
 ## create-on
 
@@ -1592,6 +1600,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,732,609 | 3,355,962 | 52,080,751 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,732,609 | 3,356,126 | 52,080,828 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,732,625 | 3,356,340 | 52,080,845 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,732,609 | 3,356,286 | 52,080,779 |
 
 ## cutoff
 
@@ -1769,6 +1778,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1946,6 +1956,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 764 | 686 | 15,806 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 764 | 686 | 15,806 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 764 | 686 | 15,806 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 764 | 686 | 15,806 |
 
 ## derive-on
 
@@ -2123,6 +2134,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 733 | 690 | 15,824 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 733 | 690 | 15,824 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 733 | 690 | 15,824 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 733 | 690 | 15,824 |
 
 ## dispose
 
@@ -2300,6 +2312,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,707,643 | 806,288 | 358,486 | 479,761 | 500,756 | 11,185,040 | 8,962,350 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,707,640 | 806,288 | 358,486 | 480,673 | 500,725 | 11,184,701 | 8,962,839 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,707,642 | 806,288 | 358,486 | 480,011 | 500,362 | 11,184,691 | 8,962,907 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,707,647 | 806,288 | 358,486 | 479,835 | 500,423 | 11,184,696 | 8,962,318 |
 
 ## dispose-on
 
@@ -2477,6 +2490,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 337,486 | 492,354 | 8,758,675 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 337,486 | 492,331 | 8,759,032 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 337,486 | 492,031 | 8,758,441 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 337,486 | 492,348 | 8,759,475 |
 
 ## editable-edit
 
@@ -2654,6 +2668,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 178,109 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 178,109 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 178,109 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 178,109 |
 
 ## editable-upstream
 
@@ -2831,6 +2846,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 223,509 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 223,509 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 223,509 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 223,509 |
 
 ## fail-recompute
 
@@ -3008,6 +3024,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 65,176 | 1,368 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 65,160 | 1,368 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 65,096 | 1,368 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 65,160 | 1,368 |
 
 ## flight
 
@@ -3185,6 +3202,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 10,157 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 10,157 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 10,157 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 
 ## keyed-insert
 
@@ -3362,6 +3380,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,861,796 | 54,116 | 54,901 | 2,508,940 | 660,501 | 235,718 | 41,863,875 | 3,000,402 | 3,020,135 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,861,672 | 53,870 | 54,794 | 2,509,067 | 660,515 | 235,682 | 41,853,146 | 3,000,413 | 3,019,836 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,861,620 | 53,773 | 54,742 | 2,490,546 | 660,670 | 235,641 | 41,853,075 | 3,000,396 | 3,019,980 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,861,668 | 53,797 | 54,774 | 2,508,958 | 660,645 | 235,631 | 41,857,360 | 3,000,328 | 3,020,075 |
 
 ## keyed-remove
 
@@ -3539,6 +3558,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,860,828 | 43,891 | 45,208 | 2,521,915 | 600,239 | 140,097 | 41,835,869 | 2,141,131 | 2,176,104 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,860,696 | 43,644 | 45,102 | 2,521,934 | 600,258 | 140,262 | 41,838,715 | 2,141,095 | 2,176,154 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,860,659 | 43,548 | 45,048 | 2,510,370 | 600,247 | 140,128 | 41,829,087 | 2,141,096 | 2,175,772 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,860,705 | 43,572 | 45,096 | 2,514,580 | 600,260 | 140,077 | 41,822,280 | 2,141,037 | 2,176,103 |
 
 ## keyed-swap
 
@@ -3716,6 +3736,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,856,575 | 46,541 | 47,011 | 2,543,195 | 518,944 | 528,367 | 42,562,517 | 914,362 | 933,737 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,856,451 | 46,298 | 46,903 | 2,543,206 | 518,768 | 528,288 | 42,561,983 | 914,574 | 934,165 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,856,400 | 46,205 | 46,852 | 2,542,661 | 518,690 | 528,320 | 42,561,880 | 914,374 | 932,212 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,856,447 | 46,219 | 46,883 | 2,542,611 | 518,664 | 528,379 | 42,558,703 | 914,330 | 932,173 |
 
 ## mvu-dispatch
 
@@ -3893,6 +3914,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 59,439 | 773 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 59,439 | 773 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 59,439 | 773 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 59,439 | 773 |
 
 ## persist-write
 
@@ -4070,6 +4092,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | — | — |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | — | — |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | — | — |
 
 ## project-chain
 
@@ -4247,6 +4270,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 387,836 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 91,989 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 91,965 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 92,062 |
 
 ## project-churn
 
@@ -4424,6 +4448,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 36,508 | 34,193 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 36,441 | 34,209 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 36,425 | 34,193 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 36,457 | 34,209 |
 
 ## project-edit
 
@@ -4601,6 +4626,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 50,513 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 50,433 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 50,417 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 50,433 |
 
 ## project-reorder
 
@@ -4778,6 +4804,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 645,242 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 645,146 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 645,131 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 645,131 |
 
 ## server-render
 
@@ -4955,6 +4982,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | — | — | — |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — | — |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | — | — | — |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | — | — | — |
 
 ## shape-diamond
 
@@ -5132,6 +5160,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 59,609 | 79,993 | 1,744,544 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 59,609 | 79,993 | 1,744,544 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 59,609 | 79,993 | 1,744,544 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 59,609 | 79,993 | 1,744,544 |
 
 ## shape-dynamic
 
@@ -5309,6 +5338,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 83,024 | 105,980 | 1,945,043 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 83,024 | 105,978 | 1,945,040 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 83,024 | 105,985 | 1,945,046 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 83,024 | 105,985 | 1,945,045 |
 
 ## stream-burst-1
 
@@ -5486,6 +5516,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,845 | 1,471 | 2,484 | 5,539 | 8,612 | 11,688 | 37,063 | 35,266 | 45,894 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,893 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,893 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,893 |
 
 ## stream-burst-16
 
@@ -5663,6 +5694,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 3,870 | 23,326 | 5,694 | 7,718 | 26,398 | 14,160 | 91,896 | 552,049 | 101,966 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,870 | 23,326 | 5,692 | 7,715 | 26,398 | 14,160 | 91,896 | 552,049 | 101,975 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,160 | 91,894 | 552,051 | 101,974 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,161 | 91,896 | 552,049 | 101,975 |
 
 ## stream-burst-256
 
@@ -5840,6 +5872,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 36,246 | 373,006 | 57,033 | 89,869 | 418,288 | 36,687 | 969,387 | 8,819,175 | 998,640 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 36,246 | 373,006 | 57,031 | 89,874 | 418,287 | 36,687 | 969,382 | 8,819,174 | 998,719 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 36,246 | 373,006 | 57,031 | 89,873 | 418,288 | 36,689 | 969,383 | 8,819,178 | 998,725 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 36,246 | 373,006 | 57,031 | 89,877 | 418,288 | 36,689 | 969,389 | 8,819,181 | 998,726 |
 
 ## stream-restart
 
@@ -6017,6 +6050,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 3,882 | 4,875 | 14,708 | 6,205 | 41,891 | 71,194 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,882 | 4,876 | 14,708 | 6,201 | 41,889 | 71,198 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 3,882 | 4,876 | 14,709 | 6,203 | 41,890 | 71,196 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 3,882 | 4,876 | 14,710 | 6,205 | 41,892 | 71,199 |
 
 ## timed-admit-both
 
@@ -6194,6 +6228,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 108,458 | 132,084 | 2,532,830 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,458 | 132,051 | 2,532,894 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 108,458 | 131,984 | 2,532,616 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 108,458 | 132,592 | 2,532,625 |
 
 ## timed-admit-debounce
 
@@ -6371,6 +6406,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 108,010 | 131,185 | 2,518,233 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,010 | 131,187 | 2,518,212 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 108,010 | 131,175 | 2,518,253 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 108,010 | 131,197 | 2,518,249 |
 
 ## timed-admit-first
 
@@ -6548,6 +6584,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 67,947 | 77,251 | 1,583,488 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 67,947 | 77,253 | 1,583,488 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 67,947 | 77,253 | 1,583,488 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 67,947 | 77,253 | 1,583,488 |
 
 ## timed-admit-last
 
@@ -6725,6 +6762,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 108,266 | 131,506 | 2,528,089 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,266 | 131,507 | 2,528,067 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 108,266 | 131,531 | 2,528,109 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 108,266 | 131,508 | 2,528,079 |
 
 ## timed-capture-both
 
@@ -6902,6 +6940,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 35,090 | 43,760 | 865,872 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 35,090 | 43,392 | 865,942 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 35,090 | 43,792 | 865,668 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 35,090 | 43,790 | 865,665 |
 
 ## timed-capture-debounce
 
@@ -7079,6 +7118,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 34,962 | 46,805 | 866,053 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 34,962 | 46,804 | 866,053 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 34,962 | 46,805 | 866,053 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 34,962 | 46,806 | 866,053 |
 
 ## timed-capture-first
 
@@ -7256,6 +7296,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 31,314 | 36,735 | 748,414 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 31,314 | 36,735 | 748,414 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 31,314 | 36,736 | 748,414 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 31,314 | 36,735 | 748,414 |
 
 ## timed-capture-last
 
@@ -7433,6 +7474,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 34,898 | 46,740 | 858,181 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 34,898 | 46,742 | 858,181 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 34,898 | 46,740 | 858,181 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 34,898 | 46,742 | 858,181 |
 
 ## update
 
@@ -7610,6 +7652,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,091,190 | 38,805 | 81,509 | 196,889 | 95,681 | 2,533,185 | 1,773,705 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,089,590 | 38,805 | 81,509 | 196,954 | 95,684 | 2,533,231 | 1,773,685 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,091,190 | 38,805 | 81,509 | 196,909 | 95,696 | 2,533,160 | 1,773,709 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,088,000 | 38,805 | 81,509 | 196,887 | 95,656 | 2,533,226 | 1,773,738 |
 
 ## update-on
 
@@ -7787,6 +7830,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 93,009 | 115,582 | 2,101,006 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 93,009 | 115,597 | 2,101,107 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 93,009 | 115,561 | 2,101,086 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 93,009 | 115,597 | 2,101,047 |
 
 ## work-form
 
@@ -7964,6 +8008,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 170,299 | 164,511 | 297,879 | 293,073 | 4,997,461 | 4,910,479 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 170,299 | 164,511 | 297,880 | 293,085 | 4,997,447 | 4,910,519 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 170,299 | 168,511 | 297,859 | 293,062 | 4,997,515 | 4,910,518 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 170,299 | 164,527 | 297,897 | 293,065 | 4,997,443 | 4,910,505 |
 
 ## work-status
 
@@ -8141,6 +8186,7 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 100,349 | 78,439 | 200,118 | 92,523 | 1,881,806 | 1,613,849 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 100,349 | 78,439 | 200,170 | 92,565 | 1,881,840 | 1,613,854 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 100,350 | 78,439 | 200,102 | 92,525 | 1,881,790 | 1,613,845 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 100,349 | 78,439 | 200,142 | 92,544 | 1,881,828 | 1,613,855 |
 
 ## work-value
 
@@ -8318,4 +8364,5 @@
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 107,475 | 119,274 | 200,472 | 219,855 | 1,866,387 | 2,190,963 |
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 107,473 | 119,274 | 200,520 | 219,842 | 1,866,503 | 2,190,985 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 107,473 | 119,273 | 200,461 | 219,858 | 1,866,407 | 2,190,990 |
+| `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 107,473 | 119,275 | 200,508 | 219,853 | 1,866,415 | 2,190,984 |
 
