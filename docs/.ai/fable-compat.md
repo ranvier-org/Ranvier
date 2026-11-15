@@ -52,7 +52,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
-| Projections.fs | 121 | 121 | 121 | 121 | 121 | 121 | 10 | 0 |
+| Projections.fs | 122 | 122 | 122 | 122 | 122 | 122 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 32 | 32 | 32 | 32 | 32 | 32 | 0 | 0 |
 | MemoScopes.fs | 28 | 28 | 28 | 28 | 28 | 28 | 0 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1729 | 1715 | 1712 | 1951 | 1933 | 1930 | 148 | 1 |
+| **Total** | 1730 | 1716 | 1713 | 1952 | 1934 | 1931 | 148 | 1 |
 
 ## Tests.fs
 
@@ -1212,7 +1212,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>121 passed in every build and delivery that runs them</summary>
+<details><summary>122 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a projection nothing reads is never recomputed
@@ -1254,6 +1254,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Snapshot holds a None key beside Some keys
 - a positional diff turns previous into next, moving at most the survivors outside the longest ordered run
 - a positional diff moves one key for one swap of neighbours
+- a positional diff trims shared prefixes and suffixes across fast paths and option keys
 - a Snapshot read under a boundary wakes when the suspended pass settles
 - a tracked TryGet of an absent key wakes when the key arrives
 - a tracked TryGet of a live key wakes when the key is removed

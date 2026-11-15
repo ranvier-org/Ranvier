@@ -43,7 +43,16 @@ specifications required by delta readers:
    - `append_remove_empty_changes_preserves_order`: after any sequence of tail-append `ColAdd` and
      arbitrary-position `ColRemove` operations on a `NoDup` key list `init`, if the coalesced `KeyChanges`
      map is `∅`, then the resulting key list is identically equal to `init` — certifying the zero-allocation
-     `changes.Size = 0` fast path in `CollectionProjection.ReadDelta`. *)
+     `changes.Size = 0` fast path in `CollectionProjection.ReadDelta`.
+6. **`Positional.diff` shared prefix/suffix framing and contiguous fast paths (`Positional.fs`)**:
+   - `positional_frame_prefix_suffix`: any valid middle-slice positional edit sequence `es` that rewrites
+     `M` into `M'` rewrites `P ++ M ++ S` into `P ++ M' ++ S` when each edit index is shifted by `length P`.
+   - `positional_pure_inserts_correct` & `positional_pure_removes_correct`: emitting `InsertAt` forward
+     over a trimmed insertion block and `RemoveAt` back-to-front over a trimmed removal block rewrite
+     `P ++ S -> P ++ Ins ++ S` and `P ++ Rem ++ S -> P ++ S` directly with zero intermediate allocation.
+   - `positional_nodup_trimmed_disjoint`: under the `NoDup` distinct-key precondition on `P ++ M1 ++ S`
+     and `P ++ M2 ++ S`, the trimmed middle slices `M1` and `M2` are disjoint from `P` and `S`, so
+     survivors cannot cross out of the middle slice. *)
 
 (** ** 1. KeyChange and KeyChanges.Record coalescing algebra *)
 
@@ -722,4 +731,247 @@ Proof.
     { rewrite Hcur_eq. apply elem_of_app; right; exact Hy_sfx. }
     destruct (Hfresh y Hy_ninit Hy_cur) as [Hy1 | Hy2];
       [rewrite lookup_empty in Hy1; discriminate | rewrite lookup_empty in Hy2; discriminate].
+Qed.
+
+(** ** 6. Positional.diff prefix/suffix framing and contiguous fast paths *)
+
+Inductive pos_edit (A : Type) :=
+  | PosRemoveAt (idx : nat)
+  | PosInsertAt (idx : nat) (x : A)
+  | PosMove (old_idx new_idx : nat).
+
+Arguments PosRemoveAt {A} idx.
+Arguments PosInsertAt {A} idx x.
+Arguments PosMove {A} old_idx new_idx.
+
+Definition offset_pos_edit {A : Type} (off : nat) (e : pos_edit A) : pos_edit A :=
+  match e with
+  | PosRemoveAt idx => PosRemoveAt (off + idx)
+  | PosInsertAt idx x => PosInsertAt (off + idx) x
+  | PosMove old_idx new_idx => PosMove (off + old_idx) (off + new_idx)
+  end.
+
+Definition remove_at {A : Type} (idx : nat) (xs : list A) : option (A * list A) :=
+  match xs !! idx with
+  | Some x => Some (x, take idx xs ++ drop (S idx) xs)
+  | None => None
+  end.
+
+Definition insert_at {A : Type} (idx : nat) (x : A) (xs : list A) : option (list A) :=
+  if decide (idx <= length xs) then
+    Some (take idx xs ++ x :: drop idx xs)
+  else
+    None.
+
+Definition apply_pos_edit {A : Type} (xs : list A) (e : pos_edit A) : option (list A) :=
+  match e with
+  | PosRemoveAt idx => snd <$> remove_at idx xs
+  | PosInsertAt idx x => insert_at idx x xs
+  | PosMove old_idx new_idx =>
+      match remove_at old_idx xs with
+      | Some (x, xs') => insert_at new_idx x xs'
+      | None => None
+      end
+  end.
+
+Fixpoint apply_pos_edits {A : Type} (xs : list A) (es : list (pos_edit A)) : option (list A) :=
+  match es with
+  | [] => Some xs
+  | e :: es' =>
+      match apply_pos_edit xs e with
+      | Some xs' => apply_pos_edits xs' es'
+      | None => None
+      end
+  end.
+
+Lemma remove_at_frame {A : Type} (P M M' Sfx : list A) (idx : nat) (x : A) :
+  remove_at idx M = Some (x, M') ->
+  remove_at (length P + idx) (P ++ M ++ Sfx) = Some (x, P ++ M' ++ Sfx).
+Proof.
+  unfold remove_at.
+  destruct (M !! idx) as [y|] eqn:Hm; [|discriminate].
+  intros Hinj. injection Hinj as <- <-.
+  pose proof (lookup_lt_Some _ _ _ Hm) as Hlt.
+  rewrite lookup_app_r; [|lia].
+  replace (length P + idx - length P) with idx by lia.
+  rewrite lookup_app_l; [|exact Hlt].
+  rewrite Hm. f_equal. f_equal.
+  rewrite take_app_ge; [|lia].
+  replace (length P + idx - length P) with idx by lia.
+  rewrite take_app_le; [|lia].
+  rewrite drop_app_ge; [|lia].
+  replace (S (length P + idx) - length P) with (S idx) by lia.
+  rewrite drop_app_le; [|lia].
+  rewrite <- !app_assoc. reflexivity.
+Qed.
+
+Lemma insert_at_frame {A : Type} (P M M' Sfx : list A) (idx : nat) (x : A) :
+  insert_at idx x M = Some M' ->
+  insert_at (length P + idx) x (P ++ M ++ Sfx) = Some (P ++ M' ++ Sfx).
+Proof.
+  unfold insert_at.
+  destruct (decide (idx <= length M)) as [Hle|Hgt]; [|discriminate].
+  intros Hinj. injection Hinj as <-.
+  rewrite decide_True; [|rewrite !length_app; lia].
+  f_equal.
+  rewrite take_app_ge; [|lia].
+  replace (length P + idx - length P) with idx by lia.
+  rewrite take_app_le; [|exact Hle].
+  rewrite drop_app_ge; [|lia].
+  replace (length P + idx - length P) with idx by lia.
+  rewrite drop_app_le; [|exact Hle].
+  rewrite <- app_assoc. simpl. rewrite <- app_assoc. reflexivity.
+Qed.
+
+Lemma apply_pos_edit_frame {A : Type} (P M M' Sfx : list A) (e : pos_edit A) :
+  apply_pos_edit M e = Some M' ->
+  apply_pos_edit (P ++ M ++ Sfx) (offset_pos_edit (length P) e) = Some (P ++ M' ++ Sfx).
+Proof.
+  destruct e as [idx | idx x | old_idx new_idx]; simpl.
+  - destruct (remove_at idx M) as [[x rest]|] eqn:Hr; simpl; [|discriminate].
+    intros Hinj. injection Hinj as <-.
+    rewrite (remove_at_frame P M rest Sfx idx x Hr). reflexivity.
+  - apply insert_at_frame.
+  - destruct (remove_at old_idx M) as [[x rest]|] eqn:Hr; [|discriminate].
+    intros Hins.
+    rewrite (remove_at_frame P M rest Sfx old_idx x Hr).
+    exact (insert_at_frame P rest M' Sfx new_idx x Hins).
+Qed.
+
+(**md
+**Shifting every edit index in a valid middle-slice script `es` by `length P` rewrites `P ++ M ++ Sfx` into `P ++ M' ++ Sfx` (`Positional.fs`).**
+
+- [P:] common prefix slice shared by `previous` and `next`.
+- [M:] changed middle slice of `previous`.
+- [M':] changed middle slice of `next`.
+- [Sfx:] common suffix slice shared by `previous` and `next`.
+- [es:] positional edits valid over the unshifted middle slice `M`.
+*)
+Theorem positional_frame_prefix_suffix
+    {A : Type} (P M M' Sfx : list A) (es : list (pos_edit A)) :
+  apply_pos_edits M es = Some M' ->
+  apply_pos_edits (P ++ M ++ Sfx) (offset_pos_edit (length P) <$> es) = Some (P ++ M' ++ Sfx).
+Proof.
+  revert M.
+  induction es as [|e es' IH]; intros M; simpl.
+  - intros Hinj. injection Hinj as <-. reflexivity.
+  - destruct (apply_pos_edit M e) as [M1|] eqn:He; [|discriminate].
+    intros Hrest.
+    rewrite (apply_pos_edit_frame P M M1 Sfx e He).
+    exact (IH M1 Hrest).
+Qed.
+
+Lemma apply_pure_inserts_acc {A : Type} (acc Ins : list A) :
+  apply_pos_edits acc (imap (fun k x => PosInsertAt (length acc + k) x) Ins) =
+  Some (acc ++ Ins).
+Proof.
+  revert acc.
+  induction Ins as [|x rest IH]; intros acc; simpl.
+  - rewrite app_nil_r. reflexivity.
+  - unfold insert_at. rewrite decide_True; [|lia].
+    rewrite Nat.add_0_r, take_ge, drop_ge; [|lia|lia].
+    simpl.
+    set (acc' := acc ++ [x]).
+    assert (Hmap :
+      imap ((fun k y => PosInsertAt (length acc + k) y) ∘ S) rest =
+      imap (fun k y => PosInsertAt (length acc' + k) y) rest).
+    { apply imap_ext. intros k y _. unfold compose, acc'. rewrite length_app. simpl. f_equal. lia. }
+    rewrite Hmap.
+    rewrite (IH acc').
+    unfold acc'. rewrite <- app_assoc. reflexivity.
+Qed.
+
+Lemma fmap_imap {A B C : Type} (g : B -> C) (f : nat -> A -> B) (l : list A) :
+  g <$> imap f l = imap (fun k x => g (f k x)) l.
+Proof.
+  revert f. induction l as [|x rest IH]; intros f; simpl; [reflexivity|].
+  f_equal. rewrite IH. apply imap_ext. intros k y _. reflexivity.
+Qed.
+
+Lemma offset_imap_insert {A : Type} (off : nat) (Ins : list A) :
+  offset_pos_edit off <$> imap (fun k x => PosInsertAt k x) Ins =
+  imap (fun k x => PosInsertAt (off + k) x) Ins.
+Proof.
+  rewrite fmap_imap. apply imap_ext. intros k x _. reflexivity.
+Qed.
+
+(**md
+**Emitting `InsertAt (length P + k, x)` for each inserted element `x` at offset `k` transforms `P ++ Sfx` directly into `P ++ Ins ++ Sfx` (`Positional.fs`).**
+
+- [P:] common prefix slice.
+- [Ins:] contiguous block inserted after `P`.
+- [Sfx:] common suffix slice.
+*)
+Theorem positional_pure_inserts_correct {A : Type} (P Ins Sfx : list A) :
+  apply_pos_edits (P ++ Sfx) (imap (fun k x => PosInsertAt (length P + k) x) Ins) =
+  Some (P ++ Ins ++ Sfx).
+Proof.
+  pose proof (positional_frame_prefix_suffix P [] Ins Sfx (imap (fun k x => PosInsertAt k x) Ins)) as Hframe.
+  rewrite offset_imap_insert in Hframe.
+  simpl in Hframe.
+  apply Hframe.
+  pose proof (apply_pure_inserts_acc [] Ins) as Hacc.
+  simpl in Hacc. exact Hacc.
+Qed.
+
+Lemma apply_pure_removes_mid {A : Type} (Rem : list A) :
+  apply_pos_edits Rem (PosRemoveAt <$> rev (seq 0 (length Rem))) = Some [].
+Proof.
+  induction Rem as [|x Rem' IH] using rev_ind; simpl.
+  - reflexivity.
+  - rewrite length_app. simpl.
+    rewrite Nat.add_1_r, seq_S, rev_unit.
+    simpl. unfold remove_at.
+    rewrite lookup_app_r; [|lia].
+    rewrite Nat.sub_diag. simpl.
+    rewrite take_app_le; [|lia].
+    rewrite take_ge; [|lia].
+    rewrite drop_app_ge; [|lia].
+    replace (S (length Rem') - length Rem') with 1 by lia.
+    simpl. rewrite app_nil_r.
+    exact IH.
+Qed.
+
+(**md
+**Emitting back-to-front `RemoveAt` edits from `length P + length Rem - 1` down to `length P` transforms `P ++ Rem ++ Sfx` directly into `P ++ Sfx` (`Positional.fs`).**
+
+- [P:] common prefix slice.
+- [Rem:] contiguous block removed after `P`.
+- [Sfx:] common suffix slice.
+*)
+Theorem positional_pure_removes_correct {A : Type} (P Rem Sfx : list A) :
+  apply_pos_edits (P ++ Rem ++ Sfx)
+    (offset_pos_edit (length P) <$> (PosRemoveAt <$> rev (seq 0 (length Rem)))) =
+  Some (P ++ Sfx).
+Proof.
+  pose proof (positional_frame_prefix_suffix P Rem [] Sfx
+                (PosRemoveAt <$> rev (seq 0 (length Rem)))
+                (apply_pure_removes_mid Rem)) as Hframe.
+  simpl in Hframe. exact Hframe.
+Qed.
+
+(**md
+**Under the distinct-key invariant on both input arrays, trimmed middle slices `M1` and `M2` contain no keys from `P` or `Sfx`, so all matching survivors remain strictly inside the middle window (`Positional.fs`).**
+
+- [P:] common prefix slice.
+- [M1:] changed middle slice of `previous`.
+- [M2:] changed middle slice of `next`.
+- [Sfx:] common suffix slice.
+*)
+Theorem positional_nodup_trimmed_disjoint {A : Type} (P M1 M2 Sfx : list A) :
+  NoDup (P ++ M1 ++ Sfx) ->
+  NoDup (P ++ M2 ++ Sfx) ->
+  (forall x, x ∈ M1 -> x ∉ P /\ x ∉ Sfx) /\
+  (forall x, x ∈ M2 -> x ∉ P /\ x ∉ Sfx).
+Proof.
+  intros Hnd1 Hnd2.
+  apply NoDup_app in Hnd1 as (_ & HdisjP1 & Hnd1').
+  apply NoDup_app in Hnd1' as (_ & HdisjS1 & _).
+  apply NoDup_app in Hnd2 as (_ & HdisjP2 & Hnd2').
+  apply NoDup_app in Hnd2' as (_ & HdisjS2 & _).
+  split; intros x Hx; split.
+  - intros Hxp. apply (HdisjP1 x Hxp). apply elem_of_app. by left.
+  - intros Hxs. apply (HdisjS1 x Hx). exact Hxs.
+  - intros Hxp. apply (HdisjP2 x Hxp). apply elem_of_app. by left.
+  - intros Hxs. apply (HdisjS2 x Hx). exact Hxs.
 Qed.
