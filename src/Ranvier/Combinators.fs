@@ -5761,15 +5761,718 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         member this.Dispose() =
             this.Dispose ()
 
-/// <summary>The number of folded values and the key, rank and value of the holder of the extreme rank.</summary>
-[<Struct>]
-type internal Extreme<'K, 'S, 'V> =
-    {
-        Folded: int
-        HolderKey: 'K
-        HolderRank: 'S
-        HolderValue: 'V
-    }
+/// <summary>
+/// One live key of a tournament extreme aggregate: the observer of the key's rank/value row and its cached state.
+/// </summary>
+[<Sealed>]
+type internal ExtremeRow<'K, 'V, 'S>(graph: Graph, key: 'K, entry: RowEntry<'K, struct ('S * 'V)>, touched: ExtremeRow<'K, 'V, 'S> -> unit) =
+    let id = graph.NextId ()
+
+    member _.Key = key
+    member _.Entry = entry
+
+    /// <summary>Leaf slot index in the containing tournament tree, or -1 while unplaced.</summary>
+    member val Slot = -1 with get, set
+
+    /// <summary>Whether the row waits in the aggregate's queue, or is being read.</summary>
+    member val Queued = false with get, set
+
+    /// <summary>Whether the aggregate observes the row.</summary>
+    member val Attached = false with get, set
+
+    /// <summary>Whether <c>Rank</c> and <c>Value</c> hold a settled pair present in the tournament tree.</summary>
+    member val HasValue = false with get, set
+
+    member val Rank = Unchecked.defaultof<'S> with get, set
+    member val Value = Unchecked.defaultof<'V> with get, set
+
+    /// <summary>The row's exception while the row is failed, or null.</summary>
+    member val Error: exn = null with get, set
+
+    /// <summary>The last membership diff containing the key.</summary>
+    member val Generation = 0 with get, set
+
+    member val Handle = EdgeHandle.Unlinked with get, set
+
+    interface INode with
+        member _.Id = id
+        member _.Status = Status.None
+
+    interface IComputation with
+        member _.AddSource _ = ()
+
+        member this.MovedIn(_, handle) =
+            this.Handle <- handle
+
+        member _.HasReadSlot _ = false
+
+        member this.MarkDirty() =
+            touched this
+
+        member this.MarkCheck() =
+            touched this
+
+/// <summary>
+/// The extreme value of <c>upstream</c> ordered by rank, maintained in O(log N) comparisons across row edits,
+/// removals and tail appends via a binary tournament winner tree with a sticky holder across ties.
+/// </summary>
+[<Sealed>]
+type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: comparison>
+    (
+        graph: Graph,
+        upstream: Projection<'K, struct ('S * 'V)>,
+        isMax: bool,
+        equalValues: System.Collections.Generic.IEqualityComparer<'V>,
+        finish: 'V option -> 'R
+    ) as this =
+    let id = graph.NextId ()
+    let observers = ObserverSet ()
+    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+#if !FABLE_COMPILER
+    let mayBeNaN =
+        typeof<'S> = typeof<float>
+        || typeof<'S> = typeof<float32>
+
+    let rankComparer = LanguagePrimitives.FastGenericComparer<'S>
+#endif
+
+    let rows = Platform.KeyMap<'K, ExtremeRow<'K, 'V, 'S>>()
+    let queue = ResizeArray<ExtremeRow<'K, 'V, 'S>>()
+    let added = ResizeArray<ExtremeRow<'K, 'V, 'S>>()
+    let removed = ResizeArray<'K>()
+
+    let mutable lastKeys: 'K[] = null
+    let mutable generation = 0
+
+    let mutable cap = 0
+    let mutable slotCount = 0
+    let mutable slots: ExtremeRow<'K, 'V, 'S>[] = Array.empty
+    let mutable tree: ExtremeRow<'K, 'V, 'S>[] = Array.empty
+    let mutable dirtyTree = true
+
+    let mutable stickyHolder: ExtremeRow<'K, 'V, 'S> = Unchecked.defaultof<_>
+    let mutable hasStickyKey = false
+    let mutable stickyKey = Unchecked.defaultof<'K>
+    let mutable hasPublished = false
+    let mutable publishedValue = Unchecked.defaultof<'V>
+    let mutable lastResult = Unchecked.defaultof<'R>
+    let mutable lastOutcomeFailed = false
+
+    let mutable valued = 0
+    let mutable failed = 0
+    let mutable failure: ExtremeRow<'K, 'V, 'S> = Unchecked.defaultof<_>
+    let mutable moved = false
+
+    let mutable disposed = false
+    let mutable link: OwnerLink = null
+    let mutable keyReader: ProjectionReader<'K> = Unchecked.defaultof<_>
+
+    let touch () =
+        if not disposed then
+            observers.NotifyCheck ()
+
+    let touched (row: ExtremeRow<'K, 'V, 'S>) =
+        if not row.Queued then
+            row.Queued <- true
+            queue.Add row
+            touch ()
+
+    let compareAsc (a: 'S) (b: 'S) =
+#if FABLE_COMPILER
+        Ranks.ascending a b
+#else
+        if mayBeNaN then
+            Ranks.ascending a b
+        else
+            rankComparer.Compare (a, b)
+#endif
+
+    let compareExtreme (a: 'S) (b: 'S) =
+        if isMax then compareAsc b a else compareAsc a b
+
+    do
+        link <- graph.CurrentOwner.AttachLinked this
+        keyReader <- upstream.NewInternalKeyReader ()
+
+    /// <summary>Selects the better of two optional settled leaf rows, favouring <c>left</c> on equal ranks.</summary>
+    member private _.PickWinner(left: ExtremeRow<'K, 'V, 'S>, right: ExtremeRow<'K, 'V, 'S>) =
+        if Platform.isNull (box left) then right
+        elif Platform.isNull (box right) then left
+        elif compareExtreme left.Rank right.Rank <= 0 then left
+        else right
+
+    /// <summary>Updates tournament internal winners along the ancestor path of <c>slot</c>. O(log N).</summary>
+    member private this.SiftUp(slot: int) =
+        let mutable idx = cap + slot
+        let mutable keepGoing = true
+
+        while idx > 1 && keepGoing do
+            let parent = idx >>> 1
+            let oldW = Platform.itemAt parent tree
+
+            let nextW =
+                this.PickWinner (Platform.itemAt (parent <<< 1) tree, Platform.itemAt ((parent <<< 1) ||| 1) tree)
+
+            if obj.ReferenceEquals (oldW, nextW) then
+                if
+                    Platform.isNull (box nextW)
+                    || not (obj.ReferenceEquals (oldW, Platform.itemAt idx tree))
+                then
+                    keepGoing <- false
+                else
+                    idx <- parent
+            else
+                Platform.setItemAt parent tree nextW
+                idx <- parent
+
+    /// <summary>Doubles leaf capacity with zero comparisons by shifting each tree level down by one bit.</summary>
+    member private _.DoubleCap() =
+        let oldCap = cap
+        let newCap = oldCap <<< 1
+        let newSlots = Array.zeroCreate<ExtremeRow<'K, 'V, 'S>> newCap
+
+        for i in 0 .. slotCount - 1 do
+            Platform.setItemAt i newSlots (Platform.itemAt i slots)
+
+        let newTree = Array.zeroCreate<ExtremeRow<'K, 'V, 'S>>(newCap <<< 1)
+        Platform.setItemAt 1 newTree (Platform.itemAt 1 tree)
+
+        let mutable len = 1
+
+        while len <= oldCap do
+            let dstBase = len <<< 1
+
+            for j in 0 .. len - 1 do
+                Platform.setItemAt (dstBase + j) newTree (Platform.itemAt (len + j) tree)
+
+            len <- len <<< 1
+
+        slots <- newSlots
+        tree <- newTree
+        cap <- newCap
+
+    /// <summary>Ensures leaf capacity can hold at least <c>target</c> slots.</summary>
+    member private this.EnsureCap(target: int) =
+        if cap = 0 then
+            cap <- 1
+            slots <- Array.zeroCreate<ExtremeRow<'K, 'V, 'S>> 1
+            tree <- Array.zeroCreate<ExtremeRow<'K, 'V, 'S>> 2
+
+        while cap < target do
+            this.DoubleCap ()
+
+    /// <summary>Assigns compact <c>Keys</c>-order slots and builds the tournament tree bottom-up. O(N).</summary>
+    member private this.RebuildTree(keys: 'K[]) =
+        let mutable targetCap = 1
+
+        while targetCap < keys.Length do
+            targetCap <- targetCap <<< 1
+
+        if cap = targetCap && slots.Length = targetCap then
+            for i in 0 .. cap - 1 do
+                Platform.setItemAt i slots Unchecked.defaultof<_>
+
+            for i in 0 .. (cap <<< 1) - 1 do
+                Platform.setItemAt i tree Unchecked.defaultof<_>
+        else
+            cap <- targetCap
+            slots <- Array.zeroCreate<ExtremeRow<'K, 'V, 'S>> targetCap
+            tree <- Array.zeroCreate<ExtremeRow<'K, 'V, 'S>>(targetCap <<< 1)
+
+        slotCount <- keys.Length
+
+        for i in 0 .. keys.Length - 1 do
+            let row = rows.Find (Platform.itemAt i keys)
+
+            if not (Platform.isNull (box row)) then
+                row.Slot <- i
+                Platform.setItemAt i slots row
+
+                if row.HasValue then
+                    Platform.setItemAt (cap + i) tree row
+
+        for idx = cap - 1 downto 1 do
+            Platform.setItemAt idx tree (this.PickWinner (Platform.itemAt (idx <<< 1) tree, Platform.itemAt ((idx <<< 1) ||| 1) tree))
+
+        dirtyTree <- false
+
+    member private _.Fail(row: ExtremeRow<'K, 'V, 'S>, ex: exn) =
+        if Platform.isNull row.Error then
+            failed <- failed + 1
+
+            if Platform.isNull (box failure) then
+                failure <- row
+
+        if not (obj.ReferenceEquals (row.Error, ex)) then
+            row.Error <- ex
+
+    member private _.Unfail(row: ExtremeRow<'K, 'V, 'S>) =
+        if not (Platform.isNull row.Error) then
+            row.Error <- null
+            failed <- failed - 1
+
+            if obj.ReferenceEquals (failure, row) then
+                failure <- Unchecked.defaultof<_>
+
+    /// <summary>Reads the row untracked and updates its leaf in the tournament tree.</summary>
+    member private this.Read(row: ExtremeRow<'K, 'V, 'S>) =
+        let reading = graph.RunUntracked (fun () -> row.Entry.Row.TryValue)
+        row.Queued <- false
+
+        match reading with
+        | Ready (struct (rank, value)) ->
+            this.Unfail row
+
+            if not row.HasValue then
+                row.HasValue <- true
+                row.Rank <- rank
+                row.Value <- value
+                valued <- valued + 1
+
+                if not dirtyTree && row.Slot >= 0 then
+                    Platform.setItemAt (cap + row.Slot) tree row
+
+                    try
+                        this.SiftUp row.Slot
+                    with _ ->
+                        dirtyTree <- true
+            else
+                let mutable sameRank = false
+                let mutable cmpErr: exn = null
+
+                try
+                    sameRank <- compareExtreme row.Rank rank = 0
+                with ex ->
+                    cmpErr <- ex
+
+                if not (Platform.isNull cmpErr) then
+                    this.Fail (row, cmpErr)
+                else
+                    row.Rank <- rank
+                    row.Value <- value
+
+                    if not sameRank && not dirtyTree && row.Slot >= 0 then
+                        try
+                            this.SiftUp row.Slot
+                        with _ ->
+                            dirtyTree <- true
+        | Pending -> this.Unfail row
+        | Failed ex -> this.Fail (row, ex)
+
+    /// <summary>Stops observing the row and clears its tournament leaf.</summary>
+    member private this.Detach(row: ExtremeRow<'K, 'V, 'S>) =
+        row.Attached <- false
+        (row.Entry.Row :> ISource).RemoveObserverAt(row :> IComputation, row.Handle)
+        row.Handle <- EdgeHandle.Unlinked
+        this.Unfail row
+        let oldSlot = row.Slot
+        row.Slot <- -1
+
+        if
+            oldSlot >= 0
+            && oldSlot < slots.Length
+            && obj.ReferenceEquals (Platform.itemAt oldSlot slots, row)
+        then
+            Platform.setItemAt oldSlot slots Unchecked.defaultof<_>
+
+        if row.HasValue then
+            row.HasValue <- false
+            row.Rank <- Unchecked.defaultof<'S>
+            row.Value <- Unchecked.defaultof<'V>
+            valued <- valued - 1
+
+            if not dirtyTree && oldSlot >= 0 then
+                Platform.setItemAt (cap + oldSlot) tree Unchecked.defaultof<_>
+
+                try
+                    this.SiftUp oldSlot
+                with _ ->
+                    dirtyTree <- true
+
+    /// <summary>Attaches a row to every added key and detaches the row of every removed key. O(N) in <c>keys</c>.</summary>
+    member private this.Diff(keys: 'K[]) =
+        dirtyTree <- true
+        generation <- generation + 1
+        added.Clear ()
+        removed.Clear ()
+
+        for i in 0 .. keys.Length - 1 do
+            let key = Platform.itemAt i keys
+            let entry = upstream.Entries.Find key
+
+            if not (Platform.isNull entry) then
+                let row = rows.Find key
+
+                if
+                    not (Platform.isNull (box row))
+                    && obj.ReferenceEquals (row.Entry, entry)
+                then
+                    row.Generation <- generation
+                else
+                    if not (Platform.isNull (box row)) then
+                        this.Detach row
+
+                    let fresh = ExtremeRow<'K, 'V, 'S>(graph, key, entry, touched)
+                    fresh.Generation <- generation
+                    rows.Set (key, fresh)
+                    added.Add fresh
+
+        rows.Iterate (fun key row ->
+            if row.Generation <> generation then
+                removed.Add key)
+
+        for key in removed do
+            this.Detach (rows.Find key)
+            rows.Remove key
+
+        lastKeys <- keys
+
+        for row in added do
+            row.Queued <- true
+            row.Attached <- true
+            row.Handle <- (row.Entry.Row :> ISource).AddObserver(row :> IComputation, 0)
+            this.Read row
+
+        added.Clear ()
+        removed.Clear ()
+
+    /// <summary>Checks whether non-null slots in <c>slots</c> match <c>keys.[0 .. expectedPlaced - 1]</c>.</summary>
+    member private _.SlotsMatchPrefix(keys: 'K[], expectedPlaced: int) =
+        if expectedPlaced < 0 || expectedPlaced > keys.Length then
+            false
+        else
+            let mutable k = 0
+            let mutable s = 0
+            let mutable ok = true
+
+            while s < slotCount && ok do
+                let row = Platform.itemAt s slots
+
+                if not (Platform.isNull (box row)) then
+                    if
+                        k < expectedPlaced
+                        && equalKeys.Equals (row.Key, Platform.itemAt k keys)
+                    then
+                        k <- k + 1
+                    else
+                        ok <- false
+
+                s <- s + 1
+
+            ok && k = expectedPlaced
+
+    /// <summary>Applies coalesced membership changes from <c>delta</c>, preserving slots on removals, replacements and tail appends.</summary>
+    member private this.ApplyDelta(delta: ProjectionDelta<'K>) =
+        added.Clear ()
+        let mutable unplaced = 0
+
+        for i in 0 .. delta.ChangeCount - 1 do
+            let change = delta.ChangeAt i
+
+            if change.Value = KeyChange.Removed then
+                let old = rows.Find change.Key
+
+                if not (Platform.isNull (box old)) then
+                    this.Detach old
+                    rows.Remove change.Key
+            elif change.Value = KeyChange.Replaced then
+                let old = rows.Find change.Key
+                let reuseSlot = if not (Platform.isNull (box old)) then old.Slot else -1
+
+                if not (Platform.isNull (box old)) then
+                    this.Detach old
+                    rows.Remove change.Key
+
+                let entry = upstream.Entries.Find change.Key
+
+                if not (Platform.isNull entry) then
+                    let fresh = ExtremeRow<'K, 'V, 'S>(graph, change.Key, entry, touched)
+
+                    if reuseSlot >= 0 && not dirtyTree then
+                        fresh.Slot <- reuseSlot
+                        Platform.setItemAt reuseSlot slots fresh
+                    else
+                        unplaced <- unplaced + 1
+
+                    rows.Set (change.Key, fresh)
+                    added.Add fresh
+
+        for i in 0 .. delta.ChangeCount - 1 do
+            let change = delta.ChangeAt i
+
+            if change.Value = KeyChange.Added then
+                let entry = upstream.Entries.Find change.Key
+
+                if not (Platform.isNull entry) then
+                    let old = rows.Find change.Key
+
+                    if not (Platform.isNull (box old)) then
+                        this.Detach old
+
+                    let fresh = ExtremeRow<'K, 'V, 'S>(graph, change.Key, entry, touched)
+                    rows.Set (change.Key, fresh)
+                    added.Add fresh
+                    unplaced <- unplaced + 1
+
+        let keys = delta.Keys
+
+        if delta.OrderChanged || added.Count > 0 then
+            let placedCount = keys.Length - unplaced
+
+            if
+                dirtyTree
+                || (slotCount > 64 && keys.Length * 4 < slotCount)
+                || not (this.SlotsMatchPrefix (keys, placedCount))
+            then
+                dirtyTree <- true
+            elif keys.Length = 0 then
+                slotCount <- 0
+            elif unplaced > 0 then
+                this.EnsureCap (slotCount + unplaced)
+                let mutable idx = placedCount
+
+                while idx < keys.Length && not dirtyTree do
+                    let r = rows.Find (Platform.itemAt idx keys)
+
+                    if not (Platform.isNull (box r)) && r.Slot < 0 then
+                        r.Slot <- slotCount
+                        Platform.setItemAt slotCount slots r
+                        slotCount <- slotCount + 1
+                    else
+                        dirtyTree <- true
+
+                    idx <- idx + 1
+
+        lastKeys <- keys
+
+        for i in 0 .. added.Count - 1 do
+            let row = Platform.entryAt i added
+            row.Queued <- true
+            row.Attached <- true
+            row.Handle <- (row.Entry.Row :> ISource).AddObserver(row :> IComputation, 0)
+            this.Read row
+
+        added.Clear ()
+
+    /// <summary>Brings membership, queued rows, the tournament tree and <c>stickyHolder</c> current.</summary>
+    member private this.Sync(delta: ProjectionDelta<'K>) =
+        if not (Platform.isNull (box delta)) then
+            if delta.IsReset then
+                this.Diff delta.Keys
+            elif delta.ChangeCount > 0 then
+                this.ApplyDelta delta
+            elif delta.OrderChanged then
+                lastKeys <- delta.Keys
+
+                if
+                    not dirtyTree
+                    && not (this.SlotsMatchPrefix (delta.Keys, delta.Keys.Length))
+                then
+                    dirtyTree <- true
+            else
+                lastKeys <- delta.Keys
+
+        let mutable i = 0
+
+        while i < queue.Count do
+            let row = Platform.entryAt i queue
+
+            if row.Attached && row.Entry.Live then
+                this.Read row
+            else
+                row.Queued <- false
+
+            i <- i + 1
+
+        queue.Clear ()
+
+        if dirtyTree then
+            this.RebuildTree lastKeys
+
+        if failed = 0 then
+            let top =
+                if cap > 0 then
+                    Platform.itemAt 1 tree
+                else
+                    Unchecked.defaultof<_>
+
+            if Platform.isNull (box top) then
+                stickyHolder <- Unchecked.defaultof<_>
+                hasStickyKey <- false
+                stickyKey <- Unchecked.defaultof<'K>
+            else
+                let candidate =
+                    if
+                        not (Platform.isNull (box stickyHolder))
+                        && stickyHolder.Attached
+                    then
+                        stickyHolder
+                    elif hasStickyKey then
+                        rows.Find stickyKey
+                    else
+                        Unchecked.defaultof<_>
+
+                let chosen =
+                    if
+                        not (Platform.isNull (box candidate))
+                        && candidate.Attached
+                        && candidate.HasValue
+                        && (obj.ReferenceEquals (candidate, top)
+                            || compareExtreme candidate.Rank top.Rank <= 0)
+                    then
+                        candidate
+                    else
+                        top
+
+                stickyHolder <- chosen
+                hasStickyKey <- true
+                stickyKey <- chosen.Key
+
+    member private _.CurrentFailureRow() =
+        if Platform.isNull (box failure) then
+            rows.Iterate (fun _ row ->
+                if
+                    Platform.isNull (box failure)
+                    && not (Platform.isNull row.Error)
+                then
+                    failure <- row)
+
+        failure
+
+    /// <summary>Raises the exception of the first failed row, with the row's origin when the row still holds it.</summary>
+    member private this.RaiseFailure() =
+        let row = this.CurrentFailureRow ()
+        let recorded = row.Entry.Row.Failure
+
+        if
+            not (Platform.isNull recorded)
+            && obj.ReferenceEquals (recorded.Error, row.Error)
+        then
+            graph.Raise recorded
+        else
+            raise row.Error
+
+    /// <summary>The memo's body: tracks the upstream key delta and this node, then returns the finished extreme value.</summary>
+    member this.Compute(_: 'R voption) : 'R =
+        if disposed then
+            lastResult
+        else
+            let delta = keyReader.Read ()
+            graph.Track (this :> ISource)
+            this.Sync delta
+            moved <- false
+
+            if failed > 0 then
+                lastOutcomeFailed <- true
+                this.RaiseFailure ()
+
+            lastOutcomeFailed <- false
+
+            if Platform.isNull (box stickyHolder) then
+                hasPublished <- false
+                publishedValue <- Unchecked.defaultof<'V>
+                lastResult <- Unchecked.defaultof<'R>
+                finish None
+            elif
+                hasPublished
+                && equalValues.Equals (stickyHolder.Value, publishedValue)
+            then
+                lastResult
+            else
+                let current = finish (Some stickyHolder.Value)
+                hasPublished <- true
+                publishedValue <- stickyHolder.Value
+                lastResult <- current
+                current
+
+    member this.Dispose() =
+        if not disposed then
+            disposed <- true
+
+            if not (Platform.isNull link) then
+                link.Detach ()
+                link <- null
+
+            if not (Platform.isNull (box keyReader)) then
+                keyReader.Stop ()
+                keyReader <- Unchecked.defaultof<_>
+
+            rows.Iterate (fun _ row ->
+                row.Attached <- false
+                row.Slot <- -1
+                (row.Entry.Row :> ISource).RemoveObserverAt(row :> IComputation, row.Handle)
+                row.Handle <- EdgeHandle.Unlinked)
+
+            rows.Clear ()
+            queue.Clear ()
+            slots <- Array.empty
+            tree <- Array.empty
+            stickyHolder <- Unchecked.defaultof<_>
+
+    interface INode with
+        member _.Id = id
+        member _.Status = Status.None
+
+    interface ISource with
+        member _.AddObserver(c, slot) =
+            observers.Add (c, slot)
+
+        member _.TryAddObserver(c, slot) =
+            observers.TryAdd (c, slot)
+
+        member _.RemoveObserverAt(c, handle) =
+            observers.RemoveAt (c, handle)
+
+        member this.UpdateIfNecessary() =
+            if not disposed && not (Platform.isNull lastKeys) then
+                moved <- false
+                let prevFailed = failed
+
+                let prevErr =
+                    if prevFailed > 0 then
+                        (this.CurrentFailureRow ()).Error
+                    else
+                        null
+
+                try
+                    this.Sync Unchecked.defaultof<_>
+
+                    if failed > 0 then
+                        let curErr = (this.CurrentFailureRow ()).Error
+
+                        if
+                            prevFailed = 0
+                            || not lastOutcomeFailed
+                            || not (obj.ReferenceEquals (prevErr, curErr))
+                        then
+                            moved <- true
+                    elif prevFailed > 0 || lastOutcomeFailed then
+                        moved <- true
+                    elif Platform.isNull (box stickyHolder) then
+                        if hasPublished then
+                            moved <- true
+                    elif not hasPublished then
+                        moved <- true
+                    elif not (equalValues.Equals (stickyHolder.Value, publishedValue)) then
+                        moved <- true
+                with _ ->
+                    moved <- true
+
+                if moved then
+                    observers.NotifyDirty ()
+
+        member _.IsStale = false
+
+        member _.IsActive = false
+
+    interface IOwned with
+        member this.Release() =
+            link <- null
+            this.Dispose ()
+
+    interface System.IDisposable with
+        member this.Dispose() =
+            this.Dispose ()
 
 /// <summary>Views over a <c>Projection</c> that re-run the user function only for keys whose upstream row changed.</summary>
 /// <remarks>
@@ -6512,89 +7215,42 @@ module Projection =
         meanBy projection (fun state -> raiseEmpty (mean state)) upstream
 
     /// <summary>
-    /// A memo of <c>finish</c> applied to the value holding the best rank of <c>projection</c>. <c>better rank best</c> is
-    /// true when <c>rank</c> replaces the holder of <c>best</c>.
+    /// A memo of <c>finish</c> applied to the value holding the best rank of <c>projection</c>. <c>isMax</c> selects
+    /// greatest ranks when true and least ranks when false.
     /// </summary>
     /// <remarks>
-    /// An equal rank keeps the holder. Removing or editing the holder re-folds the cached ranks in <c>Keys</c> order, and
-    /// the re-fold favours the last published holder over an equal rank. Readers re-run only when the holder value
-    /// changes.
+    /// An equal rank keeps the holder, including when its holder's row is edited to an equal rank. Removing, editing or
+    /// tail-appending rows updates a binary tournament winner tree in O(log N) comparisons; non-tail insertions and upstream
+    /// reorders rebuild in O(N) over cached ranks. Readers re-run only when the published result input changes.
     /// </remarks>
     let private extremeBy
         (operation: string)
-        (better: 'S -> 'S -> bool)
+        (isMax: bool)
         (projection: 'V -> 'S)
         (finish: 'V option -> 'R)
         (upstream: Projection<'K, 'V>)
         : Memo<'R> =
         upstream.RequireRowMemos operation
-        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
-        let equalValues = upstream.Graph.Options.Equality.Comparer<'V>()
-        let hasLast = ref false
-        let lastKey = ref Unchecked.defaultof<'K>
-        let lastValue = ref Unchecked.defaultof<'V>
-        let lastResult = ref Unchecked.defaultof<'R>
+        let graph = upstream.Graph
+        let equalValues = graph.Options.Equality.Comparer<'V>()
+        let owner = ownedScope graph
 
-        let add (state: Extreme<'K, 'S, 'V>) (struct (key: 'K, rank: 'S, value: 'V)) =
-            if
-                state.Folded = 0
-                || better rank state.HolderRank
-                || (hasLast.Value
-                    && equalKeys.Equals (key, lastKey.Value)
-                    && not (better state.HolderRank rank))
-            then
-                {
-                    Folded = state.Folded + 1
-                    HolderKey = key
-                    HolderRank = rank
-                    HolderValue = value
-                }
-            else
-                { state with Folded = state.Folded + 1 }
+        let aggregate =
+            graph.RunOwned (
+                owner,
+                fun () ->
+                    let ranked =
+                        upstream
+                        |> mapByKey (fun key ->
+                            let value = upstream.Get key
+                            struct (projection value, value))
 
-        let subtract (state: Extreme<'K, 'S, 'V>) (struct (key: 'K, _: 'S, _: 'V)) =
-            // A throwing subtract re-folds from the cached values.
-            if equalKeys.Equals (key, state.HolderKey) then
-                raise (System.InvalidOperationException ())
+                    new ProjectionExtreme<'K, 'V, 'S, 'R> (graph, ranked, isMax, equalValues, finish)
+            )
 
-            { state with Folded = state.Folded - 1 }
-
-        let zero =
-            {
-                Folded = 0
-                HolderKey = Unchecked.defaultof<'K>
-                HolderRank = Unchecked.defaultof<'S>
-                HolderValue = Unchecked.defaultof<'V>
-            }
-
-        let ranked () =
-            upstream
-            |> mapByKey (fun key ->
-                let value = upstream.Get key
-                struct (key, projection value, value))
-
-        let result (state: Extreme<'K, 'S, 'V>) =
-            if state.Folded = 0 then
-                hasLast.Value <- false
-                lastKey.Value <- Unchecked.defaultof<_>
-                lastValue.Value <- Unchecked.defaultof<_>
-                lastResult.Value <- Unchecked.defaultof<_>
-                finish None
-            elif
-                hasLast.Value
-                && equalValues.Equals (state.HolderValue, lastValue.Value)
-            then
-                lastKey.Value <- state.HolderKey
-                lastResult.Value
-            else
-                let current = finish (Some state.HolderValue)
-                hasLast.Value <- true
-                lastKey.Value <- state.HolderKey
-                lastValue.Value <- state.HolderValue
-                lastResult.Value <- current
-                current
-
-        foldOwned upstream.Graph ranked add subtract zero result
+        let memo = Memo<'R>.Create(graph, aggregate.Compute, ScopeMode.Pure)
+        memo.Adopt owner
+        memo
 
     /// <summary>
     /// A memo of a value of <c>upstream</c> with the least <c>projection</c> under the <c>sortBy</c> order, or <c>None</c>
@@ -6603,7 +7259,11 @@ module Projection =
     /// <remarks>
     /// A NaN rank orders after every other rank. Among equal ranks the current result stays, including when its holder's
     /// row is edited to an equal rank; when the holder is removed, the result is the first holder in <c>Keys</c> order. A
-    /// row change costs O(1) unless it removes or edits the holder's row, which re-folds the cached ranks in O(N).
+    /// row edit, removal or tail append updates a binary tournament winner tree in O(log N) comparisons
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#tournament_winner_optimal_and_first">tournament_winner_optimal_and_first</see>,
+    /// <see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#tournament_point_update_refines_eval">tournament_point_update_refines_eval</see>,
+    /// <see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sticky_holder_refines_extreme_scan">sticky_holder_refines_extreme_scan</see>),
+    /// or O(1) when its rank is unchanged; non-tail key insertions and upstream reorders rebuild in O(N) from cached ranks.
     /// Pending and failed ranks follow <c>foldGroup</c>.
     /// </remarks>
     /// <example>
@@ -6613,7 +7273,7 @@ module Projection =
     /// </code>
     /// </example>
     let tryMinBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V option> =
-        extremeBy "Projection.tryMinBy" (fun rank best -> Ranks.ascending rank best < 0) projection id upstream
+        extremeBy "Projection.tryMinBy" false projection id upstream
 
     /// <summary>
     /// A memo of a value of <c>upstream</c> with the greatest <c>projection</c> under the <c>sortBy</c> order, or
@@ -6621,27 +7281,17 @@ module Projection =
     /// </summary>
     /// <remarks>A NaN rank is the greatest. Ties, costs, pending and failure follow <c>tryMinBy</c>.</remarks>
     let tryMaxBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V option> =
-        extremeBy "Projection.tryMaxBy" (fun rank best -> Ranks.ascending rank best > 0) projection id upstream
+        extremeBy "Projection.tryMaxBy" true projection id upstream
 
     /// <summary><c>tryMinBy</c>, raising <c>KeyNotFoundException</c> while no value has settled.</summary>
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let minBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V> =
-        extremeBy
-            "Projection.minBy"
-            (fun rank best -> Ranks.ascending rank best < 0)
-            projection
-            (orRaise "Projection.minBy: the projection has no settled values.")
-            upstream
+        extremeBy "Projection.minBy" false projection (orRaise "Projection.minBy: the projection has no settled values.") upstream
 
     /// <summary><c>tryMaxBy</c>, raising <c>KeyNotFoundException</c> while no value has settled.</summary>
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let maxBy (projection: 'V -> 'S) (upstream: Projection<'K, 'V>) : Memo<'V> =
-        extremeBy
-            "Projection.maxBy"
-            (fun rank best -> Ranks.ascending rank best > 0)
-            projection
-            (orRaise "Projection.maxBy: the projection has no settled values.")
-            upstream
+        extremeBy "Projection.maxBy" true projection (orRaise "Projection.maxBy: the projection has no settled values.") upstream
 
     /// <summary>
     /// The keys of <c>upstream</c> satisfying <c>predicate</c>, and the remaining keys, each in upstream order with their

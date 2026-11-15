@@ -62,7 +62,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.tryHead`, `tryLast`, `tryItem index` (`head`, `last`, `item` raise) | the key at a position with its value | O(1); an edit off the position wakes no reader |
 | `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate call; a sparse membership flip updates the `filter` view via Fenwick rank + `Keys` splice |
 | `Projection.tryAverageBy projection` (`averageBy` raises) | the mean of `projection` over the settled values | as `foldGroup` |
-| `Projection.tryMinBy`, `tryMaxBy projection` (`minBy`, `maxBy` raise) | a value with the least or greatest rank | O(1); O(N) when the holder leaves or changes |
+| `Projection.tryMinBy`, `tryMaxBy projection` (`minBy`, `maxBy` raise) | a value with the least or greatest rank | O(log N) tournament sift; O(1) when rank is unchanged |
 
 :::
 
@@ -303,9 +303,14 @@ meanScore.Value // Some 58.33333333
 
 `Projection.tryMinBy` and `tryMaxBy` return a value with the least or greatest rank, under the `sortBy` order: a NaN
 rank is the greatest. Among equal ranks the current result stays, including when its holder's row is edited to an
-equal rank; when the holder is removed, the result is the first holder in `Keys` order. A row change costs O(1) unless
-it removes or edits the holder's row, which re-folds the cached ranks in O(N). `minBy` and `maxBy` raise
-`KeyNotFoundException` while no value has settled.
+equal rank; when the holder is removed, the result is the first holder in `Keys` order. Row rank edits, removals and
+tail appends update a binary tournament winner tree in O(log N) comparisons
+([`tournament_winner_optimal_and_first`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#tournament_winner_optimal_and_first),
+[`tournament_point_update_refines_eval`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#tournament_point_update_refines_eval),
+[`sticky_holder_refines_extreme_scan`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sticky_holder_refines_extreme_scan)),
+or O(1) when a non-winner right leaf leaves or a row edit keeps its rank; non-tail key insertions and upstream
+reorders rebuild in O(N) from cached ranks. `minBy` and `maxBy` raise `KeyNotFoundException` while no value has
+settled.
 *)
 
 let lowest = scoreRows |> Projection.tryMinBy id

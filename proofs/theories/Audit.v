@@ -472,3 +472,6 @@ Print Assumptions positional_frame_prefix_suffix.
 Print Assumptions positional_pure_inserts_correct.
 Print Assumptions positional_pure_removes_correct.
 Print Assumptions positional_nodup_trimmed_disjoint.
+Print Assumptions tournament_winner_optimal_and_first.
+Print Assumptions tournament_point_update_refines_eval.
+Print Assumptions sticky_holder_refines_extreme_scan.

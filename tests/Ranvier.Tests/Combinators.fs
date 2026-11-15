@@ -1312,7 +1312,7 @@ let sortByTests =
                             Expect.equal view.Keys[0] 2 "key 2 sorts first"
                         }
 
-                        test "removing a non-extreme row costs no comparison; removing the extreme re-folds once" {
+                        test "removing or editing rows in tryMinBy updates the tournament in O(log N) comparisons" {
                             use g = new Graph ()
                             use _ = g.Activate ()
                             let source = createSignal (items [ for i in 1..1000 -> i, i ])
@@ -1321,12 +1321,19 @@ let sortByTests =
                             createEffect (fun () -> least.Value |> ignore)
                             comparisons.Value <- 0
                             source.Value <- source.Value |> List.filter (fun x -> x.Id <> 500)
-                            Expect.equal comparisons.Value 0 "a non-extreme removal subtracts in O(1)"
+                            Expect.equal comparisons.Value 0 "a non-extreme right-leaf removal needs no comparison"
                             Expect.equal least.Value (Some 1) "key 1 holds"
 
                             source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
-                            Expect.equal comparisons.Value 997 "one re-fold over the 998 cached values"
+                            Expect.isGreaterThan comparisons.Value 0 "removing the extreme sifts the winner tree"
+                            Expect.isLessThanOrEqual comparisons.Value 12 "removing the extreme sifts in O(log N)"
                             Expect.equal least.Value (Some 2) "key 2 holds"
+
+                            comparisons.Value <- 0
+                            source.Value <- setN 2 5000 source.Value
+                            Expect.isGreaterThan comparisons.Value 0 "editing the holder sifts the winner tree"
+                            Expect.isLessThanOrEqual comparisons.Value 15 "editing the holder sifts in O(log N)"
+                            Expect.equal least.Value (Some 3) "key 3 holds"
 
                             comparisons.Value <- 0
                             source.Value <- setN 10 5000 source.Value
@@ -4700,6 +4707,152 @@ let averageTests =
             }
         ]
 
+let private rankFloat (v: float) = v
+
+let private stepStickyModel (isMax: bool) (prevKey: int option) (rowsList: (int * float) list) =
+    let better a b =
+        let ord = ascendingRank (rankFloat a) (rankFloat b)
+        if isMax then ord > 0 else ord < 0
+
+    let mutable hasBest = false
+    let mutable bestK = 0
+    let mutable bestV = 0.0
+
+    for k, v in rowsList do
+        let take =
+            if not hasBest then
+                true
+            elif better v bestV then
+                true
+            else
+                match prevKey with
+                | Some pk when pk = k && not (better bestV v) -> true
+                | _ -> false
+
+        if take then
+            hasBest <- true
+            bestK <- k
+            bestV <- v
+
+    if hasBest then Some (bestK, bestV) else None
+
+let private floatEq (a: float) (b: float) =
+    (Double.IsNaN a && Double.IsNaN b) || a = b
+
+let private optFloatEq (a: float option) (b: float option) =
+    match a, b with
+    | None, None -> true
+    | Some x, Some y -> floatEq x y
+    | _ -> false
+
+let private runExtremeStickySeed (checkWakeups: bool) (values: float[]) (seed: int) =
+    use g = new Graph ()
+    use _ = g.Activate ()
+    let mutable state = uint32 seed * 747796405u + 2891336453u
+
+    let nextInt bound =
+        state <- state * 1664525u + 1013904223u
+        int (state % uint32 bound)
+
+    let mutable cur = [ for k in 1..6 -> k, values[nextInt values.Length] ]
+    let source = createSignal [ for k, v in cur -> k, v ]
+    let up = createProjection fst snd (fun () -> source.Value)
+
+    let least =
+        up
+        |> Projection.tryMinBy (fun v -> if Double.IsNaN v then nan else v)
+
+    let most =
+        up
+        |> Projection.tryMaxBy (fun v -> if Double.IsNaN v then nan else v)
+
+    let minWakeups = ref 0
+    let maxWakeups = ref 0
+
+    createEffect (fun () ->
+        minWakeups.Value <- minWakeups.Value + 1
+        least.Value |> ignore)
+
+    createEffect (fun () ->
+        maxWakeups.Value <- maxWakeups.Value + 1
+        most.Value |> ignore)
+
+    let mutable stickyMin = stepStickyModel false None cur
+    let mutable stickyMax = stepStickyModel true None cur
+    let mutable expectedMinWakeups = 1
+    let mutable expectedMaxWakeups = 1
+    let mutable nextKeyId = 7
+
+    for step in 1..30 do
+        let op = nextInt 6
+
+        cur <-
+            if op = 0 && cur.Length > 0 then
+                // Edit an existing row (possibly keeping equal rank or turning NaN).
+                let idx = nextInt cur.Length
+                let vNew = values[nextInt values.Length]
+
+                cur
+                |> List.mapi (fun i (k, v) -> if i = idx then k, vNew else k, v)
+            elif op = 1 && cur.Length > 0 then
+                // Remove an arbitrary row.
+                let idx = nextInt cur.Length
+
+                cur
+                |> List.mapi (fun i x -> i, x)
+                |> List.filter (fun (i, _) -> i <> idx)
+                |> List.map snd
+            elif op = 2 then
+                // Tail append.
+                let k = nextKeyId
+                nextKeyId <- nextKeyId + 1
+                cur @ [ k, values[nextInt values.Length] ]
+            elif op = 3 then
+                // Prepend / middle insert.
+                let k = nextKeyId
+                nextKeyId <- nextKeyId + 1
+                let idx = if cur.Length = 0 then 0 else nextInt (cur.Length + 1)
+                let before, after = List.splitAt idx cur
+
+                before
+                @ [ k, values[nextInt values.Length] ]
+                @ after
+            elif op = 4 then
+                // Pure reorder.
+                List.rev cur
+            else if
+                // Reset to empty or fresh batch.
+                cur.Length = 0
+            then
+                let k1 = nextKeyId
+                let k2 = nextKeyId + 1
+                nextKeyId <- nextKeyId + 2
+                [ k1, values[nextInt values.Length]; k2, values[nextInt values.Length] ]
+            else
+                []
+
+        source.Value <- cur
+
+        let nextStickyMin = stepStickyModel false (Option.map fst stickyMin) cur
+        let nextStickyMax = stepStickyModel true (Option.map fst stickyMax) cur
+
+        if not (optFloatEq (Option.map snd stickyMin) (Option.map snd nextStickyMin)) then
+            expectedMinWakeups <- expectedMinWakeups + 1
+
+        if not (optFloatEq (Option.map snd stickyMax) (Option.map snd nextStickyMax)) then
+            expectedMaxWakeups <- expectedMaxWakeups + 1
+
+        stickyMin <- nextStickyMin
+        stickyMax <- nextStickyMax
+
+        Expect.isTrue (optFloatEq least.Value (Option.map snd stickyMin)) $"seed {seed} step {step}: tryMinBy value"
+
+        Expect.isTrue (optFloatEq most.Value (Option.map snd stickyMax)) $"seed {seed} step {step}: tryMaxBy value"
+
+        if checkWakeups then
+            Expect.equal minWakeups.Value expectedMinWakeups $"seed {seed} step {step}: min wakeups"
+            Expect.equal maxWakeups.Value expectedMaxWakeups $"seed {seed} step {step}: max wakeups"
+
 [<Tests>]
 let extremeTests =
     testList
@@ -4902,6 +5055,47 @@ let extremeTests =
                 Expect.isGreaterThan (readersOf up 1) 0 "the rank view reads row 1"
                 least.Dispose ()
                 Expect.equal (readersOf up 1) 0 "disposing the memo disposed its view and fold"
+            }
+
+            test "worsening holder that still beats its sibling promotes a better cousin" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 100; 3, 20; 4, 200 ])
+                let least = rows source |> Projection.tryMinBy id
+
+                Expect.equal least.Value (Some 10) "initial holder is key 1"
+                source.Value <- setN 1 50 source.Value
+                Expect.equal least.Value (Some 20) "key 1 still beats sibling key 2 (50 < 100) yet promotes cousin key 3"
+                source.Value <- setN 3 150 source.Value
+                Expect.equal least.Value (Some 50) "key 1 reclaims from key 3 when key 3 worsens past 50"
+            }
+
+            test "tail-appending rows across capacity doublings keeps tournament results and O(log N) cost" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1000 ])
+                let up = rows source
+                let least = up |> Projection.tryMinBy (fun n -> Counted n)
+                let most = up |> Projection.tryMaxBy (fun n -> Counted n)
+
+                Expect.equal least.Value (Some 1000) "initial min"
+                Expect.equal most.Value (Some 1000) "initial max"
+
+                for i in 2..100 do
+                    let rank = if i % 7 = 0 then 1000 + i else 1000 - i
+                    source.Value <- source.Value @ items [ i, rank ]
+
+                Expect.equal least.Value (Some (1000 - 100)) "min after 100 tail appends across doublings"
+                Expect.equal most.Value (Some (1000 + 98)) "max after 100 tail appends across doublings"
+            }
+
+            test "tryMinBy and tryMaxBy agree with sequential sticky-extreme scan across randomized 40-seed histories" {
+                let finiteValues = [| 0.0; 1.0; 1.0; 2.0; -3.5; 5.0; 5.0 |]
+                let nanValues = [| 0.0; 1.0; 1.0; 2.0; -3.5; nan; 5.0 |]
+
+                for seed in 1..40 do
+                    runExtremeStickySeed true finiteValues seed
+                    runExtremeStickySeed false nanValues seed
             }
         ]
 

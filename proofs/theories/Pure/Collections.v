@@ -32,7 +32,11 @@ This module proves the exact minimum specifications required by Ranvier's collec
 5. **Pass diff zero-removal cardinality skip and key-direct derived rows** (`apply_diff_zero_removals_iff`,
    `key_direct_row_retire_wakes_without_item_signal`): certifies skipping `entries.Iterate` in
    `Projection.ApplyDiff` whenever `entries.Count + AddedCount = seen.Count`, and certifies `RowsByKey`
-   derived rows that link directly to upstream rows without a per-row `Signal<'K>`. *)
+   derived rows that link directly to upstream rows without a per-row `Signal<'K>`.
+6. **Binary tournament winner tree and sticky-holder extremes** (`tournament_winner_optimal_and_first`,
+   `tournament_point_update_refines_eval`, `sticky_holder_refines_extreme_scan`): certifies left-biased
+   tournament winner selection, O(log N) `SiftUp` with early stop and zero-comparison capacity doubling,
+   and sticky tie retention for `Projection.tryMinBy` and `Projection.tryMaxBy`. *)
 
 (** ** Direct-observer edge boundary *)
 
@@ -2886,4 +2890,689 @@ Proof.
       * intros [_ [k [ms Hbm]]].
         destruct (bucket_members_nonempty_in_xs g (u, k) ms xs' Hbm) as [r [Hr Hgrp]].
         split; [exact (Hcov r g Hr Hgrp) | exists (u, k), ms; split; [exact Hbm | reflexivity]].
+Qed.
+
+(** ** Binary tournament winner tree and sticky-holder extremes *)
+
+Definition tour_entry : Type := option (nat * Z).
+
+Definition pick_winner (a b : tour_entry) : tour_entry :=
+  match a, b with
+  | None, _ => b
+  | Some _, None => a
+  | Some (ia, ra), Some (ib, rb) =>
+      if Z.leb ra rb then Some (ia, ra) else Some (ib, rb)
+  end.
+
+Lemma pick_winner_none_r (a : tour_entry) :
+  pick_winner a None = a.
+Proof.
+  destruct a as [[ia ra]|]; reflexivity.
+Qed.
+
+Lemma pick_winner_assoc (a b c : tour_entry) :
+  pick_winner (pick_winner a b) c = pick_winner a (pick_winner b c).
+Proof.
+  destruct a as [[ia ra]|], b as [[ib rb]|], c as [[ic rc]|]; cbn [pick_winner];
+  repeat match goal with
+  | |- context [Z.leb ?x ?y] => destruct (Z.leb_spec x y); cbn [pick_winner]
+  end; try reflexivity; lia.
+Qed.
+
+Inductive tour_tree :=
+| TLeaf (val : tour_entry)
+| TNode (win : tour_entry) (left right : tour_tree).
+
+Definition tour_winner (t : tour_tree) : tour_entry :=
+  match t with
+  | TLeaf w => w
+  | TNode w _ _ => w
+  end.
+
+Fixpoint build_tour (h base : nat) (leaves : nat -> option Z) : tour_tree :=
+  match h with
+  | 0 =>
+      TLeaf (match leaves base with
+             | Some r => Some (base, r)
+             | None => None
+             end)
+  | S h' =>
+      let l := build_tour h' base leaves in
+      let r := build_tour h' (base + Nat.pow 2 h') leaves in
+      TNode (pick_winner (tour_winner l) (tour_winner r)) l r
+  end.
+
+Fixpoint extreme_scan (base len : nat) (leaves : nat -> option Z) : tour_entry :=
+  match len with
+  | 0 => None
+  | S len' =>
+      let here := match leaves base with
+                  | Some r => Some (base, r)
+                  | None => None
+                  end in
+      pick_winner here (extreme_scan (S base) len' leaves)
+  end.
+
+Lemma extreme_scan_app (len1 len2 base : nat) (leaves : nat -> option Z) :
+  extreme_scan base (len1 + len2) leaves =
+  pick_winner (extreme_scan base len1 leaves) (extreme_scan (base + len1) len2 leaves).
+Proof.
+  revert base. induction len1 as [|len1' IH]; intro base.
+  - cbn [Nat.add extreme_scan pick_winner]. rewrite Nat.add_0_r. reflexivity.
+  - cbn [Nat.add extreme_scan]. rewrite IH.
+    rewrite <- pick_winner_assoc, Nat.add_succ_r. reflexivity.
+Qed.
+
+Lemma tour_winner_build_eq_scan (h base : nat) (leaves : nat -> option Z) :
+  tour_winner (build_tour h base leaves) = extreme_scan base (Nat.pow 2 h) leaves.
+Proof.
+  revert base. induction h as [|h' IH]; intro base.
+  - cbn [build_tour Nat.pow extreme_scan tour_winner]. rewrite pick_winner_none_r. reflexivity.
+  - cbn [build_tour Nat.pow Nat.mul tour_winner].
+    rewrite Nat.add_0_r, !IH, extreme_scan_app. reflexivity.
+Qed.
+
+Lemma extreme_scan_none_spec (len base : nat) (leaves : nat -> option Z) :
+  extreme_scan base len leaves = None ->
+  forall j, base <= j < base + len -> leaves j = None.
+Proof.
+  revert base. induction len as [|len' IH]; intros base Hnone j Hj.
+  - lia.
+  - cbn [extreme_scan] in Hnone.
+    destruct (leaves base) as [r|] eqn:Hbase.
+    + destruct (extreme_scan (S base) len' leaves) as [[ib rb]|]; cbn [pick_winner] in Hnone;
+        [destruct (Z.leb r rb) |]; discriminate.
+    + cbn [pick_winner] in Hnone.
+      destruct (decide (j = base)) as [->|Hne].
+      * exact Hbase.
+      * apply (IH (S base) Hnone j). lia.
+Qed.
+
+Lemma extreme_scan_some_spec (len base iw : nat) (rw : Z) (leaves : nat -> option Z) :
+  extreme_scan base len leaves = Some (iw, rw) ->
+  base <= iw < base + len /\
+  leaves iw = Some rw /\
+  (forall j r, base <= j < base + len -> leaves j = Some r -> (rw <= r)%Z) /\
+  (forall j r, base <= j < iw -> leaves j = Some r -> (rw < r)%Z).
+Proof.
+  revert base iw rw. induction len as [|len' IH]; intros base iw rw Hsome.
+  - cbn [extreme_scan] in Hsome. discriminate.
+  - cbn [extreme_scan] in Hsome.
+    destruct (leaves base) as [rb|] eqn:Hbase.
+    + destruct (extreme_scan (S base) len' leaves) as [[it rt]|] eqn:Hrest.
+      * cbn [pick_winner] in Hsome. destruct (Z.leb_spec rb rt) as [Hle|Hgt].
+        -- inversion Hsome; subst iw rw; clear Hsome.
+           destruct (IH (S base) it rt Hrest) as (_ & _ & Hmin & _).
+           repeat split; try lia; try exact Hbase.
+           intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+           ++ rewrite Hbase in Hlj. inversion Hlj; lia.
+           ++ pose proof (Hmin j r ltac:(lia) Hlj). lia.
+        -- inversion Hsome; subst iw rw; clear Hsome.
+           destruct (IH (S base) it rt Hrest) as (Hbounds & Hlt & Hmin & Hstrict).
+           repeat split; try lia; try exact Hlt.
+           ++ intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+              ** rewrite Hbase in Hlj. inversion Hlj; lia.
+              ** apply (Hmin j r ltac:(lia) Hlj).
+           ++ intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+              ** rewrite Hbase in Hlj. inversion Hlj; lia.
+              ** apply (Hstrict j r ltac:(lia) Hlj).
+      * cbn [pick_winner] in Hsome. inversion Hsome; subst iw rw; clear Hsome.
+        pose proof (extreme_scan_none_spec len' (S base) leaves Hrest) as Hallnone.
+        repeat split; try lia; try exact Hbase.
+        intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+        -- rewrite Hbase in Hlj. inversion Hlj; lia.
+        -- rewrite (Hallnone j ltac:(lia)) in Hlj. discriminate.
+    + cbn [pick_winner] in Hsome.
+      destruct (IH (S base) iw rw Hsome) as (Hbounds & Hlw & Hmin & Hstrict).
+      repeat split; try lia; try exact Hlw.
+      * intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+        -- rewrite Hbase in Hlj. discriminate.
+        -- apply (Hmin j r ltac:(lia) Hlj).
+      * intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+        -- rewrite Hbase in Hlj. discriminate.
+        -- apply (Hstrict j r ltac:(lia) Hlj).
+Qed.
+
+(**md
+**Bottom-up tournament build finds an optimal rank at the earliest `Keys`-order slot.**
+
+For any tree height `h`, base slot index `base`, and optional slot ranks `leaves`:
+
+- `tour_winner (build_tour h base leaves)` equals the left-to-right `extreme_scan` over
+  `[base, base + 2^h)`, and
+- if it returns `Some (i_win, r_win)`, then `i_win` is a settled slot in `[base, base + 2^h)`
+  with rank `r_win`, `(r_win <= r)%Z` for every settled slot in `[base, base + 2^h)`, and
+  strictly `(r_win < r)%Z` for every settled slot strictly before `i_win`.
+*)
+Theorem tournament_winner_optimal_and_first (h base : nat) (leaves : nat -> option Z) :
+  tour_winner (build_tour h base leaves) = extreme_scan base (Nat.pow 2 h) leaves /\
+  forall i_win r_win,
+    tour_winner (build_tour h base leaves) = Some (i_win, r_win) ->
+    base <= i_win < base + Nat.pow 2 h /\
+    leaves i_win = Some r_win /\
+    (forall j r, base <= j < base + Nat.pow 2 h -> leaves j = Some r -> (r_win <= r)%Z) /\
+    (forall j r, base <= j < i_win -> leaves j = Some r -> (r_win < r)%Z).
+Proof.
+  rewrite tour_winner_build_eq_scan. split.
+  - reflexivity.
+  - intros iw rw Hsome. apply extreme_scan_some_spec; exact Hsome.
+Qed.
+
+Inductive id_tree :=
+| ILeaf (wid : option nat)
+| INode (wid : option nat) (left right : id_tree).
+
+Definition id_winner (t : id_tree) : option nat :=
+  match t with
+  | ILeaf w => w
+  | INode w _ _ => w
+  end.
+
+Definition eval_id (leaves : nat -> option Z) (w : option nat) : tour_entry :=
+  match w with
+  | None => None
+  | Some i =>
+      match leaves i with
+      | Some r => Some (i, r)
+      | None => None
+      end
+  end.
+
+Definition pick_id (leaves : nat -> option Z) (a b : option nat) : option nat :=
+  fst <$> pick_winner (eval_id leaves a) (eval_id leaves b).
+
+Lemma pick_id_source (leaves : nat -> option Z) (a b : option nat) (nw : nat) :
+  pick_id leaves a b = Some nw -> a = Some nw \/ b = Some nw.
+Proof.
+  unfold pick_id, eval_id.
+  destruct a as [ia|], b as [ib|];
+    try destruct (leaves ia) as [ra|]; try destruct (leaves ib) as [rb|];
+    cbn [pick_winner]; try destruct (Z.leb ra rb);
+    cbn [fmap option_fmap option_map fst];
+    intro H; inversion H; auto.
+Qed.
+
+Fixpoint build_id_tree (h base : nat) (leaves : nat -> option Z) : id_tree :=
+  match h with
+  | 0 => ILeaf (match leaves base with Some _ => Some base | None => None end)
+  | S h' =>
+      let l := build_id_tree h' base leaves in
+      let r := build_id_tree h' (base + Nat.pow 2 h') leaves in
+      INode (pick_id leaves (id_winner l) (id_winner r)) l r
+  end.
+
+Lemma eval_build_id_tree (h base : nat) (leaves : nat -> option Z) :
+  eval_id leaves (id_winner (build_id_tree h base leaves)) =
+  tour_winner (build_tour h base leaves) /\
+  forall iw, id_winner (build_id_tree h base leaves) = Some iw ->
+    base <= iw < base + Nat.pow 2 h /\ exists r, leaves iw = Some r.
+Proof.
+  revert base. induction h as [|h' IH]; intro base.
+  - cbn [build_id_tree build_tour id_winner tour_winner Nat.pow].
+    destruct (leaves base) as [r|] eqn:Hb; cbn [eval_id]; split.
+    + rewrite Hb. reflexivity.
+    + intros iw Hw. inversion Hw; subst iw. split; [lia | exists r; exact Hb].
+    + reflexivity.
+    + intros iw Hw. discriminate.
+  - cbn [build_id_tree build_tour id_winner tour_winner Nat.pow Nat.mul].
+    rewrite Nat.add_0_r.
+    destruct (IH base) as [IHl Hlbound].
+    destruct (IH (base + Nat.pow 2 h')) as [IHr Hrbound].
+    set (wl := id_winner (build_id_tree h' base leaves)) in *.
+    set (wr := id_winner (build_id_tree h' (base + Nat.pow 2 h') leaves)) in *.
+    unfold pick_id.
+    destruct wl as [il|] eqn:Hwl; destruct wr as [ir|] eqn:Hwr.
+    + destruct (Hlbound il eq_refl) as (Hlb & rl & Hrl).
+      destruct (Hrbound ir eq_refl) as (Hrb & rr & Hrr).
+      cbn [eval_id] in *. rewrite Hrl in *. rewrite Hrr in *.
+      rewrite <- IHl, <- IHr. cbn [pick_winner].
+      destruct (Z.leb rl rr); cbn [fmap option_fmap option_map fst eval_id]; split.
+      * rewrite Hrl. reflexivity.
+      * intros iw Hw. inversion Hw; subst iw. split; [lia | exists rl; exact Hrl].
+      * rewrite Hrr. reflexivity.
+      * intros iw Hw. inversion Hw; subst iw. split; [lia | exists rr; exact Hrr].
+    + destruct (Hlbound il eq_refl) as (Hlb & rl & Hrl).
+      cbn [eval_id] in *. rewrite Hrl in *.
+      rewrite <- IHl, <- IHr.
+      cbn [pick_winner fmap option_fmap option_map fst eval_id].
+      split; [rewrite Hrl; reflexivity | intros iw Hw; inversion Hw; subst iw; split; [lia | exists rl; exact Hrl]].
+    + destruct (Hrbound ir eq_refl) as (Hrb & rr & Hrr).
+      cbn [eval_id] in *. rewrite Hrr in *.
+      rewrite <- IHl, <- IHr.
+      cbn [pick_winner fmap option_fmap option_map fst eval_id].
+      split; [rewrite Hrr; reflexivity | intros iw Hw; inversion Hw; subst iw; split; [lia | exists rr; exact Hrr]].
+    + rewrite <- IHl, <- IHr. cbn [eval_id pick_winner fmap option_fmap option_map fst].
+      split; [reflexivity | intros iw Hw; discriminate].
+Qed.
+
+Lemma build_id_tree_ext (h base : nat) (l1 l2 : nat -> option Z) :
+  (forall j, base <= j < base + Nat.pow 2 h -> l1 j = l2 j) ->
+  build_id_tree h base l1 = build_id_tree h base l2.
+Proof.
+  revert base. induction h as [|h' IH]; intros base Hext.
+  - cbn [build_id_tree]. rewrite (Hext base).
+    + reflexivity.
+    + cbn [Nat.pow]. lia.
+  - cbn [build_id_tree Nat.pow Nat.mul] in *. rewrite Nat.add_0_r in *.
+    rewrite (IH base (fun j Hj => Hext j ltac:(lia))).
+    rewrite (IH (base + Nat.pow 2 h') (fun j Hj => Hext j ltac:(lia))).
+    set (l := build_id_tree h' base l2).
+    set (r := build_id_tree h' (base + Nat.pow 2 h') l2).
+    f_equal.
+    unfold pick_id, eval_id.
+    (destruct (id_winner l) as [il|] eqn:Hil;
+      [ destruct (proj2 (eval_build_id_tree h' base l2) il Hil) as [Hbl _];
+        rewrite (Hext il ltac:(lia)) | ]);
+    (destruct (id_winner r) as [ir|] eqn:Hir;
+      [ destruct (proj2 (eval_build_id_tree h' (base + Nat.pow 2 h') l2) ir Hir) as [Hbr _];
+        rewrite (Hext ir ltac:(lia)) | ]);
+    reflexivity.
+Qed.
+
+Lemma build_id_tree_upper_none (h base : nat) (leaves : nat -> option Z) :
+  (forall j, base <= j < base + Nat.pow 2 h -> leaves j = None) ->
+  id_winner (build_id_tree h base leaves) = None.
+Proof.
+  intro Hall.
+  destruct (id_winner (build_id_tree h base leaves)) as [iw|] eqn:Hw; [|reflexivity].
+  destruct (proj2 (eval_build_id_tree h base leaves) iw Hw) as (Hb & r & Hrw).
+  rewrite (Hall iw Hb) in Hrw. discriminate.
+Qed.
+
+Lemma build_id_tree_double_cap (h base : nat) (leaves : nat -> option Z) :
+  (forall j, base + Nat.pow 2 h <= j < base + Nat.pow 2 (S h) -> leaves j = None) ->
+  id_winner (build_id_tree (S h) base leaves) = id_winner (build_id_tree h base leaves).
+Proof.
+  intro Hupper.
+  simpl build_id_tree. cbn [id_winner].
+  rewrite (build_id_tree_upper_none h (base + Nat.pow 2 h) leaves).
+  - unfold pick_id. cbn [eval_id]. rewrite pick_winner_none_r.
+    destruct (id_winner (build_id_tree h base leaves)) as [iw|] eqn:Hw.
+    + destruct (proj2 (eval_build_id_tree h base leaves) iw Hw) as (_ & r & Hrw).
+      unfold eval_id. rewrite Hrw. reflexivity.
+    + reflexivity.
+  - intros j Hj. apply Hupper. cbn [Nat.pow Nat.mul] in *. lia.
+Qed.
+
+Definition option_nat_eqb (a b : option nat) : bool :=
+  match a, b with
+  | None, None => true
+  | Some x, Some y => Nat.eqb x y
+  | _, _ => false
+  end.
+
+Fixpoint sift_id_step (h base target : nat) (leaves' : nat -> option Z) (t : id_tree) : id_tree * bool :=
+  match h, t with
+  | 0, ILeaf _ =>
+      (ILeaf (match leaves' target with Some _ => Some target | None => None end), true)
+  | S h', INode oldW l r =>
+      let mid := base + Nat.pow 2 h' in
+      if Nat.ltb target mid then
+        let '(l', cont) := sift_id_step h' base target leaves' l in
+        if negb cont then
+          (INode oldW l' r, false)
+        else
+          let nextW := pick_id leaves' (id_winner l') (id_winner r) in
+          if option_nat_eqb oldW nextW then
+            match nextW, id_winner l' with
+            | Some nw, Some cw => (INode oldW l' r, Nat.eqb nw cw)
+            | _, _ => (INode oldW l' r, false)
+            end
+          else
+            (INode nextW l' r, true)
+      else
+        let '(r', cont) := sift_id_step h' mid target leaves' r in
+        if negb cont then
+          (INode oldW l r', false)
+        else
+          let nextW := pick_id leaves' (id_winner l) (id_winner r') in
+          if option_nat_eqb oldW nextW then
+            match nextW, id_winner r' with
+            | Some nw, Some cw => (INode oldW l r', Nat.eqb nw cw)
+            | _, _ => (INode oldW l r', false)
+            end
+          else
+            (INode nextW l r', true)
+  | _, _ => (t, false)
+  end.
+
+(**md
+**Incremental `SiftUp` with early stop agrees bit-for-bit with a full tournament rebuild.**
+
+Updating slot `target` in `[base, base + 2^h)` from `leaves` to `leaves'` (`v_new` at
+`target`, `leaves` everywhere else) and running `sift_id_step` along the ancestor path of
+`target` yields `build_id_tree h base leaves'`, preserves exact equality whenever the
+early-stop condition fires (`cont = false` implies `nextW = oldW` and `nextW <> Some target`),
+and shifts left-justified leaves under capacity doubling (`build_id_tree_double_cap`) with
+zero comparisons.
+*)
+Theorem tournament_point_update_refines_eval
+  (h base target : nat) (v_new : option Z) (leaves : nat -> option Z) :
+  base <= target < base + Nat.pow 2 h ->
+  let leaves' := fun j => if decide (j = target) then v_new else leaves j in
+  let '(t', cont) := sift_id_step h base target leaves' (build_id_tree h base leaves) in
+  t' = build_id_tree h base leaves' /\
+  eval_id leaves' (id_winner t') = extreme_scan base (Nat.pow 2 h) leaves' /\
+  (cont = false ->
+     id_winner t' = id_winner (build_id_tree h base leaves) /\
+     id_winner t' <> Some target).
+Proof.
+  intros Htarget leaves'.
+  assert (Hmain :
+    let '(t', cont) := sift_id_step h base target leaves' (build_id_tree h base leaves) in
+    t' = build_id_tree h base leaves' /\
+    (cont = false ->
+       id_winner t' = id_winner (build_id_tree h base leaves) /\
+       id_winner t' <> Some target)).
+  { subst leaves'. revert base target Htarget.
+    induction h as [|h' IH]; intros base target Htarget;
+    set (leaves' := fun j => if decide (j = target) then v_new else leaves j).
+    - cbn [Nat.pow] in Htarget.
+      assert (Heq : target = base) by lia. subst target.
+      cbn [build_id_tree sift_id_step].
+      split; [reflexivity | discriminate].
+    - cbn [Nat.pow Nat.mul] in Htarget. rewrite Nat.add_0_r in Htarget.
+      remember (build_id_tree (S h') base leaves') as tree_new eqn:Htree_new.
+      cbn [build_id_tree sift_id_step].
+      subst tree_new.
+      set (mid := base + Nat.pow 2 h') in *.
+      set (l_old := build_id_tree h' base leaves) in *.
+      set (r_old := build_id_tree h' mid leaves) in *.
+      set (oldW := pick_id leaves (id_winner l_old) (id_winner r_old)) in *.
+      destruct (Nat.ltb_spec target mid) as [Hleft|Hright].
+      + pose proof (IH base target ltac:(lia)) as IHl.
+        fold leaves' in IHl. fold l_old in IHl.
+        destruct (sift_id_step h' base target leaves' l_old) as [l' contl] eqn:Hstep.
+        destruct IHl as [Hl' Hcontl].
+        assert (Hr_eq : r_old = build_id_tree h' mid leaves').
+        { unfold r_old. apply build_id_tree_ext.
+          intros j Hj. unfold leaves'. rewrite decide_False by lia. reflexivity. }
+        destruct contl; cbn [negb].
+        * remember (pick_id leaves' (id_winner l') (id_winner r_old)) as nextW eqn:HnextW.
+          assert (Hbuild' : build_id_tree (S h') base leaves' =
+                            INode nextW l' r_old).
+          { simpl build_id_tree. fold mid. rewrite <- Hl', <- Hr_eq, <- HnextW. reflexivity. }
+          destruct (option_nat_eqb oldW nextW) eqn:Heqw.
+          -- assert (oldW = nextW) as Hweq.
+             { destruct oldW as [x|], nextW as [y|]; cbn [option_nat_eqb] in Heqw;
+                 try discriminate; [f_equal; apply Nat.eqb_eq; exact Heqw | reflexivity]. }
+             destruct nextW as [nw|]; destruct (id_winner l') as [cw|] eqn:Hcw.
+             ++ destruct (Nat.eqb_spec nw cw) as [->|Hne].
+                ** split; [rewrite Hbuild', Hweq; reflexivity | discriminate].
+                ** split; [rewrite Hbuild', Hweq; reflexivity |].
+                   intro. cbn [id_winner]. split; [reflexivity |].
+                   rewrite Hweq. symmetry in HnextW.
+                   destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr].
+                   --- inversion Heql; subst; contradiction.
+                   --- destruct (proj2 (eval_build_id_tree h' mid leaves) nw Heqr) as [Hbr _].
+                       intro Heqt; inversion Heqt; lia.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity |].
+                rewrite Hweq. symmetry in HnextW.
+                destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr]; [discriminate |].
+                destruct (proj2 (eval_build_id_tree h' mid leaves) nw Heqr) as [Hbr _].
+                intro Heqt; inversion Heqt; lia.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+          -- split; [rewrite Hbuild'; reflexivity | discriminate].
+        * destruct (Hcontl eq_refl) as [Hwl_eq Hwl_nt].
+          assert (Hpick_eq : pick_id leaves' (id_winner l') (id_winner r_old) = oldW).
+          { unfold oldW, pick_id. rewrite Hwl_eq.
+            assert (Heval_l : eval_id leaves' (id_winner l_old) = eval_id leaves (id_winner l_old)).
+            { destruct (id_winner l_old) as [il|] eqn:Hil; [|reflexivity].
+              assert (il <> target) by (intro Heq; apply Hwl_nt; rewrite Hwl_eq, Heq; reflexivity).
+              unfold eval_id, leaves'. rewrite decide_False by assumption. reflexivity. }
+            assert (Heval_r : eval_id leaves' (id_winner r_old) = eval_id leaves (id_winner r_old)).
+            { destruct (id_winner r_old) as [ir|] eqn:Hir; [|reflexivity].
+              destruct (proj2 (eval_build_id_tree h' mid leaves) ir Hir) as [Hbr _].
+              unfold eval_id, leaves'. rewrite decide_False by lia. reflexivity. }
+            rewrite Heval_l, Heval_r. reflexivity. }
+          assert (Hold_nt : oldW <> Some target).
+          { intro Heqt. unfold oldW in Heqt.
+            destruct (pick_id_source _ _ _ _ Heqt) as [Heql|Heqr].
+            - apply Hwl_nt. rewrite Hwl_eq. exact Heql.
+            - destruct (proj2 (eval_build_id_tree h' mid leaves) target Heqr) as [Hbr _]. lia. }
+          split.
+          -- simpl build_id_tree. fold mid. rewrite <- Hl', <- Hr_eq, Hpick_eq. reflexivity.
+          -- intro. cbn [id_winner]. split; [reflexivity | exact Hold_nt].
+      + pose proof (IH mid target ltac:(lia)) as IHr.
+        fold leaves' in IHr. fold r_old in IHr.
+        destruct (sift_id_step h' mid target leaves' r_old) as [r' contr] eqn:Hstep.
+        destruct IHr as [Hr' Hcontr].
+        assert (Hl_ext : l_old = build_id_tree h' base leaves').
+        { unfold l_old. apply build_id_tree_ext.
+          intros j Hj. unfold leaves'. rewrite decide_False by lia. reflexivity. }
+        destruct contr; cbn [negb].
+        * remember (pick_id leaves' (id_winner l_old) (id_winner r')) as nextW eqn:HnextW.
+          assert (Hbuild' : build_id_tree (S h') base leaves' =
+                            INode nextW l_old r').
+          { simpl build_id_tree. fold mid. rewrite <- Hl_ext, <- Hr', <- HnextW. reflexivity. }
+          destruct (option_nat_eqb oldW nextW) eqn:Heqw.
+          -- assert (oldW = nextW) as Hweq.
+             { destruct oldW as [x|], nextW as [y|]; cbn [option_nat_eqb] in Heqw;
+                 try discriminate; [f_equal; apply Nat.eqb_eq; exact Heqw | reflexivity]. }
+             destruct nextW as [nw|]; destruct (id_winner r') as [cw|] eqn:Hcw.
+             ++ destruct (Nat.eqb_spec nw cw) as [->|Hne].
+                ** split; [rewrite Hbuild', Hweq; reflexivity | discriminate].
+                ** split; [rewrite Hbuild', Hweq; reflexivity |].
+                   intro. cbn [id_winner]. split; [reflexivity |].
+                   rewrite Hweq. symmetry in HnextW.
+                   destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr].
+                   --- destruct (proj2 (eval_build_id_tree h' base leaves) nw Heql) as [Hbl _].
+                       intro Heqt; inversion Heqt; lia.
+                   --- inversion Heqr; subst; contradiction.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity |].
+                rewrite Hweq. symmetry in HnextW.
+                destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr]; [|discriminate].
+                destruct (proj2 (eval_build_id_tree h' base leaves) nw Heql) as [Hbl _].
+                intro Heqt; inversion Heqt; lia.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+          -- split; [rewrite Hbuild'; reflexivity | discriminate].
+        * destruct (Hcontr eq_refl) as [Hwr_eq Hwr_nt].
+          assert (Hpick_eq : pick_id leaves' (id_winner l_old) (id_winner r') = oldW).
+          { unfold oldW, pick_id. rewrite Hwr_eq.
+            assert (Heval_l : eval_id leaves' (id_winner l_old) = eval_id leaves (id_winner l_old)).
+            { destruct (id_winner l_old) as [il|] eqn:Hil; [|reflexivity].
+              destruct (proj2 (eval_build_id_tree h' base leaves) il Hil) as [Hbl _].
+              unfold eval_id, leaves'. rewrite decide_False by lia. reflexivity. }
+            assert (Heval_r : eval_id leaves' (id_winner r_old) = eval_id leaves (id_winner r_old)).
+            { destruct (id_winner r_old) as [ir|] eqn:Hir; [|reflexivity].
+              assert (ir <> target) by (intro Heq; apply Hwr_nt; rewrite Hwr_eq, Heq; reflexivity).
+              unfold eval_id, leaves'. rewrite decide_False by assumption. reflexivity. }
+            rewrite Heval_l, Heval_r. reflexivity. }
+          assert (Hold_nt : oldW <> Some target).
+          { intro Heqt. unfold oldW in Heqt.
+            destruct (pick_id_source _ _ _ _ Heqt) as [Heql|Heqr].
+            - destruct (proj2 (eval_build_id_tree h' base leaves) target Heql) as [Hbl _]. lia.
+            - apply Hwr_nt. rewrite Hwr_eq. exact Heqr. }
+          split.
+          -- simpl build_id_tree. fold mid. rewrite <- Hl_ext, <- Hr', Hpick_eq. reflexivity.
+          -- intro. cbn [id_winner]. split; [reflexivity | exact Hold_nt]. }
+  destruct (sift_id_step h base target leaves' (build_id_tree h base leaves)) as [t' cont] eqn:Hsift.
+  destruct Hmain as [Ht' Hcont].
+  split; [exact Ht' | split; [| exact Hcont]].
+  rewrite Ht'.
+  rewrite (proj1 (eval_build_id_tree h base leaves')).
+  rewrite tour_winner_build_eq_scan. reflexivity.
+Qed.
+
+Definition sticky_select (sticky_prev : option nat) (leaves : nat -> option Z) (top : tour_entry) : tour_entry :=
+  match top with
+  | None => None
+  | Some (iw, rw) =>
+      match sticky_prev with
+      | Some ks =>
+          match leaves ks with
+          | Some rs => if Z.leb rs rw then Some (ks, rs) else Some (iw, rw)
+          | None => Some (iw, rw)
+          end
+      | None => Some (iw, rw)
+      end
+  end.
+
+Definition pick_sticky (sticky_prev : option nat) (a b : tour_entry) : tour_entry :=
+  match a, b with
+  | None, _ => b
+  | Some _, None => a
+  | Some (ia, ra), Some (ib, rb) =>
+      if Z.ltb rb ra || match sticky_prev with Some ks => Nat.eqb ib ks && Z.leb rb ra | None => false end
+      then Some (ib, rb)
+      else Some (ia, ra)
+  end.
+
+Lemma pick_sticky_none_r (sticky_prev : option nat) (a : tour_entry) :
+  pick_sticky sticky_prev a None = a.
+Proof.
+  destruct a as [[ia ra]|]; reflexivity.
+Qed.
+
+Lemma pick_sticky_assoc (sticky_prev : option nat) (a b c : tour_entry) :
+  pick_sticky sticky_prev (pick_sticky sticky_prev a b) c =
+  pick_sticky sticky_prev a (pick_sticky sticky_prev b c).
+Proof.
+  destruct a as [[ia ra]|], b as [[ib rb]|], c as [[ic rc]|];
+    destruct sticky_prev as [ks|]; cbn [pick_sticky];
+    repeat match goal with
+    | |- context [Nat.eqb ?x ?y] => destruct (Nat.eqb_spec x y); subst; cbn [andb orb pick_sticky]
+    | |- context [Z.ltb ?x ?y] => destruct (Z.ltb_spec x y); cbn [andb orb pick_sticky]
+    | |- context [Z.leb ?x ?y] => destruct (Z.leb_spec x y); cbn [andb orb pick_sticky]
+    end; try reflexivity; lia.
+Qed.
+
+Fixpoint sticky_extreme_scan
+  (sticky_prev : option nat) (base len : nat) (leaves : nat -> option Z) (acc : tour_entry) : tour_entry :=
+  match len with
+  | 0 => acc
+  | S len' =>
+      let here := match leaves base with Some r => Some (base, r) | None => None end in
+      sticky_extreme_scan sticky_prev (S base) len' leaves (pick_sticky sticky_prev acc here)
+  end.
+
+Fixpoint sticky_scan_right
+  (sticky_prev : option nat) (base len : nat) (leaves : nat -> option Z) : tour_entry :=
+  match len with
+  | 0 => None
+  | S len' =>
+      let here := match leaves base with Some r => Some (base, r) | None => None end in
+      pick_sticky sticky_prev here (sticky_scan_right sticky_prev (S base) len' leaves)
+  end.
+
+Lemma sticky_extreme_scan_eq_right
+  (sticky_prev : option nat) (len base : nat) (leaves : nat -> option Z) (acc : tour_entry) :
+  sticky_extreme_scan sticky_prev base len leaves acc =
+  pick_sticky sticky_prev acc (sticky_scan_right sticky_prev base len leaves).
+Proof.
+  revert base acc. induction len as [|len' IH]; intros base acc.
+  - cbn [sticky_extreme_scan sticky_scan_right]. rewrite pick_sticky_none_r. reflexivity.
+  - cbn [sticky_extreme_scan sticky_scan_right].
+    rewrite IH, pick_sticky_assoc. reflexivity.
+Qed.
+
+Lemma sticky_scan_right_rel
+  (sticky_prev : option nat) (len base : nat) (leaves : nat -> option Z) :
+  sticky_scan_right sticky_prev base len leaves =
+  match extreme_scan base len leaves with
+  | None => None
+  | Some (iw, rw) =>
+      match sticky_prev with
+      | Some ks =>
+          if decide (base <= ks < base + len) then
+            match leaves ks with
+            | Some rs => if Z.leb rs rw then Some (ks, rs) else Some (iw, rw)
+            | None => Some (iw, rw)
+            end
+          else Some (iw, rw)
+      | None => Some (iw, rw)
+      end
+  end.
+Proof.
+  revert base. induction len as [|len' IH]; intro base.
+  - cbn [sticky_scan_right extreme_scan]. reflexivity.
+  - cbn [sticky_scan_right extreme_scan].
+    rewrite IH.
+    destruct (leaves base) as [rb|] eqn:Hbase.
+    + destruct (extreme_scan (S base) len' leaves) as [[it rt]|] eqn:Hrest.
+      * destruct (extreme_scan_some_spec len' (S base) it rt leaves Hrest) as (Hitb & Hlit & Hmin & _).
+        cbn [pick_winner].
+        destruct sticky_prev as [ks|].
+        -- destruct (decide (ks = base)) as [->|Hneb].
+           ++ rewrite decide_False by lia.
+              destruct (Z.leb_spec rb rt); rewrite decide_True by lia; rewrite Hbase;
+                cbn [pick_sticky];
+                rewrite (proj2 (Nat.eqb_neq it base) ltac:(lia)); cbn [andb orb];
+                destruct (Z.ltb_spec rt rb), (Z.leb_spec rb rt); try rewrite Z.leb_refl; try reflexivity; lia.
+           ++ destruct (decide (S base <= ks < S base + len')) as [Hin|Hout].
+              ** destruct (Z.leb_spec rb rt); rewrite decide_True by lia;
+                   destruct (leaves ks) as [rs|] eqn:Hks.
+                 --- pose proof (Hmin ks rs Hin Hks) as Hrt_le_rs.
+                     destruct (Z.leb_spec rs rt); cbn [pick_sticky].
+                     +++ rewrite Nat.eqb_refl; cbn [andb].
+                         destruct (Z.ltb_spec rs rb), (Z.leb_spec rs rb); cbn [orb]; try reflexivity; lia.
+                     +++ destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; inversion Hlit; lia |].
+                         cbn [andb orb].
+                         destruct (Z.ltb_spec rt rb), (Z.leb_spec rs rb); try reflexivity; lia.
+                 --- cbn [pick_sticky].
+                     destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; discriminate |].
+                     cbn [andb orb].
+                     destruct (Z.ltb_spec rt rb); [lia | reflexivity].
+                 --- pose proof (Hmin ks rs Hin Hks) as Hrt_le_rs.
+                     destruct (Z.leb_spec rs rt); cbn [pick_sticky].
+                     +++ rewrite Nat.eqb_refl; cbn [andb].
+                         destruct (Z.ltb_spec rs rb), (Z.leb_spec rs rb); cbn [orb]; try reflexivity; lia.
+                     +++ destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; inversion Hlit; lia |].
+                         cbn [andb orb].
+                         destruct (Z.ltb_spec rt rb); [reflexivity | lia].
+                 --- cbn [pick_sticky].
+                     destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; discriminate |].
+                     cbn [andb orb].
+                     destruct (Z.ltb_spec rt rb); [reflexivity | lia].
+              ** destruct (Z.leb_spec rb rt); rewrite decide_False by lia;
+                   cbn [pick_sticky];
+                   rewrite (proj2 (Nat.eqb_neq it ks) ltac:(lia)); cbn [andb orb];
+                   destruct (Z.ltb_spec rt rb); try reflexivity; lia.
+        -- destruct (Z.leb_spec rb rt); cbn [pick_sticky];
+             destruct (Z.ltb_spec rt rb); try reflexivity; lia.
+      * cbn [pick_sticky pick_winner].
+        destruct sticky_prev as [ks|]; [|reflexivity].
+        destruct (decide (ks = base)) as [->|Hne].
+        -- rewrite decide_True by lia. rewrite Hbase, Z.leb_refl. reflexivity.
+        -- destruct (decide (base <= ks < base + S len')) as [Hin|]; [|reflexivity].
+           pose proof (extreme_scan_none_spec len' (S base) leaves Hrest ks ltac:(lia)) as Hks_none.
+           rewrite Hks_none. reflexivity.
+    + cbn [pick_sticky pick_winner].
+      destruct (extreme_scan (S base) len' leaves) as [[it rt]|] eqn:Hrest; [|reflexivity].
+      destruct sticky_prev as [ks|]; [|reflexivity].
+      destruct (decide (ks = base)) as [->|Hne].
+      * rewrite decide_False by lia. rewrite decide_True by lia. rewrite Hbase. reflexivity.
+      * destruct (decide (S base <= ks < S base + len'));
+          [rewrite decide_True by lia | rewrite decide_False by lia]; reflexivity.
+Qed.
+
+(**md
+**Winner-tree selection with `sticky_select` refines sequential `sticky_extreme_scan`.**
+
+For any tree height `h` with valid slot bounds (`None` or `< 2^h`) for the previous sticky
+holder `sticky_prev`: resolving `sticky_select` against `tour_winner (build_tour h 0 leaves)`
+yields the exact same key and rank (including sticky tie preservation when the previous holder
+remains tied for best rank) as a full `Keys`-order scan `sticky_extreme_scan`.
+*)
+Theorem sticky_holder_refines_extreme_scan
+  (h : nat) (sticky_prev : option nat) (leaves : nat -> option Z) :
+  (forall ks, sticky_prev = Some ks -> ks < Nat.pow 2 h) ->
+  sticky_select sticky_prev leaves (tour_winner (build_tour h 0 leaves)) =
+  sticky_extreme_scan sticky_prev 0 (Nat.pow 2 h) leaves None.
+Proof.
+  intro Hbound.
+  rewrite sticky_extreme_scan_eq_right. cbn [pick_sticky].
+  rewrite tour_winner_build_eq_scan, sticky_scan_right_rel.
+  destruct (extreme_scan 0 (Nat.pow 2 h) leaves) as [[iw rw]|]; [|reflexivity].
+  destruct sticky_prev as [ks|]; [|reflexivity].
+  rewrite decide_True by (split; [lia | apply Hbound; reflexivity]).
+  reflexivity.
 Qed.
