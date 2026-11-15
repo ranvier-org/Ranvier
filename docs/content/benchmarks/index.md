@@ -3,7 +3,7 @@ title: Benchmarks
 order: 1
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
+> **Pre-1.0** — Ranvier has not reached 1.0; its APIs and benchmark figures may change between releases.
 
 These benchmarks track Ranvier across revisions. Compare runs from the same machine and
 configuration; their absolute times do not predict your application's performance.

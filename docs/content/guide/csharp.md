@@ -4,10 +4,6 @@ order: 10
 description: Using Ranvier from C# through the Ranvier.CSharp package.
 ---
 
-:::info
-Preview — Ranvier is pre-release; its APIs may change.
-:::
-
 Create signals, derive values and react to changes from C# with `Ranvier.CSharp`.
 
 The `Reactive` factories take familiar `Func` and `Action` delegates. They return the engine's own
@@ -205,9 +201,10 @@ var shown = Suspense(() => name.Value, previous => previous, "Loading");
 
 ### Per-node equality
 
-Pass an `IEqualityComparer<T>` to `Signal`, `Memo`, `OwningMemo`, `EffectOn`, `Suspense`,
-`ErrorBoundary` or `Boundary` to override the graph's value cutoff for that node. Seeded memo
-and boundary forms also have comparer overloads.
+Pass an `IEqualityComparer<T>` to `Signal`, `Memo`, `OwningMemo`, `EffectOn`, or an unseeded
+`Suspense`, `ErrorBoundary`, or `Boundary` to override the graph's value cutoff for that node.
+Seeded `Memo` overloads also accept an `IEqualityComparer<T>`; seeded boundary forms use the
+graph equality policy.
 
 ```csharp
 var name = Signal("Ada", StringComparer.OrdinalIgnoreCase);
@@ -367,8 +364,9 @@ a key creates a new row at the end, reported as `Replaced` to a reader that saw 
 Keys compare structurally; row values use the graph policy.
 
 `Edit` batches synchronous writes. Applied edits survive a throwing callback; it does not roll
-back or span asynchronous work. Removing a key searches insertion order in O(N), and membership
-passes copy key order. The collection is owned by its creating scope and can be disposed early.
+back or span asynchronous work. `Remove(key)` removes keys in O(1), and membership passes copy or
+reuse key order incrementally. The collection is owned by its creating scope and can be disposed
+early.
 
 :::details Read collection changes directly
 

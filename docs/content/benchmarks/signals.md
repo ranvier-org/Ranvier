@@ -3,14 +3,8 @@ title: Signals
 order: 2
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
-
 ## CI instruction counts
-**Library comparison** shows the latest recorded engine measurements; **Trends** follows scenarios
-across commits. Choose a runtime, metric or commit, filter scenarios, and toggle libraries in the
-legend. The site remembers your tab; runtime and metric selections carry between tabs.
-See [chart controls and uncertainty](counters.md#interactive-chart-controls) for bands, relative values
-and library-counter markers.
+Recorded engine comparisons and commit trends ([chart controls and uncertainty](counters.md#interactive-chart-controls)):
 
 <div data-perf-tabs data-perf-data="signals"><p role="status">Loading recorded measurements…</p></div>
 <link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
@@ -94,5 +88,3 @@ Recorded 2026-09-28. Source: `Ranvier.Benchmarks.Signals.EqualityBenchmarks` at 
 | IdentityCutoff   | 1.391 ns | 0.0202 ns | 0.0179 ns | 718,789,638.3 |     baseline |         |      - |         - |          NA |
 | StructuralCutoff | 5.743 ns | 0.1000 ns | 0.0886 ns | 174,110,032.6 | 4.13x slower |   0.08x |      - |         - |          NA |
 | StructuralWrite  | 6.208 ns | 0.0609 ns | 0.0540 ns | 161,091,273.4 | 4.46x slower |   0.07x | 0.0019 |      32 B |          NA |
-
-The `Ratio` and `Alloc Ratio` columns, where present, compare each method with the baseline method *of the same class* on the same run. They describe the relative cost of two operations inside Ranvier, not a comparison with any other library.

@@ -8,8 +8,7 @@ and [Ranvier.Persistence](https://github.com/ranvier-org/Ranvier.Persistence).
 
 ## Normal release
 
-1. Bump the affected projects' `<Version>` values. Keep a library and its traced variant at the same
-   version.
+1. Bump the affected projects' `<Version>` values (`.Traced` variants pack from the same project and share `<Version>`).
 2. Merge after checks pass. CI builds and validates the packages, then uploads `nuget-packages`.
 3. After successful `master` CI, publishing examines that run's package artifacts. Documentation-only CI is skipped.
    The workflow validates all artifacts and dependency feeds, lists missing NuGet versions, authenticates

@@ -17,17 +17,43 @@ gh api -X POST repos/ranvier-org/Ranvier/rulesets --input .github/rulesets/maste
 gh api -X PUT repos/ranvier-org/Ranvier/rulesets/<id> --input .github/rulesets/master.json   # update
 ```
 
-## Before opening a pull request
+## Build CLI and pre-commit checks
 
-Every repository task runs through the build CLI (see [Build CLI](README.md#build-cli)):
+Every repository task runs through `build.fsx`, a [Partas.Build](https://github.com/shayanhabibi/partas.build) script:
 
 ```shell
-dotnet fsi build.fsx -- test            # F# (Expecto) and C# (xUnit) suites
-dotnet fsi build.fsx -- test-fable      # the suites under Fable and Node.js, traced and untraced
-dotnet fsi build.fsx -- format          # Fantomas over every source file
+dotnet fsi build.fsx -- --help
 ```
 
-CI rejects unformatted F#. `dotnet fsi build.fsx -- format --dry-format` checks without writing.
+| Command | What it does |
+|---------|--------------|
+| `build` | Restores and builds the source projects |
+| `test` | Cleans, checks formatting, and runs .NET tests plus traced signal-map tests (`--skip-tests` skips suites) |
+| `test-fable` | Compiles and runs traced and untraced Fable suites under Node.js, writing `docs/.ai/fable-compat.md` |
+| `format` | Formats `.fs` source files with Fantomas (`--dry-format` checks without writing) |
+| `analyze` | Runs F# analyzers per group (`--group library\|examples`, optional `--build`); `library` also checks traced `Ranvier` |
+| `compile` | Compiles Fable projects to JavaScript (`--watch` stays resident) |
+| `docs` | Builds the Nacara site from `docs/docs.fsproj` (`--watch` serves it) |
+| `perf` | Subcommands `trace`, `ab`, `compare`, and `record` for counter measurements |
+| `bump` | Bumps project versions |
+| `publish` | Builds, tests, packs, and pushes to NuGet (`--api-key` / `NUGET_API_KEY`; `--dry-publish` validates only) |
+
+Global flags: `--quick` skips restores and cleaning, `--format` formats before building, `--dry-format` checks formatting before building, and `-c` selects configuration (default `Release`).
+`build.fsx` discovers `src/` and `tests/` projects automatically via `Partas.TypeProvider.BuildHelper` once added to the solution.
+
+### Git hooks
+
+Enable the tracked pre-commit hook after cloning (requires Git, PowerShell 7, and the .NET SDK):
+
+```powershell
+pwsh -NoProfile -File scripts/setup-hooks.ps1
+```
+
+It checks staged whitespace, whole staged F# files with the pinned Fantomas version, and `FOR-REVIEW` markers via the comment-hygiene scanner (string literals containing markers are allowed). Checks inspect a temporary copy of index contents without modifying or staging files.
+
+Run the hook checks manually with `pwsh -NoProfile -File scripts/check-staged.ps1`, bypass when needed with `git commit --no-verify`, and test the hook itself in a disposable repository with `pwsh -NoProfile -File scripts/test-hooks.ps1`.
+
+See [Publishing packages](docs/releasing.md) for release automation.
 
 ## Examples and playgrounds
 
@@ -77,16 +103,18 @@ NuGet, or this checkout as a sibling directory for changes that span both reposi
 
 | Workflow | Job | Fails when |
 |----------|-----|------------|
-| CI | .NET tests | a test fails in `Ranvier.Tests` (untraced and traced), `Ranvier.CSharp.Tests` or `Ranvier.Wire.Tests`, the vendored Thoth.Json differs from its pin plus patches, or the package compatibility check fails |
-| CI | NativeAOT smoke | the AOT publish or the smoke executable fails |
-| CI | Packages | `build.fsx -- publish --dry-publish --skip-tests` fails, or a package it would push is missing, unexpected, untraced under a `.Traced` id (traced otherwise), or differs from its project in id, version or lib frameworks |
+| CI | .NET tests | `Ranvier.Tests` (untraced or traced), `Ranvier.CSharp.Tests`, `Ranvier.Wire.Tests`, `MutationObservation/Shared.fsproj`, or traced `Ranvier.Docs.Maps.Tests` fails, vendored Thoth.Json drifts from its pin plus patches, or package compatibility fails |
+| CI | NativeAOT smoke | NativeAOT publish or `Ranvier.AotSmoke` exits non-zero (traced or untraced) |
+| CI | Packages | `build.fsx -- publish --dry-publish --skip-tests` fails, or a package differs from expected `.Traced`/untraced id, version, or target frameworks, or DOM consumer checks fail |
 | CI | Formatting | `fantomas --check` reports an unformatted `.fs` file |
-| CI | Fable tests | the Fable suites fail under Node.js, or the Fable package compatibility check fails |
+| CI | Docs menu coverage | `docs/Site.fs` (`check-menus`) finds docs pages missing from a menu |
+| CI | Fable tests | traced or untraced Node.js suites, Playwright/Chromium `MutationObservation`, or Fable package consumer checks fail |
 | CI | Workflow scripts | a `node --test` suite under `.github/scripts` fails |
 | CI | **CI result** | any CI job above failed or was cancelled |
 | Perf | verdict | a scenario's .NET or `node-jitless` instruction count regresses on arm64 and the regression is not accepted |
 | Perf | **Perf result** | measuring or the verdict failed or was cancelled |
 | Contribution | **Conventional commits** | the pull-request title is not a conventional commit header |
+| Proofs site | site | Rocq proofs (`proofs/`), `Audit.v` extraction checks, or Navigator site build fails (runs when `proofs/**`, `src/Ranvier/**`, `global.json`, or `proofs-site.yml` changes) |
 
 The branch rules require the three checks in bold. The Contribution check runs the scripts of the
 target branch, not those of the pull request.
@@ -95,10 +123,10 @@ target branch, not those of the pull request.
 
 A change is documentation only when every changed path is under `docs/` (outside `docs/maps/`, the
 signal map model and its tests), `brand/` or `.claude/`, is a Markdown file, a `LICENSE` file, or
-`.github/FUNDING.yml` ([`changes.cjs`](.github/scripts/changes.cjs)). CI then runs only Formatting,
-and Perf measures nothing; the required checks pass. A change under `docs/maps/` runs every CI job
-and Perf measures it. A documentation-only push to `master` gets no history record, and
-the docs are still redeployed for it.
+`.github/FUNDING.yml` ([`changes.cjs`](.github/scripts/changes.cjs)). CI then runs **Formatting** and
+**Docs menu coverage**, skipping build/test/package/script jobs, and Perf measures nothing; the required
+checks pass. A change under `docs/maps/` runs every CI job and Perf measures it. A documentation-only
+push to `master` gets no performance history record, and the docs are still redeployed for it.
 
 ## Performance checks
 

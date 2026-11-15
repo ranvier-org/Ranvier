@@ -3,14 +3,8 @@ title: Memos
 order: 3
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
-
 ## CI instruction counts
-**Library comparison** shows the latest recorded engine measurements; **Trends** follows scenarios
-across commits. Choose a runtime, metric or commit, filter scenarios, and toggle libraries in the
-legend. The site remembers your tab; runtime and metric selections carry between tabs.
-See [chart controls and uncertainty](counters.md#interactive-chart-controls) for bands, relative values
-and library-counter markers.
+Recorded engine comparisons and commit trends ([chart controls and uncertainty](counters.md#interactive-chart-controls)):
 
 <div data-perf-tabs data-perf-data="memos"><p role="status">Loading recorded measurements…</p></div>
 <link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
@@ -36,17 +30,7 @@ Recorded 2026-09-28. Source: `Ranvier.Benchmarks.Memos.MemoBenchmarks` at commit
 
 `CachedRead` is at the resolution limit (see [Reading the results](index.md#reading-the-results)), which is why the ratios in this table carry a large `RatioSD`.
 
-`MemoBenchmarks` also runs each case under every `ThreadAffinity`, set by `Affinity` (`Guarded`, `Unchecked`, `Serialised`), as [`SignalBenchmarks`](signals.md#thread-affinity) does. `Recompute` carries the check twice: on the write and on the stale read. The table above predates the parameter and shows `Guarded` only.
-
-The counter scenario `chain-affinity` covers the same two checks: it writes the head of a four-memo chain and reads the stale tail under each affinity. Figures are retired instructions per operation at commit `e13f159`, .NET 10 with tiered compilation and PGO off (see [Instruction counts](counters.md)):
-
-| Affinity | instr/op | bytes/op | Library counters/op |
-| --- | ---: | ---: | --- |
-| `Guarded` | 2,179 | 0 | MemoRecomputes 4 |
-| `Unchecked` | 2,177 | 0 | MemoRecomputes 4 |
-| `Serialised` | 2,516 | 0 | MemoRecomputes 4 |
-
-`Serialised` adds about 340 instructions per write and read of the chain, about 15 % over `Guarded`; `Unchecked` matches `Guarded` within noise. The timing cases are in the suite for local runs (`dotnet run --project bench/Ranvier.Benchmarks -c Release -- --filter "*MemoBenchmarks*"`) and have no published figure yet. The full report is [`e13f159.md`](https://github.com/ranvier-org/Ranvier/blob/master/docs/.ai/benchmarks/counters/e13f159.md).
+`MemoBenchmarks` also runs each case under every `ThreadAffinity`, set by `Affinity` (`Guarded`, `Unchecked`, `Serialised`). `Recompute` carries the check twice: on the write and on the stale read. The table above predates the parameter and shows `Guarded` only; see [Thread affinity](signals.md#thread-affinity) for the `chain-affinity` hardware-counter comparison across affinities.
 
 ## ChainBenchmarks
 
@@ -83,5 +67,3 @@ Recorded 2026-09-28. Source: `Ranvier.Benchmarks.Memos.DiamondBenchmarks` at com
 | Method        | Mean     | Error    | StdDev   | Op/s         | Allocated |
 |-------------- |---------:|---------:|---------:|-------------:|----------:|
 | WriteThenRead | 45.98 ns | 0.930 ns | 1.142 ns | 21,747,537.4 |         - |
-
-The `Ratio` and `Alloc Ratio` columns, where present, compare each method with the baseline method *of the same class* on the same run. They describe the relative cost of two operations inside Ranvier, not a comparison with any other library.

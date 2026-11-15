@@ -4,9 +4,10 @@ DOM contracts shared by Ranvier's browser and native view backends. The source i
 IDL and the curated native UI scope in `ranvier-org/Ranvier.WebCore`, rather than TypeScript's browser-wide
 DOM declarations.
 
-Reference `Ranvier.Dom` for .NET or `Fable.Ranvier.Dom` for a browser build. Both projects compile the same
-generated contracts and shared utility sources. Browser-only conversion code handles typed unions at the JavaScript boundary. Components use
-the same public member names on both targets.
+Reference `Ranvier.Dom` for .NET (`net10.0` with NativeAOT support and `netstandard2.1`) or `Fable.Ranvier.Dom`
+for a browser build (and `.Traced` variants when building with tracing). Both projects compile the same
+generated contracts and shared utility sources. Browser-only conversion code handles typed unions at the
+JavaScript boundary. Components use the same public member names on both targets.
 
 `StyleSheetList.namedItem` uses the associated document's first matching ID and returns the sheet of
 an HTML style element, or null. Reserved names such as `length`, `item`, `0` and `__proto__` remain

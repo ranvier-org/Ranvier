@@ -41,7 +41,7 @@ The examples run inside an [active graph](graph.fsx).
 
 :::
 
-The index forms are Solid's `indexArray`. A projection is a key set plus one row per key, and each
+The index forms match Solid 2's `indexArray`. A projection is a key set plus one row per key, and each
 of those is observed separately. A lookup has no key set: it holds a cell for each key that has been read.
 
 ## Reading a projection
@@ -161,7 +161,7 @@ controls [
 `keyOf` determines whether an edited item keeps its row:
 
 - Key by an ID to keep the existing row when that item changes.
-- Key by the whole item (`id`) to create a new row for an edited item. This follows Solid's
+- Key by the whole item (`id`) to create a new row for an edited item. This follows Solid 2's
   unkeyed semantics.
 
 `keyOf` must return equal keys for equal items, where items compare under the graph's equality
@@ -331,10 +331,13 @@ inside the stored object.
 Without `CreateFirst`, a factory failure is stored on the row and its reads raise that failure.
 With `CreateFirst`, a factory failure fails and rolls back the pass.
 
-:::warning Choose the ordinary factory form for collection views
-`NewValueReader`, `AsObservableCollection` and the `Projection` view and aggregate operators raise
-`NotSupportedException` for rows made with `createProjectionOnce`. Use `createProjectionWith`
-when consumers need those APIs. `Keys` and key readers remain available for membership and order.
+:::warning Choose the ordinary factory form for collection views and reactive aggregates
+`NewValueReader`, `AsObservableCollection`, all `Projection` view operators (`filter`, `choose`,
+`map`, `mapWith`, `sortBy`, `sortByDescending`, `take`, `skip`, `sub`, `partition`, `distinctBy`,
+`groupBy`), and fold/search/extreme aggregates raise `NotSupportedException` for rows made with
+`createProjectionOnce`. Use `createProjectionWith` when consumers need those APIs. `Keys`, `Count`,
+`Contains`, `Get`, `TryGet`, key readers, `length`, `isEmpty`, and positional readers (`tryHead`,
+`tryLast`, `tryItem`, `head`, `last`, `item`) remain available.
 :::
 
 Behavior tests: [Projections.fs](https://github.com/ranvier-org/Ranvier/blob/master/tests/Ranvier.Tests/Projections.fs)
@@ -430,9 +433,11 @@ list control keeps its unchanged items:
 - A row whose value changed, under the graph's equality policy, raises one `Replace`.
 
 After initial population, value-only updates consume settled-value reader deltas and replace only
-changed accepted values; they do not poll every row. Membership/order reconciliation scans the visible
-keys and uses an O(N log N) positional diff. Initial population, reset recovery and recovery after a
-notification failure rebuild with `Reset` followed by `Add` events. A row settling for the first time
+changed accepted values; they do not poll every row. Membership/order reconciliation frames
+unchanged prefix and suffix runs in O(N), handles contiguous inserts/removals, single replacements,
+and adjacent swaps directly, and runs an O(M log M) positional diff over the changed middle slice.
+Initial population, reset recovery and recovery after a notification failure rebuild with `Reset`
+followed by `Add` events. A row settling for the first time
 can also require membership reconciliation. Pending or failed rows keep their last accepted value;
 rows that have never settled are omitted.
 

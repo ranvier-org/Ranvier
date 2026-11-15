@@ -16,9 +16,10 @@ let active = graph.Activate ()
 
 The examples run inside an [active graph](graph.fsx).
 
-`createSelector source` is `createLookup` with `affected = fun prev next -> [ prev; next ]`: `Get key` is
-`true` for the selected key and `false` for every other. A selection change wakes only the readers of
-the previous and the next key.
+`createSelector source` has the semantics of `createLookup` with `affected = fun prev next -> [ prev; next ]`:
+`Get key` is `true` for the selected key and `false` for every other. Under the hood a dedicated
+`SelectorLookup` tracks the previous key directly and invalidates only the previous and next keys
+without intermediate list or buffer allocations.
 
 
 *)

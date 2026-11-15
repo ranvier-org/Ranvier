@@ -3,12 +3,10 @@ title: Contracts
 order: 4
 ---
 
-:::warning
-**Preview.** Ranvier is pre-release; its APIs may change.
-:::
-
 These contracts define which threads may access a graph, how failures reach readers and how
-owners dispose nodes. Each section links to a guide with examples.
+owners dispose nodes. Each section links to a guide with examples and to the machine-checked
+proofs in the [Rocq & Iris proof explorer](https://ranvier-org.github.io/Ranvier/proofs/)
+([`proofs/README.md`](https://github.com/ranvier-org/Ranvier/blob/master/proofs/README.md)).
 
 ## Threading
 
@@ -230,7 +228,7 @@ Fable the exception is rethrown as it was raised.
 Other tools for tracing a failure back:
 
 - a boundary's `Caught` and every failed node on the path hold the same instance
-- `PendingSources` on a memo or effect gives the source of its last pending read
+- `PendingSources` exposes the single pending source of a memo, effect, or async memo's last run (when suspended), and up to two sources on a boundary (body and fallback/recovery)
 - in a build with [tracing](../guide/tracing.md), `Trace.why` gives the writes and settles behind a node's last
   run, and `Trace.origin` gives the site that created the node
 

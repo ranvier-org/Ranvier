@@ -54,9 +54,9 @@ See [Signal maps](../content/guide/signal-maps.md) for controls, replay, trace n
 
 ## Browser editing
 
-The site combines this plugin with Nacara's `LiveExample` plugin, using the same project as an
-editor preset. A `fsharp live` fence compiles F# in the browser. It needs an explicit mount, as in
-the [live counter](../content/view/getting-started.md#try-a-component-in-the-live-editor).
+The site combines this plugin with Nacara's `LiveExample` plugin, using `docs/maps/Ranvier.Docs.Maps.fsproj` as an
+editor preset. A `fsharp live` fence compiles F# in the browser; see the
+[live counter](https://ranvier-org.github.io/Ranvier.View/view/getting-started/#try-a-component-in-the-live-editor).
 
 The live editor excludes packages requiring compiler plugins, including `Ranvier.View.Arms`.
 Standard Ranvier.View components and DOM bindings work without those packages.

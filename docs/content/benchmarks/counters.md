@@ -3,8 +3,6 @@ title: Instruction counts
 order: 9
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs and these figures may change.
-
 The counter bench measures whole scenarios rather than single primitives: creating and disposing
 rows, propagating writes, projections, application-shaped workloads, graph shapes and async
 boundaries. Each figure is retired processor instructions per operation, `(m(2N) − m(N)) / N`,

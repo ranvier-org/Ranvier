@@ -1,7 +1,8 @@
 # Defect ledger
 
 Only Confirmed entries count as bugs. Where `src/Ranvier/Core.fs` documents a behaviour as
-intended, the entry closes as "spec corrected".
+intended, the entry closes as "spec corrected". All bugs discovered before `v0.2.0` are now
+under `## Closed`; `## Suspected`, `## Modelled`, `## Confirmed`, and `## Awaiting ruling` are empty.
 
 ## Suspected
 
@@ -11,7 +12,7 @@ intended, the entry closes as "spec corrected".
 
 ## Awaiting ruling
 
-Each entry of Task 12 is a difference between the engine and the reference, with a checked `Example` in `theories/Pure/Witnesses.v` holding both traces. `weak_refinement_except` or `exact_refinement_except` takes each as a named premise until the owner rules. All of them are outside `src/Ranvier`'s documents unless the entry says so.
+Each entry of Task 12 was closed (fixed or ruled under `## Closed`).
 
 ## Closed
 
@@ -156,42 +157,22 @@ Statements Task 12 leaves unproved, with no `Admitted` behind them. None is a di
 
 ## Open statements
 
-Statements of what the fix phase owes, each a `Definition` of type `Prop` that the present engine falsifies. Each entry
-names the statement, its proved `_falsified` witness and the proved weaker form later layers use. `check.sh` rejects every `Admitted`, `admit`, `give_up`, `Axiom`, `Parameter` and `Conjecture` under
-`theories/`.
+Quantified statements defined as `Prop` outside the present proof reach, together with the proved
+counterexamples or resolved-bug witnesses in `theories/Pure/Witnesses.v` and the proved theorems
+used by later layers. `check.sh` rejects every `Admitted`, `admit`, `give_up`, `Axiom`, `Parameter`
+and `Conjecture` under `theories/`.
 
-- `resolve_clean_no_move_statement` (`theories/Pure/Check.v`): `check_resolves_over_moved_source` falsifies it on the present engine, and
-  `resolve_clean_no_move_falsified` proves that. Weaker form: `resolve_clean_unmoved`, under `reads_settled`.
-- `resolve_clean_no_stale_source_statement` (`theories/Pure/Check.v`): `self_marking_wake_lost` falsifies it on the present engine, and
-  `resolve_clean_no_stale_source_falsified` proves that. It covers live sources, since a disposed source stays stale without this
-  bug: `resolve_over_disposed_dirty_source`. No weaker form is proved.
-- `no_lost_wakeups_statement` (`theories/Pure/Runs.v`): `walk_passed_source_marked` falsifies it on the present engine, and `no_lost_wakeups_falsified`
-  proves that. Weaker forms: `no_lost_wakeups_when_nothing_passed`, `no_lost_wakeups_unless_passed` and `no_wake_lost_unless_resolved`.
-- `engine_inv_preserved_statement` (`theories/Pure/Runs.v`): the same counterexample, and `engine_inv_preserved_falsified` proves that.
-  Weaker form: `engine_settled_preserved`.
-- `marks_survive_run_statement` (`theories/Pure/Runs.v`): `nested_self_recompute_resets_cursor` falsifies it on the present engine, and `marks_survive_run_falsified`
-  proves that. Weaker form: `marks_survive_body_end`.
-- `run_end_edges_are_reads_statement` (`theories/Pure/Runs.v`): the same Confirmed bug, and `run_end_edges_are_reads_falsified` proves that.
-  Weaker forms: `run_end_edges_are_latest_reads` and `run_end_edges_no_nested_run`.
-- `weak_refinement_statement` (`theories/Pure/Refinement.v`): `disposed_unread_memo_value` falsifies it on the present engine and reference, and `weak_refinement_falsified` proves that. A ruling on that entry, a fix of `redundant_run_reads_untracked` and of `effect_resolves_over_moved_source`, the unattempted proofs for effect cleanups and child effects, and `memos_below_stuck_paths` under Unproved obligations are what it needs. `memos_below` takes any rank, so a memo reading a higher id is inside `weak_refinement_except` (proved: `reads_higher_refinable`; computed: `memo_reads_higher_id` gives identical `eng` and `rtrace` traces over a two-batch history). Weaker form: `weak_refinement_except`.
-- `exact_refinement_statement` (`theories/Pure/Refinement.v`): `batch_restored_value_reruns` falsifies it, and `exact_refinement_falsified` proves that. Weaker form: `exact_refinement_except`.
-- `engine_order_exact_statement` (`theories/Pure/Refinement.v`): this statement takes the queue at a flush's start as the flush's order. `requeue_runs_after_later_entry` falsifies that definition of the order, and `engine_order_exact_falsified` proves that. It says nothing of `history_order`. A fix of `diamond_marks_running_effect` that stops marking a running effect removes this requeue, by reading. Weaker form: `engine_order_exact_except`, which delivers "runs follow the drain".
-- `engine_of_answers_statement` (`theories/Pure/Refinement.v`): `effect_restored_source_loop` falsifies it at every fuel, and `engine_of_answers_falsified` proves that. A ruling on effect writes decides what it should say. Weaker form: `engine_of_answers_on`, on a narrower fragment: `refinable`, `bodies_total` and the reference's success. See `answers_where_reference_settles`.
-- `read_quiescent_statement` (`theories/Pure/WholeGraph.v`): `quiescent_read_answers_past_flush` falsifies it on the present engine, and `read_quiescent_falsified` proves that. Weaker form: `glitch_free_read`.
-- `convergence_all_statement` (`theories/Pure/WholeGraph.v`): `self_marking_wake_lost` and the lost update of `cmp_never_passes_source` falsify it on the present engine, and `convergence_all_falsified` proves that, with each premise proved on both. Weaker form: `convergence`.
-  **The fix phase's target.** Inside it, as the bugs the fix owes: effect writes, memo writes reaching no later read of the body, memo cleanups, `CmpNever`, and effect cleanups, child effects and disposals.
-  **What it is not asked to fix through this statement.** Each premise, with what it excludes. Each field is checked over a memo's whole body, whichever path runs, and over every live memo of the program, so each one also excludes programs a fix may reach. `memos_no_throwing_comparer` is checked on the comparer, whether or not it fires.
-  On a path that reaches it, a memo cycle, a self-read, an untracked read, `EPrev` or an excluded created node has no `den_all` answer. A throwing comparer is a failure `den_all` does not model, once the comparer fires.
-  A memo reading `v`, then `if v<100 ret v else <excluded form>`, read by an effect, with the signal written to 5, has a false premise, `den_all` answers `Ok 5` and the conclusion holds: `untracked_conservative`, `prev_conservative` and `creation_conservative`. With a `CmpThrows` memo that ran once and a comparer never called, the premise is false, `den_all` answers `Ok 0` and the conclusion holds: `comparer_conservative`. All four are proved in `Witnesses.v`. `memos_ranked` has the same gap by reading, through a self-read on a branch that never runs.
-  `memos_ranked` and `memos_read_before_write` are the notable cases, below.
-  - `memos_ranked`: a memo cycle or self-read has no denotation on a path that reaches it. Conservatively, also a computed target with no bound, since the rank quantifies over every answer, as `memos_acyclic` does.
-  - `memos_no_untracked`: a reader keeps the value of the read's run, which is what an untracked read means. `row_memo_untracked_excluded`; F#: signal 5, memo 0, `Clean`.
-  - `memos_no_throwing_comparer`: the comparer's failure is outside the body's computation. `row_throwing_comparer_excluded`; F#: logs 0 then 7. Modelling it in the denotation is the alternative the ruling left open.
-  - `memos_no_prev`: `EPrev` answers from the memo's history. `row_memo_prev_excluded`.
-  - `memos_no_creation`: a created node's id varies by run. A signal in any memo, and a memo or effect in an `Owning` memo. `row_memo_creates_excluded`. The ruling names the `Pure` case. This premise covers the rest, where `erase` has no value.
-  - `memos_read_before_write`: a read in a memo's body after a write on the same path that reaches its target. `row_read_between_writes_excluded`: every run answers 1 and `den_all` answers 2; F#: signal 2, memo 1.
-    **Conservative.** It also excludes the shape of `check_resolves_over_moved_source`: `check_over_moved_excluded` (proved). There the effect saw 0, `den_all` answers 1 and the memo is `Clean`: `check_over_moved_left_behind` (computed). Reasoned: the memo's next run answers 1 and is stable, so a fix can reach this shape. That bug stays owed through the Open `resolve_clean_no_move_statement`. A narrower form tried in review left 30 unclassified candidates (fuzz, seed 73), so no narrower form is shown.
-  **Forms the statement holds, proved on the present engine:** `row_child_effect_holds`, `row_effect_disposes_holds` (the logs clause has a gate for an effect creating or disposing a node), `row_pure_cleanup_holds`, `row_pure_creation_holds` (each denotes `pure_scope_failure`), `row_failing_write_holds` (`erase` keeps a write's value failure). `converged_all` covers effects with an owner: `row_pure_creation_holds` found that `exec` adds an effect created under `Pure` and then fails, leaving a node that never ran, where F# raises before the effect exists.
-  Disposal and cycles need no further premise. `den_all` answers a disposed memo's stored view, and a body with no end fails the `run_top` premise. That is reasoned. Fuzz on the present engine, over programs passing a sufficient test of the premises: 0 hits in 15930 programs with effect cleanups, writes, child effects, disposals, batches and untracked reads; 694 hits in 1494 on the lost wake-up's template, the shortest a memo cleanup writing, so the harness sees the bug. The test admits no memo body that writes.
-  **Programs with no fixed point.** Two memos writing each other's sources, `s1 := s2<2` and `s2 := s1+s3`, with `s3` at 1, have no fixed point, and the present engine ends on them. The pair is the shortest of 3 oscillating programs of 3904 passing the premises in review's fuzz, seed 71, and review inspected only the shortest. Reasoned: a correct engine does not end on a program with no fixed point, so the statement holds on that program only because such a fix hangs, which turns a program that ends today into a hang. Ten further `or_diverge` hits from the same search are unclassified.
-  **Whole-program premises.** The premises cover the whole program, not an effect's cone: `## Rulings` records this.
+- `resolve_clean_no_move_statement` (`theories/Pure/Check.v`): unqualified `~ moved_since_last_run` without `reads_settled`. Former bug counterexample `check_resolves_over_moved_source` is closed as fixed, and `resolve_clean_no_move_falsified` proves that resolved witness; later layers prove `resolve_clean_unmoved` under `reads_settled`.
+- `resolve_clean_no_stale_source_statement` (`theories/Pure/Check.v`): unqualified live-source cleanliness after `Check` resolution. Former bug counterexample `stale_source_reader` (`self_marking_wake_lost`) is closed as fixed, and `resolve_clean_no_stale_source_falsified` proves that resolved witness (a disposed source stays stale: `resolve_over_disposed_dirty_source`).
+- `no_lost_wakeups_statement` (`theories/Pure/Runs.v`): **proved** on the current engine as `no_lost_wakeups` (`no_lost_wakeups_falsified` is kept as an alias).
+- `engine_inv_preserved_statement` (`theories/Pure/Runs.v`): **proved** on the current engine as `engine_inv_preserved` (`engine_inv_preserved_falsified` is kept as an alias).
+- `marks_survive_run_statement` (`theories/Pure/Runs.v`): unqualified run-entry survival. Former bug counterexample `nested_self_recompute_resets_cursor` (`nested_host`) is closed as fixed, and `marks_survive_run_falsified` proves the surviving mark; later layers prove `marks_survive_body_end`.
+- `run_end_edges_are_reads_statement` (`theories/Pure/Runs.v`): unqualified run-end edge equality. `nested_host` is closed as fixed and `run_end_edges_are_reads_falsified` proves the resolved edges; later layers prove `run_end_edges_are_latest_reads` and `run_end_edges_no_nested_run`.
+- `weak_refinement_statement` (`theories/Pure/Refinement.v`): `disposed_unread_memo_value` refutes it between the engine and reference, and `weak_refinement_falsified` proves that. Effect cleanups, child effects, untracked reads, and `memos_below_stuck_paths` remain outside `weak_refinement_except`.
+- `exact_refinement_statement` (`theories/Pure/Refinement.v`): `batch_restored_value_reruns` refutes it, and `exact_refinement_falsified` proves that. Weaker form: `exact_refinement_except`.
+- `engine_order_exact_statement` (`theories/Pure/Refinement.v`): `requeue_runs_after_later_entry` refutes taking the queue at flush start as the flush order, and `engine_order_exact_falsified` proves that. Weaker form: `engine_order_exact_except` ("runs follow the drain") and `history_order`.
+- `engine_of_answers_statement` (`theories/Pure/Refinement.v`): `effect_restored_source_loop` refutes it at every fuel, and `engine_of_answers_falsified` proves that. Weaker form: `engine_of_answers_on` on `refinable` + `bodies_total`.
+- `read_quiescent_statement` (`theories/Pure/WholeGraph.v`): former bug counterexample `quiescent_read_answers_past_flush` is closed as fixed, and `read_quiescent_falsified` proves the converged read on `read_past_flush`; the general quantified statement remains unproved beside `glitch_free_read`.
+- `convergence_all_statement` (`theories/Pure/WholeGraph.v`): former bug counterexamples `self_marking_cleanup` and `never_lost` are closed as fixed, and `convergence_all_falsified` proves both satisfy `converged_all`. The weaker `convergence` theorem remains the proved general statement.
+  **Unproved whole-program exclusion premises of `convergence_all_statement`:** effects that write, effect cleanups, child effects, disposals, and memos outside `fix_premises` (`memos_ranked`, `memos_no_untracked`, `memos_no_throwing_comparer`, `memos_no_prev`, `memos_no_creation`, `memos_read_before_write`), which are conservatively quantified across the whole program (`## Rulings` and `Witnesses.v`: `untracked_conservative`, `prev_conservative`, `creation_conservative`, `comparer_conservative`, `check_over_moved_excluded`).
+  **Forms proved on the engine (`Witnesses.v`):** `row_child_effect_holds`, `row_effect_disposes_holds`, `row_pure_cleanup_holds`, `row_pure_creation_holds`, `row_failing_write_holds`.

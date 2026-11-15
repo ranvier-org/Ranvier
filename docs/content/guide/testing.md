@@ -3,10 +3,6 @@ title: Testing async state
 order: 11
 ---
 
-:::info
-Preview — Ranvier is pre-release; its APIs may change.
-:::
-
 Control when each async request completes, then assert its `Pending`, `Ready` or `Failed` state.
 Complete requests on the test thread to keep the tests deterministic.
 
