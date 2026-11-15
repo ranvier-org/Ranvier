@@ -2538,7 +2538,7 @@ let mapWithTests =
         ]
 
 /// <summary>The keys of each group of <c>view</c>, in group order.</summary>
-let private groupsOf (view: Projection<'G, Projection<int, int>>) =
+let private groupsOf (view: Projection<'G, Projection<'K, 'V>>) =
     [ for key in view.Keys -> key, List.ofArray (view.Get key).Keys ]
 
 [<Tests>]
@@ -2904,6 +2904,228 @@ let groupByTests =
 
                 flights[11].Settle 2
                 Expect.equal (view.GroupOf 1) 2 "the settled group"
+            }
+
+            test "incremental groupBy resolves Check cutoff without running outer or inner passes" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..20 -> i, i * 10 ])
+                let gateRuns = ref 0
+
+                let view =
+                    rows source
+                    |> Projection.groupBy (fun n ->
+                        gateRuns.Value <- gateRuns.Value + 1
+                        n / 100)
+
+                let g0 = view.Get 0
+                let g1 = view.Get 1
+                let outerEffects = ref 0
+                let innerEffects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    outerEffects.Value <- outerEffects.Value + 1)
+
+                createEffect (fun () ->
+                    g0.Keys |> ignore
+                    g1.Keys |> ignore
+                    innerEffects.Value <- innerEffects.Value + 1)
+
+                let initialOuter = view.Keys
+                let initialG0 = g0.Keys
+                let outerPasses = view.Runs
+                let g0Passes = g0.Runs
+                let g1Passes = g1.Runs
+                gateRuns.Value <- 0
+
+                source.Value <- setN 3 35 source.Value
+
+                Expect.equal gateRuns.Value 1 "only the edited row's group-key memo ran"
+                Expect.equal view.Runs outerPasses "Grouping resolved Check without running an outer pass"
+                Expect.equal g0.Runs g0Passes "group 0 inner view stayed asleep"
+                Expect.equal g1.Runs g1Passes "group 1 inner view stayed asleep"
+                Expect.equal outerEffects.Value 1 "outer Keys effect stayed asleep"
+                Expect.equal innerEffects.Value 1 "inner Keys effect stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, initialOuter)) "outer kept same Keys array reference"
+                Expect.isTrue (obj.ReferenceEquals (g0.Keys, initialG0)) "group 0 kept same Keys array reference"
+            }
+
+            test "incremental groupBy on N=1000, G=20 isolates untouched inner views on sparse move and matches List.groupBy" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+                let pairs = [ for i in 1..1000 -> i, (i - 1) % 20 ]
+
+                col.Edit (fun edit ->
+                    for id, grp in pairs do
+                        edit.AddOrUpdate { Id = id; N = grp })
+
+                let current = Collections.Generic.Dictionary<int, int>()
+
+                for id, grp in pairs do
+                    current[id] <- grp
+
+                let orderedIds = ResizeArray<int>(pairs |> List.map fst)
+
+                let expected () =
+                    [ for id in orderedIds -> id, current[id] ]
+                    |> List.groupBy snd
+                    |> List.map (fun (gk, xs) -> gk, xs |> List.map fst)
+
+                let view = col.Rows |> Projection.groupBy (fun x -> x.N)
+                let outerEffects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    outerEffects.Value <- outerEffects.Value + 1)
+
+                let inners = [| for gk in 0..19 -> view.Get gk |]
+                let innerEffects = Array.zeroCreate<int> 20
+
+                for gk in 0..19 do
+                    let idx = gk
+
+                    createEffect (fun () ->
+                        inners[idx].Keys |> ignore
+                        innerEffects[idx] <- innerEffects[idx] + 1)
+
+                let outerReader = view.NewKeyReader ()
+                outerReader.Read () |> ignore
+                let outerKeys0 = view.Keys
+                let outerEffects0 = outerEffects.Value
+                let runsBefore = Array.init 20 (fun gk -> inners[gk].Runs)
+                let effectsBefore = Array.copy innerEffects
+
+                // Move non-first key 101 from group 0 to group 1; first members 1 and 2 stay put.
+                col.AddOrUpdate { Id = 101; N = 1 }
+                current[101] <- 1
+
+                Expect.equal outerEffects.Value outerEffects0 "outer Keys observer stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, outerKeys0)) "outer Keys array reference preserved"
+                Expect.isTrue ((outerReader.Read ()).IsEmpty) "outer KeyReader saw no changes"
+                Expect.equal inners[0].Runs (runsBefore[0] + 1) "source group 0 ran once"
+                Expect.equal inners[1].Runs (runsBefore[1] + 1) "target group 1 ran once"
+                Expect.equal innerEffects[0] (effectsBefore[0] + 1) "group 0 observer woke"
+                Expect.equal innerEffects[1] (effectsBefore[1] + 1) "group 1 observer woke"
+
+                for gk in 2..19 do
+                    Expect.equal inners[gk].Runs runsBefore[gk] $"untouched group {gk} did not re-run"
+                    Expect.equal innerEffects[gk] effectsBefore[gk] $"untouched group {gk} observer stayed asleep"
+
+                Expect.equal (groupsOf view) (expected ()) "groups match List.groupBy"
+
+                // Tail append an item into group 5 and move first member 1 from group 0 to group 19 (reordering outer keys)
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1001; N = 5 }
+                    edit.AddOrUpdate { Id = 1; N = 19 })
+
+                orderedIds.Add 1001
+                current[1001] <- 5
+                current[1] <- 19
+                let dOuter = outerReader.Read ()
+                Expect.isFalse dOuter.IsReset "outer reorder delta stays incremental"
+                Expect.equal (groupsOf view) (expected ()) "groups match List.groupBy after FirstIdx reorder and tail append"
+            }
+
+            test "incremental groupBy handles same-pass new-group creation before emptying and emptied-group refill on tail append" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 10 }
+                    edit.AddOrUpdate { Id = 2; N = 20 }
+                    edit.AddOrUpdate { Id = 3; N = 20 })
+
+                let view = col.Rows |> Projection.groupBy (fun x -> x.N)
+                let g20 = view.Get 20
+                Expect.equal (groupsOf view) [ 10, [ 1 ]; 20, [ 2; 3 ] ] "initial two groups"
+
+                // Create new group 99 (via Id=2) before emptying existing group 10 (via Id=1) in one batch.
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 2; N = 99 }
+                    edit.AddOrUpdate { Id = 1; N = 20 })
+
+                Expect.equal (groupsOf view) [ 20, [ 1; 3 ]; 99, [ 2 ] ] "emptied 10 and inserted 99 in upstream FirstIdx order"
+
+                // Emptying 99 while creating 50 in one batch also disposes 99's inner view.
+                let g99 = view.Get 99
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 50 }
+                    edit.AddOrUpdate { Id = 2; N = 20 })
+
+                Expect.isEmpty g99.Keys "emptied group's inner view reads empty"
+
+                Expect.throwsT<ObjectDisposedException>
+                    (fun () -> g99.Get 2 |> ignore)
+                    "emptied group's inner view rejects Get with ObjectDisposedException"
+
+                Expect.equal (groupsOf view) [ 50, [ 1 ]; 20, [ 2; 3 ] ] "50 before 20 by FirstIdx"
+                Expect.isFalse (Array.isEmpty g20.Keys) "live group 20 remains intact"
+
+                // Dirty-slot emptying group 10 (Id=1 becomes ungrouped) followed by tail append re-filling group 10 in one pull.
+                let col2 = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col2.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 10 }
+                    edit.AddOrUpdate { Id = 2; N = 20 })
+
+                let externalGate = createSignal false
+
+                let view2 =
+                    col2.Rows
+                    |> Projection.groupBy (fun x ->
+                        if x.Id = 1 && externalGate.Value then
+                            invalidOp "ungroup 1"
+
+                        x.N)
+
+                Expect.equal (groupsOf view2) [ 10, [ 1 ]; 20, [ 2 ] ] "initial view2 groups"
+                let kr2 = view2.NewKeyReader ()
+                kr2.Read () |> ignore
+                externalGate.Value <- true
+                col2.AddOrUpdate { Id = 3; N = 10 }
+                let d2 = kr2.Read ()
+                Expect.isFalse d2.IsReset "dirty-slot empty + tail-append refill stays incremental"
+
+                Expect.equal
+                    (groupsOf view2)
+                    [ 20, [ 2 ]; 10, [ 3 ] ]
+                    "group 10 moved after 20 when emptied by dirty slot and refilled by tail append"
+
+                Expect.sequenceEqual view2.UngroupedKeys [ 1 ] "failed key 1 moved to UngroupedKeys"
+            }
+
+            test "observing only an inner group view keeps Grouping live and wakes on enters and leaves" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 0 }
+                    edit.AddOrUpdate { Id = 2; N = 1 }
+                    edit.AddOrUpdate { Id = 3; N = 2 })
+
+                let grouping = col.Rows |> Projection.groupBy (fun x -> x.N)
+                let inner0 = g.RunUntracked (fun () -> grouping.Get 0)
+                let seen0 = ResizeArray<int list>()
+
+                createEffect (fun () -> seen0.Add (List.ofArray inner0.Keys))
+                Expect.equal (List.ofSeq seen0) [ [ 1 ] ] "initial inner group 0"
+
+                // Unrelated move from group 1 -> group 2 must not wake inner0's effect.
+                col.AddOrUpdate { Id = 2; N = 2 }
+                Expect.equal (List.ofSeq seen0) [ [ 1 ] ] "unrelated group move leaves inner0 effect asleep"
+
+                // Key 3 enters group 0
+                col.AddOrUpdate { Id = 3; N = 0 }
+                Expect.equal (List.ofSeq seen0) [ [ 1 ]; [ 1; 3 ] ] "key 3 enters group 0 via ExtraObserved"
+
+                // Key 1 leaves group 0 for group 1
+                col.AddOrUpdate { Id = 1; N = 1 }
+                Expect.equal (List.ofSeq seen0) [ [ 1 ]; [ 1; 3 ]; [ 3 ] ] "key 1 leaves group 0"
             }
         ]
 
@@ -4981,6 +5203,176 @@ let distinctByTests =
                 Expect.equal calls.Value 0 "no projection runs after disposal"
                 Expect.isEmpty view.Keys "a disposed view is empty"
             }
+
+            test "incremental distinctBy resolves Check cutoff without running a pass" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..20 -> i, i * 10 ])
+                let gateRuns = ref 0
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n ->
+                        gateRuns.Value <- gateRuns.Value + 1
+                        n / 100)
+
+                let effects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    effects.Value <- effects.Value + 1)
+
+                let initialKeys = view.Keys
+                let passes = view.Runs
+                gateRuns.Value <- 0
+
+                source.Value <- setN 3 35 source.Value
+
+                Expect.equal gateRuns.Value 1 "only the edited row's distinct-key memo ran"
+                Expect.equal view.Runs passes "distinctBy resolved Check without running a pass"
+                Expect.equal effects.Value 1 "Keys observer stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, initialKeys)) "same Keys array reference preserved"
+            }
+
+            test "incremental distinctBy keeps Keys unchanged when a non-winner moves to another already-held value" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..20 do
+                        edit.AddOrUpdate { Id = i; N = i % 5 })
+
+                let view = col.Rows |> Projection.distinctBy (fun x -> x.N)
+                let effects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    effects.Value <- effects.Value + 1)
+
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+                let initialKeys = view.Keys
+
+                // Key 12 has distinct key 2 (held by key 2); changing to 4 (held by key 4) changes neither winner.
+                col.AddOrUpdate { Id = 12; N = 4 }
+
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, initialKeys)) "non-winner move kept same Keys array reference"
+                Expect.equal effects.Value 1 "Keys observer stayed asleep"
+                Expect.isTrue ((kr.Read ()).IsEmpty) "KeyReader saw no changes"
+            }
+
+            test "incremental distinctBy splices N=1000 winner promotion, displacement, tail append, and multi-row edits matching List.distinctBy" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+                let pairs = [ for i in 1..1000 -> i, (i * 37) % 100 ]
+
+                col.Edit (fun edit ->
+                    for id, n in pairs do
+                        edit.AddOrUpdate { Id = id; N = n })
+
+                let current = Collections.Generic.Dictionary<int, int>()
+
+                for id, n in pairs do
+                    current[id] <- n
+
+                let orderedIds = ResizeArray<int>(pairs |> List.map fst)
+
+                let expected () =
+                    [ for id in orderedIds -> id, current[id] ]
+                    |> List.distinctBy snd
+                    |> List.map fst
+
+                let view = col.Rows |> Projection.distinctBy (fun x -> x.N)
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+
+                Expect.sequenceEqual view.Keys (expected ()) "initial N=1000 distinctBy matches List.distinctBy"
+
+                // Winner departure + displacement in one batch: key 1 (winner for 37) moves to 9999; key 50 moves to 1111;
+                // key 10 displaces winner 100 (at index 99) by claiming current[100] = 0; key 200 joins key 6's value.
+                let displaceTarget = current[100]
+                let key200Target = current[orderedIds[5]]
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 9999 }
+                    edit.AddOrUpdate { Id = 10; N = displaceTarget }
+                    edit.AddOrUpdate { Id = 50; N = 1111 }
+                    edit.AddOrUpdate { Id = 200; N = key200Target })
+
+                current[1] <- 9999
+                current[10] <- displaceTarget
+                current[50] <- 1111
+                current[200] <- key200Target
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "sparse winner swap is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "sparse winner promotion/displacement matches List.distinctBy"
+
+                // Tail append: one duplicate distinct value and one new distinct value
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1001; N = 9999 }
+                    edit.AddOrUpdate { Id = 1002; N = 10001 })
+
+                orderedIds.Add 1001
+                orderedIds.Add 1002
+                current[1001] <- 9999
+                current[1002] <- 10001
+                let d2 = kr.Read ()
+                Expect.isFalse d2.IsReset "tail append distinctBy is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tail append matches List.distinctBy"
+
+                // Removals + edits in general sparse delta
+                col.Edit (fun edit ->
+                    edit.Remove 2 |> ignore
+                    edit.Remove 3 |> ignore
+                    edit.AddOrUpdate { Id = 4; N = 12345 }
+                    edit.AddOrUpdate { Id = 600; N = 37 })
+
+                orderedIds.Remove 2 |> ignore
+                orderedIds.Remove 3 |> ignore
+                current.Remove 2 |> ignore
+                current.Remove 3 |> ignore
+                current[4] <- 12345
+                current[600] <- 37
+                let d3 = kr.Read ()
+                Expect.isFalse d3.IsReset "multi-row sparse distinctBy delta is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "multi-row removal and edit matches List.distinctBy"
+            }
+
+            test "incremental distinctBy splices recovery of an earlier failed holder displacing a later holder" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let failing = createSignal (set [ 1 ])
+
+                let view =
+                    createProjection id id (fun () -> [ 10; 1; 6; 2 ])
+                    |> Projection.distinctBy (fun n ->
+                        if failing.Value.Contains n then
+                            invalidOp $"boom {n}"
+
+                        n % 5)
+
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                let d0 = kr.Read ()
+                Expect.isTrue d0.IsReset "initial read is reset"
+                Expect.sequenceEqual view.Keys [ 10; 6; 2 ] "initial holders skip failed key 1"
+
+                failing.Value <- Set.empty
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "recovery splice is incremental"
+                Expect.sequenceEqual view.Keys [ 10; 1; 2 ] "recovered key 1 displaces 6 while preserving trailing holder 2"
+                Expect.sequenceEqual d1.Keys [ 10; 1; 2 ] "delta Keys matches view Keys"
+
+                let changes =
+                    d1.Changes
+                    |> Seq.map (fun kv -> kv.Key, kv.Value)
+                    |> Set.ofSeq
+
+                Expect.equal changes (set [ 6, KeyChange.Removed; 1, KeyChange.Added ]) "delta records 6 removed and 1 added"
+            }
         ]
 
 /// <summary>The keys of <c>view</c> with their values, in <c>Keys</c> order.</summary>
@@ -5190,5 +5582,56 @@ let groupingAggregateTests =
                 Expect.equal (pairsOf again) [ 1, 11; 0, 12 ] "a new result"
                 grouping.Dispose ()
                 Expect.isEmpty again.Keys "the result of a disposed grouping is empty"
+            }
+
+            test "Grouping.aggregate on G=20 groups recomputes only touched groups on a sparse move" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                // Group = N / 100 (0..19), Amount = N % 100
+                col.Edit (fun edit ->
+                    for i in 1..200 do
+                        let grp = (i - 1) % 20
+                        let amt = (i % 17) + 1
+                        edit.AddOrUpdate { Id = i; N = grp * 100 + amt })
+
+                let agg =
+                    col.Rows
+                    |> Projection.groupBy (fun x -> x.N / 100)
+                    |> Grouping.aggregate (Projection.sumBy (fun x -> x.N % 100))
+
+                let outerEffects = ref 0
+
+                createEffect (fun () ->
+                    agg.Keys |> ignore
+                    outerEffects.Value <- outerEffects.Value + 1)
+
+                let groupEffects = Array.zeroCreate<int> 20
+                let groupTotals = Array.zeroCreate<int> 20
+
+                for gk in 0..19 do
+                    let idx = gk
+
+                    createEffect (fun () ->
+                        groupTotals[idx] <- agg.Get idx
+                        groupEffects[idx] <- groupEffects[idx] + 1)
+
+                let outerEffects0 = outerEffects.Value
+                let effectsBefore = Array.copy groupEffects
+                let total0Before = groupTotals[0]
+                let total1Before = groupTotals[1]
+
+                // Move non-first item 101: amount (101 % 17) + 1 = 17, from group 0 to group 1
+                col.AddOrUpdate { Id = 101; N = 1 * 100 + 17 }
+
+                Expect.equal outerEffects.Value outerEffects0 "outer aggregate Keys observer stayed asleep"
+                Expect.equal groupEffects[0] (effectsBefore[0] + 1) "source group 0 aggregate updated once"
+                Expect.equal groupEffects[1] (effectsBefore[1] + 1) "target group 1 aggregate updated once"
+                Expect.equal groupTotals[0] (total0Before - 17) "group 0 sum decreased by 17"
+                Expect.equal groupTotals[1] (total1Before + 17) "group 1 sum increased by 17"
+
+                for gk in 2..19 do
+                    Expect.equal groupEffects[gk] effectsBefore[gk] $"untouched group {gk} aggregate stayed asleep"
             }
         ]

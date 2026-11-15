@@ -60,7 +60,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.forall predicate` | whether `countBy` of the misses is zero | as `foldGroup` |
 | `Projection.length`, `Projection.isEmpty` | the key count; whether it is zero | no work: a row edit wakes neither |
 | `Projection.tryHead`, `tryLast`, `tryItem index` (`head`, `last`, `item` raise) | the key at a position with its value | O(1); an edit off the position wakes no reader |
-| `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate call; a membership flip costs an O(N) filter pass |
+| `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate call; a sparse membership flip updates the `filter` view via Fenwick rank + `Keys` splice |
 | `Projection.tryAverageBy projection` (`averageBy` raises) | the mean of `projection` over the settled values | as `foldGroup` |
 | `Projection.tryMinBy`, `tryMaxBy projection` (`minBy`, `maxBy` raise) | a value with the least or greatest rank | O(1); O(N) when the holder leaves or changes |
 
@@ -68,7 +68,7 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 
 :::details Membership changes and row reads
 
-A key added to or removed from `Keys` costs an O(N) key diff, then one `add` or `subtract` per changed key. Each
+Bounded key changes consume upstream key deltas in O(Δ), falling back to an O(N) key diff on large bursts, then run one `add` or `subtract` per changed key. Each
 aggregate attaches a direct row observer per key (`FoldRow` / `FoldReads`: [`direct_link_is_sources_add`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_link_is_sources_add), [`world_direct_link_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_link_spec), [`direct_observer_walk_covered`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_observer_walk_covered)) and reads only the rows that changed, so an edit to one row of a thousand re-runs the row's function alone. Companion state adopted by an aggregate memo (`Memo.Adopt`) is disposed once when the aggregate memo is disposed ([`adopt_companion_disposed_once`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#adopt_companion_disposed_once), [`memo_dispose_adopted_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#memo_dispose_adopted_spec)).
 
 :::

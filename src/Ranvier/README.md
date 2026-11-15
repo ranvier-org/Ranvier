@@ -118,9 +118,9 @@ Pending or failed rows retain their last settled value, and status changes alone
 produce `Changed`. Dispose readers to release observation. The .NET observable collection
 adapter uses this cache to update changed rows without polling every row.
 
-Map membership consumes upstream key deltas. Filters, sorts, grouping and some aggregate
-membership paths still scan keys; this is a foundation for incremental collections,
-with explicit costs for membership and order.
+Map, filter, choose, partition, sort, distinct and grouping views consume sparse row edits
+and bounded key deltas incrementally, falling back to full passes on large bursts or
+upstream reorderings, with explicit costs for membership and order.
 
 ## Tracing
 

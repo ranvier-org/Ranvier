@@ -466,3 +466,5 @@ Print Assumptions Ranvier.Heap.Collections.fenwick_add_spec.
 Print Assumptions inv_order_reinsert_coherent.
 Print Assumptions sortview_insert_remove_refines_sort.
 Print Assumptions Ranvier.Heap.Collections.inv_order_shift_spec.
+Print Assumptions distinct_bucket_update_refines_scan.
+Print Assumptions grouping_move_refines_scan.
