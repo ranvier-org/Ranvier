@@ -50,8 +50,9 @@ the whole graph.
 
 ## Under consideration
 
-- **Further collection incrementality:** filter, sort, grouping and some aggregate membership
-  paths still scan keys.
+- **Further collection incrementality:** sublinear persistent key-array storage for `Keys`
+  splices, O(log N) order-statistic structures for large `sortBy` reinsertions, and
+  logarithmic holder replacement in `tryMinBy` / `tryMaxBy`.
 - **An F# `Async<'T>` adapter:** cold-workflow lifetime and restart contracts remain exploratory.
   See [The async graph](async-graph.md#not-implemented).
 - **Reusable lenses and prisms:** application code can express deep writes; reusable focus paths

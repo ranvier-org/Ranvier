@@ -60,13 +60,19 @@ lengths.Get 3
 :::details Cost of membership and order changes
 
 Map membership consumes upstream key deltas, retaining unchanged rows and reusing the upstream key
-array. Source membership changes copy the ordered key array. Filters, sorts and grouping still scan upstream keys on their
-membership paths; their cached per-row functions avoid repeated user calls for unchanged rows.
-Some aggregate membership paths also scan keys.
+array. Source membership changes copy the ordered key array. Sparse row edits and bounded key deltas
+on filters, chooses, partitions, sorts, distinct views and groupings update incrementally via per-row
+check cutoffs ([`row_slot_check_cutoff_skips_pass`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass)),
+O(log N) binary-indexed rank splicing ([`filter_incremental_step_refines_scan`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#filter_incremental_step_refines_scan),
+[`fenwick_sum_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#fenwick_sum_spec)),
+local sort reinsertion ([`sortview_insert_remove_refines_sort`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sortview_insert_remove_refines_sort)),
+two-bucket distinct winner tracking ([`distinct_bucket_update_refines_scan`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#distinct_bucket_update_refines_scan)),
+and isolated two-group moves ([`grouping_move_refines_scan`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#grouping_move_refines_scan)),
+falling back to full scans on dense bursts or upstream reorderings.
 
 With an [editable keyed source](collection-updates.fsx#direct-edits), an existing-key write avoids
-a whole-input collection pass and preserves the key array. This does not make every view's
-membership or order processing proportional to the changed rows.
+a whole-input collection pass, preserves the key array, and propagates sparse changes straight into
+those incremental views and inverse aggregates.
 
 :::
 
@@ -109,8 +115,10 @@ longestFirst.Keys
 
 :::details Sort costs
 
-When every sort key, membership and the upstream order are unchanged, a `sortBy` pass costs O(N) and publishes no new
-`Keys`; otherwise it re-sorts in O(N log N).
+An unchanged pass cuts off per row ([`row_slot_check_cutoff_skips_pass`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass))
+and publishes no new `Keys`. Sparse sort-key or membership changes check local neighbours in O(1) and binary-search/shift
+only touched slots ([`sortview_insert_remove_refines_sort`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sortview_insert_remove_refines_sort));
+dense bursts and full upstream reorderings fall back to O(N log N) sorting.
 
 :::
 
@@ -159,7 +167,10 @@ labels.Get 3
 
 `Projection.groupBy` groups the keys by a group key. The groups follow the upstream position of each group's first
 member, and each group is an inner view of its keys in upstream order. A key whose group key changes leaves its old
-group and joins its new one in the same pass. `groupBy` returns a `Grouping`, which is a
+group and joins its new one in the same pass, leaving untouched inner views asleep and ordering active groups by first
+upstream member ([`grouping_move_refines_scan`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#grouping_move_refines_scan),
+[`row_slot_check_cutoff_skips_pass`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass)).
+`groupBy` returns a `Grouping`, which is a
 `Projection<'G, Projection<'K, 'V>>`; branches that must unify with a plain projection need an upcast.
 
 :::details Pending groups and UngroupedKeys
@@ -209,8 +220,11 @@ let shortTitles, longerTitles =
 ### Distinct rows
 
 `Projection.distinctBy` keeps the first key for each distinct value of a function, in upstream order, under that
-key. When the holder leaves or changes value, the next key with the value takes its place, and a key reader sees the
-old key removed and the new one added. Pending and raising functions follow the predicate rules above.
+key. Sparse edits touch only the old and new value buckets: moving a non-holder leaves `Keys` unchanged, and when a
+holder leaves or changes value, the next key with the value enters via its bucket and Fenwick rank splice
+([`distinct_bucket_update_refines_scan`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#distinct_bucket_update_refines_scan),
+[`fenwick_sum_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#fenwick_sum_spec)),
+waking a key reader with the old key removed and the new one added. Pending and raising functions follow the predicate rules above.
 
 *)
 let oneTitlePerLength =

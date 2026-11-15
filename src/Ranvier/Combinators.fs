@@ -1435,6 +1435,157 @@ type internal ChooseView<'K, 'V, 'U when 'K: equality>
         core.Abandoned ()
 
 /// <summary>
+/// Shared binary-search maintenance helpers for member lists sorted strictly ascending by upstream index.
+/// </summary>
+module internal MemberSlots =
+    let inline indexOfUpIdx (upIdxOf: 'Slot -> int) (members: ResizeArray<'Slot>) (upIdx: int) =
+        let mutable lo = 0
+        let mutable hi = members.Count - 1
+        let mutable found = -1
+
+        while lo <= hi do
+            let mid = lo + ((hi - lo) >>> 1)
+            let midIdx = upIdxOf (Platform.entryAt mid members)
+
+            if midIdx = upIdx then
+                found <- mid
+                lo <- hi + 1
+            elif midIdx < upIdx then
+                lo <- mid + 1
+            else
+                hi <- mid - 1
+
+        found
+
+    let inline insertBoundByUpIdx (upIdxOf: 'Slot -> int) (members: ResizeArray<'Slot>) (upIdx: int) =
+        let mutable lo = 0
+        let mutable hi = members.Count
+
+        while lo < hi do
+            let mid = lo + ((hi - lo) >>> 1)
+
+            if upIdxOf (Platform.entryAt mid members) < upIdx then
+                lo <- mid + 1
+            else
+                hi <- mid
+
+        lo
+
+    let inline insertSortedByUpIdx (upIdxOf: 'Slot -> int) (members: ResizeArray<'Slot>) (slot: 'Slot) =
+        let pos = insertBoundByUpIdx upIdxOf members (upIdxOf slot)
+        members.Insert (pos, slot)
+        pos
+
+    let inline removeSortedByUpIdx (upIdxOf: 'Slot -> int) (members: ResizeArray<'Slot>) (upIdx: int) =
+        let idx = indexOfUpIdx upIdxOf members upIdx
+
+        if idx >= 0 then
+            members.RemoveAt idx
+
+        idx
+
+[<Sealed>]
+type internal DistinctBucket<'K, 'G when 'K: equality and 'G: equality> =
+    val GroupKey: 'G
+    val Members: ResizeArray<DistinctSlot<'K, 'G>>
+
+    new(groupKey: 'G) =
+        {
+            GroupKey = groupKey
+            Members = ResizeArray<DistinctSlot<'K, 'G>>()
+        }
+
+/// <summary>
+/// Observes one key's distinct-key projection memo on behalf of an incremental <c>DistinctView</c>.
+/// </summary>
+and [<Sealed>] internal DistinctSlot<'K, 'G when 'K: equality and 'G: equality> =
+    val Key: 'K
+    val Queue: SlotQueue<DistinctSlot<'K, 'G>>
+    val mutable Source: Memo<'G>
+    val mutable Handle: int
+    val mutable UpIdx: int
+    val mutable CommittedState: InclusionState
+    val mutable Bucket: DistinctBucket<'K, 'G>
+    val mutable Value: 'G
+    val mutable Failed: bool
+    val mutable Unsettled: bool
+    val mutable Touched: bool
+    val mutable QueuedDirty: bool
+    val mutable QueuedCheck: bool
+    val mutable Disposed: bool
+
+    new(key: 'K, source: Memo<'G>, queue: SlotQueue<DistinctSlot<'K, 'G>>) =
+        {
+            Key = key
+            Queue = queue
+            Source = source
+            Handle = EdgeHandle.Unlinked
+            UpIdx = -1
+            CommittedState = InclusionState.Excluded
+            Bucket = Unchecked.defaultof<DistinctBucket<'K, 'G>>
+            Value = Unchecked.defaultof<'G>
+            Failed = false
+            Unsettled = false
+            Touched = false
+            QueuedDirty = false
+            QueuedCheck = false
+            Disposed = false
+        }
+
+    member this.Attach() =
+        this.Handle <- (this.Source :> ISource).AddObserver(this, 0)
+
+    member this.Detach() =
+        if not this.Disposed then
+            this.Disposed <- true
+
+            if this.Handle <> EdgeHandle.Unlinked then
+                (this.Source :> ISource).RemoveObserverAt(this, this.Handle)
+                this.Handle <- EdgeHandle.Unlinked
+
+    interface INode with
+        member this.Id = this.Queue.ViewNode.Id
+        member this.Status = this.Queue.ViewNode.Status
+
+    interface IComputation with
+        member _.AddSource _ = ()
+        member _.HasReadSlot _ = false
+
+        member this.MovedIn(_, handle) =
+            if not this.Disposed then
+                this.Handle <- handle
+
+        member this.MarkDirty() =
+            let q = this.Queue
+
+            if
+                not this.Disposed
+                && not (obj.ReferenceEquals (this, q.ActiveSlot))
+            then
+                if not this.QueuedDirty then
+                    this.QueuedDirty <- true
+                    q.Dirty.Add this
+
+                if not q.DirtyNotified then
+                    q.ViewNode.MarkDirty ()
+                    q.DirtyNotified <- q.IsInvalidated ()
+
+        member this.MarkCheck() =
+            let q = this.Queue
+
+            if
+                not this.Disposed
+                && not (obj.ReferenceEquals (this, q.ActiveSlot))
+            then
+                if not this.QueuedDirty && not this.QueuedCheck then
+                    this.QueuedCheck <- true
+                    q.Check.Add this
+
+                if not q.CheckNotified && not q.DirtyNotified then
+                    q.ViewNode.MarkCheck ()
+                    q.CheckNotified <- q.IsCheckQueued ()
+
+/// <summary>
 /// The first key holding each distinct value of <c>values</c>, in upstream order, each with a row reading the upstream
 /// value.
 /// </summary>
@@ -1442,7 +1593,7 @@ type internal ChooseView<'K, 'V, 'U when 'K: equality>
 /// A pending value keeps the key's last settled value. A failed value leaves the key out of <c>Keys</c> and keeps its
 /// row, which raises the failure.
 /// </remarks>
-type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph: Graph, upstream: Projection<'K, 'V>, values: Projection<'K, 'G> ref)
+type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph: Graph, upstream: Projection<'K, 'V>, values: Projection<'K, 'G> ref) as this
     =
     inherit
         RowsByKey<'K, 'V>(
@@ -1454,7 +1605,1037 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
         )
 
     let heldOut = HeldOut<'K> graph
-    let taken = Platform.KeySet<'G>()
+    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+    let equalGroupKeys = System.Collections.Generic.EqualityComparer<'G>.Default
+    let queue = SlotQueue<DistinctSlot<'K, 'G>>.Create this
+    let dirtySlots = queue.Dirty
+    let checkSlots = queue.Check
+    let mutable initialized = false
+    let mutable disposed = false
+    let mutable synced = false
+
+    let mutable keyReader: ProjectionReader<'K> =
+        Unchecked.defaultof<ProjectionReader<'K>>
+
+    let mutable upSlots: DistinctSlot<'K, 'G>[] = Array.empty
+    let mutable scratchUpSlots: DistinctSlot<'K, 'G>[] = Array.empty
+    let mutable upCount = 0
+    let byKey = Platform.KeyMap<'K, DistinctSlot<'K, 'G>>()
+    let buckets = Platform.KeyMap<'G, DistinctBucket<'K, 'G>>()
+    let failedKeys = Platform.KeySet<'K>()
+    let touchedSlots = ResizeArray<DistinctSlot<'K, 'G>>()
+    let pendingBucketInserts = ResizeArray<DistinctSlot<'K, 'G>>()
+    let mutable fenwick: int[] = Array.empty
+    let mutable fenwickValid = false
+    let mutable includedCount = 0
+    let mutable unsettledCount = 0
+    let mutable checkIndex = 0
+    let mutable flipIndices = Array.zeroCreate<int> 64
+    let mutable flipDirs = Array.zeroCreate<int> 64
+    let mutable flipKeys = Array.zeroCreate<'K> 64
+
+    let incrementalLimit n =
+        max 8 (min 64 (n >>> 4))
+
+    let ensureUpCapacity needed =
+        if upSlots.Length < needed then
+            let grown =
+                Array.zeroCreate<DistinctSlot<'K, 'G>>(max (max 16 needed) (upSlots.Length * 2))
+
+            if upCount > 0 then
+                Array.blit upSlots 0 grown 0 upCount
+
+            upSlots <- grown
+
+    let ensureFlipCapacity needed =
+        if flipIndices.Length < needed then
+            let cap = max (needed * 2) (flipIndices.Length * 2)
+            let nextIndices = Array.zeroCreate<int> cap
+            let nextDirs = Array.zeroCreate<int> cap
+            let nextKeys = Array.zeroCreate<'K> cap
+            Array.blit flipIndices 0 nextIndices 0 flipIndices.Length
+            Array.blit flipDirs 0 nextDirs 0 flipDirs.Length
+            Array.blit flipKeys 0 nextKeys 0 flipKeys.Length
+            flipIndices <- nextIndices
+            flipDirs <- nextDirs
+            flipKeys <- nextKeys
+
+    let ensureFenwick neededCount =
+        if not fenwickValid then
+            fenwick <- Fenwick.ensureCapacity fenwick 0 neededCount
+            Fenwick.clearRange fenwick upCount
+
+            for i in 0 .. upCount - 1 do
+                if (Platform.itemAt i upSlots).CommittedState = InclusionState.Included then
+                    Platform.setItemAt (i + 1) fenwick 1
+
+            Fenwick.propagate fenwick upCount
+            fenwickValid <- true
+        elif fenwick.Length < neededCount + 1 then
+            fenwick <- Fenwick.ensureCapacity fenwick upCount neededCount
+
+    let markTouched (slot: DistinctSlot<'K, 'G>) =
+        if not slot.Touched then
+            slot.Touched <- true
+            touchedSlots.Add slot
+
+    let clearTouched () =
+        for i in 0 .. touchedSlots.Count - 1 do
+            (Platform.entryAt i touchedSlots).Touched <- false
+
+        if touchedSlots.Count > 0 then
+            touchedSlots.Clear ()
+
+    let clearQueues () =
+        if dirtySlots.Count > 0 then
+            for i in 0 .. dirtySlots.Count - 1 do
+                (Platform.entryAt i dirtySlots).QueuedDirty <- false
+
+            dirtySlots.Clear ()
+
+        if checkIndex < checkSlots.Count then
+            for i in checkIndex .. checkSlots.Count - 1 do
+                (Platform.entryAt i checkSlots).QueuedCheck <- false
+
+        if checkSlots.Count > 0 then
+            checkSlots.Clear ()
+
+        checkIndex <- 0
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
+
+    let enqueueCheckSlot (slot: DistinctSlot<'K, 'G>) =
+        if not slot.QueuedDirty && not slot.QueuedCheck then
+            slot.QueuedCheck <- true
+            checkSlots.Add slot
+
+    let evaluateSlot (slot: DistinctSlot<'K, 'G>) (source: Memo<'G>) =
+        queue.ActiveSlot <- box slot
+        let st = source.EnsureCurrentUntracked ()
+
+        if st = Status.None then
+            slot.Unsettled <- false
+            slot.Failed <- false
+            slot.Value <- source.Peek
+        else
+            if
+                not slot.Disposed
+                && (st &&& Status.Stale) <> Status.None
+            then
+                enqueueCheckSlot slot
+
+                if not queue.CheckNotified && not queue.DirtyNotified then
+                    (this :> IComputation).MarkCheck()
+                    queue.CheckNotified <- queue.IsCheckQueued ()
+
+            if StatusBits.isPending st then
+                if not source.Published then
+                    slot.Unsettled <- true
+                    slot.Failed <- false
+                else
+                    slot.Unsettled <- false
+                    slot.Failed <- false
+                    slot.Value <- source.Peek
+            elif StatusBits.isError st then
+                slot.Unsettled <- false
+                slot.Failed <- true
+            else
+                slot.Unsettled <- false
+                slot.Failed <- false
+                slot.Value <- source.Peek
+
+    let detachFromBucket (slot: DistinctSlot<'K, 'G>) (trackTouches: bool) =
+        let bucket = slot.Bucket
+
+        if not (Platform.isNull (box bucket)) then
+            let members = bucket.Members
+
+            let oldWinner =
+                if members.Count > 0 then
+                    Platform.entryAt 0 members
+                else
+                    Unchecked.defaultof<_>
+
+            MemberSlots.removeSortedByUpIdx (fun (s: DistinctSlot<'K, 'G>) -> s.UpIdx) members slot.UpIdx
+            |> ignore
+
+            slot.Bucket <- Unchecked.defaultof<_>
+
+            if members.Count = 0 then
+                buckets.Remove bucket.GroupKey
+            elif
+                trackTouches
+                && obj.ReferenceEquals (oldWinner, slot)
+            then
+                markTouched (Platform.entryAt 0 members)
+
+            if trackTouches then
+                markTouched slot
+
+    let insertIntoBucket (slot: DistinctSlot<'K, 'G>) (trackTouches: bool) =
+        let v = slot.Value
+        let mutable bucket = buckets.Find v
+
+        if Platform.isNull (box bucket) then
+            bucket <- DistinctBucket<'K, 'G>(v)
+            buckets.Set (v, bucket)
+
+        let members = bucket.Members
+
+        let oldWinner =
+            if members.Count > 0 then
+                Platform.entryAt 0 members
+            else
+                Unchecked.defaultof<_>
+
+        let pos =
+            MemberSlots.insertSortedByUpIdx (fun (s: DistinctSlot<'K, 'G>) -> s.UpIdx) members slot
+
+        slot.Bucket <- bucket
+
+        if trackTouches then
+            markTouched slot
+
+            if pos = 0 && not (Platform.isNull (box oldWinner)) then
+                markTouched oldWinner
+
+    let appendIntoBucket (slot: DistinctSlot<'K, 'G>) =
+        let v = slot.Value
+        let mutable bucket = buckets.Find v
+
+        if Platform.isNull (box bucket) then
+            bucket <- DistinctBucket<'K, 'G>(v)
+            buckets.Set (v, bucket)
+
+        bucket.Members.Add slot
+        slot.Bucket <- bucket
+
+    let computeSlotState (slot: DistinctSlot<'K, 'G>) =
+        if slot.Failed then
+            InclusionState.Failed
+        else
+            let bucket = slot.Bucket
+
+            if
+                not (Platform.isNull (box bucket))
+                && bucket.Members.Count > 0
+                && obj.ReferenceEquals (Platform.entryAt 0 bucket.Members, slot)
+            then
+                InclusionState.Included
+            else
+                InclusionState.Excluded
+
+    let recordStateChange (key: 'K) (prevState: InclusionState) (nextState: InclusionState) =
+        if prevState <> nextState then
+            if prevState = InclusionState.Failed then
+                failedKeys.Remove key
+
+            if nextState = InclusionState.Excluded then
+                this.Removed.Add key
+            else
+                if nextState = InclusionState.Failed then
+                    failedKeys.Add key |> ignore
+
+                if prevState = InclusionState.Excluded then
+                    this.StageAdd key
+
+    let refreshSlot (slot: DistinctSlot<'K, 'G>) (insertNow: bool) =
+        let prevFailed = slot.Failed
+        let prevUnsettled = slot.Unsettled
+        let wasSettled = not prevFailed && not prevUnsettled
+        let prevVal = slot.Value
+        evaluateSlot slot slot.Source
+        let nowSettled = not slot.Failed && not slot.Unsettled
+
+        if prevUnsettled <> slot.Unsettled then
+            unsettledCount <-
+                unsettledCount
+                + (if slot.Unsettled then 1 else -1)
+
+        if wasSettled && nowSettled then
+            if not (equalGroupKeys.Equals (prevVal, slot.Value)) then
+                detachFromBucket slot true
+
+                if insertNow then
+                    insertIntoBucket slot true
+                else
+                    pendingBucketInserts.Add slot
+        else
+            if wasSettled then
+                detachFromBucket slot true
+
+            if nowSettled then
+                if insertNow then
+                    insertIntoBucket slot true
+                else
+                    pendingBucketInserts.Add slot
+            elif slot.Failed <> prevFailed then
+                markTouched slot
+
+    let resolveCheckStep (keepRunning: unit -> bool) =
+        let stepEnd = checkSlots.Count
+
+        while keepRunning () && checkIndex < stepEnd do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        if source.IsActive then
+                            (slot :> IComputation).MarkDirty()
+                        else
+                            enqueueCheckSlot slot
+
+        if checkIndex >= checkSlots.Count then
+            if checkSlots.Count > 0 then
+                checkSlots.Clear ()
+
+            checkIndex <- 0
+
+        queue.CheckNotified <- false
+
+    let drainCheckSlots (limit: int) =
+        let drainEnd = checkSlots.Count
+
+        while checkIndex < drainEnd && dirtySlots.Count <= limit do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        slot.QueuedDirty <- true
+                        dirtySlots.Add slot
+
+        if checkIndex >= checkSlots.Count then
+            if checkSlots.Count > 0 then
+                checkSlots.Clear ()
+
+            checkIndex <- 0
+            queue.CheckNotified <- false
+
+    let applyDirtySplice (prevKeys: 'K[]) (treeCount: int) =
+        if dirtySlots.Count = 0 then
+            struct (false, prevKeys)
+        else
+            clearTouched ()
+
+            try
+                let mutable i = 0
+
+                while i < dirtySlots.Count do
+                    let slot = Platform.entryAt i dirtySlots
+                    i <- i + 1
+
+                    if not slot.Disposed then
+                        slot.QueuedDirty <- false
+                        refreshSlot slot true
+            finally
+                queue.ActiveSlot <- null
+
+            dirtySlots.Clear ()
+            queue.DirtyNotified <- false
+
+            if touchedSlots.Count = 0 then
+                struct (false, prevKeys)
+            else
+                let mutable flipCount = 0
+                let mutable deltaIncluded = 0
+
+                for i in 0 .. touchedSlots.Count - 1 do
+                    let slot = Platform.entryAt i touchedSlots
+                    slot.Touched <- false
+
+                    if not slot.Disposed then
+                        let prevState = slot.CommittedState
+                        let nextState = computeSlotState slot
+
+                        if prevState <> nextState then
+                            if
+                                (prevState = InclusionState.Included)
+                                <> (nextState = InclusionState.Included)
+                            then
+                                if flipCount = 0 then
+                                    ensureFenwick treeCount
+
+                                ensureFlipCapacity (flipCount + 1)
+                                let dir = if nextState = InclusionState.Included then 1 else -1
+                                Platform.setItemAt flipCount flipIndices slot.UpIdx
+                                Platform.setItemAt flipCount flipDirs dir
+                                Platform.setItemAt flipCount flipKeys slot.Key
+                                flipCount <- flipCount + 1
+                                deltaIncluded <- deltaIncluded + dir
+
+                            recordStateChange slot.Key prevState nextState
+                            slot.CommittedState <- nextState
+
+                touchedSlots.Clear ()
+
+                if flipCount = 0 then
+                    struct (false, prevKeys)
+                else
+
+                    for i in 1 .. flipCount - 1 do
+                        let idx = Platform.itemAt i flipIndices
+                        let dir = Platform.itemAt i flipDirs
+                        let key = Platform.itemAt i flipKeys
+                        let mutable j = i - 1
+
+                        while j >= 0 && Platform.itemAt j flipIndices > idx do
+                            Platform.setItemAt (j + 1) flipIndices (Platform.itemAt j flipIndices)
+                            Platform.setItemAt (j + 1) flipDirs (Platform.itemAt j flipDirs)
+                            Platform.setItemAt (j + 1) flipKeys (Platform.itemAt j flipKeys)
+                            j <- j - 1
+
+                        Platform.setItemAt (j + 1) flipIndices idx
+                        Platform.setItemAt (j + 1) flipDirs dir
+                        Platform.setItemAt (j + 1) flipKeys key
+
+                    let nextLen = includedCount + deltaIncluded
+
+                    let nextKeys =
+                        if nextLen = 0 then
+                            Array.empty
+                        else
+                            let arr = Array.zeroCreate<'K> nextLen
+                            let mutable oldPos = 0
+                            let mutable newPos = 0
+
+                            for f in 0 .. flipCount - 1 do
+                                let uIdx = Platform.itemAt f flipIndices
+                                let dir = Platform.itemAt f flipDirs
+                                let oldRank = Fenwick.sumPrefix fenwick uIdx
+                                let segLen = oldRank - oldPos
+
+                                if segLen > 0 then
+                                    Array.blit prevKeys oldPos arr newPos segLen
+                                    oldPos <- oldRank
+                                    newPos <- newPos + segLen
+
+                                if dir > 0 then
+                                    Platform.setItemAt newPos arr (Platform.itemAt f flipKeys)
+                                    newPos <- newPos + 1
+                                else
+                                    oldPos <- oldPos + 1
+
+                            let tailLen = prevKeys.Length - oldPos
+
+                            if tailLen > 0 then
+                                Array.blit prevKeys oldPos arr newPos tailLen
+
+                            arr
+
+                    for f in 0 .. flipCount - 1 do
+                        Fenwick.add fenwick treeCount (Platform.itemAt f flipIndices) (Platform.itemAt f flipDirs)
+
+                    includedCount <- nextLen
+                    struct (true, nextKeys)
+
+    let publishPassKeysIfChanged () =
+        let prevKeys = this.PublishedKeys
+        let passCount = this.PassKeys.Count
+
+        let same =
+            prevKeys.Length = passCount
+            && (let mutable eq = true
+                let mutable i = 0
+
+                while eq && i < passCount do
+                    if not (equalKeys.Equals (Platform.itemAt i prevKeys, Platform.entryAt i this.PassKeys)) then
+                        eq <- false
+
+                    i <- i + 1
+
+                eq)
+
+        if same then
+            this.StageKeys null
+        else
+            this.StageKeys (
+                if passCount = 0 then
+                    Array.empty
+                else
+                    this.PassKeys.ToArray ()
+            )
+
+    let runDenseDistinct () =
+        clearQueues ()
+        clearTouched ()
+        fenwickValid <- false
+        let mutable nextUnsettled = 0
+        let mutable membershipChanged = false
+
+        try
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+                let wasSettled = not slot.Failed && not slot.Unsettled
+                let prevVal = slot.Value
+                evaluateSlot slot slot.Source
+                let nowSettled = not slot.Failed && not slot.Unsettled
+
+                if slot.Unsettled then
+                    nextUnsettled <- nextUnsettled + 1
+
+                if wasSettled && nowSettled then
+                    if not (equalGroupKeys.Equals (prevVal, slot.Value)) then
+                        detachFromBucket slot false
+                        insertIntoBucket slot false
+                else
+                    if wasSettled then
+                        detachFromBucket slot false
+
+                    if nowSettled then
+                        insertIntoBucket slot false
+
+            let mutable nextIncluded = 0
+
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+                let prevState = slot.CommittedState
+                let nextState = computeSlotState slot
+
+                if prevState <> nextState then
+                    recordStateChange slot.Key prevState nextState
+                    slot.CommittedState <- nextState
+
+                    if
+                        (prevState = InclusionState.Included)
+                        <> (nextState = InclusionState.Included)
+                    then
+                        membershipChanged <- true
+
+                if nextState = InclusionState.Included then
+                    this.PassKeys.Add slot.Key
+                    nextIncluded <- nextIncluded + 1
+
+            includedCount <- nextIncluded
+            unsettledCount <- nextUnsettled
+            this.StageRemovals ()
+
+            if membershipChanged then
+                this.StageKeys (
+                    if nextIncluded = 0 then
+                        Array.empty
+                    else
+                        this.PassKeys.ToArray ()
+                )
+            else
+                this.StageKeys null
+        finally
+            queue.ActiveSlot <- null
+
+    let rebuildFull (newKeys: 'K[]) =
+        clearQueues ()
+        clearTouched ()
+        pendingBucketInserts.Clear ()
+        buckets.Clear ()
+        failedKeys.Clear ()
+        let oldUpSlots = upSlots
+        let oldUpCount = upCount
+        let newCount = newKeys.Length
+
+        for i in 0 .. oldUpCount - 1 do
+            let slot = Platform.itemAt i oldUpSlots
+            slot.UpIdx <- -1
+            slot.Bucket <- Unchecked.defaultof<_>
+
+        let nextUpSlots =
+            if newCount = 0 then
+                Array.empty
+            elif scratchUpSlots.Length >= newCount then
+                let reused = scratchUpSlots
+                scratchUpSlots <- Array.empty
+                reused
+            else
+                Array.zeroCreate<DistinctSlot<'K, 'G>>(max 16 newCount)
+
+        let mutable outCount = 0
+        let mutable nextIncluded = 0
+        let mutable nextUnsettled = 0
+        let rows = values.Value
+
+        try
+            for i in 0 .. newCount - 1 do
+                let key = Platform.itemAt i newKeys
+                let entry = rows.Entries.Find key
+
+                if not (Platform.isNull entry) then
+                    let resolved = entry.Row
+                    let mutable slot = byKey.Find key
+
+                    if
+                        not (Platform.isNull (box slot))
+                        && not (obj.ReferenceEquals (slot.Source, resolved))
+                    then
+                        slot.Detach ()
+                        slot <- Unchecked.defaultof<_>
+
+                    if Platform.isNull (box slot) then
+                        slot <- DistinctSlot<'K, 'G>(key, resolved, queue)
+                        slot.Attach ()
+                        byKey.Set (key, slot)
+
+                    slot.UpIdx <- outCount
+                    evaluateSlot slot resolved
+
+                    if slot.Unsettled then
+                        nextUnsettled <- nextUnsettled + 1
+
+                    if not slot.Failed && not slot.Unsettled then
+                        appendIntoBucket slot
+
+                    let nextState = computeSlotState slot
+                    slot.CommittedState <- nextState
+
+                    if nextState = InclusionState.Included then
+                        this.PassKeys.Add key
+                        nextIncluded <- nextIncluded + 1
+                        this.StageAdd key
+                    elif nextState = InclusionState.Failed then
+                        failedKeys.Add key |> ignore
+                        this.StageAdd key
+
+                    Platform.setItemAt outCount nextUpSlots slot
+                    outCount <- outCount + 1
+        finally
+            queue.ActiveSlot <- null
+
+        for i in 0 .. oldUpCount - 1 do
+            let slot = Platform.itemAt i oldUpSlots
+
+            if slot.UpIdx < 0 && not slot.Disposed then
+                if obj.ReferenceEquals (byKey.Find slot.Key, slot) then
+                    byKey.Remove slot.Key
+
+                slot.Detach ()
+
+        if oldUpCount > 0 then
+            Array.fill oldUpSlots 0 oldUpCount Unchecked.defaultof<DistinctSlot<'K, 'G>>
+
+        if
+            oldUpSlots.Length > 0
+            && not (obj.ReferenceEquals (oldUpSlots, nextUpSlots))
+        then
+            scratchUpSlots <- oldUpSlots
+
+        upSlots <- nextUpSlots
+        upCount <- outCount
+        includedCount <- nextIncluded
+        unsettledCount <- nextUnsettled
+        fenwickValid <- false
+
+        if this.Entries.Count > 0 then
+            this.Entries.Iterate (fun key _ ->
+                let slot = byKey.Find key
+
+                if
+                    Platform.isNull (box slot)
+                    || slot.CommittedState = InclusionState.Excluded
+                then
+                    this.Removed.Add key)
+
+        this.StageRemovals ()
+
+    let tryTailAppend (delta: ProjectionDelta<'K>) (limit: int) =
+        let newKeys = delta.Keys
+        let addedCount = delta.ChangeCount
+
+        if
+            addedCount <= 0
+            || addedCount > limit
+            || newKeys.Length <> upCount + addedCount
+            || (dirtySlots.Count + (checkSlots.Count - checkIndex)) > limit
+        then
+            false
+        else
+            let mutable allAdded = true
+            let mutable c = 0
+
+            while allAdded && c < addedCount do
+                if (delta.ChangeAt c).Value <> KeyChange.Added then
+                    allAdded <- false
+
+                c <- c + 1
+
+            if not allAdded then
+                false
+            else
+                let mutable samePrefix = true
+                let mutable i = 0
+
+                while samePrefix && i < upCount do
+                    if not (equalKeys.Equals ((Platform.itemAt i upSlots).Key, Platform.itemAt i newKeys)) then
+                        samePrefix <- false
+
+                    i <- i + 1
+
+                if not samePrefix then
+                    false
+                else
+                    drainCheckSlots limit
+
+                    if dirtySlots.Count > limit then
+                        false
+                    else
+                        let oldCount = upCount
+                        let prevKeys = this.PublishedKeys
+                        let struct (baseChanged, baseKeys) = applyDirtySplice prevKeys oldCount
+                        let addedIncluded = ResizeArray<'K>(addedCount)
+                        let rows = values.Value
+
+                        ensureUpCapacity (oldCount + addedCount)
+                        ensureFenwick (oldCount + addedCount)
+                        let mutable nextCount = oldCount
+
+                        try
+                            for j in 0 .. addedCount - 1 do
+                                let key = Platform.itemAt (oldCount + j) newKeys
+                                let entry = rows.Entries.Find key
+
+                                if not (Platform.isNull entry) then
+                                    let resolved = entry.Row
+                                    let slot = DistinctSlot<'K, 'G>(key, resolved, queue)
+                                    slot.Attach ()
+                                    slot.UpIdx <- nextCount
+                                    evaluateSlot slot resolved
+                                    byKey.Set (key, slot)
+                                    Platform.setItemAt nextCount upSlots slot
+
+                                    if slot.Unsettled then
+                                        unsettledCount <- unsettledCount + 1
+
+                                    if not slot.Failed && not slot.Unsettled then
+                                        appendIntoBucket slot
+
+                                    let nextState = computeSlotState slot
+                                    slot.CommittedState <- nextState
+
+                                    let bit =
+                                        if nextState = InclusionState.Included then
+                                            this.StageAdd key
+                                            addedIncluded.Add key
+                                            1
+                                        elif nextState = InclusionState.Failed then
+                                            this.StageAdd key
+                                            failedKeys.Add key |> ignore
+                                            0
+                                        else
+                                            0
+
+                                    Fenwick.append fenwick nextCount bit
+                                    nextCount <- nextCount + 1
+                        finally
+                            queue.ActiveSlot <- null
+
+                        upCount <- nextCount
+                        this.StageRemovals ()
+
+                        if not baseChanged && addedIncluded.Count = 0 then
+                            this.StageKeys null
+                        else
+                            let nextKeys = Array.zeroCreate<'K>(baseKeys.Length + addedIncluded.Count)
+
+                            if baseKeys.Length > 0 then
+                                Array.blit baseKeys 0 nextKeys 0 baseKeys.Length
+
+                            for k in 0 .. addedIncluded.Count - 1 do
+                                Platform.setItemAt (baseKeys.Length + k) nextKeys (Platform.entryAt k addedIncluded)
+
+                            includedCount <- nextKeys.Length
+                            this.StageKeys nextKeys
+
+                        true
+
+    let applyGeneralDelta (delta: ProjectionDelta<'K>) =
+        let oldUpSlots = upSlots
+        let oldUpCount = upCount
+        let changeCount = delta.ChangeCount
+        let rows = values.Value
+        fenwickValid <- false
+        pendingBucketInserts.Clear ()
+
+        try
+            for c in 0 .. changeCount - 1 do
+                let change = delta.ChangeAt c
+                let key = change.Key
+
+                match change.Value with
+                | KeyChange.Removed ->
+                    let slot = byKey.Find key
+
+                    if not (Platform.isNull (box slot)) then
+                        byKey.Remove key
+                        detachFromBucket slot false
+                        slot.Detach ()
+
+                        if slot.Unsettled then
+                            unsettledCount <- unsettledCount - 1
+
+                        recordStateChange key slot.CommittedState InclusionState.Excluded
+                | KeyChange.Replaced ->
+                    let oldSlot = byKey.Find key
+
+                    let prevCommitted, prevUnsettled =
+                        if Platform.isNull (box oldSlot) then
+                            InclusionState.Excluded, false
+                        else
+                            let st = oldSlot.CommittedState
+                            let un = oldSlot.Unsettled
+                            detachFromBucket oldSlot false
+                            oldSlot.Detach ()
+                            st, un
+
+                    let entry = rows.Entries.Find key
+
+                    if Platform.isNull entry then
+                        if not (Platform.isNull (box oldSlot)) then
+                            byKey.Remove key
+
+                            if prevUnsettled then
+                                unsettledCount <- unsettledCount - 1
+
+                            recordStateChange key prevCommitted InclusionState.Excluded
+                    else
+                        let resolved = entry.Row
+                        let slot = DistinctSlot<'K, 'G>(key, resolved, queue)
+                        slot.Attach ()
+                        slot.CommittedState <- prevCommitted
+                        evaluateSlot slot resolved
+                        byKey.Set (key, slot)
+
+                        if prevUnsettled <> slot.Unsettled then
+                            unsettledCount <-
+                                unsettledCount
+                                + (if slot.Unsettled then 1 else -1)
+
+                        if not slot.Failed && not slot.Unsettled then
+                            pendingBucketInserts.Add slot
+                | KeyChange.Added ->
+                    let entry = rows.Entries.Find key
+
+                    if not (Platform.isNull entry) then
+                        let resolved = entry.Row
+                        let slot = DistinctSlot<'K, 'G>(key, resolved, queue)
+                        slot.Attach ()
+                        evaluateSlot slot resolved
+                        byKey.Set (key, slot)
+
+                        if slot.Unsettled then
+                            unsettledCount <- unsettledCount + 1
+
+                        if not slot.Failed && not slot.Unsettled then
+                            pendingBucketInserts.Add slot
+                | _ -> ()
+
+            queue.ActiveSlot <- null
+
+            while checkIndex < checkSlots.Count do
+                let slot = Platform.entryAt checkIndex checkSlots
+                checkIndex <- checkIndex + 1
+
+                if not slot.Disposed then
+                    slot.QueuedCheck <- false
+
+                    if not slot.QueuedDirty then
+                        let source = slot.Source :> ISource
+                        source.UpdateIfNecessary ()
+
+                        if
+                            not slot.Disposed
+                            && not slot.QueuedDirty
+                            && source.IsStale
+                        then
+                            slot.QueuedDirty <- true
+                            dirtySlots.Add slot
+
+            let mutable i = 0
+
+            while i < dirtySlots.Count do
+                let slot = Platform.entryAt i dirtySlots
+                i <- i + 1
+
+                if not slot.Disposed then
+                    slot.QueuedDirty <- false
+                    refreshSlot slot false
+        finally
+            queue.ActiveSlot <- null
+
+        clearQueues ()
+        clearTouched ()
+
+        let newKeys = delta.Keys
+        let newCount = newKeys.Length
+
+        let nextUpSlots =
+            if newCount = 0 then
+                Array.empty
+            elif scratchUpSlots.Length >= newCount then
+                let reused = scratchUpSlots
+                scratchUpSlots <- Array.empty
+                reused
+            else
+                Array.zeroCreate<DistinctSlot<'K, 'G>>(max 16 newCount)
+
+        let mutable cursor = 0
+        let mutable outCount = 0
+        let mutable reordered = false
+
+        for i in 0 .. newCount - 1 do
+            let key = Platform.itemAt i newKeys
+
+            while cursor < oldUpCount
+                  && (Platform.itemAt cursor oldUpSlots).Disposed do
+                cursor <- cursor + 1
+
+            let slot =
+                if
+                    cursor < oldUpCount
+                    && equalKeys.Equals ((Platform.itemAt cursor oldUpSlots).Key, key)
+                then
+                    let hit = Platform.itemAt cursor oldUpSlots
+                    cursor <- cursor + 1
+                    hit
+                else
+                    let found = byKey.Find key
+
+                    if
+                        not (Platform.isNull (box found))
+                        && found.UpIdx >= 0
+                    then
+                        reordered <- true
+
+                    found
+
+            if not (Platform.isNull (box slot)) then
+                slot.UpIdx <- outCount
+                Platform.setItemAt outCount nextUpSlots slot
+                outCount <- outCount + 1
+
+        if oldUpCount > 0 then
+            Array.fill oldUpSlots 0 oldUpCount Unchecked.defaultof<DistinctSlot<'K, 'G>>
+
+        if
+            oldUpSlots.Length > 0
+            && not (obj.ReferenceEquals (oldUpSlots, nextUpSlots))
+        then
+            scratchUpSlots <- oldUpSlots
+
+        upSlots <- nextUpSlots
+        upCount <- outCount
+
+        if reordered then
+            buckets.Clear ()
+
+            for i in 0 .. outCount - 1 do
+                let slot = Platform.itemAt i upSlots
+                slot.Bucket <- Unchecked.defaultof<_>
+
+                if not slot.Failed && not slot.Unsettled then
+                    appendIntoBucket slot
+        else
+            for i in 0 .. pendingBucketInserts.Count - 1 do
+                let slot = Platform.entryAt i pendingBucketInserts
+
+                if
+                    not slot.Disposed
+                    && slot.UpIdx >= 0
+                    && not slot.Failed
+                    && not slot.Unsettled
+                    && Platform.isNull (box slot.Bucket)
+                then
+                    insertIntoBucket slot false
+
+        pendingBucketInserts.Clear ()
+
+        let mutable nextIncluded = 0
+
+        for i in 0 .. outCount - 1 do
+            let slot = Platform.itemAt i upSlots
+            let prevState = slot.CommittedState
+            let nextState = computeSlotState slot
+
+            if prevState <> nextState then
+                recordStateChange slot.Key prevState nextState
+                slot.CommittedState <- nextState
+
+            if nextState = InclusionState.Included then
+                this.PassKeys.Add slot.Key
+                nextIncluded <- nextIncluded + 1
+
+        includedCount <- nextIncluded
+        this.StageRemovals ()
+        publishPassKeysIfChanged ()
+
+    let finishPass () =
+        if failedKeys.Count > 0 then
+            failedKeys.Iterate (fun key -> this.StageHidden key)
+
+        if unsettledCount > 0 then
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+
+                if slot.Unsettled then
+                    heldOut.Add slot.Key
+
+        heldOut.Publish upstream
+
+    let dispose () =
+        if not disposed then
+            disposed <- true
+            synced <- false
+            this.ExtraCheck <- Unchecked.defaultof<_>
+            this.HasExtraCheck <- Unchecked.defaultof<_>
+            this.ExtraFailedCheck <- Unchecked.defaultof<_>
+
+            for i in 0 .. upCount - 1 do
+                (Platform.itemAt i upSlots).Detach()
+
+            if not (Platform.isNull (box keyReader)) then
+                keyReader.Stop ()
+                keyReader <- Unchecked.defaultof<ProjectionReader<'K>>
+
+            clearQueues ()
+            clearTouched ()
+            pendingBucketInserts.Clear ()
+            queue.ActiveSlot <- null
+            byKey.Clear ()
+            buckets.Clear ()
+            failedKeys.Clear ()
+            upSlots <- Array.empty
+            scratchUpSlots <- Array.empty
+            fenwick <- Array.empty
+            fenwickValid <- false
+            upCount <- 0
+            includedCount <- 0
+            unsettledCount <- 0
+
+    let init () =
+        initialized <- true
+        let rows = values.Value
+        keyReader <- rows.NewInternalKeyReader ()
+        this.ExtraCheck <- fun () -> resolveCheckStep (fun () -> this.IsCheck)
+        this.HasExtraCheck <- fun () -> checkIndex < checkSlots.Count
+        this.ExtraFailedCheck <- fun () -> resolveCheckStep (fun () -> not this.IsInvalidated)
+        graph.RunUntracked (fun () -> this.Scope.OnCleanup dispose)
 
     /// <summary>
     /// The upstream keys whose value has never settled, in upstream order, followed by the keys <c>upstream</c> holds out
@@ -1462,31 +2643,52 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
     /// </summary>
     member _.HeldOut = heldOut.Keys
 
-    override this.Enumerate() =
+    override _.Enumerate() =
+        if not initialized then
+            init ()
+
+        let wasSynced = synced
+        synced <- false
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
         heldOut.Begin ()
-        taken.Clear ()
-        let rows = values.Value
-        let keys = rows.Keys
+        let delta = keyReader.Read ()
 
-        for i in 0 .. keys.Length - 1 do
-            let key = Platform.itemAt i keys
-            let entry = rows.Entries.Find key
+        if not wasSynced || delta.IsReset then
+            rebuildFull delta.Keys
+        elif delta.IsEmpty then
+            let limit = incrementalLimit upCount
+            let pendingChecks = checkSlots.Count - checkIndex
 
-            if not (Platform.isNull entry) then
-                match entry.Row.TryValue with
-                | Ready value ->
-                    if taken.Add value then
-                        this.Visit key
-                | Pending ->
-                    if not entry.Settled then
-                        heldOut.Add key
-                    elif taken.Add entry.Row.Peek then
-                        this.Visit key
-                | Failed _ ->
-                    this.Visit key
-                    this.HideLast ()
+            if
+                dirtySlots.Count > limit
+                || dirtySlots.Count + pendingChecks > (limit <<< 2)
+            then
+                runDenseDistinct ()
+            else
+                drainCheckSlots limit
 
-        heldOut.Publish upstream
+                if dirtySlots.Count <= limit then
+                    let struct (changed, nextKeys) = applyDirtySplice this.PublishedKeys upCount
+                    this.StageRemovals ()
+                    this.StageKeys (if changed then nextKeys else null)
+                else
+                    runDenseDistinct ()
+        else
+            let limit = incrementalLimit upCount
+
+            if not (tryTailAppend delta limit) then
+                applyGeneralDelta delta
+
+        finishPass ()
+
+    override _.Applied() =
+        synced <- true
+
+    override _.Abandoned() =
+        synced <- false
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
 
 /// <summary>
 /// The rank order of extremes: <c>compare</c>, with a <c>float</c> or <c>float32</c> NaN equal to NaN and after every
@@ -2841,15 +4043,13 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         queue.CheckNotified <- false
         queue.DirtyNotified <- false
 
-type internal GroupView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, outerKeys: unit -> unit, members: Signal<'K[]>) as this
-    =
+type internal GroupView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, readMembers: unit -> 'K[]) as this =
     inherit RowsByKey<'K, 'V>(graph, (fun key -> upstream.Get key), Unchecked.defaultof<_>)
 
     do this.GetRaisesDisposed <- true
 
     override this.Enumerate() =
-        outerKeys ()
-        let keys = members.Value
+        let keys = readMembers ()
         this.Reserve keys.Length
 
         for i in 0 .. keys.Length - 1 do
@@ -2857,28 +4057,145 @@ type internal GroupView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
 
 /// <summary>
 /// A group of a <c>Grouping</c>: its members in upstream order and the inner view over them. The inner view's pass reads
-/// <c>outerKeys</c> first, so it follows the upstream without a reader of the outer view.
+/// <c>MembersCell</c> through the outer grouping's <c>ReadAfterPass</c>, isolating untouched groups from unrelated outer
+/// key changes.
 /// </summary>
-type internal Group<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, outerKeys: unit -> unit) =
-    let members = Signal<'K[]>(graph, Array.empty)
-    let view = new GroupView<'K, 'V> (graph, upstream, outerKeys, members)
+[<Sealed>]
+type internal Group<'G, 'K, 'V when 'G: equality and 'K: equality> =
+    val Key: 'G
+    val MembersCell: Signal<'K[]>
+    val View: Projection<'K, 'V>
+    val Members: ResizeArray<GroupSlot<'G, 'K, 'V>>
+    val mutable OrderIdx: int
+    val mutable Touched: bool
 
-    /// <summary>The members placed by the pass in progress, in upstream order.</summary>
-    member val Pass = ResizeArray<'K>()
+    new(graph: Graph, upstream: Projection<'K, 'V>, readCell: Signal<'K[]> -> 'K[], key: 'G) =
+        let members = Signal<'K[]>(graph, Array.empty)
 
-    member _.View = view :> Projection<'K, 'V>
+        let view =
+            new GroupView<'K, 'V> (graph, upstream, (fun () -> readCell members)) :> Projection<'K, 'V>
 
-    /// <summary>Writes the staged members when they differ from the last pass, then clears them.</summary>
-    member this.Publish() =
-        let current = members.Peek
+        {
+            Key = key
+            MembersCell = members
+            View = view
+            Members = ResizeArray<GroupSlot<'G, 'K, 'V>>()
+            OrderIdx = -1
+            Touched = false
+        }
 
-        if
-            current.Length <> this.Pass.Count
-            || not (Seq.forall2 (=) current this.Pass)
-        then
-            members.Value <- this.Pass.ToArray ()
+    member this.FirstIdx = (Platform.entryAt 0 this.Members).UpIdx
 
-        this.Pass.Clear ()
+    /// <summary>Writes the group's sorted member keys when they differ from the last pass.</summary>
+    member this.Publish(equalKeys: System.Collections.Generic.EqualityComparer<'K>) =
+        let current = this.MembersCell.Peek
+        let n = this.Members.Count
+        let mutable same = current.Length = n
+        let mutable i = 0
+
+        while same && i < n do
+            if not (equalKeys.Equals (Platform.itemAt i current, (Platform.entryAt i this.Members).Key)) then
+                same <- false
+
+            i <- i + 1
+
+        if not same then
+            let arr =
+                if n = 0 then
+                    Array.empty
+                else
+                    let next = Array.zeroCreate<'K> n
+
+                    for j in 0 .. n - 1 do
+                        Platform.setItemAt j next (Platform.entryAt j this.Members).Key
+
+                    next
+
+            this.MembersCell.Value <- arr
+
+/// <summary>
+/// Observes one key's group-key projection memo on behalf of an incremental <c>Grouping</c>.
+/// </summary>
+and [<Sealed>] internal GroupSlot<'G, 'K, 'V when 'G: equality and 'K: equality> =
+    val Key: 'K
+    val Queue: SlotQueue<GroupSlot<'G, 'K, 'V>>
+    val mutable Source: Memo<'G>
+    val mutable Handle: int
+    val mutable UpIdx: int
+    val mutable Group: Group<'G, 'K, 'V>
+    val mutable GroupKey: 'G
+    val mutable Ungrouped: bool
+    val mutable QueuedDirty: bool
+    val mutable QueuedCheck: bool
+    val mutable Disposed: bool
+
+    new(key: 'K, source: Memo<'G>, queue: SlotQueue<GroupSlot<'G, 'K, 'V>>) =
+        {
+            Key = key
+            Queue = queue
+            Source = source
+            Handle = EdgeHandle.Unlinked
+            UpIdx = -1
+            Group = Unchecked.defaultof<Group<'G, 'K, 'V>>
+            GroupKey = Unchecked.defaultof<'G>
+            Ungrouped = false
+            QueuedDirty = false
+            QueuedCheck = false
+            Disposed = false
+        }
+
+    member this.Attach() =
+        this.Handle <- (this.Source :> ISource).AddObserver(this, 0)
+
+    member this.Detach() =
+        if not this.Disposed then
+            this.Disposed <- true
+
+            if this.Handle <> EdgeHandle.Unlinked then
+                (this.Source :> ISource).RemoveObserverAt(this, this.Handle)
+                this.Handle <- EdgeHandle.Unlinked
+
+    interface INode with
+        member this.Id = this.Queue.ViewNode.Id
+        member this.Status = this.Queue.ViewNode.Status
+
+    interface IComputation with
+        member _.AddSource _ = ()
+        member _.HasReadSlot _ = false
+
+        member this.MovedIn(_, handle) =
+            if not this.Disposed then
+                this.Handle <- handle
+
+        member this.MarkDirty() =
+            let q = this.Queue
+
+            if
+                not this.Disposed
+                && not (obj.ReferenceEquals (this, q.ActiveSlot))
+            then
+                if not this.QueuedDirty then
+                    this.QueuedDirty <- true
+                    q.Dirty.Add this
+
+                if not q.DirtyNotified then
+                    q.ViewNode.MarkDirty ()
+                    q.DirtyNotified <- q.IsInvalidated ()
+
+        member this.MarkCheck() =
+            let q = this.Queue
+
+            if
+                not this.Disposed
+                && not (obj.ReferenceEquals (this, q.ActiveSlot))
+            then
+                if not this.QueuedDirty && not this.QueuedCheck then
+                    this.QueuedCheck <- true
+                    q.Check.Add this
+
+                if not q.CheckNotified && not q.DirtyNotified then
+                    q.ViewNode.MarkCheck ()
+                    q.CheckNotified <- q.IsCheckQueued ()
 
 /// <summary>
 /// A projection keyed by group key, ordered by the upstream position of each group's first member, whose row is the inner
@@ -2892,39 +4209,902 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
     =
     inherit Projection<'G, Projection<'K, 'V>>(graph)
 
-    let groups = Platform.KeyMap<'G, Group<'K, 'V>>()
-    let order = ResizeArray<'G>()
-    let emptied = ResizeArray<'G>()
+    let groups = Platform.KeyMap<'G, Group<'G, 'K, 'V>>()
+    let orderedGroups = ResizeArray<Group<'G, 'K, 'V>>()
+    let touchedGroups = ResizeArray<Group<'G, 'K, 'V>>()
+    let emptiedGroups = ResizeArray<Group<'G, 'K, 'V>>()
     let heldOut = HeldOut<'K> graph
-    let adds = ResizeArray<struct ('G * Group<'K, 'V>)>()
+    let adds = ResizeArray<struct ('G * Group<'G, 'K, 'V>)>()
     let writes = ResizeArray<struct (Signal<Projection<'K, 'V>> * Projection<'K, 'V>)>()
+    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+    let equalGroupKeys = System.Collections.Generic.EqualityComparer<'G>.Default
+    let queue = SlotQueue<GroupSlot<'G, 'K, 'V>>.Create this
+    let dirtySlots = queue.Dirty
+    let checkSlots = queue.Check
+    let mutable initialized = false
+    let mutable disposed = false
+    let mutable synced = false
 
-    do this.ExtraObserved <- fun () -> heldOut.HasObservers
+    let mutable keyReader: ProjectionReader<'K> =
+        Unchecked.defaultof<ProjectionReader<'K>>
 
-    member private this.Place(key: 'K, groupKey: 'G) =
+    let mutable upSlots: GroupSlot<'G, 'K, 'V>[] = Array.empty
+    let mutable scratchUpSlots: GroupSlot<'G, 'K, 'V>[] = Array.empty
+    let mutable upCount = 0
+    let byKey = Platform.KeyMap<'K, GroupSlot<'G, 'K, 'V>>()
+    let pendingInserts = ResizeArray<GroupSlot<'G, 'K, 'V>>()
+    let mutable ungroupedCount = 0
+    let mutable checkIndex = 0
+    let mutable outerOrderDirty = false
+    let mutable outerMembershipChanged = false
+
+    let hasObservedGroup () =
+        let mutable found = false
+        let mutable i = 0
+        let count = orderedGroups.Count
+
+        while not found && i < count do
+            if (Platform.entryAt i orderedGroups).MembersCell.ObserverCount > 0 then
+                found <- true
+
+            i <- i + 1
+
+        found
+
+    do this.ExtraObserved <- fun () -> heldOut.HasObservers || hasObservedGroup ()
+
+    let incrementalLimit n =
+        max 8 (min 64 (n >>> 4))
+
+    let ensureUpCapacity needed =
+        if upSlots.Length < needed then
+            let grown =
+                Array.zeroCreate<GroupSlot<'G, 'K, 'V>>(max (max 16 needed) (upSlots.Length * 2))
+
+            if upCount > 0 then
+                Array.blit upSlots 0 grown 0 upCount
+
+            upSlots <- grown
+
+    let clearQueues () =
+        if dirtySlots.Count > 0 then
+            for i in 0 .. dirtySlots.Count - 1 do
+                (Platform.entryAt i dirtySlots).QueuedDirty <- false
+
+            dirtySlots.Clear ()
+
+        if checkIndex < checkSlots.Count then
+            for i in checkIndex .. checkSlots.Count - 1 do
+                (Platform.entryAt i checkSlots).QueuedCheck <- false
+
+        if checkSlots.Count > 0 then
+            checkSlots.Clear ()
+
+        checkIndex <- 0
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
+
+    let enqueueCheckSlot (slot: GroupSlot<'G, 'K, 'V>) =
+        if not slot.QueuedDirty && not slot.QueuedCheck then
+            slot.QueuedCheck <- true
+            checkSlots.Add slot
+
+    let evaluateSlot (slot: GroupSlot<'G, 'K, 'V>) (source: Memo<'G>) =
+        queue.ActiveSlot <- box slot
+        let st = source.EnsureCurrentUntracked ()
+
+        if st = Status.None then
+            slot.Ungrouped <- false
+            slot.GroupKey <- source.Peek
+        else
+            if
+                not slot.Disposed
+                && (st &&& Status.Stale) <> Status.None
+            then
+                enqueueCheckSlot slot
+
+                if not queue.CheckNotified && not queue.DirtyNotified then
+                    (this :> IComputation).MarkCheck()
+                    queue.CheckNotified <- queue.IsCheckQueued ()
+
+            if StatusBits.isPending st then
+                if not source.Published then
+                    slot.Ungrouped <- true
+                else
+                    slot.Ungrouped <- false
+                    slot.GroupKey <- source.Peek
+            elif StatusBits.isError st then
+                slot.Ungrouped <- true
+            else
+                slot.Ungrouped <- false
+                slot.GroupKey <- source.Peek
+
+    let markGroupTouched (group: Group<'G, 'K, 'V>) =
+        if not group.Touched then
+            group.Touched <- true
+            touchedGroups.Add group
+
+    let clearTouchedGroups () =
+        for i in 0 .. touchedGroups.Count - 1 do
+            (Platform.entryAt i touchedGroups).Touched <- false
+
+        if touchedGroups.Count > 0 then
+            touchedGroups.Clear ()
+
+    let getOrCreateGroup (groupKey: 'G) =
         let mutable group = groups.Find groupKey
 
         if Platform.isNull (box group) then
-            group <- graph.RunOwned (this.Scope, fun () -> Group<'K, 'V>(graph, upstream, (fun () -> this.Keys |> ignore)))
+            group <- graph.RunOwned (this.Scope, fun () -> Group<'G, 'K, 'V>(graph, upstream, this.ReadAfterPass, groupKey))
+
             groups.Set (groupKey, group)
 
-        if group.Pass.Count = 0 then
-            order.Add groupKey
+        group
 
-        group.Pass.Add key
+    let detachFromGroup (slot: GroupSlot<'G, 'K, 'V>) (trackTouches: bool) =
+        let group = slot.Group
 
-    /// <summary>Stages the row of <c>groupKey</c>: a write to a survivor's item source, or a row to create.</summary>
-    member private this.Visit(groupKey: 'G, group: Group<'K, 'V>) =
-        this.Seen.Add groupKey |> ignore
-        this.PassKeys.Add groupKey
-        let entry = this.Entries.Find groupKey
+        if not (Platform.isNull (box group)) then
+            let idx =
+                MemberSlots.removeSortedByUpIdx (fun (s: GroupSlot<'G, 'K, 'V>) -> s.UpIdx) group.Members slot.UpIdx
 
-        if Platform.isNull entry then
-            adds.Add (struct (groupKey, group))
+            slot.Group <- Unchecked.defaultof<_>
+
+            if trackTouches then
+                markGroupTouched group
+
+                if idx = 0 && group.Members.Count > 0 then
+                    outerOrderDirty <- true
+
+    let insertIntoGroup (slot: GroupSlot<'G, 'K, 'V>) (trackTouches: bool) =
+        let group = getOrCreateGroup slot.GroupKey
+
+        let pos =
+            MemberSlots.insertSortedByUpIdx (fun (s: GroupSlot<'G, 'K, 'V>) -> s.UpIdx) group.Members slot
+
+        slot.Group <- group
+
+        if trackTouches then
+            markGroupTouched group
+
+            if pos = 0 && group.OrderIdx >= 0 then
+                outerOrderDirty <- true
+
+    let appendIntoGroup (slot: GroupSlot<'G, 'K, 'V>) (trackTouches: bool) =
+        let group = getOrCreateGroup slot.GroupKey
+        group.Members.Add slot
+        slot.Group <- group
+
+        if trackTouches then
+            markGroupTouched group
+
+            if group.Members.Count = 1 && group.OrderIdx >= 0 then
+                outerOrderDirty <- true
+
+    let removeGroupAt (idx: int) =
+        orderedGroups.RemoveAt idx
+
+        for i in idx .. orderedGroups.Count - 1 do
+            (Platform.entryAt i orderedGroups).OrderIdx <- i
+
+    let insertOrderedGroup (group: Group<'G, 'K, 'V>) =
+        let pos =
+            MemberSlots.insertBoundByUpIdx (fun (g: Group<'G, 'K, 'V>) -> g.FirstIdx) orderedGroups group.FirstIdx
+
+        orderedGroups.Insert (pos, group)
+
+        for i in pos .. orderedGroups.Count - 1 do
+            (Platform.entryAt i orderedGroups).OrderIdx <- i
+
+    let sortOrderedGroups () =
+        let n = orderedGroups.Count
+
+        for i in 1 .. n - 1 do
+            let g = Platform.entryAt i orderedGroups
+            let keyIdx = g.FirstIdx
+            let mutable j = i - 1
+
+            while j >= 0
+                  && (Platform.entryAt j orderedGroups).FirstIdx > keyIdx do
+                let prev = Platform.entryAt j orderedGroups
+                orderedGroups[j + 1] <- prev
+                prev.OrderIdx <- j + 1
+                j <- j - 1
+
+            orderedGroups[j + 1] <- g
+            g.OrderIdx <- j + 1
+
+        if n > 0 then
+            (Platform.entryAt 0 orderedGroups).OrderIdx <- 0
+
+    let stageOuterKeys (checkPublishChange: bool) =
+        this.StageRemovals ()
+
+        if not checkPublishChange then
+            this.StageKeys null
         else
-            writes.Add (struct ((entry :?> ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>).Item, group.View))
+            let n = orderedGroups.Count
+            let prev = this.PublishedKeys
 
-    member private this.CreateAdded() =
+            let same =
+                prev.Length = n
+                && (let mutable eq = true
+                    let mutable i = 0
+
+                    while eq && i < n do
+                        if not (equalGroupKeys.Equals (Platform.itemAt i prev, (Platform.entryAt i orderedGroups).Key)) then
+                            eq <- false
+
+                        i <- i + 1
+
+                    eq)
+
+            if same then
+                this.StageKeys null
+            elif n = 0 then
+                this.StageKeys Array.empty
+            else
+                let arr = Array.zeroCreate<'G> n
+
+                for i in 0 .. n - 1 do
+                    Platform.setItemAt i arr (Platform.entryAt i orderedGroups).Key
+
+                this.StageKeys arr
+
+    let finalizeTouchedGroups () =
+        for i in 0 .. touchedGroups.Count - 1 do
+            let group = Platform.entryAt i touchedGroups
+
+            if group.Members.Count = 0 then
+                group.Touched <- false
+                groups.Remove group.Key
+
+                if group.OrderIdx >= 0 then
+                    removeGroupAt group.OrderIdx
+                    group.OrderIdx <- -1
+                    outerMembershipChanged <- true
+
+                if not (Platform.isNull (this.Entries.Find group.Key)) then
+                    this.Removed.Add group.Key
+
+                emptiedGroups.Add group
+
+        for i in 0 .. touchedGroups.Count - 1 do
+            let group = Platform.entryAt i touchedGroups
+
+            if group.Touched then
+                group.Touched <- false
+
+                if group.Members.Count > 0 then
+                    group.Publish equalKeys
+
+                    if group.OrderIdx < 0 then
+                        if outerOrderDirty then
+                            group.OrderIdx <- orderedGroups.Count
+                            orderedGroups.Add group
+                        else
+                            insertOrderedGroup group
+
+                        outerMembershipChanged <- true
+
+                    let entry = this.Entries.Find group.Key
+
+                    if Platform.isNull entry then
+                        adds.Add (struct (group.Key, group))
+                    else
+                        let item = (entry :?> ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>).Item
+
+                        if not (obj.ReferenceEquals (item.Peek, group.View)) then
+                            writes.Add (struct (item, group.View))
+
+        touchedGroups.Clear ()
+
+        if outerOrderDirty && orderedGroups.Count > 1 then
+            sortOrderedGroups ()
+
+        stageOuterKeys (outerMembershipChanged || outerOrderDirty)
+        outerOrderDirty <- false
+        outerMembershipChanged <- false
+
+    let disposeEmptiedGroups () =
+        for i in 0 .. emptiedGroups.Count - 1 do
+            (Platform.entryAt i emptiedGroups).View.Dispose()
+
+        if emptiedGroups.Count > 0 then
+            emptiedGroups.Clear ()
+
+    let refreshSlot (slot: GroupSlot<'G, 'K, 'V>) (insertNow: bool) =
+        let wasUngrouped = slot.Ungrouped
+        let prevGroupKey = slot.GroupKey
+        evaluateSlot slot slot.Source
+
+        if wasUngrouped <> slot.Ungrouped then
+            ungroupedCount <-
+                ungroupedCount
+                + (if slot.Ungrouped then 1 else -1)
+
+        if not wasUngrouped && not slot.Ungrouped then
+            if not (equalGroupKeys.Equals (prevGroupKey, slot.GroupKey)) then
+                detachFromGroup slot true
+
+                if insertNow then
+                    insertIntoGroup slot true
+                else
+                    pendingInserts.Add slot
+        else
+            if not wasUngrouped then
+                detachFromGroup slot true
+
+            if not slot.Ungrouped then
+                if insertNow then
+                    insertIntoGroup slot true
+                else
+                    pendingInserts.Add slot
+
+    let resolveCheckStep (keepRunning: unit -> bool) =
+        let stepEnd = checkSlots.Count
+
+        while keepRunning () && checkIndex < stepEnd do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        if source.IsActive then
+                            (slot :> IComputation).MarkDirty()
+                        else
+                            enqueueCheckSlot slot
+
+        if checkIndex >= checkSlots.Count then
+            if checkSlots.Count > 0 then
+                checkSlots.Clear ()
+
+            checkIndex <- 0
+
+        queue.CheckNotified <- false
+
+    let drainCheckSlots (limit: int) =
+        let drainEnd = checkSlots.Count
+
+        while checkIndex < drainEnd && dirtySlots.Count <= limit do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        slot.QueuedDirty <- true
+                        dirtySlots.Add slot
+
+        if checkIndex >= checkSlots.Count then
+            if checkSlots.Count > 0 then
+                checkSlots.Clear ()
+
+            checkIndex <- 0
+            queue.CheckNotified <- false
+
+    let applyDirtySplice () =
+        outerOrderDirty <- false
+        outerMembershipChanged <- false
+
+        if dirtySlots.Count = 0 then
+            this.StageRemovals ()
+            this.StageKeys null
+        else
+            try
+                let mutable i = 0
+
+                while i < dirtySlots.Count do
+                    let slot = Platform.entryAt i dirtySlots
+                    i <- i + 1
+
+                    if not slot.Disposed then
+                        slot.QueuedDirty <- false
+                        refreshSlot slot true
+            finally
+                queue.ActiveSlot <- null
+
+            dirtySlots.Clear ()
+            queue.DirtyNotified <- false
+            finalizeTouchedGroups ()
+
+    let finalizeAllGroupsFromUpSlots () =
+        for i in 0 .. orderedGroups.Count - 1 do
+            let g = Platform.entryAt i orderedGroups
+            g.Members.Clear ()
+            g.OrderIdx <- -1
+
+        orderedGroups.Clear ()
+        clearTouchedGroups ()
+
+        for i in 0 .. upCount - 1 do
+            let slot = Platform.itemAt i upSlots
+            slot.Group <- Unchecked.defaultof<_>
+
+            if not slot.Ungrouped then
+                appendIntoGroup slot false
+
+                if slot.Group.Members.Count = 1 then
+                    slot.Group.OrderIdx <- orderedGroups.Count
+                    orderedGroups.Add slot.Group
+
+        groups.Iterate (fun _ g ->
+            if g.Members.Count = 0 then
+                emptiedGroups.Add g
+            else
+                g.Publish equalKeys
+
+                let entry = this.Entries.Find g.Key
+
+                if Platform.isNull entry then
+                    adds.Add (struct (g.Key, g))
+                else
+                    let item = (entry :?> ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>).Item
+
+                    if not (obj.ReferenceEquals (item.Peek, g.View)) then
+                        writes.Add (struct (item, g.View)))
+
+        for i in 0 .. emptiedGroups.Count - 1 do
+            let g = Platform.entryAt i emptiedGroups
+            groups.Remove g.Key
+
+        if this.Entries.Count > 0 then
+            this.Entries.Iterate (fun gKey _ ->
+                if Platform.isNull (box (groups.Find gKey)) then
+                    this.Removed.Add gKey)
+
+        stageOuterKeys true
+        outerOrderDirty <- false
+        outerMembershipChanged <- false
+
+    let runDenseGrouping () =
+        clearQueues ()
+        let mutable nextUngrouped = 0
+
+        try
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+                evaluateSlot slot slot.Source
+
+                if slot.Ungrouped then
+                    nextUngrouped <- nextUngrouped + 1
+        finally
+            queue.ActiveSlot <- null
+
+        ungroupedCount <- nextUngrouped
+        finalizeAllGroupsFromUpSlots ()
+
+    let rebuildFull (newKeys: 'K[]) =
+        clearQueues ()
+        clearTouchedGroups ()
+        pendingInserts.Clear ()
+        outerOrderDirty <- false
+        outerMembershipChanged <- false
+        let oldUpSlots = upSlots
+        let oldUpCount = upCount
+        let newCount = newKeys.Length
+
+        for i in 0 .. oldUpCount - 1 do
+            let slot = Platform.itemAt i oldUpSlots
+            slot.UpIdx <- -1
+            slot.Group <- Unchecked.defaultof<_>
+
+        let nextUpSlots =
+            if newCount = 0 then
+                Array.empty
+            elif scratchUpSlots.Length >= newCount then
+                let reused = scratchUpSlots
+                scratchUpSlots <- Array.empty
+                reused
+            else
+                Array.zeroCreate<GroupSlot<'G, 'K, 'V>>(max 16 newCount)
+
+        let mutable outCount = 0
+        let mutable nextUngrouped = 0
+        let rows = groupKeys.Value
+
+        try
+            for i in 0 .. newCount - 1 do
+                let key = Platform.itemAt i newKeys
+                let entry = rows.Entries.Find key
+
+                if not (Platform.isNull entry) then
+                    let resolved = entry.Row
+                    let mutable slot = byKey.Find key
+
+                    if
+                        not (Platform.isNull (box slot))
+                        && not (obj.ReferenceEquals (slot.Source, resolved))
+                    then
+                        slot.Detach ()
+                        slot <- Unchecked.defaultof<_>
+
+                    if Platform.isNull (box slot) then
+                        slot <- GroupSlot<'G, 'K, 'V>(key, resolved, queue)
+                        slot.Attach ()
+                        byKey.Set (key, slot)
+
+                    slot.UpIdx <- outCount
+                    evaluateSlot slot resolved
+
+                    if slot.Ungrouped then
+                        nextUngrouped <- nextUngrouped + 1
+
+                    Platform.setItemAt outCount nextUpSlots slot
+                    outCount <- outCount + 1
+        finally
+            queue.ActiveSlot <- null
+
+        for i in 0 .. oldUpCount - 1 do
+            let slot = Platform.itemAt i oldUpSlots
+
+            if slot.UpIdx < 0 && not slot.Disposed then
+                if obj.ReferenceEquals (byKey.Find slot.Key, slot) then
+                    byKey.Remove slot.Key
+
+                slot.Detach ()
+
+        if oldUpCount > 0 then
+            Array.fill oldUpSlots 0 oldUpCount Unchecked.defaultof<GroupSlot<'G, 'K, 'V>>
+
+        if
+            oldUpSlots.Length > 0
+            && not (obj.ReferenceEquals (oldUpSlots, nextUpSlots))
+        then
+            scratchUpSlots <- oldUpSlots
+
+        upSlots <- nextUpSlots
+        upCount <- outCount
+        ungroupedCount <- nextUngrouped
+        finalizeAllGroupsFromUpSlots ()
+
+    let tryTailAppend (delta: ProjectionDelta<'K>) (limit: int) =
+        let newKeys = delta.Keys
+        let addedCount = delta.ChangeCount
+
+        if
+            addedCount <= 0
+            || addedCount > limit
+            || newKeys.Length <> upCount + addedCount
+            || (dirtySlots.Count + (checkSlots.Count - checkIndex)) > limit
+        then
+            false
+        else
+            let mutable allAdded = true
+            let mutable c = 0
+
+            while allAdded && c < addedCount do
+                if (delta.ChangeAt c).Value <> KeyChange.Added then
+                    allAdded <- false
+
+                c <- c + 1
+
+            if not allAdded then
+                false
+            else
+                let mutable samePrefix = true
+                let mutable i = 0
+
+                while samePrefix && i < upCount do
+                    if not (equalKeys.Equals ((Platform.itemAt i upSlots).Key, Platform.itemAt i newKeys)) then
+                        samePrefix <- false
+
+                    i <- i + 1
+
+                if not samePrefix then
+                    false
+                else
+                    drainCheckSlots limit
+
+                    if dirtySlots.Count > limit then
+                        false
+                    else
+                        outerOrderDirty <- false
+                        outerMembershipChanged <- false
+                        let oldCount = upCount
+
+                        try
+                            let mutable i = 0
+
+                            while i < dirtySlots.Count do
+                                let slot = Platform.entryAt i dirtySlots
+                                i <- i + 1
+
+                                if not slot.Disposed then
+                                    slot.QueuedDirty <- false
+                                    refreshSlot slot true
+                        finally
+                            queue.ActiveSlot <- null
+
+                        dirtySlots.Clear ()
+                        queue.DirtyNotified <- false
+
+                        ensureUpCapacity (oldCount + addedCount)
+                        let mutable nextCount = oldCount
+                        let rows = groupKeys.Value
+
+                        try
+                            for j in 0 .. addedCount - 1 do
+                                let key = Platform.itemAt (oldCount + j) newKeys
+                                let entry = rows.Entries.Find key
+
+                                if not (Platform.isNull entry) then
+                                    let resolved = entry.Row
+                                    let slot = GroupSlot<'G, 'K, 'V>(key, resolved, queue)
+                                    slot.Attach ()
+                                    slot.UpIdx <- nextCount
+                                    evaluateSlot slot resolved
+                                    byKey.Set (key, slot)
+                                    Platform.setItemAt nextCount upSlots slot
+
+                                    if slot.Ungrouped then
+                                        ungroupedCount <- ungroupedCount + 1
+                                    else
+                                        appendIntoGroup slot true
+
+                                    nextCount <- nextCount + 1
+                        finally
+                            queue.ActiveSlot <- null
+
+                        upCount <- nextCount
+                        finalizeTouchedGroups ()
+                        true
+
+    let applyGeneralDelta (delta: ProjectionDelta<'K>) =
+        let oldUpSlots = upSlots
+        let oldUpCount = upCount
+        let changeCount = delta.ChangeCount
+        let rows = groupKeys.Value
+        outerOrderDirty <- false
+        outerMembershipChanged <- false
+        pendingInserts.Clear ()
+
+        try
+            for c in 0 .. changeCount - 1 do
+                let change = delta.ChangeAt c
+                let key = change.Key
+
+                match change.Value with
+                | KeyChange.Removed ->
+                    let slot = byKey.Find key
+
+                    if not (Platform.isNull (box slot)) then
+                        byKey.Remove key
+                        detachFromGroup slot true
+                        slot.Detach ()
+
+                        if slot.Ungrouped then
+                            ungroupedCount <- ungroupedCount - 1
+                | KeyChange.Replaced ->
+                    let oldSlot = byKey.Find key
+
+                    let prevUngrouped =
+                        not (Platform.isNull (box oldSlot))
+                        && oldSlot.Ungrouped
+
+                    if not (Platform.isNull (box oldSlot)) then
+                        detachFromGroup oldSlot true
+                        oldSlot.Detach ()
+
+                    let entry = rows.Entries.Find key
+
+                    if Platform.isNull entry then
+                        if not (Platform.isNull (box oldSlot)) then
+                            byKey.Remove key
+
+                            if prevUngrouped then
+                                ungroupedCount <- ungroupedCount - 1
+                    else
+                        let resolved = entry.Row
+                        let slot = GroupSlot<'G, 'K, 'V>(key, resolved, queue)
+                        slot.Attach ()
+                        evaluateSlot slot resolved
+                        byKey.Set (key, slot)
+
+                        if prevUngrouped <> slot.Ungrouped then
+                            ungroupedCount <-
+                                ungroupedCount
+                                + (if slot.Ungrouped then 1 else -1)
+
+                        if not slot.Ungrouped then
+                            pendingInserts.Add slot
+                | KeyChange.Added ->
+                    let entry = rows.Entries.Find key
+
+                    if not (Platform.isNull entry) then
+                        let resolved = entry.Row
+                        let slot = GroupSlot<'G, 'K, 'V>(key, resolved, queue)
+                        slot.Attach ()
+                        evaluateSlot slot resolved
+                        byKey.Set (key, slot)
+
+                        if slot.Ungrouped then
+                            ungroupedCount <- ungroupedCount + 1
+                        else
+                            pendingInserts.Add slot
+                | _ -> ()
+
+            queue.ActiveSlot <- null
+
+            while checkIndex < checkSlots.Count do
+                let slot = Platform.entryAt checkIndex checkSlots
+                checkIndex <- checkIndex + 1
+
+                if not slot.Disposed then
+                    slot.QueuedCheck <- false
+
+                    if not slot.QueuedDirty then
+                        let source = slot.Source :> ISource
+                        source.UpdateIfNecessary ()
+
+                        if
+                            not slot.Disposed
+                            && not slot.QueuedDirty
+                            && source.IsStale
+                        then
+                            slot.QueuedDirty <- true
+                            dirtySlots.Add slot
+
+            let mutable i = 0
+
+            while i < dirtySlots.Count do
+                let slot = Platform.entryAt i dirtySlots
+                i <- i + 1
+
+                if not slot.Disposed then
+                    slot.QueuedDirty <- false
+                    refreshSlot slot false
+        finally
+            queue.ActiveSlot <- null
+
+        clearQueues ()
+
+        let newKeys = delta.Keys
+        let newCount = newKeys.Length
+
+        let nextUpSlots =
+            if newCount = 0 then
+                Array.empty
+            elif scratchUpSlots.Length >= newCount then
+                let reused = scratchUpSlots
+                scratchUpSlots <- Array.empty
+                reused
+            else
+                Array.zeroCreate<GroupSlot<'G, 'K, 'V>>(max 16 newCount)
+
+        let mutable cursor = 0
+        let mutable outCount = 0
+        let mutable reordered = false
+
+        for i in 0 .. newCount - 1 do
+            let key = Platform.itemAt i newKeys
+
+            while cursor < oldUpCount
+                  && (Platform.itemAt cursor oldUpSlots).Disposed do
+                cursor <- cursor + 1
+
+            let slot =
+                if
+                    cursor < oldUpCount
+                    && equalKeys.Equals ((Platform.itemAt cursor oldUpSlots).Key, key)
+                then
+                    let hit = Platform.itemAt cursor oldUpSlots
+                    cursor <- cursor + 1
+                    hit
+                else
+                    let found = byKey.Find key
+
+                    if
+                        not (Platform.isNull (box found))
+                        && found.UpIdx >= 0
+                    then
+                        reordered <- true
+
+                    found
+
+            if not (Platform.isNull (box slot)) then
+                slot.UpIdx <- outCount
+                Platform.setItemAt outCount nextUpSlots slot
+                outCount <- outCount + 1
+
+        if oldUpCount > 0 then
+            Array.fill oldUpSlots 0 oldUpCount Unchecked.defaultof<GroupSlot<'G, 'K, 'V>>
+
+        if
+            oldUpSlots.Length > 0
+            && not (obj.ReferenceEquals (oldUpSlots, nextUpSlots))
+        then
+            scratchUpSlots <- oldUpSlots
+
+        upSlots <- nextUpSlots
+        upCount <- outCount
+
+        if reordered then
+            pendingInserts.Clear ()
+            finalizeAllGroupsFromUpSlots ()
+        else
+            for i in 0 .. pendingInserts.Count - 1 do
+                let slot = Platform.entryAt i pendingInserts
+
+                if
+                    not slot.Disposed
+                    && slot.UpIdx >= 0
+                    && not slot.Ungrouped
+                    && Platform.isNull (box slot.Group)
+                then
+                    insertIntoGroup slot true
+
+            pendingInserts.Clear ()
+            finalizeTouchedGroups ()
+
+    let finishPass () =
+        if ungroupedCount > 0 then
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+
+                if slot.Ungrouped then
+                    heldOut.Add slot.Key
+
+        heldOut.Publish upstream
+        disposeEmptiedGroups ()
+
+    let dispose () =
+        if not disposed then
+            disposed <- true
+            synced <- false
+            this.ExtraCheck <- Unchecked.defaultof<_>
+            this.HasExtraCheck <- Unchecked.defaultof<_>
+            this.ExtraFailedCheck <- Unchecked.defaultof<_>
+
+            for i in 0 .. upCount - 1 do
+                (Platform.itemAt i upSlots).Detach()
+
+            if not (Platform.isNull (box keyReader)) then
+                keyReader.Stop ()
+                keyReader <- Unchecked.defaultof<ProjectionReader<'K>>
+
+            clearQueues ()
+            clearTouchedGroups ()
+            pendingInserts.Clear ()
+            emptiedGroups.Clear ()
+            orderedGroups.Clear ()
+            queue.ActiveSlot <- null
+            byKey.Clear ()
+            groups.Clear ()
+            upSlots <- Array.empty
+            scratchUpSlots <- Array.empty
+            upCount <- 0
+            ungroupedCount <- 0
+
+    let init () =
+        initialized <- true
+        let rows = groupKeys.Value
+        keyReader <- rows.NewInternalKeyReader ()
+        this.ExtraCheck <- fun () -> resolveCheckStep (fun () -> this.IsCheck)
+        this.HasExtraCheck <- fun () -> checkIndex < checkSlots.Count
+        this.ExtraFailedCheck <- fun () -> resolveCheckStep (fun () -> not this.IsInvalidated)
+        graph.RunUntracked (fun () -> this.Scope.OnCleanup dispose)
+
+    member private _.CreateAdded() =
         for struct (groupKey, group) in adds do
             let source = Signal<Projection<'K, 'V>>(graph, group.View)
             let entry = ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>(groupKey, source)
@@ -2932,43 +5112,42 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
             entry.Reader <- fun () -> source.Value
             entry.Row <- Memo<Projection<'K, 'V>>.Create(graph, (fun _ -> this.RunRow entry), ScopeMode.ValueRow)
 
-    member private this.Enumerate() =
+    member private _.Enumerate() =
+        if not initialized then
+            init ()
+
+        let wasSynced = synced
+        synced <- false
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
         heldOut.Begin ()
-        let rows = groupKeys.Value
-        order.Clear ()
-        let keys = rows.Keys
+        let delta = keyReader.Read ()
 
-        for i in 0 .. keys.Length - 1 do
-            let key = Platform.itemAt i keys
-            let entry = rows.Entries.Find key
+        if not wasSynced || delta.IsReset then
+            rebuildFull delta.Keys
+        elif delta.IsEmpty then
+            let limit = incrementalLimit upCount
+            let pendingChecks = checkSlots.Count - checkIndex
 
-            if not (Platform.isNull entry) then
-                match entry.Row.TryValue with
-                | Ready groupKey -> this.Place (key, groupKey)
-                | Pending ->
-                    if entry.Settled then
-                        this.Place (key, entry.Row.Peek)
-                    else
-                        heldOut.Add key
-                | Failed _ -> heldOut.Add key
+            if
+                dirtySlots.Count > limit
+                || dirtySlots.Count + pendingChecks > (limit <<< 2)
+            then
+                runDenseGrouping ()
+            else
+                drainCheckSlots limit
 
-        emptied.Clear ()
+                if dirtySlots.Count <= limit then
+                    applyDirtySplice ()
+                else
+                    runDenseGrouping ()
+        else
+            let limit = incrementalLimit upCount
 
-        groups.Iterate (fun groupKey group ->
-            if group.Pass.Count = 0 then
-                emptied.Add groupKey)
+            if not (tryTailAppend delta limit) then
+                applyGeneralDelta delta
 
-        for groupKey in order do
-            let group = groups.Find groupKey
-            group.Publish ()
-            this.Visit (groupKey, group)
-
-        for groupKey in emptied do
-            let group = groups.Find groupKey
-            groups.Remove groupKey
-            group.View.Dispose ()
-
-        heldOut.Publish upstream
+        finishPass ()
 
     /// <summary>
     /// The upstream keys without a group: keys whose group key has never settled or has raised, in upstream order, then the
@@ -3007,8 +5186,13 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
             adds.Clear ()
             writes.Clear ()
 
-        member _.Applied() = ()
-        member _.Abandoned() = ()
+        member _.Applied() =
+            synced <- true
+
+        member _.Abandoned() =
+            synced <- false
+            queue.CheckNotified <- false
+            queue.DirtyNotified <- false
 
 /// <summary>
 /// The reads of an aggregate's <c>add</c>, <c>subtract</c> or folder since its last full recompute. A change to any of them
@@ -3682,10 +5866,15 @@ module Projection =
 
     /// <summary>The keys of <c>upstream</c> whose value satisfies <c>predicate</c>, in upstream order, with their values.</summary>
     /// <remarks>
-    /// <c>predicate</c> re-runs for a key when its upstream row changes. A pending predicate keeps the key's last membership;
-    /// a key whose predicate has never settled is absent from <c>Keys</c> and present in <c>PendingKeys</c>, while
-    /// <c>AnyPending</c> counts only rows of keys in <c>Keys</c>. A throwing predicate excludes the key, and <c>Get</c> and
-    /// <c>TryGet</c> of the key raise its exception.
+    /// <c>predicate</c> re-runs only for keys whose upstream row changed, and unchanged passes cut off per row
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass">row_slot_check_cutoff_skips_pass</see>).
+    /// Sparse membership flips compute output positions in O(log N) via a binary-indexed tree
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#filter_incremental_step_refines_scan">filter_incremental_step_refines_scan</see>,
+    /// <see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#fenwick_sum_spec">fenwick_sum_spec</see>)
+    /// and splice <c>Keys</c>, falling back to a full pass on dense bursts or upstream reorders. A pending predicate keeps
+    /// the key's last membership; a key whose predicate has never settled is absent from <c>Keys</c> and present in
+    /// <c>PendingKeys</c>, while <c>AnyPending</c> counts only rows of keys in <c>Keys</c>. A throwing predicate excludes the
+    /// key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -3714,8 +5903,13 @@ module Projection =
     /// inside the <c>Some</c>.
     /// </summary>
     /// <remarks>
-    /// <c>chooser</c> runs once per key when its upstream row changes, and a change between two <c>Some</c> values wakes only
-    /// readers of the key's row. A pending <c>chooser</c> keeps the key's last membership; a key whose <c>chooser</c> has
+    /// <c>chooser</c> re-runs once per key when its upstream row changes, unchanged passes cut off per row
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass">row_slot_check_cutoff_skips_pass</see>),
+    /// a change between two <c>Some</c> values wakes only readers of the key's row, and sparse membership flips update the
+    /// output incrementally via binary-indexed rank mapping and <c>Keys</c> splicing
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#filter_incremental_step_refines_scan">filter_incremental_step_refines_scan</see>,
+    /// <see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#fenwick_sum_spec">fenwick_sum_spec</see>).
+    /// A pending <c>chooser</c> keeps the key's last membership; a key whose <c>chooser</c> has
     /// never settled is absent from <c>Keys</c> and present in <c>PendingKeys</c>, while <c>AnyPending</c> counts only rows
     /// of keys in <c>Keys</c>. A throwing <c>chooser</c> excludes the key, and <c>Get</c> and <c>TryGet</c> of the key raise
     /// its exception.
@@ -3808,7 +6002,11 @@ module Projection =
     /// order.
     /// </summary>
     /// <remarks>
-    /// A <c>float</c> or <c>float32</c> NaN sort key orders last; <c>None</c> orders first. A pending sort key keeps the key's last
+    /// A <c>float</c> or <c>float32</c> NaN sort key orders last; <c>None</c> orders first. Untouched rows cut off via per-row
+    /// checks (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass">row_slot_check_cutoff_skips_pass</see>);
+    /// sparse sort-key or membership changes check local neighbours in O(1) and binary-search/shift only touched positions
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sortview_insert_remove_refines_sort">sortview_insert_remove_refines_sort</see>),
+    /// falling back to O(N log N) sorting on dense bursts or upstream reorders. A pending sort key keeps the key's last
     /// settled sort key; a key whose sort key has never settled is only in <c>PendingKeys</c>. A throwing sort key excludes the
     /// key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
     /// </remarks>
@@ -3826,8 +6024,9 @@ module Projection =
     /// upstream order.
     /// </summary>
     /// <remarks>
-    /// A <c>float</c> or <c>float32</c> NaN sort key orders last; <c>None</c> orders after <c>Some</c>. Costs, pending and
-    /// failed sort keys follow <c>sortBy</c>.
+    /// A <c>float</c> or <c>float32</c> NaN sort key orders last; <c>None</c> orders after <c>Some</c>. Incremental
+    /// checks, sparse reinsertion (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sortview_insert_remove_refines_sort">sortview_insert_remove_refines_sort</see>),
+    /// pending, and failed sort keys follow <c>sortBy</c>.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -3907,6 +6106,10 @@ module Projection =
     /// first member, each an inner view of the group's keys in upstream order.
     /// </summary>
     /// <remarks>
+    /// Sparse group-key or membership changes update only the affected source and destination groups so untouched inner views
+    /// keep their <c>Keys</c> and stay asleep, while active groups stay ordered by first upstream member
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#grouping_move_refines_scan">grouping_move_refines_scan</see>,
+    /// <see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass">row_slot_check_cutoff_skips_pass</see>).
     /// A pending group key keeps the key's last settled group. A key whose group key throws or has never settled is in
     /// <c>UngroupedKeys</c> and in no group. A moved key leaves its old group and joins its new one in the same pass. An
     /// emptied group's inner view is disposed: its <c>Keys</c> is empty and <c>Get</c> raises
@@ -4184,8 +6387,10 @@ module Projection =
 
     /// <summary>A memo of the first value of <c>upstream</c>, in upstream order, that satisfies <c>predicate</c>.</summary>
     /// <remarks>
-    /// The memo owns a <c>filter</c> view: <c>predicate</c> re-runs for a key when its upstream row changes, and a
-    /// membership flip costs the filter's O(N) pass. A match whose predicate is pending makes the memo pending.
+    /// The memo owns a <c>filter</c> view: <c>predicate</c> re-runs only for changed upstream rows, and sparse membership
+    /// flips update incrementally via the filter's binary-indexed tree and <c>Keys</c> splice
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#filter_incremental_step_refines_scan">filter_incremental_step_refines_scan</see>).
+    /// A match whose predicate is pending makes the memo pending.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">
@@ -4443,8 +6648,11 @@ module Projection =
     /// values.
     /// </summary>
     /// <remarks>
-    /// The halves share one predicate view, disposed with the calling scope; each half is disposable on its own. A
-    /// throwing predicate removes the key from both halves, and <c>Get</c> and <c>TryGet</c> of either raise its exception.
+    /// The halves share one predicate view, disposed with the calling scope; each half is disposable on its own, and sparse
+    /// membership flips update each half's output incrementally via binary-indexed rank mapping and <c>Keys</c> splicing
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#filter_incremental_step_refines_scan">filter_incremental_step_refines_scan</see>,
+    /// <see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass">row_slot_check_cutoff_skips_pass</see>).
+    /// A throwing predicate removes the key from both halves, and <c>Get</c> and <c>TryGet</c> of either raise its exception.
     /// A pending predicate keeps the key on its last side; a never-settled key is in the <c>PendingKeys</c> of both.
     /// </remarks>
     /// <example>
@@ -4477,9 +6685,15 @@ module Projection =
     /// value.
     /// </summary>
     /// <remarks>
-    /// When a holder leaves or changes value, the next key with the same projection enters; a membership change costs
-    /// O(N). A pending value keeps the key's last settled value, and a never-settled key is in <c>PendingKeys</c>. A
-    /// throwing <c>projection</c> excludes the key, and <c>Get</c> and <c>TryGet</c> of the key raise its exception.
+    /// Untouched rows cut off per row
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass">row_slot_check_cutoff_skips_pass</see>);
+    /// sparse key or projected-value changes update only the old and new value buckets, keeping non-winner moves out of
+    /// <c>Keys</c> and promoting the next upstream key when a holder leaves via its bucket and binary-indexed rank splice
+    /// (<see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#distinct_bucket_update_refines_scan">distinct_bucket_update_refines_scan</see>,
+    /// <see href="https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#fenwick_sum_spec">fenwick_sum_spec</see>),
+    /// falling back to a full pass on dense bursts or upstream reorders. A pending value keeps the key's last settled
+    /// value, and a never-settled key is in <c>PendingKeys</c>. A throwing <c>projection</c> excludes the key, and
+    /// <c>Get</c> and <c>TryGet</c> of the key raise its exception.
     /// </remarks>
     /// <example>
     /// <code lang="fsharp">

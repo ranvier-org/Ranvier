@@ -61,7 +61,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 260 | 260 | 260 | 260 | 260 | 260 | 3 | 0 |
+| Combinators.fs | 269 | 269 | 269 | 269 | 269 | 269 | 3 | 0 |
 | Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1720 | 1706 | 1703 | 1942 | 1924 | 1921 | 148 | 1 |
+| **Total** | 1729 | 1715 | 1712 | 1951 | 1933 | 1930 | 148 | 1 |
 
 ## Tests.fs
 
@@ -1654,7 +1654,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>260 passed in every build and delivery that runs them</summary>
+<details><summary>269 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1775,6 +1775,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a reader of UngroupedKeys wakes on a settle after a pass that leaves it unchanged
 - filter then groupBy lists the keys the filter holds out in UngroupedKeys
 - GroupOf returns a grouped key's group, and a pending key's last settled group
+- incremental groupBy resolves Check cutoff without running outer or inner passes
+- incremental groupBy on N=1000, G=20 isolates untouched inner views on sparse move and matches List.groupBy
+- incremental groupBy handles same-pass new-group creation before emptying and emptied-group refill on tail append
+- observing only an inner group view keeps Grouping live and wakes on enters and leaves
 - the end of filter then map lists a never-settled upstream key in PendingKeys, and not in AnyPending
 - an effect reading PendingKeys and Keys at the end of filter then map runs once when the upstream key settles
 - a key the first stage of filter then map excludes on failure moves from PendingKeys to absent
@@ -1907,6 +1911,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pending key whose last settled value repeats an earlier holder stays out of Keys
 - a throwing value excludes the key, and Get and TryGet raise its error
 - disposing the view detaches it from the upstream
+- incremental distinctBy resolves Check cutoff without running a pass
+- incremental distinctBy keeps Keys unchanged when a non-winner moves to another already-held value
+- incremental distinctBy splices N=1000 winner promotion, displacement, tail append, and multi-row edits matching List.distinctBy
+- incremental distinctBy splices recovery of an earlier failed holder displacing a later holder
 - totals per group follow edits, moves and emptying
 - an edit within a group runs only that group's aggregate
 - an emptied group's aggregate is disposed, and a returning group gets a new one
@@ -1916,6 +1924,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a reorder that keeps group order and totals wakes no reader
 - a never-settled group key contributes to no total
 - disposing the result disposes every aggregate; disposing the grouping empties the result
+- Grouping.aggregate on G=20 groups recomputes only touched groups on a sparse move
 
 </details>
 

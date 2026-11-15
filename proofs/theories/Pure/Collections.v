@@ -2154,3 +2154,736 @@ Proof.
     + rewrite (list_fmap_perm snd _ _ (list_filter_perm P _ _ (full_insertion_sort_perm xs))).
       exact (nodup_snd_filter P xs Hnd).
 Qed.
+
+(** ** Incremental `DistinctView` and `Grouping` bucket refinement *)
+
+Definition row_up (r : nat * nat * option Z) : nat := r.1.1.
+Definition row_key (r : nat * nat * option Z) : nat := r.1.2.
+Definition row_grp (r : nat * nat * option Z) : option Z := r.2.
+
+Fixpoint bucket_members (g : Z) (xs : list (nat * nat * option Z)) : list (nat * nat) :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      if decide (row_grp r = Some g) then
+        (row_up r, row_key r) :: bucket_members g xs'
+      else
+        bucket_members g xs'
+  end.
+
+Fixpoint bucket_remove (u0 : nat) (ms : list (nat * nat)) : list (nat * nat) :=
+  match ms with
+  | [] => []
+  | m :: ms' =>
+      if decide (m.1 = u0) then bucket_remove u0 ms'
+      else m :: bucket_remove u0 ms'
+  end.
+
+Fixpoint bucket_insert (m : nat * nat) (ms : list (nat * nat)) : list (nat * nat) :=
+  match ms with
+  | [] => [m]
+  | m' :: ms' =>
+      if decide (m.1 < m'.1)%nat then m :: m' :: ms'
+      else m' :: bucket_insert m ms'
+  end.
+
+Fixpoint update_row_group (u0 : nat) (mg' : option Z) (xs : list (nat * nat * option Z))
+  : list (nat * nat * option Z) :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      if decide (row_up r = u0) then
+        (row_up r, row_key r, mg') :: update_row_group u0 mg' xs'
+      else
+        r :: update_row_group u0 mg' xs'
+  end.
+
+Definition bucket_map_apply_old
+  (u0 : nat) (mg_old : option Z) (bmap : Z -> list (nat * nat)) (g : Z) : list (nat * nat) :=
+  match mg_old with
+  | Some g_old => if decide (g = g_old) then bucket_remove u0 (bmap g) else bmap g
+  | None => bmap g
+  end.
+
+Definition bucket_map_update
+  (u0 k0 : nat) (mg_old mg_new : option Z) (bmap : Z -> list (nat * nat)) (g : Z) : list (nat * nat) :=
+  let bmap1 := bucket_map_apply_old u0 mg_old bmap in
+  match mg_new with
+  | Some g_new => if decide (g = g_new) then bucket_insert (u0, k0) (bmap1 g) else bmap1 g
+  | None => bmap1 g
+  end.
+
+Fixpoint distinct_scan_aux (seen : list Z) (xs : list (nat * nat * option Z)) : list nat :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      match row_grp r with
+      | None => distinct_scan_aux seen xs'
+      | Some g =>
+          if decide (g ∈ seen) then distinct_scan_aux seen xs'
+          else row_key r :: distinct_scan_aux (g :: seen) xs'
+      end
+  end.
+
+Definition distinct_scan (xs : list (nat * nat * option Z)) : list nat :=
+  distinct_scan_aux [] xs.
+
+Definition is_bucket_winner (bmap : Z -> list (nat * nat)) (r : nat * nat * option Z) : bool :=
+  match row_grp r with
+  | None => false
+  | Some g =>
+      match bmap g with
+      | [] => false
+      | m :: _ => bool_decide (m.1 = row_up r /\ m.2 = row_key r)
+      end
+  end.
+
+Fixpoint distinct_by_buckets (bmap : Z -> list (nat * nat)) (xs : list (nat * nat * option Z)) : list nat :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      if is_bucket_winner bmap r then row_key r :: distinct_by_buckets bmap xs'
+      else distinct_by_buckets bmap xs'
+  end.
+
+Fixpoint group_scan_order_aux (seen : list Z) (xs : list (nat * nat * option Z)) : list Z :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      match row_grp r with
+      | None => group_scan_order_aux seen xs'
+      | Some g =>
+          if decide (g ∈ seen) then group_scan_order_aux seen xs'
+          else g :: group_scan_order_aux (g :: seen) xs'
+      end
+  end.
+
+Definition group_scan_order (xs : list (nat * nat * option Z)) : list Z :=
+  group_scan_order_aux [] xs.
+
+Definition group_scan_members (g : Z) (xs : list (nat * nat * option Z)) : list nat :=
+  snd <$> bucket_members g xs.
+
+Fixpoint insert_first_idx (p : nat * Z) (l : list (nat * Z)) : list (nat * Z) :=
+  match l with
+  | [] => [p]
+  | q :: l' =>
+      if decide (p.1 < q.1)%nat then p :: q :: l'
+      else q :: insert_first_idx p l'
+  end.
+
+Definition active_group_pairs (bmap : Z -> list (nat * nat)) (gs : list Z) : list (nat * Z) :=
+  foldr (fun g acc =>
+    match bmap g with
+    | [] => acc
+    | m :: _ => insert_first_idx (m.1, g) acc
+    end) [] gs.
+
+Definition ordered_groups_by_first_idx (bmap : Z -> list (nat * nat)) (gs : list Z) : list Z :=
+  snd <$> active_group_pairs bmap gs.
+
+Lemma row_up_update_row_group (u0 : nat) (mg' : option Z) (xs : list (nat * nat * option Z)) :
+  row_up <$> update_row_group u0 mg' xs = row_up <$> xs.
+Proof.
+  induction xs as [|r xs' IH]; cbn [update_row_group fmap list_fmap].
+  - reflexivity.
+  - destruct (decide (row_up r = u0)); cbn [fmap list_fmap row_up].
+    + destruct r as [[u k] mg]; cbn in *. rewrite IH. reflexivity.
+    + rewrite IH. reflexivity.
+Qed.
+
+Lemma strongly_sorted_row_up_update (u0 : nat) (mg' : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  StronglySorted Nat.lt (row_up <$> update_row_group u0 mg' xs).
+Proof.
+  rewrite row_up_update_row_group. trivial.
+Qed.
+
+Lemma strongly_sorted_tail_lt (r : nat * nat * option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> (r :: xs)) ->
+  StronglySorted Nat.lt (row_up <$> xs) /\ Forall (fun q => (row_up r < row_up q)%nat) xs.
+Proof.
+  intro Hsort. cbn [fmap list_fmap] in Hsort.
+  inversion Hsort as [|? ? Hxs Hfa]; subst.
+  split; [exact Hxs|].
+  rewrite Forall_forall. intros q Hq.
+  rewrite Forall_forall in Hfa.
+  apply Hfa. apply list_elem_of_fmap. exists q. split; [reflexivity | exact Hq].
+Qed.
+
+Lemma bucket_remove_members (g : Z) (u0 : nat) (xs : list (nat * nat * option Z)) :
+  bucket_remove u0 (bucket_members g xs) = bucket_members g (update_row_group u0 None xs).
+Proof.
+  induction xs as [|r xs' IH]; cbn [bucket_members update_row_group].
+  - reflexivity.
+  - destruct (decide (row_grp r = Some g)) as [Hg|Hg], (decide (row_up r = u0)) as [Hu|Hu];
+      cbn [bucket_members bucket_remove row_grp row_up] in *.
+    + rewrite decide_True by exact Hu. exact IH.
+    + rewrite decide_False by exact Hu. rewrite decide_True by exact Hg.
+      cbn [fst]. rewrite IH. reflexivity.
+    + rewrite decide_False by discriminate. exact IH.
+    + rewrite decide_False by exact Hg. exact IH.
+Qed.
+
+Lemma update_row_group_gt (u0 : nat) (mg : option Z) (xs : list (nat * nat * option Z)) :
+  Forall (fun q => (u0 < row_up q)%nat) xs ->
+  update_row_group u0 mg xs = xs.
+Proof.
+  induction xs as [|q xs' IH]; intro Hfa; cbn [update_row_group].
+  - reflexivity.
+  - inversion Hfa as [|? ? Hq Hfa']; subst.
+    rewrite decide_False by lia. f_equal. exact (IH Hfa').
+Qed.
+
+Lemma bucket_members_update_none_ne (g : Z) (u0 k0 : nat) (mg_old : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  Some g <> mg_old ->
+  bucket_members g xs = bucket_members g (update_row_group u0 None xs).
+Proof.
+  induction xs as [|r xs' IH]; intros Hsort Hin Hne.
+  - inversion Hin.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    apply elem_of_cons in Hin as [<- | Hin'].
+    + cbn [update_row_group].
+      rewrite decide_True by reflexivity.
+      change (row_up (u0, k0, mg_old)) with u0 in Hlt'.
+      rewrite (update_row_group_gt u0 None xs' Hlt').
+      cbn [bucket_members].
+      rewrite decide_False by (cbn; congruence).
+      rewrite decide_False by (cbn; discriminate).
+      reflexivity.
+    + assert (Hru : row_up r <> u0).
+      { intro Heq. rewrite Forall_forall in Hlt'.
+        pose proof (Hlt' (u0, k0, mg_old) Hin') as Hlt_u.
+        cbn [row_up fst] in Hlt_u. rewrite Heq in Hlt_u. lia. }
+      cbn [update_row_group].
+      rewrite decide_False by exact Hru.
+      cbn [bucket_members].
+      destruct (decide (row_grp r = Some g)); [f_equal|]; exact (IH Hsort' Hin' Hne).
+Qed.
+
+Lemma bucket_map_apply_old_correct (g : Z) (u0 k0 : nat) (mg_old : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  bucket_map_apply_old u0 mg_old (fun g' => bucket_members g' xs) g =
+  bucket_members g (update_row_group u0 None xs).
+Proof.
+  intros Hsort Hin.
+  destruct mg_old as [g_old|]; cbn [bucket_map_apply_old].
+  - destruct (decide (g = g_old)) as [-> | Hne].
+    + apply bucket_remove_members.
+    + apply (bucket_members_update_none_ne g u0 k0 (Some g_old) xs Hsort Hin).
+      intro Heq. injection Heq. contradiction.
+  - apply (bucket_members_update_none_ne g u0 k0 None xs Hsort Hin).
+    discriminate.
+Qed.
+
+Lemma bucket_members_all_gt (u0 : nat) (g : Z) (xs : list (nat * nat * option Z)) :
+  Forall (fun q => (u0 < row_up q)%nat) xs ->
+  Forall (fun m : nat * nat => (u0 < m.1)%nat) (bucket_members g xs).
+Proof.
+  induction xs as [|r xs' IH]; intro Hfa; cbn [bucket_members].
+  - constructor.
+  - inversion Hfa as [|? ? Hr Hfa']; subst.
+    destruct (decide (row_grp r = Some g)); [constructor; [exact Hr | apply IH; exact Hfa'] | apply IH; exact Hfa'].
+Qed.
+
+Lemma update_row_group_absent (u0 : nat) (mg1 mg2 : option Z) (xs : list (nat * nat * option Z)) :
+  Forall (fun q => (u0 < row_up q)%nat) xs ->
+  update_row_group u0 mg1 xs = update_row_group u0 mg2 xs.
+Proof.
+  induction xs as [|r xs' IH]; intro Hfa; cbn [update_row_group].
+  - reflexivity.
+  - inversion Hfa as [|? ? Hr Hfa']; subst.
+    rewrite !decide_False by lia. f_equal. apply IH. exact Hfa'.
+Qed.
+
+Lemma bucket_members_update_ne (g : Z) (mg' : option Z) (u_idx : nat) (xs : list (nat * nat * option Z)) :
+  Some g <> mg' ->
+  bucket_members g (update_row_group u_idx mg' xs) =
+  bucket_members g (update_row_group u_idx None xs).
+Proof.
+  intros Hne. induction xs as [|r xs' IH]; cbn [update_row_group].
+  - reflexivity.
+  - destruct (decide (row_up r = u_idx)) as [Hu|Hu]; cbn [bucket_members].
+    + rewrite decide_False by (cbn; congruence).
+      rewrite decide_False by (cbn; discriminate).
+      exact IH.
+    + destruct (decide (row_grp r = Some g)); [f_equal|]; exact IH.
+Qed.
+
+Lemma bucket_insert_members_eq (g_new : Z) (u0 k0 : nat) (mg_old : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  bucket_insert (u0, k0) (bucket_members g_new (update_row_group u0 None xs)) =
+  bucket_members g_new (update_row_group u0 (Some g_new) xs).
+Proof.
+  induction xs as [|r xs' IH]; intros Hsort Hin.
+  - inversion Hin.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    apply elem_of_cons in Hin as [<- | Hin'].
+    + change (row_up (u0, k0, mg_old)) with u0 in Hlt'.
+      cbn [update_row_group]. rewrite !decide_True by reflexivity.
+      rewrite (update_row_group_gt u0 None xs' Hlt').
+      rewrite (update_row_group_gt u0 (Some g_new) xs' Hlt').
+      cbn [bucket_members].
+      rewrite decide_False by (cbn; discriminate).
+      rewrite decide_True by reflexivity.
+      cbn [row_up row_key fst].
+      set (tail := bucket_members g_new xs').
+      assert (Htail : Forall (fun m : nat * nat => (u0 < m.1)%nat) tail).
+      { subst tail. apply bucket_members_all_gt. exact Hlt'. }
+      destruct tail as [|m ms'].
+      * reflexivity.
+      * inversion Htail as [|? ? Hm _]; subst.
+        cbn [bucket_insert fst]. rewrite decide_True by exact Hm. reflexivity.
+    + assert (Hru_lt : (row_up r < u0)%nat).
+      { rewrite Forall_forall in Hlt'. exact (Hlt' (u0, k0, mg_old) Hin'). }
+      cbn [update_row_group]. rewrite !decide_False by lia.
+      cbn [bucket_members].
+      destruct (decide (row_grp r = Some g_new)) as [Hgr|Hgr].
+      * cbn [bucket_insert]. rewrite decide_False by (cbn [fst]; lia).
+        f_equal. exact (IH Hsort' Hin').
+      * exact (IH Hsort' Hin').
+Qed.
+
+Lemma bucket_map_update_members_eq
+  (u0 k0 : nat) (mg_old mg_new : option Z) (xs : list (nat * nat * option Z)) (g : Z) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  bucket_map_update u0 k0 mg_old mg_new (fun g' => bucket_members g' xs) g =
+  bucket_members g (update_row_group u0 mg_new xs).
+Proof.
+  intros Hsort Hin.
+  unfold bucket_map_update.
+  rewrite (bucket_map_apply_old_correct g u0 k0 mg_old xs Hsort Hin).
+  destruct mg_new as [g_new|].
+  - destruct (decide (g = g_new)) as [->|Hne].
+    + apply (bucket_insert_members_eq g_new u0 k0 mg_old xs Hsort Hin).
+    + symmetry. apply bucket_members_update_ne. congruence.
+  - reflexivity.
+Qed.
+
+Lemma bucket_map_update_untouched
+  (u0 k0 : nat) (mg_old mg_new : option Z) (bmap : Z -> list (nat * nat)) (g : Z) :
+  Some g <> mg_old ->
+  Some g <> mg_new ->
+  bucket_map_update u0 k0 mg_old mg_new bmap g = bmap g.
+Proof.
+  intros Hold Hnew. unfold bucket_map_update, bucket_map_apply_old.
+  destruct mg_old as [g1|], mg_new as [g2|];
+    repeat rewrite decide_False by congruence; reflexivity.
+Qed.
+
+Definition distinct_seen_ok
+  (seen : list Z) (bmap : Z -> list (nat * nat)) (xs : list (nat * nat * option Z)) : Prop :=
+  (forall g, g ∈ seen ->
+    exists m ms, bmap g = m :: ms /\ Forall (fun r => (m.1 < row_up r)%nat) xs) /\
+  (forall g, g ∉ seen -> bmap g = bucket_members g xs).
+
+Lemma distinct_by_buckets_seen
+  (seen : list Z) (bmap : Z -> list (nat * nat)) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  distinct_seen_ok seen bmap xs ->
+  distinct_by_buckets bmap xs = distinct_scan_aux seen xs.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hsort [Hseen Hunseen].
+  - reflexivity.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    cbn [distinct_by_buckets distinct_scan_aux].
+    destruct (row_grp r) as [g|] eqn:Hgrp.
+    + destruct (decide (g ∈ seen)) as [Hin|Hnot].
+      * destruct (Hseen g Hin) as [m [ms [Hbmap Hfa]]].
+        inversion Hfa as [|? ? Hm_lt _]; subst.
+        unfold is_bucket_winner. rewrite Hgrp, Hbmap.
+        rewrite bool_decide_false by lia.
+        apply IH; [exact Hsort'|]. split.
+        -- intros g' Hg'. destruct (Hseen g' Hg') as [m' [ms' [Hb' Hfa']]].
+           inversion Hfa'; subst. exists m', ms'. split; assumption.
+        -- intros g' Hg'. assert (Hne : g' <> g) by (intro; subst; apply Hg'; exact Hin).
+           rewrite (Hunseen g' Hg'). cbn [bucket_members].
+           rewrite Hgrp, decide_False by congruence. reflexivity.
+      * pose proof (Hunseen g Hnot) as Hbmap.
+        cbn [bucket_members] in Hbmap. rewrite Hgrp, decide_True in Hbmap by reflexivity.
+        unfold is_bucket_winner. rewrite Hgrp, Hbmap.
+        rewrite bool_decide_true by (split; reflexivity).
+        f_equal. apply IH; [exact Hsort'|]. split.
+        -- intros g' Hg'. apply elem_of_cons in Hg' as [-> | Hg'].
+           ++ exists (row_up r, row_key r), (bucket_members g xs').
+              split; [exact Hbmap | exact Hlt'].
+           ++ destruct (Hseen g' Hg') as [m' [ms' [Hb' Hfa']]].
+              inversion Hfa'; subst. exists m', ms'. split; assumption.
+        -- intros g' Hg'.
+           assert (Hg'_not : g' ∉ seen) by (intro; apply Hg'; right; assumption).
+           assert (Hne : g' <> g) by (intro; subst; apply Hg'; left).
+           rewrite (Hunseen g' Hg'_not). cbn [bucket_members].
+           rewrite Hgrp, decide_False by congruence. reflexivity.
+    + unfold is_bucket_winner. rewrite Hgrp.
+      apply IH; [exact Hsort'|]. split.
+      * intros g' Hg'. destruct (Hseen g' Hg') as [m' [ms' [Hb' Hfa']]].
+        inversion Hfa'; subst. exists m', ms'. split; assumption.
+      * intros g' Hg'. rewrite (Hunseen g' Hg'). cbn [bucket_members].
+        rewrite Hgrp, decide_False by discriminate. reflexivity.
+Qed.
+
+Lemma distinct_by_buckets_refines_scan (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  distinct_by_buckets (fun g => bucket_members g xs) xs = distinct_scan xs.
+Proof.
+  intro Hsort. unfold distinct_scan.
+  apply distinct_by_buckets_seen; [exact Hsort|].
+  split; [intros g Hin; inversion Hin | intros g _; reflexivity].
+Qed.
+
+(**md
+**Incremental 2-bucket updates and `Members[0]` winner selection in `DistinctView` refine `distinct_scan`.**
+
+Updating row `u0` from optional settled value `mg_old` to `mg_new` removes `u0`
+from bucket `mg_old` (if `Some`), inserts `(u0, k0)` by ascending upstream index
+into bucket `mg_new` (if `Some`), leaves every other bucket untouched, and
+preserves the exact `Members[0]` winner sequence computed by sequential
+`distinct_scan` over the updated rows.
+
+- [u0:] upstream slot index of the updated row.
+- [k0:] upstream key held at slot `u0`.
+- [mg_old:] prior settled distinct value (or `None` when unsettled/failed).
+- [mg_new:] next settled distinct value (or `None` when unsettled/failed).
+- [xs:] upstream rows in strictly ascending `UpIdx` order prior to the update.
+*)
+Theorem distinct_bucket_update_refines_scan
+  (u0 k0 : nat) (mg_old mg_new : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  let bmap' := bucket_map_update u0 k0 mg_old mg_new (fun g => bucket_members g xs) in
+  let xs' := update_row_group u0 mg_new xs in
+  (forall g, Some g <> mg_old -> Some g <> mg_new -> bmap' g = bucket_members g xs) /\
+  (forall g, bmap' g = bucket_members g xs') /\
+  distinct_by_buckets bmap' xs' = distinct_scan xs'.
+Proof.
+  intros Hsort Hin bmap' xs'.
+  split_and!.
+  - intros g Hold Hnew. unfold bmap'.
+    apply (bucket_map_update_untouched u0 k0 mg_old mg_new (fun g0 => bucket_members g0 xs) g Hold Hnew).
+  - intro g. unfold bmap', xs'.
+    apply (bucket_map_update_members_eq u0 k0 mg_old mg_new xs g Hsort Hin).
+  - rewrite (distinct_by_buckets_seen [] bmap' xs').
+    + reflexivity.
+    + unfold xs'. apply strongly_sorted_row_up_update; exact Hsort.
+    + split.
+      * intros g Hnil. inversion Hnil.
+      * intros g _. unfold bmap', xs'.
+        apply (bucket_map_update_members_eq u0 k0 mg_old mg_new xs g Hsort Hin).
+Qed.
+
+Fixpoint group_scan_pairs_aux (seen : list Z) (xs : list (nat * nat * option Z)) : list (nat * Z) :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      match row_grp r with
+      | None => group_scan_pairs_aux seen xs'
+      | Some g =>
+          if decide (g ∈ seen) then group_scan_pairs_aux seen xs'
+          else (row_up r, g) :: group_scan_pairs_aux (g :: seen) xs'
+      end
+  end.
+
+Lemma group_scan_pairs_snd (seen : list Z) (xs : list (nat * nat * option Z)) :
+  snd <$> group_scan_pairs_aux seen xs = group_scan_order_aux seen xs.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intro seen; cbn [group_scan_pairs_aux group_scan_order_aux].
+  - reflexivity.
+  - destruct (row_grp r) as [g0|]; [|apply IH].
+    destruct (decide (g0 ∈ seen)); [apply IH|].
+    cbn [fmap list_fmap snd]. f_equal. apply IH.
+Qed.
+
+Lemma group_scan_pairs_in_lt
+  (seen : list Z) (xs : list (nat * nat * option Z)) (u : nat) (g : Z) (u_bound : nat) :
+  Forall (fun r => (u_bound < row_up r)%nat) xs ->
+  (u, g) ∈ group_scan_pairs_aux seen xs ->
+  (u_bound < u)%nat.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hfa Hin; cbn [group_scan_pairs_aux] in Hin.
+  - inversion Hin.
+  - inversion Hfa as [|? ? Hr Hfa']; subst.
+    destruct (row_grp r) as [g0|]; [|eapply IH; eassumption].
+    destruct (decide (g0 ∈ seen)); [eapply IH; eassumption|].
+    apply elem_of_cons in Hin as [Heq | Hin'].
+    + injection Heq as -> ->. exact Hr.
+    + eapply IH; eassumption.
+Qed.
+
+Lemma group_scan_pairs_sorted (seen : list Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) (group_scan_pairs_aux seen xs).
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hsort; cbn [group_scan_pairs_aux].
+  - constructor.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    destruct (row_grp r) as [g0|]; [|apply IH; exact Hsort'].
+    destruct (decide (g0 ∈ seen)); [apply IH; exact Hsort'|].
+    constructor; [apply IH; exact Hsort'|].
+    rewrite Forall_forall. intros [u g] Hmem. cbn [fst].
+    eapply group_scan_pairs_in_lt; eassumption.
+Qed.
+
+Lemma group_scan_pairs_not_seen (seen : list Z) (xs : list (nat * nat * option Z)) (u : nat) (g : Z) :
+  (u, g) ∈ group_scan_pairs_aux seen xs ->
+  g ∉ seen.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hin Hg_in; cbn [group_scan_pairs_aux] in Hin.
+  - inversion Hin.
+  - destruct (row_grp r) as [g0|]; [|eapply IH; eassumption].
+    destruct (decide (g0 ∈ seen)).
+    + eapply IH; eassumption.
+    + apply elem_of_cons in Hin as [Heq | Hin'].
+      * injection Heq as -> ->. contradiction.
+      * apply (IH _ Hin'). right. exact Hg_in.
+Qed.
+
+Lemma group_scan_pairs_elem_iff (seen : list Z) (xs : list (nat * nat * option Z)) (u : nat) (g : Z) :
+  (u, g) ∈ group_scan_pairs_aux seen xs <->
+  g ∉ seen /\ exists k ms, bucket_members g xs = (u, k) :: ms.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intro seen; cbn [group_scan_pairs_aux bucket_members].
+  - split; [intro H; inversion H | intros [_ [k [ms H]]]; discriminate H].
+  - destruct (row_grp r) as [g0|].
+    + destruct (decide (g0 ∈ seen)) as [Hg0_seen|Hg0_not].
+      * rewrite IH. split; intros [Hg_not [k [ms Hmem]]]; split; try exact Hg_not; exists k, ms.
+        -- assert (Hne : g <> g0) by (intro; subst; contradiction).
+           rewrite decide_False by congruence. exact Hmem.
+        -- assert (Hne : g <> g0) by (intro; subst; contradiction).
+           rewrite decide_False in Hmem by congruence. exact Hmem.
+      * split.
+        -- intro Hin. apply elem_of_cons in Hin as [Heq | Hin'].
+           ++ injection Heq as -> ->. split; [exact Hg0_not|].
+              exists (row_key r), (bucket_members g0 xs').
+              rewrite decide_True by reflexivity. reflexivity.
+           ++ pose proof (group_scan_pairs_not_seen _ _ _ _ Hin') as Hg_ns.
+              apply IH in Hin' as [_ Hmem].
+              assert (Hg_not : g ∉ seen) by (intro; apply Hg_ns; right; assumption).
+              assert (Hne : g <> g0) by (intro; subst; apply Hg_ns; left).
+              split; [exact Hg_not|].
+              destruct Hmem as [k [ms Hmem']].
+              exists k, ms. rewrite decide_False by congruence. exact Hmem'.
+        -- intros [Hg_not [k [ms Hmem]]].
+           destruct (decide (g = g0)) as [-> | Hne].
+           ++ rewrite decide_True in Hmem by reflexivity.
+              injection Hmem as -> _. left.
+           ++ right. apply IH. split; [intro Hc; apply elem_of_cons in Hc as [?|?]; contradiction|].
+              exists k, ms. rewrite decide_False in Hmem by congruence. exact Hmem.
+    + rewrite IH.
+      split; intros [Hg_not [k [ms Hmem]]]; split; try exact Hg_not; exists k, ms.
+      * rewrite decide_False by discriminate. exact Hmem.
+      * rewrite decide_False in Hmem by discriminate. exact Hmem.
+Qed.
+
+Lemma insert_first_idx_perm (p : nat * Z) (l : list (nat * Z)) :
+  insert_first_idx p l ≡ₚ p :: l.
+Proof.
+  induction l as [|q l' IH]; cbn [insert_first_idx].
+  - reflexivity.
+  - destruct (decide (p.1 < q.1)%nat); [reflexivity | rewrite IH; apply perm_swap].
+Qed.
+
+Lemma insert_first_idx_sorts (p : nat * Z) (l : list (nat * Z)) :
+  (forall q, q ∈ l -> q.1 <> p.1) ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) l ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) (insert_first_idx p l).
+Proof.
+  induction l as [|q l' IH]; intros Hne Hsort; cbn [insert_first_idx].
+  - constructor; [constructor | constructor].
+  - inversion Hsort as [|? ? Hsort' Hfa]; subst.
+    assert (Hqne : q.1 <> p.1) by (apply Hne; left).
+    destruct (decide (p.1 < q.1)%nat) as [Hlt|Hge].
+    + constructor; [exact Hsort|].
+      constructor; [exact Hlt|].
+      eapply Forall_impl; [exact Hfa|]. intros z Hz. destruct p, q, z; cbn in *; lia.
+    + constructor; [apply IH; [intros z Hz; apply Hne; right; exact Hz | exact Hsort']|].
+      rewrite Forall_forall. intros z Hz.
+      assert (Hz_in : z ∈ p :: l') by (rewrite <- (insert_first_idx_perm p l'); exact Hz).
+      apply elem_of_cons in Hz_in as [-> | Hz_in'].
+      * destruct p, q; cbn in *; lia.
+      * rewrite Forall_forall in Hfa. apply Hfa; exact Hz_in'.
+Qed.
+
+Lemma active_group_pairs_in_iff (bmap : Z -> list (nat * nat)) (gs : list Z) (p : nat * Z) :
+  p ∈ active_group_pairs bmap gs <->
+  p.2 ∈ gs /\ exists m ms, bmap p.2 = m :: ms /\ p.1 = m.1.
+Proof.
+  induction gs as [|g gs' IH]; cbn [active_group_pairs foldr].
+  - split; [intro H; inversion H | intros [H _]; inversion H].
+  - destruct (bmap g) as [|m ms] eqn:Hbm.
+    + rewrite IH. split; intros [Hin Hrest]; split; try assumption.
+      * right. exact Hin.
+      * apply elem_of_cons in Hin as [Heq | Hin']; [|exact Hin'].
+        subst g. destruct Hrest as [m' [ms' [Hbm' _]]]. rewrite Hbm in Hbm'. discriminate Hbm'.
+    + rewrite insert_first_idx_perm. split.
+      * intro Hin. apply elem_of_cons in Hin as [-> | Hin'].
+        -- split; [cbn; left | exists m, ms; split; [exact Hbm | reflexivity]].
+        -- apply IH in Hin' as [Hin_gs Hrest]. split; [right; exact Hin_gs | exact Hrest].
+      * intros [Hin Hrest]. apply elem_of_cons in Hin as [Heq | Hin'].
+        -- destruct Hrest as [m' [ms' [Hbm' Hp1]]].
+           rewrite Heq, Hbm in Hbm'. injection Hbm' as <- _.
+           destruct p as [p1 p2]; cbn [fst snd] in *; subst; left.
+        -- right. apply IH. split; [exact Hin' | exact Hrest].
+Qed.
+
+Lemma bucket_members_first_lt_unique
+  (g1 g2 : Z) (m1 m2 : nat * nat) (ms1 ms2 : list (nat * nat)) (xs : list (nat * nat * option Z)) :
+  bucket_members g1 xs = m1 :: ms1 ->
+  bucket_members g2 xs = m2 :: ms2 ->
+  g1 <> g2 ->
+  m1.1 = m2.1 ->
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  False.
+Proof.
+  induction xs as [|r xs' IH]; intros Hm1 Hm2 Hne Heq1 Hsort.
+  - discriminate Hm1.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    cbn [bucket_members] in Hm1, Hm2.
+    destruct (decide (row_grp r = Some g1)) as [Hg1|Hg1],
+             (decide (row_grp r = Some g2)) as [Hg2|Hg2].
+    + rewrite Hg1 in Hg2. injection Hg2 as <-. contradiction.
+    + injection Hm1 as <- <-.
+      assert (Hm2_in : m2 ∈ bucket_members g2 xs') by (rewrite Hm2; left).
+      assert (Hfa2 := bucket_members_all_gt (row_up r) g2 xs' Hlt').
+      rewrite Forall_forall in Hfa2. pose proof (Hfa2 m2 Hm2_in) as Hlt. cbn [fst] in *. lia.
+    + injection Hm2 as <- <-.
+      assert (Hm1_in : m1 ∈ bucket_members g1 xs') by (rewrite Hm1; left).
+      assert (Hfa1 := bucket_members_all_gt (row_up r) g1 xs' Hlt').
+      rewrite Forall_forall in Hfa1. pose proof (Hfa1 m1 Hm1_in) as Hlt. cbn [fst] in *. lia.
+    + exact (IH Hm1 Hm2 Hne Heq1 Hsort').
+Qed.
+
+Lemma active_group_pairs_sorted (xs : list (nat * nat * option Z)) (gs : list Z) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  NoDup gs ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) (active_group_pairs (fun g => bucket_members g xs) gs).
+Proof.
+  intros Hsort Hnd. induction gs as [|g gs' IH]; cbn [active_group_pairs foldr].
+  - constructor.
+  - inversion Hnd as [|? ? Hg_not Hnd']; subst.
+    destruct (bucket_members g xs) as [|m ms] eqn:Hbm.
+    + apply IH. exact Hnd'.
+    + apply insert_first_idx_sorts.
+      * intros [u g'] Hmem. cbn [fst].
+        apply active_group_pairs_in_iff in Hmem as [Hg'_in [m' [ms' [Hbm' Hu_eq]]]].
+        cbn [fst snd] in *.
+        assert (Hne : g <> g') by (intro; subst; contradiction).
+        intro Heq. eapply (bucket_members_first_lt_unique g g' m m' ms ms' xs Hbm Hbm' Hne); [congruence | exact Hsort].
+      * apply IH. exact Hnd'.
+Qed.
+
+Lemma strongly_sorted_pair_lt_unique (l1 l2 : list (nat * Z)) :
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) l1 ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) l2 ->
+  (forall x, x ∈ l1 <-> x ∈ l2) ->
+  l1 = l2.
+Proof.
+  revert l2. induction l1 as [|a l1' IH]; intros l2 Hs1 Hs2 Hiff.
+  - destruct l2 as [|b l2']; [reflexivity|].
+    exfalso. pose proof (proj2 (Hiff b) ltac:(left)) as Hnil. inversion Hnil.
+  - destruct l2 as [|b l2'].
+    + exfalso. pose proof (proj1 (Hiff a) ltac:(left)) as Hnil. inversion Hnil.
+    + inversion Hs1 as [|? ? Hs1' Hfa]; subst.
+      inversion Hs2 as [|? ? Hs2' Hfb]; subst.
+      assert (Hb_in : b ∈ a :: l1') by (apply Hiff; left).
+      assert (Ha_in : a ∈ b :: l2') by (apply Hiff; left).
+      apply elem_of_cons in Hb_in as [Heq_ba | Hb_l1'].
+      * subst b. f_equal. apply IH; [exact Hs1' | exact Hs2'|].
+        assert (Ha1 : a ∉ l1').
+        { intro Hc. rewrite Forall_forall in Hfa. pose proof (Hfa a Hc) as Hlt. lia. }
+        assert (Ha2 : a ∉ l2').
+        { intro Hc. rewrite Forall_forall in Hfb. pose proof (Hfb a Hc) as Hlt. lia. }
+        intro x. split; intro Hx.
+        -- assert (Hne : x <> a) by (intro; subst; contradiction).
+           pose proof (proj1 (Hiff x) ltac:(right; exact Hx)) as Hx'.
+           apply elem_of_cons in Hx' as [?|?]; [contradiction | assumption].
+        -- assert (Hne : x <> a) by (intro; subst; contradiction).
+           pose proof (proj2 (Hiff x) ltac:(right; exact Hx)) as Hx'.
+           apply elem_of_cons in Hx' as [?|?]; [contradiction | assumption].
+      * rewrite Forall_forall in Hfa. pose proof (Hfa b Hb_l1') as Hab.
+        apply elem_of_cons in Ha_in as [Heq_ab | Ha_l2']; [subst; lia|].
+        rewrite Forall_forall in Hfb. pose proof (Hfb a Ha_l2') as Hba.
+        lia.
+Qed.
+
+Lemma active_group_pairs_ext (b1 b2 : Z -> list (nat * nat)) (gs : list Z) :
+  (forall g, g ∈ gs -> b1 g = b2 g) ->
+  active_group_pairs b1 gs = active_group_pairs b2 gs.
+Proof.
+  induction gs as [|g gs' IH]; intro Hext; cbn [active_group_pairs foldr].
+  - reflexivity.
+  - unfold active_group_pairs in IH.
+    rewrite (Hext g ltac:(left)).
+    rewrite (IH (fun g' Hg' => Hext g' ltac:(right; exact Hg'))).
+    reflexivity.
+Qed.
+
+Lemma bucket_members_nonempty_in_xs (g : Z) (m : nat * nat) (ms : list (nat * nat)) (xs : list (nat * nat * option Z)) :
+  bucket_members g xs = m :: ms ->
+  exists r, r ∈ xs /\ row_grp r = Some g.
+Proof.
+  induction xs as [|r xs' IH]; intro Hbm; cbn [bucket_members] in Hbm.
+  - discriminate Hbm.
+  - destruct (decide (row_grp r = Some g)) as [Hg|Hg].
+    + exists r. split; [left | exact Hg].
+    + destruct (IH Hbm) as [r' [Hr' Hgr']]. exists r'. split; [right; exact Hr' | exact Hgr'].
+Qed.
+
+(**md
+**Incremental `Grouping` move isolates untouched inner views and refines member and outer `FirstIdx` scans.**
+
+Moving row `u0` from optional group `mg_old` to `mg_new` removes `u0` from group
+`mg_old` (if `Some`), inserts `(u0, k0)` by ascending upstream index into group
+`mg_new` (if `Some`), leaves every other group's member cell completely untouched,
+yields exact `group_scan_members` for every group (so untouched inner `GroupView`
+readers stay asleep), and sorting active non-empty groups by `FirstIdx`
+(`Members[0].UpIdx`) equals `group_scan_order` over the updated rows.
+
+- [u0:] upstream slot index of the moved row.
+- [k0:] upstream key held at slot `u0`.
+- [mg_old:] prior group key (or `None` when ungrouped).
+- [mg_new:] next group key (or `None` when ungrouped).
+- [xs:] upstream rows in strictly ascending `UpIdx` order prior to the move.
+- [gs:] duplicate-free candidate group list covering all active groups in the updated rows.
+*)
+Theorem grouping_move_refines_scan
+  (u0 k0 : nat) (mg_old mg_new : option Z)
+  (xs : list (nat * nat * option Z)) (gs : list Z) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  let bmap' := bucket_map_update u0 k0 mg_old mg_new (fun g => bucket_members g xs) in
+  let xs' := update_row_group u0 mg_new xs in
+  NoDup gs ->
+  (forall r g, r ∈ xs' -> row_grp r = Some g -> g ∈ gs) ->
+  (forall g, Some g <> mg_old -> Some g <> mg_new -> bmap' g = bucket_members g xs) /\
+  (forall g, snd <$> bmap' g = group_scan_members g xs') /\
+  ordered_groups_by_first_idx bmap' gs = group_scan_order xs'.
+Proof.
+  intros Hsort Hin bmap' xs' Hnd Hcov.
+  assert (Hbmap' : forall g, bmap' g = bucket_members g xs').
+  { intro g. unfold bmap', xs'.
+    apply (bucket_map_update_members_eq u0 k0 mg_old mg_new xs g Hsort Hin). }
+  assert (Hsort' : StronglySorted Nat.lt (row_up <$> xs')).
+  { unfold xs'. apply strongly_sorted_row_up_update; exact Hsort. }
+  split_and!.
+  - intros g Hold Hnew. unfold bmap'.
+    apply (bucket_map_update_untouched u0 k0 mg_old mg_new (fun g0 => bucket_members g0 xs) g Hold Hnew).
+  - intro g. unfold group_scan_members. rewrite Hbmap'. reflexivity.
+  - unfold ordered_groups_by_first_idx, group_scan_order.
+    rewrite (active_group_pairs_ext bmap' (fun g => bucket_members g xs') gs (fun g _ => Hbmap' g)).
+    rewrite <- (group_scan_pairs_snd [] xs').
+    f_equal. apply strongly_sorted_pair_lt_unique.
+    + apply active_group_pairs_sorted; assumption.
+    + apply group_scan_pairs_sorted; exact Hsort'.
+    + intros [u g]. rewrite active_group_pairs_in_iff, group_scan_pairs_elem_iff.
+      cbn [fst snd]. split.
+      * intros [_ [m [ms [Hbm ->]]]].
+        split; [intro Hnil; inversion Hnil | destruct m as [m1 m2]; exists m2, ms; exact Hbm].
+      * intros [_ [k [ms Hbm]]].
+        destruct (bucket_members_nonempty_in_xs g (u, k) ms xs' Hbm) as [r [Hr Hgrp]].
+        split; [exact (Hcov r g Hr Hgrp) | exists (u, k), ms; split; [exact Hbm | reflexivity]].
+Qed.
