@@ -61,7 +61,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 255 | 255 | 255 | 255 | 255 | 255 | 3 | 0 |
+| Combinators.fs | 260 | 260 | 260 | 260 | 260 | 260 | 3 | 0 |
 | Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1715 | 1701 | 1698 | 1937 | 1919 | 1916 | 148 | 1 |
+| **Total** | 1720 | 1706 | 1703 | 1942 | 1924 | 1921 | 148 | 1 |
 
 ## Tests.fs
 
@@ -1654,7 +1654,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>255 passed in every build and delivery that runs them</summary>
+<details><summary>260 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1710,6 +1710,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - sortByDescending orders NaN last, across updates
 - sortByDescending orders None after Some
 - disposing a sortByDescending view detaches it from the upstream
+- incremental sortBy and sortByDescending resolve Check cutoff without running a pass
+- incremental sortBy and sortByDescending splice sparse single and multi-row edits on N=1000 matching List.sortWith with IsReset = false
+- incremental sortBy preserves upstream tie-breaking across equal-rank collisions, swap-removals, and tail appends
+- incremental sortBy and sortByDescending handle NaN transitions (NaN <-> finite and NaN -> NaN no-op)
+- incremental sortBy handles Pending and Failed transitions in sparse batches
 - tests reading the shared comparison counter / a pass whose sort keys and upstream order are unchanged does not re-sort
 - tests reading the shared comparison counter / a sortByDescending pass whose sort keys and upstream order are unchanged does not re-sort
 - tests reading the shared comparison counter / removing a non-extreme row costs no comparison; removing the extreme re-folds once

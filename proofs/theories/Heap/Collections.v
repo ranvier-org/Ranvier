@@ -658,4 +658,107 @@ Proof.
   iExact "HΦ".
 Qed.
 
+(** ** 7. Incremental `SortView` inverse-order array shift (Combinators.fs) *)
+
+Definition inv_order_shift_loop : val :=
+  rec: "loop" "order_arr" "pos_arr" "k" "new_pos" :=
+    if: "new_pos" < "k" then
+      let: "km1" := "k" - #1 in
+      let: "moved" := !("order_arr" +ₗ "km1") in
+      ("order_arr" +ₗ "k") <- "moved" ;;
+      ("pos_arr" +ₗ "moved") <- "k" ;;
+      "loop" "order_arr" "pos_arr" "km1" "new_pos"
+    else #().
+
+Definition inv_order_shift_code : val :=
+  λ: "order_arr" "pos_arr" "old_pos" "new_pos" "p_idx",
+    inv_order_shift_loop "order_arr" "pos_arr" "old_pos" "new_pos" ;;
+    ("order_arr" +ₗ "new_pos") <- "p_idx" ;;
+    ("pos_arr" +ₗ "p_idx") <- "new_pos".
+
+Lemma inv_order_shift_loop_spec
+  (order_arr pos_arr : loc) (k new_pos free_p : nat) (order order_pos : list nat) :
+  (new_pos <= k)%nat ->
+  inv_order_hole k free_p order order_pos ->
+  {{{ order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order) ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos) }}}
+    inv_order_shift_loop #order_arr #pos_arr #(Z.of_nat k) #(Z.of_nat new_pos)
+  {{{ RET #();
+      let '(order1, order_pos1) := shift_right_steps (k - new_pos)%nat k order order_pos in
+      order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order1) ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos1) ∗
+      ⌜inv_order_hole new_pos free_p order1 order_pos1⌝ }}}.
+Proof.
+  remember (k - new_pos)%nat as rem eqn:Hrem.
+  revert k order order_pos Hrem.
+  induction rem as [|rem' IH]; intros k order order_pos Hrem Hle Hinv Φ; iIntros "[Ho Hp] HΦ".
+  - wp_rec. wp_pures.
+    rewrite bool_decide_eq_false_2; [|lia]. wp_pures.
+    assert (Hk : k = new_pos) by lia. subst k.
+    cbn [shift_right_steps]. iApply "HΦ". iFrame. iPureIntro. exact Hinv.
+  - wp_rec. wp_pures.
+    rewrite bool_decide_eq_true_2; [|lia]. wp_pures.
+    replace (Z.of_nat k - 1)%Z with (Z.of_nat (k - 1)) by lia.
+    destruct Hinv as (Hlen & Hk_lt & Hfree_lt & Hfw & Hbw).
+    assert (Hkm1_lt : (k - 1 < length order)%nat) by lia.
+    destruct (lookup_lt_is_Some_2 order (k - 1)%nat Hkm1_lt) as [moved Hmoved].
+    wp_apply (wp_load_offset with "Ho"); [by rewrite list_lookup_fmap Hmoved|].
+    iIntros "Ho". wp_pures.
+    wp_apply (wp_store_offset with "Ho"); [apply lookup_lt_is_Some_2; rewrite length_fmap; lia|].
+    iIntros "Ho". rewrite -list_fmap_insert. wp_pures.
+    pose proof (Hfw (k - 1)%nat moved ltac:(lia) Hmoved) as [_ Hmoved_pos].
+    wp_apply (wp_store_offset with "Hp"); [rewrite list_lookup_fmap Hmoved_pos; eauto|].
+    iIntros "Hp". rewrite -list_fmap_insert. wp_pures.
+    pose proof (inv_order_hole_step k free_p moved order order_pos ltac:(lia) (conj Hlen (conj Hk_lt (conj Hfree_lt (conj Hfw Hbw)))) Hmoved) as Hstep.
+    wp_apply (IH (k - 1)%nat (<[k := moved]> order) (<[moved := k]> order_pos) ltac:(lia) ltac:(lia) Hstep with "[$Ho $Hp]").
+    destruct (shift_right_steps rem' (k - 1)%nat (<[k := moved]> order) (<[moved := k]> order_pos)) as [o1 op1] eqn:Hsr1.
+    iIntros "(Ho & Hp & %Hinv1)".
+    cbn [shift_right_steps]. rewrite Hmoved Hsr1.
+    iApply "HΦ". iFrame. iPureIntro. exact Hinv1.
+Qed.
+
+(**md
+**HeapLang `inv_order_shift_code` refines `reinsert_left_pure` and preserves `inv_order`.**
+
+Executes `SortView`'s leftward reinsertion right-shift loop across heap arrays
+`order_arr` and `pos_arr`, then writes `p_idx` and `new_pos`, leaving both
+heap arrays equal to `reinsert_left_pure` with `inv_order` restored.
+
+- [order_arr:] base heap location of the output-position `order` array.
+- [pos_arr:] base heap location of the inverse `orderPos` array.
+- [order:] pure model of `order` before reinsertion.
+- [order_pos:] pure model of `orderPos` before reinsertion.
+- [old_pos:] prior output position holding `p_idx`.
+- [new_pos:] target output position (`new_pos <= old_pos`).
+- [p_idx:] placed-slot index moved leftward from `old_pos` to `new_pos`.
+*)
+Theorem inv_order_shift_spec
+  (order_arr pos_arr : loc) (order order_pos : list nat) (old_pos new_pos p_idx : nat) :
+  inv_order order order_pos ->
+  (new_pos <= old_pos)%nat ->
+  order !! old_pos = Some p_idx ->
+  {{{ order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order) ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos) }}}
+    inv_order_shift_code #order_arr #pos_arr #(Z.of_nat old_pos) #(Z.of_nat new_pos) #(Z.of_nat p_idx)
+  {{{ RET #();
+      let '(order', order_pos') := reinsert_left_pure old_pos new_pos p_idx order order_pos in
+      order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order') ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos') ∗
+      ⌜inv_order order' order_pos'⌝ }}}.
+Proof.
+  intros Hinv Hle Hold Φ. iIntros "[Ho Hp] HΦ".
+  wp_lam. wp_pures.
+  wp_apply (inv_order_shift_loop_spec order_arr pos_arr old_pos new_pos p_idx order order_pos Hle (inv_order_to_hole order order_pos old_pos p_idx Hinv Hold) with "[$Ho $Hp]").
+  destruct (shift_right_steps (old_pos - new_pos)%nat old_pos order order_pos) as [order1 order_pos1] eqn:Hsr.
+  iIntros "(Ho & Hp & %Hhole)". wp_pures.
+  destruct (inv_order_close_hole new_pos p_idx order1 order_pos1 Hhole) as [Hinv' _].
+  destruct Hhole as (_ & Hnp_lt & Hp_lt & _).
+  wp_apply (wp_store_offset with "Ho"); [apply lookup_lt_is_Some_2; rewrite length_fmap; lia|].
+  iIntros "Ho". rewrite -list_fmap_insert. wp_pures.
+  wp_apply (wp_store_offset with "Hp"); [apply lookup_lt_is_Some_2; rewrite length_fmap; lia|].
+  iIntros "Hp". rewrite -list_fmap_insert.
+  unfold reinsert_left_pure. rewrite Hsr.
+  iApply "HΦ". iFrame. iPureIntro. exact Hinv'.
+Qed.
+
 End heap_collections.

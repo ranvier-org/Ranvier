@@ -1513,6 +1513,94 @@ module internal Ranks =
 #endif
 
 /// <summary>
+/// Observes one key's sort-key memo on behalf of an incremental <c>SortView</c>, forwarding <c>Check</c> and
+/// <c>Dirty</c> notifications without retaining every row memo in the view's <c>sources</c> list.
+/// </summary>
+[<Sealed>]
+type internal SortSlot<'K, 'S> =
+    val Key: 'K
+    val Source: Memo<'S>
+    val Queue: SlotQueue<SortSlot<'K, 'S>>
+    val mutable Handle: int
+    val mutable UpIdx: int
+    val mutable PlacedIdx: int
+    val mutable Rank: 'S
+    val mutable State: InclusionState
+    val mutable Unsettled: bool
+    val mutable QueuedDirty: bool
+    val mutable QueuedCheck: bool
+    val mutable Disposed: bool
+
+    new(key: 'K, source: Memo<'S>, queue: SlotQueue<SortSlot<'K, 'S>>) =
+        {
+            Key = key
+            Source = source
+            Queue = queue
+            Handle = EdgeHandle.Unlinked
+            UpIdx = -1
+            PlacedIdx = -1
+            Rank = Unchecked.defaultof<'S>
+            State = InclusionState.Excluded
+            Unsettled = false
+            QueuedDirty = false
+            QueuedCheck = false
+            Disposed = false
+        }
+
+    member this.Attach() =
+        this.Handle <- (this.Source :> ISource).AddObserver(this, 0)
+
+    member this.Detach() =
+        if not this.Disposed then
+            this.Disposed <- true
+
+            if this.Handle <> EdgeHandle.Unlinked then
+                (this.Source :> ISource).RemoveObserverAt(this, this.Handle)
+                this.Handle <- EdgeHandle.Unlinked
+
+    interface INode with
+        member this.Id = this.Queue.ViewNode.Id
+        member this.Status = this.Queue.ViewNode.Status
+
+    interface IComputation with
+        member _.AddSource _ = ()
+        member _.HasReadSlot _ = false
+
+        member this.MovedIn(_, handle) =
+            if not this.Disposed then
+                this.Handle <- handle
+
+        member this.MarkDirty() =
+            let q = this.Queue
+
+            if
+                not this.Disposed
+                && not (obj.ReferenceEquals (this, q.ActiveSlot))
+            then
+                if not this.QueuedDirty then
+                    this.QueuedDirty <- true
+                    q.Dirty.Add this
+
+                if not q.DirtyNotified then
+                    q.ViewNode.MarkDirty ()
+                    q.DirtyNotified <- q.IsInvalidated ()
+
+        member this.MarkCheck() =
+            let q = this.Queue
+
+            if
+                not this.Disposed
+                && not (obj.ReferenceEquals (this, q.ActiveSlot))
+            then
+                if not this.QueuedDirty && not this.QueuedCheck then
+                    this.QueuedCheck <- true
+                    q.Check.Add this
+
+                if not q.CheckNotified && not q.DirtyNotified then
+                    q.ViewNode.MarkCheck ()
+                    q.CheckNotified <- q.IsCheckQueued ()
+
+/// <summary>
 /// The keys of <c>sortKeys</c> whose sort key has settled, ascending by sort key, or descending when <c>descending</c> is
 /// set, and then by upstream position, each with a row reading the upstream value.
 /// </summary>
@@ -1522,7 +1610,7 @@ module internal Ranks =
 /// both directions.
 /// </remarks>
 type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
-    (graph: Graph, upstream: Projection<'K, 'V>, sortKeys: Projection<'K, 'S> ref, descending: bool) =
+    (graph: Graph, upstream: Projection<'K, 'V>, sortKeys: Projection<'K, 'S> ref, descending: bool) as this =
     inherit
         RowsByKey<'K, 'V>(
             graph,
@@ -1533,17 +1621,38 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         )
 
     let heldOut = HeldOut<'K> graph
+    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
+    let queue = SlotQueue<SortSlot<'K, 'S>>.Create this
+    let dirtySlots = queue.Dirty
+    let checkSlots = queue.Check
+    let mutable initialized = false
+    let mutable disposed = false
+    let mutable synced = false
 
-    // The placed keys and their sort keys in upstream order, for the current and the last pass.
-    let mutable placed = ResizeArray<'K>()
-    let mutable ranks = ResizeArray<'S>()
-    let mutable lastPlaced = ResizeArray<'K>()
-    let mutable lastRanks = ResizeArray<'S>()
+    let mutable keyReader: ProjectionReader<'K> =
+        Unchecked.defaultof<ProjectionReader<'K>>
 
-    /// <summary>Positions into <c>lastPlaced</c>, in output order.</summary>
+    let mutable upSlots: SortSlot<'K, 'S>[] = Array.empty
+    let mutable scratchUpSlots: SortSlot<'K, 'S>[] = Array.empty
+    let mutable upCount = 0
+    let mutable placedSlots: SortSlot<'K, 'S>[] = Array.empty
+    let mutable placedCount = 0
+    let byKey = Platform.KeyMap<'K, SortSlot<'K, 'S>>()
+    let failedKeys = Platform.KeySet<'K>()
+    let removedPlaced = ResizeArray<SortSlot<'K, 'S>>()
+    let addedPlaced = ResizeArray<SortSlot<'K, 'S>>()
+    let mutable unsettledCount = 0
+    let mutable checkIndex = 0
+
+    /// <summary>Positions into <c>placedSlots</c>, in output order.</summary>
     let mutable order: int[] = Array.empty
 
-    /// <summary>Whether <c>order</c> holds the result of a completed sort.</summary>
+    /// <summary>Inverse permutation of <c>order</c>: for placed index <c>p</c>, <c>order[orderPos[p]] = p</c>.</summary>
+    let mutable orderPos: int[] = Array.empty
+
+    let mutable orderPosValid = false
+
+    /// <summary>Whether <c>order[0 .. placedCount - 1]</c> holds the result of a completed sort.</summary>
     let mutable sorted = false
 
 #if !FABLE_COMPILER
@@ -1588,85 +1697,1092 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
                 comparer.Compare (a, b)
 #endif
 
-    let sort () =
-        if order.Length <> placed.Count then
-            order <- Array.zeroCreate placed.Count
+    let incrementalLimit n =
+        max 8 (min 64 (n >>> 4))
 
-        for i in 0 .. order.Length - 1 do
-            order[i] <- i
+    let ensureUpCapacity needed =
+        if upSlots.Length < needed then
+            let grown =
+                Array.zeroCreate<SortSlot<'K, 'S>>(max (max 16 needed) (upSlots.Length * 2))
+
+            if upCount > 0 then
+                Array.blit upSlots 0 grown 0 upCount
+
+            upSlots <- grown
+
+    let ensurePlacedCapacity needed =
+        if placedSlots.Length < needed then
+            let grown =
+                Array.zeroCreate<SortSlot<'K, 'S>>(max (max 16 needed) (placedSlots.Length * 2))
+
+            if placedCount > 0 then
+                Array.blit placedSlots 0 grown 0 placedCount
+
+            placedSlots <- grown
+
+    let ensureOrderCapacity needed =
+        if order.Length < needed then
+            let grown = Array.zeroCreate<int>(max (max 16 needed) (order.Length * 2))
+
+            if placedCount > 0 then
+                Array.blit order 0 grown 0 placedCount
+
+            order <- grown
+
+        if orderPosValid && orderPos.Length < needed then
+            let grownPos = Array.zeroCreate<int>(max (max 16 needed) (orderPos.Length * 2))
+
+            if placedCount > 0 then
+                Array.blit orderPos 0 grownPos 0 placedCount
+
+            orderPos <- grownPos
+
+    let ensureOrderPos () =
+        if not orderPosValid then
+            if orderPos.Length < placedSlots.Length then
+                orderPos <- Array.zeroCreate<int>(max 16 placedSlots.Length)
+
+            for pos in 0 .. placedCount - 1 do
+                Platform.setItemAt (Platform.itemAt pos order) orderPos pos
+
+            orderPosValid <- true
+
+    let fullSort () =
+        sorted <- false
+        orderPosValid <- false
+
+        if order.Length <> placedCount then
+            order <- Array.zeroCreate<int> placedCount
+
+        for i in 0 .. placedCount - 1 do
+            Platform.setItemAt i order i
 
         order
         |> Array.sortInPlaceWith (fun i j ->
-            let byRank = compareRanks (Platform.entryAt i ranks) (Platform.entryAt j ranks)
-            if byRank <> 0 then byRank else compare i j)
+            let a = Platform.itemAt i placedSlots
+            let b = Platform.itemAt j placedSlots
+            let byRank = compareRanks a.Rank b.Rank
 
-    /// <summary>
-    /// Brings <c>order</c> into output order for <c>placed</c> and <c>ranks</c>: reuses <c>order</c> when unchanged,
-    /// reinserts a single changed rank in <c>O(log N)</c> rank comparisons when placed keys match, and falls back to a full
-    /// sort otherwise.
-    /// </summary>
-    let updateOrder () =
-        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
-        let n = placed.Count
-        let wasSorted = sorted
-        sorted <- false
-        let mutable diffs = if wasSorted && n = lastPlaced.Count then 0 else 2
-        let mutable changedIdx = -1
-        let mutable i = 0
-
-        while diffs < 2 && i < n do
-            if not (equalKeys.Equals (Platform.entryAt i placed, Platform.entryAt i lastPlaced)) then
-                diffs <- 2
-            elif
-                compareRanks (Platform.entryAt i ranks) (Platform.entryAt i lastRanks)
-                <> 0
-            then
-                changedIdx <- i
-                diffs <- diffs + 1
-
-            i <- i + 1
-
-        if diffs = 1 then
-            if n > 1 then
-                let mutable oldPos = 0
-
-                while Platform.itemAt oldPos order <> changedIdx do
-                    oldPos <- oldPos + 1
-
-                let newRank = Platform.entryAt changedIdx ranks
-                let mutable lo = 0
-                let mutable hi = n - 1
-
-                while lo < hi do
-                    let mid = (lo + hi) >>> 1
-                    let other = Platform.itemAt (if mid < oldPos then mid else mid + 1) order
-                    let byRank = compareRanks (Platform.entryAt other ranks) newRank
-                    let c = if byRank <> 0 then byRank else compare other changedIdx
-
-                    if c < 0 then lo <- mid + 1 else hi <- mid
-
-                let newPos = lo
-
-                if newPos < oldPos then
-                    let mutable k = oldPos
-
-                    while k > newPos do
-                        order[k] <- order[k - 1]
-                        k <- k - 1
-
-                    order[newPos] <- changedIdx
-                elif newPos > oldPos then
-                    let mutable k = oldPos
-
-                    while k < newPos do
-                        order[k] <- order[k + 1]
-                        k <- k + 1
-
-                    order[newPos] <- changedIdx
-        elif diffs >= 2 then
-            sort ()
+            if byRank <> 0 then byRank
+            elif a.UpIdx < b.UpIdx then -1
+            elif a.UpIdx > b.UpIdx then 1
+            else 0)
 
         sorted <- true
+
+    let buildKeysArray () =
+        if placedCount = 0 then
+            Array.empty
+        else
+            let arr = Array.zeroCreate<'K> placedCount
+
+            for k in 0 .. placedCount - 1 do
+                let pIdx = Platform.itemAt k order
+                Platform.setItemAt k arr (Platform.itemAt pIdx placedSlots).Key
+
+            arr
+
+    let stageChangedKeys () =
+        let prev = this.PublishedKeys
+
+        if prev.Length <> placedCount then
+            this.StageKeys (buildKeysArray ())
+        else
+            let mutable same = true
+            let mutable k = 0
+
+            while same && k < placedCount do
+                let pIdx = Platform.itemAt k order
+
+                if not (equalKeys.Equals (Platform.itemAt k prev, (Platform.itemAt pIdx placedSlots).Key)) then
+                    same <- false
+
+                k <- k + 1
+
+            this.StageKeys (if same then null else buildKeysArray ())
+
+    let insertPlacedSlot (slot: SortSlot<'K, 'S>) =
+        let pIdx = placedCount
+        ensurePlacedCapacity (pIdx + 1)
+        ensureOrderCapacity (pIdx + 1)
+        slot.PlacedIdx <- pIdx
+        Platform.setItemAt pIdx placedSlots slot
+        let newRank = slot.Rank
+        let newUpIdx = slot.UpIdx
+        let mutable lo = 0
+        let mutable hi = pIdx
+
+        while lo < hi do
+            let mid = (lo + hi) >>> 1
+            let other = Platform.itemAt (Platform.itemAt mid order) placedSlots
+            let byRank = compareRanks other.Rank newRank
+
+            let c =
+                if byRank <> 0 then byRank
+                elif other.UpIdx < newUpIdx then -1
+                elif other.UpIdx > newUpIdx then 1
+                else 0
+
+            if c < 0 then lo <- mid + 1 else hi <- mid
+
+        let insPos = lo
+        let mutable k = pIdx
+
+        while k > insPos do
+            let moved = Platform.itemAt (k - 1) order
+            Platform.setItemAt k order moved
+            Platform.setItemAt moved orderPos k
+            k <- k - 1
+
+        Platform.setItemAt insPos order pIdx
+        Platform.setItemAt pIdx orderPos insPos
+        placedCount <- pIdx + 1
+
+    let removePlacedSlot (slot: SortSlot<'K, 'S>) =
+        let pIdx = slot.PlacedIdx
+
+        if pIdx >= 0 then
+            let oldPos = Platform.itemAt pIdx orderPos
+            let lastIdx = placedCount - 1
+            let mutable k = oldPos
+
+            while k < lastIdx do
+                let moved = Platform.itemAt (k + 1) order
+                Platform.setItemAt k order moved
+                Platform.setItemAt moved orderPos k
+                k <- k + 1
+
+            if pIdx < lastIdx then
+                let tailSlot = Platform.itemAt lastIdx placedSlots
+                let tailOutPos = Platform.itemAt lastIdx orderPos
+                Platform.setItemAt pIdx placedSlots tailSlot
+                tailSlot.PlacedIdx <- pIdx
+                Platform.setItemAt tailOutPos order pIdx
+                Platform.setItemAt pIdx orderPos tailOutPos
+
+            Platform.setItemAt lastIdx placedSlots Unchecked.defaultof<_>
+            slot.PlacedIdx <- -1
+            placedCount <- lastIdx
+
+    let reinsertPlacedSlot (slot: SortSlot<'K, 'S>) =
+        if placedCount <= 1 then
+            false
+        else
+            let pIdx = slot.PlacedIdx
+            let oldPos = Platform.itemAt pIdx orderPos
+            let newRank = slot.Rank
+            let myUpIdx = slot.UpIdx
+            let mutable lo = 0
+            let mutable hi = placedCount - 1
+
+            while lo < hi do
+                let mid = (lo + hi) >>> 1
+                let otherIdx = Platform.itemAt (if mid < oldPos then mid else mid + 1) order
+                let other = Platform.itemAt otherIdx placedSlots
+                let byRank = compareRanks other.Rank newRank
+
+                let c =
+                    if byRank <> 0 then byRank
+                    elif other.UpIdx < myUpIdx then -1
+                    elif other.UpIdx > myUpIdx then 1
+                    else 0
+
+                if c < 0 then lo <- mid + 1 else hi <- mid
+
+            let newPos = lo
+
+            if newPos < oldPos then
+                let mutable k = oldPos
+
+                while k > newPos do
+                    let moved = Platform.itemAt (k - 1) order
+                    Platform.setItemAt k order moved
+                    Platform.setItemAt moved orderPos k
+                    k <- k - 1
+
+                Platform.setItemAt newPos order pIdx
+                Platform.setItemAt pIdx orderPos newPos
+                true
+            elif newPos > oldPos then
+                let mutable k = oldPos
+
+                while k < newPos do
+                    let moved = Platform.itemAt (k + 1) order
+                    Platform.setItemAt k order moved
+                    Platform.setItemAt moved orderPos k
+                    k <- k + 1
+
+                Platform.setItemAt newPos order pIdx
+                Platform.setItemAt pIdx orderPos newPos
+                true
+            else
+                false
+
+    let clearQueues () =
+        if dirtySlots.Count > 0 then
+            for i in 0 .. dirtySlots.Count - 1 do
+                (Platform.entryAt i dirtySlots).QueuedDirty <- false
+
+            dirtySlots.Clear ()
+
+        if checkIndex < checkSlots.Count then
+            for i in checkIndex .. checkSlots.Count - 1 do
+                (Platform.entryAt i checkSlots).QueuedCheck <- false
+
+        if checkSlots.Count > 0 then
+            checkSlots.Clear ()
+
+        checkIndex <- 0
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
+
+    let enqueueCheckSlot (slot: SortSlot<'K, 'S>) =
+        if not slot.QueuedDirty && not slot.QueuedCheck then
+            slot.QueuedCheck <- true
+            checkSlots.Add slot
+
+    let evaluateSlow (slot: SortSlot<'K, 'S>) (source: Memo<'S>) (st: Status) : InclusionState =
+        if
+            not slot.Disposed
+            && (st &&& Status.Stale) <> Status.None
+        then
+            enqueueCheckSlot slot
+
+            if not queue.CheckNotified && not queue.DirtyNotified then
+                (this :> IComputation).MarkCheck()
+                queue.CheckNotified <- queue.IsCheckQueued ()
+
+        if StatusBits.isPending st then
+            if not source.Published then
+                slot.Unsettled <- true
+                InclusionState.Excluded
+            else
+                slot.Unsettled <- false
+                slot.Rank <- source.Peek
+                InclusionState.Included
+        elif StatusBits.isError st then
+            slot.Unsettled <- false
+            InclusionState.Failed
+        else
+            slot.Unsettled <- false
+            slot.Rank <- source.Peek
+            InclusionState.Included
+
+    let recordStateChange (key: 'K) (prevState: InclusionState) (nextState: InclusionState) =
+        if prevState <> nextState then
+            if prevState = InclusionState.Failed then
+                failedKeys.Remove key
+
+            if nextState = InclusionState.Excluded then
+                this.Removed.Add key
+            else
+                if nextState = InclusionState.Failed then
+                    failedKeys.Add key |> ignore
+
+                if prevState = InclusionState.Excluded then
+                    this.StageAdd key
+
+    let refreshSlot (slot: SortSlot<'K, 'S>) =
+        let prevState = slot.State
+        let prevUnsettled = slot.Unsettled
+        let source = slot.Source
+        queue.ActiveSlot <- box slot
+        let st = source.EnsureCurrentUntracked ()
+
+        let nextState =
+            if st = Status.None then
+                slot.Unsettled <- false
+                slot.Rank <- source.Peek
+                InclusionState.Included
+            else
+                evaluateSlow slot source st
+
+        let nextUnsettled = slot.Unsettled
+
+        if prevUnsettled <> nextUnsettled then
+            unsettledCount <- unsettledCount + (if nextUnsettled then 1 else -1)
+
+        if prevState <> nextState then
+            recordStateChange slot.Key prevState nextState
+            slot.State <- nextState
+
+        prevState
+
+    let spliceSlot (slot: SortSlot<'K, 'S>) (prevState: InclusionState) (prevRank: 'S) =
+        let nextState = slot.State
+
+        if prevState <> nextState then
+            if prevState = InclusionState.Included then
+                removePlacedSlot slot
+                true
+            elif nextState = InclusionState.Included then
+                insertPlacedSlot slot
+                true
+            else
+                false
+        elif
+            nextState = InclusionState.Included
+            && compareRanks prevRank slot.Rank <> 0
+        then
+            reinsertPlacedSlot slot
+        else
+            false
+
+    let resolveCheckStep (keepRunning: unit -> bool) =
+        let stepEnd = checkSlots.Count
+
+        while keepRunning () && checkIndex < stepEnd do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        if source.IsActive then
+                            (slot :> IComputation).MarkDirty()
+                        else
+                            enqueueCheckSlot slot
+
+        if checkIndex >= checkSlots.Count then
+            if checkSlots.Count > 0 then
+                checkSlots.Clear ()
+
+            checkIndex <- 0
+
+        queue.CheckNotified <- false
+
+    let drainCheckSlots (limit: int) =
+        let drainEnd = checkSlots.Count
+
+        while checkIndex < drainEnd && dirtySlots.Count <= limit do
+            let slot = Platform.entryAt checkIndex checkSlots
+            checkIndex <- checkIndex + 1
+
+            if not slot.Disposed then
+                slot.QueuedCheck <- false
+
+                if not slot.QueuedDirty then
+                    let source = slot.Source :> ISource
+                    source.UpdateIfNecessary ()
+
+                    if
+                        not slot.Disposed
+                        && not slot.QueuedDirty
+                        && source.IsStale
+                    then
+                        slot.QueuedDirty <- true
+                        dirtySlots.Add slot
+
+        if checkIndex >= checkSlots.Count then
+            if checkSlots.Count > 0 then
+                checkSlots.Clear ()
+
+            checkIndex <- 0
+            queue.CheckNotified <- false
+
+    let applyDirtySplice () =
+        if dirtySlots.Count = 0 then
+            false
+        else
+            let mutable changed = false
+
+            try
+                for i in 0 .. dirtySlots.Count - 1 do
+                    let slot = Platform.entryAt i dirtySlots
+
+                    if not slot.Disposed then
+                        slot.QueuedDirty <- false
+                        let prevRank = slot.Rank
+                        let prevState = refreshSlot slot
+
+                        if
+                            prevState <> slot.State
+                            && (prevState = InclusionState.Included
+                                || slot.State = InclusionState.Included)
+                        then
+                            ensureOrderPos ()
+
+                            if spliceSlot slot prevState prevRank then
+                                changed <- true
+                        elif
+                            slot.State = InclusionState.Included
+                            && compareRanks prevRank slot.Rank <> 0
+                        then
+                            ensureOrderPos ()
+
+                            if reinsertPlacedSlot slot then
+                                changed <- true
+            finally
+                queue.ActiveSlot <- null
+
+            dirtySlots.Clear ()
+            queue.DirtyNotified <- false
+            changed
+
+    let runDenseSort () =
+        clearQueues ()
+        let mutable nextUnsettled = 0
+        let mutable membershipChanged = false
+        let mutable rankChangedCount = 0
+        let mutable singleChanged = Unchecked.defaultof<SortSlot<'K, 'S>>
+
+        try
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+                let prevState = slot.State
+                let prevRank = slot.Rank
+                let source = slot.Source
+                queue.ActiveSlot <- box slot
+                let st = source.EnsureCurrentUntracked ()
+
+                let nextState =
+                    if st = Status.None then
+                        slot.Unsettled <- false
+                        slot.Rank <- source.Peek
+                        InclusionState.Included
+                    else
+                        evaluateSlow slot source st
+
+                slot.State <- nextState
+
+                if prevState <> nextState then
+                    recordStateChange slot.Key prevState nextState
+
+                    if
+                        (prevState = InclusionState.Included)
+                        <> (nextState = InclusionState.Included)
+                    then
+                        membershipChanged <- true
+                elif
+                    nextState = InclusionState.Included
+                    && compareRanks prevRank slot.Rank <> 0
+                then
+                    rankChangedCount <- rankChangedCount + 1
+                    singleChanged <- slot
+
+                if slot.Unsettled then
+                    nextUnsettled <- nextUnsettled + 1
+        finally
+            queue.ActiveSlot <- null
+
+        unsettledCount <- nextUnsettled
+        this.StageRemovals ()
+
+        if not membershipChanged && rankChangedCount = 0 then
+            this.StageKeys null
+        elif
+            not membershipChanged
+            && rankChangedCount = 1
+            && sorted
+        then
+            ensureOrderPos ()
+
+            if reinsertPlacedSlot singleChanged then
+                this.StageKeys (buildKeysArray ())
+            else
+                this.StageKeys null
+        else
+            let prevPlaced = placedCount
+            ensurePlacedCapacity upCount
+            let mutable nextPlaced = 0
+
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+
+                if slot.State = InclusionState.Included then
+                    slot.PlacedIdx <- nextPlaced
+                    Platform.setItemAt nextPlaced placedSlots slot
+                    nextPlaced <- nextPlaced + 1
+                else
+                    slot.PlacedIdx <- -1
+
+            for k in nextPlaced .. prevPlaced - 1 do
+                Platform.setItemAt k placedSlots Unchecked.defaultof<_>
+
+            placedCount <- nextPlaced
+            fullSort ()
+            stageChangedKeys ()
+
+    let rebuildFull (newKeys: 'K[]) =
+        clearQueues ()
+        failedKeys.Clear ()
+        let oldUpSlots = upSlots
+        let oldUpCount = upCount
+        let prevPlaced = placedCount
+        let newCount = newKeys.Length
+
+        for i in 0 .. oldUpCount - 1 do
+            (Platform.itemAt i oldUpSlots).UpIdx <- -1
+
+        let nextUpSlots =
+            if newCount = 0 then
+                Array.empty
+            elif scratchUpSlots.Length >= newCount then
+                let reused = scratchUpSlots
+                scratchUpSlots <- Array.empty
+                reused
+            else
+                Array.zeroCreate<SortSlot<'K, 'S>>(max 16 newCount)
+
+        ensurePlacedCapacity newCount
+        let mutable outCount = 0
+        let mutable nextPlaced = 0
+        let mutable nextUnsettled = 0
+        let rows = sortKeys.Value
+
+        try
+            for i in 0 .. newCount - 1 do
+                let key = Platform.itemAt i newKeys
+                let entry = rows.Entries.Find key
+
+                if not (Platform.isNull entry) then
+                    let resolved = entry.Row
+                    let mutable slot = byKey.Find key
+
+                    if
+                        not (Platform.isNull (box slot))
+                        && not (obj.ReferenceEquals (slot.Source, resolved))
+                    then
+                        slot.Detach ()
+                        slot <- Unchecked.defaultof<_>
+
+                    if Platform.isNull (box slot) then
+                        slot <- SortSlot<'K, 'S>(key, resolved, queue)
+                        slot.Attach ()
+                        byKey.Set (key, slot)
+
+                    slot.UpIdx <- outCount
+                    queue.ActiveSlot <- box slot
+                    let st = resolved.EnsureCurrentUntracked ()
+
+                    let nextState =
+                        if st = Status.None then
+                            slot.Unsettled <- false
+                            slot.Rank <- resolved.Peek
+                            InclusionState.Included
+                        else
+                            evaluateSlow slot resolved st
+
+                    slot.State <- nextState
+                    Platform.setItemAt outCount nextUpSlots slot
+
+                    if slot.Unsettled then
+                        nextUnsettled <- nextUnsettled + 1
+
+                    if nextState = InclusionState.Included then
+                        slot.PlacedIdx <- nextPlaced
+                        Platform.setItemAt nextPlaced placedSlots slot
+                        nextPlaced <- nextPlaced + 1
+                        this.StageAdd key
+                    else
+                        slot.PlacedIdx <- -1
+
+                        if nextState = InclusionState.Failed then
+                            failedKeys.Add key |> ignore
+                            this.StageAdd key
+
+                    outCount <- outCount + 1
+        finally
+            queue.ActiveSlot <- null
+
+        for i in 0 .. oldUpCount - 1 do
+            let slot = Platform.itemAt i oldUpSlots
+
+            if slot.UpIdx < 0 && not slot.Disposed then
+                if obj.ReferenceEquals (byKey.Find slot.Key, slot) then
+                    byKey.Remove slot.Key
+
+                slot.Detach ()
+
+        if oldUpCount > 0 then
+            Array.fill oldUpSlots 0 oldUpCount Unchecked.defaultof<SortSlot<'K, 'S>>
+
+        if
+            oldUpSlots.Length > 0
+            && not (obj.ReferenceEquals (oldUpSlots, nextUpSlots))
+        then
+            scratchUpSlots <- oldUpSlots
+
+        for k in nextPlaced .. prevPlaced - 1 do
+            Platform.setItemAt k placedSlots Unchecked.defaultof<_>
+
+        upSlots <- nextUpSlots
+        upCount <- outCount
+        placedCount <- nextPlaced
+        unsettledCount <- nextUnsettled
+
+        if this.Entries.Count > 0 then
+            this.Entries.Iterate (fun key _ ->
+                let slot = byKey.Find key
+
+                if
+                    Platform.isNull (box slot)
+                    || slot.State = InclusionState.Excluded
+                then
+                    this.Removed.Add key)
+
+        this.StageRemovals ()
+        fullSort ()
+        stageChangedKeys ()
+
+    let tryTailAppend (delta: ProjectionDelta<'K>) (limit: int) =
+        let newKeys = delta.Keys
+        let addedCount = delta.ChangeCount
+
+        if
+            not sorted
+            || addedCount <= 0
+            || addedCount > limit
+            || newKeys.Length <> upCount + addedCount
+            || (dirtySlots.Count + (checkSlots.Count - checkIndex)) > limit
+        then
+            false
+        else
+            let mutable allAdded = true
+            let mutable c = 0
+
+            while allAdded && c < addedCount do
+                if (delta.ChangeAt c).Value <> KeyChange.Added then
+                    allAdded <- false
+
+                c <- c + 1
+
+            if not allAdded then
+                false
+            else
+                let mutable samePrefix = true
+                let mutable i = 0
+
+                while samePrefix && i < upCount do
+                    if not (equalKeys.Equals ((Platform.itemAt i upSlots).Key, Platform.itemAt i newKeys)) then
+                        samePrefix <- false
+
+                    i <- i + 1
+
+                if not samePrefix then
+                    false
+                else
+                    drainCheckSlots limit
+
+                    if dirtySlots.Count > limit then
+                        false
+                    else
+                        let oldCount = upCount
+                        let mutable changed = applyDirtySplice ()
+                        ensureUpCapacity (oldCount + addedCount)
+                        let mutable nextCount = oldCount
+                        let rows = sortKeys.Value
+
+                        try
+                            for j in 0 .. addedCount - 1 do
+                                let key = Platform.itemAt (oldCount + j) newKeys
+                                let entry = rows.Entries.Find key
+
+                                if not (Platform.isNull entry) then
+                                    let resolved = entry.Row
+                                    let slot = SortSlot<'K, 'S>(key, resolved, queue)
+                                    slot.Attach ()
+                                    slot.UpIdx <- nextCount
+                                    queue.ActiveSlot <- box slot
+                                    let st = resolved.EnsureCurrentUntracked ()
+
+                                    let nextState =
+                                        if st = Status.None then
+                                            slot.Unsettled <- false
+                                            slot.Rank <- resolved.Peek
+                                            InclusionState.Included
+                                        else
+                                            evaluateSlow slot resolved st
+
+                                    slot.State <- nextState
+                                    byKey.Set (key, slot)
+                                    Platform.setItemAt nextCount upSlots slot
+
+                                    if slot.Unsettled then
+                                        unsettledCount <- unsettledCount + 1
+
+                                    if nextState = InclusionState.Included then
+                                        ensureOrderPos ()
+                                        insertPlacedSlot slot
+                                        changed <- true
+                                        this.StageAdd key
+                                    elif nextState = InclusionState.Failed then
+                                        this.StageAdd key
+                                        failedKeys.Add key |> ignore
+
+                                    nextCount <- nextCount + 1
+                        finally
+                            queue.ActiveSlot <- null
+
+                        upCount <- nextCount
+                        this.StageRemovals ()
+
+                        if changed then
+                            this.StageKeys (buildKeysArray ())
+                        else
+                            this.StageKeys null
+
+                        true
+
+    let applyGeneralDelta (delta: ProjectionDelta<'K>) (limit: int) =
+        let oldUpSlots = upSlots
+        let oldUpCount = upCount
+        let changeCount = delta.ChangeCount
+        let pendingChecks = checkSlots.Count - checkIndex
+
+        let mutable sparseCandidate =
+            sorted
+            && (changeCount + dirtySlots.Count + pendingChecks)
+               <= limit
+
+        if removedPlaced.Count > 0 then
+            removedPlaced.Clear ()
+
+        if addedPlaced.Count > 0 then
+            addedPlaced.Clear ()
+
+        let rows = sortKeys.Value
+
+        try
+            for c in 0 .. changeCount - 1 do
+                let change = delta.ChangeAt c
+                let key = change.Key
+
+                match change.Value with
+                | KeyChange.Removed ->
+                    let slot = byKey.Find key
+
+                    if not (Platform.isNull (box slot)) then
+                        byKey.Remove key
+                        slot.Detach ()
+
+                        if slot.Unsettled then
+                            unsettledCount <- unsettledCount - 1
+
+                        if slot.State = InclusionState.Failed then
+                            failedKeys.Remove key
+                            this.Removed.Add key
+                        elif slot.State = InclusionState.Included then
+                            this.Removed.Add key
+
+                            if sparseCandidate && slot.PlacedIdx >= 0 then
+                                removedPlaced.Add slot
+                | KeyChange.Replaced ->
+                    let oldSlot = byKey.Find key
+
+                    let prevState, prevUnsettled =
+                        if Platform.isNull (box oldSlot) then
+                            InclusionState.Excluded, false
+                        else
+                            let st = oldSlot.State
+                            let un = oldSlot.Unsettled
+                            oldSlot.Detach ()
+
+                            if
+                                sparseCandidate
+                                && st = InclusionState.Included
+                                && oldSlot.PlacedIdx >= 0
+                            then
+                                removedPlaced.Add oldSlot
+
+                            st, un
+
+                    let entry = rows.Entries.Find key
+
+                    if Platform.isNull entry then
+                        if not (Platform.isNull (box oldSlot)) then
+                            byKey.Remove key
+
+                            if prevUnsettled then
+                                unsettledCount <- unsettledCount - 1
+
+                            if prevState = InclusionState.Failed then
+                                failedKeys.Remove key
+                                this.Removed.Add key
+                            elif prevState = InclusionState.Included then
+                                this.Removed.Add key
+                    else
+                        let resolved = entry.Row
+                        let slot = SortSlot<'K, 'S>(key, resolved, queue)
+                        slot.Attach ()
+                        queue.ActiveSlot <- box slot
+                        let st = resolved.EnsureCurrentUntracked ()
+
+                        let nextState =
+                            if st = Status.None then
+                                slot.Unsettled <- false
+                                slot.Rank <- resolved.Peek
+                                InclusionState.Included
+                            else
+                                evaluateSlow slot resolved st
+
+                        let nextUnsettled = slot.Unsettled
+                        slot.State <- nextState
+                        byKey.Set (key, slot)
+
+                        if prevUnsettled <> nextUnsettled then
+                            unsettledCount <- unsettledCount + (if nextUnsettled then 1 else -1)
+
+                        recordStateChange key prevState nextState
+
+                        if
+                            sparseCandidate
+                            && nextState = InclusionState.Included
+                        then
+                            addedPlaced.Add slot
+                | KeyChange.Added ->
+                    let entry = rows.Entries.Find key
+
+                    if not (Platform.isNull entry) then
+                        let resolved = entry.Row
+                        let slot = SortSlot<'K, 'S>(key, resolved, queue)
+                        slot.Attach ()
+                        queue.ActiveSlot <- box slot
+                        let st = resolved.EnsureCurrentUntracked ()
+
+                        let nextState =
+                            if st = Status.None then
+                                slot.Unsettled <- false
+                                slot.Rank <- resolved.Peek
+                                InclusionState.Included
+                            else
+                                evaluateSlow slot resolved st
+
+                        slot.State <- nextState
+                        byKey.Set (key, slot)
+
+                        if slot.Unsettled then
+                            unsettledCount <- unsettledCount + 1
+
+                        recordStateChange key InclusionState.Excluded nextState
+
+                        if
+                            sparseCandidate
+                            && nextState = InclusionState.Included
+                        then
+                            addedPlaced.Add slot
+                | _ -> ()
+        finally
+            queue.ActiveSlot <- null
+
+        let newKeys = delta.Keys
+        let newCount = newKeys.Length
+
+        let nextUpSlots =
+            if newCount = 0 then
+                Array.empty
+            elif scratchUpSlots.Length >= newCount then
+                let reused = scratchUpSlots
+                scratchUpSlots <- Array.empty
+                reused
+            else
+                Array.zeroCreate<SortSlot<'K, 'S>>(max 16 newCount)
+
+        let mutable cursor = 0
+        let mutable outCount = 0
+        let mutable reordered = false
+
+        for i in 0 .. newCount - 1 do
+            let key = Platform.itemAt i newKeys
+
+            while cursor < oldUpCount
+                  && (Platform.itemAt cursor oldUpSlots).Disposed do
+                cursor <- cursor + 1
+
+            let mutable slot =
+                if
+                    cursor < oldUpCount
+                    && equalKeys.Equals ((Platform.itemAt cursor oldUpSlots).Key, key)
+                then
+                    let hit = Platform.itemAt cursor oldUpSlots
+                    cursor <- cursor + 1
+                    hit
+                else
+                    let found = byKey.Find key
+
+                    if
+                        not (Platform.isNull (box found))
+                        && found.UpIdx >= 0
+                    then
+                        reordered <- true
+
+                    found
+
+            if not (Platform.isNull (box slot)) then
+                slot.UpIdx <- outCount
+                Platform.setItemAt outCount nextUpSlots slot
+                outCount <- outCount + 1
+
+        if oldUpCount > 0 then
+            Array.fill oldUpSlots 0 oldUpCount Unchecked.defaultof<SortSlot<'K, 'S>>
+
+        if
+            oldUpSlots.Length > 0
+            && not (obj.ReferenceEquals (oldUpSlots, nextUpSlots))
+        then
+            scratchUpSlots <- oldUpSlots
+
+        upSlots <- nextUpSlots
+        upCount <- outCount
+
+        if sparseCandidate && not reordered then
+            drainCheckSlots limit
+
+            if
+                checkIndex >= checkSlots.Count
+                && dirtySlots.Count <= limit
+            then
+                if
+                    removedPlaced.Count = 0
+                    && addedPlaced.Count = 0
+                    && dirtySlots.Count = 0
+                then
+                    queue.DirtyNotified <- false
+                    queue.CheckNotified <- false
+                    this.StageRemovals ()
+                    this.StageKeys null
+                else
+                    ensureOrderPos ()
+                    let mutable changed = false
+
+                    for i in 0 .. removedPlaced.Count - 1 do
+                        let rem = Platform.entryAt i removedPlaced
+
+                        if rem.PlacedIdx >= 0 then
+                            removePlacedSlot rem
+                            changed <- true
+
+                    removedPlaced.Clear ()
+
+                    if applyDirtySplice () then
+                        changed <- true
+
+                    for i in 0 .. addedPlaced.Count - 1 do
+                        let s = Platform.entryAt i addedPlaced
+
+                        if
+                            not s.Disposed
+                            && s.UpIdx >= 0
+                            && s.State = InclusionState.Included
+                        then
+                            insertPlacedSlot s
+                            changed <- true
+
+                    addedPlaced.Clear ()
+                    this.StageRemovals ()
+
+                    if changed then stageChangedKeys () else this.StageKeys null
+            else
+                sparseCandidate <- false
+
+        if not sparseCandidate || reordered then
+            if removedPlaced.Count > 0 then
+                removedPlaced.Clear ()
+
+            if addedPlaced.Count > 0 then
+                addedPlaced.Clear ()
+
+            let prevPlaced = placedCount
+            ensurePlacedCapacity outCount
+            let mutable nextPlaced = 0
+
+            try
+                for i in 0 .. outCount - 1 do
+                    let slot = Platform.itemAt i upSlots
+
+                    if slot.QueuedDirty || slot.QueuedCheck then
+                        slot.QueuedDirty <- false
+                        slot.QueuedCheck <- false
+                        refreshSlot slot |> ignore
+
+                    if slot.State = InclusionState.Included then
+                        slot.PlacedIdx <- nextPlaced
+                        Platform.setItemAt nextPlaced placedSlots slot
+                        nextPlaced <- nextPlaced + 1
+                    else
+                        slot.PlacedIdx <- -1
+            finally
+                queue.ActiveSlot <- null
+
+            for k in nextPlaced .. prevPlaced - 1 do
+                Platform.setItemAt k placedSlots Unchecked.defaultof<_>
+
+            placedCount <- nextPlaced
+            clearQueues ()
+            this.StageRemovals ()
+            fullSort ()
+            stageChangedKeys ()
+
+    let finishPass () =
+        if failedKeys.Count > 0 then
+            failedKeys.Iterate (fun key -> this.StageHidden key)
+
+        if unsettledCount > 0 then
+            for i in 0 .. upCount - 1 do
+                let slot = Platform.itemAt i upSlots
+
+                if slot.Unsettled then
+                    heldOut.Add slot.Key
+
+        heldOut.Publish upstream
+
+    let dispose () =
+        if not disposed then
+            disposed <- true
+            synced <- false
+            sorted <- false
+            orderPosValid <- false
+            this.ExtraCheck <- Unchecked.defaultof<_>
+            this.HasExtraCheck <- Unchecked.defaultof<_>
+            this.ExtraFailedCheck <- Unchecked.defaultof<_>
+
+            for i in 0 .. upCount - 1 do
+                (Platform.itemAt i upSlots).Detach()
+
+            if not (Platform.isNull (box keyReader)) then
+                keyReader.Stop ()
+                keyReader <- Unchecked.defaultof<ProjectionReader<'K>>
+
+            if dirtySlots.Count > 0 then
+                dirtySlots.Clear ()
+
+            if checkSlots.Count > 0 then
+                checkSlots.Clear ()
+
+            checkIndex <- 0
+            queue.CheckNotified <- false
+            queue.DirtyNotified <- false
+            queue.ActiveSlot <- null
+            byKey.Clear ()
+            failedKeys.Clear ()
+            removedPlaced.Clear ()
+            addedPlaced.Clear ()
+            upSlots <- Array.empty
+            scratchUpSlots <- Array.empty
+            placedSlots <- Array.empty
+            order <- Array.empty
+            orderPos <- Array.empty
+            upCount <- 0
+            placedCount <- 0
+            unsettledCount <- 0
+
+    let init () =
+        initialized <- true
+        let rows = sortKeys.Value
+        keyReader <- rows.NewInternalKeyReader ()
+        this.ExtraCheck <- fun () -> resolveCheckStep (fun () -> this.IsCheck)
+        this.HasExtraCheck <- fun () -> checkIndex < checkSlots.Count
+        this.ExtraFailedCheck <- fun () -> resolveCheckStep (fun () -> not this.IsInvalidated)
+        graph.RunUntracked (fun () -> this.Scope.OnCleanup dispose)
 
     /// <summary>
     /// The upstream keys whose sort key has never settled, in upstream order, followed by the keys <c>upstream</c> holds
@@ -1674,48 +2790,56 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
     /// </summary>
     member _.HeldOut = heldOut.Keys
 
-    override this.Enumerate() =
+    override _.Enumerate() =
+        if not initialized then
+            init ()
+
+        let wasSynced = synced
+        synced <- false
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
         heldOut.Begin ()
-        let rows = sortKeys.Value
-        placed.Clear ()
-        ranks.Clear ()
-        let keys = rows.Keys
+        let delta = keyReader.Read ()
 
-        for i in 0 .. keys.Length - 1 do
-            let key = Platform.itemAt i keys
-            let entry = rows.Entries.Find key
+        if not wasSynced || delta.IsReset then
+            rebuildFull delta.Keys
+        elif delta.IsEmpty then
+            let limit = incrementalLimit upCount
+            let pendingChecks = checkSlots.Count - checkIndex
 
-            if not (Platform.isNull entry) then
-                match entry.Row.TryValue with
-                | Ready rank ->
-                    placed.Add key
-                    ranks.Add rank
-                | Pending ->
-                    if not entry.Settled then
-                        heldOut.Add key
+            if
+                dirtySlots.Count > limit
+                || dirtySlots.Count + pendingChecks > (limit <<< 2)
+            then
+                runDenseSort ()
+            else
+                drainCheckSlots limit
+
+                if dirtySlots.Count <= limit then
+                    let changed = applyDirtySplice ()
+                    this.StageRemovals ()
+
+                    if changed then
+                        this.StageKeys (buildKeysArray ())
                     else
-                        placed.Add key
-                        ranks.Add entry.Row.Peek
-                | Failed _ ->
-                    this.Visit key
-                    this.HideLast ()
+                        this.StageKeys null
+                else
+                    runDenseSort ()
+        else
+            let limit = incrementalLimit upCount
 
-        updateOrder ()
+            if not (tryTailAppend delta limit) then
+                applyGeneralDelta delta limit
 
-        let positions = order
-        this.Reserve positions.Length
+        finishPass ()
 
-        for k in 0 .. positions.Length - 1 do
-            let key = placed[Platform.itemAt k positions]
-            this.Visit key
+    override _.Applied() =
+        synced <- true
 
-        let swapKeys = lastPlaced
-        lastPlaced <- placed
-        placed <- swapKeys
-        let swapRanks = lastRanks
-        lastRanks <- ranks
-        ranks <- swapRanks
-        heldOut.Publish upstream
+    override _.Abandoned() =
+        synced <- false
+        queue.CheckNotified <- false
+        queue.DirtyNotified <- false
 
 type internal GroupView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, outerKeys: unit -> unit, members: Signal<'K[]>) as this
     =

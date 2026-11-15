@@ -165,7 +165,7 @@ END {
   printf "seed %d, fuel %d: %d programs compared and agree on traces and end states (evidence, not a proof)\n", seed, fuel, compared
   printf "skipped: %d diverged on both sides, the F# past its budget and the model out of fuel\n", budget
   printf "fatal: %d ended the F# process, the model out of fuel\n", fatals
-  printf "excluded: %d of a cap of %d programs raising more than one zero divisor\n", excluded, int(count / 100)
+  printf "excluded: %d of a cap of %d programs raising more than one zero divisor or overflowing int32\n", excluded, int(count / 100)
   verdict = 0
   if (skipped * 20 >= count) {
     printf "run.sh: %d of %d skipped, 5%% or more, at seed %d: the generator bounds are too loose\n", skipped, count, seed > "/dev/stderr"
