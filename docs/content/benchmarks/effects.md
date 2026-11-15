@@ -3,14 +3,8 @@ title: Effects
 order: 4
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
-
 ## CI instruction counts
-**Library comparison** shows the latest recorded engine measurements; **Trends** follows scenarios
-across commits. Choose a runtime, metric or commit, filter scenarios, and toggle libraries in the
-legend. The site remembers your tab; runtime and metric selections carry between tabs.
-See [chart controls and uncertainty](counters.md#interactive-chart-controls) for bands, relative values
-and library-counter markers.
+Recorded engine comparisons and commit trends ([chart controls and uncertainty](counters.md#interactive-chart-controls)):
 
 <div data-perf-tabs data-perf-data="effects"><p role="status">Loading recorded measurements…</p></div>
 <link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
