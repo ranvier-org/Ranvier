@@ -1,2 +1,2 @@
 #!/bin/sh
-exec rtk proxy pwsh -NoLogo -NoProfile -File scripts/check-staged.ps1
+exec pwsh -NoLogo -NoProfile -File scripts/check-staged.ps1
