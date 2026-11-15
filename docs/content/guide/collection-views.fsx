@@ -116,8 +116,8 @@ longestFirst.Keys
 :::details Sort costs
 
 An unchanged pass cuts off per row ([`row_slot_check_cutoff_skips_pass`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#row_slot_check_cutoff_skips_pass))
-and publishes no new `Keys`. Sparse sort-key or membership changes check local neighbours in O(1) and binary-search/shift
-only touched slots ([`sortview_insert_remove_refines_sort`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sortview_insert_remove_refines_sort));
+and publishes no new `Keys`. Sparse sort-key or membership changes binary-search the sorted order in O(log N) and shift
+only touched positions ([`sortview_insert_remove_refines_sort`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sortview_insert_remove_refines_sort));
 dense bursts and full upstream reorderings fall back to O(N log N) sorting.
 
 :::

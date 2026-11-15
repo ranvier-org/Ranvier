@@ -51,11 +51,12 @@ rows before retiring removed rows. If a new factory throws, the pass disposes it
 keeps the previously applied rows, items and keys until a source change retries the pass.
 
 `createProjectionOnce options keyOf factory source` stores one factory result per key without a
-row memo. It suits a view object whose factory creates its own bindings. Key readers (`Keys`,
-`Count`, `Contains`, `NewKeyReader`, `length`, `isEmpty`), `reverse`, `take`, `skip`, `tryHead`,
-`tryLast`, `tryItem`, `head`, `last`, `item`, and lookup operators (`tryLookup`, `lookup`) are
-supported; `AsObservableCollection`, `NewValueReader`, and row-memo view/aggregate operators raise
-`NotSupportedException`. Use `createProjectionWith` when those consumers need reactive row values.
+row memo. It suits a view object whose factory creates its own bindings. `Keys`, `Count`, `Contains`,
+`Get`, `TryGet`, `NewKeyReader`, `length`, `isEmpty`, and positional readers (`tryHead`, `tryLast`,
+`tryItem`, `head`, `last`, `item`) are supported; `AsObservableCollection`, `NewValueReader`, all
+`Projection` view operators (`filter`, `choose`, `map`, `mapWith`, `sortBy`, `sortByDescending`,
+`take`, `skip`, `sub`, `partition`, `distinctBy`, `groupBy`), and fold/search/extreme aggregates
+raise `NotSupportedException`. Use `createProjectionWith` when consumers need reactive row values.
 See [Projections](https://ranvier-org.github.io/Ranvier/guide/projections/).
 
 ## Per-node equality
