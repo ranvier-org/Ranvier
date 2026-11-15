@@ -169,6 +169,9 @@ module internal StatusBits =
     let inline isError (status: Status) =
         (status &&& Status.Error) <> Status.None
 
+    let inline isCleanAndReady (freshness: Freshness) (status: Status) =
+        ((byte freshness) ||| (byte status &&& 3uy)) = 0uy
+
 /// <summary>
 /// One slot in an observer list.
 /// </summary>
@@ -1770,6 +1773,35 @@ type internal PendingDispatch<'T>() =
         member this.Abandon error =
             if this.TryClose () then
                 this.SetException error
+
+[<AbstractClass; Sealed>]
+type internal OwnerThreadCounter =
+    static let mutable next = 0L
+
+    static member Next() : int64 =
+        Interlocked.Increment &next
+
+/// <summary>
+/// Per-thread 64-bit token for <see cref="Graph"/> owner-thread checks on .NET. Held in a <c>.cctor</c>-free
+/// non-GC <c>[&lt;ThreadStatic&gt;]</c> block so <c>Current</c> compiles to an inline TLS load without a helper call.
+/// Uninitialized threads read <c>0L</c>; every owner thread is assigned a strictly positive token (<c>&gt;= 1L</c>).
+/// </summary>
+[<AbstractClass; Sealed>]
+type internal OwnerThreadToken =
+    [<ThreadStatic; DefaultValue>]
+    static val mutable private token: int64
+
+    static member inline Current: int64 = OwnerThreadToken.token
+
+    static member Ensure() : int64 =
+        let t = OwnerThreadToken.token
+
+        if t <> 0L then
+            t
+        else
+            let assigned = OwnerThreadCounter.Next ()
+            OwnerThreadToken.token <- assigned
+            assigned
 #endif
 
 /// <summary>The application key and codec of a journaled input node, with the value type erased.</summary>
@@ -2393,6 +2425,7 @@ type Graph(options: GraphOptions) =
     /// must end up here; see <c>Dispatch</c>.
     /// </summary>
     let ownerThread = Platform.currentThreadId ()
+    let ownerToken = OwnerThreadToken.Ensure ()
 #endif
     let guarded = options.ThreadAffinity = Guarded
 
@@ -2431,6 +2464,18 @@ type Graph(options: GraphOptions) =
         match options.Journal with
         | Some inputJournal -> JournalRecorder inputJournal
         | None -> null
+
+#if !FABLE_COMPILER
+    /// <summary>
+    /// Encodes unjournaled non-<c>Serialised</c> write eligibility into one <c>int64</c> load:
+    /// <c>-1L</c> when <c>Serialised</c> or journaled, <c>ownerToken</c> (<c>&gt;= 1L</c>) when <c>Guarded</c> and unjournaled,
+    /// and <c>0L</c> when <c>Unchecked</c> and unjournaled.
+    /// </summary>
+    let fastWriteToken =
+        if serialised || not (Platform.isNull journal) then -1L
+        elif guarded then ownerToken
+        else 0L
+#endif
 
     /// <summary>
     /// The scope everything created outside an explicit <c>Root</c> belongs to.
@@ -2627,6 +2672,10 @@ type Graph(options: GraphOptions) =
     /// <remarks>Inline, so a guarded hook reads the field directly under Fable instead of calling a getter.</remarks>
     member inline internal _.Journal = journal
 
+#if !FABLE_COMPILER
+    member inline internal _.FastWriteToken = fastWriteToken
+#endif
+
     /// <summary>
     /// Records <c>value</c> arriving at the node <c>nodeId</c> as a <c>kind</c> entry, unless a computation, flush,
     /// stale read, teardown or other derived section is running. Requires a journal.
@@ -2683,6 +2732,7 @@ type Graph(options: GraphOptions) =
     /// <exception cref="T:System.InvalidOperationException">
     /// The caller runs outside the construction context, or another thread holds the graph.
     /// </exception>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.Acquire(operation: string) : bool =
         let me = Platform.currentThreadId ()
 
@@ -2734,7 +2784,7 @@ type Graph(options: GraphOptions) =
         false
 #else
         if guarded then
-            if not (obj.ReferenceEquals (AmbientSlot.Existing, ownerAmbient)) then
+            if OwnerThreadToken.Current <> ownerToken then
                 this.FailOffThread operation
 
             false
@@ -2908,7 +2958,7 @@ type Graph(options: GraphOptions) =
         if serialised then
             Volatile.Read &holder = Platform.currentThreadId ()
         else
-            Platform.currentThreadId () = ownerThread
+            OwnerThreadToken.Current = ownerToken
 #endif
 
     /// <summary>
@@ -3196,15 +3246,15 @@ type Graph(options: GraphOptions) =
         ignore operation
 #else
     member this.AssertOnGraphThread(operation: string) =
-        // The owner thread is the one thread whose cell is `ownerAmbient`.
         if guarded then
-            if not (obj.ReferenceEquals (AmbientSlot.Existing, ownerAmbient)) then
+            if OwnerThreadToken.Current <> ownerToken then
                 this.FailOffThread operation
         elif serialised then
             this.CheckHeld operation
 #endif
 
 #if !FABLE_COMPILER
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private _.FailOffThread(operation: string) : unit =
         raise (
             InvalidOperationException (
@@ -3823,18 +3873,23 @@ type Graph(options: GraphOptions) =
     /// consumer stranded — it never learns that the source settled. This is
     /// upstream bug #2893.
     /// </remarks>
-    member internal _.Track(source: ISource) =
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.Track(source: ISource) =
         if not (obj.ReferenceEquals (current, null)) then
-            // The observer half is linked by the consumer's own source list,
-            // which is the only side that knows whether this edge is new.
-            current.AddSource source
+            this.TrackCurrent source
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member internal _.TrackCurrent(source: ISource) =
+        // The observer half is linked by the consumer's own source list,
+        // which is the only side that knows whether this edge is new.
+        current.AddSource source
 
     /// <summary>
     /// The computation whose body is running, or null. Read by a source that
     /// has just recomputed, to avoid marking its own reader dirty — see
     /// <c>ObserverSet.NotifyDirtyExcept</c>.
     /// </summary>
-    member internal _.CurrentComputation = current
+    member inline internal _.CurrentComputation = current
 
     /// <summary>
     /// Marks the running computation dirty, if any. Called by a tracked read that has just linked a source still
@@ -4227,11 +4282,52 @@ type Graph(options: GraphOptions) =
             untrackedHost <- previousHost
             untrackedInBody <- previousInBody
 
+#if FABLE_COMPILER
+module private ComparerSentinel =
+    let inline encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> = comparer
+
+    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
+        encoded.Equals (a, b)
+#else
+// Normalizes EqualityComparer<'T>.Default to null so .NET hot paths avoid interface dispatch
+// and emit RyuJIT's intrinsic Equals, while preserving NullReferenceException for a faulty policy.
+[<Sealed>]
+type private NullComparer<'T>() =
+    static member val Instance: IEqualityComparer<'T> = NullComparer<'T>() :> IEqualityComparer<'T>
+
+    interface IEqualityComparer<'T> with
+        member _.Equals(_, _) =
+            raise (NullReferenceException ())
+
+        member _.GetHashCode(_) =
+            raise (NullReferenceException ())
+
+module private ComparerSentinel =
+    let encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
+        if obj.ReferenceEquals (comparer, null) then
+            NullComparer<'T>.Instance
+        elif obj.ReferenceEquals (comparer, EqualityComparer<'T>.Default) then
+            null
+        else
+            comparer
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    let equalsCustom (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
+        encoded.Equals (a, b)
+
+    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
+        if obj.ReferenceEquals (encoded, null) then
+            EqualityComparer<'T>.Default.Equals(a, b)
+        else
+            equalsCustom encoded a b
+#endif
+
 /// <summary>
 /// A settable source.
 /// </summary>
-type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>) =
+type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer<'T>) =
     let id = graph.NextId ()
+    let equal = ComparerSentinel.encode comparer
 #if RANVIER_TRACE
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
@@ -4297,6 +4393,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
     /// Transparent, tracked read. A plain signal is never pending, so this
     /// never throws.
     /// </summary>
+#if FABLE_COMPILER
     member this.Value
         with get () =
             graph.Track (this :> ISource)
@@ -4305,7 +4402,6 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             // The guard sits before the cutoff, not after: an off-thread write
             // that happens to be equal is still a bug, and one that would
             // otherwise only show up on the write that differs.
-#if FABLE_COMPILER
             graph.Entered (
                 "A signal write",
                 fun () ->
@@ -4330,37 +4426,90 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                             Tracer.Write (observers, false, box v)
             )
 #else
-            if not (graph.Enter "A signal write") then
-                this.SetCore v
-            else
-                this.SetAfterAcquire v
+    member this.Value
+        with get () = this.GetFast ()
+        and set v = this.SetFast v
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member private this.SetCore(v: 'T) =
-        // Written with && so that Fable emits a short-circuit, not a ternary, on the unjournaled path.
-        if
-            not (
-                not (Platform.isNull graph.Journal)
-                && not (this.RecordWrite v)
-            )
-        then
-            if not (equal.Equals (value, v)) then
-                value <- v
-                Tracer.Write (observers, true, box v)
+    member private this.GetFast() =
+        if obj.ReferenceEquals (graph.CurrentComputation, null) then
+            value
+        else
+            this.ReadTracked ()
 
-                if not (Platform.isNull (box observers)) then
-                    observers.NotifyDirty ()
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadTracked() =
+        graph.TrackCurrent (this :> ISource)
+        value
 
-                Tracer.Notified observers
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.SetFast(v: 'T) =
+        // The guard sits before the cutoff, not after: an off-thread write
+        // that happens to be equal is still a bug, and one that would
+        // otherwise only show up on the write that differs.
+        let tok = graph.FastWriteToken
 
-                graph.RequestFlush ()
+        if tok = 0L || tok = OwnerThreadToken.Current then
+            if obj.ReferenceEquals (equal, null) then
+                if not (EqualityComparer<'T>.Default.Equals(value, v)) then
+                    this.SetChanged v
+                else
+                    Tracer.Write (observers, false, box v)
+            else
+                this.SetCustom v
+        else
+            this.SetSlow v
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SetCustom(v: 'T) =
+        if not (equal.Equals (value, v)) then
+            this.SetChanged v
+        else
+            Tracer.Write (observers, false, box v)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SetSlow(v: 'T) =
+        if not (graph.Enter "A signal write") then
+            if Platform.isNull graph.Journal then
+                if not (ComparerSentinel.equals equal value v) then
+                    this.SetChanged v
+                else
+                    Tracer.Write (observers, false, box v)
+            else
+                this.SetJournaled v
+        else
+            this.SetAfterAcquire v
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.SetChanged(v: 'T) =
+        value <- v
+        Tracer.Write (observers, true, box v)
+
+        if not (Platform.isNull (box observers)) then
+            observers.NotifyDirty ()
+
+        Tracer.Notified observers
+
+        graph.RequestFlush ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.SetJournaled(v: 'T) =
+        if this.RecordWrite v then
+            if not (ComparerSentinel.equals equal value v) then
+                this.SetChanged v
             else
                 Tracer.Write (observers, false, box v)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.SetAfterAcquire(v: 'T) =
         try
-            this.SetCore v
+            if Platform.isNull graph.Journal then
+                if not (ComparerSentinel.equals equal value v) then
+                    this.SetChanged v
+                else
+                    Tracer.Write (observers, false, box v)
+            else
+                this.SetJournaled v
         finally
             graph.Release ()
 #endif
@@ -4387,30 +4536,46 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                     Tracer.Write (observers, false, box v)
         )
 #else
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal this.WriteExcept(v: 'T, running: IComputation) =
+        let tok = graph.FastWriteToken
+
+        if tok = 0L || tok = OwnerThreadToken.Current then
+            if not (ComparerSentinel.equals equal value v) then
+                this.WriteExceptChanged (v, running)
+            else
+                Tracer.Write (observers, false, box v)
+        else
+            this.WriteExceptSlow (v, running)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.WriteExceptSlow(v: 'T, running: IComputation) =
         if not (graph.Enter "A signal write") then
-            this.WriteExceptCore (v, running)
+            if not (ComparerSentinel.equals equal value v) then
+                this.WriteExceptChanged (v, running)
+            else
+                Tracer.Write (observers, false, box v)
         else
             this.WriteExceptAfterAcquire (v, running)
 
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member private _.WriteExceptCore(v: 'T, running: IComputation) =
-        if not (equal.Equals (value, v)) then
-            value <- v
-            Tracer.Write (observers, true, box v)
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.WriteExceptChanged(v: 'T, running: IComputation) =
+        value <- v
+        Tracer.Write (observers, true, box v)
 
-            if not (Platform.isNull (box observers)) then
-                observers.NotifyDirtyOther running
+        if not (Platform.isNull (box observers)) then
+            observers.NotifyDirtyOther running
 
-            Tracer.Notified observers
-            graph.RequestFlush ()
-        else
-            Tracer.Write (observers, false, box v)
+        Tracer.Notified observers
+        graph.RequestFlush ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.WriteExceptAfterAcquire(v: 'T, running: IComputation) =
         try
-            this.WriteExceptCore (v, running)
+            if not (ComparerSentinel.equals equal value v) then
+                this.WriteExceptChanged (v, running)
+            else
+                Tracer.Write (observers, false, box v)
         finally
             graph.Release ()
 #endif
@@ -4428,9 +4593,25 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
+#if FABLE_COMPILER
     member this.TryValue: Reading<'T> =
         graph.Track (this :> ISource)
         Ready value
+#else
+    member this.TryValue: Reading<'T> = this.GetTryFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetTryFast() : Reading<'T> =
+        if obj.ReferenceEquals (graph.CurrentComputation, null) then
+            Ready value
+        else
+            this.ReadTrackedTry ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadTrackedTry() : Reading<'T> =
+        graph.TrackCurrent (this :> ISource)
+        Ready value
+#endif
 
     /// <summary>
     /// Untracked read.
@@ -4653,8 +4834,9 @@ type AsyncSource<'T>(graph: Graph) =
 /// argument keeps its dependents clean.
 /// </para>
 /// </remarks>
-type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, equal: IEqualityComparer<'T>) =
+type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T>) =
     let id = graph.NextId ()
+    let equal = ComparerSentinel.encode comparer
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let sources = SourceList ()
@@ -4883,7 +5065,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         if not moved then
             try
-                moved <- not (equal.Equals (previous, value))
+                moved <- not (ComparerSentinel.equals equal previous value)
             with ex ->
                 value <- previous
                 failure <- graph.FailureOf (ex, this, previousFailure)
@@ -5260,6 +5442,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// Transparent, tracked read. Suspends the caller if this memo is itself
     /// suspended, which is how the pending channel propagates.
     /// </summary>
+#if FABLE_COMPILER
     member this.Value: 'T =
         if
             freshness <> Freshness.Clean
@@ -5281,10 +5464,49 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                 graph.Raise failure
 
             value
+#else
+    member this.Value: 'T =
+        if StatusBits.isCleanAndReady freshness status then
+            if obj.ReferenceEquals (graph.CurrentComputation, null) then
+                value
+            else
+                this.ReadCleanTracked ()
+        else
+            this.ReadSlow ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadCleanTracked() : 'T =
+        graph.TrackCurrent (this :> ISource)
+        value
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadSlow() : 'T =
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    freshness <> Freshness.Clean
+                else
+                    this.PullWithoutSettle ())
+        then
+            this.SettlePullAndRead ()
+        else
+            graph.Track (this :> ISource)
+
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    raise (graph.NotReady (this :> INode))
+
+                graph.Raise failure
+
+            value
+#endif
 
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
+#if FABLE_COMPILER
     member this.TryValue: Reading<'T> =
         if
             freshness <> Freshness.Clean
@@ -5306,6 +5528,44 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     Failed failure.Error
             else
                 Ready value
+#else
+    member this.TryValue: Reading<'T> =
+        if StatusBits.isCleanAndReady freshness status then
+            if obj.ReferenceEquals (graph.CurrentComputation, null) then
+                Ready value
+            else
+                this.ReadCleanTrackedTry ()
+        else
+            this.ReadTrySlow ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadCleanTrackedTry() : Reading<'T> =
+        graph.TrackCurrent (this :> ISource)
+        Ready value
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadTrySlow() : Reading<'T> =
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    freshness <> Freshness.Clean
+                else
+                    this.PullWithoutSettle ())
+        then
+            this.SettlePullAndReadTry ()
+        else
+            graph.Track (this :> ISource)
+
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    Pending
+                else
+                    Failed failure.Error
+            else
+                Ready value
+#endif
 
     /// <summary>
     /// Non-throwing read that brings the memo up to date without recording a dependency.

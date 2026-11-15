@@ -475,3 +475,12 @@ Print Assumptions positional_nodup_trimmed_disjoint.
 Print Assumptions tournament_winner_optimal_and_first.
 Print Assumptions tournament_point_update_refines_eval.
 Print Assumptions sticky_holder_refines_extreme_scan.
+Print Assumptions clean_and_ready_bits_iff.
+Print Assumptions memo_read_fast_split_eq.
+Print Assumptions signal_set_fast_split_refines.
+Print Assumptions Ranvier.Heap.Concurrency.read_memo_fast_spec.
+Print Assumptions Ranvier.Heap.Concurrency.signal_set_fast_split_spec.
+Print Assumptions default_comparer_null_sentinel_eq.
+Print Assumptions fast_write_token_iff.
+Print Assumptions Ranvier.Heap.Concurrency.default_comparer_null_sentinel_spec.
+Print Assumptions Ranvier.Heap.Concurrency.fast_write_token_spec.
