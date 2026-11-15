@@ -177,6 +177,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 77,194 | 100,792 | 1,620,025 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 77,194 | 100,758 | 1,619,855 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 77,194 | 100,774 | 1,619,922 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 77,194 | 100,750 | 1,620,029 |
 
 ## app-table
 
@@ -355,6 +356,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,248,184 | 6,039,584 | 78,191,638 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 3,248,136 | 6,038,141 | 78,191,912 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 3,248,232 | 6,038,127 | 78,339,890 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 3,248,136 | 6,039,497 | 78,339,352 |
 
 ## async-recover
 
@@ -533,6 +535,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 93,834 | 30,385 | 367,106 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 93,834 | 30,381 | 367,111 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 93,834 | 30,381 | 367,109 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 93,834 | 30,376 | 367,106 |
 
 ## async-resolve
 
@@ -711,6 +714,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,762,146 | 716,708 | 9,366,648 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,762,145 | 716,802 | 9,366,698 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,762,145 | 716,756 | 9,366,694 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,762,144 | 716,782 | 9,366,645 |
 
 ## chain
 
@@ -889,6 +893,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,912 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,911 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,912 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 13,101 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,911 |
 
 ## chain-affinity
 
@@ -1067,6 +1072,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,549 | 3,057 | 2,501 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,549 | 3,057 | 2,501 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,549 | 3,057 | 2,501 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,549 | 3,057 | 2,501 |
 
 ## control
 
@@ -1245,6 +1251,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 74,709 | 461,273 | 2,263,451 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 74,709 | 471,278 | 2,265,946 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 74,709 | 468,746 | 2,270,986 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 74,709 | 468,163 | 2,265,531 |
 
 ## create
 
@@ -1423,6 +1430,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 13,467,495 | 2,857,614 | 2,405,777 | 4,455,432 | 3,052,538 | 33,074,964 | 46,263,796 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 13,624,985 | 2,857,614 | 2,405,777 | 4,454,802 | 3,052,583 | 33,075,216 | 46,263,970 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 13,483,522 | 2,873,614 | 2,405,777 | 4,455,453 | 3,052,743 | 33,074,995 | 46,264,050 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 13,576,978 | 2,857,614 | 2,405,776 | 4,454,443 | 3,052,718 | 33,074,638 | 46,263,800 |
 
 ## create-on
 
@@ -1601,6 +1609,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,732,609 | 3,356,126 | 52,080,828 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,732,625 | 3,356,340 | 52,080,845 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,732,609 | 3,356,286 | 52,080,779 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,732,609 | 3,356,148 | 52,080,882 |
 
 ## cutoff
 
@@ -1779,6 +1788,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1957,6 +1967,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 764 | 686 | 15,806 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 764 | 686 | 15,806 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 764 | 686 | 15,806 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 764 | 686 | 15,806 |
 
 ## derive-on
 
@@ -2135,6 +2146,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 733 | 690 | 15,824 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 733 | 690 | 15,824 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 733 | 690 | 15,824 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 733 | 690 | 15,824 |
 
 ## dispose
 
@@ -2313,6 +2325,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,707,640 | 806,288 | 358,486 | 480,673 | 500,725 | 11,184,701 | 8,962,839 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 2,707,642 | 806,288 | 358,486 | 480,011 | 500,362 | 11,184,691 | 8,962,907 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 2,707,647 | 806,288 | 358,486 | 479,835 | 500,423 | 11,184,696 | 8,962,318 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,707,646 | 806,288 | 358,486 | 479,505 | 500,566 | 11,184,392 | 8,962,452 |
 
 ## dispose-on
 
@@ -2491,6 +2504,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 337,486 | 492,331 | 8,759,032 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 337,486 | 492,031 | 8,758,441 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 337,486 | 492,348 | 8,759,475 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 337,486 | 492,256 | 8,758,967 |
 
 ## editable-edit
 
@@ -2669,6 +2683,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 178,109 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 178,109 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 178,109 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 178,109 |
 
 ## editable-upstream
 
@@ -2847,6 +2862,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 223,509 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 223,509 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 223,509 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 223,509 |
 
 ## fail-recompute
 
@@ -3025,6 +3041,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 65,160 | 1,368 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 65,096 | 1,368 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 65,160 | 1,368 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 65,160 | 1,368 |
 
 ## flight
 
@@ -3203,6 +3220,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 10,157 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 10,157 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 
 ## keyed-insert
 
@@ -3381,6 +3399,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,861,672 | 53,870 | 54,794 | 2,509,067 | 660,515 | 235,682 | 41,853,146 | 3,000,413 | 3,019,836 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,861,620 | 53,773 | 54,742 | 2,490,546 | 660,670 | 235,641 | 41,853,075 | 3,000,396 | 3,019,980 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,861,668 | 53,797 | 54,774 | 2,508,958 | 660,645 | 235,631 | 41,857,360 | 3,000,328 | 3,020,075 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,861,652 | 53,799 | 54,771 | 2,492,889 | 660,632 | 235,913 | 41,864,669 | 3,000,334 | 3,020,045 |
 
 ## keyed-remove
 
@@ -3559,6 +3578,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,860,696 | 43,644 | 45,102 | 2,521,934 | 600,258 | 140,262 | 41,838,715 | 2,141,095 | 2,176,154 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,860,659 | 43,548 | 45,048 | 2,510,370 | 600,247 | 140,128 | 41,829,087 | 2,141,096 | 2,175,772 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,860,705 | 43,572 | 45,096 | 2,514,580 | 600,260 | 140,077 | 41,822,280 | 2,141,037 | 2,176,103 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,860,685 | 43,572 | 45,081 | 2,514,329 | 600,292 | 140,136 | 41,829,468 | 2,141,060 | 2,176,014 |
 
 ## keyed-swap
 
@@ -3737,6 +3757,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,856,451 | 46,298 | 46,903 | 2,543,206 | 518,768 | 528,288 | 42,561,983 | 914,574 | 934,165 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,856,400 | 46,205 | 46,852 | 2,542,661 | 518,690 | 528,320 | 42,561,880 | 914,374 | 932,212 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,856,447 | 46,219 | 46,883 | 2,542,611 | 518,664 | 528,379 | 42,558,703 | 914,330 | 932,173 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,856,431 | 46,238 | 46,884 | 2,542,506 | 518,691 | 528,376 | 42,566,098 | 914,325 | 930,870 |
 
 ## mvu-dispatch
 
@@ -3915,6 +3936,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 59,439 | 773 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 59,439 | 773 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 59,439 | 773 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 59,439 | 773 |
 
 ## persist-write
 
@@ -4093,6 +4115,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | — | — |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | — | — |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | — | — |
 
 ## project-chain
 
@@ -4271,6 +4294,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 91,989 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 91,965 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 92,062 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 91,980 |
 
 ## project-churn
 
@@ -4449,6 +4473,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 36,441 | 34,209 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 36,425 | 34,193 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 36,457 | 34,209 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 36,425 | 34,193 |
 
 ## project-edit
 
@@ -4627,6 +4652,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 50,433 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 50,417 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 50,433 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 50,433 |
 
 ## project-reorder
 
@@ -4805,6 +4831,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 645,146 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 645,131 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 645,131 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 645,133 |
 
 ## server-render
 
@@ -4983,6 +5010,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — | — |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | — | — | — |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | — | — | — |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | — | — | — |
 
 ## shape-diamond
 
@@ -5161,6 +5189,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 59,609 | 79,993 | 1,744,544 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 59,609 | 79,993 | 1,744,544 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 59,609 | 79,993 | 1,744,544 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 59,609 | 79,993 | 1,744,544 |
 
 ## shape-dynamic
 
@@ -5339,6 +5368,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 83,024 | 105,978 | 1,945,040 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 83,024 | 105,985 | 1,945,046 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 83,024 | 105,985 | 1,945,045 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 83,024 | 105,984 | 1,945,042 |
 
 ## stream-burst-1
 
@@ -5517,6 +5547,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,893 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,893 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,893 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,845 | 1,471 | 2,482 | 5,539 | 8,614 | 11,689 | 37,063 | 35,266 | 45,894 |
 
 ## stream-burst-16
 
@@ -5695,6 +5726,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,870 | 23,326 | 5,692 | 7,715 | 26,398 | 14,160 | 91,896 | 552,049 | 101,975 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,160 | 91,894 | 552,051 | 101,974 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,161 | 91,896 | 552,049 | 101,975 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,162 | 91,896 | 552,049 | 101,974 |
 
 ## stream-burst-256
 
@@ -5873,6 +5905,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 36,246 | 373,006 | 57,031 | 89,874 | 418,287 | 36,687 | 969,382 | 8,819,174 | 998,719 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 36,246 | 373,006 | 57,031 | 89,873 | 418,288 | 36,689 | 969,383 | 8,819,178 | 998,725 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 36,246 | 373,006 | 57,031 | 89,877 | 418,288 | 36,689 | 969,389 | 8,819,181 | 998,726 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 36,246 | 373,006 | 57,031 | 89,873 | 418,287 | 36,687 | 969,386 | 8,819,174 | 998,705 |
 
 ## stream-restart
 
@@ -6051,6 +6084,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,882 | 4,876 | 14,708 | 6,201 | 41,889 | 71,198 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 3,882 | 4,876 | 14,709 | 6,203 | 41,890 | 71,196 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 3,882 | 4,876 | 14,710 | 6,205 | 41,892 | 71,199 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 3,882 | 4,876 | 14,706 | 6,205 | 41,889 | 71,200 |
 
 ## timed-admit-both
 
@@ -6229,6 +6263,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,458 | 132,051 | 2,532,894 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 108,458 | 131,984 | 2,532,616 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 108,458 | 132,592 | 2,532,625 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 108,458 | 132,594 | 2,532,625 |
 
 ## timed-admit-debounce
 
@@ -6407,6 +6442,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,010 | 131,187 | 2,518,212 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 108,010 | 131,175 | 2,518,253 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 108,010 | 131,197 | 2,518,249 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 108,010 | 131,188 | 2,518,210 |
 
 ## timed-admit-first
 
@@ -6585,6 +6621,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 67,947 | 77,253 | 1,583,488 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 67,947 | 77,253 | 1,583,488 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 67,947 | 77,253 | 1,583,488 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 67,947 | 77,253 | 1,583,488 |
 
 ## timed-admit-last
 
@@ -6763,6 +6800,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,266 | 131,507 | 2,528,067 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 108,266 | 131,531 | 2,528,109 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 108,266 | 131,508 | 2,528,079 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 108,266 | 131,509 | 2,528,066 |
 
 ## timed-capture-both
 
@@ -6941,6 +6979,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 35,090 | 43,392 | 865,942 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 35,090 | 43,792 | 865,668 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 35,090 | 43,790 | 865,665 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 35,090 | 43,791 | 865,682 |
 
 ## timed-capture-debounce
 
@@ -7119,6 +7158,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 34,962 | 46,804 | 866,053 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 34,962 | 46,805 | 866,053 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 34,962 | 46,806 | 866,053 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 34,962 | 46,806 | 866,053 |
 
 ## timed-capture-first
 
@@ -7297,6 +7337,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 31,314 | 36,735 | 748,414 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 31,314 | 36,736 | 748,414 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 31,314 | 36,735 | 748,414 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 31,314 | 36,735 | 748,414 |
 
 ## timed-capture-last
 
@@ -7475,6 +7516,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 34,898 | 46,742 | 858,181 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 34,898 | 46,740 | 858,181 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 34,898 | 46,742 | 858,181 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 34,898 | 46,742 | 858,181 |
 
 ## update
 
@@ -7653,6 +7695,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,089,590 | 38,805 | 81,509 | 196,954 | 95,684 | 2,533,231 | 1,773,685 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 1,091,190 | 38,805 | 81,509 | 196,909 | 95,696 | 2,533,160 | 1,773,709 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 1,088,000 | 38,805 | 81,509 | 196,887 | 95,656 | 2,533,226 | 1,773,738 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,089,590 | 38,805 | 81,509 | 196,954 | 95,680 | 2,533,208 | 1,773,724 |
 
 ## update-on
 
@@ -7831,6 +7874,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 93,009 | 115,597 | 2,101,107 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 93,009 | 115,561 | 2,101,086 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 93,009 | 115,597 | 2,101,047 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 93,009 | 115,572 | 2,101,121 |
 
 ## work-form
 
@@ -8009,6 +8053,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 170,299 | 164,511 | 297,880 | 293,085 | 4,997,447 | 4,910,519 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 170,299 | 168,511 | 297,859 | 293,062 | 4,997,515 | 4,910,518 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 170,299 | 164,527 | 297,897 | 293,065 | 4,997,443 | 4,910,505 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 170,299 | 164,511 | 297,897 | 293,066 | 4,997,337 | 4,910,479 |
 
 ## work-status
 
@@ -8187,6 +8232,7 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 100,349 | 78,439 | 200,170 | 92,565 | 1,881,840 | 1,613,854 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 100,350 | 78,439 | 200,102 | 92,525 | 1,881,790 | 1,613,845 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 100,349 | 78,439 | 200,142 | 92,544 | 1,881,828 | 1,613,855 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 100,349 | 78,439 | 200,211 | 92,514 | 1,881,833 | 1,613,839 |
 
 ## work-value
 
@@ -8365,4 +8411,5 @@
 | `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 107,473 | 119,274 | 200,520 | 219,842 | 1,866,503 | 2,190,985 |
 | `f5551ec` | 2026-11-15 | perf(collections): incremental distinctBy and groupBy with Rocq proofs (#362) | 107,473 | 119,273 | 200,461 | 219,858 | 1,866,407 | 2,190,990 |
 | `4a2bfeb` | 2026-11-15 | perf(collections): trim shared prefix/suffix in Positional.diff with Rocq proofs (#363) | 107,473 | 119,275 | 200,508 | 219,853 | 1,866,415 | 2,190,984 |
+| `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 107,473 | 119,273 | 200,521 | 219,871 | 1,866,473 | 2,190,958 |
 
