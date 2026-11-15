@@ -29,10 +29,10 @@ For runtime-specific suspension costs, see the
 Install `Ranvier` for F#, `Ranvier.CSharp` for C#, or `Ranvier.Elmish` for the MVU bridge.
 
 The guide describes the current source. The current versions are
-[`Ranvier` 0.2.0](https://www.nuget.org/packages/Ranvier/0.2.0),
-[`Ranvier.CSharp` 0.2.0](https://www.nuget.org/packages/Ranvier.CSharp/0.2.0),
-[`Ranvier.Elmish` 0.2.0](https://www.nuget.org/packages/Ranvier.Elmish/0.2.0), and
-[`Ranvier.Query` 0.2.0](https://www.nuget.org/packages/Ranvier.Query/0.2.0).
+[`Ranvier` 0.2.1](https://www.nuget.org/packages/Ranvier/0.2.1),
+[`Ranvier.CSharp` 0.2.1](https://www.nuget.org/packages/Ranvier.CSharp/0.2.1),
+[`Ranvier.Elmish` 0.2.1](https://www.nuget.org/packages/Ranvier.Elmish/0.2.1), and
+[`Ranvier.Query` 0.2.1](https://www.nuget.org/packages/Ranvier.Query/0.2.1).
 
 ::::::tabs
 :::::tab Core
@@ -48,7 +48,7 @@ dotnet add package Ranvier
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier" Version="0.2.0" />
+<PackageReference Include="Ranvier" Version="0.2.1" />
 ```
 
 :::
@@ -68,7 +68,7 @@ dotnet add package Ranvier.CSharp
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier.CSharp" Version="0.2.0" />
+<PackageReference Include="Ranvier.CSharp" Version="0.2.1" />
 ```
 :::
 ::::
@@ -88,7 +88,7 @@ dotnet add package Ranvier.Elmish
 :::tab Package reference
 
 ```xml
-<PackageReference Include="Ranvier.Elmish" Version="0.2.0" />
+<PackageReference Include="Ranvier.Elmish" Version="0.2.1" />
 ```
 
 :::
