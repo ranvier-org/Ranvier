@@ -42,7 +42,7 @@ NuGet packages, traced and untraced. The package consumer check is
 availability of a particular version on NuGet is a separate release step.
 
 **Published packages include standalone Fable projects:** `Ranvier`, `Ranvier.CSharp`,
-`Ranvier.Elmish` and `Ranvier.Query`, all at `0.2.0`. See
+`Ranvier.Elmish` and `Ranvier.Query`, all at `0.2.1`. See
 [Installation](../guide/installation.md#from-nuget).
 
 The view packages also include Fable sources and standalone projects.
