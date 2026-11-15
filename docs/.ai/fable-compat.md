@@ -61,7 +61,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 269 | 269 | 269 | 269 | 269 | 269 | 3 | 0 |
+| Combinators.fs | 272 | 272 | 272 | 272 | 272 | 272 | 3 | 0 |
 | Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1730 | 1716 | 1713 | 1952 | 1934 | 1931 | 148 | 1 |
+| **Total** | 1733 | 1719 | 1716 | 1955 | 1937 | 1934 | 148 | 1 |
 
 ## Tests.fs
 
@@ -1655,7 +1655,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>269 passed in every build and delivery that runs them</summary>
+<details><summary>272 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1718,7 +1718,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - incremental sortBy handles Pending and Failed transitions in sparse batches
 - tests reading the shared comparison counter / a pass whose sort keys and upstream order are unchanged does not re-sort
 - tests reading the shared comparison counter / a sortByDescending pass whose sort keys and upstream order are unchanged does not re-sort
-- tests reading the shared comparison counter / removing a non-extreme row costs no comparison; removing the extreme re-folds once
+- tests reading the shared comparison counter / removing or editing rows in tryMinBy updates the tournament in O(log N) comparisons
 - tests reading the shared comparison counter / a single changed sort key reinserts in O(log N) search comparisons across moves and ties
 - string, ordinal
 - float with NaN
@@ -1898,6 +1898,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - minBy stays asleep while it stays empty
 - disposing the calling scope stops the rank calls
 - disposing the tryMinBy memo releases the upstream rows
+- worsening holder that still beats its sibling promotes a better cousin
+- tail-appending rows across capacity doublings keeps tournament results and O(log N) cost
+- tryMinBy and tryMaxBy agree with sequential sticky-extreme scan across randomized 40-seed histories
 - the halves are complementary, in upstream order
 - 200 single edits at N=1000 make 200 predicate calls across both halves
 - a throwing predicate excludes the key from both halves
