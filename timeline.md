@@ -174,6 +174,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 77,194 | 103,972 | 1,652,746 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 77,192 | 100,804 | 1,620,011 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 77,194 | 100,758 | 1,619,919 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 77,194 | 100,792 | 1,620,025 |
 
 ## app-table
 
@@ -349,6 +350,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 3,651,260 | 8,658,293 | 98,146,262 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 3,651,356 | 12,027,139 | 85,509,058 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 3,495,285 | 6,176,274 | 82,168,259 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,248,184 | 6,039,584 | 78,191,638 |
 
 ## async-recover
 
@@ -524,6 +526,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 93,890 | 30,539 | 372,798 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 93,890 | 30,378 | 367,104 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 93,882 | 30,385 | 367,107 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 93,834 | 30,385 | 367,106 |
 
 ## async-resolve
 
@@ -699,6 +702,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,764,551 | 749,345 | 9,747,680 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,764,551 | 716,732 | 9,366,583 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,763,747 | 716,710 | 9,366,674 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,762,146 | 716,708 | 9,366,648 |
 
 ## chain
 
@@ -874,6 +878,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 13,037 | 318 | 2,450 | 4,491 | 3,219 | 72,781 | 68,354 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,912 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,911 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 13,037 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,912 |
 
 ## chain-affinity
 
@@ -1049,6 +1054,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,549 | 3,057 | 2,501 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,549 | 3,057 | 2,501 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,549 | 3,057 | 2,501 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,549 | 3,057 | 2,501 |
 
 ## control
 
@@ -1224,6 +1230,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 74,709 | 823,495 | 2,587,828 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 74,709 | 463,368 | 2,270,297 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 74,709 | 463,645 | 2,260,265 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 74,709 | 461,273 | 2,263,451 |
 
 ## create
 
@@ -1399,6 +1406,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 13,577,010 | 2,857,614 | 2,405,776 | 2,127,038 | 3,111,605 | 33,778,919 | 46,542,685 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 13,576,997 | 2,857,614 | 2,405,776 | 4,454,499 | 3,052,706 | 33,074,082 | 46,263,765 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 13,467,487 | 2,857,614 | 2,405,777 | 4,454,855 | 3,052,686 | 33,074,975 | 46,263,843 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 13,467,495 | 2,857,614 | 2,405,777 | 4,455,432 | 3,052,538 | 33,074,964 | 46,263,796 |
 
 ## create-on
 
@@ -1574,6 +1582,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,732,609 | 3,317,160 | 51,470,802 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,732,560 | 3,356,433 | 52,080,821 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,732,609 | 3,355,962 | 52,080,751 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,732,609 | 3,356,126 | 52,080,828 |
 
 ## cutoff
 
@@ -1749,6 +1758,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 
 ## derive-effect
 
@@ -1924,6 +1934,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 764 | 723 | 16,243 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 764 | 686 | 15,806 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 764 | 686 | 15,806 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 764 | 686 | 15,806 |
 
 ## derive-on
 
@@ -2099,6 +2110,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 733 | 729 | 16,266 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 733 | 690 | 15,824 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 733 | 690 | 15,824 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 733 | 690 | 15,824 |
 
 ## dispose
 
@@ -2274,6 +2286,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 2,706,245 | 806,288 | 358,486 | 492,156 | 506,806 | 13,205,729 | 9,104,833 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 2,706,244 | 806,288 | 358,486 | 479,840 | 500,780 | 11,184,958 | 8,962,762 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 2,707,643 | 806,288 | 358,486 | 479,761 | 500,756 | 11,185,040 | 8,962,350 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 2,707,640 | 806,288 | 358,486 | 480,673 | 500,725 | 11,184,701 | 8,962,839 |
 
 ## dispose-on
 
@@ -2449,6 +2462,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 337,486 | 498,407 | 8,901,427 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 337,486 | 492,267 | 8,758,821 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 337,486 | 492,354 | 8,758,675 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 337,486 | 492,331 | 8,759,032 |
 
 ## editable-edit
 
@@ -2624,6 +2638,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 178,109 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 178,109 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 178,109 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 178,109 |
 
 ## editable-upstream
 
@@ -2799,6 +2814,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 223,509 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 223,509 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 223,509 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 223,509 |
 
 ## fail-recompute
 
@@ -2974,6 +2990,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 65,232 | 1,368 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 65,232 | 1,368 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 65,176 | 1,368 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 65,160 | 1,368 |
 
 ## flight
 
@@ -3149,6 +3166,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 10,157 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 10,157 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 
 ## keyed-insert
 
@@ -3324,6 +3342,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,861,675 | 53,861 | 54,796 | 3,246,696 | 660,229 | 176,842 | 45,598,818 | 2,633,718 | 2,651,708 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,861,643 | 53,860 | 54,764 | 2,516,316 | 660,746 | 236,035 | 41,881,967 | 3,000,446 | 3,020,170 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,861,796 | 54,116 | 54,901 | 2,508,940 | 660,501 | 235,718 | 41,863,875 | 3,000,402 | 3,020,135 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,861,672 | 53,870 | 54,794 | 2,509,067 | 660,515 | 235,682 | 41,853,146 | 3,000,413 | 3,019,836 |
 
 ## keyed-remove
 
@@ -3499,6 +3518,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,860,716 | 43,650 | 45,126 | 3,248,292 | 595,382 | 147,752 | 45,555,269 | 1,923,637 | 1,956,902 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,860,672 | 43,650 | 45,092 | 2,521,879 | 600,277 | 140,096 | 41,843,961 | 2,141,130 | 2,176,191 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,860,828 | 43,891 | 45,208 | 2,521,915 | 600,239 | 140,097 | 41,835,869 | 2,141,131 | 2,176,104 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,860,696 | 43,644 | 45,102 | 2,521,934 | 600,258 | 140,262 | 41,838,715 | 2,141,095 | 2,176,154 |
 
 ## keyed-swap
 
@@ -3674,6 +3694,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,856,484 | 46,268 | 46,914 | 3,218,097 | 502,252 | 512,201 | 46,273,327 | 916,001 | 933,877 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,856,450 | 46,267 | 46,881 | 2,542,423 | 518,724 | 528,331 | 42,569,680 | 914,357 | 932,145 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,856,575 | 46,541 | 47,011 | 2,543,195 | 518,944 | 528,367 | 42,562,517 | 914,362 | 933,737 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,856,451 | 46,298 | 46,903 | 2,543,206 | 518,768 | 528,288 | 42,561,983 | 914,574 | 934,165 |
 
 ## mvu-dispatch
 
@@ -3849,6 +3870,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 59,439 | 773 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 59,439 | 773 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 59,439 | 773 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 59,439 | 773 |
 
 ## persist-write
 
@@ -4024,6 +4046,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | — | — |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | — | — |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | — | — |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — |
 
 ## project-chain
 
@@ -4199,6 +4222,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 454,444 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 454,490 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 387,836 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 91,989 |
 
 ## project-churn
 
@@ -4374,6 +4398,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 36,496 | 34,191 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 36,493 | 34,191 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 36,508 | 34,193 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 36,441 | 34,209 |
 
 ## project-edit
 
@@ -4549,6 +4574,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 50,447 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 50,559 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 50,513 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 50,433 |
 
 ## project-reorder
 
@@ -4724,6 +4750,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 645,124 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 645,268 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 645,242 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 645,146 |
 
 ## server-render
 
@@ -4899,6 +4926,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | — | — | — |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | — | — | — |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | — | — | — |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | — | — | — |
 
 ## shape-diamond
 
@@ -5074,6 +5102,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 59,609 | 80,097 | 1,781,072 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 59,609 | 79,993 | 1,744,544 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 59,609 | 79,993 | 1,744,544 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 59,609 | 79,993 | 1,744,544 |
 
 ## shape-dynamic
 
@@ -5249,6 +5278,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 83,024 | 107,132 | 2,005,078 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 83,024 | 105,983 | 1,945,036 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 83,024 | 105,980 | 1,945,043 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 83,024 | 105,978 | 1,945,040 |
 
 ## stream-burst-1
 
@@ -5424,6 +5454,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,845 | 1,471 | 2,482 | 4,344 | 6,788 | 11,734 | 37,636 | 35,840 | 46,463 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,688 | 37,062 | 35,267 | 45,893 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,845 | 1,471 | 2,484 | 5,539 | 8,612 | 11,688 | 37,063 | 35,266 | 45,894 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,845 | 1,471 | 2,482 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,893 |
 
 ## stream-burst-16
 
@@ -5599,6 +5630,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 3,870 | 23,326 | 5,692 | 8,178 | 27,198 | 14,385 | 99,016 | 561,190 | 104,814 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,160 | 91,895 | 552,050 | 101,975 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 3,870 | 23,326 | 5,694 | 7,718 | 26,398 | 14,160 | 91,896 | 552,049 | 101,966 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,870 | 23,326 | 5,692 | 7,715 | 26,398 | 14,160 | 91,896 | 552,049 | 101,975 |
 
 ## stream-burst-256
 
@@ -5774,6 +5806,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 36,246 | 373,006 | 57,031 | 96,971 | 431,089 | 40,858 | 1,081,332 | 8,965,444 | 1,037,825 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 36,246 | 373,006 | 57,031 | 89,873 | 418,285 | 36,687 | 969,374 | 8,819,188 | 998,681 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 36,246 | 373,006 | 57,033 | 89,869 | 418,288 | 36,687 | 969,387 | 8,819,175 | 998,640 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 36,246 | 373,006 | 57,031 | 89,874 | 418,287 | 36,687 | 969,382 | 8,819,174 | 998,719 |
 
 ## stream-restart
 
@@ -5949,6 +5982,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 3,882 | 4,877 | 14,814 | 6,291 | 43,163 | 72,347 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 3,882 | 4,877 | 14,710 | 6,205 | 41,889 | 71,200 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 3,882 | 4,875 | 14,708 | 6,205 | 41,891 | 71,194 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 3,882 | 4,876 | 14,708 | 6,201 | 41,889 | 71,198 |
 
 ## timed-admit-both
 
@@ -6124,6 +6158,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 109,482 | 132,707 | 2,572,245 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 108,458 | 132,596 | 2,532,507 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 108,458 | 132,084 | 2,532,830 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,458 | 132,051 | 2,532,894 |
 
 ## timed-admit-debounce
 
@@ -6299,6 +6334,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 109,034 | 131,639 | 2,557,673 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 108,010 | 131,187 | 2,518,224 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 108,010 | 131,185 | 2,518,233 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,010 | 131,187 | 2,518,212 |
 
 ## timed-admit-first
 
@@ -6474,6 +6510,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 68,971 | 77,255 | 1,583,470 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 67,947 | 77,253 | 1,583,488 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 67,947 | 77,251 | 1,583,488 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 67,947 | 77,253 | 1,583,488 |
 
 ## timed-admit-last
 
@@ -6649,6 +6686,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 109,290 | 131,955 | 2,567,555 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 108,266 | 131,508 | 2,528,105 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 108,266 | 131,506 | 2,528,089 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 108,266 | 131,507 | 2,528,067 |
 
 ## timed-capture-both
 
@@ -6824,6 +6862,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 35,090 | 43,695 | 865,817 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 35,090 | 43,795 | 865,675 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 35,090 | 43,760 | 865,872 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 35,090 | 43,392 | 865,942 |
 
 ## timed-capture-debounce
 
@@ -6999,6 +7038,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 34,962 | 46,806 | 866,053 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 34,962 | 46,807 | 866,053 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 34,962 | 46,805 | 866,053 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 34,962 | 46,804 | 866,053 |
 
 ## timed-capture-first
 
@@ -7174,6 +7214,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 31,314 | 36,736 | 748,416 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 31,314 | 36,735 | 748,414 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 31,314 | 36,735 | 748,414 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 31,314 | 36,735 | 748,414 |
 
 ## timed-capture-last
 
@@ -7349,6 +7390,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 34,898 | 46,743 | 858,181 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 34,898 | 46,740 | 858,181 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 34,898 | 46,740 | 858,181 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 34,898 | 46,742 | 858,181 |
 
 ## update
 
@@ -7524,6 +7566,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 1,091,190 | 38,805 | 81,509 | 263,073 | 152,642 | 3,351,259 | 2,523,468 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 1,089,589 | 38,805 | 81,509 | 196,969 | 95,681 | 2,533,209 | 1,773,728 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 1,091,190 | 38,805 | 81,509 | 196,889 | 95,681 | 2,533,185 | 1,773,705 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 1,089,590 | 38,805 | 81,509 | 196,954 | 95,684 | 2,533,231 | 1,773,685 |
 
 ## update-on
 
@@ -7699,6 +7742,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 93,009 | 172,543 | 2,850,819 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 93,009 | 115,597 | 2,101,116 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 93,009 | 115,582 | 2,101,006 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 93,009 | 115,597 | 2,101,107 |
 
 ## work-form
 
@@ -7874,6 +7918,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 170,299 | 164,511 | 309,222 | 338,442 | 5,440,194 | 5,353,204 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 170,299 | 164,511 | 297,877 | 293,066 | 4,997,447 | 4,910,506 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 170,299 | 164,511 | 297,879 | 293,073 | 4,997,461 | 4,910,479 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 170,299 | 164,511 | 297,880 | 293,085 | 4,997,447 | 4,910,519 |
 
 ## work-status
 
@@ -8049,6 +8094,7 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 100,349 | 78,439 | 257,160 | 153,225 | 2,631,569 | 2,363,548 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 100,348 | 78,439 | 200,143 | 92,538 | 1,881,849 | 1,613,856 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 100,349 | 78,439 | 200,118 | 92,523 | 1,881,806 | 1,613,849 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 100,349 | 78,439 | 200,170 | 92,565 | 1,881,840 | 1,613,854 |
 
 ## work-value
 
@@ -8224,4 +8270,5 @@
 | `111ad37` | 2026-11-14 | docs(maps): migrate signal maps to Ranvier.View.Dsl (#357) | 107,473 | 119,275 | 257,514 | 280,506 | 2,616,125 | 2,940,730 |
 | `25a4452` | 2026-11-14 | chore(deps): roll fickl to 0.10.1 and auto-roll it (#358) | 107,473 | 119,273 | 200,520 | 219,872 | 1,866,485 | 2,191,009 |
 | `b7b828e` | 2026-11-14 | perf(collections): incremental filter and choose views with Fenwick proofs (#360) | 107,475 | 119,274 | 200,472 | 219,855 | 1,866,387 | 2,190,963 |
+| `50fdfc0` | 2026-11-15 | perf(collections): incremental SortView with Rocq proofs (#361) | 107,473 | 119,274 | 200,520 | 219,842 | 1,866,503 | 2,190,985 |
 
