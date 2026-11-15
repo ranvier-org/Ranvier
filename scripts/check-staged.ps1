@@ -2,8 +2,8 @@
 $ErrorActionPreference = 'Stop'
 
 function Read-GitBytes([string[]] $GitArguments) {
-    $info = [System.Diagnostics.ProcessStartInfo]::new('rtk')
-    foreach ($argument in @('proxy', 'git') + $GitArguments) { $info.ArgumentList.Add($argument) }
+    $info = [System.Diagnostics.ProcessStartInfo]::new('git')
+    foreach ($argument in $GitArguments) { $info.ArgumentList.Add($argument) }
     $info.RedirectStandardOutput = $true
     $info.RedirectStandardError = $true
     $info.UseShellExecute = $false
@@ -29,7 +29,7 @@ function Write-IndexFile([string] $GitPath, [string] $Destination) {
 $snapshot = $null
 Push-Location (Join-Path $PSScriptRoot '..')
 try {
-    & rtk proxy git diff --cached --check
+    & git diff --cached --check
     if ($LASTEXITCODE -ne 0) { throw 'Fix the staged whitespace errors and stage the corrected files.' }
 
     $names = [System.Text.Encoding]::UTF8.GetString((Read-GitBytes @('diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR')))
@@ -65,10 +65,10 @@ try {
     Write-Host "Checking $($files.Count) staged F# file(s):"
     foreach ($file in $files) { Write-Host "  $file" }
     Push-Location $sourceRoot
-    try { & rtk proxy dotnet fantomas check @paths }
+    try { & dotnet fantomas check @paths }
     finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { throw 'Format the reported files with dotnet fantomas, then stage the corrections.' }
-    & rtk proxy pwsh -NoLogo -NoProfile -File (Join-Path $PSScriptRoot 'vendor/comment-hygiene/review-comments.ps1') -Path $commentRoot -Check -Exclude '(?!)'
+    & pwsh -NoLogo -NoProfile -File (Join-Path $PSScriptRoot 'vendor/comment-hygiene/review-comments.ps1') -Path $commentRoot -Check -Exclude '(?!)'
     if ($LASTEXITCODE -ne 0) { throw 'Remove FOR-REVIEW comments from the staged F# files before committing.' }
 }
 catch {
