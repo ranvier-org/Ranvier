@@ -30,12 +30,15 @@ not scenarios with each other.
 ## CI counter history
 
 The chart compares the selected metric per operation across commits and includes engine
-comparisons where the run provides them. Choose a runtime, metric and scenario; .NET and Node.js remain
-separate because their measurements are not comparable. Select a commit point or label to inspect its library comparison; open its
-source using the commit link. Hover or focus marks for exact values, toggle libraries in the legend,
-and switch between absolute values and values relative to Ranvier. The site builds this history from the `perf-data` branch after each successful
-master measurement. Perf skips documentation-only commits and commits whose final message paragraph
-carries a `Perf-Ignore:` trailer, so the history holds measured commits only.
+comparisons where the run provides them. Choose a runtime, metric, **From** baseline (defaulting to
+the last 30 measured commits) and scenario; .NET and Node.js remain separate because their
+measurements are not comparable. Select a commit point or label to inspect its library comparison;
+open its source using the commit link, or click **Start from** to re-anchor the window there. Hover
+or focus marks for exact values, toggle libraries in the legend, and switch between **Change since
+From**, per-operation values, and values relative to Ranvier. The site builds this history from the
+`perf-data` branch after each successful master measurement. Perf skips documentation-only commits
+and commits whose final message paragraph carries a `Perf-Ignore:` trailer, so the history holds
+measured commits only.
 
 <div class="rv-perf" data-perf-history><p role="status">Loading recorded measurements…</p></div>
 
@@ -116,14 +119,19 @@ inconclusive.
 ### Interactive chart controls
 
 On the topic pages, **Library comparison** compares engines at a selected commit; **Trends** follows
-each scenario across recorded commits, with one panel per Ranvier variant. Choose instructions,
-cycles, allocated bytes, branch misses or x64 CPU time with the Metric control. Runtime and metric
-selections carry between tabs; the site remembers the last selected tab across benchmark pages.
+each scenario across recorded commits, with one panel per Ranvier variant. Choose the **From**
+baseline (defaulting to the last 30 commits, or selecting a window, package version or commit SHA,
+reflected in `?from=`), **Metric** (`instructions`, `cycles`, `allocated bytes`, `branch misses`,
+or `x64 CPU time`), **Values** (`Change since From` or per operation), **Order**, and movement filter
+pills (`Improved`, `Regressed`, `Within ±5%`). Runtime, metric and `From` selections carry between
+tabs, and the site remembers the last selected tab across benchmark pages.
 
-Trend lines default to change since their first record, with changes of at least 5% shown in bold.
-Pinned versions of other libraries help reveal run-to-run variation. The shaded band spans the
-lowest and highest of the five processes behind each median; it is not a confidence interval.
-A ▲ marks a commit where Ranvier's library counters changed; select it to inspect the counters.
+Scrubbing or arrow-keying any trend panel moves a synchronized crosshair across sibling panels, with
+commit-to-commit deltas (`Δ prev`), net change since **From**, process min–max bands, and GitHub
+commit/diff links in the sticky readout above the panels. Click a commit or press `Enter` to pin
+it or re-anchor **From** there. Changes of at least 5% are highlighted (`−` green / `+` red); `▲`
+marks commits where Ranvier's library counters changed, and `◆` marks accepted regressions with
+their recorded reason.
 
 ### Comparison limits
 
