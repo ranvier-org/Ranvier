@@ -468,3 +468,7 @@ Print Assumptions sortview_insert_remove_refines_sort.
 Print Assumptions Ranvier.Heap.Collections.inv_order_shift_spec.
 Print Assumptions distinct_bucket_update_refines_scan.
 Print Assumptions grouping_move_refines_scan.
+Print Assumptions positional_frame_prefix_suffix.
+Print Assumptions positional_pure_inserts_correct.
+Print Assumptions positional_pure_removes_correct.
+Print Assumptions positional_nodup_trimmed_disjoint.
