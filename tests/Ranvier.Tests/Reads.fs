@@ -755,6 +755,74 @@ let tests =
                         |> List.filter (fun entry -> entry.Kind = JournalEntryKind.Write)
 
                     Expect.equal recordedWrites.Length 2 "reentrant journaled Serialised writes record both writes"
+
+                // String cutoff under JsIdentityPolicy must use value equality across distinct string instances.
+                do
+                    use gStr = new Graph ()
+                    let sStr = Signal (gStr, System.String [| 'a'; 'b' |])
+                    let mutable strRuns = 0
+
+                    let mStr =
+                        Make.Memo (
+                            gStr,
+                            (fun _ ->
+                                strRuns <- strRuns + 1
+                                sStr.Value)
+                        )
+
+                    Expect.equal mStr.Value "ab" "initial string memo read"
+                    Expect.equal strRuns 1 "string memo ran once initially"
+                    sStr.Value <- System.String [| 'a'; 'b' |]
+                    Expect.equal mStr.Value "ab" "distinct equal string cuts off"
+                    Expect.equal strRuns 1 "string memo skipped on equal distinct instance"
+                    sStr.Value <- "ac"
+                    Expect.equal mStr.Value "ac" "unequal string propagates"
+                    Expect.equal strRuns 2 "string memo reran on unequal string"
+
+                // Reference-type cutoff under JsIdentityPolicy must use ReferenceEquals: same ref cuts off, fresh equal-content array propagates.
+                do
+                    use gRef = new Graph ()
+                    let arr = [| 1; 2 |]
+                    let sRef = Signal (gRef, arr)
+                    let mutable refRuns = 0
+
+                    let mRef =
+                        Make.Memo (
+                            gRef,
+                            (fun _ ->
+                                refRuns <- refRuns + 1
+                                sRef.Value.Length)
+                        )
+
+                    Expect.equal mRef.Value 2 "initial array memo read"
+                    Expect.equal refRuns 1 "array memo ran once initially"
+                    sRef.Value <- arr
+                    Expect.equal mRef.Value 2 "same array reference cuts off"
+                    Expect.equal refRuns 1 "array memo skipped on same reference"
+                    sRef.Value <- [| 1; 2 |]
+                    Expect.equal mRef.Value 2 "fresh equal-content array still propagates"
+                    Expect.equal refRuns 2 "array memo reran on fresh array instance"
+
+                // Reference-type cutoff under StructuralPolicy must use EqualityComparer<'T>.Default across distinct equal instances.
+                do
+                    use gList = new Graph (GraphOptions.Default.WithEquality (StructuralPolicy ()))
+
+                    let sList = Signal (gList, List.ofArray [| 1; 2 |])
+                    let mutable listRuns = 0
+
+                    let mList =
+                        Make.Memo (
+                            gList,
+                            (fun _ ->
+                                listRuns <- listRuns + 1
+                                sList.Value)
+                        )
+
+                    Expect.equal mList.Value [ 1; 2 ] "initial list memo read under StructuralPolicy"
+                    Expect.equal listRuns 1 "list memo ran once initially"
+                    sList.Value <- List.ofArray [| 1; 2 |]
+                    Expect.equal mList.Value [ 1; 2 ] "structurally equal distinct list cuts off"
+                    Expect.equal listRuns 1 "list memo skipped on structurally equal distinct list"
 #endif
             }
         ]

@@ -143,26 +143,35 @@ Definition null_comparer_code : val :=
   λ: <> <>, InjR (#0, #0).
 
 Definition encode_comparer_code : val :=
-  λ: "is_def" "opt_cmp",
-    if: "is_def" then NONE
-    else
-      match: "opt_cmp" with
-        NONE => SOME null_comparer_code
-      | SOME "f" => SOME "f"
-      end.
+  λ: "is_val_type" "is_val_def" "is_ref_id" "opt_cmp",
+    match: "opt_cmp" with
+      NONE => SOME null_comparer_code
+    | SOME "f" =>
+        if: "is_val_type" then
+          (if: "is_val_def" then NONE else SOME "f")
+        else
+          (if: "is_ref_id" then NONE else SOME "f")
+    end.
 
 Definition eval_comparer_sentinel_code : val :=
-  λ: "enc" "a" "b",
-    match: "enc" with
-      NONE => InjL ("a" = "b")
-    | SOME "cmp" => "cmp" "a" "b"
-    end.
+  λ: "is_val_type" "enc" "a" "b",
+    if: "is_val_type" then
+      match: "enc" with
+        NONE => InjL ("a" = "b")
+      | SOME "cmp" => "cmp" "a" "b"
+      end
+    else
+      match: "enc" with
+        NONE => InjL ("a" = "b")
+      | SOME "cmp" => "cmp" "a" "b"
+      end.
 
 Definition check_fast_write_token_code : val :=
   λ: "tok_loc" "caller_tok",
     let: "tok" := !"tok_loc" in
-    if: "tok" = #0 then #true
-    else "tok" = "caller_tok".
+    if: #0 ≤ "tok" then
+      (if: "tok" = #0 then #true else "tok" = "caller_tok")
+    else #false.
 
 Definition signal_set_token_fast_code : val :=
   λ: "tok_loc" "caller_tok" "cs" "me" "ctx" "g" "n" "v",
@@ -506,35 +515,67 @@ Definition cmp_outcome_val (out : cmp_outcome) : val :=
   | CmpThrow err => InjRV (#1, #err)
   end.
 
-Definition nullable_comparer_args (c : nullable_comparer) (fv : val) : val * val :=
+Definition eq_prim_code : val :=
+  λ: "x" "y", InjL ("x" = "y").
+
+Definition nullable_comparer_args (c : nullable_comparer) (fv : val) : val * val * val :=
   match c with
-  | CmpNullInput => (#false, NONEV)
-  | CmpDefaultInput => (#true, SOMEV fv)
-  | CmpCustomInput _ => (#false, SOMEV fv)
+  | CmpNullInput => (#false, #false, NONEV)
+  | CmpValDefault => (#true, #false, SOMEV eq_prim_code)
+  | CmpRefIdentity => (#false, #true, SOMEV eq_prim_code)
+  | CmpCustomInput _ => (#false, #false, SOMEV fv)
   end.
 
 (**md
-**`encode_comparer_code` followed by `eval_comparer_sentinel_code` evaluates `EqualityComparer<'T>.Default` via inline primitive `=` when `enc = NONE` (`null`), raises `CmpNullRef` via `null_comparer_code` when the input comparer was `NONE`, and invokes custom comparers unchanged.**
+**`encode_comparer_code` followed by `eval_comparer_sentinel_code` encodes value-type `EqualityComparer<'T>.Default` and reference-type `ReferenceComparer<'T>` as `NONE` (`null`) evaluated via primitive `=`, raises `CmpNullRef` via `null_comparer_code` when the input comparer was `NONE`, and invokes other comparers unchanged.**
 
-- [c:] the input `nullable_comparer` (`CmpNullInput`, `CmpDefaultInput`, or `CmpCustomInput f`).
+- [is_val_type:] `true` when `typeof<'T>.IsValueType`, `false` otherwise.
+- [c:] the input `nullable_comparer` (`CmpNullInput`, `CmpValDefault`, `CmpRefIdentity`, or `CmpCustomInput f`).
 - [fv:] the HeapLang closure representing a custom comparer when `c = CmpCustomInput f`.
 - [a:] the previous integer value.
 - [b:] the candidate integer value.
 *)
 Theorem default_comparer_null_sentinel_spec
-    (c : nullable_comparer) (fv : val) (a b : Z) :
+    (is_val_type : bool) (c : nullable_comparer) (fv : val) (a b : Z) :
   (forall f, c = CmpCustomInput f ->
     {{{ True }}} fv #a #b {{{ RET cmp_outcome_val (f a b); True }}}) ->
-  let '(is_def, opt_cmp) := nullable_comparer_args c fv in
+  let '(is_val_def, is_ref_id, opt_cmp) := nullable_comparer_args c fv in
   {{{ True }}}
-    let: "enc" := encode_comparer_code is_def opt_cmp in
-    eval_comparer_sentinel_code "enc" #a #b
-  {{{ RET cmp_outcome_val (eval_nullable_comparer Z.eqb c a b); True }}}.
+    let: "enc" := encode_comparer_code #is_val_type is_val_def is_ref_id opt_cmp in
+    eval_comparer_sentinel_code #is_val_type "enc" #a #b
+  {{{ RET cmp_outcome_val (eval_nullable_comparer Z.eqb Z.eqb c a b); True }}}.
 Proof.
   intros Hcustom.
-  destruct c as [| |f]; simpl; iIntros (Φ) "_ HΦ".
+  destruct is_val_type, c as [| | |f]; simpl; iIntros (Φ) "_ HΦ".
   - rewrite /encode_comparer_code /eval_comparer_sentinel_code /null_comparer_code.
     wp_pures. iModIntro. by iApply "HΦ".
+  - rewrite /encode_comparer_code /eval_comparer_sentinel_code.
+    wp_pures. iModIntro.
+    replace (bool_decide (#a = #b)) with (Z.eqb a b).
+    + by iApply "HΦ".
+    + symmetry. destruct (Z.eqb_spec a b) as [->|Hne].
+      * by rewrite bool_decide_eq_true_2.
+      * rewrite bool_decide_eq_false_2 //; intros [= H]; exact (Hne H).
+  - rewrite /encode_comparer_code /eval_comparer_sentinel_code /eq_prim_code.
+    wp_pures. iModIntro.
+    replace (bool_decide (#a = #b)) with (Z.eqb a b).
+    + by iApply "HΦ".
+    + symmetry. destruct (Z.eqb_spec a b) as [->|Hne].
+      * by rewrite bool_decide_eq_true_2.
+      * rewrite bool_decide_eq_false_2 //; intros [= H]; exact (Hne H).
+  - rewrite /encode_comparer_code /eval_comparer_sentinel_code.
+    wp_pures.
+    wp_apply (Hcustom f eq_refl with "[//]").
+    iIntros "_". by iApply "HΦ".
+  - rewrite /encode_comparer_code /eval_comparer_sentinel_code /null_comparer_code.
+    wp_pures. iModIntro. by iApply "HΦ".
+  - rewrite /encode_comparer_code /eval_comparer_sentinel_code /eq_prim_code.
+    wp_pures. iModIntro.
+    replace (bool_decide (#a = #b)) with (Z.eqb a b).
+    + by iApply "HΦ".
+    + symmetry. destruct (Z.eqb_spec a b) as [->|Hne].
+      * by rewrite bool_decide_eq_true_2.
+      * rewrite bool_decide_eq_false_2 //; intros [= H]; exact (Hne H).
   - rewrite /encode_comparer_code /eval_comparer_sentinel_code.
     wp_pures. iModIntro.
     replace (bool_decide (#a = #b)) with (Z.eqb a b).
@@ -556,19 +597,24 @@ Proof.
   iIntros (Φ) "Htok HΦ".
   rewrite /check_fast_write_token_code /check_fast_write_token.
   wp_lam. wp_pures. wp_load. wp_pures.
-  destruct (decide (tok = 0%Z)) as [->|Hnt0].
-  - rewrite (bool_decide_eq_true_2 (0%Z = 0%Z)) //=.
-    wp_pures. iModIntro. by iApply "HΦ".
-  - rewrite (bool_decide_eq_false_2 (tok = 0%Z)) //=.
-    rewrite (bool_decide_eq_false_2 (#tok = #0)); [|intros [= H]; exact (Hnt0 H)].
+  destruct (decide (0 <= tok)%Z) as [Hnn|Hneg].
+  - rewrite !(bool_decide_eq_true_2 (0 <= tok)%Z) //=.
     wp_pures.
-    destruct (decide (tok = caller_tok)) as [->|Hntc].
-    + rewrite (bool_decide_eq_true_2 (caller_tok = caller_tok)) //.
-      rewrite (bool_decide_eq_true_2 (#caller_tok = #caller_tok)) //.
-      iModIntro. by iApply "HΦ".
-    + rewrite (bool_decide_eq_false_2 (tok = caller_tok)) //.
-      rewrite (bool_decide_eq_false_2 (#tok = #caller_tok)); [|intros [= H]; exact (Hntc H)].
-      iModIntro. by iApply "HΦ".
+    destruct (decide (tok = 0%Z)) as [->|Hnt0].
+    + rewrite (bool_decide_eq_true_2 (0%Z = 0%Z)) //=.
+      wp_pures. iModIntro. by iApply "HΦ".
+    + rewrite (bool_decide_eq_false_2 (tok = 0%Z)) //=.
+      rewrite (bool_decide_eq_false_2 (#tok = #0)); [|intros [= H]; exact (Hnt0 H)].
+      wp_pures.
+      destruct (decide (tok = caller_tok)) as [->|Hntc].
+      * rewrite (bool_decide_eq_true_2 (caller_tok = caller_tok)) //.
+        rewrite (bool_decide_eq_true_2 (#caller_tok = #caller_tok)) //.
+        iModIntro. by iApply "HΦ".
+      * rewrite (bool_decide_eq_false_2 (tok = caller_tok)) //.
+        rewrite (bool_decide_eq_false_2 (#tok = #caller_tok)); [|intros [= H]; exact (Hntc H)].
+        iModIntro. by iApply "HΦ".
+  - rewrite !(bool_decide_eq_false_2 (0 <= tok)%Z) //=.
+    wp_pures. iModIntro. by iApply "HΦ".
 Qed.
 
 (**md

@@ -169,8 +169,10 @@ module internal StatusBits =
     let inline isError (status: Status) =
         (status &&& Status.Error) <> Status.None
 
+#if !FABLE_COMPILER
     let inline isCleanAndReady (freshness: Freshness) (status: Status) =
         ((byte freshness) ||| (byte status &&& 3uy)) = 0uy
+#endif
 
 /// <summary>
 /// One slot in an observer list.
@@ -2732,7 +2734,6 @@ type Graph(options: GraphOptions) =
     /// <exception cref="T:System.InvalidOperationException">
     /// The caller runs outside the construction context, or another thread holds the graph.
     /// </exception>
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.Acquire(operation: string) : bool =
         let me = Platform.currentThreadId ()
 
@@ -2958,7 +2959,7 @@ type Graph(options: GraphOptions) =
         if serialised then
             Volatile.Read &holder = Platform.currentThreadId ()
         else
-            OwnerThreadToken.Current = ownerToken
+            Platform.currentThreadId () = ownerThread
 #endif
 
     /// <summary>
@@ -3873,16 +3874,28 @@ type Graph(options: GraphOptions) =
     /// consumer stranded — it never learns that the source settled. This is
     /// upstream bug #2893.
     /// </remarks>
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal this.Track(source: ISource) =
+#if FABLE_COMPILER
+    member internal _.Track(source: ISource) =
         if not (obj.ReferenceEquals (current, null)) then
-            this.TrackCurrent source
+            // The observer half is linked by the consumer's own source list,
+            // which is the only side that knows whether this edge is new.
+            current.AddSource source
 
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member internal _.TrackCurrent(source: ISource) =
-        // The observer half is linked by the consumer's own source list,
-        // which is the only side that knows whether this edge is new.
-        current.AddSource source
+    /// <summary>
+    /// The computation whose body is running, or null. Read by a source that
+    /// has just recomputed, to avoid marking its own reader dirty — see
+    /// <c>ObserverSet.NotifyDirtyExcept</c>.
+    /// </summary>
+    member internal _.CurrentComputation = current
+#else
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.Track(source: ISource) =
+        let c = current
+
+        if not (obj.ReferenceEquals (c, null)) then
+            // The observer half is linked by the consumer's own source list,
+            // which is the only side that knows whether this edge is new.
+            c.AddSource source
 
     /// <summary>
     /// The computation whose body is running, or null. Read by a source that
@@ -3890,6 +3903,7 @@ type Graph(options: GraphOptions) =
     /// <c>ObserverSet.NotifyDirtyExcept</c>.
     /// </summary>
     member inline internal _.CurrentComputation = current
+#endif
 
     /// <summary>
     /// Marks the running computation dirty, if any. Called by a tracked read that has just linked a source still
@@ -4282,15 +4296,10 @@ type Graph(options: GraphOptions) =
             untrackedHost <- previousHost
             untrackedInBody <- previousInBody
 
-#if FABLE_COMPILER
-module private ComparerSentinel =
-    let inline encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> = comparer
-
-    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
-        encoded.Equals (a, b)
-#else
-// Normalizes EqualityComparer<'T>.Default to null so .NET hot paths avoid interface dispatch
-// and emit RyuJIT's intrinsic Equals, while preserving NullReferenceException for a faulty policy.
+#if !FABLE_COMPILER
+// Normalizes the intrinsic fast-path comparer (EqualityComparer<'T>.Default for value types,
+// ReferenceComparer<'T> for reference types) to null so .NET hot paths avoid interface dispatch
+// and generic dictionary lookups, while preserving NullReferenceException for a faulty policy.
 [<Sealed>]
 type private NullComparer<'T>() =
     static member val Instance: IEqualityComparer<'T> = NullComparer<'T>() :> IEqualityComparer<'T>
@@ -4306,28 +4315,36 @@ module private ComparerSentinel =
     let encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
         if obj.ReferenceEquals (comparer, null) then
             NullComparer<'T>.Instance
-        elif obj.ReferenceEquals (comparer, EqualityComparer<'T>.Default) then
+        elif typeof<'T>.IsValueType then
+            if obj.ReferenceEquals (comparer, EqualityComparer<'T>.Default) then
+                null
+            else
+                comparer
+        elif comparer :? ReferenceComparer<'T> then
             null
         else
             comparer
 
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    let equalsCustom (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
-        encoded.Equals (a, b)
-
     let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
-        if obj.ReferenceEquals (encoded, null) then
-            EqualityComparer<'T>.Default.Equals(a, b)
+        if typeof<'T>.IsValueType then
+            if obj.ReferenceEquals (encoded, null) then
+                EqualityComparer<'T>.Default.Equals(a, b)
+            else
+                encoded.Equals (a, b)
+        elif obj.ReferenceEquals (encoded, null) then
+            obj.ReferenceEquals (box a, box b)
         else
-            equalsCustom encoded a b
+            encoded.Equals (a, b)
 #endif
 
 /// <summary>
 /// A settable source.
 /// </summary>
-type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer<'T>) =
+type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-    let equal = ComparerSentinel.encode comparer
+#if !FABLE_COMPILER
+    let equal = ComparerSentinel.encode equal
+#endif
 #if RANVIER_TRACE
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
@@ -4427,20 +4444,11 @@ type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer
             )
 #else
     member this.Value
-        with get () = this.GetFast ()
-        and set v = this.SetFast v
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member private this.GetFast() =
-        if obj.ReferenceEquals (graph.CurrentComputation, null) then
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () =
+            graph.Track (this :> ISource)
             value
-        else
-            this.ReadTracked ()
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.ReadTracked() =
-        graph.TrackCurrent (this :> ISource)
-        value
+        and [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] set (v: 'T) =
+            this.SetFast v
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.SetFast(v: 'T) =
@@ -4449,9 +4457,18 @@ type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer
         // otherwise only show up on the write that differs.
         let tok = graph.FastWriteToken
 
-        if tok = 0L || tok = OwnerThreadToken.Current then
+        if
+            tok >= 0L
+            && (tok = 0L || tok = OwnerThreadToken.Current)
+        then
             if obj.ReferenceEquals (equal, null) then
-                if not (EqualityComparer<'T>.Default.Equals(value, v)) then
+                let unchanged =
+                    if typeof<'T>.IsValueType then
+                        EqualityComparer<'T>.Default.Equals(value, v)
+                    else
+                        obj.ReferenceEquals (box value, box v)
+
+                if not unchanged then
                     this.SetChanged v
                 else
                     Tracer.Write (observers, false, box v)
@@ -4461,9 +4478,17 @@ type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer
             this.SetSlow v
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.SetCustom(v: 'T) =
+    member private _.SetCustom(v: 'T) =
         if not (equal.Equals (value, v)) then
-            this.SetChanged v
+            value <- v
+            Tracer.Write (observers, true, box v)
+
+            if not (Platform.isNull (box observers)) then
+                observers.NotifyDirty ()
+
+            Tracer.Notified observers
+
+            graph.RequestFlush ()
         else
             Tracer.Write (observers, false, box v)
 
@@ -4505,7 +4530,15 @@ type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer
         try
             if Platform.isNull graph.Journal then
                 if not (ComparerSentinel.equals equal value v) then
-                    this.SetChanged v
+                    value <- v
+                    Tracer.Write (observers, true, box v)
+
+                    if not (Platform.isNull (box observers)) then
+                        observers.NotifyDirty ()
+
+                    Tracer.Notified observers
+
+                    graph.RequestFlush ()
                 else
                     Tracer.Write (observers, false, box v)
             else
@@ -4540,13 +4573,39 @@ type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer
     member internal this.WriteExcept(v: 'T, running: IComputation) =
         let tok = graph.FastWriteToken
 
-        if tok = 0L || tok = OwnerThreadToken.Current then
-            if not (ComparerSentinel.equals equal value v) then
-                this.WriteExceptChanged (v, running)
+        if
+            tok >= 0L
+            && (tok = 0L || tok = OwnerThreadToken.Current)
+        then
+            if obj.ReferenceEquals (equal, null) then
+                let unchanged =
+                    if typeof<'T>.IsValueType then
+                        EqualityComparer<'T>.Default.Equals(value, v)
+                    else
+                        obj.ReferenceEquals (box value, box v)
+
+                if not unchanged then
+                    this.WriteExceptChanged (v, running)
+                else
+                    Tracer.Write (observers, false, box v)
             else
-                Tracer.Write (observers, false, box v)
+                this.WriteExceptCustom (v, running)
         else
             this.WriteExceptSlow (v, running)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.WriteExceptCustom(v: 'T, running: IComputation) =
+        if not (equal.Equals (value, v)) then
+            value <- v
+            Tracer.Write (observers, true, box v)
+
+            if not (Platform.isNull (box observers)) then
+                observers.NotifyDirtyOther running
+
+            Tracer.Notified observers
+            graph.RequestFlush ()
+        else
+            Tracer.Write (observers, false, box v)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.WriteExceptSlow(v: 'T, running: IComputation) =
@@ -4602,14 +4661,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, comparer: IEqualityComparer
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.GetTryFast() : Reading<'T> =
-        if obj.ReferenceEquals (graph.CurrentComputation, null) then
-            Ready value
-        else
-            this.ReadTrackedTry ()
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.ReadTrackedTry() : Reading<'T> =
-        graph.TrackCurrent (this :> ISource)
+        graph.Track (this :> ISource)
         Ready value
 #endif
 
@@ -4834,9 +4886,11 @@ type AsyncSource<'T>(graph: Graph) =
 /// argument keeps its dependents clean.
 /// </para>
 /// </remarks>
-type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T>) =
+type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-    let equal = ComparerSentinel.encode comparer
+#if !FABLE_COMPILER
+    let equal = ComparerSentinel.encode equal
+#endif
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let sources = SourceList ()
@@ -5065,7 +5119,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         if not moved then
             try
+#if FABLE_COMPILER
+                moved <- not (equal.Equals (previous, value))
+#else
                 moved <- not (ComparerSentinel.equals equal previous value)
+#endif
             with ex ->
                 value <- previous
                 failure <- graph.FailureOf (ex, this, previousFailure)
@@ -5465,19 +5523,15 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
             value
 #else
-    member this.Value: 'T =
+    member this.Value: 'T = this.GetFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetFast() : 'T =
         if StatusBits.isCleanAndReady freshness status then
-            if obj.ReferenceEquals (graph.CurrentComputation, null) then
-                value
-            else
-                this.ReadCleanTracked ()
+            graph.Track (this :> ISource)
+            value
         else
             this.ReadSlow ()
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.ReadCleanTracked() : 'T =
-        graph.TrackCurrent (this :> ISource)
-        value
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ReadSlow() : 'T =
@@ -5529,19 +5583,15 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             else
                 Ready value
 #else
-    member this.TryValue: Reading<'T> =
+    member this.TryValue: Reading<'T> = this.GetTryFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetTryFast() : Reading<'T> =
         if StatusBits.isCleanAndReady freshness status then
-            if obj.ReferenceEquals (graph.CurrentComputation, null) then
-                Ready value
-            else
-                this.ReadCleanTrackedTry ()
+            graph.Track (this :> ISource)
+            Ready value
         else
             this.ReadTrySlow ()
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.ReadCleanTrackedTry() : Reading<'T> =
-        graph.TrackCurrent (this :> ISource)
-        Ready value
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ReadTrySlow() : Reading<'T> =

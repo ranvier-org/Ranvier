@@ -370,14 +370,14 @@ Definition status_byte (st : status) (stale_flag : bool) : Z :=
    | StUninitialized => 4%Z
    end + if stale_flag then 8%Z else 0%Z)%Z.
 
-(**md `StatusBits.isCleanAndReady` (`Core.fs` lines 172–173): checks `((byte freshness) ||| (byte status &&& 3uy)) = 0uy`. *)
+(**md `StatusBits.isCleanAndReady` (`Core.fs` lines 173–174): checks `((byte freshness) ||| (byte status &&& 3uy)) = 0uy`. *)
 Definition is_clean_and_ready_bits (fr : freshness) (st : status) (stale_flag : bool) : bool :=
   bool_decide (Z.lor (freshness_byte fr) (Z.land (status_byte st stale_flag) 3%Z) = 0%Z).
 
 (**md
 **`is_clean_and_ready_bits` holds if and only if freshness is `Clean` and status has neither `Pending` nor `Error` set, independent of `Uninitialized` and `Stale` bits.**
 
-Matches `StatusBits.isCleanAndReady` (`Core.fs` lines 172–173): masking `status` with `3uy` ignores both
+Matches `StatusBits.isCleanAndReady` (`Core.fs` lines 173–174): masking `status` with `3uy` ignores both
 `Status.Uninitialized` (`4uy`) and `Status.Stale` (`8uy`) while rejecting `Status.Pending` (`1uy`) and `Status.Error` (`2uy`).
 
 - [fr:] the node's `Freshness`.
@@ -408,7 +408,7 @@ Proof.
   destruct (g_nodes (with_edges w s) !! n); destruct s; reflexivity.
 Qed.
 
-(**md Fast/slow decomposition of `Memo.Value` (`Core.fs` lines 5468–5504): inspects
+(**md Fast/slow decomposition of `Memo.Value` (`Core.fs` lines 5526–5557): inspects
     `is_clean_and_ready_bits` first, tracks and returns the cached value on hit, and otherwise delegates
     to `read_node`. *)
 Definition read_memo_fast (fuel : nat) (n : node_id) : M outcome :=
@@ -429,7 +429,7 @@ Definition read_memo_fast (fuel : nat) (n : node_id) : M outcome :=
 (**md
 **Splitting `Memo.Value` into an inline `is_clean_and_ready_bits` fast path and a slow fallback preserves `read_node` and tracked `read` identically across all states.**
 
-Matches the `#else` `.NET` split between `Memo.Value` (`get`) and `Memo.ReadSlow` (`Core.fs` lines 5468–5504).
+Matches the `#else` `.NET` split between `Memo.Value` (`GetFast`) and `Memo.ReadSlow` (`Core.fs` lines 5526–5557).
 
 - [f:] inner fuel budget for `read_node (S f)`.
 - [n:] the target node id.
@@ -462,7 +462,7 @@ Definition signal_journal_record (v : val) (j : option (list Z)) : option (list 
   | Some log => Some (log ++ [v])
   end.
 
-(**md Reference `Entered`-composed `Signal.Value` setter (`#if FABLE_COMPILER`, `Core.fs` lines 4397–4427). *)
+(**md Reference `Entered`-composed `Signal.Value` setter (`#if FABLE_COMPILER`, `Core.fs` lines 4414–4444). *)
 Definition signal_set_entered
     (me ctx fuel : nat) (n : node_id) (v : val)
     (cs : concurrency_state) (j : option (list Z)) (s : state)
@@ -478,7 +478,7 @@ Definition signal_set_entered
       end
   end.
 
-(**md Slow cold path for `Signal.Value` `set` after `Graph.Enter` returns `true` (`Signal.SetAfterAcquire`, `Core.fs` lines 4504–4515). *)
+(**md Slow cold path for `Signal.Value` `set` after `Graph.Enter` returns `true` (`Signal.SetAfterAcquire`, `Core.fs` lines 4529–4547). *)
 Definition signal_set_after_acquire
     (fuel : nat) (n : node_id) (v : val)
     (cs : concurrency_state) (j : option (list Z)) (s : state)
@@ -508,7 +508,7 @@ Definition signal_set_after_acquire
       end
   end.
 
-(**md Split `.NET` fast/cold decomposition of `Signal.Value` `set` (`Core.fs` lines 4429–4515). *)
+(**md Split `.NET` fast/cold decomposition of `Signal.Value` `set` (`Core.fs` lines 4446–4547). *)
 Definition signal_set_fast_split
     (me ctx fuel : nat) (n : node_id) (v : val)
     (cs : concurrency_state) (j : option (list Z)) (s : state)
@@ -581,7 +581,7 @@ Qed.
 (**md
 **Splitting `Signal.Value` `set` into inline `Enter` / unjournaled cutoff check and `SetChanged` / `SetJournaled` / `SetAfterAcquire` cold helpers refines the `Entered` setter identically and still enforces `Guarded` affinity before cutoff.**
 
-Matches `Signal.Value` (`set`), `SetChanged`, `SetJournaled`, and `SetAfterAcquire` (`Core.fs` lines 4471–4515):
+Matches `Signal.Value` (`set`), `SetSlow`, `SetChanged`, `SetJournaled`, and `SetAfterAcquire` (`Core.fs` lines 4450–4547):
 journaled equal writes still append to the journal, and off-thread equal writes under `ThreadAffinity.Guarded`
 still fail (`None`) before any cutoff check is reached.
 
@@ -611,77 +611,92 @@ Proof.
     rewrite (proj1 Hiff Hne). reflexivity.
 Qed.
 
-(**md Outcome of invoking an `IEqualityComparer<'T>.Equals` implementation (`Core.fs` lines 4295–4323):
+(**md Outcome of invoking an `IEqualityComparer<'T>.Equals` implementation (`Core.fs` lines 4304–4337):
     returns `CmpBool b`, raises `NullReferenceException` (`CmpNullRef`), or throws a user exception (`CmpThrow err`). *)
 Inductive cmp_outcome :=
   | CmpBool (b : bool)
   | CmpNullRef
   | CmpThrow (err : Z).
 
-(**md Classification of the `IEqualityComparer<'T>` returned by `IEqualityPolicy.Comparer<'T>()` (`Core.fs` lines 4306–4313). *)
+(**md Classification of the `IEqualityComparer<'T>` returned by `IEqualityPolicy.Comparer<'T>()` (`Core.fs` lines 4315–4326). *)
 Inductive nullable_comparer :=
   | CmpNullInput
-  | CmpDefaultInput
+  | CmpValDefault
+  | CmpRefIdentity
   | CmpCustomInput (f : Z -> Z -> cmp_outcome).
 
-(**md Encoded `equal` field stored on `Signal` and `Memo` by `ComparerSentinel.encode` (`Core.fs` lines 4306–4313):
-    `SentDefaultNull` represents `null` (signalling `EqualityComparer<'T>.Default.Equals`), `SentNullComparer`
-    represents `NullComparer<'T>.Instance`, and `SentCustom f` stores a custom comparer unchanged. *)
+(**md Encoded `equal` field stored on `Signal` and `Memo` by `ComparerSentinel.encode` (`Core.fs` lines 4315–4326):
+    `SentDefaultNull` represents `null` (signalling intrinsic `EqualityComparer<'T>.Default.Equals` when `is_val_type = true`,
+    or `obj.ReferenceEquals` when `is_val_type = false`), `SentNullComparer` represents `NullComparer<'T>.Instance`,
+    and `SentCustom f` stores any non-intrinsic comparer (such as `EqualityComparer<string>.Default` or custom policies). *)
 Inductive comparer_sentinel :=
   | SentDefaultNull
   | SentNullComparer
   | SentCustom (f : Z -> Z -> cmp_outcome).
 
-Definition eval_nullable_comparer (def_eq : Z -> Z -> bool) (c : nullable_comparer) (a b : Z) : cmp_outcome :=
+Definition eval_nullable_comparer
+    (val_eq ref_eq : Z -> Z -> bool) (c : nullable_comparer) (a b : Z) : cmp_outcome :=
   match c with
   | CmpNullInput => CmpNullRef
-  | CmpDefaultInput => CmpBool (def_eq a b)
+  | CmpValDefault => CmpBool (val_eq a b)
+  | CmpRefIdentity => CmpBool (ref_eq a b)
   | CmpCustomInput f => f a b
   end.
 
-Definition encode_comparer_sentinel (c : nullable_comparer) : comparer_sentinel :=
+Definition encode_comparer_sentinel
+    (is_val_type : bool) (val_eq ref_eq : Z -> Z -> bool) (c : nullable_comparer) : comparer_sentinel :=
   match c with
   | CmpNullInput => SentNullComparer
-  | CmpDefaultInput => SentDefaultNull
+  | CmpValDefault =>
+      if is_val_type then SentDefaultNull
+      else SentCustom (fun a b => CmpBool (val_eq a b))
+  | CmpRefIdentity =>
+      if is_val_type then SentCustom (fun a b => CmpBool (ref_eq a b))
+      else SentDefaultNull
   | CmpCustomInput f => SentCustom f
   end.
 
-Definition eval_comparer_sentinel (def_eq : Z -> Z -> bool) (s : comparer_sentinel) (a b : Z) : cmp_outcome :=
+Definition eval_comparer_sentinel
+    (is_val_type : bool) (val_eq ref_eq : Z -> Z -> bool) (s : comparer_sentinel) (a b : Z) : cmp_outcome :=
   match s with
-  | SentDefaultNull => CmpBool (def_eq a b)
+  | SentDefaultNull => CmpBool (if is_val_type then val_eq a b else ref_eq a b)
   | SentNullComparer => CmpNullRef
   | SentCustom f => f a b
   end.
 
 (**md
-**Encoding `EqualityComparer<'T>.Default` as `null` and `null` as `NullComparer<'T>.Instance` preserves exact comparison and exception outcomes across default, custom, throwing, and faulty-null comparers.**
+**Encoding `EqualityComparer<'T>.Default` on value types and `ReferenceComparer<'T>` on reference types as `null`, and `null` as `NullComparer<'T>.Instance`, preserves exact comparison and exception outcomes across value, reference, custom, throwing, and faulty-null comparers.**
 
-Matches `NullComparer<'T>` and `ComparerSentinel.encode` / `ComparerSentinel.equals` (`Core.fs` lines 4295–4323) and
-`Signal.SetFast` / `Signal.SetCustom` (`Core.fs` lines 4453–4469):
-- `EqualityComparer<'T>.Default` maps to `SentDefaultNull` (`null`), dispatching directly to `def_eq a b` without interface dispatch;
+Matches `NullComparer<'T>` and `ComparerSentinel.encode` / `ComparerSentinel.equals` (`Core.fs` lines 4304–4337) and
+`Signal.SetFast` / `Signal.SetCustom` (`Core.fs` lines 4454–4493):
+- for value types (`is_val_type = true`), `EqualityComparer<'T>.Default` maps to `SentDefaultNull` (`null`), dispatching directly to `val_eq a b` without interface dispatch;
+- for reference types (`is_val_type = false`), `ReferenceComparer<'T>` maps to `SentDefaultNull` (`null`), dispatching directly to `ref_eq a b` (`obj.ReferenceEquals`) without interface calls or generic dictionary lookups;
 - a faulty policy returning `null` maps to `SentNullComparer` (`NullComparer<'T>.Instance`), still raising `NullReferenceException` (`CmpNullRef`) on comparison;
-- any custom comparer (including one that throws) is preserved unchanged.
+- any other comparer (`EqualityComparer<string>.Default`, `StructuralPolicy` reference comparers, or custom/throwing comparers) is preserved unchanged as `SentCustom`.
 
-- [def_eq:] the intrinsic `EqualityComparer<'T>.Default.Equals` relation.
+- [is_val_type:] `true` when `typeof<'T>.IsValueType`, `false` otherwise.
+- [val_eq:] the intrinsic `EqualityComparer<'T>.Default.Equals` relation.
+- [ref_eq:] the intrinsic `obj.ReferenceEquals` relation.
 - [c:] the input comparer returned by `IEqualityPolicy.Comparer<'T>()`.
 - [a:] the previous value.
 - [b:] the candidate value.
 *)
 Theorem default_comparer_null_sentinel_eq
-    (def_eq : Z -> Z -> bool) (c : nullable_comparer) (a b : Z) :
-  eval_comparer_sentinel def_eq (encode_comparer_sentinel c) a b =
-    eval_nullable_comparer def_eq c a b /\
-  (encode_comparer_sentinel c = SentDefaultNull <-> c = CmpDefaultInput) /\
+    (is_val_type : bool) (val_eq ref_eq : Z -> Z -> bool) (c : nullable_comparer) (a b : Z) :
+  eval_comparer_sentinel is_val_type val_eq ref_eq
+    (encode_comparer_sentinel is_val_type val_eq ref_eq c) a b =
+    eval_nullable_comparer val_eq ref_eq c a b /\
+  (encode_comparer_sentinel is_val_type val_eq ref_eq c = SentDefaultNull <->
+    (if is_val_type then c = CmpValDefault else c = CmpRefIdentity)) /\
   (c = CmpNullInput ->
-    eval_comparer_sentinel def_eq (encode_comparer_sentinel c) a b = CmpNullRef).
+    eval_comparer_sentinel is_val_type val_eq ref_eq
+      (encode_comparer_sentinel is_val_type val_eq ref_eq c) a b = CmpNullRef).
 Proof.
-  destruct c as [| |f]; simpl.
-  - split_and!; [reflexivity | split; intro H; discriminate H | intros _; reflexivity].
-  - split_and!; [reflexivity | split; intro H; reflexivity | intro H; discriminate H].
-  - split_and!; [reflexivity | split; intro H; discriminate H | intro H; discriminate H].
+  destruct is_val_type, c as [| | |f]; simpl;
+    (split_and!; [reflexivity | split; intro H; try reflexivity; discriminate H | intro H; try reflexivity; discriminate H]).
 Qed.
 
-(**md `Graph.fastWriteToken` (`Core.fs` lines 2474–2477): `-1` when `Serialised` or journaled,
+(**md `Graph.fastWriteToken` (`Core.fs` lines 2476–2479): `-1` when `Serialised` or journaled,
     `ownerToken` (`>= 1`, assigned by `OwnerThreadToken.Ensure`) when `Guarded` and unjournaled,
     and `0` when `Unchecked` and unjournaled. *)
 Definition compute_fast_write_token (aff : thread_affinity) (has_journal : bool) (owner_tok : Z) : Z :=
@@ -691,13 +706,14 @@ Definition compute_fast_write_token (aff : thread_affinity) (has_journal : bool)
   | AffUnchecked => if has_journal then (-1)%Z else 0%Z
   end.
 
-(**md Inline fast-path gate in `Signal.SetFast` and `Signal.WriteExcept` (`Core.fs` lines 4450–4452, 4541–4543):
-    `tok = 0L || tok = OwnerThreadToken.Current`, where `caller_tok = 0` on an uninitialized thread and
-    `caller_tok >= 1` on any thread initialized by `OwnerThreadToken.Ensure`. *)
+(**md Inline fast-path gate in `Signal.SetFast` and `Signal.WriteExcept` (`Core.fs` lines 4458–4463, 4574–4579):
+    `tok >= 0L && (tok = 0L || tok = OwnerThreadToken.Current)`, avoiding any TLS read when `tok = -1L` (`Serialised`
+    or journaled), where `caller_tok = 0` on an uninitialized thread and `caller_tok >= 1` on any thread initialized
+    by `OwnerThreadToken.Ensure`. *)
 Definition check_fast_write_token (tok caller_tok : Z) : bool :=
-  bool_decide (tok = 0%Z) || bool_decide (tok = caller_tok).
+  bool_decide (0 <= tok)%Z && (bool_decide (tok = 0%Z) || bool_decide (tok = caller_tok)).
 
-(**md Full `.NET` `Signal.Value` setter (`Signal.SetFast` + `Signal.SetSlow`, `Core.fs` lines 4446–4515):
+(**md Full `.NET` `Signal.Value` setter (`Signal.SetFast` + `Signal.SetSlow`, `Core.fs` lines 4454–4547):
     tests `check_fast_write_token` first for unjournaled `Unchecked` / owner-thread `Guarded` writes, and
     delegates `Serialised`, journaled, and off-thread `Guarded` writes to `signal_set_fast_split`. *)
 Definition signal_set_token_fast
@@ -725,11 +741,11 @@ Definition signal_set_token_fast
     signal_set_fast_split me ctx fuel n v cs j s.
 
 (**md
-**`check_fast_write_token` passes inline if and only if the graph is unjournaled and either `Unchecked` or `Guarded` on its owner thread (rejecting uninitialized `0` threads under `Guarded`), and `signal_set_token_fast` refines `signal_set_entered` identically.**
+**`check_fast_write_token` passes inline if and only if the graph is unjournaled and either `Unchecked` or `Guarded` on its owner thread (short-circuiting `tok = -1` before reading `OwnerThreadToken.Current` and rejecting uninitialized `0` threads under `Guarded`), and `signal_set_token_fast` refines `signal_set_entered` identically.**
 
-Matches `OwnerThreadToken` (`Core.fs` lines 1790–1805), `Graph.fastWriteToken` (`Core.fs` lines 2474–2477), and
-`Signal.SetFast` / `Signal.SetSlow` (`Core.fs` lines 4446–4482):
-- Since `owner_tok >= 1` and `caller_tok >= 0`, `tok = -1` (`Serialised` or journaled) never equals `0` or `caller_tok`, routing all `Serialised` (including reentrant) and journaled writes to `SetSlow`.
+Matches `OwnerThreadToken` (`Core.fs` lines 1792–1807), `Graph.fastWriteToken` (`Core.fs` lines 2476–2479), and
+`Signal.SetFast` / `Signal.SetSlow` (`Core.fs` lines 4454–4506):
+- Since `tok >= 0` is checked first, `tok = -1` (`Serialised` or journaled) short-circuits to `false` without reading `OwnerThreadToken.Current`, routing all `Serialised` (including reentrant) and journaled writes to `SetSlow`.
 - Under `Guarded` without a journal (`tok = owner_tok >= 1`), `tok = 0` is false and `tok = caller_tok` holds iff the caller is the owner thread (in particular, an uninitialized thread with `caller_tok = 0` is rejected).
 - Across all affinities, threads, and journal states, `signal_set_token_fast` equals `signal_set_entered`.
 
@@ -771,28 +787,33 @@ Proof.
       (cs_affinity cs = AffGuarded /\ me = cs_owner_thread cs)))).
   { unfold check_fast_write_token, compute_fast_write_token.
     destruct (cs_affinity cs) eqn:Haff, j as [log|].
-    - rewrite !bool_decide_eq_false_2 by lia. simpl.
+    - rewrite (bool_decide_eq_false_2 (0 <= -1)%Z) by lia. simpl.
       split; [discriminate | intros [Hj _]; discriminate Hj].
-    - rewrite (bool_decide_eq_false_2 (owner_tok = 0%Z)) by lia. simpl.
+    - rewrite (bool_decide_eq_true_2 (0 <= owner_tok)%Z) by lia.
+      rewrite (bool_decide_eq_false_2 (owner_tok = 0%Z)) by lia. simpl.
       split.
       + intro Hb. apply bool_decide_eq_true_1 in Hb. symmetry in Hb.
         apply Htok_eq in Hb. split; [reflexivity | right; split; [reflexivity | exact Hb]].
       + intros [_ [Hbad | [_ Hme]]]; [discriminate Hbad |].
         apply bool_decide_eq_true_2. symmetry. by apply Htok_eq.
-    - rewrite !bool_decide_eq_false_2 by lia. simpl.
+    - rewrite (bool_decide_eq_false_2 (0 <= -1)%Z) by lia. simpl.
       split; [discriminate | intros [Hj _]; discriminate Hj].
-    - rewrite (bool_decide_eq_true_2 (0%Z = 0%Z)) by reflexivity. simpl.
+    - rewrite (bool_decide_eq_true_2 (0 <= 0)%Z) by lia.
+      rewrite (bool_decide_eq_true_2 (0%Z = 0%Z)) by reflexivity. simpl.
       split; [intros _; split; [reflexivity | by left] | intros _; reflexivity].
-    - rewrite !bool_decide_eq_false_2 by lia. simpl.
+    - rewrite (bool_decide_eq_false_2 (0 <= -1)%Z) by lia. simpl.
       split; [discriminate | intros [Hj _]; discriminate Hj].
-    - rewrite !bool_decide_eq_false_2 by lia. simpl.
+    - rewrite (bool_decide_eq_false_2 (0 <= -1)%Z) by lia. simpl.
       split; [discriminate | intros [_ [Hbad | [Hbad _]]]; discriminate Hbad]. }
   split_and!.
   - exact Hgate.
   - intros Haff Hc0.
     unfold check_fast_write_token, compute_fast_write_token.
     rewrite Haff, Hc0.
-    destruct j as [log|]; rewrite !bool_decide_eq_false_2 by lia; reflexivity.
+    destruct j as [log|].
+    + rewrite (bool_decide_eq_false_2 (0 <= -1)%Z) by lia. reflexivity.
+    + rewrite (bool_decide_eq_true_2 (0 <= owner_tok)%Z) by lia.
+      rewrite !bool_decide_eq_false_2 by lia. reflexivity.
   - unfold signal_set_token_fast.
     destruct (check_fast_write_token _ caller_tok) eqn:Hchk.
     + destruct (proj1 Hgate eq_refl) as [-> Hcase].
