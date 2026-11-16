@@ -172,6 +172,98 @@ for source in references do
 
 let plainSource = typeof<obj>.Assembly.Location
 
+let precompiledDestination =
+    RelativePath.create "assets/live-example/refs/test-tag/Fable.Precompiled.dll.txt"
+
+for label, asset in
+    [
+        "copied", CopyFile (AbsolutePath.create references.Head, precompiledDestination)
+        "in-memory", WriteBytes (File.ReadAllBytes references.Head, precompiledDestination)
+    ] do
+    let precompiled =
+        Site.create "precompiled metadata"
+        |> live
+        |> Site.plugin
+            { new IPlugin with
+                member _.Name = "precompiled-fixture"
+
+                member _.Configure registry =
+                    registry |> Registry.asset asset
+            }
+        |> LiveExampleMetadata.register references
+        |> fun site -> Registry.ofPlugins site.Plugins
+
+    check
+        (label + " precompiled metadata emits WriteBytes")
+        (precompiled.Assets
+         |> List.exists (function
+             | WriteBytes (_, destination) -> destination = precompiledDestination
+             | _ -> false))
+
+    let bytes =
+        precompiled.Assets
+        |> List.pick (function
+            | WriteBytes (bytes, destination) when destination = precompiledDestination -> Some bytes
+            | _ -> None)
+
+    use original = AssemblyDefinition.ReadAssembly references.Head
+    use input = new MemoryStream (bytes, false)
+    use prepared = AssemblyDefinition.ReadAssembly input
+
+    check
+        (label
+         + " precompiled metadata preserves assembly identity")
+        (prepared.Name.FullName = original.Name.FullName)
+
+    check
+        (label
+         + " precompiled metadata preserves declared types")
+        (prepared.MainModule.Types.Count = original.MainModule.Types.Count)
+
+    check
+        (label
+         + " precompiled metadata expands compressed resources")
+        (prepared.MainModule.Resources
+         |> Seq.forall (fun item -> not (item.Name.Contains "CompressedData")))
+
+    for resource in original.MainModule.Resources do
+        let resource = resource :?> EmbeddedResource
+
+        let actual =
+            prepared.MainModule.Resources
+            |> Seq.find (fun item -> item.Name = resource.Name.Replace ("CompressedData", "Data"))
+            :?> EmbeddedResource
+
+        let expected =
+            if resource.Name.Contains "CompressedData" then
+                use raw = resource.GetResourceStream ()
+                use decoder = new DeflateStream (raw, CompressionMode.Decompress)
+                use expanded = new MemoryStream ()
+                decoder.CopyTo expanded
+                expanded.ToArray ()
+            else
+                resource.GetResourceData ()
+
+        check
+            (label
+             + " precompiled metadata preserves "
+             + actual.Name)
+            (actual.GetResourceData () = expected)
+
+raises "non-binary precompiled asset fails explicitly" (fun () ->
+    Site.create "bad precompiled metadata"
+    |> live
+    |> Site.plugin
+        { new IPlugin with
+            member _.Name = "precompiled-fixture"
+
+            member _.Configure registry =
+                registry
+                |> Registry.asset (WriteText ("not bytes", precompiledDestination))
+        }
+    |> LiveExampleMetadata.register references
+    |> fun site -> Registry.ofPlugins site.Plugins |> ignore)
+
 let plainRegistry =
     Site.create "plain metadata"
     |> live
