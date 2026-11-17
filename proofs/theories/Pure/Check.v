@@ -2401,20 +2401,24 @@ Definition untag_signal_handle (th : Z) : Z := Z.land th index_mask.
 Definition is_signal_handle (th : Z) : bool := bool_decide (signal_bit <= th)%Z.
 
 (**md
-**Tagging an observer-set handle (`0 <= h < 2^30`) with `EdgeHandle.SignalBit` produces a non-negative tagged handle distinct from all untagged handles and `EdgeHandle.Unlinked`, and recovers the exact raw index via `EdgeHandle.IndexMask`.**
+**Tagging an observer-set handle (`0 <= h < 2^30`) with `EdgeHandle.SignalBit` produces a non-negative tagged handle distinct from all untagged handles and `EdgeHandle.Unlinked`, and unified `RemoveAt` masking recovers both the raw index (`&&& IndexMask`) and the tag bit (`&&& SignalBit`).**
 
 Matches `EdgeHandle.SignalBit`, `EdgeHandle.IndexMask`, `EdgeHandle.isSignal`, `Signal.AddObserver`,
-`Signal.TryAddObserver`, and `ObserverSet.RemoveAtSignal` (`Core.fs`): setting bit 30 distinguishes
+`Signal.TryAddObserver`, and `ObserverSet.RemoveAt` (`Core.fs`): setting bit 30 distinguishes
 signal handles (`>= 2^30`) from untagged memo/computed handles (`0 <= h < 2^30`) and sentinels (`< 0`),
-while preserving `< 0` for `Unlinked` / `Unknown` and allowing lossless extraction with `&&& IndexMask`.
+while `&&& IndexMask` extracts `h` for both tagged and untagged handles and `&&& SignalBit` preserves
+`SignalBit` on swap-removed signal edges and `0` on untagged edges.
 
-- [h:] a non-negative signal observer-set index strictly below `signal_bit` (`2^30`).
+- [h:] a non-negative observer-set index strictly below `signal_bit` (`2^30`).
 *)
 Theorem signal_bit_handle_encoding (h : Z) :
   (0 <= h < signal_bit)%Z ->
   (0 <= tag_signal_handle h)%Z /\
   is_signal_handle (tag_signal_handle h) = true /\
   untag_signal_handle (tag_signal_handle h) = h /\
+  untag_signal_handle h = h /\
+  Z.land (tag_signal_handle h) signal_bit = signal_bit /\
+  Z.land h signal_bit = 0%Z /\
   is_signal_handle h = false /\
   is_signal_handle (-1)%Z = false.
 Proof.
@@ -2442,6 +2446,9 @@ Proof.
     assert (Hsb_mask : Z.land (2 ^ 30) (Z.ones 30) = 0%Z).
     { rewrite Z.land_ones by lia. apply Z.mod_same. lia. }
     rewrite Hsb_mask. apply Z.lor_0_r.
+  - unfold untag_signal_handle. rewrite Him, Z.land_ones by lia. exact Hmod.
+  - unfold tag_signal_handle. rewrite Hsb, Z.land_lor_distr_l, Hdisj, Z.land_diag, Z.lor_0_l. reflexivity.
+  - rewrite Hsb. exact Hdisj.
   - unfold is_signal_handle. apply bool_decide_eq_false_2. lia.
   - unfold is_signal_handle. apply bool_decide_eq_false_2. unfold signal_bit. lia.
 Qed.

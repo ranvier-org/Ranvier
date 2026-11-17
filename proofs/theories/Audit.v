@@ -489,5 +489,4 @@ Print Assumptions signal_bit_handle_encoding.
 Print Assumptions resolve_step_skip_signal_eq.
 Print Assumptions walk_marks_hoist_slot0_eq.
 Print Assumptions fused_hosted_run_eq.
-Print Assumptions packed_owner_token_thread_id.
 Print Assumptions request_flush_from_entered_eq.

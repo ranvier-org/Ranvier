@@ -825,42 +825,6 @@ Proof.
 Qed.
 
 (**md
-**Packing a positive `OwnerThreadCounter` sequence in the upper 32 bits and `uint32 ManagedThreadId` in the lower 32 bits produces a strictly positive unique token from which `ManagedThreadId` is losslessly recovered.**
-
-Matches `OwnerThreadToken.Ensure` and `Graph.Acquire`/`CheckHeld` (`Core.fs`): encoding
-`(seq <<< 32) ||| int64 (uint32 tid)` satisfies `tok >= 1` (`0` remains sentinel for uninitialized/free),
-identifies each `(seq, tid)` uniquely, and recovers `tid = int (uint32 tok)` for concurrent-entry diagnostics
-without storing a second `holderThread` field on `Graph`.
-
-- [seq:] the positive sequence assigned by `OwnerThreadCounter.Next ()`.
-- [tid:] the `uint32` representation of the managed thread id (`0 <= tid < 2^32`).
-*)
-Theorem packed_owner_token_thread_id (seq tid : Z) :
-  (1 <= seq)%Z ->
-  (0 <= tid < 4294967296)%Z ->
-  let tok := (seq * 4294967296 + tid)%Z in
-  (1 <= tok)%Z /\
-  (tok `mod` 4294967296 = tid)%Z /\
-  (forall seq' tid' : Z,
-    (1 <= seq')%Z ->
-    (0 <= tid' < 4294967296)%Z ->
-    (seq * 4294967296 + tid = seq' * 4294967296 + tid')%Z ->
-    seq = seq' /\ tid = tid').
-Proof.
-  intros Hseq Htid tok. unfold tok.
-  assert (Hpack : forall a b : Z, (0 <= b < 4294967296)%Z -> ((a * 4294967296 + b) `mod` 4294967296 = b)%Z).
-  { intros a b Hb. rewrite Z.add_comm, Z.mod_add, Z.mod_small; lia. }
-  split_and!.
-  - lia.
-  - apply Hpack. exact Htid.
-  - intros seq' tid' Hseq' Htid' Heq.
-    assert (Hmod : ((seq * 4294967296 + tid) `mod` 4294967296 = (seq' * 4294967296 + tid') `mod` 4294967296)%Z)
-      by (rewrite Heq; reflexivity).
-    rewrite !Hpack in Hmod by assumption.
-    split; [lia | exact Hmod].
-Qed.
-
-(**md
 **Calling `RequestFlushFromEntered` after `graph_enter` has already succeeded skips a redundant `Enter`/`Release` round-trip identically to `RequestFlush`.**
 
 Matches `Graph.RequestFlushFromEntered` called from `Signal` writes, `Graph.RunBatchCore`, and

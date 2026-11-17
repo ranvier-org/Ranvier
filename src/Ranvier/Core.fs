@@ -378,98 +378,90 @@ type internal ObserverSet() =
     /// <c>EdgeHandle.Unlinked</c> does nothing. A handle holding another observer raises
     /// <c>InvalidOperationException</c>, in every build.
     /// </remarks>
-    member private this.RemoveAtCore(c: IComputation, handle: int, tagMask: int) =
-        if
-            handle >= count
-            || not (
-                if handle = 0 then
-                    obj.ReferenceEquals (first, c)
-                else
-                    obj.ReferenceEquals ((Platform.itemAt (handle - 1) rest).Observer, c)
-            )
-        then
-            raise (
-                InvalidOperationException (
-                    "Edge handle "
-                    + string handle
-                    + " of "
-                    + string count
-                    + " does not hold the observer removed."
+    member this.RemoveAt(c: IComputation, taggedHandle: int) =
+        if taggedHandle >= 0 then
+            let handle = taggedHandle &&& EdgeHandle.IndexMask
+
+            if
+                handle >= count
+                || not (
+                    if handle = 0 then
+                        obj.ReferenceEquals (first, c)
+                    else
+                        obj.ReferenceEquals ((Platform.itemAt (handle - 1) rest).Observer, c)
                 )
-            )
+            then
+                raise (
+                    InvalidOperationException (
+                        "Edge handle "
+                        + string handle
+                        + " of "
+                        + string count
+                        + " does not hold the observer removed."
+                    )
+                )
 
 #if RANVIER_COUNTERS
-        Counters.ObserverRemoved ()
+            Counters.ObserverRemoved ()
 #endif
-        Tracer.ObserverRemove (this, c)
-        let last = count - 1
+            Tracer.ObserverRemove (this, c)
+            let last = count - 1
 
-        if handle = 0 then
-            if last = 0 then
-                // Blanked so a dropped observer is not kept alive after removal.
-                first <- Unchecked.defaultof<IComputation>
-                firstSlot <- EdgeHandle.Unlinked
-                count <- 0
+            if handle = 0 then
+                if last = 0 then
+                    // Blanked so a dropped observer is not kept alive after removal.
+                    first <- Unchecked.defaultof<IComputation>
+                    firstSlot <- EdgeHandle.Unlinked
+                    count <- 0
+                else
+                    let lastRest = last - 1
+                    let moved = (Platform.itemAt lastRest rest).Observer
+#if FABLE_COMPILER
+                    let movedSlot = Platform.itemAt lastRest restSlots
+                    Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                    Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
+#else
+                    let movedSlot = (Platform.itemAt lastRest rest).Slot
+                    rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
+                    first <- moved
+                    firstSlot <- movedSlot
+                    count <- last
+
+                    if latest = last then
+                        latest <- 0
+
+                    moved.MovedIn (movedSlot, taggedHandle &&& EdgeHandle.SignalBit)
+            elif handle = last then
+                let lastRest = last - 1
+#if FABLE_COMPILER
+                Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+                Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
+#else
+                rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
+                count <- last
             else
+                let handleRest = handle - 1
                 let lastRest = last - 1
                 let moved = (Platform.itemAt lastRest rest).Observer
 #if FABLE_COMPILER
                 let movedSlot = Platform.itemAt lastRest restSlots
+                Platform.setItemAt handleRest rest (ObserverSlot moved)
+                Platform.setItemAt handleRest restSlots movedSlot
                 Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
                 Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
 #else
                 let movedSlot = (Platform.itemAt lastRest rest).Slot
+                rest[handleRest] <- ObserverSlot (moved, movedSlot)
                 rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
 #endif
-                first <- moved
-                firstSlot <- movedSlot
                 count <- last
 
                 if latest = last then
-                    latest <- 0
+                    latest <- handle
 
-                moved.MovedIn (movedSlot, tagMask)
-        elif handle = last then
-            let lastRest = last - 1
-#if FABLE_COMPILER
-            Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
-            Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
-#else
-            rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
-#endif
-            count <- last
-        else
-            let handleRest = handle - 1
-            let lastRest = last - 1
-            let moved = (Platform.itemAt lastRest rest).Observer
-#if FABLE_COMPILER
-            let movedSlot = Platform.itemAt lastRest restSlots
-            Platform.setItemAt handleRest rest (ObserverSlot moved)
-            Platform.setItemAt handleRest restSlots movedSlot
-            Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
-            Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
-#else
-            let movedSlot = (Platform.itemAt lastRest rest).Slot
-            rest[handleRest] <- ObserverSlot (moved, movedSlot)
-            rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
-#endif
-            count <- last
-
-            if latest = last then
-                latest <- handle
-
-            moved.MovedIn (movedSlot, handle ||| tagMask)
-
-    member this.RemoveAt(c: IComputation, handle: int) =
-        if handle >= 0 then
-            this.RemoveAtCore (c, handle, 0)
-
-    /// <summary>
-    /// <c>RemoveAt</c> for <c>Signal</c> handles carrying <c>EdgeHandle.SignalBit</c>, preserving the tag on moved edges.
-    /// </summary>
-    member this.RemoveAtSignal(c: IComputation, taggedHandle: int) =
-        if taggedHandle >= 0 then
-            this.RemoveAtCore (c, taggedHandle &&& EdgeHandle.IndexMask, EdgeHandle.SignalBit)
+                moved.MovedIn (movedSlot, handle ||| (taggedHandle &&& EdgeHandle.SignalBit))
 
     /// <summary>
     /// Marks every current observer dirty. Observers added during the loop
@@ -781,7 +773,7 @@ type internal SourceList =
     /// <summary>Every source in the list, for repeat checks over more than <c>EdgeHandle.ScanLimit</c> slots.</summary>
     val mutable private held: Platform.RefIndex<ISource>
 
-    private new(unlinked: int) =
+    internal new(unlinked: int) =
         {
             first = Unchecked.defaultof<ISource>
             firstHandle = unlinked
@@ -791,7 +783,7 @@ type internal SourceList =
             held = null
         }
 
-    static member Create() =
+    static member inline Create() =
         SourceList EdgeHandle.Unlinked
 
     member private this.SourceAtRaw(i: int) =
@@ -1159,7 +1151,7 @@ type internal SourceList() =
 
         count <- from
 
-    static member Create() =
+    static member inline Create() =
         SourceList ()
 
     member _.Count = count
@@ -2154,23 +2146,12 @@ type internal PendingDispatch<'T>() =
             if this.TryClose () then
                 this.SetException error
 
-[<Sealed>]
-type private OwnerThreadLock = class end
-
 [<AbstractClass; Sealed>]
 type internal OwnerThreadCounter =
-    [<DefaultValue>]
-    static val mutable private next: int64
+    static let mutable next = 0L
 
     static member Next() : int64 =
-        Monitor.Enter typeof<OwnerThreadLock>
-
-        try
-            let assigned = OwnerThreadCounter.next + 1L
-            OwnerThreadCounter.next <- assigned
-            assigned
-        finally
-            Monitor.Exit typeof<OwnerThreadLock>
+        Interlocked.Increment &next
 
 /// <summary>
 /// Per-thread 64-bit token for <see cref="Graph"/> owner-thread checks on .NET. Held in a <c>.cctor</c>-free
@@ -2190,10 +2171,7 @@ type internal OwnerThreadToken =
         if t <> 0L then
             t
         else
-            let assigned =
-                (OwnerThreadCounter.Next () <<< 32)
-                ||| int64 (uint32 (Platform.currentThreadId ()))
-
+            let assigned = OwnerThreadCounter.Next ()
             OwnerThreadToken.token <- assigned
             assigned
 #endif
@@ -2846,9 +2824,9 @@ type Graph(options: GraphOptions) =
     let context = SynchronizationContext.Current
 
     /// <summary>
-    /// Packed <c>OwnerThreadToken</c> of the thread inside a <c>Serialised</c> graph, or <c>0L</c> when free.
+    /// The id of the thread inside a <c>Serialised</c> graph, or 0 when the graph is free.
     /// </summary>
-    let mutable holder = 0L
+    let mutable holder = 0
 #endif
 
 #if !FABLE_COMPILER
@@ -3129,16 +3107,16 @@ type Graph(options: GraphOptions) =
     /// The caller runs outside the construction context, or another thread holds the graph.
     /// </exception>
     member private this.Acquire(operation: string) : bool =
-        let me = OwnerThreadToken.Ensure ()
+        let me = Platform.currentThreadId ()
 
         if Volatile.Read &holder = me then
             false
         else
             this.CheckContext operation
-            let prior = Interlocked.CompareExchange (&holder, me, 0L)
+            let prior = Interlocked.CompareExchange (&holder, me, 0)
 
-            if prior <> 0L then
-                this.FailConcurrent (operation, int (uint32 prior))
+            if prior <> 0 then
+                this.FailConcurrent (operation, prior)
 
             true
 #endif
@@ -3149,7 +3127,7 @@ type Graph(options: GraphOptions) =
     member internal this.Release() =
 #if !FABLE_COMPILER
         // A full fence: the inbox check below observes every enqueue whose drain found the graph held by this thread.
-        Interlocked.Exchange (&holder, 0L) |> ignore
+        Interlocked.Exchange (&holder, 0) |> ignore
 
         if not inbox.IsEmpty then
             this.PostDrain ()
@@ -3351,10 +3329,9 @@ type Graph(options: GraphOptions) =
         true
 #else
         if serialised then
-            let tok = OwnerThreadToken.Current
-            tok <> 0L && Volatile.Read &holder = tok
+            Volatile.Read &holder = Platform.currentThreadId ()
         else
-            OwnerThreadToken.Current = ownerToken
+            Platform.currentThreadId () = ownerThread
 #endif
 
     /// <summary>
@@ -3615,7 +3592,7 @@ type Graph(options: GraphOptions) =
         if not serialised then
             this.Pump () |> ignore
         else
-            let me = OwnerThreadToken.Ensure ()
+            let me = Platform.currentThreadId ()
 
             if Volatile.Read &holder = me then
                 this.Drain () |> ignore
@@ -3623,7 +3600,7 @@ type Graph(options: GraphOptions) =
                 this.CheckContext "Pump"
 
                 // Held by another thread: its Release posts a new drain.
-                if Interlocked.CompareExchange (&holder, me, 0L) = 0L then
+                if Interlocked.CompareExchange (&holder, me, 0) = 0 then
                     try
                         this.Drain () |> ignore
                     finally
@@ -3669,11 +3646,10 @@ type Graph(options: GraphOptions) =
     /// </summary>
     member private this.CheckHeld(operation: string) =
         let held = Volatile.Read &holder
-        let me = OwnerThreadToken.Current
 
-        if held = 0L || held <> me then
-            if held <> 0L then
-                this.FailConcurrent (operation, int (uint32 held))
+        if held <> Platform.currentThreadId () then
+            if held <> 0 then
+                this.FailConcurrent (operation, held)
 
             this.CheckContext operation
 #endif
@@ -3911,8 +3887,8 @@ type Graph(options: GraphOptions) =
 #if !FABLE_COMPILER
         && not (
             serialised
-            && (let tok = OwnerThreadToken.Current
-                tok = 0L || Volatile.Read &holder <> tok)
+            && Volatile.Read &holder
+               <> Platform.currentThreadId ()
         )
 #endif
 
@@ -4827,7 +4803,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 
         // A handle comes from an add, so the set exists.
         member _.RemoveObserverAt(c, handle) =
-            observers.RemoveAtSignal (c, handle)
+            observers.RemoveAt (c, handle)
 
         /// <summary>
         /// Nothing to bring current: the value is whatever was last written.
@@ -5318,11 +5294,7 @@ type AsyncSource<'T>(graph: Graph) =
 /// argument keeps its dependents clean.
 /// </para>
 /// </remarks>
-#if FABLE_COMPILER
 type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, equal: IEqualityComparer<'T>) =
-#else
-type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqualityComparer<'T>) =
-#endif
     let id = graph.NextId ()
 #if !FABLE_COMPILER
     let equal = ComparerSentinel.encode equal
@@ -5384,7 +5356,7 @@ type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqua
     /// A pure memo over <c>compute</c>.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>) as this =
-        Memo<'T>(graph, box compute, ScopeMode.Pure, graph.Options.Equality.Comparer<'T>())
+        Memo<'T>(graph, compute.Invoke, ScopeMode.Pure, graph.Options.Equality.Comparer<'T>())
         then this.Attach ()
 
     /// <summary>
@@ -5392,7 +5364,7 @@ type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqua
     /// otherwise.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>, owning: bool) as this =
-        Memo<'T>(graph, box compute, (if owning then ScopeMode.Owning else ScopeMode.Pure), graph.Options.Equality.Comparer<'T>())
+        Memo<'T>(graph, compute.Invoke, (if owning then ScopeMode.Owning else ScopeMode.Pure), graph.Options.Equality.Comparer<'T>())
 
         then this.Attach ()
 
@@ -5402,7 +5374,7 @@ type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqua
     new(graph: Graph, seed: 'T, compute: Func<'T, 'T>) as this =
         Memo<'T>(
             graph,
-            box (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
+            (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
             ScopeMode.Pure,
             graph.Options.Equality.Comparer<'T>()
         )
@@ -5416,7 +5388,7 @@ type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqua
     new(graph: Graph, seed: 'T, compute: Func<'T, 'T>, owning: bool) as this =
         Memo<'T>(
             graph,
-            box (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
+            (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
             (if owning then ScopeMode.Owning else ScopeMode.Pure),
             graph.Options.Equality.Comparer<'T>()
         )
@@ -5428,40 +5400,20 @@ type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqua
     /// A memo over <c>compute</c>, owned by the current owner.
     /// </summary>
     static member internal Create(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode) =
-        let memo =
-#if FABLE_COMPILER
-            Memo<'T>(graph, compute, mode, graph.Options.Equality.Comparer<'T>())
-#else
-            Memo<'T>(graph, box compute, mode, graph.Options.Equality.Comparer<'T>())
-#endif
+        let memo = Memo<'T>(graph, compute, mode, graph.Options.Equality.Comparer<'T>())
         memo.Attach ()
         memo
 
     /// <summary>A memo whose cutoff uses <c>comparer</c>, owned by the current owner.</summary>
     static member internal CreateWithComparer(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T>) =
-        let memo =
-#if FABLE_COMPILER
-            Memo<'T>(graph, compute, mode, comparer)
-#else
-            Memo<'T>(graph, box compute, mode, comparer)
-#endif
+        let memo = Memo<'T>(graph, compute, mode, comparer)
         memo.Attach ()
         memo
-
-#if !FABLE_COMPILER
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member private _.InvokeCompute(prev: 'T voption) : 'T =
-        match compute with
-        | :? ('T voption -> 'T) as fn -> fn prev
-        | _ -> (unbox<Func<'T voption, 'T>> compute).Invoke prev
-#endif
 
     /// <summary>
     /// Attaches the memo to the current owner. Disposing that owner disposes
     /// the memo.
     /// </summary>
-
-
     member private this.Attach() =
         link <- graph.CurrentOwner.AttachLinked this
         Tracer.MemoNew (graph, id, link.Owner)
@@ -5556,7 +5508,7 @@ type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqua
 
             try
                 let prev = if published then ValueSome previous else ValueNone
-                let result = this.InvokeCompute prev
+                let result = compute prev
                 graph.CheckRaised ()
 
                 if violated then
