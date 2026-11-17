@@ -106,49 +106,62 @@ type Exposure() =
     let release (current: Snapshot) =
         let reached =
             lock waiters (fun () ->
-                let reached =
-                    waiters
-                    |> Seq.filter (fun struct (version, _) -> version <= current.Version)
-                    |> Array.ofSeq
+                if waiters.Count = 0 then
+                    null
+                else
+                    let mutable satisfied: ResizeArray<TaskCompletionSource<Snapshot>> = null
+                    let mutable write = 0
 
-                waiters.RemoveAll (fun struct (version, _) -> version <= current.Version)
-                |> ignore
+                    for i = 0 to waiters.Count - 1 do
+                        let entry = waiters[i]
+                        let struct (version, waiter) = entry
 
-                reached)
+                        if version <= current.Version then
+                            if isNull satisfied then
+                                satisfied <- ResizeArray<TaskCompletionSource<Snapshot>>()
 
-        for struct (_, waiter) in reached do
-            waiter.TrySetResult current |> ignore
+                            satisfied.Add waiter
+                        else
+                            if write <> i then
+                                waiters[write] <- entry
 
+                            write <- write + 1
+
+                    if write < waiters.Count then
+                        waiters.RemoveRange (write, waiters.Count - write)
+
+                    satisfied)
+
+        if not (isNull reached) then
+            for i = 0 to reached.Count - 1 do
+                reached[i].TrySetResult current |> ignore
 
     let publish () =
-        let texts =
-            entries
-            |> Seq.map (fun entry -> encodeText (entry.Read ()))
-            |> Array.ofSeq
+        let count = entries.Count
+        let texts = Array.zeroCreate<string> count
 
-        let changed =
-            [
-                for index in 0 .. texts.Length - 1 do
-                    if
-                        isNull lastTexts
-                        || lastTexts[index] <> texts[index]
-                    then
-                        entries[index].Name
-            ]
+        for index = 0 to count - 1 do
+            texts[index] <- encodeText (entries[index].Read())
+
+        let mutable changed = []
+
+        for index = count - 1 downto 0 do
+            if
+                isNull lastTexts
+                || lastTexts[index] <> texts[index]
+            then
+                changed <- entries[index].Name :: changed
 
         if not changed.IsEmpty then
             let previous = snapshot
+            let mutable values = previous.Values
 
-            let values =
-                (previous.Values, Seq.indexed entries)
-                ||> Seq.fold (fun values (index, entry) ->
-                    if
-                        isNull lastTexts
-                        || lastTexts[index] <> texts[index]
-                    then
-                        Map.add entry.Name (parse texts[index]) values
-                    else
-                        values)
+            for index = 0 to count - 1 do
+                if
+                    isNull lastTexts
+                    || lastTexts[index] <> texts[index]
+                then
+                    values <- Map.add entries[index].Name (parse texts[index]) values
 
             let next =
                 {

@@ -11,32 +11,88 @@ open System.Threading.Tasks
 open System.Windows.Input
 open Ranvier
 
+/// <summary>Sentinel-encoded equality comparison avoiding interface dispatch under default policies.</summary>
+module internal CSharpValueComparer =
+    let encode<'T> (graph: Graph) : IEqualityComparer<'T> =
+        ComparerSentinel.encode (graph.Options.Equality.Comparer<'T>())
+
+    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
+        if typeof<'T>.IsValueType then
+            if obj.ReferenceEquals (encoded, null) then
+                EqualityComparer<'T>.Default.Equals(a, b)
+            else
+                encoded.Equals (a, b)
+        elif obj.ReferenceEquals (encoded, null) then
+            obj.ReferenceEquals (box a, box b)
+        else
+            encoded.Equals (a, b)
+
+module private HandlerDispatch =
+    let invokePropertyChanged (handler: PropertyChangedEventHandler) (sender: obj) (args: PropertyChangedEventArgs) =
+        handler.Invoke (sender, args)
+
+    let invokeErrorsChanged (handler: EventHandler<DataErrorsChangedEventArgs>) (sender: obj) (args: DataErrorsChangedEventArgs) =
+        handler.Invoke (sender, args)
+
+    let invokeEvent (handler: EventHandler) (sender: obj) (args: EventArgs) =
+        handler.Invoke (sender, args)
+
 /// <summary>
 /// The handlers of one event, each paired with the <c>SynchronizationContext</c> current when it subscribed.
 /// </summary>
 /// <remarks>Safe to subscribe and unsubscribe from any thread.</remarks>
 [<Sealed>]
-type internal ContextHandlers<'H when 'H: null and 'H :> Delegate>() =
-    let gate = obj ()
-    let mutable items: struct ('H * SynchronizationContext)[] = [||]
+type internal ContextHandlers<'H, 'Args when 'H: null and 'H :> Delegate>(invoke: 'H -> obj -> 'Args -> unit) as this =
+    let mutable items: struct ('H * SynchronizationContext)[] = Array.Empty ()
+
+    member _.IsEmpty = items.Length = 0
 
     member _.Add(handler: 'H) =
         if not (isNull handler) then
             let entry = struct (handler, SynchronizationContext.Current)
-            lock gate (fun () -> items <- Array.append items [| entry |])
+
+            lock this (fun () ->
+                let prev = items
+                let next = Array.zeroCreate (prev.Length + 1)
+
+                if prev.Length > 0 then
+                    Array.Copy (prev, next, prev.Length)
+
+                next[prev.Length] <- entry
+                items <- next)
 
     /// <summary>Removes the latest subscription of <c>handler</c>.</summary>
     member _.Remove(handler: 'H) =
         if not (isNull handler) then
-            lock gate (fun () ->
-                let index =
-                    Array.FindLastIndex (items, (fun (struct (h, _)) -> obj.Equals (h, handler)))
+            lock this (fun () ->
+                let prev = items
+                let mutable index = prev.Length - 1
+                let mutable found = -1
 
-                if index >= 0 then
-                    items <- Array.removeAt index items)
+                while found < 0 && index >= 0 do
+                    let struct (h, _) = prev[index]
+
+                    if obj.Equals (h, handler) then
+                        found <- index
+                    else
+                        index <- index - 1
+
+                if found >= 0 then
+                    if prev.Length = 1 then
+                        items <- Array.Empty ()
+                    else
+                        let next = Array.zeroCreate (prev.Length - 1)
+
+                        if found > 0 then
+                            Array.Copy (prev, 0, next, 0, found)
+
+                        if found < prev.Length - 1 then
+                            Array.Copy (prev, found + 1, next, found, prev.Length - found - 1)
+
+                        items <- next)
 
     member _.Clear() =
-        lock gate (fun () -> items <- [||])
+        lock this (fun () -> items <- Array.Empty ())
 
     /// <summary>
     /// Invokes each handler inline when it captured no context or the current context is the captured one, and posts it
@@ -46,25 +102,33 @@ type internal ContextHandlers<'H when 'H: null and 'H :> Delegate>() =
     /// An exception from an inline handler is added to <c>errors</c>, and the remaining handlers still run. A posted
     /// invocation runs only while <c>live ()</c> is true.
     /// </remarks>
-    member _.Raise(invoke: 'H -> unit, live: unit -> bool, errors: ResizeArray<exn>) =
-        let current = SynchronizationContext.Current
+    member _.Raise(sender: obj, args: 'Args, live: unit -> bool, errors: byref<ResizeArray<exn>>) =
+        let snap = items
 
-        for struct (handler, context) in items do
-            if
-                isNull context
-                || obj.ReferenceEquals (context, current)
-            then
-                try
-                    invoke handler
-                with ex ->
-                    errors.Add ex
-            else
-                context.Post (
-                    (fun _ ->
-                        if live () then
-                            invoke handler),
-                    null
-                )
+        if snap.Length > 0 then
+            let current = SynchronizationContext.Current
+
+            for i = 0 to snap.Length - 1 do
+                let struct (handler, context) = snap[i]
+
+                if
+                    isNull context
+                    || obj.ReferenceEquals (context, current)
+                then
+                    try
+                        invoke handler sender args
+                    with ex ->
+                        if isNull errors then
+                            errors <- ResizeArray<exn>()
+
+                        errors.Add ex
+                else
+                    context.Post (
+                        (fun _ ->
+                            if live () then
+                                invoke handler sender args),
+                        null
+                    )
 
 /// <summary>A bound property's state as last notified.</summary>
 [<Sealed; AllowNullLiteral>]
@@ -73,20 +137,6 @@ type internal BoundState<'T>(value: 'T, hasValue: bool, loading: bool, error: ex
     member _.HasValue = hasValue
     member _.Loading = loading
     member _.Error = error
-
-    /// <summary>The state after <c>reading</c>. <c>Pending</c> and <c>Failed</c> keep the last settled value.</summary>
-    member this.Next(reading: Reading<'T>) =
-        match reading with
-        | Ready v -> BoundState (v, true, false, null)
-        | Pending -> BoundState (value, hasValue, true, null)
-        | Failed ex -> BoundState (value, hasValue, false, ex)
-
-/// <summary>The notifications of one pass over the bound properties.</summary>
-type internal Notifications =
-    {
-        Changed: ResizeArray<PropertyChangedEventArgs>
-        ErrorsChanged: ResizeArray<DataErrorsChangedEventArgs>
-    }
 
 /// <summary>A property registered with a <c>ReactiveBindings</c>.</summary>
 type internal IBoundSlot =
@@ -99,6 +149,35 @@ type internal IBoundSlot =
     /// </summary>
     abstract Refresh: Notifications -> unit
 
+/// <summary>Host contract allowing hosted commands to unregister on disposal without per-command closures.</summary>
+and [<AllowNullLiteral>] internal ICommandHost =
+    abstract RemoveCommand: ReactiveCommand -> unit
+
+/// <summary>The notifications of one pass over the bound properties and hosted commands.</summary>
+and [<Sealed>] internal Notifications() =
+    let changed = ResizeArray<PropertyChangedEventArgs>()
+    let errorsChanged = ResizeArray<DataErrorsChangedEventArgs>()
+    let commandChanges = ResizeArray<struct (ReactiveCommand * int)>()
+
+    member _.Changed = changed
+    member _.ErrorsChanged = errorsChanged
+    member _.CommandChanges = commandChanges
+
+    member _.Any =
+        changed.Count > 0
+        || errorsChanged.Count > 0
+        || commandChanges.Count > 0
+
+    member _.Clear() =
+        if changed.Count > 0 then
+            changed.Clear ()
+
+        if errorsChanged.Count > 0 then
+            errorsChanged.Clear ()
+
+        if commandChanges.Count > 0 then
+            commandChanges.Clear ()
+
 /// <summary>
 /// A read-only view-model property backed by a memo. <c>Value</c> is the last settled value; <c>IsLoading</c> and
 /// <c>Error</c> describe the current reading.
@@ -107,9 +186,8 @@ type internal IBoundSlot =
 /// <c>Value</c> is <c>default</c> before the first settled value. <c>IsLoading</c> and <c>Error</c> are safe to read from
 /// any thread.
 /// </remarks>
-[<Sealed>]
-type BoundValue<'T> internal (graph: Graph, owner: Owner, name: string, loadingName: string, memo: Memo<'T>) =
-    let equal = graph.Options.Equality.Comparer<'T>()
+and [<Sealed>] BoundValue<'T> internal (graph: Graph, owner: Owner, name: string, loadingName: string, memo: Memo<'T>) =
+    let equal = CSharpValueComparer.encode<'T> graph
     let changedArgs = PropertyChangedEventArgs name
     let errorsArgs = DataErrorsChangedEventArgs name
 
@@ -121,7 +199,14 @@ type BoundValue<'T> internal (graph: Graph, owner: Owner, name: string, loadingN
 
     [<VolatileField>]
     let mutable state =
-        BoundState(Unchecked.defaultof<'T>, false, false, null).Next(graph.Untrack (Func<_>(fun () -> memo.TryValue)))
+        let struct (st, v, err) = memo.TryReadUntrackedStruct ()
+
+        if st = Status.None then
+            BoundState (v, true, false, null)
+        elif st = Status.Pending then
+            BoundState (Unchecked.defaultof<'T>, false, true, null)
+        else
+            BoundState (Unchecked.defaultof<'T>, false, false, err)
 
     /// <summary>The property name raised with <c>PropertyChanged</c> and <c>ErrorsChanged</c>.</summary>
     member _.Name = name
@@ -139,9 +224,8 @@ type BoundValue<'T> internal (graph: Graph, owner: Owner, name: string, loadingN
     /// </remarks>
     member _.Value: 'T =
         if graph.IsOnGraphThread && not owner.IsDisposed then
-            match memo.TryValue with
-            | Ready v -> v
-            | _ -> state.Value
+            let struct (st, v, _) = memo.TryReadStruct ()
+            if st = Status.None then v else state.Value
         else
             state.Value
 
@@ -158,29 +242,54 @@ type BoundValue<'T> internal (graph: Graph, owner: Owner, name: string, loadingN
 
         member _.Refresh(notes) =
             let old = state
-            let next = old.Next memo.TryValue
-            state <- next
+            let struct (st, v, err) = memo.TryReadStruct ()
 
-            if
-                next.HasValue
-                && (not old.HasValue
-                    || not (equal.Equals (old.Value, next.Value)))
-            then
-                notes.Changed.Add changedArgs
+            if st = Status.None then
+                let valueChanged =
+                    not old.HasValue
+                    || not (CSharpValueComparer.equals equal old.Value v)
 
-            if
-                next.Loading <> old.Loading
-                && not (isNull loadingArgs)
-            then
-                notes.Changed.Add loadingArgs
+                let loadingChanged = old.Loading
+                let errorChanged = not (isNull old.Error)
 
-            if not (obj.ReferenceEquals (next.Error, old.Error)) then
-                notes.ErrorsChanged.Add errorsArgs
+                if valueChanged || loadingChanged || errorChanged then
+                    if valueChanged then
+                        notes.Changed.Add changedArgs
+
+                    if loadingChanged && not (isNull loadingArgs) then
+                        notes.Changed.Add loadingArgs
+
+                    if errorChanged then
+                        notes.ErrorsChanged.Add errorsArgs
+
+                    state <- BoundState (v, true, false, null)
+                elif not (isNull (box equal)) then
+                    state <- BoundState (v, true, false, null)
+            elif st = Status.Pending then
+                if not old.Loading || not (isNull old.Error) then
+                    if not old.Loading && not (isNull loadingArgs) then
+                        notes.Changed.Add loadingArgs
+
+                    if not (isNull old.Error) then
+                        notes.ErrorsChanged.Add errorsArgs
+
+                    state <- BoundState (old.Value, old.HasValue, true, null)
+            else
+                let loadingChanged = old.Loading
+                let errorChanged = not (obj.ReferenceEquals (err, old.Error))
+
+                if loadingChanged || errorChanged then
+                    if loadingChanged && not (isNull loadingArgs) then
+                        notes.Changed.Add loadingArgs
+
+                    if errorChanged then
+                        notes.ErrorsChanged.Add errorsArgs
+
+                    state <- BoundState (old.Value, old.HasValue, false, err)
 
 /// <summary>A two-way view-model property backed by a signal.</summary>
-[<Sealed>]
-type BoundSignal<'T> internal (graph: Graph, owner: Owner, name: string, signal: Signal<'T>) =
-    let equal = graph.Options.Equality.Comparer<'T>()
+and [<Sealed>] BoundSignal<'T> internal (graph: Graph, owner: Owner, name: string, signal: Signal<'T>) =
+    let equal = CSharpValueComparer.encode<'T> graph
     let changedArgs = PropertyChangedEventArgs name
 
     [<VolatileField>]
@@ -205,7 +314,11 @@ type BoundSignal<'T> internal (graph: Graph, owner: Owner, name: string, signal:
                 signal.Value
             else
                 state.Value
-        and set (v: 'T) = graph.Dispatch (Action (fun () -> signal.Value <- v))
+        and set (v: 'T) =
+            if graph.IsOnGraphThread then
+                signal.Value <- v
+            else
+                graph.PostQueued (fun () -> signal.Value <- v)
 
     interface IBoundSlot with
         member _.Name = name
@@ -214,14 +327,16 @@ type BoundSignal<'T> internal (graph: Graph, owner: Owner, name: string, signal:
 
         member _.Refresh(notes) =
             let old = state
-            let next = BoundState (signal.Value, true, false, null)
-            state <- next
+            let v = signal.Value
 
-            if not (equal.Equals (old.Value, next.Value)) then
+            if not (CSharpValueComparer.equals equal old.Value v) then
+                state <- BoundState (v, true, false, null)
                 notes.Changed.Add changedArgs
+            elif not (isNull (box equal)) then
+                state <- BoundState (v, true, false, null)
 
 /// <summary>What a <c>ReactiveCommand</c> does when an execution is requested while another runs.</summary>
-type CommandPolicy =
+and CommandPolicy =
     /// <summary>The command is disabled while an execution runs, and a request made meanwhile is ignored.</summary>
     | Disable = 0
     /// <summary>The request cancels the token of every execution in flight, then starts a new execution.</summary>
@@ -256,23 +371,32 @@ type CommandPolicy =
 /// busy = bindings.Computed("IsBusy", () =&gt; save.IsRunning || load.IsRunning);
 /// </code>
 /// </example>
-[<Sealed>]
-type ReactiveCommand
-    internal (graph: Graph, execute: obj -> CancellationToken -> Task, canExecute: Func<bool>, policy: CommandPolicy, sync: bool, standalone: bool) as self
-    =
-    let changedHandlers = ContextHandlers<PropertyChangedEventHandler>()
-    let canExecuteHandlers = ContextHandlers<EventHandler>()
-    let canRunArgs = PropertyChangedEventArgs "CanRun"
-    let isRunningArgs = PropertyChangedEventArgs "IsRunning"
-    let errorArgs = PropertyChangedEventArgs "Error"
+and [<Sealed>] ReactiveCommand
+    internal
+    (
+        graph: Graph,
+        asyncExecute: Func<obj, CancellationToken, Task>,
+        syncExecute: Action<obj>,
+        canExecute: Func<bool>,
+        policy: CommandPolicy,
+        host: ICommandHost
+    ) as self =
+    static let canRunArgs = PropertyChangedEventArgs "CanRun"
+    static let isRunningArgs = PropertyChangedEventArgs "IsRunning"
+    static let errorArgs = PropertyChangedEventArgs "Error"
+    static let cancelledTask: Task = Task.FromCanceled (CancellationToken true)
 
-    /// <summary>The token sources of the executions in flight. Graph thread only.</summary>
-    let flights = ResizeArray<CancellationTokenSource>()
+    let canExecuteHandlers =
+        ContextHandlers<EventHandler, EventArgs>(HandlerDispatch.invokeEvent)
+
+    let changedHandlers =
+        ContextHandlers<PropertyChangedEventHandler, PropertyChangedEventArgs>(HandlerDispatch.invokePropertyChanged)
+
+    /// <summary>The token sources of the executions in flight. Graph thread only, allocated lazily.</summary>
+    let mutable flights: ResizeArray<CancellationTokenSource> = null
 
     /// <summary>The token source of the latest execution; only that execution writes <c>error</c>.</summary>
     let mutable latest: CancellationTokenSource = null
-
-    let mutable detach: unit -> unit = ignore
 
     [<VolatileField>]
     let mutable canRun = false
@@ -289,62 +413,79 @@ type ReactiveCommand
     [<VolatileField>]
     let mutable disposed = false
 
-    let struct (owner, armed, running, error, enabled) =
-        graph.CreateRoot (
-            Func<Owner, _>(fun owner ->
-                let armed = Signal<bool>(graph, false)
-                let running = Signal<int>(graph, 0)
-                let error = Signal<exn>(graph, null)
+    let mutable pendingError: exn = null
+    let mutable pendingSyncParam: obj = null
+    let mutable syncFailure: exn = null
 
-                let enabled =
-                    new Memo<bool> (
+    let struct (owner, armed, running, error, enabled) =
+        graph.RunRoot (fun owner ->
+            let armed = Signal<bool>(graph, false)
+            let running = Signal<int>(graph, 0)
+            let error = Signal<exn>(graph, null)
+
+            let enabled =
+                Memo<bool>
+                    .Create(
                         graph,
-                        Func<bool voption, bool>(fun _ ->
+                        (fun _ ->
                             (isNull canExecute || canExecute.Invoke ())
                             && (policy <> CommandPolicy.Disable
-                                || running.Value = 0))
+                                || running.Value = 0)),
+                        ScopeMode.Pure
                     )
 
-                struct (owner, armed, running, error, enabled))
-        )
+            struct (owner, armed, running, error, enabled))
 
     let readEnabled () =
-        match enabled.TryValue with
-        | Ready v -> v
-        | _ -> false
+        let struct (st, v, _) = enabled.TryReadStruct ()
+        st = Status.None && v
 
-    let live () =
+    let readEnabledUntracked () =
+        let struct (st, v, _) = enabled.TryReadUntrackedStruct ()
+        st = Status.None && v
+
+    let liveFn () =
         not disposed
+
+    let armFn () =
+        if not disposed then
+            armed.Value <- true
 
     let arm () =
         if not armRequested && not disposed then
             armRequested <- true
 
-            graph.Dispatch (
-                Action (fun () ->
-                    if not disposed then
-                        armed.Value <- true)
-            )
+            if graph.IsOnGraphThread then
+                if not disposed then
+                    armed.Value <- true
+            else
+                graph.PostQueued armFn
 
     let cancelAll () =
-        for cts in flights.ToArray () do
-            try
-                cts.Cancel ()
-            with _ ->
-                ()
+        if not (isNull flights) && flights.Count > 0 then
+            let active = flights.ToArray ()
+
+            for i = 0 to active.Length - 1 do
+                try
+                    active[i].Cancel()
+                with _ ->
+                    ()
 
     let release () =
         disposed <- true
         changedHandlers.Clear ()
         canExecuteHandlers.Clear ()
-        detach ()
+
+        if not (isNull host) then
+            host.RemoveCommand self
+
+    let disposeOwnerFn () =
+        owner.Dispose ()
 
     do
-        owner.OnCleanup (
-            Action (fun () ->
-                release ()
-                cancelAll ())
-        )
+        owner.AddCleanup (fun () ->
+            release ()
+            cancelAll ())
 
     /// <summary>The failure recorded for an execution of <c>task</c> under <c>cts</c>, or null.</summary>
     let failureOf (task: Task) (cts: CancellationTokenSource) : exn =
@@ -366,20 +507,32 @@ type ReactiveCommand
         | :? OperationCanceledException when cts.IsCancellationRequested -> null
         | _ -> failure
 
+    let finishBatchFn () =
+        running.Value <- running.Peek - 1
+        error.Value <- pendingError
+
     /// <summary>Applies the outcome of <c>task</c>, the execution under <c>cts</c>. Graph thread only.</summary>
     let finish (cts: CancellationTokenSource) (completion: TaskCompletionSource<obj>) (task: Task) =
-        flights.Remove cts |> ignore
+        if not (isNull flights) && flights.Count > 0 then
+            let last = flights.Count - 1
+
+            if obj.ReferenceEquals (flights[last], cts) then
+                flights.RemoveAt last
+            else
+                flights.Remove cts |> ignore
 
         if not disposed then
             let failure = failureOf task cts
 
-            graph.Batch (
-                Func<unit>(fun () ->
-                    running.Value <- running.Peek - 1
-
-                    if obj.ReferenceEquals (latest, cts) then
-                        error.Value <- failure)
-            )
+            if
+                obj.ReferenceEquals (latest, cts)
+                && (not (obj.ReferenceEquals (error.Peek, failure))
+                    || not graph.Options.Journal.IsNone)
+            then
+                pendingError <- failure
+                graph.RunBatch finishBatchFn
+            else
+                running.Value <- running.Peek - 1
         else
             // Observes the exception, so it reaches no UnobservedTaskException handler.
             task.Exception |> ignore
@@ -398,52 +551,154 @@ type ReactiveCommand
             else
                 completion.TrySetResult null |> ignore
 
-    /// <summary>Starts an execution when the command is enabled. Graph thread only.</summary>
-    let launch (parameter: obj) (completion: TaskCompletionSource<obj>) =
+    let syncInvokeFn (p: obj) =
+        syncExecute.Invoke p
+
+    let syncBatchFn () =
+        let parameter = pendingSyncParam
+        pendingSyncParam <- null
+        latest <- null
+        running.Value <- running.Peek + 1
+
+        let failure =
+            try
+                if not (graph.IsTracking ()) then
+                    syncExecute.Invoke parameter
+                else
+                    graph.RunUntrackedWith (syncInvokeFn, parameter)
+
+                null
+            with ex ->
+                ex
+
+        syncFailure <- failure
+
+        if not disposed then
+            if
+                not (obj.ReferenceEquals (error.Peek, failure))
+                || not graph.Options.Journal.IsNone
+            then
+                running.Value <- running.Peek - 1
+                error.Value <- failure
+            else
+                running.Value <- running.Peek - 1
+
+    let runSync (parameter: obj) (completion: TaskCompletionSource<obj>) : Task =
+        pendingSyncParam <- parameter
+        syncFailure <- null
+        graph.RunBatch syncBatchFn
+        let failure = syncFailure
+        syncFailure <- null
+
+        if not (isNull completion) then
+            if not (isNull failure) then
+                completion.TrySetException failure |> ignore
+            else
+                completion.TrySetResult null |> ignore
+
+            completion.Task :> Task
+        elif not (isNull failure) then
+            Task.FromException failure
+        else
+            Task.CompletedTask
+
+    /// <summary>Starts an async execution when the command is enabled. Graph thread only.</summary>
+    let launchAsync (parameter: obj) (completion: TaskCompletionSource<obj>) (needTask: bool) : Task =
         if policy = CommandPolicy.CancelPrevious then
             cancelAll ()
 
         let cts = new CancellationTokenSource ()
+
+        if isNull flights then
+            flights <- ResizeArray<CancellationTokenSource>()
+
         flights.Add cts
         latest <- cts
         running.Value <- running.Peek + 1
 
         let task =
             try
-                match graph.Untrack (Func<Task>(fun () -> execute parameter cts.Token)) with
-                | null -> Task.CompletedTask
-                | task -> task
+                let raw =
+                    if not (graph.IsTracking ()) then
+                        asyncExecute.Invoke (parameter, cts.Token)
+                    else
+                        graph.RunUntracked (fun () -> asyncExecute.Invoke (parameter, cts.Token))
+
+                if isNull raw then Task.CompletedTask else raw
             with ex ->
                 Task.FromException ex
 
         if task.IsCompleted then
+            let faulted = task.IsFaulted
+            let canceled = task.IsCanceled
+            let agg = if faulted then task.Exception else null
             finish cts completion task
+
+            if not (isNull completion) then
+                completion.Task :> Task
+            elif not needTask then
+                Task.CompletedTask
+            elif faulted then
+                if agg.InnerExceptions.Count = 1 then
+                    Task.FromException agg.InnerExceptions[0]
+                else
+                    let tcs =
+                        TaskCompletionSource<obj>(TaskCreationOptions.RunContinuationsAsynchronously)
+
+                    tcs.TrySetException agg.InnerExceptions |> ignore
+                    tcs.Task :> Task
+            elif canceled then
+                cancelledTask
+            else
+                Task.CompletedTask
         else
+            let target =
+                if not (isNull completion) then
+                    completion
+                elif needTask then
+                    TaskCompletionSource<obj>(TaskCreationOptions.RunContinuationsAsynchronously)
+                else
+                    null
+
             task.ContinueWith (
-                Action<Task>(fun t -> graph.Dispatch (Action (fun () -> finish cts completion t))),
+                Action<Task>(fun t ->
+                    if graph.IsOnGraphThread then
+                        finish cts target t
+                    else
+                        graph.PostQueued (fun () -> finish cts target t)),
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default
             )
             |> ignore
 
-    let start (parameter: obj) (completion: TaskCompletionSource<obj>) =
+            if isNull target then
+                Task.CompletedTask
+            else
+                target.Task :> Task
+
+    let startWithResult (parameter: obj) (completion: TaskCompletionSource<obj>) (needTask: bool) : Task =
         try
             arm ()
 
-            if
-                disposed
-                || not (graph.Untrack (Func<bool>(readEnabled)))
-            then
+            if disposed || not (readEnabledUntracked ()) then
                 if not (isNull completion) then
                     completion.TrySetResult null |> ignore
-            elif sync then
-                graph.Batch (Func<unit>(fun () -> launch parameter completion))
+                    completion.Task :> Task
+                else
+                    Task.CompletedTask
+            elif not (isNull syncExecute) then
+                runSync parameter completion
             else
-                launch parameter completion
+                launchAsync parameter completion needTask
         with ex ->
             if not (isNull completion) then
                 completion.TrySetException ex |> ignore
+                completion.Task :> Task
+            elif needTask then
+                Task.FromException ex
+            else
+                Task.CompletedTask
 
     /// <summary>
     /// Reads the command's nodes, tracked, stores the new state, and returns the changed properties as flags. Graph
@@ -472,52 +727,76 @@ type ReactiveCommand
 
             changes
 
-    let raiseChanges (changes: int) (errors: ResizeArray<exn>) =
+    let raiseChanges (changes: int) (errors: byref<ResizeArray<exn>>) =
         let from = box self
 
         if changes &&& 1 <> 0 then
-            canExecuteHandlers.Raise ((fun h -> h.Invoke (from, EventArgs.Empty)), live, errors)
-            changedHandlers.Raise ((fun h -> h.Invoke (from, canRunArgs)), live, errors)
+            canExecuteHandlers.Raise (from, EventArgs.Empty, liveFn, &errors)
+            changedHandlers.Raise (from, canRunArgs, liveFn, &errors)
 
         if changes &&& 2 <> 0 then
-            changedHandlers.Raise ((fun h -> h.Invoke (from, isRunningArgs)), live, errors)
+            changedHandlers.Raise (from, isRunningArgs, liveFn, &errors)
 
         if changes &&& 4 <> 0 then
-            changedHandlers.Raise ((fun h -> h.Invoke (from, errorArgs)), live, errors)
+            changedHandlers.Raise (from, errorArgs, liveFn, &errors)
+
+    let raiseStandalone (changes: int) =
+        let mutable errors: ResizeArray<exn> = null
+        raiseChanges changes &errors
+
+        if not (isNull errors) && errors.Count > 0 then
+            ExceptionDispatchInfo.Capture(errors[0]).Throw()
 
     let notify () =
         let changes = refresh ()
 
-        if changes <> 0 then
-            graph.Untrack (
-                Func<unit>(fun () ->
-                    let errors = ResizeArray<exn>()
-                    raiseChanges changes errors
+        if
+            changes <> 0
+            && (not canExecuteHandlers.IsEmpty
+                || not changedHandlers.IsEmpty)
+        then
+            graph.RunUntrackedWith (raiseStandalone, changes)
 
-                    if errors.Count > 0 then
-                        ExceptionDispatchInfo.Capture(errors[0]).Throw())
-            )
+    let canExecuteChangedEvent =
+        { new IDelegateEvent<EventHandler> with
+            member _.AddHandler h =
+                canExecuteHandlers.Add h
+                arm ()
+
+            member _.RemoveHandler h =
+                canExecuteHandlers.Remove h
+        }
+
+    let propertyChangedEvent =
+        { new IDelegateEvent<PropertyChangedEventHandler> with
+            member _.AddHandler h =
+                changedHandlers.Add h
+                arm ()
+
+            member _.RemoveHandler h =
+                changedHandlers.Remove h
+        }
 
     do
-        if standalone then
-            Api.runWithOwner owner (fun () -> new Effect (graph, Action notify))
-            |> ignore
+        if isNull host then
+            let entered = graph.Enter "Running with an owner"
 
-    /// <summary>An execution body running <c>execute</c> and returning a completed task.</summary>
-    static member internal Synchronous(execute: Action<obj>) : obj -> CancellationToken -> Task =
-        fun parameter _ ->
-            execute.Invoke parameter
-            Task.CompletedTask
+            try
+                graph.CurrentOwner |> ignore
+                graph.RunOwned (owner, fun () -> Effect.Create (graph, notify) |> ignore)
+            finally
+                if entered then
+                    graph.Release ()
 
     member internal _.Refresh() =
         refresh ()
 
-    member internal _.RaiseChanges(changes: int, errors: ResizeArray<exn>) =
-        raiseChanges changes errors
+    member internal _.HasHandlers =
+        not canExecuteHandlers.IsEmpty
+        || not changedHandlers.IsEmpty
 
-    /// <summary>Called when the command is disposed, on the disposing thread.</summary>
-    member internal _.Detach
-        with set (value: unit -> unit) = detach <- value
+    member internal _.RaiseChanges(changes: int, errors: byref<ResizeArray<exn>>) =
+        raiseChanges changes &errors
 
     member _.Graph = graph
 
@@ -570,11 +849,16 @@ type ReactiveCommand
     member _.ExecuteAsync([<Optional; DefaultParameterValue(null: obj)>] parameter: obj) : Task =
         if disposed then
             Task.CompletedTask
+        elif graph.IsOnGraphThread then
+            startWithResult parameter null true
         else
             let completion =
                 TaskCompletionSource<obj>(TaskCreationOptions.RunContinuationsAsynchronously)
 
-            graph.Dispatch (Action (fun () -> start parameter completion))
+            graph.PostQueued (fun () ->
+                startWithResult parameter completion true
+                |> ignore)
+
             completion.Task :> Task
 
     /// <summary>
@@ -583,11 +867,17 @@ type ReactiveCommand
     /// </summary>
     member _.Execute([<Optional; DefaultParameterValue(null: obj)>] parameter: obj) : unit =
         if not disposed then
-            graph.Dispatch (Action (fun () -> start parameter null))
+            if graph.IsOnGraphThread then
+                startWithResult parameter null false |> ignore
+            else
+                graph.PostQueued (fun () -> startWithResult parameter null false |> ignore)
 
     /// <summary>Cancels the token of every execution in flight, through <c>Graph.Dispatch</c>.</summary>
     member _.Cancel() =
-        graph.Dispatch (Action cancelAll)
+        if graph.IsOnGraphThread then
+            cancelAll ()
+        else
+            graph.PostQueued cancelAll
 
     /// <summary>The value of <c>CanRun</c> last notified. Safe to call from any thread.</summary>
     member _.CanExecute(_parameter: obj) : bool =
@@ -599,30 +889,14 @@ type ReactiveCommand
     /// subscribed.
     /// </summary>
     [<CLIEvent>]
-    member _.CanExecuteChanged =
-        { new IDelegateEvent<EventHandler> with
-            member _.AddHandler h =
-                canExecuteHandlers.Add h
-                arm ()
-
-            member _.RemoveHandler h =
-                canExecuteHandlers.Remove h
-        }
+    member _.CanExecuteChanged = canExecuteChangedEvent
 
     /// <summary>
     /// Raised as <c>"CanRun"</c>, <c>"IsRunning"</c> and <c>"Error"</c>, on the graph's thread or posted to the context
     /// current when the handler subscribed.
     /// </summary>
     [<CLIEvent>]
-    member _.PropertyChanged =
-        { new IDelegateEvent<PropertyChangedEventHandler> with
-            member _.AddHandler h =
-                changedHandlers.Add h
-                arm ()
-
-            member _.RemoveHandler h =
-                changedHandlers.Remove h
-        }
+    member _.PropertyChanged = propertyChangedEvent
 
     /// <summary>
     /// Cancels the executions in flight, disposes the command's nodes and drops every handler. Idempotent; dispatched to
@@ -631,7 +905,11 @@ type ReactiveCommand
     member _.Dispose() =
         if not disposed then
             release ()
-            graph.Dispatch (Action owner.Dispose)
+
+            if graph.IsOnGraphThread then
+                owner.Dispose ()
+            else
+                graph.PostQueued disposeOwnerFn
 
     interface ICommand with
         member this.CanExecute(parameter) =
@@ -641,11 +919,11 @@ type ReactiveCommand
             this.Execute parameter
 
         [<CLIEvent>]
-        member this.CanExecuteChanged = this.CanExecuteChanged
+        member this.CanExecuteChanged = canExecuteChangedEvent
 
     interface INotifyPropertyChanged with
         [<CLIEvent>]
-        member this.PropertyChanged = this.PropertyChanged
+        member _.PropertyChanged = propertyChangedEvent
 
     interface IDisposable with
         member this.Dispose() =
@@ -691,11 +969,18 @@ type ReactiveCommand
 /// </example>
 [<Sealed>]
 type ReactiveBindings(sender: obj, graph: Graph) as self =
-    let changedHandlers = ContextHandlers<PropertyChangedEventHandler>()
-    let errorsHandlers = ContextHandlers<EventHandler<DataErrorsChangedEventArgs>>()
+    static let loadingArgs = PropertyChangedEventArgs "IsLoading"
+    static let hasErrorsArgs = PropertyChangedEventArgs "HasErrors"
+
+    let changedHandlers =
+        ContextHandlers<PropertyChangedEventHandler, PropertyChangedEventArgs>(HandlerDispatch.invokePropertyChanged)
+
+    let errorsHandlers =
+        ContextHandlers<EventHandler<DataErrorsChangedEventArgs>, DataErrorsChangedEventArgs>(HandlerDispatch.invokeErrorsChanged)
+
     let gate = obj ()
-    let mutable slots: IBoundSlot[] = [||]
-    let mutable commands: ReactiveCommand[] = [||]
+    let mutable slots: IBoundSlot[] = Array.Empty ()
+    let mutable commands: ReactiveCommand[] = Array.Empty ()
 
     [<VolatileField>]
     let mutable loading = false
@@ -706,15 +991,15 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
     [<VolatileField>]
     let mutable disposed = false
 
-    let loadingArgs = PropertyChangedEventArgs "IsLoading"
-    let hasErrorsArgs = PropertyChangedEventArgs "HasErrors"
     let version = Signal<int>(graph, 0)
-    let owner = graph.CreateRoot (Func<Owner, Owner> id)
+    let owner = graph.RunRoot id
+    let cachedNotes = Notifications ()
+    let mutable notesInUse = false
 
     let source () =
         if isNull sender then box self else sender
 
-    let live () =
+    let liveFn () =
         not disposed
 
     let release () =
@@ -722,7 +1007,10 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
         changedHandlers.Clear ()
         errorsHandlers.Clear ()
 
-    do owner.OnCleanup (Action release)
+    let disposeOwnerFn () =
+        owner.Dispose ()
+
+    do owner.AddCleanup release
 
     /// <summary>Runs <c>body</c> with <c>graph</c> active and <c>owner</c> as the scope new nodes attach to.</summary>
     let inScope (body: unit -> 'R) : 'R =
@@ -737,118 +1025,222 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
             if not (isNull activation) then
                 activation.Dispose ()
 
-    let aggregate (current: IBoundSlot[]) =
-        struct (current |> Array.exists (fun s -> s.Loading),
-                current
-                |> Array.exists (fun s -> not (isNull s.Error)))
+    let inOwner (body: unit -> 'R) : 'R =
+        let entered = graph.Enter "Running with an owner"
 
-    let raiseAll (notes: Notifications) (commandChanges: ResizeArray<struct (ReactiveCommand * int)>) =
-        let errors = ResizeArray<exn>()
+        try
+            graph.CurrentOwner |> ignore
+            graph.RunOwned (owner, body)
+        finally
+            if entered then
+                graph.Release ()
+
+    let aggregateSlots (current: IBoundSlot[]) =
+        let mutable anyLoading = false
+        let mutable anyErrors = false
+
+        for i = 0 to current.Length - 1 do
+            let slot = current[i]
+
+            if slot.Loading then
+                anyLoading <- true
+
+            if not (isNull slot.Error) then
+                anyErrors <- true
+
+        struct (anyLoading, anyErrors)
+
+    let hasCommandHandlers (cmdChanges: ResizeArray<struct (ReactiveCommand * int)>) =
+        let mutable any = false
+        let mutable i = 0
+
+        while not any && i < cmdChanges.Count do
+            let struct (cmd, _) = cmdChanges[i]
+
+            if cmd.HasHandlers then any <- true else i <- i + 1
+
+        any
+
+    let raiseAll (notes: Notifications) =
+        let mutable errors: ResizeArray<exn> = null
         let from = source ()
 
-        for args in notes.Changed do
-            changedHandlers.Raise ((fun h -> h.Invoke (from, args)), live, errors)
+        if not changedHandlers.IsEmpty then
+            let changed = notes.Changed
 
-        for args in notes.ErrorsChanged do
-            errorsHandlers.Raise ((fun h -> h.Invoke (from, args)), live, errors)
+            for i = 0 to changed.Count - 1 do
+                changedHandlers.Raise (from, changed[i], liveFn, &errors)
 
-        if not (isNull commandChanges) then
-            for struct (command, changes) in commandChanges do
-                command.RaiseChanges (changes, errors)
+        if not errorsHandlers.IsEmpty then
+            let errorsChanged = notes.ErrorsChanged
 
-        if errors.Count > 0 then
+            for i = 0 to errorsChanged.Count - 1 do
+                errorsHandlers.Raise (from, errorsChanged[i], liveFn, &errors)
+
+        let cmdChanges = notes.CommandChanges
+
+        for i = 0 to cmdChanges.Count - 1 do
+            let struct (command, changes) = cmdChanges[i]
+            command.RaiseChanges (changes, &errors)
+
+        if not (isNull errors) && errors.Count > 0 then
             ExceptionDispatchInfo.Capture(errors[0]).Throw()
 
     let notify () =
         version.Value |> ignore
-        let current = slots
 
         let notes =
-            {
-                Changed = ResizeArray ()
-                ErrorsChanged = ResizeArray ()
-            }
+            if not notesInUse then
+                notesInUse <- true
+                cachedNotes
+            else
+                Notifications ()
 
-        for slot in current do
-            slot.Refresh notes
+        try
+            let current = slots
+            let mutable nextLoading = false
+            let mutable nextErrors = false
 
-        let struct (nextLoading, nextErrors) = aggregate current
+            for i = 0 to current.Length - 1 do
+                let slot = current[i]
+                slot.Refresh notes
 
-        if nextLoading <> loading then
-            loading <- nextLoading
-            notes.Changed.Add loadingArgs
+                if slot.Loading then
+                    nextLoading <- true
 
-        if nextErrors <> hasErrors then
-            hasErrors <- nextErrors
-            notes.Changed.Add hasErrorsArgs
+                if not (isNull slot.Error) then
+                    nextErrors <- true
 
-        let currentCommands = commands
-        let mutable commandChanges = null
+            if nextLoading <> loading then
+                loading <- nextLoading
+                notes.Changed.Add loadingArgs
 
-        if currentCommands.Length > 0 then
-            for command in currentCommands do
+            if nextErrors <> hasErrors then
+                hasErrors <- nextErrors
+                notes.Changed.Add hasErrorsArgs
+
+            let currentCommands = commands
+
+            for i = 0 to currentCommands.Length - 1 do
+                let command = currentCommands[i]
                 let changes = command.Refresh ()
 
                 if changes <> 0 then
-                    if isNull commandChanges then
-                        commandChanges <- ResizeArray ()
+                    notes.CommandChanges.Add (struct (command, changes))
 
-                    commandChanges.Add (struct (command, changes))
+            if not disposed && notes.Any then
+                let raiseNeeded =
+                    (notes.Changed.Count > 0
+                     && not changedHandlers.IsEmpty)
+                    || (notes.ErrorsChanged.Count > 0
+                        && not errorsHandlers.IsEmpty)
+                    || hasCommandHandlers notes.CommandChanges
 
-        if
-            not disposed
-            && (notes.Changed.Count > 0
-                || notes.ErrorsChanged.Count > 0
-                || not (isNull commandChanges))
-        then
-            graph.Untrack (Func<unit>(fun () -> raiseAll notes commandChanges))
+                if raiseNeeded then
+                    if not (graph.IsTracking ()) then
+                        raiseAll notes
+                    else
+                        graph.RunUntrackedWith (raiseAll, notes)
+        finally
+            if obj.ReferenceEquals (notes, cachedNotes) then
+                cachedNotes.Clear ()
+                notesInUse <- false
 
-    do
-        inScope (fun () -> new Effect (graph, Action notify))
-        |> ignore
+    do inOwner (fun () -> Effect.Create (graph, notify) |> ignore)
 
     let register (slot: IBoundSlot) =
         if disposed then
             raise (ObjectDisposedException (nameof ReactiveBindings))
 
         lock gate (fun () ->
-            if
-                slots
-                |> Array.exists (fun s -> s.Name = slot.Name)
-            then
-                raise (ArgumentException ($"A property named '%s{slot.Name}' is already bound.", "name"))
+            for i = 0 to slots.Length - 1 do
+                if slots[i].Name = slot.Name then
+                    raise (ArgumentException ($"A property named '%s{slot.Name}' is already bound.", "name"))
 
-            slots <- Array.append slots [| slot |])
+            let prev = slots
+            let next = Array.zeroCreate (prev.Length + 1)
 
-        let struct (nextLoading, nextErrors) = aggregate slots
+            if prev.Length > 0 then
+                Array.Copy (prev, next, prev.Length)
+
+            next[prev.Length] <- slot
+            slots <- next)
+
+        let struct (nextLoading, nextErrors) = aggregateSlots slots
         loading <- nextLoading
         hasErrors <- nextErrors
         version.Value <- version.Peek + 1
 
     let registerCommand (command: ReactiveCommand) =
-        lock gate (fun () -> commands <- Array.append commands [| command |])
+        lock gate (fun () ->
+            let prev = commands
+            let next = Array.zeroCreate (prev.Length + 1)
 
-        command.Detach <-
-            fun () ->
-                lock gate (fun () ->
-                    commands <-
-                        commands
-                        |> Array.filter (fun c -> not (obj.ReferenceEquals (c, command))))
+            if prev.Length > 0 then
+                Array.Copy (prev, next, prev.Length)
+
+            next[prev.Length] <- command
+            commands <- next)
 
         version.Value <- version.Peek + 1
         command
 
-    let createCommand (execute: obj -> CancellationToken -> Task) (canExecute: Func<bool>) policy sync =
+    let createCommand (asyncExecute: Func<obj, CancellationToken, Task>) (syncExecute: Action<obj>) (canExecute: Func<bool>) policy =
         if disposed then
             raise (ObjectDisposedException (nameof ReactiveBindings))
 
-        inScope (fun () -> new ReactiveCommand (graph, execute, canExecute, policy, sync, false))
+        inOwner (fun () -> new ReactiveCommand (graph, asyncExecute, syncExecute, canExecute, policy, self :> ICommandHost))
         |> registerCommand
 
     let bindSignal (name: string) (signal: Signal<'T>) =
         let bound = BoundSignal<'T>(graph, owner, name, signal)
         register bound
         bound
+
+    let propertyChangedEvent =
+        { new IDelegateEvent<PropertyChangedEventHandler> with
+            member _.AddHandler h =
+                changedHandlers.Add h
+
+            member _.RemoveHandler h =
+                changedHandlers.Remove h
+        }
+
+    let errorsChangedEvent =
+        { new IDelegateEvent<EventHandler<DataErrorsChangedEventArgs>> with
+            member _.AddHandler h =
+                errorsHandlers.Add h
+
+            member _.RemoveHandler h =
+                errorsHandlers.Remove h
+        }
+
+    interface ICommandHost with
+        member _.RemoveCommand(command: ReactiveCommand) =
+            lock gate (fun () ->
+                let prev = commands
+                let mutable index = prev.Length - 1
+                let mutable found = -1
+
+                while found < 0 && index >= 0 do
+                    if obj.ReferenceEquals (prev[index], command) then
+                        found <- index
+                    else
+                        index <- index - 1
+
+                if found >= 0 then
+                    if prev.Length = 1 then
+                        commands <- Array.Empty ()
+                    else
+                        let next = Array.zeroCreate (prev.Length - 1)
+
+                        if found > 0 then
+                            Array.Copy (prev, 0, next, 0, found)
+
+                        if found < prev.Length - 1 then
+                            Array.Copy (prev, found + 1, next, found, prev.Length - found - 1)
+
+                        commands <- next)
 
     /// <summary>Bindings on <c>Graph.Current</c> whose events carry <c>sender</c>.</summary>
     /// <exception cref="T:System.InvalidOperationException">No graph is active on the calling thread.</exception>
@@ -887,7 +1279,7 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
             raise (ObjectDisposedException (nameof ReactiveBindings))
 
         let memo =
-            inScope (fun () -> new Memo<'T> (graph, Func<'T voption, 'T>(fun _ -> compute.Invoke ())))
+            inOwner (fun () -> Memo<'T>.Create(graph, (fun _ -> compute.Invoke ()), ScopeMode.Pure))
 
         let bound = BoundValue<'T>(graph, owner, name, loadingName, memo)
         register bound
@@ -925,7 +1317,7 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
         if isNull execute then
             nullArg "execute"
 
-        createCommand (fun parameter token -> execute.Invoke (parameter, token)) canExecute policy false
+        createCommand execute null canExecute policy
 
     /// <summary>
     /// A command running <c>execute</c> synchronously, enabled while <c>canExecute ()</c> is true. The writes
@@ -937,7 +1329,7 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
         if isNull execute then
             nullArg "execute"
 
-        createCommand (ReactiveCommand.Synchronous execute) canExecute CommandPolicy.Disable true
+        createCommand null execute canExecute CommandPolicy.Disable
 
     /// <summary>
     /// Runs <c>body</c> with the graph active and <c>Owner</c> as its scope, so the nodes it creates are disposed with
@@ -964,37 +1356,31 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
     /// empty name.
     /// </summary>
     member _.GetErrors(propertyName: string) : IEnumerable =
-        let current = slots
+        if not hasErrors then
+            Array.Empty<string>() :> IEnumerable
+        else
+            let current = slots
+            let all = String.IsNullOrEmpty propertyName
+            let messages = ResizeArray<string>()
 
-        current
-        |> Array.filter (fun s ->
-            not (isNull s.Error)
-            && (String.IsNullOrEmpty propertyName
-                || s.Name = propertyName))
-        |> Array.map (fun s -> s.Error.Message)
-        :> IEnumerable
+            for i = 0 to current.Length - 1 do
+                let slot = current[i]
 
-    /// <summary>Raised on the graph's thread, or posted to the context current when the handler subscribed.</summary>
-    [<CLIEvent>]
-    member _.PropertyChanged =
-        { new IDelegateEvent<PropertyChangedEventHandler> with
-            member _.AddHandler h =
-                changedHandlers.Add h
+                if
+                    not (isNull slot.Error)
+                    && (all || slot.Name = propertyName)
+                then
+                    messages.Add slot.Error.Message
 
-            member _.RemoveHandler h =
-                changedHandlers.Remove h
-        }
+            messages :> IEnumerable
 
     /// <summary>Raised on the graph's thread, or posted to the context current when the handler subscribed.</summary>
     [<CLIEvent>]
-    member _.ErrorsChanged =
-        { new IDelegateEvent<EventHandler<DataErrorsChangedEventArgs>> with
-            member _.AddHandler h =
-                errorsHandlers.Add h
+    member _.PropertyChanged = propertyChangedEvent
 
-            member _.RemoveHandler h =
-                errorsHandlers.Remove h
-        }
+    /// <summary>Raised on the graph's thread, or posted to the context current when the handler subscribed.</summary>
+    [<CLIEvent>]
+    member _.ErrorsChanged = errorsChangedEvent
 
     /// <summary>
     /// Disposes every node the bindings created and drops every handler. Idempotent; dispatched to the graph's thread
@@ -1004,20 +1390,24 @@ type ReactiveBindings(sender: obj, graph: Graph) as self =
     member _.Dispose() =
         if not disposed then
             release ()
-            graph.Dispatch (Action owner.Dispose)
+
+            if graph.IsOnGraphThread then
+                owner.Dispose ()
+            else
+                graph.PostQueued disposeOwnerFn
 
     interface INotifyPropertyChanged with
         [<CLIEvent>]
-        member this.PropertyChanged = this.PropertyChanged
+        member _.PropertyChanged = propertyChangedEvent
 
     interface INotifyDataErrorInfo with
-        member this.HasErrors = this.HasErrors
+        member _.HasErrors = hasErrors
 
         member this.GetErrors(propertyName) =
             this.GetErrors propertyName
 
         [<CLIEvent>]
-        member this.ErrorsChanged = this.ErrorsChanged
+        member _.ErrorsChanged = errorsChangedEvent
 
     interface IDisposable with
         member this.Dispose() =

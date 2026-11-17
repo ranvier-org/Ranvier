@@ -281,9 +281,10 @@ module PointerInput =
         let mutable nextObserver = 0
 
         let publish change =
-            for _, observer in observers.ToArray () do
-                if not disposed then
-                    observer change
+            if observers.Count > 0 then
+                for _, observer in observers.ToArray () do
+                    if not disposed then
+                        observer change
 
         let onChange (_: Event) =
             match provider.LockState () with

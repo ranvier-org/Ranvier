@@ -370,9 +370,10 @@ module MediaQueries =
                 if not closed then
                     let matches = list.Matches
 
-                    for _, observer in observers.ToArray () do
-                        if not closed then
-                            observer matches
+                    if observers.Count > 0 then
+                        for _, observer in observers.ToArray () do
+                            if not closed then
+                                observer matches
 
             list.Target.addEventListener ("change", listener)
             let key = nextQuery

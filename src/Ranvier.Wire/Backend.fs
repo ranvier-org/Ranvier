@@ -5,6 +5,8 @@ open Ranvier.Wire.Thoth.Json.Core
 open Fable.Core
 open Fable.Core.JsInterop
 #else
+open System
+open System.Buffers
 open System.IO
 open System.Text
 open System.Text.Encodings.Web
@@ -103,14 +105,17 @@ let decode (limits: WireLimits) (decoder: Decoder<'T>) (text: string) : Result<'
 #else
 let private encoderHelpers = Helpers.encoding Helpers.netEncoding
 
+let private writerOptions =
+    JsonWriterOptions (Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping)
+
 /// <summary>The value's wire text: System.Text.Json with relaxed escaping, and doubles in ECMAScript form.</summary>
 let encode (value: IEncodable) : string =
     let json = Encode.toJsonValue encoderHelpers value
-    use stream = new MemoryStream ()
+#if NET8_0_OR_GREATER
+    let buffer = ArrayBufferWriter<byte>(256)
 
     do
-        use writer =
-            new Utf8JsonWriter (stream, JsonWriterOptions (Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping))
+        use writer = new Utf8JsonWriter (buffer, writerOptions)
 
         match json with
         | null -> writer.WriteNullValue ()
@@ -118,7 +123,26 @@ let encode (value: IEncodable) : string =
 
         writer.Flush ()
 
-    Encoding.UTF8.GetString (stream.ToArray ())
+    Encoding.UTF8.GetString buffer.WrittenSpan
+#else
+    use stream = new MemoryStream ()
+
+    do
+        use writer = new Utf8JsonWriter (stream, writerOptions)
+
+        match json with
+        | null -> writer.WriteNullValue ()
+        | node -> node.WriteTo writer
+
+        writer.Flush ()
+
+    let mutable segment = Unchecked.defaultof<ArraySegment<byte>>
+
+    if stream.TryGetBuffer (&segment) then
+        Encoding.UTF8.GetString (segment.Array, segment.Offset, segment.Count)
+    else
+        Encoding.UTF8.GetString (stream.ToArray ())
+#endif
 
 /// <summary>The decoded text, once it passes the pre-scan and parses.</summary>
 let decode (limits: WireLimits) (decoder: Decoder<'T>) (text: string) : Result<'T, WireError> =

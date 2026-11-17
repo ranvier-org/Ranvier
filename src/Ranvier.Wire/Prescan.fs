@@ -53,36 +53,46 @@ let check (limits: WireLimits) (text: string) : WireError option =
         let c = text[i]
 
         if inString then
-            // code: the code unit of a raw character or a \u escape, 0 for any other escape, -1 at the closing quote.
-            // form: 1 for a raw character, 2 for an escape.
-            let mutable form = 1
+            if
+                pendingHigh = 0
+                && c <> '\\'
+                && c <> '"'
+                && int c < 0xD800
+            then
+                while i + 1 < text.Length
+                      && (let next = text[i + 1] in next <> '\\' && next <> '"' && int next < 0xD800) do
+                    i <- i + 1
+            else
+                // code: the code unit of a raw character or a \u escape, 0 for any other escape, -1 at the closing quote.
+                // form: 1 for a raw character, 2 for an escape.
+                let mutable form = 1
 
-            let code =
-                if c = '\\' then
-                    let escaped =
-                        if i + 1 < text.Length && text[i + 1] = 'u' then
-                            hex4 text (i + 2)
-                        else
-                            -1
+                let code =
+                    if c = '\\' then
+                        let escaped =
+                            if i + 1 < text.Length && text[i + 1] = 'u' then
+                                hex4 text (i + 2)
+                            else
+                                -1
 
-                    i <- i + (if escaped >= 0 then 5 else 1)
-                    form <- 2
-                    max escaped 0
-                elif c = '"' then
-                    inString <- false
-                    -1
-                else
-                    int c
+                        i <- i + (if escaped >= 0 then 5 else 1)
+                        form <- 2
+                        max escaped 0
+                    elif c = '"' then
+                        inString <- false
+                        -1
+                    else
+                        int c
 
-            if pendingHigh <> 0 then
-                if isLow code && form = pendingHigh then
-                    pendingHigh <- 0
-                else
+                if pendingHigh <> 0 then
+                    if isLow code && form = pendingHigh then
+                        pendingHigh <- 0
+                    else
+                        failure <- Some (WireError.Syntax loneSurrogate)
+                elif isHigh code then
+                    pendingHigh <- form
+                elif isLow code then
                     failure <- Some (WireError.Syntax loneSurrogate)
-            elif isHigh code then
-                pendingHigh <- form
-            elif isLow code then
-                failure <- Some (WireError.Syntax loneSurrogate)
         elif c <> ' ' && c <> '\t' && c <> '\n' && c <> '\r' then
             if opened then
                 opened <- false
