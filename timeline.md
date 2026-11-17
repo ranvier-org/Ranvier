@@ -180,6 +180,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 77,194 | 100,750 | 1,620,029 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 76,632 | 100,777 | 1,620,028 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 74,804 | 99,302 | 1,624,173 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 73,284 | 98,750 | 1,611,738 |
 
 ## app-table
 
@@ -361,6 +362,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 3,248,136 | 6,039,497 | 78,339,352 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 3,238,083 | 6,038,586 | 78,339,431 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,198,313 | 6,033,049 | 77,432,807 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,188,511 | 6,038,225 | 75,334,904 |
 
 ## async-recover
 
@@ -542,6 +544,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 93,834 | 30,376 | 367,106 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 93,757 | 30,380 | 367,110 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 93,421 | 30,064 | 361,134 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 93,485 | 30,383 | 361,644 |
 
 ## async-resolve
 
@@ -723,6 +726,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,762,144 | 716,782 | 9,366,645 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,759,094 | 716,772 | 9,366,631 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,740,839 | 724,618 | 9,115,507 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,744,040 | 735,281 | 9,105,474 |
 
 ## chain
 
@@ -904,6 +908,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 13,101 | 318 | 2,450 | 4,419 | 3,180 | 72,358 | 67,911 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 13,020 | 318 | 2,377 | 4,419 | 3,180 | 72,358 | 67,911 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 13,083 | 318 | 2,350 | 4,419 | 3,133 | 72,358 | 67,271 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 13,021 | 318 | 2,350 | 4,419 | 3,260 | 72,358 | 66,422 |
 
 ## chain-affinity
 
@@ -1085,6 +1090,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,549 | 3,057 | 2,501 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,443 | 2,985 | 2,402 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,416 | 2,941 | 2,358 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,416 | 2,941 | 2,358 |
 
 ## control
 
@@ -1266,6 +1272,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 74,709 | 468,163 | 2,265,531 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 74,709 | 468,120 | 2,265,551 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 74,709 | 472,921 | 2,260,499 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 74,709 | 471,351 | 2,270,030 |
 
 ## create
 
@@ -1447,6 +1454,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 13,576,978 | 2,857,614 | 2,405,776 | 4,454,443 | 3,052,718 | 33,074,638 | 46,263,800 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 13,480,436 | 2,860,614 | 2,367,792 | 4,454,505 | 3,052,768 | 33,074,642 | 46,263,877 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 13,445,489 | 2,860,614 | 2,269,944 | 4,455,501 | 3,123,666 | 33,074,940 | 46,179,492 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 13,445,495 | 2,860,614 | 2,265,894 | 4,556,330 | 3,197,448 | 33,175,412 | 45,850,633 |
 
 ## create-on
 
@@ -1628,6 +1636,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,732,609 | 3,356,148 | 52,080,882 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,694,620 | 3,356,136 | 52,080,706 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,663,256 | 3,411,556 | 52,087,528 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,673,212 | 3,526,900 | 51,400,084 |
 
 ## cutoff
 
@@ -1809,6 +1818,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,184 | 50 | 98 | 65 | 51 | 1,095 | 1,006 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,183 | 50 | 74 | 65 | 51 | 1,095 | 1,006 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,182 | 50 | 74 | 65 | 51 | 1,095 | 1,006 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,184 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 
 ## derive-effect
 
@@ -1990,6 +2000,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 764 | 686 | 15,806 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 750 | 686 | 15,806 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 701 | 699 | 15,268 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 701 | 703 | 15,092 |
 
 ## derive-on
 
@@ -2171,6 +2182,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 733 | 690 | 15,824 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 719 | 690 | 15,824 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 634 | 689 | 15,286 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 650 | 696 | 14,938 |
 
 ## dispose
 
@@ -2352,6 +2364,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 2,707,646 | 806,288 | 358,486 | 479,505 | 500,566 | 11,184,392 | 8,962,452 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,707,643 | 806,288 | 354,486 | 479,663 | 500,244 | 11,184,994 | 8,962,575 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,707,642 | 806,288 | 355,483 | 480,124 | 501,539 | 11,184,607 | 9,120,679 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,706,242 | 806,288 | 355,483 | 480,135 | 501,373 | 11,184,905 | 9,120,220 |
 
 ## dispose-on
 
@@ -2533,6 +2546,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 337,486 | 492,256 | 8,758,967 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 333,486 | 492,256 | 8,758,842 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 334,483 | 493,388 | 8,916,894 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 334,483 | 493,255 | 8,916,651 |
 
 ## editable-edit
 
@@ -2714,6 +2728,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 178,109 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 173,909 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 164,309 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 164,309 |
 
 ## editable-upstream
 
@@ -2895,6 +2910,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 223,509 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 219,809 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 205,409 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 205,409 |
 
 ## fail-recompute
 
@@ -3076,6 +3092,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 65,160 | 1,368 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 65,314 | 1,325 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 55,239 | 1,310 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 55,307 | 1,310 |
 
 ## flight
 
@@ -3257,6 +3274,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 10,156 | 5,762 | 5,764 | 10,433 | 9,960 | 10,616 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 10,129 | 5,731 | 5,733 | 10,402 | 9,933 | 10,589 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
 
 ## keyed-insert
 
@@ -3438,6 +3456,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,861,652 | 53,799 | 54,771 | 2,492,889 | 660,632 | 235,913 | 41,864,669 | 3,000,334 | 3,020,045 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,831,584 | 53,717 | 54,705 | 2,492,873 | 660,723 | 235,947 | 41,864,660 | 3,000,361 | 3,020,019 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,807,543 | 53,704 | 54,666 | 2,454,737 | 657,970 | 669,643 | 41,429,350 | 2,999,026 | 3,018,502 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,809,478 | 33,817 | 34,644 | 2,443,766 | 169,455 | 523,417 | 40,068,459 | 2,747,332 | 2,764,274 |
 
 ## keyed-remove
 
@@ -3619,6 +3638,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,860,685 | 43,572 | 45,081 | 2,514,329 | 600,292 | 140,136 | 41,829,468 | 2,141,060 | 2,176,014 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,830,629 | 43,500 | 45,022 | 2,514,398 | 600,310 | 140,155 | 41,829,555 | 2,141,067 | 2,176,033 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,806,659 | 43,462 | 44,979 | 2,490,864 | 597,475 | 614,754 | 41,393,988 | 2,139,754 | 2,173,957 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,808,589 | 28,087 | 29,542 | 2,489,965 | 454,206 | 139,658 | 40,045,552 | 1,888,115 | 1,919,776 |
 
 ## keyed-swap
 
@@ -3800,6 +3820,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,856,431 | 46,238 | 46,884 | 2,542,506 | 518,691 | 528,376 | 42,566,098 | 914,325 | 930,870 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,826,364 | 46,114 | 46,768 | 2,542,525 | 518,686 | 528,390 | 42,566,124 | 914,341 | 930,876 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,802,363 | 46,087 | 46,747 | 2,576,636 | 517,152 | 91,903 | 42,130,598 | 913,001 | 930,444 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,789,512 | 31,557 | 32,202 | 2,510,847 | 375,536 | 383,042 | 40,613,959 | 709,646 | 726,893 |
 
 ## mvu-dispatch
 
@@ -3981,6 +4002,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 59,439 | 773 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 58,297 | 760 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 57,850 | 698 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 57,850 | 698 |
 
 ## persist-write
 
@@ -4162,6 +4184,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | — | — |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | — | — |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — |
 
 ## project-chain
 
@@ -4343,6 +4366,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 91,980 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 92,014 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 91,233 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 69,428 |
 
 ## project-churn
 
@@ -4524,6 +4548,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 36,425 | 34,193 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 36,390 | 34,156 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 36,200 | 33,983 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 24,378 | 22,133 |
 
 ## project-edit
 
@@ -4705,6 +4730,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 50,433 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 50,401 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 50,254 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 29,685 |
 
 ## project-reorder
 
@@ -4886,6 +4912,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 645,133 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 620,100 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 619,979 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 463,136 |
 
 ## server-render
 
@@ -5067,6 +5094,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | — | — | — |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | — | — | — |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — | — |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — | — |
 
 ## shape-diamond
 
@@ -5248,6 +5276,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 59,609 | 79,993 | 1,744,544 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 59,526 | 79,993 | 1,744,544 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 57,370 | 83,159 | 1,747,879 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 57,370 | 83,971 | 1,730,706 |
 
 ## shape-dynamic
 
@@ -5429,6 +5458,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 83,024 | 105,984 | 1,945,042 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 82,167 | 105,984 | 1,945,042 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 79,026 | 103,524 | 1,875,339 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 79,026 | 103,747 | 1,866,489 |
 
 ## stream-burst-1
 
@@ -5610,6 +5640,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,845 | 1,471 | 2,482 | 5,539 | 8,614 | 11,689 | 37,063 | 35,266 | 45,894 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,800 | 1,430 | 2,436 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,894 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,732 | 1,440 | 2,372 | 13,382 | 2,492 | 11,117 | 36,240 | 34,669 | 45,089 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,732 | 1,440 | 2,372 | 13,258 | 2,495 | 10,982 | 36,074 | 34,499 | 44,918 |
 
 ## stream-burst-16
 
@@ -5791,6 +5822,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 3,870 | 23,326 | 5,692 | 7,718 | 26,398 | 14,162 | 91,896 | 552,049 | 101,974 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 3,825 | 22,670 | 5,646 | 7,718 | 26,398 | 14,160 | 91,896 | 552,049 | 101,971 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,757 | 22,830 | 5,582 | 14,922 | 27,482 | 13,559 | 91,073 | 542,430 | 101,170 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,757 | 22,830 | 5,582 | 14,800 | 27,562 | 13,423 | 90,907 | 539,738 | 101,003 |
 
 ## stream-burst-256
 
@@ -5972,6 +6004,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 36,246 | 373,006 | 57,031 | 89,873 | 418,287 | 36,687 | 969,386 | 8,819,174 | 998,705 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 36,201 | 362,510 | 56,985 | 89,873 | 418,287 | 36,688 | 969,386 | 8,819,174 | 998,707 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 36,133 | 365,070 | 56,921 | 88,263 | 415,216 | 36,467 | 968,566 | 8,665,319 | 997,923 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 36,133 | 365,070 | 56,921 | 88,160 | 416,490 | 36,471 | 968,414 | 8,622,296 | 997,744 |
 
 ## stream-restart
 
@@ -6153,6 +6186,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 3,882 | 4,876 | 14,706 | 6,205 | 41,889 | 71,200 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 3,865 | 4,850 | 14,709 | 6,201 | 41,889 | 71,201 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,762 | 4,792 | 7,003 | 6,095 | 41,013 | 70,010 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,762 | 4,792 | 7,717 | 6,138 | 40,834 | 69,930 |
 
 ## timed-admit-both
 
@@ -6334,6 +6368,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 108,458 | 132,594 | 2,532,625 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 108,187 | 132,594 | 2,532,664 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 112,329 | 130,222 | 2,490,328 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 108,233 | 130,206 | 2,490,246 |
 
 ## timed-admit-debounce
 
@@ -6515,6 +6550,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 108,010 | 131,188 | 2,518,210 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 107,739 | 131,186 | 2,518,210 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 111,881 | 128,812 | 2,475,902 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 107,785 | 128,831 | 2,475,765 |
 
 ## timed-admit-first
 
@@ -6696,6 +6732,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 67,947 | 77,253 | 1,583,488 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 67,932 | 77,253 | 1,583,488 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 71,050 | 75,479 | 1,538,621 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 67,978 | 75,478 | 1,538,445 |
 
 ## timed-admit-last
 
@@ -6877,6 +6914,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 108,266 | 131,509 | 2,528,066 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 107,995 | 131,508 | 2,528,092 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 112,137 | 129,135 | 2,485,758 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 108,041 | 129,127 | 2,485,618 |
 
 ## timed-capture-both
 
@@ -7058,6 +7096,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 35,090 | 43,791 | 865,682 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 35,075 | 43,794 | 865,682 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 34,161 | 42,332 | 842,836 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 34,161 | 42,333 | 842,781 |
 
 ## timed-capture-debounce
 
@@ -7239,6 +7278,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 34,962 | 46,806 | 866,053 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 34,947 | 46,807 | 866,053 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 34,033 | 44,192 | 843,209 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 34,033 | 44,194 | 843,034 |
 
 ## timed-capture-first
 
@@ -7420,6 +7460,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 31,314 | 36,735 | 748,414 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 31,299 | 36,735 | 748,414 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 30,385 | 35,278 | 725,572 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 30,385 | 35,281 | 725,395 |
 
 ## timed-capture-last
 
@@ -7601,6 +7642,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 34,898 | 46,742 | 858,181 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 34,883 | 46,741 | 858,181 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 33,969 | 44,128 | 835,338 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 33,969 | 44,128 | 835,162 |
 
 ## update
 
@@ -7782,6 +7824,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 1,089,590 | 38,805 | 81,509 | 196,954 | 95,680 | 2,533,208 | 1,773,724 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,087,490 | 38,805 | 80,105 | 196,905 | 95,682 | 2,533,220 | 1,773,728 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,087,390 | 38,805 | 73,905 | 196,667 | 88,599 | 2,533,217 | 1,701,631 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,089,190 | 38,805 | 73,905 | 196,851 | 88,999 | 2,533,212 | 1,683,956 |
 
 ## update-on
 
@@ -7963,6 +8006,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 93,009 | 115,572 | 2,101,121 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 91,605 | 115,590 | 2,101,120 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 83,005 | 107,584 | 2,029,038 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 84,605 | 108,899 | 1,994,229 |
 
 ## work-form
 
@@ -8144,6 +8188,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 170,299 | 164,511 | 297,897 | 293,066 | 4,997,337 | 4,910,479 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 165,688 | 162,903 | 297,881 | 293,072 | 4,997,448 | 4,910,516 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 146,579 | 140,635 | 290,721 | 241,060 | 4,770,273 | 4,683,146 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 146,579 | 140,602 | 291,700 | 242,293 | 4,726,489 | 4,639,574 |
 
 ## work-status
 
@@ -8325,6 +8370,7 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 100,349 | 78,439 | 200,211 | 92,514 | 1,881,833 | 1,613,839 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 98,945 | 77,035 | 200,173 | 92,530 | 1,881,839 | 1,613,854 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 92,745 | 68,655 | 194,000 | 94,730 | 1,827,986 | 1,560,004 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 92,746 | 70,255 | 194,332 | 95,672 | 1,810,474 | 1,525,130 |
 
 ## work-value
 
@@ -8506,4 +8552,5 @@
 | `8892f29` | 2026-11-15 | perf(collections): O(log N) tournament tree for tryMinBy and tryMaxBy with Rocq proofs (#365) | 107,473 | 119,273 | 200,521 | 219,871 | 1,866,473 | 2,190,958 |
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 106,069 | 117,869 | 200,498 | 219,857 | 1,866,473 | 2,191,007 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 99,869 | 110,569 | 194,269 | 218,646 | 1,812,638 | 2,137,146 |
+| `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 99,869 | 112,168 | 194,702 | 219,577 | 1,795,092 | 2,102,296 |
 
