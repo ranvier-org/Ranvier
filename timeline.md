@@ -182,6 +182,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 74,804 | 99,302 | 1,624,173 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 73,284 | 98,750 | 1,611,738 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 73,287 | 98,481 | 1,607,230 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 73,283 | 98,042 | 1,602,935 |
 
 ## app-table
 
@@ -365,6 +366,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,198,313 | 6,033,049 | 77,432,807 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,188,511 | 6,038,225 | 75,334,904 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,820,690 | 4,751,933 | 60,404,668 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 2,820,706 | 4,744,621 | 60,521,494 |
 
 ## async-recover
 
@@ -548,6 +550,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 93,421 | 30,064 | 361,134 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 93,485 | 30,383 | 361,644 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 93,461 | 30,376 | 361,639 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 93,861 | 30,045 | 361,696 |
 
 ## async-resolve
 
@@ -731,6 +734,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,740,839 | 724,618 | 9,115,507 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,744,040 | 735,281 | 9,105,474 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,742,454 | 735,304 | 9,105,551 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 2,754,645 | 720,278 | 9,088,875 |
 
 ## chain
 
@@ -914,6 +918,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 13,083 | 318 | 2,350 | 4,419 | 3,133 | 72,358 | 67,271 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 13,021 | 318 | 2,350 | 4,419 | 3,260 | 72,358 | 66,422 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 13,149 | 318 | 2,350 | 4,419 | 3,260 | 72,358 | 66,422 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 
 ## chain-affinity
 
@@ -1097,6 +1102,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,416 | 2,941 | 2,358 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,416 | 2,941 | 2,358 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,416 | 2,941 | 2,358 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 2,416 | 2,941 | 2,358 |
 
 ## control
 
@@ -1280,6 +1286,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 74,709 | 472,921 | 2,260,499 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 74,709 | 471,351 | 2,270,030 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 74,709 | 467,713 | 2,267,522 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 74,709 | 462,003 | 2,277,133 |
 
 ## create
 
@@ -1463,6 +1470,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 13,445,489 | 2,860,614 | 2,269,944 | 4,455,501 | 3,123,666 | 33,074,940 | 46,179,492 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 13,445,495 | 2,860,614 | 2,265,894 | 4,556,330 | 3,197,448 | 33,175,412 | 45,850,633 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 13,477,468 | 2,860,616 | 2,265,893 | 4,556,530 | 3,197,595 | 33,175,697 | 45,850,112 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 13,463,647 | 2,866,678 | 2,265,893 | 4,455,303 | 3,098,814 | 33,073,377 | 45,751,460 |
 
 ## create-on
 
@@ -1646,6 +1654,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,663,256 | 3,411,556 | 52,087,528 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,673,212 | 3,526,900 | 51,400,084 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,657,238 | 3,526,805 | 51,400,147 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 2,657,238 | 3,428,066 | 51,301,435 |
 
 ## cutoff
 
@@ -1829,6 +1838,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,182 | 50 | 74 | 65 | 51 | 1,095 | 1,006 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,184 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,184 | 50 | 74 | 65 | 56 | 1,095 | 831 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 
 ## derive-effect
 
@@ -2012,6 +2022,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 701 | 699 | 15,268 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 701 | 703 | 15,092 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 701 | 703 | 15,092 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 701 | 703 | 15,092 |
 
 ## derive-on
 
@@ -2195,6 +2206,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 634 | 689 | 15,286 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 650 | 696 | 14,938 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 634 | 696 | 14,938 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 634 | 696 | 14,938 |
 
 ## dispose
 
@@ -2378,6 +2390,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,707,642 | 806,288 | 355,483 | 480,124 | 501,539 | 11,184,607 | 9,120,679 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,706,242 | 806,288 | 355,483 | 480,135 | 501,373 | 11,184,905 | 9,120,220 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,707,643 | 806,288 | 355,483 | 480,033 | 501,554 | 11,184,480 | 9,120,212 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 2,707,642 | 806,288 | 355,483 | 480,202 | 501,534 | 11,184,919 | 9,120,478 |
 
 ## dispose-on
 
@@ -2561,6 +2574,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 334,483 | 493,388 | 8,916,894 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 334,483 | 493,255 | 8,916,651 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 334,483 | 493,594 | 8,916,598 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 334,483 | 493,385 | 8,916,923 |
 
 ## editable-edit
 
@@ -2744,6 +2758,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 164,309 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 164,309 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 164,309 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 160,709 |
 
 ## editable-upstream
 
@@ -2927,6 +2942,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 205,409 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 205,409 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 205,409 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 205,109 |
 
 ## fail-recompute
 
@@ -3110,6 +3126,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 55,239 | 1,310 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 55,307 | 1,310 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 55,339 | 1,310 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 55,295 | 1,310 |
 
 ## flight
 
@@ -3293,6 +3310,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 9,907 | 5,611 | 5,613 | 10,188 | 9,710 | 10,400 |
 
 ## keyed-insert
 
@@ -3476,6 +3494,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,807,543 | 53,704 | 54,666 | 2,454,737 | 657,970 | 669,643 | 41,429,350 | 2,999,026 | 3,018,502 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,809,478 | 33,817 | 34,644 | 2,443,766 | 169,455 | 523,417 | 40,068,459 | 2,747,332 | 2,764,274 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,791,366 | 33,820 | 34,536 | 2,414,960 | 169,330 | 537,016 | 39,836,890 | 2,745,782 | 2,762,474 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 1,791,366 | 33,804 | 34,536 | 2,414,089 | 169,044 | 536,679 | 39,872,489 | 2,738,087 | 2,762,228 |
 
 ## keyed-remove
 
@@ -3659,6 +3678,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,806,659 | 43,462 | 44,979 | 2,490,864 | 597,475 | 614,754 | 41,393,988 | 2,139,754 | 2,173,957 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,808,589 | 28,087 | 29,542 | 2,489,965 | 454,206 | 139,658 | 40,045,552 | 1,888,115 | 1,919,776 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,790,504 | 28,086 | 29,432 | 2,460,788 | 464,400 | 145,165 | 39,802,423 | 1,878,583 | 1,918,665 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 1,790,502 | 28,072 | 29,432 | 2,459,624 | 463,784 | 144,895 | 39,842,199 | 1,879,560 | 1,918,755 |
 
 ## keyed-swap
 
@@ -3842,6 +3862,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,802,363 | 46,087 | 46,747 | 2,576,636 | 517,152 | 91,903 | 42,130,598 | 913,001 | 930,444 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,789,512 | 31,557 | 32,202 | 2,510,847 | 375,536 | 383,042 | 40,613,959 | 709,646 | 726,893 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,771,465 | 31,553 | 32,155 | 3,047,690 | 365,919 | 80,566 | 40,371,416 | 693,130 | 710,309 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 1,771,465 | 31,536 | 32,155 | 3,046,627 | 365,572 | 80,404 | 40,385,290 | 692,896 | 710,093 |
 
 ## mvu-dispatch
 
@@ -4025,6 +4046,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 57,850 | 698 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 57,850 | 698 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 57,850 | 698 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 57,850 | 698 |
 
 ## persist-write
 
@@ -4208,6 +4230,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | — | — |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | — | — |
 
 ## project-chain
 
@@ -4391,6 +4414,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 91,233 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 69,428 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 68,820 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 68,839 |
 
 ## project-churn
 
@@ -4574,6 +4598,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 36,200 | 33,983 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 24,378 | 22,133 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 24,273 | 22,027 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 24,273 | 22,027 |
 
 ## project-edit
 
@@ -4757,6 +4782,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 50,254 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 29,685 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 29,651 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 29,667 |
 
 ## project-reorder
 
@@ -4940,6 +4966,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 619,979 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 463,136 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 463,119 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 463,119 |
 
 ## server-render
 
@@ -5123,6 +5150,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — | — |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — | — |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | — | — | — |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | — | — | — |
 
 ## shape-diamond
 
@@ -5306,6 +5334,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 57,370 | 83,159 | 1,747,879 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 57,370 | 83,971 | 1,730,706 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 57,370 | 83,970 | 1,730,706 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 57,370 | 83,971 | 1,730,751 |
 
 ## shape-dynamic
 
@@ -5489,6 +5518,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 79,026 | 103,524 | 1,875,339 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 79,026 | 103,747 | 1,866,489 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 79,026 | 103,745 | 1,866,488 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 79,026 | 103,744 | 1,866,485 |
 
 ## stream-burst-1
 
@@ -5672,6 +5702,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,732 | 1,440 | 2,372 | 13,382 | 2,492 | 11,117 | 36,240 | 34,669 | 45,089 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,732 | 1,440 | 2,372 | 13,258 | 2,495 | 10,982 | 36,074 | 34,499 | 44,918 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,732 | 1,440 | 2,370 | 13,260 | 2,495 | 10,987 | 36,074 | 34,499 | 44,918 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 1,711 | 1,419 | 2,272 | 13,266 | 2,495 | 11,113 | 36,095 | 34,518 | 44,692 |
 
 ## stream-burst-16
 
@@ -5855,6 +5886,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,757 | 22,830 | 5,582 | 14,922 | 27,482 | 13,559 | 91,073 | 542,430 | 101,170 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,757 | 22,830 | 5,582 | 14,800 | 27,562 | 13,423 | 90,907 | 539,738 | 101,003 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 3,757 | 22,830 | 5,580 | 14,799 | 27,562 | 13,425 | 90,907 | 539,738 | 101,003 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 3,736 | 22,494 | 4,642 | 14,803 | 27,562 | 13,368 | 90,925 | 540,091 | 100,222 |
 
 ## stream-burst-256
 
@@ -6038,6 +6070,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 36,133 | 365,070 | 56,921 | 88,263 | 415,216 | 36,467 | 968,566 | 8,665,319 | 997,923 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 36,133 | 365,070 | 56,921 | 88,160 | 416,490 | 36,471 | 968,414 | 8,622,296 | 997,744 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 36,133 | 365,070 | 56,919 | 88,052 | 416,493 | 36,514 | 968,417 | 8,622,229 | 997,741 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 36,112 | 359,694 | 42,541 | 88,092 | 448,445 | 66,915 | 968,416 | 8,627,820 | 988,094 |
 
 ## stream-restart
 
@@ -6221,6 +6254,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,762 | 4,792 | 7,003 | 6,095 | 41,013 | 70,010 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,762 | 4,792 | 7,717 | 6,138 | 40,834 | 69,930 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 3,762 | 4,794 | 7,714 | 6,134 | 40,836 | 69,932 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 3,659 | 4,546 | 7,738 | 6,163 | 41,438 | 70,577 |
 
 ## timed-admit-both
 
@@ -6404,6 +6438,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 112,329 | 130,222 | 2,490,328 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 108,233 | 130,206 | 2,490,246 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 108,233 | 130,215 | 2,490,036 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 106,889 | 130,800 | 2,467,801 |
 
 ## timed-admit-debounce
 
@@ -6587,6 +6622,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 111,881 | 128,812 | 2,475,902 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 107,785 | 128,831 | 2,475,765 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 107,785 | 128,815 | 2,475,739 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 106,441 | 129,361 | 2,453,672 |
 
 ## timed-admit-first
 
@@ -6770,6 +6806,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 71,050 | 75,479 | 1,538,621 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 67,978 | 75,478 | 1,538,445 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 67,978 | 75,482 | 1,538,446 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 66,634 | 76,122 | 1,516,393 |
 
 ## timed-admit-last
 
@@ -6953,6 +6990,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 112,137 | 129,135 | 2,485,758 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 108,041 | 129,127 | 2,485,618 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 108,041 | 129,125 | 2,485,595 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 106,697 | 129,702 | 2,463,528 |
 
 ## timed-capture-both
 
@@ -7136,6 +7174,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 34,161 | 42,332 | 842,836 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 34,161 | 42,333 | 842,781 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 34,161 | 42,301 | 842,567 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 34,545 | 42,695 | 831,336 |
 
 ## timed-capture-debounce
 
@@ -7319,6 +7358,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 34,033 | 44,192 | 843,209 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 34,033 | 44,194 | 843,034 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 34,033 | 44,195 | 843,034 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 34,417 | 44,514 | 832,009 |
 
 ## timed-capture-first
 
@@ -7502,6 +7542,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 30,385 | 35,278 | 725,572 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 30,385 | 35,281 | 725,395 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 30,385 | 35,281 | 725,395 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 30,769 | 35,601 | 714,369 |
 
 ## timed-capture-last
 
@@ -7685,6 +7726,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 33,969 | 44,128 | 835,338 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 33,969 | 44,128 | 835,162 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 33,969 | 44,132 | 835,162 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 34,353 | 44,448 | 824,136 |
 
 ## update
 
@@ -7868,6 +7910,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,087,390 | 38,805 | 73,905 | 196,667 | 88,599 | 2,533,217 | 1,701,631 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,089,190 | 38,805 | 73,905 | 196,851 | 88,999 | 2,533,212 | 1,683,956 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,089,190 | 38,805 | 73,905 | 196,648 | 88,999 | 2,533,174 | 1,684,046 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 1,087,390 | 38,805 | 73,905 | 196,945 | 88,982 | 2,533,234 | 1,684,049 |
 
 ## update-on
 
@@ -8051,6 +8094,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 83,005 | 107,584 | 2,029,038 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 84,605 | 108,899 | 1,994,229 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 83,005 | 108,898 | 1,994,206 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 83,005 | 108,846 | 1,994,252 |
 
 ## work-form
 
@@ -8234,6 +8278,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 146,579 | 140,635 | 290,721 | 241,060 | 4,770,273 | 4,683,146 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 146,579 | 140,602 | 291,700 | 242,293 | 4,726,489 | 4,639,574 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 146,579 | 140,570 | 291,721 | 242,301 | 4,726,490 | 4,639,514 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 146,579 | 140,602 | 291,717 | 242,288 | 4,726,475 | 4,639,372 |
 
 ## work-status
 
@@ -8417,6 +8462,7 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 92,745 | 68,655 | 194,000 | 94,730 | 1,827,986 | 1,560,004 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 92,746 | 70,255 | 194,332 | 95,672 | 1,810,474 | 1,525,130 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 92,745 | 68,655 | 194,381 | 95,632 | 1,810,412 | 1,525,190 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 92,745 | 68,655 | 194,353 | 95,671 | 1,810,478 | 1,524,977 |
 
 ## work-value
 
@@ -8600,4 +8646,5 @@
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 99,869 | 110,569 | 194,269 | 218,646 | 1,812,638 | 2,137,146 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 99,869 | 112,168 | 194,702 | 219,577 | 1,795,092 | 2,102,296 |
 | `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 99,869 | 110,568 | 194,738 | 219,558 | 1,795,001 | 2,102,352 |
+| `ba043aa` | 2026-11-17 | perf(core): optimise streams, timed values, bindings, and editables (#375) | 99,869 | 110,569 | 194,728 | 219,425 | 1,795,134 | 2,102,369 |
 
