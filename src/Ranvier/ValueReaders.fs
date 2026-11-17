@@ -54,7 +54,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-    let equal = graph.Options.Equality.Comparer<'V>()
+    let equal = ComparerSentinel.encode (graph.Options.Equality.Comparer<'V>())
     let rows = Platform.KeyMap<'K, ValueRow<'K, 'V>>()
     let seen = Platform.KeySet<'K>()
     let membership = KeyChanges<'K>()
@@ -110,7 +110,8 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
             if not (seen.Contains key) then
                 removed.Add key)
 
-        for key in removed do
+        for i in 0 .. removed.Count - 1 do
+            let key = Platform.entryAt i removed
             this.Detach (rows.Find key)
             rows.Remove key
 
@@ -181,11 +182,11 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
 
                         try
                             if row.Attached && row.Entry.Live then
-                                match graph.RunUntracked (fun () -> row.Entry.Row.TryValue) with
+                                match row.Entry.Row.TryValueUntracked () with
                                 | Ready value ->
                                     if
                                         not row.HasValue
-                                        || not (equal.Equals (row.Value, value))
+                                        || not (ComparerSentinel.equals equal row.Value value)
                                     then
                                         changed row.Entry.Key
                                         row.Value <- value

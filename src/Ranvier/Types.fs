@@ -224,6 +224,10 @@ type ManualDispatcher() =
     interface IGraphDispatcher with
         member _.Post _ = ()
 
+#if FABLE_COMPILER
+type internal ReferenceComparerBase() = class end
+#endif
+
 /// <summary>
 /// Reference identity, for reference types only.
 /// </summary>
@@ -232,6 +236,9 @@ type ManualDispatcher() =
 /// only ever instantiated at types that are already pointers.
 /// </remarks>
 type internal ReferenceComparer<'T>() =
+#if FABLE_COMPILER
+    inherit ReferenceComparerBase()
+#endif
     interface IEqualityComparer<'T> with
         member _.Equals(x, y) =
             Object.ReferenceEquals (box x, box y)

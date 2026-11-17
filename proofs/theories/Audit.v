@@ -490,3 +490,12 @@ Print Assumptions resolve_step_skip_signal_eq.
 Print Assumptions walk_marks_hoist_slot0_eq.
 Print Assumptions fused_hosted_run_eq.
 Print Assumptions request_flush_from_entered_eq.
+Print Assumptions positional_single_move_right_correct.
+Print Assumptions positional_single_move_left_correct.
+Print Assumptions positional_distant_swap_correct.
+Print Assumptions observable_collection_delta_value_patch_refines_scan.
+Print Assumptions lazy_partitioned_map_refines_total_map.
+Print Assumptions trim_single_inplace_key_preserves_uniqueness.
+Print Assumptions trim_two_index_key_swap_preserves_uniqueness.
+Print Assumptions index_projection_dense_diff_refines_visit.
+Print Assumptions lookup_sync_clean_skip_and_affected_buf_eq.

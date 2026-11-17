@@ -4566,7 +4566,6 @@ type Graph(options: GraphOptions) =
                     untrackedInBody <- previousInBody
         )
 
-#if !FABLE_COMPILER
     /// <summary>Evaluates <c>f arg</c> with tracking suppressed, avoiding per-call closure allocation.</summary>
     member internal this.RunUntrackedWith(f: 'A -> 'T, arg: 'A) : 'T =
         this.Entered (
@@ -4591,6 +4590,79 @@ type Graph(options: GraphOptions) =
                     untrackedHost <- previousHost
                     untrackedInBody <- previousInBody
         )
+
+    /// <summary>Evaluates <c>body</c> untracked inside one batch, flushing if allowed on return.</summary>
+    member internal this.RunUntrackedBatch(body: unit -> unit) =
+        this.Entered (
+            "An untracked read",
+            fun () ->
+                let previous = current
+                let previousHost = untrackedHost
+                let previousInBody = untrackedInBody
+
+                if not (Platform.isNull (box previous)) then
+                    untrackedInBody <- true
+
+                    if Platform.isNull (box currentOwner) then
+                        untrackedHost <- previous :?> IScopeHost
+
+                current <- Unchecked.defaultof<IComputation>
+                batchDepth <- batchDepth + 1
+                Tracer.BatchEnter (this, batchDepth)
+
+                try
+                    try
+                        body ()
+                    finally
+                        batchDepth <- batchDepth - 1
+                        Tracer.BatchExit (this, batchDepth)
+
+                    this.RequestFlushFromEntered ()
+                finally
+                    current <- previous
+                    untrackedHost <- previousHost
+                    untrackedInBody <- previousInBody
+        )
+
+#if !FABLE_COMPILER
+    /// <summary>Evaluates <c>f arg</c> untracked inside one batch without closure allocation.</summary>
+    member internal this.RunUntrackedBatchWith(f: 'A -> unit, arg: 'A) =
+        if not (this.Enter "An untracked read") then
+            this.RunUntrackedBatchCore (f, arg)
+        else
+            try
+                this.RunUntrackedBatchCore (f, arg)
+            finally
+                this.Release ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.RunUntrackedBatchCore(f: 'A -> unit, arg: 'A) =
+        let previous = current
+        let previousHost = untrackedHost
+        let previousInBody = untrackedInBody
+
+        if not (Platform.isNull (box previous)) then
+            untrackedInBody <- true
+
+            if Platform.isNull (box currentOwner) then
+                untrackedHost <- previous :?> IScopeHost
+
+        current <- Unchecked.defaultof<IComputation>
+        batchDepth <- batchDepth + 1
+        Tracer.BatchEnter (this, batchDepth)
+
+        try
+            try
+                f arg
+            finally
+                batchDepth <- batchDepth - 1
+                Tracer.BatchExit (this, batchDepth)
+
+            this.RequestFlushFromEntered ()
+        finally
+            current <- previous
+            untrackedHost <- previousHost
+            untrackedInBody <- previousInBody
 #endif
 
     /// <summary>
@@ -4702,12 +4774,11 @@ type Graph(options: GraphOptions) =
         untrackedInBody <- saved.PreviousInBody
 #endif
 
-#if !FABLE_COMPILER
-// Normalizes the intrinsic fast-path comparer (EqualityComparer<'T>.Default for value types,
-// ReferenceComparer<'T> for reference types) to null so .NET hot paths avoid interface dispatch
-// and generic dictionary lookups, while preserving NullReferenceException for a faulty policy.
+// Normalizes the intrinsic fast-path comparer (EqualityComparer<'T>.Default / ReferenceComparer<'T> on .NET,
+// ReferenceComparer<'T> on Fable) to null so hot paths avoid interface dispatch and generic dictionary lookups,
+// while preserving NullReferenceException for a faulty policy.
 [<Sealed>]
-type private NullComparer<'T>() =
+type internal NullComparer<'T>() =
     static member val Instance: IEqualityComparer<'T> = NullComparer<'T>() :> IEqualityComparer<'T>
 
     interface IEqualityComparer<'T> with
@@ -4717,6 +4788,22 @@ type private NullComparer<'T>() =
         member _.GetHashCode(_) =
             raise (NullReferenceException ())
 
+#if FABLE_COMPILER
+module internal ComparerSentinel =
+    let inline encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
+        if obj.ReferenceEquals (comparer, null) then
+            NullComparer<'T>.Instance
+        elif (box comparer) :? ReferenceComparerBase then
+            Unchecked.defaultof<IEqualityComparer<'T>>
+        else
+            comparer
+
+    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
+        if Platform.isNull (box encoded) then
+            obj.ReferenceEquals (box a, box b)
+        else
+            encoded.Equals (a, b)
+#else
 module internal ComparerSentinel =
     let encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
         if obj.ReferenceEquals (comparer, null) then
@@ -4748,9 +4835,7 @@ module internal ComparerSentinel =
 /// </summary>
 type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
     let equal = ComparerSentinel.encode equal
-#endif
 #if RANVIER_TRACE
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
@@ -4837,7 +4922,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                             && not (this.RecordWrite v)
                         )
                     then
-                        if not (equal.Equals (value, v)) then
+                        if not (ComparerSentinel.equals equal value v) then
                             value <- v
                             Tracer.Write (observers, true, box v)
 
@@ -4964,7 +5049,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
         graph.Entered (
             "A signal write",
             fun () ->
-                if not (equal.Equals (value, v)) then
+                if not (ComparerSentinel.equals equal value v) then
                     value <- v
                     Tracer.Write (observers, true, box v)
 
@@ -5296,9 +5381,7 @@ type AsyncSource<'T>(graph: Graph) =
 /// </remarks>
 type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
     let equal = ComparerSentinel.encode equal
-#endif
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let mutable sources = SourceList.Create ()
@@ -5548,11 +5631,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         if not moved then
             try
-#if FABLE_COMPILER
-                moved <- not (equal.Equals (previous, value))
-#else
                 moved <- not (ComparerSentinel.equals equal previous value)
-#endif
             with ex ->
                 value <- previous
                 failure <- graph.FailureOf (ex, this, previousFailure)
@@ -6015,6 +6094,30 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     Failed failure.Error
             else
                 Ready value
+
+    static member val private ReadUntrackedFn: Memo<'T> -> Reading<'T> = fun m -> m.ReadUntracked ()
+
+    member inline internal _.IsCleanAndReady = StatusBits.isCleanAndReady freshness status
+
+    /// <summary>
+    /// Zero-closure untracked non-throwing read: hits a clean inline check before falling back to <c>ReadUntracked</c>.
+    /// </summary>
+    member internal this.TryValueUntracked() : Reading<'T> =
+        graph.Entered (
+            "An untracked read",
+            fun () ->
+                if StatusBits.isCleanAndReady freshness status then
+                    Ready value
+                else
+                    this.TryValueUntrackedSlow ()
+        )
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.TryValueUntrackedSlow() : Reading<'T> =
+        if obj.ReferenceEquals (graph.CurrentComputation, null) then
+            this.ReadUntracked ()
+        else
+            graph.RunUntrackedWith (Memo<'T>.ReadUntrackedFn, this)
 
     /// <summary>
     /// Non-throwing read that brings the memo up to date without recording a dependency.
@@ -6545,9 +6648,7 @@ type Effect private (graph: Graph, body: obj, _unstarted: unit) =
 [<Sealed>]
 type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -> unit, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
     let equal = ComparerSentinel.encode equal
-#endif
     let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
 
@@ -6658,11 +6759,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
         if settled && hasActed then
             try
-#if FABLE_COMPILER
-                unchanged <- equal.Equals (last, v)
-#else
                 unchanged <- ComparerSentinel.equals equal last v
-#endif
             with ex ->
                 settled <- false
                 error <- ex
@@ -8016,9 +8113,7 @@ type Boundary<'T>
     (graph: Graph, body: unit -> 'T, onPending: ('T voption -> 'T) voption, onError: (exn -> 'T voption -> 'T) voption, equal: IEqualityComparer<'T>)
     =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
     let equal = ComparerSentinel.encode equal
-#endif
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let mutable sources = SourceList.Create ()
@@ -8276,11 +8371,7 @@ type Boundary<'T>
 
         if not moved then
             try
-#if FABLE_COMPILER
-                moved <- not (equal.Equals (previous, value))
-#else
                 moved <- not (ComparerSentinel.equals equal previous value)
-#endif
             with ex ->
                 value <- previous
                 failure <- graph.FailureOf (ex, this, previousFailure)

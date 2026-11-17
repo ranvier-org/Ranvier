@@ -86,28 +86,37 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
         if stopped then
             raise (ObjectDisposedException "The keyed collection was disposed.")
 
+    member private _.AddOrUpdateCore(key: 'K, value: 'V) =
+        let item = items.Find key
+
+        if Platform.isNull item then
+            let fresh = CollectionItem<'K, 'V>(key, Signal<'V>(graph, value))
+
+            if Platform.isNull tail then
+                head <- fresh
+                tail <- fresh
+            else
+                fresh.Prev <- tail
+                tail.Next <- fresh
+                tail <- fresh
+
+            items.Set (key, fresh)
+            count <- count + 1
+            changes.Record (key, KeyChange.Added)
+            revision.Value <- revision.Peek + 1
+        else
+            item.Signal.Value <- value
+
     member this.AddOrUpdate(key: 'K, value: 'V) =
         graph.RunBatch (fun () ->
             this.EnsureLive ()
-            let item = items.Find key
+            this.AddOrUpdateCore (key, value))
 
-            if Platform.isNull item then
-                let fresh = CollectionItem<'K, 'V>(key, Signal<'V>(graph, value))
-
-                if Platform.isNull tail then
-                    head <- fresh
-                    tail <- fresh
-                else
-                    fresh.Prev <- tail
-                    tail.Next <- fresh
-                    tail <- fresh
-
-                items.Set (key, fresh)
-                count <- count + 1
-                changes.Record (key, KeyChange.Added)
-                revision.Value <- revision.Peek + 1
-            else
-                item.Signal.Value <- value)
+    member this.AddOrUpdateBy(keyOf: 'V -> 'K, value: 'V) =
+        graph.RunBatch (fun () ->
+            this.EnsureLive ()
+            let key = keyOf value
+            this.AddOrUpdateCore (key, value))
 
     member this.Remove(key: 'K) =
         graph.RunBatch (fun () ->
@@ -166,25 +175,33 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
     override this.Enumerate() =
         revision.Value |> ignore
         let mine = this.Runs
-        let keys = toArray ()
-        let mutable i = 0
 
-        while this.Runs = mine && i < keys.Length do
-            let key = Platform.itemAt i keys
-            i <- i + 1
-            let item = items.Find key
+        if this.Entries.Count = 0 then
+            let mutable node = head
 
-            if not (Platform.isNull item) then
-                let entry = this.Entries.Find key
+            while this.Runs = mine && not (Platform.isNull node) do
+                this.Visit (node.Key, node.Signal)
+                node <- node.Next
+        else
+            let keys = toArray ()
+            let mutable i = 0
 
-                if
-                    not (Platform.isNull entry)
-                    && not (obj.ReferenceEquals ((entry :?> ItemRow<Signal<'V>, 'K, 'V>).Item.Peek, item.Signal))
-                then
-                    this.RetireChanged key
+            while this.Runs = mine && i < keys.Length do
+                let key = Platform.itemAt i keys
+                i <- i + 1
+                let item = items.Find key
 
-                if this.Runs = mine then
-                    this.Visit (key, item.Signal)
+                if not (Platform.isNull item) then
+                    let entry = this.Entries.Find key
+
+                    if
+                        not (Platform.isNull entry)
+                        && not (obj.ReferenceEquals ((entry :?> ItemRow<Signal<'V>, 'K, 'V>).Item.Peek, item.Signal))
+                    then
+                        this.RetireChanged key
+
+                    if this.Runs = mine then
+                        this.Visit (key, item.Signal)
 
 /// <summary>An editable collection with insertion order and separately observable rows.</summary>
 /// <remarks>Owned by the creating scope. Updates use the graph's value equality policy; keys use structural equality.</remarks>
@@ -196,7 +213,7 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
 
     /// <summary>Adds a new key at the end, or updates its existing row without changing its position.</summary>
     member _.AddOrUpdate(value: 'V) =
-        rows.Edit (fun () -> rows.AddOrUpdate (keyOf value, value))
+        rows.AddOrUpdateBy (keyOf, value)
 
     /// <summary>Removes the key. Returns false when it is absent.</summary>
     member _.Remove(key: 'K) =

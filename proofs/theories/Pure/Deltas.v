@@ -975,3 +975,245 @@ Proof.
   - intros Hxp. apply (HdisjP2 x Hxp). apply elem_of_app. by left.
   - intros Hxs. apply (HdisjS2 x Hx). exact Hxs.
 Qed.
+
+Lemma apply_single_move_right_mid {A : Type} (mid : list A) (x : A) :
+  apply_pos_edits (x :: mid) [PosMove 0 (length mid)] = Some (mid ++ [x]).
+Proof.
+  unfold apply_pos_edits, apply_pos_edit, remove_at, insert_at.
+  simpl. rewrite drop_0.
+  rewrite decide_True; [|lia].
+  rewrite take_ge, drop_ge; [reflexivity | lia | lia].
+Qed.
+
+(**md
+**A single `Move(length P, length P + length mid)` transforms `P ++ (x :: mid) ++ Sfx` directly into `P ++ (mid ++ [x]) ++ Sfx` (`Positional.fs`).**
+
+- [P:] common prefix slice.
+- [mid:] middle slice shifted left by one position.
+- [Sfx:] common suffix slice.
+- [x:] element moved to the end of the middle slice.
+*)
+Theorem positional_single_move_right_correct {A : Type} (P mid Sfx : list A) (x : A) :
+  apply_pos_edits (P ++ (x :: mid) ++ Sfx) [PosMove (length P) (length P + length mid)] =
+  Some (P ++ (mid ++ [x]) ++ Sfx).
+Proof.
+  pose proof (positional_frame_prefix_suffix P (x :: mid) (mid ++ [x]) Sfx
+                [PosMove 0 (length mid)] (apply_single_move_right_mid mid x)) as Hframe.
+  simpl in Hframe. rewrite Nat.add_0_r in Hframe. exact Hframe.
+Qed.
+
+Lemma remove_at_end {A : Type} (xs : list A) (x : A) :
+  remove_at (length xs) (xs ++ [x]) = Some (x, xs).
+Proof.
+  unfold remove_at.
+  rewrite lookup_app_r; [|lia].
+  rewrite Nat.sub_diag. simpl.
+  rewrite take_app_le; [|lia].
+  rewrite take_ge; [|lia].
+  rewrite drop_app_ge; [|lia].
+  replace (S (length xs) - length xs) with 1 by lia.
+  simpl. rewrite app_nil_r. reflexivity.
+Qed.
+
+Lemma apply_single_move_left_mid {A : Type} (mid : list A) (x : A) :
+  apply_pos_edits (mid ++ [x]) [PosMove (length mid) 0] = Some (x :: mid).
+Proof.
+  unfold apply_pos_edits, apply_pos_edit.
+  rewrite remove_at_end.
+  unfold insert_at.
+  rewrite decide_True; [|lia].
+  simpl. rewrite drop_0.
+  reflexivity.
+Qed.
+
+(**md
+**A single `Move(length P + length mid, length P)` transforms `P ++ (mid ++ [x]) ++ Sfx` directly into `P ++ (x :: mid) ++ Sfx` (`Positional.fs`).**
+
+- [P:] common prefix slice.
+- [mid:] middle slice shifted right by one position.
+- [Sfx:] common suffix slice.
+- [x:] element moved to the start of the middle slice.
+*)
+Theorem positional_single_move_left_correct {A : Type} (P mid Sfx : list A) (x : A) :
+  apply_pos_edits (P ++ (mid ++ [x]) ++ Sfx) [PosMove (length P + length mid) (length P)] =
+  Some (P ++ (x :: mid) ++ Sfx).
+Proof.
+  pose proof (positional_frame_prefix_suffix P (mid ++ [x]) (x :: mid) Sfx
+                [PosMove (length mid) 0] (apply_single_move_left_mid mid x)) as Hframe.
+  simpl in Hframe. rewrite Nat.add_0_r in Hframe. exact Hframe.
+Qed.
+
+Lemma apply_pos_edit_of_single {A : Type} (xs ys : list A) (e : pos_edit A) :
+  apply_pos_edits xs [e] = Some ys ->
+  apply_pos_edit xs e = Some ys.
+Proof.
+  unfold apply_pos_edits.
+  destruct (apply_pos_edit xs e); [intro H; exact H | discriminate].
+Qed.
+
+Lemma apply_distant_swap_mid {A : Type} (mid : list A) (a b : A) :
+  apply_pos_edits (a :: mid ++ [b])
+    [PosMove (S (length mid)) 0; PosMove 1 (S (length mid))] =
+  Some (b :: mid ++ [a]).
+Proof.
+  cbn [apply_pos_edits].
+  pose proof (apply_pos_edit_of_single ((a :: mid) ++ [b]) (b :: a :: mid) (PosMove (length (a :: mid)) 0)
+                (apply_single_move_left_mid (a :: mid) b)) as Hleft.
+  cbn [app length] in Hleft. rewrite Hleft.
+  pose proof (positional_single_move_right_correct [b] mid [] a) as Hright.
+  cbn [app length] in Hright. rewrite !app_nil_r in Hright.
+  exact Hright.
+Qed.
+
+(**md
+**Two `Move` edits swap the first and last elements of `a :: mid ++ [b]` inside `P ++ (a :: mid ++ [b]) ++ Sfx` (`Positional.fs`).**
+
+- [P:] common prefix slice.
+- [mid:] interior elements unchanged by the endpoint swap.
+- [Sfx:] common suffix slice.
+- [a:] original first element of the trimmed middle slice.
+- [b:] original last element of the trimmed middle slice.
+*)
+Theorem positional_distant_swap_correct {A : Type} (P mid Sfx : list A) (a b : A) :
+  apply_pos_edits (P ++ (a :: mid ++ [b]) ++ Sfx)
+    [PosMove (length P + S (length mid)) (length P);
+     PosMove (length P + 1) (length P + S (length mid))] =
+  Some (P ++ (b :: mid ++ [a]) ++ Sfx).
+Proof.
+  pose proof (positional_frame_prefix_suffix P (a :: mid ++ [b]) (b :: mid ++ [a]) Sfx
+                [PosMove (S (length mid)) 0; PosMove 1 (S (length mid))]
+                (apply_distant_swap_mid mid a b)) as Hframe.
+  simpl in Hframe. rewrite Nat.add_0_r in Hframe. exact Hframe.
+Qed.
+
+(** ** 7. AsObservableCollection O(Delta) value patching *)
+
+Definition oc_patch_step {K V : Type} `{Countable K, EqDecision V}
+    (index_of : gmap K nat) (cur_val : K -> V) (items : list V) (kc : K * key_change) : list V :=
+  match kc.2 with
+  | KcChanged | KcReplaced =>
+      match index_of !! kc.1 with
+      | Some idx =>
+          match items !! idx with
+          | Some prev => if decide (prev = cur_val kc.1) then items else <[idx := cur_val kc.1]> items
+          | None => items
+          end
+      | None => items
+      end
+  | _ => items
+  end.
+
+Lemma oc_patch_step_length {K V : Type} `{Countable K, EqDecision V}
+    (index_of : gmap K nat) (cur_val : K -> V) (items : list V) (kc : K * key_change) :
+  length (oc_patch_step index_of cur_val items kc) = length items.
+Proof.
+  unfold oc_patch_step.
+  destruct (kc.2); try reflexivity;
+    destruct (index_of !! kc.1) as [idx|]; try reflexivity;
+    destruct (items !! idx) as [prev|]; try reflexivity;
+    destruct (decide (prev = cur_val kc.1)); try reflexivity;
+    apply length_insert.
+Qed.
+
+Lemma oc_patch_step_preserves {K V : Type} `{Countable K, EqDecision V}
+    (visible : list K) (index_of : gmap K nat) (cur_val : K -> V)
+    (items : list V) (kc : K * key_change) (i : nat) (k : K) :
+  (forall j x, visible !! j = Some x <-> index_of !! x = Some j) ->
+  visible !! i = Some k ->
+  items !! i = Some (cur_val k) ->
+  oc_patch_step index_of cur_val items kc !! i = Some (cur_val k).
+Proof.
+  intros Hinv Hvis Hcur.
+  unfold oc_patch_step.
+  destruct (kc.2); try exact Hcur;
+    destruct (index_of !! kc.1) as [idx|] eqn:Hidx; try exact Hcur;
+    destruct (items !! idx) as [prev|] eqn:Hprev; try exact Hcur;
+    destruct (decide (prev = cur_val kc.1)) as [->|Hne]; try exact Hcur;
+    (destruct (decide (idx = i)) as [->|Hnei];
+      [assert (Heqk : kc.1 = k)
+        by (pose proof (proj2 (Hinv i kc.1) Hidx) as Hvi; congruence);
+       rewrite Heqk; rewrite list_lookup_insert_eq;
+       [reflexivity | eapply lookup_lt_Some; exact Hcur]
+      |rewrite list_lookup_insert_ne; [exact Hcur | lia]]).
+Qed.
+
+Lemma oc_patch_step_updates {K V : Type} `{Countable K, EqDecision V}
+    (visible : list K) (index_of : gmap K nat) (cur_val : K -> V)
+    (items : list V) (k : K) (c : key_change) (i : nat) :
+  (forall j x, visible !! j = Some x <-> index_of !! x = Some j) ->
+  visible !! i = Some k ->
+  length items = length visible ->
+  c = KcChanged \/ c = KcReplaced ->
+  oc_patch_step index_of cur_val items (k, c) !! i = Some (cur_val k).
+Proof.
+  intros Hinv Hvis Hlen Hc.
+  assert (Hidx : index_of !! k = Some i) by (apply Hinv; exact Hvis).
+  assert (Hlt : i < length items) by (rewrite Hlen; eapply lookup_lt_Some; exact Hvis).
+  destruct (lookup_lt_is_Some_2 items i Hlt) as [prev Hprev].
+  unfold oc_patch_step; simpl.
+  destruct Hc as [->| ->]; rewrite Hidx, Hprev;
+    destruct (decide (prev = cur_val k)) as [->|Hne];
+    [exact Hprev
+    |rewrite list_lookup_insert_eq; [reflexivity | exact Hlt]
+    |exact Hprev
+    |rewrite list_lookup_insert_eq; [reflexivity | exact Hlt]].
+Qed.
+
+Lemma oc_patch_fold_inv {K V : Type} `{Countable K, EqDecision V}
+    (visible : list K) (index_of : gmap K nat) (cur_val : K -> V)
+    (pairs : list (K * key_change)) (items : list V) :
+  (forall j x, visible !! j = Some x <-> index_of !! x = Some j) ->
+  length items = length visible ->
+  (forall i k, visible !! i = Some k ->
+    items !! i = Some (cur_val k) \/ (k, KcChanged) ∈ pairs \/ (k, KcReplaced) ∈ pairs) ->
+  let res := foldl (oc_patch_step index_of cur_val) items pairs in
+  length res = length visible /\
+  forall i k, visible !! i = Some k -> res !! i = Some (cur_val k).
+Proof.
+  revert items.
+  induction pairs as [|kc rest IH]; intros items Hinv Hlen Hcover; simpl.
+  - split; [exact Hlen|].
+    intros i k Hvis.
+    destruct (Hcover i k Hvis) as [Hcur | [Hin | Hin]];
+      [exact Hcur | inversion Hin | inversion Hin].
+  - apply IH; [exact Hinv | rewrite oc_patch_step_length; exact Hlen |].
+    intros i k Hvis.
+    destruct (Hcover i k Hvis) as [Hcur | [Hin | Hin]].
+    + left. eapply oc_patch_step_preserves; eauto.
+    + apply elem_of_cons in Hin as [<- | Hrest].
+      * left. eapply oc_patch_step_updates; eauto.
+      * right. left. exact Hrest.
+    + apply elem_of_cons in Hin as [<- | Hrest].
+      * left. eapply oc_patch_step_updates; eauto.
+      * right. right. exact Hrest.
+Qed.
+
+(**md
+**On any non-reset `ProjectionDelta`, patching `view` only over `delta.Changes` entries with `KcChanged` or `KcReplaced` yields the exact same sequence as scanning all `0 .. length visible - 1` visible elements (`Projections.fs`).**
+
+- [visible:] settled visible key order after applying structural positional edits.
+- [index_of:] inverse map sending each key in `visible` to its index.
+- [cur_val:] settled value lookup per visible key.
+- [items:] current `ObservableCollection` items prior to value patching.
+- [pairs:] `delta.Changes` key-change pairs.
+*)
+Theorem observable_collection_delta_value_patch_refines_scan
+    {K V : Type} `{Countable K, EqDecision V}
+    (visible : list K) (index_of : gmap K nat) (cur_val : K -> V)
+    (items : list V) (pairs : list (K * key_change)) :
+  (forall j x, visible !! j = Some x <-> index_of !! x = Some j) ->
+  length items = length visible ->
+  (forall i k, visible !! i = Some k ->
+    items !! i = Some (cur_val k) \/ (k, KcChanged) ∈ pairs \/ (k, KcReplaced) ∈ pairs) ->
+  foldl (oc_patch_step index_of cur_val) items pairs = cur_val <$> visible.
+Proof.
+  intros Hinv Hlen Hcover.
+  pose proof (oc_patch_fold_inv visible index_of cur_val pairs items Hinv Hlen Hcover)
+    as [Hlen_res Hlook].
+  apply list_eq. intros i.
+  rewrite list_lookup_fmap.
+  destruct (visible !! i) as [k|] eqn:Hvis.
+  - simpl. apply (Hlook i k Hvis).
+  - simpl. apply lookup_ge_None_2.
+    rewrite Hlen_res. apply lookup_ge_None_1. exact Hvis.
+Qed.

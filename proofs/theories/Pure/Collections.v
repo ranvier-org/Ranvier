@@ -3576,3 +3576,689 @@ Proof.
   rewrite decide_True by (split; [lia | apply Hbound; reflexivity]).
   reflexivity.
 Qed.
+
+(** ** Lazy partitioned KeyMap, aligned Trim, dense IndexProjection, and Lookup sync *)
+
+Record lazy_part_map (K V : Type) `{Countable K} := mk_lpm {
+  lpm_prims : gmap K V;
+  lpm_objs : option (gmap K V);
+}.
+Arguments mk_lpm {K V _ _} _ _.
+Arguments lpm_prims {K V _ _} _.
+Arguments lpm_objs {K V _ _} _.
+
+Definition lpm_empty {K V : Type} `{Countable K} : lazy_part_map K V :=
+  mk_lpm ∅ None.
+
+Definition lpm_abs {K V : Type} `{Countable K} (m : lazy_part_map K V) : gmap K V :=
+  lpm_prims m ∪ default ∅ (lpm_objs m).
+
+Definition lpm_wf {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) : Prop :=
+  (forall k, is_Some (lpm_prims m !! k) -> is_prim k = true) /\
+  match lpm_objs m with
+  | None => True
+  | Some om => forall k, is_Some (om !! k) -> is_prim k = false
+  end.
+
+Definition lpm_find {K V : Type} `{Countable K} (is_prim : K -> bool) (k : K) (m : lazy_part_map K V) : option V :=
+  if is_prim k then lpm_prims m !! k
+  else match lpm_objs m with None => None | Some om => om !! k end.
+
+Definition lpm_set {K V : Type} `{Countable K} (is_prim : K -> bool) (k : K) (v : V) (m : lazy_part_map K V)
+    : lazy_part_map K V :=
+  if is_prim k then
+    mk_lpm (<[k := v]> (lpm_prims m)) (lpm_objs m)
+  else
+    let om := match lpm_objs m with None => ∅ | Some om => om end in
+    mk_lpm (lpm_prims m) (Some (<[k := v]> om)).
+
+Definition lpm_remove {K V : Type} `{Countable K} (is_prim : K -> bool) (k : K) (m : lazy_part_map K V)
+    : lazy_part_map K V :=
+  if is_prim k then
+    mk_lpm (delete k (lpm_prims m)) (lpm_objs m)
+  else
+    match lpm_objs m with
+    | None => m
+    | Some om => mk_lpm (lpm_prims m) (Some (delete k om))
+    end.
+
+Definition lpm_count {K V : Type} `{Countable K} (m : lazy_part_map K V) : nat :=
+  size (lpm_prims m) + match lpm_objs m with None => 0 | Some om => size om end.
+
+Lemma lpm_prims_none_on_obj {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) (k : K) :
+  lpm_wf is_prim m -> is_prim k = false -> lpm_prims m !! k = None.
+Proof.
+  intros [Hp _] Hfalse.
+  destruct (lpm_prims m !! k) as [v|] eqn:E; [|reflexivity].
+  pose proof (Hp k (ex_intro _ v E)) as Htrue. congruence.
+Qed.
+
+Lemma lpm_objs_none_on_prim {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) (k : K) :
+  lpm_wf is_prim m -> is_prim k = true -> default (∅ : gmap K V) (lpm_objs m) !! k = None.
+Proof.
+  intros [_ Ho] Htrue.
+  destruct (lpm_objs m) as [om|]; simpl; [|apply lookup_empty].
+  destruct (om !! k) as [v|] eqn:E; [|reflexivity].
+  pose proof (Ho k (ex_intro _ v E)) as Hfalse. congruence.
+Qed.
+
+(**md
+**A lazily allocated partitioned map `(prims, option objs)` starting at `(∅, None)` and allocating `objs` only on the first non-primitive insert refines a total `gmap K V` across `Find`, `Set`, `Remove`, and `Count` (`Platform.fs`).**
+
+- [is_prim:] predicate distinguishing primitive keys stored in `prims` from non-primitive keys stored in `objs`.
+- [m:] the partitioned map state.
+*)
+Theorem lazy_partitioned_map_refines_total_map
+    {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) :
+  lpm_wf is_prim (lpm_empty (K := K) (V := V)) /\
+  lpm_abs (lpm_empty (K := K) (V := V)) = ∅ /\
+  lpm_objs (lpm_empty (K := K) (V := V)) = None /\
+  (lpm_wf is_prim m ->
+   (forall k v, is_prim k = true -> lpm_objs m = None -> lpm_objs (lpm_set is_prim k v m) = None) /\
+   (forall k, lpm_find is_prim k m = lpm_abs m !! k) /\
+   (forall k v, lpm_wf is_prim (lpm_set is_prim k v m) /\ lpm_abs (lpm_set is_prim k v m) = <[k := v]> (lpm_abs m)) /\
+   (forall k, lpm_wf is_prim (lpm_remove is_prim k m) /\ lpm_abs (lpm_remove is_prim k m) = delete k (lpm_abs m)) /\
+   lpm_count m = size (lpm_abs m)).
+Proof.
+  split_and!.
+  - unfold lpm_wf; simpl. split; [|done].
+    intros k [v Hv]. rewrite lookup_empty in Hv. discriminate.
+  - unfold lpm_abs, lpm_empty; simpl.
+    apply map_eq. intros q. rewrite lookup_union, !lookup_empty. reflexivity.
+  - reflexivity.
+  - intros Hwf. split_and!.
+    + intros k v Htrue Hnone. unfold lpm_set. rewrite Htrue. simpl. exact Hnone.
+    + intros k. unfold lpm_find, lpm_abs. rewrite lookup_union.
+      destruct (is_prim k) eqn:Hp.
+      * rewrite (lpm_objs_none_on_prim is_prim m k Hwf Hp).
+        destruct (lpm_prims m !! k); reflexivity.
+      * rewrite (lpm_prims_none_on_obj is_prim m k Hwf Hp).
+        destruct (lpm_objs m) as [om|]; simpl; [destruct (om !! k); reflexivity | rewrite lookup_empty; reflexivity].
+    + intros k v. unfold lpm_set, lpm_wf, lpm_abs.
+      destruct (is_prim k) eqn:Hp; simpl.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hok : default (∅ : gmap K V) (lpm_objs m) !! k = None)
+          by (apply (lpm_objs_none_on_prim is_prim m k (conj Hprims Hobjs) Hp)).
+        split.
+        -- split; [|exact Hobjs].
+           intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne]; [exact Hp|].
+           rewrite lookup_insert_ne in Hvq; [|symmetry; exact Hne].
+           apply Hprims. eexists; exact Hvq.
+        -- apply map_eq. intros q. rewrite !lookup_union.
+           destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite !lookup_insert_eq, Hok. reflexivity.
+           ++ rewrite !lookup_insert_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union. reflexivity.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hpk : lpm_prims m !! k = None) by (apply (lpm_prims_none_on_obj is_prim m k (conj Hprims Hobjs) Hp)).
+        split.
+        -- split; [exact Hprims|].
+           intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne]; [exact Hp|].
+           rewrite lookup_insert_ne in Hvq; [|symmetry; exact Hne].
+           destruct (lpm_objs m) as [om|]; simpl in *.
+           ++ apply Hobjs. eexists; exact Hvq.
+           ++ rewrite lookup_empty in Hvq. discriminate.
+        -- destruct (lpm_objs m) as [om|] eqn:Eo; simpl; apply map_eq; intros q; rewrite !lookup_union;
+             destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite Hpk, !lookup_insert_eq. reflexivity.
+           ++ rewrite !lookup_insert_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union. reflexivity.
+           ++ rewrite Hpk, !lookup_insert_eq. reflexivity.
+           ++ rewrite !lookup_insert_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union, !lookup_empty. reflexivity.
+    + intros k. unfold lpm_remove, lpm_wf, lpm_abs.
+      destruct (is_prim k) eqn:Hp; simpl.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hok : default (∅ : gmap K V) (lpm_objs m) !! k = None)
+          by (apply (lpm_objs_none_on_prim is_prim m k (conj Hprims Hobjs) Hp)).
+        split.
+        -- split; [|exact Hobjs].
+           intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite lookup_delete_eq in Hvq. discriminate.
+           ++ rewrite lookup_delete_ne in Hvq; [|symmetry; exact Hne].
+              apply Hprims. eexists; exact Hvq.
+        -- apply map_eq. intros q. rewrite !lookup_union.
+           destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite !lookup_delete_eq, Hok. reflexivity.
+           ++ rewrite !lookup_delete_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union. reflexivity.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hpk : lpm_prims m !! k = None) by (apply (lpm_prims_none_on_obj is_prim m k (conj Hprims Hobjs) Hp)).
+        destruct (lpm_objs m) as [om|] eqn:Eo; simpl.
+        -- split.
+           ++ split; [exact Hprims|].
+              intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne].
+              ** rewrite lookup_delete_eq in Hvq. discriminate.
+              ** rewrite lookup_delete_ne in Hvq; [|symmetry; exact Hne].
+                 apply Hobjs. eexists; exact Hvq.
+           ++ apply map_eq. intros q. rewrite !lookup_union.
+              destruct (decide (q = k)) as [->|Hne].
+              ** rewrite !lookup_delete_eq, Hpk. reflexivity.
+              ** rewrite !lookup_delete_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+                 rewrite lookup_union. reflexivity.
+        -- split; [split; [exact Hprims | rewrite Eo; exact I] |].
+           rewrite Eo. simpl.
+           apply map_eq. intros q.
+           destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite lookup_delete_eq, lookup_union, Hpk, lookup_empty. reflexivity.
+           ++ rewrite lookup_delete_ne; [reflexivity | symmetry; exact Hne].
+    + unfold lpm_count, lpm_abs.
+      destruct (lpm_objs m) as [om|] eqn:Eo; simpl.
+      * rewrite <- !size_dom, dom_union_L, fin_sets.size_union; [reflexivity|].
+        intros q Hqp%elem_of_dom Hqo%elem_of_dom.
+        destruct Hwf as [Hprims Hobjs]. rewrite Eo in Hobjs.
+        pose proof (Hprims q Hqp) as Ht. pose proof (Hobjs q Hqo) as Hf. congruence.
+      * assert (Hum : lpm_prims m ∪ (∅ : gmap K V) = lpm_prims m)
+          by (apply map_eq; intros q; rewrite lookup_union, lookup_empty; destruct (lpm_prims m !! q); reflexivity).
+        rewrite Hum. lia.
+Qed.
+
+Definition trim_single_removed {K : Type} `{EqDecision K} (pk k : K) : list K :=
+  if decide (k = pk) then [] else [pk].
+
+(**md
+**In a `NoDup` key array `prevKeys` where slot `idx` holds `pk`, single-index `Trim` replacement preserves `prevKeys` with `removed = []` when `k = pk`, preserves `NoDup (<[idx := k]> prevKeys)` if and only if `(k <> pk -> k ∉ prevKeys)`, and drops precisely `trim_single_removed pk k` (`Projections.fs`).**
+
+- [prevKeys:] the previous `NoDup` published key sequence.
+- [idx:] the unique changed item index (`changedAt.Count = 1`).
+- [pk:] the previous key at index `idx`.
+- [k:] the recomputed key at index `idx`.
+*)
+Theorem trim_single_inplace_key_preserves_uniqueness
+    {K : Type} `{EqDecision K} (prevKeys : list K) (idx : nat) (pk k : K) :
+  NoDup prevKeys ->
+  prevKeys !! idx = Some pk ->
+  (k = pk -> <[idx := k]> prevKeys = prevKeys /\ trim_single_removed pk k = []) /\
+  (NoDup (<[idx := k]> prevKeys) <-> (k <> pk -> k ∉ prevKeys)) /\
+  (forall x, (x ∈ prevKeys /\ x ∉ <[idx := k]> prevKeys) <-> x ∈ trim_single_removed pk k).
+Proof.
+  intros Hnd Hidx.
+  pose proof (lookup_lt_Some _ _ _ Hidx) as Hlt.
+  pose proof (take_drop_middle prevKeys idx pk Hidx) as Hmid.
+  set (L := take idx prevKeys) in *.
+  set (R := drop (S idx) prevKeys) in *.
+  assert (HlenL : length L = idx) by (subst L; apply length_take_le; lia).
+  assert (Hins : <[idx := k]> prevKeys = L ++ k :: R).
+  { rewrite <- Hmid at 1. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenL, Nat.sub_diag. simpl. reflexivity. }
+  assert (Hnd_decomp : NoDup L /\ (forall x, x ∈ L -> x ∉ pk :: R) /\ pk ∉ R /\ NoDup R).
+  { rewrite <- Hmid in Hnd.
+    apply NoDup_app in Hnd as (HndL & HdisjL & Hnd_rest).
+    apply NoDup_cons in Hnd_rest as (HpkR & HndR).
+    repeat split; assumption. }
+  destruct Hnd_decomp as (HndL & HdisjL & HpkR & HndR).
+  split_and!.
+  - intros ->. rewrite Hins, <- Hmid.
+    unfold trim_single_removed. rewrite decide_True by reflexivity. split; reflexivity.
+  - rewrite Hins. split.
+    + intros Hnd' Hne Hkin.
+      apply NoDup_app in Hnd' as (_ & Hdisj' & Hnd_rest').
+      apply NoDup_cons in Hnd_rest' as (HkR & _).
+      rewrite <- Hmid in Hkin.
+      apply elem_of_app in Hkin as [HkL | Hk_rest].
+      * apply (Hdisj' k HkL). by left.
+      * apply elem_of_cons in Hk_rest as [Heq | HkR']; [exact (Hne Heq) | exact (HkR HkR')].
+    + intros Hnot.
+      destruct (decide (k = pk)) as [-> | Hne].
+      * rewrite Hmid. exact Hnd.
+      * pose proof (Hnot Hne) as Hnin.
+        rewrite <- Hmid in Hnin.
+        apply NoDup_app. split_and!; [exact HndL | |].
+        -- intros x HxL Hxin. apply elem_of_cons in Hxin as [-> | HxR].
+           ++ apply Hnin. apply elem_of_app. by left.
+           ++ apply (HdisjL x HxL). apply elem_of_cons. by right.
+        -- apply NoDup_cons. split; [|exact HndR].
+           intros HkR. apply Hnin. apply elem_of_app. right. apply elem_of_cons. by right.
+  - intros x. rewrite Hins. rewrite <- Hmid at 1.
+    unfold trim_single_removed.
+    destruct (decide (k = pk)) as [-> | Hne].
+    + rewrite elem_of_nil. split; [intros [Hin Hnin]; contradiction | intros []].
+    + split.
+      * intros [Hin Hnin].
+        apply elem_of_app in Hin as [HxL | Hx_rest].
+        -- exfalso. apply Hnin. apply elem_of_app. by left.
+        -- apply elem_of_cons in Hx_rest as [-> | HxR]; [by left |].
+           exfalso. apply Hnin. apply elem_of_app. right. apply elem_of_cons. by right.
+      * intros Hmem. apply elem_of_cons in Hmem as [-> | Hnil]; [|inversion Hnil]. split.
+        -- apply elem_of_app. right. by left.
+        -- intros Hinx. apply elem_of_app in Hinx as [HpkL | Hpk_rest].
+           ++ apply (HdisjL pk HpkL). by left.
+           ++ apply elem_of_cons in Hpk_rest as [Heq | HpkR']; [exact (Hne (eq_sym Heq)) | exact (HpkR HpkR')].
+Qed.
+
+Definition trim_two_removed {K : Type} `{EqDecision K} (pk0 pk1 k0 k1 : K) : list K :=
+  (if decide (pk0 = k0 \/ pk0 = k1) then [] else [pk0]) ++
+  (if decide (pk1 = k0 \/ pk1 = k1) then [] else [pk1]).
+
+(**md
+**In a `NoDup` key array `prevKeys` where distinct slots `i0 < i1` hold `pk0` and `pk1`, updating those slots to `(k0, k1)` preserves `NoDup` iff `k1 <> k0` and neither `k0` nor `k1` collides with an outside key, while emitting duplicate-free removals matching set difference (`Projections.fs`).**
+
+- [prevKeys:] the previous `NoDup` published key sequence.
+- [i0:] the first changed index (`i0 < i1`).
+- [i1:] the second changed index.
+- [pk0:] the previous key at index `i0`.
+- [pk1:] the previous key at index `i1`.
+- [k0:] the recomputed key at index `i0`.
+- [k1:] the recomputed key at index `i1`.
+*)
+Theorem trim_two_index_key_swap_preserves_uniqueness
+    {K : Type} `{EqDecision K} (prevKeys : list K) (i0 i1 : nat) (pk0 pk1 k0 k1 : K) :
+  NoDup prevKeys ->
+  i0 < i1 ->
+  prevKeys !! i0 = Some pk0 ->
+  prevKeys !! i1 = Some pk1 ->
+  (NoDup (<[i1 := k1]> (<[i0 := k0]> prevKeys)) <->
+   (k1 <> k0 /\
+    (k0 <> pk0 /\ k0 <> pk1 -> k0 ∉ prevKeys) /\
+    (k1 <> pk0 /\ k1 <> pk1 -> k1 ∉ prevKeys))) /\
+  NoDup (trim_two_removed pk0 pk1 k0 k1) /\
+  (forall x, (x ∈ prevKeys /\ x ∉ <[i1 := k1]> (<[i0 := k0]> prevKeys)) <->
+             x ∈ trim_two_removed pk0 pk1 k0 k1).
+Proof.
+  intros Hnd Hlt H0 H1.
+  pose proof (lookup_lt_Some _ _ _ H0) as Hlt0.
+  pose proof (lookup_lt_Some _ _ _ H1) as Hlt1.
+  pose proof (take_drop_middle prevKeys i0 pk0 H0) as Hmid0.
+  set (L := take i0 prevKeys) in *.
+  set (Rest := drop (S i0) prevKeys) in *.
+  assert (HlenL : length L = i0) by (subst L; apply length_take_le; lia).
+  set (j := i1 - S i0) in *.
+  assert (Hj : Rest !! j = Some pk1).
+  { subst Rest j. rewrite lookup_drop. replace (S i0 + (i1 - S i0)) with i1 by lia. exact H1. }
+  pose proof (take_drop_middle Rest j pk1 Hj) as Hmid1.
+  set (M := take j Rest) in *.
+  set (R := drop (S j) Rest) in *.
+  assert (HlenM : length M = j) by (subst M; apply length_take_le; pose proof (lookup_lt_Some _ _ _ Hj); lia).
+  assert (Hdecomp : prevKeys = L ++ pk0 :: M ++ pk1 :: R)
+    by exact (eq_trans (eq_sym Hmid0) (f_equal (fun s => L ++ pk0 :: s) (eq_sym Hmid1))).
+  assert (Hins0 : <[i0 := k0]> prevKeys = L ++ k0 :: M ++ pk1 :: R).
+  { rewrite Hdecomp at 1. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenL, Nat.sub_diag. simpl. reflexivity. }
+  assert (Hins1 : <[i1 := k1]> (<[i0 := k0]> prevKeys) = L ++ k0 :: M ++ k1 :: R).
+  { rewrite Hins0. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenL. replace (i1 - i0) with (S j) by lia. simpl.
+    f_equal. f_equal. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenM, Nat.sub_diag. simpl. reflexivity. }
+  rewrite Hdecomp in Hnd.
+  apply NoDup_app in Hnd as (HndL & HdisjL & Hnd_rest0).
+  apply NoDup_cons in Hnd_rest0 as (Hpk0_nin & Hnd_rest1).
+  apply NoDup_app in Hnd_rest1 as (HndM & HdisjM & Hnd_rest2).
+  apply NoDup_cons in Hnd_rest2 as (Hpk1R & HndR).
+  assert (Hpk_ne : pk0 <> pk1).
+  { intros Heq. apply Hpk0_nin. apply elem_of_app. right. rewrite Heq. by left. }
+  assert (Hpk0L : pk0 ∉ L) by (intros Hin; apply (HdisjL pk0 Hin); by left).
+  assert (Hpk1L : pk1 ∉ L) by (intros Hin; apply (HdisjL pk1 Hin); apply elem_of_cons; right; apply elem_of_app; right; by left).
+  assert (Hpk0M : pk0 ∉ M) by (intros Hin; apply Hpk0_nin; apply elem_of_app; by left).
+  assert (Hpk1M : pk1 ∉ M) by (intros Hin; apply (HdisjM pk1 Hin); by left).
+  assert (Hpk0R : pk0 ∉ R) by (intros Hin; apply Hpk0_nin; apply elem_of_app; right; apply elem_of_cons; by right).
+  split_and!.
+  - rewrite Hins1. split.
+    + intros Hnd'.
+      apply NoDup_app in Hnd' as (_ & HdisjL' & Hnd_r0).
+      apply NoDup_cons in Hnd_r0 as (Hk0_nin & Hnd_r1).
+      apply NoDup_app in Hnd_r1 as (_ & HdisjM' & Hnd_r2).
+      apply NoDup_cons in Hnd_r2 as (Hk1R & _).
+      assert (Hk_ne : k1 <> k0).
+      { intros Heq. apply Hk0_nin. apply elem_of_app. right. rewrite Heq. by left. }
+      repeat split; try exact Hk_ne; rewrite Hdecomp; intros [Hn0 Hn1] Hin.
+      * apply elem_of_app in Hin as [HinL | Hin].
+        { apply (HdisjL' k0 HinL). by left. }
+        apply elem_of_cons in Hin as [Heq | Hin]; [exact (Hn0 Heq)|].
+        apply elem_of_app in Hin as [HinM | Hin].
+        { apply Hk0_nin. apply elem_of_app. by left. }
+        apply elem_of_cons in Hin as [Heq | HinR]; [exact (Hn1 Heq)|].
+        apply Hk0_nin. apply elem_of_app. right. apply elem_of_cons. by right.
+      * apply elem_of_app in Hin as [HinL | Hin].
+        { apply (HdisjL' k1 HinL). apply elem_of_cons. right. apply elem_of_app. right. by left. }
+        apply elem_of_cons in Hin as [Heq | Hin]; [exact (Hn0 Heq)|].
+        apply elem_of_app in Hin as [HinM | Hin].
+        { apply (HdisjM' k1 HinM). by left. }
+        apply elem_of_cons in Hin as [Heq | HinR]; [exact (Hn1 Heq)|].
+        exact (Hk1R HinR).
+    + intros (Hk_ne & Hk0_out & Hk1_out).
+      assert (Hk0_L : k0 ∉ L).
+      { intros Hin. apply Hk0_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. by left. }
+      assert (Hk0_M : k0 ∉ M).
+      { intros Hin. apply Hk0_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. by left. }
+      assert (Hk0_R : k0 ∉ R).
+      { intros Hin. apply Hk0_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. right. apply elem_of_cons. by right. }
+      assert (Hk1_L : k1 ∉ L).
+      { intros Hin. apply Hk1_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. by left. }
+      assert (Hk1_M : k1 ∉ M).
+      { intros Hin. apply Hk1_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. by left. }
+      assert (Hk1_R : k1 ∉ R).
+      { intros Hin. apply Hk1_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. right. apply elem_of_cons. by right. }
+      apply NoDup_app. split_and!; [exact HndL| |].
+      * intros x HxL Hxin.
+        apply elem_of_cons in Hxin as [-> | Hxin]; [exact (Hk0_L HxL)|].
+        apply elem_of_app in Hxin as [HxM | Hxin].
+        { apply (HdisjL x HxL). apply elem_of_cons. right. apply elem_of_app. by left. }
+        apply elem_of_cons in Hxin as [-> | HxR]; [exact (Hk1_L HxL)|].
+        apply (HdisjL x HxL). apply elem_of_cons. right. apply elem_of_app. right. apply elem_of_cons. by right.
+      * apply NoDup_cons. split.
+        -- intros Hxin. apply elem_of_app in Hxin as [Hk0M | Hxin]; [exact (Hk0_M Hk0M)|].
+           apply elem_of_cons in Hxin as [Heq | Hk0R]; [exact (Hk_ne (eq_sym Heq)) | exact (Hk0_R Hk0R)].
+        -- apply NoDup_app. split_and!; [exact HndM| |].
+           ++ intros x HxM Hxin. apply elem_of_cons in Hxin as [-> | HxR]; [exact (Hk1_M HxM)|].
+              apply (HdisjM x HxM). apply elem_of_cons. by right.
+           ++ apply NoDup_cons. split; [exact Hk1_R | exact HndR].
+  - unfold trim_two_removed.
+    destruct (decide (pk0 = k0 \/ pk0 = k1)), (decide (pk1 = k0 \/ pk1 = k1)); simpl.
+    + constructor.
+    + apply NoDup_singleton.
+    + apply NoDup_singleton.
+    + apply NoDup_cons. split; [rewrite elem_of_cons, elem_of_nil; intros [Heq|Hnil]; [exact (Hpk_ne Heq) | inversion Hnil] | apply NoDup_singleton].
+  - intros x. rewrite Hins1, Hdecomp. unfold trim_two_removed.
+    assert (Hout : x ∈ (L ++ k0 :: M ++ k1 :: R) <-> (x ∈ L \/ x = k0 \/ x ∈ M \/ x = k1 \/ x ∈ R)).
+    { repeat (rewrite elem_of_app || rewrite elem_of_cons); tauto. }
+    assert (Hin : x ∈ (L ++ pk0 :: M ++ pk1 :: R) <-> (x ∈ L \/ x = pk0 \/ x ∈ M \/ x = pk1 \/ x ∈ R)).
+    { repeat (rewrite elem_of_app || rewrite elem_of_cons); tauto. }
+    rewrite Hin, Hout.
+    split.
+    + intros [[HxL | [-> | [HxM | [-> | HxR]]]] Hnin].
+      * exfalso; apply Hnin; by left.
+      * apply elem_of_app. left. rewrite decide_False; [by left |].
+        intros [-> | ->]; apply Hnin; tauto.
+      * exfalso; apply Hnin; tauto.
+      * apply elem_of_app. right. rewrite decide_False; [by left |].
+        intros [-> | ->]; apply Hnin; tauto.
+      * exfalso; apply Hnin; tauto.
+    + intros Hmem.
+      apply elem_of_app in Hmem as [Hm0 | Hm1].
+      * destruct (decide (pk0 = k0 \/ pk0 = k1)) as [_|Hn0]; [inversion Hm0|].
+        apply elem_of_cons in Hm0 as [-> | Hm0]; [|inversion Hm0].
+        split; [tauto|].
+        intros [HpL | [Heq | [HpM | [Heq | HpR]]]];
+          [exact (Hpk0L HpL) | exact (Hn0 (or_introl Heq)) | exact (Hpk0M HpM) | exact (Hn0 (or_intror Heq)) | exact (Hpk0R HpR)].
+      * destruct (decide (pk1 = k0 \/ pk1 = k1)) as [_|Hn1]; [inversion Hm1|].
+        apply elem_of_cons in Hm1 as [-> | Hm1]; [|inversion Hm1].
+        split; [tauto|].
+        intros [HpL | [Heq | [HpM | [Heq | HpR]]]];
+          [exact (Hpk1L HpL) | exact (Hn1 (or_introl Heq)) | exact (Hpk1M HpM) | exact (Hn1 (or_intror Heq)) | exact (Hpk1R HpR)].
+Qed.
+
+Fixpoint dense_entries {V : Type} (start : nat) (xs : list V) : gmap nat V :=
+  match xs with
+  | [] => ∅
+  | v :: xs' => <[start := v]> (dense_entries (S start) xs')
+  end.
+
+Lemma lookup_dense_entries {V : Type} (start i : nat) (xs : list V) :
+  dense_entries start xs !! i =
+  if decide (start <= i) then xs !! (i - start) else None.
+Proof.
+  revert start.
+  induction xs as [|v xs' IH]; intros start; simpl.
+  - rewrite lookup_empty. destruct (decide (start <= i)); reflexivity.
+  - destruct (decide (start <= i)) as [Hle|Hgt].
+    + destruct (decide (i = start)) as [->|Hne].
+      * rewrite lookup_insert_eq, Nat.sub_diag. reflexivity.
+      * rewrite lookup_insert_ne; [|symmetry; exact Hne].
+        rewrite IH, decide_True; [|lia].
+        replace (i - start) with (S (i - S start)) by lia.
+        reflexivity.
+    + rewrite lookup_insert_ne; [|lia].
+      rewrite IH, decide_False; [reflexivity | lia].
+Qed.
+
+Definition dense_step {V : Type} `{EqDecision V}
+    (prev cur : list V) (i : nat) (m : gmap nat V) : gmap nat V :=
+  if decide (i < Nat.min (length prev) (length cur)) then
+    if decide (prev !! i = cur !! i) then m
+    else match cur !! i with Some v => <[i := v]> m | None => m end
+  else if decide (i < length cur) then
+    match cur !! i with Some v => <[i := v]> m | None => m end
+  else
+    delete i m.
+
+Fixpoint dense_stage_upto {V : Type} `{EqDecision V}
+    (prev cur : list V) (n : nat) (m : gmap nat V) : gmap nat V :=
+  match n with
+  | 0 => m
+  | S n' => dense_step prev cur n' (dense_stage_upto prev cur n' m)
+  end.
+
+Lemma dense_step_lookup_ne {V : Type} `{EqDecision V}
+    (prev cur : list V) (i q : nat) (m : gmap nat V) :
+  q <> i -> dense_step prev cur i m !! q = m !! q.
+Proof.
+  intros Hne. unfold dense_step.
+  destruct (decide (i < Nat.min (length prev) (length cur))).
+  - destruct (decide (prev !! i = cur !! i)); [reflexivity|].
+    destruct (cur !! i); [apply lookup_insert_ne; symmetry; exact Hne | reflexivity].
+  - destruct (decide (i < length cur)).
+    + destruct (cur !! i); [apply lookup_insert_ne; symmetry; exact Hne | reflexivity].
+    + apply lookup_delete_ne; symmetry; exact Hne.
+Qed.
+
+Lemma dense_stage_upto_hi {V : Type} `{EqDecision V}
+    (prev cur : list V) (n q : nat) (m : gmap nat V) :
+  n <= q ->
+  dense_stage_upto prev cur n m !! q = m !! q.
+Proof.
+  induction n as [|n' IH]; intros Hle; simpl; [reflexivity|].
+  rewrite dense_step_lookup_ne by lia. apply IH. lia.
+Qed.
+
+Lemma dense_stage_upto_spec {V : Type} `{EqDecision V}
+    (prev cur : list V) (n : nat) (m : gmap nat V) (q : nat) :
+  m !! q = prev !! q ->
+  dense_stage_upto prev cur n m !! q = if decide (q < n) then cur !! q else m !! q.
+Proof.
+  intros Hinit.
+  induction n as [|n' IH]; simpl.
+  - destruct (decide (q < 0)); [lia | reflexivity].
+  - destruct (decide (q < S n')) as [Hlt|Hge].
+    + destruct (decide (q = n')) as [->|Hne].
+      * pose proof (dense_stage_upto_hi prev cur n' n' m ltac:(lia)) as Hhi.
+        unfold dense_step.
+        destruct (decide (n' < Nat.min (length prev) (length cur))) as [Hmin|Hnmin].
+        -- destruct (decide (prev !! n' = cur !! n')) as [Heq|Hdiff].
+           ++ rewrite Hhi, Hinit. exact Heq.
+           ++ destruct (lookup_lt_is_Some_2 cur n' ltac:(lia)) as [v Hv].
+              rewrite Hv, lookup_insert_eq. reflexivity.
+        -- destruct (decide (n' < length cur)) as [Hcur|Hncur].
+           ++ destruct (lookup_lt_is_Some_2 cur n' Hcur) as [v Hv].
+              rewrite Hv, lookup_insert_eq. reflexivity.
+           ++ rewrite lookup_delete_eq. symmetry. apply lookup_ge_None_2. lia.
+      * rewrite dense_step_lookup_ne by lia.
+        rewrite IH, decide_True by lia. reflexivity.
+    + rewrite dense_step_lookup_ne by lia.
+      rewrite IH, decide_False by lia. reflexivity.
+Qed.
+
+Lemma lookup_dense_entries_0 {V : Type} (i : nat) (xs : list V) :
+  dense_entries 0 xs !! i = xs !! i.
+Proof.
+  rewrite lookup_dense_entries, decide_True; [|lia].
+  rewrite Nat.sub_0_r. reflexivity.
+Qed.
+
+(**md
+**`IndexProjection`'s dense positional pass transforms `dense_entries 0 prev` directly into `dense_entries 0 cur` while skipping unchanged overlap slots (`prev !! i = cur !! i`), skipping `Keys` publication iff `length cur = length prev`, and preserving unchanged reference-equal row values (`Projections.fs`).**
+
+- [prev:] previous materialized item slice.
+- [cur:] current materialized item slice.
+*)
+Theorem index_projection_dense_diff_refines_visit
+    {V : Type} `{EqDecision V} (prev cur : list V) :
+  dense_stage_upto prev cur (Nat.max (length prev) (length cur)) (dense_entries 0 prev) =
+    dense_entries 0 cur /\
+  (seq 0 (length cur) = seq 0 (length prev) <-> length cur = length prev) /\
+  (forall i v, i < Nat.min (length prev) (length cur) ->
+    prev !! i = Some v -> cur !! i = Some v ->
+    dense_entries 0 prev !! i = dense_entries 0 cur !! i).
+Proof.
+  split_and!.
+  - apply map_eq. intros q.
+    rewrite dense_stage_upto_spec; [|apply lookup_dense_entries_0].
+    rewrite !lookup_dense_entries_0.
+    destruct (decide (q < Nat.max (length prev) (length cur))) as [Hlt|Hge]; [reflexivity|].
+    rewrite (lookup_ge_None_2 prev q ltac:(lia)), (lookup_ge_None_2 cur q ltac:(lia)). reflexivity.
+  - split; [intro Heq; apply (f_equal (@length nat)) in Heq; rewrite !length_seq in Heq; exact Heq | intros ->; reflexivity].
+  - intros i v Hmin Hprev Hcur.
+    rewrite !lookup_dense_entries_0. congruence.
+Qed.
+
+Inductive ls_upstream (S : Type) :=
+  | LsPending
+  | LsFailed
+  | LsReady (v : S).
+Arguments LsPending {S}.
+Arguments LsFailed {S}.
+Arguments LsReady {S} v.
+
+Record lookup_sync_state (S T : Type) := mk_ls {
+  ls_synced_run : Z;
+  ls_primed : bool;
+  ls_pending : bool;
+  ls_failed : bool;
+  ls_prev_state : S;
+  ls_table : T;
+}.
+Arguments mk_ls {S T} _ _ _ _ _ _.
+Arguments ls_synced_run {S T} _.
+Arguments ls_primed {S T} _.
+Arguments ls_pending {S T} _.
+Arguments ls_failed {S T} _.
+Arguments ls_prev_state {S T} _.
+Arguments ls_table {S T} _.
+
+Definition ls_refresh {S T : Type} `{EqDecision S}
+    (up_runs : Z) (u : ls_upstream S) (recompute : S -> T) (st : lookup_sync_state S T)
+    : lookup_sync_state S T :=
+  match u with
+  | LsPending =>
+      {| ls_synced_run := (-1)%Z;
+         ls_primed := ls_primed st;
+         ls_pending := true;
+         ls_failed := false;
+         ls_prev_state := ls_prev_state st;
+         ls_table := ls_table st |}
+  | LsFailed =>
+      {| ls_synced_run := (-1)%Z;
+         ls_primed := ls_primed st;
+         ls_pending := false;
+         ls_failed := true;
+         ls_prev_state := ls_prev_state st;
+         ls_table := ls_table st |}
+  | LsReady v =>
+      if negb (ls_primed st) then
+        {| ls_synced_run := up_runs;
+           ls_primed := true;
+           ls_pending := false;
+           ls_failed := false;
+           ls_prev_state := v;
+           ls_table := ls_table st |}
+      else if ls_pending st || ls_failed st || negb (bool_decide (ls_prev_state st = v)) then
+        {| ls_synced_run := up_runs;
+           ls_primed := true;
+           ls_pending := false;
+           ls_failed := false;
+           ls_prev_state := v;
+           ls_table := recompute v |}
+      else
+        {| ls_synced_run := up_runs;
+           ls_primed := true;
+           ls_pending := false;
+           ls_failed := false;
+           ls_prev_state := ls_prev_state st;
+           ls_table := ls_table st |}
+  end.
+
+Definition ls_sync_fast {S T : Type} `{EqDecision S}
+    (up_runs : Z) (up_clean_ready : bool) (u : ls_upstream S)
+    (recompute : S -> T) (st : lookup_sync_state S T)
+    : lookup_sync_state S T :=
+  if bool_decide (ls_synced_run st = up_runs) && up_clean_ready then st
+  else ls_refresh up_runs u recompute st.
+
+Definition ls_sync_inv {S T : Type}
+    (up_runs : Z) (u : ls_upstream S) (st : lookup_sync_state S T) : Prop :=
+  ls_synced_run st = up_runs ->
+  exists v,
+    u = LsReady v /\
+    ls_primed st = true /\
+    ls_pending st = false /\
+    ls_failed st = false /\
+    ls_prev_state st = v.
+
+Record affected_buf_state (K : Type) := mk_ab {
+  ab_collecting : bool;
+  ab_buf : list K;
+}.
+Arguments mk_ab {K} _ _.
+Arguments ab_collecting {K} _.
+Arguments ab_buf {K} _.
+
+Definition ab_inv {K : Type} (st : affected_buf_state K) : Prop :=
+  ab_collecting st = false -> ab_buf st = [].
+
+Definition ab_collect_step {K : Type}
+    (st : affected_buf_state K) (xs : list K) : list K * affected_buf_state K :=
+  if negb (ab_collecting st) then
+    let st_busy := {| ab_collecting := true; ab_buf := xs |} in
+    let delivered := ab_buf st_busy in
+    (delivered, {| ab_collecting := false; ab_buf := [] |})
+  else
+    (xs, st).
+
+(**md
+**Skipping `Lookup.Refresh` when `syncedRun = state.Runs && state.IsCleanAndReady` is identical to running `Refresh`, `Refresh` preserves `ls_sync_inv` on non-negative runs, and pooling `affectedBuf` under `collectingAffected` isolates reentrant notifications and restores the empty buffer (`Projections.fs`).**
+
+- [up_runs:] upstream `state.Runs` generation counter.
+- [up_clean_ready:] whether upstream `state.IsCleanAndReady` holds.
+- [u:] upstream `TryValueUntracked` outcome.
+- [recompute:] table invalidation/recomputation function when upstream changes.
+- [st:] `Lookup` sync state.
+- [ab:] pooled `affectedBuf` state.
+- [xs:] top-level affected key batch.
+- [nested:] reentrant nested affected key batch.
+*)
+Theorem lookup_sync_clean_skip_and_affected_buf_eq
+    {S T K : Type} `{EqDecision S}
+    (up_runs : Z) (up_clean_ready : bool) (u : ls_upstream S)
+    (recompute : S -> T) (st : lookup_sync_state S T)
+    (ab : affected_buf_state K) (xs nested : list K) :
+  (up_clean_ready = true -> exists v, u = LsReady v) ->
+  (ls_sync_inv up_runs u st ->
+   ls_sync_fast up_runs up_clean_ready u recompute st = ls_refresh up_runs u recompute st) /\
+  ((0 <= up_runs)%Z ->
+   ls_sync_inv up_runs u (ls_refresh up_runs u recompute st)) /\
+  (ab_inv ab -> ab_collecting ab = false ->
+   let st_during := {| ab_collecting := true; ab_buf := xs |} in
+   ab_collect_step st_during nested = (nested, st_during) /\
+   ab_collect_step ab xs = (xs, {| ab_collecting := false; ab_buf := ([] : list K) |}) /\
+   ab_inv {| ab_collecting := false; ab_buf := ([] : list K) |}).
+Proof.
+  intro Hclean.
+  split_and!.
+  - intro Hinv. unfold ls_sync_fast.
+    destruct (bool_decide (ls_synced_run st = up_runs)) eqn:Hrun;
+      destruct up_clean_ready; simpl; try reflexivity.
+    apply bool_decide_eq_true_1 in Hrun.
+    destruct (Hinv Hrun) as (v & -> & Hp & Hpend & Hfail & <-).
+    unfold ls_refresh. rewrite Hp, Hpend, Hfail. simpl.
+    rewrite bool_decide_eq_true_2 by reflexivity. simpl.
+    destruct st; simpl in *; subst; reflexivity.
+  - intros Hpos Heq.
+    destruct u as [| |v]; unfold ls_refresh in Heq; simpl in Heq; try lia.
+    exists v. unfold ls_refresh.
+    destruct (ls_primed st); simpl.
+    + destruct (ls_pending st || ls_failed st || negb (bool_decide (ls_prev_state st = v))) eqn:Econd; simpl;
+        [split_and!; reflexivity|].
+      destruct (ls_pending st), (ls_failed st), (bool_decide (ls_prev_state st = v)) eqn:Ebd;
+        simpl in Econd; try discriminate.
+      apply bool_decide_eq_true_1 in Ebd.
+      split_and!; try reflexivity; exact Ebd.
+    + split_and!; reflexivity.
+  - intros _ Hfalse. simpl.
+    unfold ab_collect_step, ab_inv. rewrite Hfalse. simpl.
+    split_and!; [reflexivity | reflexivity | intro; reflexivity].
+Qed.
