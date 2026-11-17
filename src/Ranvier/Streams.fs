@@ -66,11 +66,14 @@ type internal StreamGate = obj
 
 [<RequireQualifiedAccess>]
 module internal StreamGate =
-    let inline create () : StreamGate =
-#if NET9_0_OR_GREATER && !FABLE_COMPILER
-        Lock ()
+#if FABLE_COMPILER
+    let inline create () : StreamGate = null
 #else
-        obj ()
+#if NET9_0_OR_GREATER
+    let inline create () : StreamGate = Lock ()
+#else
+    let inline create () : StreamGate = obj ()
+#endif
 #endif
 
     /// <summary>Runs <c>body</c> while holding <c>gate</c>.</summary>
@@ -91,13 +94,33 @@ module internal StreamGate =
 #endif
 #endif
 
+#if FABLE_COMPILER
+type internal FoldDelegate<'S, 'T> = 'S -> 'T -> 'S
+#else
+type internal FoldDelegate<'S, 'T> = OptimizedClosures.FSharpFunc<'S, 'T, 'S>
+#endif
+
+module internal FoldFn =
+#if FABLE_COMPILER
+    let inline adapt (fold: 'S -> 'T -> 'S) : FoldDelegate<'S, 'T> = fold
+
+    let inline invoke (fold: FoldDelegate<'S, 'T>) (state: 'S) (item: 'T) : 'S =
+        fold state item
+#else
+    let inline adapt (fold: 'S -> 'T -> 'S) : FoldDelegate<'S, 'T> =
+        OptimizedClosures.FSharpFunc<'S, 'T, 'S>.Adapt fold
+
+    let inline invoke (fold: FoldDelegate<'S, 'T>) (state: 'S) (item: 'T) : 'S =
+        fold.Invoke (state, item)
+#endif
+
 /// <summary>
 /// A started stream's accumulator. Items fold on the delivering thread: without a lock on the graph thread, under the
 /// lock elsewhere.
 /// </summary>
 [<Sealed>]
 type internal StreamRun<'S, 'T>
-    (graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, requester: IStreamRequester, gen: int, source: StreamSource<'T>, token: CancellationToken) =
+    (graph: Graph, seed: 'S, fold: FoldDelegate<'S, 'T>, requester: IStreamRequester, gen: int, source: StreamSource<'T>, token: CancellationToken) =
     inherit StreamInlet<'T>()
     let gate = StreamGate.create ()
     let mutable state = seed
@@ -113,7 +136,7 @@ type internal StreamRun<'S, 'T>
             0
         else
             try
-                state <- fold state item
+                state <- FoldFn.invoke fold state item
                 folded <- folded + 1
                 received <- true
                 1
@@ -125,21 +148,39 @@ type internal StreamRun<'S, 'T>
     /// <summary>Folds <c>item</c> and requests a publication; a throwing fold closes the run and reports the exception.</summary>
     override this.Deliver(item: 'T) =
 #if FABLE_COMPILER
-        let outcome = this.Fold item
+        if not closed then
+            let mutable raised: exn = null
 
-        if outcome = 1 then
-            requester.RequestOnGraph ()
-        elif outcome = 2 then
-            requester.ReportFoldFailure (gen, foldError)
+            try
+                state <- FoldFn.invoke fold state item
+                folded <- folded + 1
+                received <- true
+            with error ->
+                closed <- true
+                raised <- error
+
+            if Platform.isNull raised then
+                requester.RequestOnGraph ()
+            else
+                requester.ReportFoldFailure (gen, raised)
 #else
         // The graph thread folds without the lock; this depends on StreamSink.Next calls never overlapping.
         if graph.IsOnGraphThread then
-            let outcome = this.Fold item
+            if not closed then
+                let mutable raised: exn = null
 
-            if outcome = 1 then
-                requester.RequestOnGraph ()
-            elif outcome = 2 then
-                requester.ReportFoldFailure (gen, foldError)
+                try
+                    state <- FoldFn.invoke fold state item
+                    folded <- folded + 1
+                    received <- true
+                with error ->
+                    closed <- true
+                    raised <- error
+
+                if isNull raised then
+                    requester.RequestOnGraph ()
+                else
+                    requester.ReportFoldFailure (gen, raised)
         else
             let outcome = StreamGate.hold gate (fun () -> this.Fold item)
 
@@ -197,14 +238,13 @@ type internal StreamEnd =
 /// pending node becomes failed with <c>ObjectDisposedException</c>.
 /// </remarks>
 [<Sealed>]
-type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: IStreamRequester -> int -> CancellationToken -> IStreamRun<'S>) as this
-    =
+type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: IStreamRequester -> int -> CancellationToken -> IStreamRun<'S>) =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
-    let equal = graph.Options.Equality.Comparer<'S>()
+    let equal = graph.EncodedComparer<'S>()
 #if !FABLE_COMPILER
     let runSource = fun (started: IStreamRun<'S>) -> started.RunSource ()
 #endif
@@ -228,8 +268,9 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     let mutable queued = false
 #if !FABLE_COMPILER
     let mutable wakePosted = 0
+    let mutable wakeAction: unit -> unit = Unchecked.defaultof<_>
 
-    let wake () =
+    member private this.Wake() =
         Interlocked.Exchange (&wakePosted, 0) |> ignore
 
         if not disposed then
@@ -246,20 +287,31 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
             queued <- true
             graph.Schedule (this :> IScheduled)
 
-    /// <summary>Queues a publication for an item folded on the graph thread; items folded while <c>Run</c> runs need none.</summary>
     member private this.RequestOnGraph() =
         if not launching && not disposed then
             this.Enqueue ()
             graph.RequestFlush ()
 
 #if !FABLE_COMPILER
-    /// <summary>Posts one wake for items folded off the graph thread while none is outstanding.</summary>
-    member private _.RequestOffGraph() =
+    member private this.RequestOffGraph() =
         if
             Volatile.Read &wakePosted = 0
             && Interlocked.Exchange (&wakePosted, 1) = 0
         then
-            graph.Post wake
+            if Platform.isNull (box wakeAction) then
+                wakeAction <- this.Wake
+
+            graph.Post wakeAction
+#endif
+
+    member private this.ReportFoldFailure(gen, error) =
+#if FABLE_COMPILER
+        this.FoldFailed (gen, error)
+#else
+        if graph.IsOnGraphThread then
+            this.FoldFailed (gen, error)
+        else
+            graph.PostQueued (fun () -> this.FoldFailed (gen, error))
 #endif
 
     member private _.Notify() =
@@ -305,7 +357,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         try
             let moved =
                 status <> Status.None
-                || not (equal.Equals (value, state))
+                || not (ComparerSentinel.equals equal value state)
 
             value <- state
             status <- Status.None
@@ -410,13 +462,17 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
                     if Platform.isNull work then
                         raise (InvalidOperationException "StreamSource.Run returned null.")
 
-#if !FABLE_COMPILER
+#if FABLE_COMPILER
+                    Platform.whenDone work (fun outcome -> this.Ended (gen, outcome))
+#else
                     if work.IsCompleted && graph.IsOnGraphThread then
                         this.Ended (gen, Platform.settledUnitOutcome work)
                     else
-                        Platform.whenDone work (fun outcome -> graph.Post (fun () -> this.Ended (gen, outcome)))
-#else
-                    Platform.whenDone work (fun outcome -> graph.Post (fun () -> this.Ended (gen, outcome)))
+                        Platform.whenDone work (fun outcome ->
+                            if graph.IsOnGraphThread then
+                                this.Ended (gen, outcome)
+                            else
+                                graph.PostQueued (fun () -> this.Ended (gen, outcome)))
 #endif
 
                     if gen = generation && running && started.Received then
@@ -541,13 +597,15 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         if Platform.isNull (box start) then
             nullArg (nameof start)
 
+        let adapted = FoldFn.adapt fold
+
         let launch requester (gen: int) (token: CancellationToken) =
             let source = start token
 
             if Platform.isNull (box source) then
                 raise (InvalidOperationException "The stream's start function returned null.")
 
-            StreamRun<'S, 'T>(graph, seed, fold, requester, gen, source, token) :> IStreamRun<'S>
+            StreamRun<'S, 'T>(graph, seed, adapted, requester, gen, source, token) :> IStreamRun<'S>
 
         let memo = new StreamMemo<'S> (graph, seed, emptyFails, launch)
         memo.Attach ()
@@ -667,7 +725,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
             this.RequestOffGraph ()
 #endif
         member this.ReportFoldFailure(gen, error) =
-            graph.Post (fun () -> this.FoldFailed (gen, error))
+            this.ReportFoldFailure (gen, error)
 
     interface IScopeHost with
         member _.CanOwn = false
@@ -693,7 +751,27 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     member _.ErrorOrigin: INode = Failure.OriginOf failure
 
     /// <summary>Tracks and reads the published state; raises while it is pending or failed.</summary>
+#if FABLE_COMPILER
     member this.Value: 'S =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            value
+        else
+            this.ReadSlow ()
+#else
+    member this.Value: 'S = this.GetFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetFast() : 'S =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            value
+        else
+            this.ReadSlow ()
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadSlow() : 'S =
         this.TrackCurrent ()
 
         if StatusBits.isUnready status then
@@ -705,7 +783,27 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         value
 
     /// <summary>Tracks and returns the published ready, pending or failed state.</summary>
+#if FABLE_COMPILER
     member this.TryValue: Reading<'S> =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            Ready value
+        else
+            this.ReadTrySlow ()
+#else
+    member this.TryValue: Reading<'S> = this.GetTryFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetTryFast() : Reading<'S> =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            Ready value
+        else
+            this.ReadTrySlow ()
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadTrySlow() : Reading<'S> =
         this.TrackCurrent ()
 
         if StatusBits.isUnready status then
@@ -866,12 +964,11 @@ module StreamSource =
 #if !FABLE_COMPILER
     [<Sealed>]
     type private AsyncEnumerablePump<'T>
-        (enumerator: Collections.Generic.IAsyncEnumerator<'T>, sink: StreamSink<'T>, token: CancellationToken, finished: Platform.Completion<unit>) as this
-        =
+        (enumerator: Collections.Generic.IAsyncEnumerator<'T>, sink: StreamSink<'T>, token: CancellationToken, finished: Platform.Completion<unit>) =
         let mutable pendingAwaiter =
             Unchecked.defaultof<Runtime.CompilerServices.ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter>
 
-        let onMoveNext = Action this.OnMoveNext
+        let mutable onMoveNext: Action = null
         let mutable onDisposed: Action<Task> = null
         let mutable terminalError: exn = null
 
@@ -973,6 +1070,10 @@ module StreamSource =
                 if go then
                     let a = next.ConfigureAwait(false).GetAwaiter()
                     pendingAwaiter <- a
+
+                    if isNull onMoveNext then
+                        onMoveNext <- Action this.OnMoveNext
+
                     a.UnsafeOnCompleted onMoveNext
             with error ->
                 this.Finish (this.ClassifyError error)
@@ -996,11 +1097,11 @@ module StreamSource =
 #if NET8_0_OR_GREATER && !FABLE_COMPILER
     [<Sealed>]
     type private ChannelPump<'T>
-        (reader: Channels.ChannelReader<'T>, sink: StreamSink<'T>, token: CancellationToken, finished: Platform.Completion<unit>) as this =
+        (reader: Channels.ChannelReader<'T>, sink: StreamSink<'T>, token: CancellationToken, finished: Platform.Completion<unit>) =
         let mutable pendingAwaiter =
             Unchecked.defaultof<Runtime.CompilerServices.ConfiguredValueTaskAwaitable<bool>.ConfiguredValueTaskAwaiter>
 
-        let onWaitReady = Action this.OnWaitReady
+        let mutable onWaitReady: Action = null
 
         member private _.Drain() =
             let mutable item = Unchecked.defaultof<'T>
@@ -1075,6 +1176,10 @@ module StreamSource =
                 else
                     let a = wait.ConfigureAwait(false).GetAwaiter()
                     pendingAwaiter <- a
+
+                    if isNull onWaitReady then
+                        onWaitReady <- Action this.OnWaitReady
+
                     a.UnsafeOnCompleted onWaitReady
             with error ->
                 if

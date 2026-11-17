@@ -5339,6 +5339,7 @@ type AsyncSource<'T>(graph: Graph) =
     /// <summary>
     /// Transparent, tracked read. Links the edge, then suspends if pending.
     /// </summary>
+#if FABLE_COMPILER
     member this.Value: 'T =
         graph.Track (this :> ISource)
 
@@ -5349,6 +5350,26 @@ type AsyncSource<'T>(graph: Graph) =
             graph.Raise failure
 
         value
+#else
+    member this.Value: 'T = this.GetFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetFast() : 'T =
+        graph.Track (this :> ISource)
+
+        if StatusBits.isUnready status then
+            this.RaiseUnready ()
+        else
+            value
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RaiseUnready() : 'T =
+        if StatusBits.isPending status then
+            raise (graph.NotReady (this :> INode))
+
+        graph.Raise failure
+        value
+#endif
 
     /// <summary>
     /// Non-throwing, tracked read. Links the edge exactly as <c>Value</c> does, so a
@@ -5738,7 +5759,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             freshness <- Freshness.Clean
             unannounced <- false
 
-    member private this.EnsureCurrent() =
+    member internal this.EnsureCurrent() =
         // One comparison on the path a cached read takes. Testing `disposed`
         // or `Check` first costs every clean read an extra comparison, which
         // measured at ~1 ns against a ~1.3 ns baseline — the read is small
@@ -6117,6 +6138,10 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     static member val private ReadUntrackedFn: Memo<'T> -> Reading<'T> = fun m -> m.ReadUntracked ()
 
     member inline internal _.IsCleanAndReady = StatusBits.isCleanAndReady freshness status
+
+    member inline internal _.IsStaleNode = freshness <> Freshness.Clean && not disposed
+
+    member inline internal _.IsActiveNode = active <> 0
 
     /// <summary>
     /// Zero-closure untracked non-throwing read: hits a clean inline check before falling back to <c>ReadUntracked</c>.
@@ -7400,11 +7425,25 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
             pendingQueue[seqNum] <- struct (gen, outcome)
 
+#if FABLE_COMPILER
     let publish (gen: int) (outcome: Platform.FlightOutcome<'T>) =
-        graph.Post (fun () -> applyResult gen outcome)
+        applyResult gen outcome
 
     let publishQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
-        graph.Post (fun () -> applyQueued seqNum gen outcome)
+        applyQueued seqNum gen outcome
+#else
+    let publish (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+        if graph.IsOnGraphThread then
+            applyResult gen outcome
+        else
+            graph.PostQueued (fun () -> applyResult gen outcome)
+
+    let publishQueued (seqNum: int) (gen: int) (outcome: Platform.FlightOutcome<'T>) =
+        if graph.IsOnGraphThread then
+            applyQueued seqNum gen outcome
+        else
+            graph.PostQueued (fun () -> applyQueued seqNum gen outcome)
+#endif
 
     // Fable cannot translate a secondary constructor of a type with a
     // self-identifier. Under Fable the `Api` functions construct this type.
@@ -8041,7 +8080,27 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     /// <remarks>
     /// Pending while a flight is in progress, except under <c>Queue</c> once an earlier flight's outcome is applied.
     /// </remarks>
+#if FABLE_COMPILER
     member this.Value: 'T =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            value
+        else
+            this.ReadSlow ()
+#else
+    member this.Value: 'T = this.GetFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetFast() : 'T =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            value
+        else
+            this.ReadSlow ()
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadSlow() : 'T =
         if
             freshness <> Freshness.Clean
             && not disposed
@@ -8062,7 +8121,27 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
+#if FABLE_COMPILER
     member this.TryValue: Reading<'T> =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            Ready value
+        else
+            this.ReadTrySlow ()
+#else
+    member this.TryValue: Reading<'T> = this.GetTryFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetTryFast() : Reading<'T> =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            Ready value
+        else
+            this.ReadTrySlow ()
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadTrySlow() : Reading<'T> =
         if
             freshness <> Freshness.Clean
             && not disposed
@@ -8802,7 +8881,27 @@ type Boundary<'T>
     /// A channel the boundary does not catch passes through. A caught channel reaches the reader when its handler
     /// suspends or throws.
     /// </remarks>
+#if FABLE_COMPILER
     member this.Value: 'T =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            value
+        else
+            this.ReadSlow ()
+#else
+    member this.Value: 'T = this.GetFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetFast() : 'T =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            value
+        else
+            this.ReadSlow ()
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadSlow() : 'T =
         if
             freshness <> Freshness.Clean
             && not disposed
@@ -8823,7 +8922,27 @@ type Boundary<'T>
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
+#if FABLE_COMPILER
     member this.TryValue: Reading<'T> =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            Ready value
+        else
+            this.ReadTrySlow ()
+#else
+    member this.TryValue: Reading<'T> = this.GetTryFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetTryFast() : Reading<'T> =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            Ready value
+        else
+            this.ReadTrySlow ()
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadTrySlow() : Reading<'T> =
         if
             freshness <> Freshness.Clean
             && not disposed

@@ -12,6 +12,12 @@ module internal Identity =
     let inline same (a: 'A) (b: 'A) : bool =
         obj.ReferenceEquals (a, b)
 
+    /// <summary>True when <c>a</c> and <c>b</c> are <c>===</c> or equal under <c>equal</c>.</summary>
+    let inline sameSeed (equal: IEqualityComparer<'A>) (a: 'A) (b: 'A) : bool =
+        obj.ReferenceEquals (a, b)
+        || (not (Platform.isNull (box equal))
+            && equal.Equals (a, b))
+
     /// <summary>True when <c>a</c> and <c>b</c> are <c>===</c> or both NaN.</summary>
     [<Fable.Core.Emit("($0 === $1 || ($0 !== $0 && $1 !== $1))")>]
     let unchanged (a: 'A) (b: 'A) : bool =
@@ -23,6 +29,17 @@ module internal Identity =
     let inline same (a: 'A) (b: 'A) : bool =
         not typeof<'A>.IsValueType
         && obj.ReferenceEquals (a, b)
+
+    /// <summary>True when <c>a</c> and <c>b</c> match by reference or under the encoded <c>equal</c> sentinel.</summary>
+    let inline sameSeed (equal: IEqualityComparer<'A>) (a: 'A) (b: 'A) : bool =
+        if typeof<'A>.IsValueType then
+            ComparerSentinel.equals equal a b
+        elif obj.ReferenceEquals (box a, box b) then
+            true
+        elif obj.ReferenceEquals (equal, null) then
+            false
+        else
+            equal.Equals (a, b)
 
     /// <summary>
     /// True when <c>b</c> is <c>a</c>: the same object, or an equal value for a value type or a string. NaN equals NaN.
@@ -70,32 +87,37 @@ type internal Stamp<'T>(version: int, value: 'T) =
     override _.GetHashCode() = version
 #endif
 
+/// <summary>A stored edit carrying the seed version it was recorded against, or <c>Version &lt; 0</c> when unedited.</summary>
+#if FABLE_COMPILER
+[<Sealed>]
+type internal EditState<'T>(version: int, value: 'T) =
+    member _.Version = version
+    member _.Value = value
+    static member val Unedited = EditState<'T>(-1, Unchecked.defaultof<'T>)
+#else
+[<Struct; NoComparison; NoEquality>]
+type internal EditState<'T>(version: int, value: 'T) =
+    member _.Version = version
+    member _.Value = value
+    static member inline Unedited = EditState<'T>(-1, Unchecked.defaultof<'T>)
+#endif
+
 /// <summary>
-/// Equality of two edits: both absent, or equal stamps whose values are equal under <c>equal</c>.
+/// Equality of two edit states: both unedited (<c>Version &lt; 0</c>), or equal versions whose values are equal under
+/// the encoded comparer sentinel <c>equal</c>.
 /// </summary>
 [<Sealed>]
-type internal EditComparer<'T>(equal: Collections.Generic.IEqualityComparer<'T>) =
-#if !FABLE_COMPILER
-    let equal = ComparerSentinel.encode equal
-#endif
-    interface Collections.Generic.IEqualityComparer<struct (int * 'T) voption> with
+type internal EditComparer<'T>(equal: IEqualityComparer<'T>) =
+    static member val Default: IEqualityComparer<EditState<'T>> = EditComparer<'T>(Unchecked.defaultof<_>) :> IEqualityComparer<EditState<'T>>
+
+    interface IEqualityComparer<EditState<'T>> with
         member _.Equals(a, b) =
-            match a, b with
-            | ValueNone, ValueNone -> true
-            | ValueSome (struct (va, xa)), ValueSome (struct (vb, xb)) ->
-                va = vb
-                &&
-#if FABLE_COMPILER
-                equal.Equals (xa, xb)
-#else
-                ComparerSentinel.equals equal xa xb
-#endif
-            | _ -> false
+            a.Version = b.Version
+            && (a.Version < 0
+                || ComparerSentinel.equals equal a.Value b.Value)
 
         member _.GetHashCode(edit) =
-            match edit with
-            | ValueNone -> 0
-            | ValueSome (struct (version, _)) -> version
+            edit.Version
 
 /// <summary>
 /// A value seeded from upstream that accepts local edits. <c>Value</c> holds the edit while one is in force and the seed's
@@ -115,10 +137,7 @@ type internal EditComparer<'T>(equal: Collections.Generic.IEqualityComparer<'T>)
 /// </remarks>
 [<Sealed>]
 type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
-    let rawEqual = graph.Options.Equality.Comparer<'T>()
-#if !FABLE_COMPILER
-    let equal = ComparerSentinel.encode rawEqual
-#endif
+    let equal = graph.EncodedComparer<'T>()
 
     /// <summary>The version of the seed's last published value; 0 before the first.</summary>
     let mutable settled = 0
@@ -135,16 +154,7 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
                     )
 
                 match previous with
-                | ValueSome stamp when
-                    Identity.same stamp.Value next
-                    ||
-#if FABLE_COMPILER
-                    rawEqual.Equals (stamp.Value, next)
-#else
-                    ComparerSentinel.equals equal stamp.Value next
-#endif
-                    ->
-                    stamp
+                | ValueSome stamp when Identity.sameSeed equal stamp.Value next -> stamp
                 | _ ->
                     let version =
                         match previous with
@@ -162,7 +172,15 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
         )
 
     let edit =
-        Signal<struct (int * 'T) voption>.CreateWithComparer(graph, ValueNone, EditComparer<'T> rawEqual)
+        Signal<EditState<'T>>
+            .CreateWithComparer(
+                graph,
+                EditState<'T>.Unedited,
+                if Platform.isNull (box equal) then
+                    EditComparer<'T>.Default
+                else
+                    EditComparer<'T>(equal) :> IEqualityComparer<EditState<'T>>
+            )
 
     /// <summary>True when an edit made against seed version <c>version</c> is still in force. A tracked read of the seed.</summary>
     let inForce (version: int) =
@@ -176,9 +194,15 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
         Memo.Create (
             graph,
             (fun _ ->
-                match edit.Value with
-                | ValueSome (struct (version, x)) when inForce version -> x
-                | _ -> stamped.Value.Value),
+                let currentEdit = edit.Value
+
+                if
+                    currentEdit.Version >= 0
+                    && inForce currentEdit.Version
+                then
+                    currentEdit.Value
+                else
+                    stamped.Value.Value),
             ScopeMode.Pure
         )
 
@@ -195,8 +219,11 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
         with get () = value.Value
         and set (v: 'T) =
             graph.AssertOnGraphThread "An editable write"
-            (stamped :> ISource).UpdateIfNecessary()
-            edit.Value <- ValueSome (struct (settled, v))
+
+            if stamped.IsStaleNode then
+                stamped.EnsureCurrent ()
+
+            edit.Value <- EditState (settled, v)
 
     /// <summary>A non-throwing, tracked read of <c>Value</c>.</summary>
     member _.TryValue: Reading<'T> = value.TryValue
@@ -209,9 +236,10 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
 
     /// <summary>True while an edit is in force. A tracked read.</summary>
     member _.IsEdited =
-        match edit.Value with
-        | ValueSome (struct (version, _)) -> inForce version
-        | ValueNone -> false
+        let currentEdit = edit.Value
+
+        currentEdit.Version >= 0
+        && inForce currentEdit.Version
 
     /// <summary>A tracked read of the seed's current value, whether or not an edit is in force.</summary>
     /// <remarks>Raises <c>NotReadyException</c> while the seed is pending and the seed's exception while it has failed.</remarks>
@@ -220,7 +248,7 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
     /// <summary>Drops the edit, so <c>Value</c> reads the seed.</summary>
     /// <exception cref="T:System.InvalidOperationException">Called off the graph's thread under a guarded graph.</exception>
     member _.Reset() =
-        edit.Value <- ValueNone
+        edit.Value <- EditState<'T>.Unedited
 
     /// <summary>Detaches both derived nodes from their sources. Idempotent; the enclosing owner calls it at disposal.</summary>
     member _.Dispose() =
