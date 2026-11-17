@@ -4262,3 +4262,213 @@ Proof.
     unfold ab_collect_step, ab_inv. rewrite Hfalse. simpl.
     split_and!; [reflexivity | reflexivity | intro; reflexivity].
 Qed.
+
+(** ** Cached row-entry reads, slice/group-view window diffs, and non-invertible fold row cache *)
+
+Record cached_entry (V : Type) := {
+  ce_live : bool;
+  ce_val : V;
+}.
+Arguments ce_live {V} _.
+Arguments ce_val {V} _.
+
+Definition read_entry_cached {K V : Type} `{Countable K}
+    (entries : gmap K (cached_entry V)) (key : K) (cached : option (cached_entry V))
+    : option (cached_entry V) :=
+  match cached with
+  | Some e => if ce_live e then Some e else entries !! key
+  | None => entries !! key
+  end.
+
+(**md
+**Reading a cached `RowEntry` directly whenever `ce_live e = true`, and falling back to `entries !! key` on `None` or retirement (`ce_live e = false`), agrees with `entries !! key` under the live-entry invariant (`Projections.fs` `ReadEntry`, `Combinators.fs` `EntryCache`).**
+
+- [entries:] live key-to-entry map at the read.
+- [entries':] updated key-to-entry map after entry retirement.
+- [key:] row key.
+- [cached:] cached entry reference (`Tag` or `DualEntry`).
+- [v0:] payload retained on a retired entry.
+*)
+Theorem live_row_entry_agrees_with_find
+    {K V : Type} `{Countable K}
+    (entries entries' : gmap K (cached_entry V))
+    (key : K) (cached : option (cached_entry V)) (v0 : V) :
+  (forall e, cached = Some e -> ce_live e = true -> entries !! key = Some e) ->
+  read_entry_cached entries key cached = entries !! key /\
+  read_entry_cached entries' key (Some {| ce_live := false; ce_val := v0 |}) = entries' !! key.
+Proof.
+  intro Hlive. split.
+  - destruct cached as [e|]; simpl; [|reflexivity].
+    destruct (ce_live e) eqn:Hl; [symmetry; apply Hlive; [reflexivity | exact Hl] | reflexivity].
+  - simpl. reflexivity.
+Qed.
+
+Definition slice_win {K : Type} (xs : list K) (start win_len : nat) : list K :=
+  take win_len (drop start xs).
+
+(**md
+**When upstream changes only `[chg_start .. chg_prev_end]` into `[chg_start .. chg_end]` (`pref ++ mid_old ++ suf` to `pref ++ mid_new ++ suf`), a fixed-length `SliceView` window strictly before `chg_start` or strictly after the edited range with constant shift relative to `chg_end`/`chg_prev_end` yields the identical slice in $O(1)$ (`Combinators.fs` `SliceView.Enumerate`).**
+
+- [pref:] shared prefix before `chg_start`.
+- [mid_old:] old edited segment in `prev`.
+- [mid_new:] replacement edited segment in `cur`.
+- [suf:] shared suffix after the edited segment.
+- [start:] current `SliceView` window start index.
+- [last_start:] prior `SliceView` window start index.
+- [win_len:] preserved window length.
+*)
+Theorem slice_outside_changed_range_noop
+    {K : Type} (pref mid_old mid_new suf : list K) (start last_start win_len : nat) :
+  let prev := pref ++ mid_old ++ suf in
+  let cur := pref ++ mid_new ++ suf in
+  let chg_start := length pref in
+  let chg_prev_end := (Z.of_nat (length pref + length mid_old) - 1)%Z in
+  let chg_end := (Z.of_nat (length pref + length mid_new) - 1)%Z in
+  ((start = last_start /\ start + win_len <= chg_start) \/
+   ((Z.of_nat start > chg_end)%Z /\
+    (Z.of_nat last_start > chg_prev_end)%Z /\
+    (Z.of_nat start - chg_end = Z.of_nat last_start - chg_prev_end)%Z)) ->
+  slice_win cur start win_len = slice_win prev last_start win_len.
+Proof.
+  intros prev cur chg_start chg_prev_end chg_end Hcase.
+  subst prev cur chg_start chg_prev_end chg_end.
+  unfold slice_win.
+  destruct Hcase as [[-> Hpre] | [Hs [Hls Hdiff]]].
+  - rewrite !drop_app_le by lia.
+    rewrite !take_app_le by (rewrite length_drop; lia).
+    reflexivity.
+  - rewrite !app_assoc.
+    rewrite !drop_app_ge by (rewrite length_app; lia).
+    rewrite !length_app.
+    replace (start - (length pref + length mid_new))
+       with (last_start - (length pref + length mid_old)) by lia.
+    reflexivity.
+Qed.
+
+Fixpoint filter_absent {K : Type} `{EqDecision K} (known xs : list K) : list K :=
+  match xs with
+  | [] => []
+  | k :: rest =>
+      if decide (k ∈ known) then filter_absent known rest
+      else k :: filter_absent known rest
+  end.
+
+Lemma filter_absent_app {K : Type} `{EqDecision K} (known xs ys : list K) :
+  filter_absent known (xs ++ ys) = filter_absent known xs ++ filter_absent known ys.
+Proof.
+  induction xs as [|k xs IH]; simpl; [reflexivity|].
+  destruct (decide (k ∈ known)); simpl; [exact IH | rewrite IH; reflexivity].
+Qed.
+
+Lemma filter_absent_sub {K : Type} `{EqDecision K} (known xs : list K) :
+  (forall x, x ∈ xs -> x ∈ known) ->
+  filter_absent known xs = [].
+Proof.
+  induction xs as [|k xs IH]; intro Hsub; simpl; [reflexivity|].
+  rewrite decide_True by (apply Hsub; left).
+  apply IH. intros x Hx. apply Hsub. right; exact Hx.
+Qed.
+
+Lemma filter_absent_ext_in {K : Type} `{EqDecision K} (k1 k2 xs : list K) :
+  (forall x, x ∈ xs -> (x ∈ k1 <-> x ∈ k2)) ->
+  filter_absent k1 xs = filter_absent k2 xs.
+Proof.
+  induction xs as [|k xs IH]; intro Hext; simpl; [reflexivity|].
+  assert (Hiff : k ∈ k1 <-> k ∈ k2) by (apply Hext; left).
+  destruct (decide (k ∈ k1)) as [Hk1|Hk1];
+    destruct (decide (k ∈ k2)) as [Hk2|Hk2]; try tauto.
+  - apply IH. intros x Hx. apply Hext. right; exact Hx.
+  - f_equal. apply IH. intros x Hx. apply Hext. right; exact Hx.
+Qed.
+
+(**md
+**Trimming equal shared prefix `pref` and suffix `suf` before diffing `prev = pref ++ mid_prev ++ suf` against `next = pref ++ mid_next ++ suf` (under `NoDup prev`) visits only `mid_next` for additions and detects removals only within `mid_prev` via membership in `mid_next` (`Combinators.fs` `SliceView.Enumerate`, `GroupView.Enumerate`).**
+
+- [pref:] shared prefix keys.
+- [mid_prev:] differing window in `prev`.
+- [mid_next:] differing window in `next`.
+- [suf:] shared suffix keys.
+*)
+Theorem window_trim_diff_refines_visit
+    {K : Type} `{EqDecision K} (pref mid_prev mid_next suf : list K) :
+  let prev := pref ++ mid_prev ++ suf in
+  let next := pref ++ mid_next ++ suf in
+  NoDup prev ->
+  filter_absent prev next = filter_absent prev mid_next /\
+  filter_absent next prev = filter_absent mid_next mid_prev.
+Proof.
+  intros prev next Hnd.
+  assert (Hprev_pref : forall x, x ∈ pref -> x ∈ prev).
+  { intros x Hx. subst prev. rewrite elem_of_app; left; exact Hx. }
+  assert (Hprev_suf : forall x, x ∈ suf -> x ∈ prev).
+  { intros x Hx. subst prev. rewrite !elem_of_app; right; right; exact Hx. }
+  assert (Hnext_pref : forall x, x ∈ pref -> x ∈ next).
+  { intros x Hx. subst next. rewrite elem_of_app; left; exact Hx. }
+  assert (Hnext_suf : forall x, x ∈ suf -> x ∈ next).
+  { intros x Hx. subst next. rewrite !elem_of_app; right; right; exact Hx. }
+  split.
+  - subst next. rewrite !filter_absent_app.
+    rewrite (filter_absent_sub prev pref Hprev_pref), (filter_absent_sub prev suf Hprev_suf).
+    simpl. rewrite app_nil_r. reflexivity.
+  - subst prev. rewrite !filter_absent_app.
+    rewrite (filter_absent_sub next pref Hnext_pref), (filter_absent_sub next suf Hnext_suf).
+    simpl. rewrite app_nil_r.
+    apply filter_absent_ext_in. intros x Hx.
+    subst next. rewrite !elem_of_app.
+    rewrite !NoDup_app in Hnd.
+    destruct Hnd as (_ & Hdisj1 & _ & Hdisj2 & _).
+    split.
+    + intros [Hp | [Hm | Hs]].
+      * exfalso. eapply Hdisj1; [exact Hp | rewrite elem_of_app; left; exact Hx].
+      * exact Hm.
+      * exfalso. eapply Hdisj2; [exact Hx | exact Hs].
+    + intro Hm. right; left; exact Hm.
+Qed.
+
+Definition fold_lookup_rows {K V S : Type} `{Countable K}
+    (folder : S -> V -> S) (zero : S) (by_key : gmap K nat) (row_state : gmap nat V) (keys : list K) : S :=
+  foldl (fun acc k =>
+    match by_key !! k with
+    | Some rid => match row_state !! rid with Some v => folder acc v | None => acc end
+    | None => acc
+    end) zero keys.
+
+Definition fold_ordered_cache {V S : Type}
+    (folder : S -> V -> S) (zero : S) (row_state : gmap nat V) (ordered_rids : list (option nat)) : S :=
+  foldl (fun acc mrid =>
+    match mrid with
+    | Some rid => match row_state !! rid with Some v => folder acc v | None => acc end
+    | None => acc
+    end) zero ordered_rids.
+
+(**md
+**Caching the `Keys`-ordered sequence of `FoldRow` references (`orderedRows`) whenever key membership or order is unchanged makes non-invertible `Projection.fold` recomputation over `orderedRows` identical to `keys.Length` hash lookups across arbitrary in-place row value updates (`Combinators.fs` `ProjectionFold`).**
+
+- [folder:] the fold accumulator function.
+- [zero:] initial fold accumulator seed.
+- [by_key:] current `rows` key-to-slot map.
+- [row_state:] mutable per-row state (`HasValue` / `Value`) map.
+- [row_state':] updated per-row state after in-place value edits.
+- [keys:] upstream `Keys` sequence (`lastKeys`).
+- [ordered_rids:] cached `orderedRows` sequence built from `keys` and `by_key`.
+*)
+Theorem fold_ordered_cache_refines_lookup_fold
+    {K V S : Type} `{Countable K}
+    (folder : S -> V -> S) (zero : S) (by_key : gmap K nat) (row_state row_state' : gmap nat V)
+    (keys : list K) (ordered_rids : list (option nat)) :
+  ordered_rids = (fun k => by_key !! k) <$> keys ->
+  fold_ordered_cache folder zero row_state ordered_rids =
+    fold_lookup_rows folder zero by_key row_state keys /\
+  fold_ordered_cache folder zero row_state' ordered_rids =
+    fold_lookup_rows folder zero by_key row_state' keys.
+Proof.
+  intros ->.
+  assert (Hgen : forall (st : gmap nat V) z,
+    fold_ordered_cache folder z st ((fun k => by_key !! k) <$> keys) =
+    fold_lookup_rows folder z by_key st keys).
+  { intros st z. unfold fold_ordered_cache, fold_lookup_rows. revert z.
+    induction keys as [|k ks IH]; intro z; simpl.
+    - reflexivity.
+    - apply IH. }
+  split; apply Hgen.
+Qed.

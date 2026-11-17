@@ -636,6 +636,19 @@ module internal Platform =
 #if FABLE_COMPILER
     [<Emit("new Array($0)")>]
     let positions (length: int) : int[] = jsNative
+
+    /// <summary>
+    /// Fast rank comparison when both <c>a</c> and <c>b</c> are JS numbers, ordering <c>NaN</c> last in both
+    /// directions and returning <c>2</c> when either operand is not a JS number.
+    /// </summary>
+    [<Emit("(typeof $0 === 'number' && typeof $1 === 'number' ? ($0 !== $0 ? ($1 !== $1 ? 0 : 1) : ($1 !== $1 ? -1 : ($2 ? ($1 < $0 ? -1 : ($1 > $0 ? 1 : 0)) : ($0 < $1 ? -1 : ($0 > $1 ? 1 : 0))))) : 2)")>]
+    let compareNumberRanks (a: 'S) (b: 'S) (descending: bool) : int = jsNative
+
+    [<Emit("($0.length = $1, $0)")>]
+    let resizePositions (arr: int[]) (length: int) : int[] = jsNative
+
+    [<Emit("$0.sort($1)")>]
+    let sortPositions (arr: int[]) (cmp: System.Func<int, int, int>) : unit = jsNative
 #else
     let positions (length: int) : int[] =
         Array.zeroCreate length
@@ -788,8 +801,14 @@ module internal Platform =
 #endif
 
 #if FABLE_COMPILER
+    [<Emit("($0 === $1 || ($0 !== $0 && $1 !== $1))")>]
+    let primitiveKeyEquals (a: 'K) (b: 'K) : bool = jsNative
+
     let inline keyEquals (a: 'K) (b: 'K) : bool =
-        EqualityComparer<'K>.Default.Equals(a, b)
+        if primitiveKey a then
+            primitiveKeyEquals a b
+        else
+            EqualityComparer<'K>.Default.Equals(a, b)
 #else
     let inline keyEquals<'K when 'K: equality> (a: 'K) (b: 'K) : bool =
         if DefaultKeyTrait<'K>.UseDefault then

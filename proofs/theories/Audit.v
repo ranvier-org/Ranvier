@@ -500,3 +500,7 @@ Print Assumptions trim_two_index_key_swap_preserves_uniqueness.
 Print Assumptions index_projection_dense_diff_refines_visit.
 Print Assumptions lookup_sync_clean_skip_and_affected_buf_eq.
 Print Assumptions graph_encoded_comparer_cache_eq.
+Print Assumptions live_row_entry_agrees_with_find.
+Print Assumptions slice_outside_changed_range_noop.
+Print Assumptions window_trim_diff_refines_visit.
+Print Assumptions fold_ordered_cache_refines_lookup_fold.
