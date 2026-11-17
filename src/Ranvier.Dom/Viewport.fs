@@ -166,9 +166,10 @@ module Viewport =
         let mutable nextObserver = 0
 
         let publish change =
-            for _, observer in observers.ToArray () do
-                if not disposed then
-                    observer change
+            if observers.Count > 0 then
+                for _, observer in observers.ToArray () do
+                    if not disposed then
+                        observer change
 
         let atWindow (event: Event) =
             event.eventPhase = 2us

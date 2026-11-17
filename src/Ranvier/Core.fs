@@ -6251,6 +6251,103 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// </summary>
     member internal _.SourceCount = sources.Count
 
+#if !FABLE_COMPILER
+    static member val private ReadUntrackedStructFn: Memo<'T> -> struct (Status * 'T * exn) = fun m -> m.ReadUntrackedStructCore ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.TryReadStruct() : struct (Status * 'T * exn) =
+        if StatusBits.isCleanAndReady freshness status then
+            graph.Track (this :> ISource)
+            struct (Status.None, value, null)
+        else
+            this.TryReadStructSlow ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.TryReadStructSlow() : struct (Status * 'T * exn) =
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    freshness <> Freshness.Clean
+                else
+                    this.PullWithoutSettle ())
+        then
+            let currentStatus = status
+            let currentFailure = failure
+            let currentValue = value
+            graph.FinishPullSettle ()
+            graph.Track (this :> ISource)
+
+            if freshness <> Freshness.Clean && not disposed then
+                graph.MarkReaderCheck ()
+
+            if StatusBits.isUnready currentStatus then
+                if StatusBits.isPending currentStatus then
+                    struct (Status.Pending, Unchecked.defaultof<'T>, null)
+                else
+                    struct (Status.Error, Unchecked.defaultof<'T>, currentFailure.Error)
+            else
+                struct (Status.None, currentValue, null)
+        else
+            graph.Track (this :> ISource)
+
+            if StatusBits.isUnready status then
+                if StatusBits.isPending status then
+                    struct (Status.Pending, Unchecked.defaultof<'T>, null)
+                else
+                    struct (Status.Error, Unchecked.defaultof<'T>, failure.Error)
+            else
+                struct (Status.None, value, null)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.TryReadUntrackedStruct() : struct (Status * 'T * exn) =
+        if
+            not (graph.IsTracking ())
+            && StatusBits.isCleanAndReady freshness status
+        then
+            struct (Status.None, value, null)
+        else
+            this.TryReadUntrackedStructSlow ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.TryReadUntrackedStructSlow() : struct (Status * 'T * exn) =
+        if not (graph.IsTracking ()) then
+            this.ReadUntrackedStructCore ()
+        else
+            graph.RunUntrackedWith (Memo<'T>.ReadUntrackedStructFn, this)
+
+    member private this.ReadUntrackedStructCore() : struct (Status * 'T * exn) =
+        if
+            freshness <> Freshness.Clean
+            && not disposed
+            && (if graph.Deferring then
+                    this.Refresh ()
+                    false
+                else
+                    this.PullWithoutSettle ())
+        then
+            let currentStatus = status
+            let currentFailure = failure
+            let currentValue = value
+            graph.FinishPullSettle ()
+
+            if StatusBits.isUnready currentStatus then
+                if StatusBits.isPending currentStatus then
+                    struct (Status.Pending, Unchecked.defaultof<'T>, null)
+                else
+                    struct (Status.Error, Unchecked.defaultof<'T>, currentFailure.Error)
+            else
+                struct (Status.None, currentValue, null)
+        elif StatusBits.isUnready status then
+            if StatusBits.isPending status then
+                struct (Status.Pending, Unchecked.defaultof<'T>, null)
+            else
+                struct (Status.Error, Unchecked.defaultof<'T>, failure.Error)
+        else
+            struct (Status.None, value, null)
+#endif
+
 /// <summary>
 /// A side effect that re-runs when its dependencies change.
 /// </summary>

@@ -287,7 +287,7 @@ type Reactive =
         if isNull execute then
             nullArg "execute"
 
-        new ReactiveCommand (Graph.Current, (fun parameter token -> execute.Invoke (parameter, token)), canExecute, policy, false, true)
+        new ReactiveCommand (Graph.Current, execute, null, canExecute, policy, null)
 
     /// <summary>
     /// A command running <c>execute</c> synchronously, enabled while <c>canExecute ()</c> is true. The writes
@@ -298,7 +298,7 @@ type Reactive =
         if isNull execute then
             nullArg "execute"
 
-        new ReactiveCommand (Graph.Current, ReactiveCommand.Synchronous execute, canExecute, CommandPolicy.Disable, true, true)
+        new ReactiveCommand (Graph.Current, null, execute, canExecute, CommandPolicy.Disable, null)
 
     /// <summary>A memo that is true while any of <c>sources</c> is pending.</summary>
     /// <remarks>
@@ -309,11 +309,25 @@ type Reactive =
         let graph = Graph.Current
         let sources = Array.copy sources
 
-        Api.createMemo (fun _ ->
-            sources
-            |> Array.exists (fun node ->
-                graph.TrackStatus node &&& Status.Pending
-                <> Status.None))
+        Memo<bool>
+            .Create(
+                graph,
+                (fun _ ->
+                    let mutable i = 0
+                    let mutable pending = false
+
+                    while not pending && i < sources.Length do
+                        if
+                            graph.TrackStatus sources[i] &&& Status.Pending
+                            <> Status.None
+                        then
+                            pending <- true
+                        else
+                            i <- i + 1
+
+                    pending),
+                ScopeMode.Pure
+            )
 
     /// <summary>
     /// <c>Suspense</c> whose <c>fallback</c> receives the boundary's last value, or <c>seed</c> before its first.

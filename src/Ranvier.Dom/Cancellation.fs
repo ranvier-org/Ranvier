@@ -166,26 +166,28 @@ type internal ManagedSignal(owner: obj, check: unit -> unit, report: exn -> unit
 
     /// <summary>Runs internal cleanup, then the abort callbacks registered when the signal aborted.</summary>
     member _.RunAbortSteps() =
-        let pending = algorithms.ToArray ()
-        algorithms.Clear ()
+        if algorithms.Count > 0 then
+            let pending = algorithms.ToArray ()
+            algorithms.Clear ()
 
-        for action in pending do
-            try
-                action ()
-            with error ->
-                report error
-
-        let snapshot = handlers.ToArray ()
-        let value = reason.Value
-
-        for id, callback in snapshot do
-            if handlers.RemoveAll (fun (candidate, _) -> candidate = id) > 0 then
+            for action in pending do
                 try
-                    callback value
+                    action ()
                 with error ->
                     report error
 
-        handlers.Clear ()
+        if handlers.Count > 0 then
+            let snapshot = handlers.ToArray ()
+            let value = reason.Value
+
+            for id, callback in snapshot do
+                if handlers.RemoveAll (fun (candidate, _) -> candidate = id) > 0 then
+                    try
+                        callback value
+                    with error ->
+                        report error
+
+            handlers.Clear ()
 
     member this.Token =
         if isNull token then
@@ -273,18 +275,23 @@ module Cancellation =
             if target.Current.IsNone then
                 target.SetReason value
 
-                let dependents =
-                    target.Dependents
-                    |> Seq.filter (fun dependent -> dependent.Current.IsNone)
-                    |> Seq.toArray
+                if target.Dependents.Count = 0 then
+                    target.RunAbortSteps ()
+                else
+                    let dependents = ResizeArray<ManagedSignal>()
+                    let deps = target.Dependents
 
-                for dependent in dependents do
-                    dependent.SetReason value
+                    for i = 0 to deps.Count - 1 do
+                        let dependent = deps[i]
 
-                target.RunAbortSteps ()
+                        if dependent.Current.IsNone then
+                            dependent.SetReason value
+                            dependents.Add dependent
 
-                for dependent in dependents do
-                    dependent.RunAbortSteps ()
+                    target.RunAbortSteps ()
+
+                    for i = 0 to dependents.Count - 1 do
+                        dependents[i].RunAbortSteps()
 
         let aborted value =
             let result = signal false
