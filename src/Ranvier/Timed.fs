@@ -34,12 +34,17 @@ type internal TimedMode =
 [<Sealed>]
 type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: TimeSpan, mode: TimedMode, read: unit -> 'T) =
     let id = graph.NextId ()
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     let observers = ObserverSet ()
     do Tracer.Bind (sources, graph, id)
     do Tracer.Bind (observers, graph, id)
     let clock = options.Clock
-    let equal = defaultArg options.Comparer (graph.Options.Equality.Comparer<'T>())
+
+    let equal =
+        match options.Comparer with
+        | Some comparer -> ComparerSentinel.encode comparer
+        | None -> graph.EncodedComparer<'T>()
+
     let milliseconds = duration.TotalMilliseconds
     let mutable freshness = Freshness.Clean
     let mutable queued = false
@@ -170,7 +175,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
         try
             let moved =
                 status <> Status.None
-                || not (equal.Equals (value, next))
+                || not (ComparerSentinel.equals equal value next)
 
             value <- next
             status <- Status.None
@@ -197,7 +202,19 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
         try
             try
-                let next = graph.RunHosted (this :> IComputation, read)
+                let next =
+#if FABLE_COMPILER
+                    graph.RunHosted (this :> IComputation, read)
+#else
+                    let saved = graph.EnterHosted (this :> IComputation)
+
+                    try
+                        let r = read ()
+                        graph.CheckRaised ()
+                        r
+                    finally
+                        graph.LeaveHosted saved
+#endif
 
                 if violated then
                     raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
@@ -205,7 +222,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                 if not disposed then
                     let changed =
                         captureStatus <> Status.None
-                        || not (equal.Equals (captured, next))
+                        || not (ComparerSentinel.equals equal captured next)
 
                     captured <- next
                     captureStatus <- Status.None
@@ -336,7 +353,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -359,7 +376,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
-                        sources.SourceAt(i).UpdateIfNecessary()
+                        sources.RefreshSourceAt i
 
                         if graph.ActiveSkips <> 0 then
                             this.CheckActiveSource i
@@ -421,6 +438,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     member _.ErrorOrigin = Failure.OriginOf failure
 
     /// <summary>Tracks and reads the published value; raises when that state is pending or failed.</summary>
+#if FABLE_COMPILER
     member this.Value =
         graph.Track (this :> ISource)
 
@@ -431,6 +449,26 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             graph.Raise failure
 
         value
+#else
+    member this.Value = this.GetFast ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.GetFast() : 'T =
+        graph.Track (this :> ISource)
+
+        if StatusBits.isUnready status then
+            this.RaiseUnready ()
+        else
+            value
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RaiseUnready() : 'T =
+        if StatusBits.isPending status then
+            raise (graph.NotReady (this :> INode))
+
+        graph.Raise failure
+        value
+#endif
 
     /// <summary>Tracks and returns the published ready, pending or failed state.</summary>
     member this.TryValue =

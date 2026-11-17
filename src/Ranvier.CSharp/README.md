@@ -5,8 +5,8 @@ delegates, and extension methods cover `Graph.Run`, `Signal.Update` and the proj
 
 ## Per-node equality
 
-Signals, memos (including owning and seeded forms), split effects and boundaries accept an
-optional typed comparer through additional overloads:
+Signals, memos (including owning and seeded forms), `EffectOn`, and unseeded boundaries accept an
+optional `IEqualityComparer<T>` through additional overloads:
 
 ```csharp
 var name = Reactive.Signal("Ada", StringComparer.OrdinalIgnoreCase);
@@ -14,9 +14,8 @@ var label = Reactive.Memo(() => name.Value.Trim(), StringComparer.OrdinalIgnoreC
 Reactive.EffectOn(() => label.Value, Console.WriteLine, StringComparer.OrdinalIgnoreCase);
 ```
 
-Call these factories inside `graph.Run` or an active graph scope. Omit the comparer to use the
-graph policy. A supplied comparer applies only to that node; pending/error state transitions
-and ownership rules still apply. Null comparers throw `ArgumentNullException`.
+Call these factories inside `graph.Run` or an active graph scope; see
+[Per-node equality](https://ranvier-org.github.io/Ranvier/guide/csharp/#per-node-equality).
 
 ## Basic use
 
@@ -75,9 +74,9 @@ the XAML notification adapter below serves view-model properties.
 
 `ReactiveBindings` raises `INotifyPropertyChanged` and `INotifyDataErrorInfo` for view-model properties backed by
 memos and signals, inside any existing view model; `ReactiveObject` is a base class over it. See the
-[C# guide](https://github.com/ranvier-org/Ranvier/blob/master/docs/content/guide/csharp.md#binding-to-xaml).
+[C# guide](https://ranvier-org.github.io/Ranvier/guide/csharp/#binding-to-xaml).
 `ReactiveCommand` is an `ICommand` whose `CanExecute` and busy state come from graph nodes; see
-[Commands](https://github.com/ranvier-org/Ranvier/blob/master/docs/content/guide/csharp.md#commands).
+[Commands](https://ranvier-org.github.io/Ranvier/guide/csharp/#commands).
 
 ## Editable collections
 

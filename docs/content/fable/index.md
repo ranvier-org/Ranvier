@@ -3,9 +3,7 @@ title: Fable (JavaScript) target
 order: 1
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
-
-**Status: Implemented, with Fable sources included in package builds.** Ranvier compiles with Fable and runs its shared test suite against the compiled engine under Node.js. CI also tests consumers of the packed sources. This page lists the platform differences, including cases where evaluation timing or equality differs.
+**Status: Implemented, with Fable sources included in package builds.** Ranvier compiles with Fable (via `dotnet fickl`) and runs its shared test suite against the compiled engine under Node.js. CI also tests consumers of the packed sources. This page lists the platform differences, including cases where evaluation timing or equality differs.
 
 The .NET build is the reference implementation. [Fable](https://fable.io) compiles the same engine
 to JavaScript; the differences below matter when sharing code between targets.
@@ -26,27 +24,11 @@ both inline and promise delivery. It exercises these APIs and records the target
 - the Elmish bridge (`Mvu`) and the query layer;
 - stream memos through `createStream` and `createStreamFold`, with `StreamSource.create`, `ofObservable` and `ofAsyncIterable`. `ofAsyncEnumerable` and `ofChannel` are .NET only; `ofAsyncIterable` is Fable only. See [Streams](../guide/streams.md).
 
-Ranvier's engine compiles under Fable in this repository, and the .NET test suite runs against it under Node.js (`dotnet fsi build.fsx test-fable`), once untraced and once with the trace log compiled in. Tests that exercise a .NET-only facility, such as threads, garbage collection or `ObservableCollection`, are compiled out. The run writes `docs/.ai/fable-compat.md`: the tests that pass, fail and are excluded, in each file. Every failure listed there is one of the differences below.
+Ranvier's engine compiles with `dotnet fickl` in this repository, and the shared test suite runs against it under Node.js (`dotnet fsi build.fsx -- test-fable`), once untraced and once with the trace log compiled in. Tests that exercise a .NET-only facility, such as threads, garbage collection or `ObservableCollection`, are compiled out.
 
 ## Package sources and CI
 
-Package builds of `Ranvier`, `Ranvier.Elmish`, `Ranvier.CSharp` and `Ranvier.Query`, including their
-`.Traced` variants, include Fable sources and a standalone `fable/<package>.fsproj`. The source
-project lists the packaged files in compile order and does not depend on the repository's build
-imports. Use a normal `PackageReference` from an F# project compiled with Fable; there is no separate
-JavaScript engine package to install.
-
-CI compiles and runs both the repository test project and consumers restored from locally packed
-NuGet packages, traced and untraced. The package consumer check is
-`tests/check-package-compatibility.ps1 -CheckFable`. These checks validate the package build;
-availability of a particular version on NuGet is a separate release step.
-
-**Published packages include standalone Fable projects:** `Ranvier`, `Ranvier.CSharp`,
-`Ranvier.Elmish` and `Ranvier.Query`, all at `0.2.0`. See
-[Installation](../guide/installation.md#from-nuget).
-
-The view packages also include Fable sources and standalone projects.
-See [installation and the dependency feed](../guide/installation.md#views).
+Package builds of `Ranvier`, `Ranvier.Elmish`, `Ranvier.CSharp`, `Ranvier.Query`, `Ranvier.Wire` (`0.2.1`), `Fable.Ranvier.Dom` (`0.1.0`), and the view packages, including their `.Traced` variants, ship Fable sources and a standalone `fable/<package>.fsproj`. Reference the NuGet package normally from a Fable project compiled with `dotnet fickl`; CI compiles and runs locally packed package consumers across both targets. See [Installation](../guide/installation.md#from-nuget) and [Views](../guide/installation.md#views).
 
 ## Known differences from .NET
 

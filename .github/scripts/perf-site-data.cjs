@@ -43,11 +43,33 @@ function libraryCounters(runs) {
   return counters;
 }
 
-// Each commit restricted to the medians and counters of scenarios whose names start with one of the prefixes.
+// Scoped regressions accepted for a record, with each entry's reasons joined.
+function acceptedRegressions(record) {
+  if (!Array.isArray(record.AcceptedRegressions)) return [];
+  return record.AcceptedRegressions
+    .filter(item => item && typeof item.Runtime === 'string' && typeof item.Scenario === 'string' && typeof item.Engine === 'string')
+    .map(item => ({
+      Leg: item.Leg || 'arm64-counters',
+      Runtime: item.Runtime,
+      Scenario: item.Scenario,
+      Engine: item.Engine,
+      Metric: item.Metric || 'instructions',
+      Reason: Array.isArray(item.Reasons)
+        ? item.Reasons.map(entry => entry?.Reason).filter(Boolean).join('; ')
+        : '',
+    }));
+}
+
+// Each commit restricted to the medians, counters and accepted regressions of scenarios whose names start with one of the prefixes.
 // Commits without matching rows remain, so every file shares the full commit axis.
 function restrict(commits, prefixes) {
   const matches = row => prefixes.some(prefix => row.Scenario.startsWith(prefix));
-  return commits.map(commit => ({ ...commit, Medians: commit.Medians.filter(matches), Counters: commit.Counters.filter(matches) }));
+  return commits.map(commit => ({
+    ...commit,
+    Medians: commit.Medians.filter(matches),
+    Counters: commit.Counters.filter(matches),
+    Accepted: (commit.Accepted || []).filter(matches),
+  }));
 }
 
 // Writes every commit to the output file and, for each named group of scenario prefixes, the restricted
@@ -89,6 +111,7 @@ function buildIndex(runsDirectory, outputFile, groups = {}) {
       Packages: Array.isArray(record.Packages) ? record.Packages : [],
       Medians: medians,
       Counters: libraryCounters(runs),
+      Accepted: acceptedRegressions(record),
     };
   });
 

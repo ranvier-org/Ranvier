@@ -24,6 +24,7 @@ see [Reading changes](projections.fsx#reading-changes).
 
 For renderers that create one view object per key, projections also offer create-first teardown
 ordering and `createProjectionOnce`, which stores a factory result without a row memo. The latter
-supports key readers but does not support value readers or collection view operators; see
-[Store a factory result once per key](projections.fsx#store-a-factory-result-once-per-key).
+supports `Keys`, key readers, `length`, `isEmpty`, and positional readers, while value readers,
+`AsObservableCollection`, collection view operators, and fold/search/extreme aggregates require row
+memos; see [Store a factory result once per key](projections.fsx#store-a-factory-result-once-per-key).
 *)

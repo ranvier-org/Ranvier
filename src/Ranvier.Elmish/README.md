@@ -26,7 +26,7 @@ Elmish commands pass unchanged; the package does not depend on Elmish.
 
 ## Targets
 
-`net10.0` and `netstandard2.1`.
+`net10.0` (including NativeAOT) and `netstandard2.1`.
 
 Package builds also include Fable sources and a standalone source project. F# consumers compiled
 with Fable use a normal package reference; CI tests both traced and untraced package consumers.
@@ -34,8 +34,8 @@ See [Fable](https://ranvier-org.github.io/Ranvier/fable/) for JavaScript timing 
 
 ## Tracing
 
-`Ranvier.Elmish.Traced` is the same assembly built against `Ranvier.Traced`. Reference it together with
-`Ranvier.Traced`; see [Tracing](https://ranvier-org.github.io/Ranvier/guide/tracing/).
+`Ranvier.Elmish.Traced` is the same assembly built against `Ranvier.Traced`, also NativeAOT-compatible on `net10.0`.
+Reference it together with `Ranvier.Traced`; see [Tracing](https://ranvier-org.github.io/Ranvier/guide/tracing/).
 
 ## Links
 

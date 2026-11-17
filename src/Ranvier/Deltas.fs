@@ -87,10 +87,13 @@ type internal EmptyKeyChangesCache<'K when 'K: equality>() =
 #endif
 
 module internal KeyChanges =
-    let inline empty<'K when 'K: equality> () =
 #if FABLE_COMPILER
-        KeyChanges<'K>()
+    let emptyBoxed: obj = box (KeyChanges<int>())
+
+    let inline empty<'K when 'K: equality> () : KeyChanges<'K> =
+        unbox<KeyChanges<'K>> emptyBoxed
 #else
+    let inline empty<'K when 'K: equality> () =
         EmptyKeyChangesCache<'K>.Value
 #endif
 
@@ -190,10 +193,11 @@ and
 
     /// <summary>The delta a read returns while nothing changed since the previous read, or null.</summary>
     let mutable idle: ProjectionDelta<'K> = Unchecked.defaultof<ProjectionDelta<'K>>
+    let readsValues = defaultArg values false
     let mutable disposed = false
     let mutable link: OwnerLink = null
 
-    member internal _.ReadsValues = defaultArg values false
+    member internal _.ReadsValues = readsValues
 
     /// <summary>The owner link, kept only while the reader runs.</summary>
     member internal _.Link
@@ -291,8 +295,8 @@ type internal KeyLog<'K when 'K: equality>() =
     member _.ValueCount =
         let mutable count = 0
 
-        for reader in readers do
-            if reader.ReadsValues then
+        for i in 0 .. readers.Count - 1 do
+            if (Platform.entryAt i readers).ReadsValues then
                 count <- count + 1
 
         count
@@ -308,7 +312,9 @@ type internal KeyLog<'K when 'K: equality>() =
             (Platform.entryAt i readers).Record(key, change)
 
     member _.RecordValue(key: 'K) =
-        for reader in readers do
+        for i in 0 .. readers.Count - 1 do
+            let reader = Platform.entryAt i readers
+
             if reader.ReadsValues then
                 reader.Record (key, KeyChange.Changed)
 

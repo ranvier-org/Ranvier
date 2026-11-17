@@ -3,8 +3,6 @@ title: Query reconciliation
 order: 10
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
-
 **Cost of three-query reconciliation versus a hand-written Elmish update**, using
 the same index, section previews, word detail, and `List.map` patch. Both paths
 accept alternating edits to the first word; setup checks equivalent results and

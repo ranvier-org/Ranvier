@@ -39,7 +39,7 @@ to wake that thread. With a manual dispatcher, call `graph.Pump ()` to apply que
 | `Graph.Dispatch work` | Runs `work` inline on the graph thread. From another thread, queues it in the graph's inbox and asks the dispatcher to wake the graph thread ([`post_queued_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Concurrency.html#post_queued_spec)). |
 | `Graph.Pump ()` | Guarded. Runs the inbox in arrival order, then flushes effects, and returns the number of items run. An item that throws is recorded in `graph.Root.Errors`, and the rest still run ([`inbox_drain_fifo_fault_isolated`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Concurrency.html#inbox_drain_fifo_fault_isolated)). |
 | `Graph.PendingWork` | The number of inbox items waiting for a pump. |
-| Creating a node, `Batch`, `Untrack`, `Flush`, `CreateRoot`, `OnCleanup`, `Dispose` | Guarded. From another thread each raises `InvalidOperationException` before it changes the graph. |
+| `Creating a node`, `Signal.Value <-`, `Batch`, `Untrack`, `Flush`, `CreateRoot`, `OnCleanup`, `Dispose` | Guarded. Under `Guarded` affinity, every graph-mutating entry point raises `InvalidOperationException` before touching graph state. |
 | `.Value`, `TryValue` | Guarded when the read recomputes a stale memo or boundary. A read of a current value is not guarded. |
 | `Peek` | Not guarded. |
 | `Graph.Current` | Flows with the async context of `graph.Activate ()`. A guarded graph is current on the activating thread only; an `Unchecked` or `Serialised` graph is current on every thread the activating context reaches. The `create*` functions elsewhere raise `No ambient graph on this thread`. |
@@ -126,6 +126,31 @@ graph there, which is safe only when every write already arrives on one thread.
 When the settle is an `AsyncMemo` flight completing on the thread pool, the exception is raised in
 the flight's continuation and reaches `TaskScheduler.UnobservedTaskException`.
 :::
+
+## Awaiting work from outside the graph
+
+A caller on another thread (such as a request handler or tool host) can await
+`graph.DispatchAsync(work, cancellationToken)` to run `work` inside the graph's consistency domain
+and receive its result as a `Task<'T>` (or catch its exception as a faulted task). Cancelling the
+token cancels the queued work while it waits in the inbox; disposing the graph faults queued items
+with `ObjectDisposedException`. On the owning thread, `DispatchAsync` runs inline and returns an
+already-completed task.
+
+```fsharp
+let increment (graph: Graph) (count: Signal<int>) (cancel: CancellationToken) : Task<int> =
+    task {
+        // The work runs on the graph's thread; await resumes on the caller/pool context.
+        let! next =
+            graph.DispatchAsync ((fun () ->
+                count.Value <- count.Value + 1
+                count.Value), cancel)
+
+        return next
+    }
+```
+
+See [Contracts](../concepts/contracts.md#awaiting-dispatched-work) for every waiting, cancellation,
+and disposal case.
 
 :::warning A console app that never calls `Pump`
 

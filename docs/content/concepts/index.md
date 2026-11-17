@@ -3,37 +3,19 @@ title: Concepts
 order: 1
 ---
 
-:::warning
-**Preview.** Ranvier is pre-release; its APIs may change.
-:::
-
 Understand dependency tracking, pending state and ownership here. For API walkthroughs, start
 with the [guide](../guide/index.md).
 
-Ranvier is a fine-grained reactive computation library for .NET, written in F#. It provides a dependency graph
+Ranvier is a fine-grained reactive computation library for .NET and Fable, written in F#. It provides a dependency graph
 of **signals** (settable sources), **memos** (cached derived values) and **effects** (side effects that re-run
 when something they read changes). Dependencies are tracked automatically: a computation depends on whatever
 it read during its last run ([`run_end_edges_are_latest_reads`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#run_end_edges_are_latest_reads)). Derived values pull upstream dependencies on demand so that for well-behaved synchronous graphs (`well_behaved_program`), a computation never observes a mix of old and new inputs ([`glitch_free_read`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#glitch_free_read), [`convergence`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.WholeGraph.html#convergence)). An equality cutoff stops propagation when a recomputed value is equal to the previous
 one ([`cutoff`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#cutoff), [`resolve_clean_unmoved`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#resolve_clean_unmoved)). See the [Rocq & Iris proof explorer](https://ranvier-org.github.io/Ranvier/proofs/) for the full set of machine-checked guarantees and exact scope premises.
 
-The **pending channel** carries a value's not-ready status through dependent reads to a boundary.
-A memo can use ordinary value expressions while the graph tracks loading state:
-
-```fsharp
-open Ranvier
-
-let user = createAsyncSource<string> ()
-let greeting = createMemo (fun _ -> "Hello, " + user.Value)
-
-greeting.TryValue   // Pending
-user.Settle "Ada"
-greeting.TryValue   // Ready "Hello, Ada"
-```
-
-This example, like the others in this section, assumes that a graph is active on the current thread.
-
-`greeting` does not check whether `user` has arrived. It reads `user.Value` like any other value, and the
-graph marks it Pending until the source settles.
+The **pending channel** carries not-ready and failed status from an async source through dependent
+computations without explicit option plumbing until a boundary handles it; see
+[Async and pending](../guide/async-and-pending.md) for usage and [Suspension](suspension.md) for
+the mechanics.
 
 ## Pages in this section
 
@@ -46,8 +28,8 @@ graph marks it Pending until the source settles.
 - [Contracts](contracts.md) states which threads may touch a graph, what a failure does to the nodes that
   read it, and who owns a node created inside a computation.
 - [Ecosystem](ecosystem.md) covers where Ranvier sits beside FSharp.Data.Adaptive, SignalsDotnet, R3 and
-  System.Reactive, Fable.Ripple and Solid, and when one of those is the better choice.
-- [Roadmap](roadmap.md) lists implemented features, package-build coverage and ideas under consideration.
+  System.Reactive, Fable.Ripple and Solid 2, and when one of those is the better choice.
+- [Roadmap](roadmap.md) lists implemented core, serialization, DOM, verification, and exploratory areas.
 
 ## Reading design notes
 

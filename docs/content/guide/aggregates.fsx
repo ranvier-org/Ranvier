@@ -5,10 +5,6 @@ order: 6
 ---
 *)
 (**
-:::info
-Preview — Ranvier is pre-release; its APIs may change.
-:::
-
 Keep totals, counts and other folds current as [projection](collections.fsx) rows change.
 An aggregate is a `Memo<'S>`: read, track and dispose it like any other memo.
 *)
@@ -60,16 +56,16 @@ let rows = createProjection _.Id id (fun () -> tasks.Value)
 | `Projection.forall predicate` | whether `countBy` of the misses is zero | as `foldGroup` |
 | `Projection.length`, `Projection.isEmpty` | the key count; whether it is zero | no work: a row edit wakes neither |
 | `Projection.tryHead`, `tryLast`, `tryItem index` (`head`, `last`, `item` raise) | the key at a position with its value | O(1); an edit off the position wakes no reader |
-| `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate call; a membership flip costs an O(N) filter pass |
+| `Projection.tryFind`, `tryFindKey`, `tryPick` (`find`, `findKey`, `pick` raise) | the first match in upstream order | one predicate or chooser call; a sparse membership flip updates the internal `filter` or `choose` view via Fenwick rank + `Keys` splice |
 | `Projection.tryAverageBy projection` (`averageBy` raises) | the mean of `projection` over the settled values | as `foldGroup` |
-| `Projection.tryMinBy`, `tryMaxBy projection` (`minBy`, `maxBy` raise) | a value with the least or greatest rank | O(1); O(N) when the holder leaves or changes |
+| `Projection.tryMinBy`, `tryMaxBy projection` (`minBy`, `maxBy` raise) | a value with the least or greatest rank | O(log N) tournament sift; O(1) when rank is unchanged |
 
 :::
 
 :::details Membership changes and row reads
 
-A key added to or removed from `Keys` costs an O(N) key diff, then one `add` or `subtract` per changed key. Each
-aggregate attaches a direct row observer per key (`FoldRow` / `FoldReads`: [`direct_link_is_sources_add`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_link_is_sources_add), [`world_direct_link_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_link_spec), [`direct_observer_walk_covered`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_observer_walk_covered)) and reads only the rows that changed, so an edit to one row of a thousand re-runs the row's function alone. Companion state adopted by an aggregate memo (`Memo.Adopt`) is disposed once when the aggregate memo is disposed ([`adopt_companion_disposed_once`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#adopt_companion_disposed_once), [`memo_dispose_adopted_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#memo_dispose_adopted_spec)).
+Bounded key changes consume upstream key deltas in O(Δ), falling back to an O(N) key diff on large bursts, then run one `add` or `subtract` per changed key. Each
+aggregate attaches a direct row observer per key (for example `FoldRow` / `FoldReads` on fold and group aggregates, or `ExtremeRow` on `tryMinBy` / `tryMaxBy`: [`direct_link_is_sources_add`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_link_is_sources_add), [`world_direct_link_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#world_direct_link_spec), [`direct_observer_walk_covered`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#direct_observer_walk_covered)) and reads only the rows that changed, so an edit to one row of a thousand re-runs the row's function alone. Companion state adopted by an aggregate memo (`Memo.Adopt`) is disposed once when the aggregate memo is disposed ([`adopt_companion_disposed_once`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#adopt_companion_disposed_once), [`memo_dispose_adopted_spec`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Heap.Collections.html#memo_dispose_adopted_spec)).
 
 :::
 
@@ -252,9 +248,9 @@ let noScores = scoreRows |> Projection.isEmpty
 ## Position
 
 `Projection.tryHead`, `tryLast` and `tryItem` read the key at a position with its value, and `None` when the position
-is outside `Keys`. They depend exclusively on `Keys` and the row at the position; over a sorted view, `tryHead` is
-the top row. A pending row at the position makes the memo pending, and a failed one
-raises.
+is outside `Keys`. They depend exclusively on `Keys` and the row at the position, and also read a
+projection from `createProjectionOnce`; over a sorted view, `tryHead` is the top row. A pending row at
+the position makes the memo pending, and a failed one raises.
 
 `Projection.head`, `last` and `item` raise `KeyNotFoundException` instead of returning `None`. The memo fails while
 the position is empty, so every reader needs a boundary or `TryValue`; prefer the `try` forms for bindings.
@@ -303,9 +299,14 @@ meanScore.Value // Some 58.33333333
 
 `Projection.tryMinBy` and `tryMaxBy` return a value with the least or greatest rank, under the `sortBy` order: a NaN
 rank is the greatest. Among equal ranks the current result stays, including when its holder's row is edited to an
-equal rank; when the holder is removed, the result is the first holder in `Keys` order. A row change costs O(1) unless
-it removes or edits the holder's row, which re-folds the cached ranks in O(N). `minBy` and `maxBy` raise
-`KeyNotFoundException` while no value has settled.
+equal rank; when the holder is removed, the result is the first holder in `Keys` order. Row rank edits, removals and
+tail appends update a binary tournament winner tree in O(log N) comparisons
+([`tournament_winner_optimal_and_first`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#tournament_winner_optimal_and_first),
+[`tournament_point_update_refines_eval`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#tournament_point_update_refines_eval),
+[`sticky_holder_refines_extreme_scan`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Collections.html#sticky_holder_refines_extreme_scan)),
+or O(1) when a row edit keeps its rank; non-tail key insertions and upstream
+reorders rebuild in O(N) from cached ranks. `minBy` and `maxBy` raise `KeyNotFoundException` while no value has
+settled.
 *)
 
 let lowest = scoreRows |> Projection.tryMinBy id

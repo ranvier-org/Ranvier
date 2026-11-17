@@ -168,21 +168,23 @@ trace log on the graph thread and answers in compact text:
 
 | Tool | Arguments | Answer |
 |---|---|---|
-| `explain` | `node`; `messages`, as in `dispatch` | the dispatched steps, then why the node holds its value, in at most a few lines |
-| `graph` | none | node counts by kind, the exposed nodes, and the nodes the last message moved; at most 2,000 characters |
-| `node` | `node`; `around` (0 to 2 hops, default 1); `detail` (`brief` or `full`); `limit` (default 25); `cursor` | the node and its sources and observers within `around` hops, one line each; at most 4,000 characters a page |
+| `explain` | `node`; `messages`, as in `dispatch` | the dispatched steps, then why the node holds its value, with its creation line |
+| `graph` | none | live node counts by kind, the exposed nodes (one-line summaries, no source lines), and the nodes the last message moved; at most 2,000 characters |
+| `node` | `node`; `around` (0 to 2 hops, default 1); `detail` (`brief` or `full`); `limit` (1 to 100, default 25); `cursor` | the focal node (status, runs, observers and creation line) and its sources/observers within `around` hops (`brief`: one-line summaries; `full`: status, runs, observers and creation line on each); at most 4,000 characters a page |
 
-A node reads as `name#id`: the name registered with `Expose.node`, a `Trace.label`, or the `let` binding at the node's
-creation site. Each line gives the node's kind, its creation site as `file:line`, its value and its sources, for
-example `total#5 Memo Cart.fs:155 = 1200 reads [subtotal#4]`. When the source root holds exactly one file of the site's
-name, the answer adds the line's text. `node` takes an exposed name, a node name, `#id` or an identity path; a miss is a
-tool error that lists the exposed nodes.
+A node reads as `name#id`: the name registered with `Expose.node`, a `Trace.label`, or the `let` (or `and`)
+binding at the node's creation site. Each summary line gives the node's kind, its creation site as
+`file:line`, its value and its sources, for example `total#5 Memo Cart.fs:155 = 1200 reads [subtotal#4]`.
+When the source root holds exactly one file of the site's name, `explain` and `node` (for the focal
+node, and for neighbours when `detail` is `full`) add the line's text. `node` takes an exposed name,
+a node name, `#id` or an identity path; a miss is a tool error that lists the exposed nodes.
 
 `explain` answers, for one node:
 
-- its creation line, its value and the sources it reads;
+- its summary and creation line, its value and the sources it reads;
 - the cause chain of its last run, from the dispatched message through each write and move;
 - why it has not re-run since: checked clean against named sources, propagation stopped upstream, unobserved, or queued;
+- `stale:` direct sources that moved after its last run when the node has not re-run since;
 - `unread:` nodes related to it that changed after its last run and that it does not read, such as a value read with
   `Peek`;
 - `cutoff:` upstream nodes that re-ran after a source moved and kept their value, with the value kept, such as a memo
@@ -249,4 +251,4 @@ An agent reaches the tools through its shell, described in the project's `CLAUDE
 server configured. The tool search before the first call goes, and a check after a fix runs in the same command as the
 build: `dotnet build ... && dotnet fsi --quiet tools/mcp-call.fsx ... dispatch '...'`. On the nine-file store task
 this took half the requests of the baseline without tools, and 0.60× its tokens; see
-[Research on agents and the MCP tools](mcp-research.md).
+[Research on agents and the MCP tools](https://github.com/ranvier-org/Ranvier/blob/master/docs/research/2026-10-26-mcp-agent-experiments.md).

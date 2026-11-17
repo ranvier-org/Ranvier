@@ -110,6 +110,47 @@ test('the committed group map is valid', () => {
   }
 });
 
+test('exports accepted regressions with joined reasons and restricts them by group prefix', () => fixture((root, runs) => {
+  const sha = '9'.repeat(40);
+  const row = scenario => ({ Leg: 'arm64-counters', Side: 'head', Runtime: 'dotnet', Scenario: scenario, Engine: 'Ranvier', Metric: 'instructions', Value: 100 });
+  fs.writeFileSync(path.join(runs, `${sha}.json`), JSON.stringify({
+    Commit: sha,
+    Date: '2026-10-18T10:00:00Z',
+    Subject: 'accepted regression commit',
+    Medians: [row('chain'), row('cutoff')],
+    AcceptedRegressions: [
+      {
+        Leg: 'arm64-counters',
+        Runtime: 'dotnet',
+        Scenario: 'chain',
+        Engine: 'Ranvier',
+        Metric: 'instructions',
+        Reasons: [{ Reason: 'cycle check' }, { Reason: 'guard added' }],
+      },
+      {
+        Leg: 'arm64-counters',
+        Runtime: 'dotnet',
+        Scenario: 'cutoff',
+        Engine: 'Ranvier',
+        Metric: 'instructions',
+        Reasons: [{ Reason: 'cutoff allocation' }],
+      },
+    ],
+  }));
+  const output = path.join(root, 'out', 'index.json');
+
+  buildIndex(runs, output, { signals: ['chain'] });
+
+  const read = name => JSON.parse(fs.readFileSync(path.join(root, 'out', name), 'utf8')).commits;
+  assert.deepEqual(read('index.json')[0].Accepted, [
+    { Leg: 'arm64-counters', Runtime: 'dotnet', Scenario: 'chain', Engine: 'Ranvier', Metric: 'instructions', Reason: 'cycle check; guard added' },
+    { Leg: 'arm64-counters', Runtime: 'dotnet', Scenario: 'cutoff', Engine: 'Ranvier', Metric: 'instructions', Reason: 'cutoff allocation' },
+  ]);
+  assert.deepEqual(read('signals.json')[0].Accepted, [
+    { Leg: 'arm64-counters', Runtime: 'dotnet', Scenario: 'chain', Engine: 'Ranvier', Metric: 'instructions', Reason: 'cycle check; guard added' },
+  ]);
+}));
+
 test('fails when the history contains no records', () => fixture((_root, runs) => {
   assert.throws(() => buildIndex(runs, path.join(runs, 'index.json')), /No performance records found/);
 }));

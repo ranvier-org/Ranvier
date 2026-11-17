@@ -6,7 +6,7 @@ open Nacara.Core
 open Nacara.Plugins
 open Partas.Nacara.Theme
 
-let versions = [ SiteVersion.root "1.0" ]
+let versions = [ SiteVersion.root "0.2" ]
 
 /// <summary>The public API of the assemblies built beside the site.</summary>
 let apiOptions =
@@ -19,8 +19,15 @@ let apiOptions =
         Title = "API reference"
         Sources =
             [
-                for name in [ "Ranvier"; "Ranvier.CSharp"; "Ranvier.Elmish"; "Ranvier.Query" ] ->
-                    FSharpApiSource.create (Path.Combine (beside, $"%s{name}.dll"))
+                for name in
+                    [
+                        "Ranvier"
+                        "Ranvier.CSharp"
+                        "Ranvier.Elmish"
+                        "Ranvier.Query"
+                        "Ranvier.Wire"
+                        "Ranvier.Dom"
+                    ] -> FSharpApiSource.create (Path.Combine (beside, $"%s{name}.dll"))
             ]
     }
 
@@ -101,7 +108,6 @@ let theme =
                             "Async and pending"
                             [
                                 Menu.page "guide/async-and-pending.md"
-                                Menu.page "guide/pending.md"
                                 Menu.page "guide/async-sources.md"
                                 Menu.page "guide/async-memos.md"
                                 Menu.page "guide/streams.md"
@@ -127,7 +133,7 @@ let theme =
                     [
                         Menu.section "Ranvier.Query" [ Menu.page "guide/queries.md"; Menu.page "guide/query-navigation.md" ]
                         Menu.section "Ranvier.Elmish" [ Menu.page "guide/elmish.md" ]
-                        Menu.section "Ranvier.Mcp" [ Menu.page "guide/mcp.md"; Menu.page "guide/mcp-research.md" ]
+                        Menu.section "Ranvier.Mcp" [ Menu.page "guide/mcp.md" ]
                     ]
                 Menu.section
                     "Reference"
@@ -186,7 +192,7 @@ let theme =
         >> Theme.footer (
             Html.p
                 [
-                    Html.text "Ranvier · Preview · "
+                    Html.text "Ranvier · Pre-1.0 · "
                     Html.a [ prop.href "https://github.com/ranvier-org/Ranvier"; prop.text "GitHub" ]
                     Html.text " · Built with Nacara"
                 ]

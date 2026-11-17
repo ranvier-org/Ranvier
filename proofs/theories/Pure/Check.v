@@ -2392,3 +2392,85 @@ Proof.
   destruct (read_node f n _) as [[s1 r]|] eqn:E; [|done]. simplify_eq.
   eapply read_node_disposed in E as [Hn Ho]; [|done|done|done]. split; [done|done].
 Qed.
+
+(** [EdgeHandle.SignalBit], [EdgeHandle.IndexMask], and tagged handle operations (`Core.fs`). *)
+Definition signal_bit : Z := 1073741824%Z.
+Definition index_mask : Z := 1073741823%Z.
+Definition tag_signal_handle (h : Z) : Z := Z.lor h signal_bit.
+Definition untag_signal_handle (th : Z) : Z := Z.land th index_mask.
+Definition is_signal_handle (th : Z) : bool := bool_decide (signal_bit <= th)%Z.
+
+(**md
+**Tagging an observer-set handle (`0 <= h < 2^30`) with `EdgeHandle.SignalBit` produces a non-negative tagged handle distinct from all untagged handles and `EdgeHandle.Unlinked`, and unified `RemoveAt` masking recovers both the raw index (`&&& IndexMask`) and the tag bit (`&&& SignalBit`).**
+
+Matches `EdgeHandle.SignalBit`, `EdgeHandle.IndexMask`, `EdgeHandle.isSignal`, `Signal.AddObserver`,
+`Signal.TryAddObserver`, and `ObserverSet.RemoveAt` (`Core.fs`): setting bit 30 distinguishes
+signal handles (`>= 2^30`) from untagged memo/computed handles (`0 <= h < 2^30`) and sentinels (`< 0`),
+while `&&& IndexMask` extracts `h` for both tagged and untagged handles and `&&& SignalBit` preserves
+`SignalBit` on swap-removed signal edges and `0` on untagged edges.
+
+- [h:] a non-negative observer-set index strictly below `signal_bit` (`2^30`).
+*)
+Theorem signal_bit_handle_encoding (h : Z) :
+  (0 <= h < signal_bit)%Z ->
+  (0 <= tag_signal_handle h)%Z /\
+  is_signal_handle (tag_signal_handle h) = true /\
+  untag_signal_handle (tag_signal_handle h) = h /\
+  untag_signal_handle h = h /\
+  Z.land (tag_signal_handle h) signal_bit = signal_bit /\
+  Z.land h signal_bit = 0%Z /\
+  is_signal_handle h = false /\
+  is_signal_handle (-1)%Z = false.
+Proof.
+  intros [Hh0 Hhlt].
+  assert (Hsb : signal_bit = (2 ^ 30)%Z) by reflexivity.
+  assert (Him : index_mask = Z.ones 30) by reflexivity.
+  assert (Hmod : (h mod 2 ^ 30 = h)%Z) by (apply Z.mod_small; lia).
+  assert (Hdisj : Z.land h (2 ^ 30) = 0%Z).
+  { apply Z.bits_inj. intro k. rewrite Z.land_spec, Z.bits_0.
+    destruct (decide (k < 0)%Z) as [Hk|Hk].
+    - by rewrite Z.testbit_neg_r by lia.
+    - destruct (decide (k = 30)%Z) as [->|Hne].
+      + rewrite <- Hmod. rewrite Z.mod_pow2_bits_high by lia. reflexivity.
+      + rewrite Z.pow2_bits_false by (try lia; exact Hne). apply andb_false_r. }
+  assert (Hsum : tag_signal_handle h = (h + signal_bit)%Z).
+  { unfold tag_signal_handle. rewrite Hsb. symmetry.
+    rewrite Z.add_nocarry_lxor by exact Hdisj.
+    apply Z.lxor_lor. exact Hdisj. }
+  split_and!.
+  - rewrite Hsum. lia.
+  - unfold is_signal_handle. rewrite Hsum. apply bool_decide_eq_true_2. lia.
+  - unfold untag_signal_handle, tag_signal_handle.
+    rewrite Him, Hsb, Z.land_lor_distr_l.
+    rewrite Z.land_ones by lia. rewrite Hmod.
+    assert (Hsb_mask : Z.land (2 ^ 30) (Z.ones 30) = 0%Z).
+    { rewrite Z.land_ones by lia. apply Z.mod_same. lia. }
+    rewrite Hsb_mask. apply Z.lor_0_r.
+  - unfold untag_signal_handle. rewrite Him, Z.land_ones by lia. exact Hmod.
+  - unfold tag_signal_handle. rewrite Hsb, Z.land_lor_distr_l, Hdisj, Z.land_diag, Z.lor_0_l. reflexivity.
+  - rewrite Hsb. exact Hdisj.
+  - unfold is_signal_handle. apply bool_decide_eq_false_2. lia.
+  - unfold is_signal_handle. apply bool_decide_eq_false_2. unfold signal_bit. lia.
+Qed.
+
+(**md
+**Skipping `SignalBit`-tagged sources in `ResolveCheck` (`RefreshSourceAt`) and `HasStaleSource` preserves exact engine behavior because updating a signal is a no-op and a signal is never stale or live-stale.**
+
+Matches `SourceList.RefreshSourceAt` and `SourceList.HasStaleSource` (`Core.fs`): since
+`Signal.UpdateIfNecessary` returns immediately without reading or writing state and `Signal.IsStale`
+is always `false`, skipping any slot whose handle carries `EdgeHandle.SignalBit` produces the identical
+state transition as calling `UpdateIfNecessary` and `IsStale` on that slot.
+
+- [fuel:] the evaluation fuel, stepping `update_if_necessary (S fuel)`.
+- [src:] a node whose kind in `s` is `KSignal`.
+- [s:] the engine state before the check step.
+*)
+Theorem resolve_step_skip_signal_eq (fuel : nat) (src : node_id) (s : state) :
+  (has_kind src KSignal s -> update_if_necessary (S fuel) src s = Some (s, tt)) /\
+  (forall v, stale_live (signal_node v) = false).
+Proof.
+  split.
+  - intros [d [Hd Hk]]. cbn [update_if_necessary].
+    unfold get_node, m_bind, m_return. rewrite Hd, Hk. reflexivity.
+  - intros v. reflexivity.
+Qed.

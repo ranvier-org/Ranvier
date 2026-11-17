@@ -3,10 +3,6 @@ title: Migrating from Elmish
 order: 12
 ---
 
-:::info
-Preview — Ranvier is pre-release; its APIs may change.
-:::
-
 Keep your Elmish `init` and `update`, and move views to Ranvier one at a time.
 
 `Mvu` holds the model in a signal. Each view reads the parts it needs through selectors: memos

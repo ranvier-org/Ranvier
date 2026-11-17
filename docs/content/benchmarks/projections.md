@@ -3,20 +3,14 @@ title: Projections
 order: 6
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
-
 ## CI instruction counts
-**Library comparison** shows the latest recorded engine measurements; **Trends** follows scenarios
-across commits. Choose a runtime, metric or commit, filter scenarios, and toggle libraries in the
-legend. The site remembers your tab; runtime and metric selections carry between tabs.
-See [chart controls and uncertainty](counters.md#interactive-chart-controls) for bands, relative values
-and library-counter markers.
+Recorded engine comparisons and commit trends ([chart controls and uncertainty](counters.md#interactive-chart-controls)):
 
 <div data-perf-tabs data-perf-data="projections"><p role="status">Loading recorded measurements…</p></div>
 <link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
 <script src="/Ranvier/benchmarks/perf-charts.js"></script>
 
-Projections keep keyed, per-row reactive state over a collection source. Selectors (`Lookup`) track, per key, whether that key matches a source value. See [Benchmarks](index.md) for configuration, environment and caveats.
+Projections keep keyed, per-row reactive state over a collection source. Lookups and selectors (`createLookup`, `createSelector`) track values or membership per key. See [Benchmarks](index.md) for configuration, environment and caveats.
 
 ## Keyed-pass follow-ups
 
@@ -56,7 +50,7 @@ Recorded 2026-09-28. Source: `Ranvier.Benchmarks.Projections.ProjectionBenchmark
 
 ## Key churn and key readers
 
-A key reader (`Projection.NewKeyReader`) reports the keys added, removed and moved since its previous read. These cases measure a write that removes one key and adds another, and what a reader adds to it.
+A key reader (`Projection.NewKeyReader`) reports the keys added, removed and replaced since its previous read (`Projection.NewValueReader` adds settled row-value changes). These cases measure a write that removes one key and adds another, and what a reader adds to it.
 
 `ProjectionBenchmarks.ChurnOneKey` runs on the fixture above's `Items`: one effect observes each row except the last, and one observes `Keys`.
 
