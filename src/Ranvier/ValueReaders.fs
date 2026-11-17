@@ -248,6 +248,13 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
             seeded <- false
             keys <- null
 
+#if !FABLE_COMPILER
+    static member val private RefreshFromKeysFn: ProjectionValues<'K, 'V> -> unit = fun self -> self.RefreshFromKeys ()
+
+    member private this.RefreshFromKeys() =
+        this.Refresh (readKeys ())
+#endif
+
     interface INode with
         member _.Id = id
         member _.Status = Status.None
@@ -265,7 +272,11 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
         member this.UpdateIfNecessary() =
             if not disposed then
                 try
+#if FABLE_COMPILER
                     graph.RunUntracked (fun () -> this.Refresh (readKeys ()))
+#else
+                    graph.RunUntrackedWith (ProjectionValues<'K, 'V>.RefreshFromKeysFn, this)
+#endif
                 with _ ->
                     observers.NotifyDirty ()
 

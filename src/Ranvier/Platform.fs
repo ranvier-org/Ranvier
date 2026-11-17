@@ -171,6 +171,20 @@ module internal Platform =
             FlightOutcome.Faulted (t.Exception.GetBaseException ())
         else
             FlightOutcome.Completed ()
+
+    let private invokeUnitSettled =
+        Action<Task, obj>(fun t s -> (s :?> (FlightOutcome<unit> -> unit)) (settledUnitOutcome t))
+
+    let private invokeAfter =
+        Func<Task, obj, Task>(fun _ s -> (s :?> (unit -> Task)) ())
+
+    [<Sealed>]
+    type private SettledContinuation<'T>() =
+        static member val InvokeSettled = Action<Task<'T>, obj>(fun t s -> (s :?> (FlightOutcome<'T> -> unit)) (settledOutcome t))
+
+        static member val Outcome = Func<Task<'T>, FlightOutcome<'T>>(settledOutcome)
+
+        static member val Apply = Func<Task<FlightOutcome<'T>>, obj, Task>(fun t s -> (s :?> (FlightOutcome<'T> -> Task)) t.Result)
 #endif
 
     /// <summary>
@@ -186,7 +200,7 @@ module internal Platform =
             settle (settledOutcome flight)
             completedTask
         else
-            flight.ContinueWith (Action<Task<'T>>(fun t -> settle (settledOutcome t)), TaskContinuationOptions.ExecuteSynchronously)
+            flight.ContinueWith (SettledContinuation<'T>.InvokeSettled, box settle, TaskContinuationOptions.ExecuteSynchronously)
 #endif
 
     /// <summary>
@@ -201,7 +215,7 @@ module internal Platform =
         if work.IsCompleted then
             settle (settledUnitOutcome work)
         else
-            work.ContinueWith (Action<Task>(fun t -> settle (settledUnitOutcome t)), TaskContinuationOptions.ExecuteSynchronously)
+            work.ContinueWith (invokeUnitSettled, box settle, TaskContinuationOptions.ExecuteSynchronously)
             |> ignore
 #endif
 
@@ -217,7 +231,7 @@ module internal Platform =
         if flight.IsCompleted then
             Task.FromResult (settledOutcome flight)
         else
-            flight.ContinueWith (Func<Task<'T>, FlightOutcome<'T>>(settledOutcome), TaskContinuationOptions.ExecuteSynchronously)
+            flight.ContinueWith (SettledContinuation<'T>.Outcome, TaskContinuationOptions.ExecuteSynchronously)
 #endif
 
     /// <summary>
@@ -228,7 +242,7 @@ module internal Platform =
 #if FABLE_COMPILER
         thenValue outcome settle
 #else
-        outcome.ContinueWith(Func<Task<FlightOutcome<'T>>, Task>(fun t -> settle t.Result), TaskContinuationOptions.ExecuteSynchronously).Unwrap()
+        outcome.ContinueWith(SettledContinuation<'T>.Apply, box settle, TaskContinuationOptions.ExecuteSynchronously).Unwrap()
 #endif
 
     /// <summary>
@@ -239,7 +253,7 @@ module internal Platform =
 #if FABLE_COMPILER
         thenEither tail next
 #else
-        tail.ContinueWith(Func<Task, Task>(fun _ -> next ()), TaskContinuationOptions.ExecuteSynchronously).Unwrap()
+        tail.ContinueWith(invokeAfter, box next, TaskContinuationOptions.ExecuteSynchronously).Unwrap()
 #endif
 
 #if FABLE_COMPILER

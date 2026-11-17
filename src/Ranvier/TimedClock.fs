@@ -27,16 +27,30 @@ type TimedClock() =
     /// <remarks>Callback exceptions follow the host's dispatcher and timer exception handling.</remarks>
     abstract CreateTimer: Action -> TimedTimer
 
-type private DeadlineTimer(now: unit -> float, create: Action -> (float -> unit) * (unit -> unit) * (unit -> unit), callback: Action) as this =
+module private DeadlineTimerHelpers =
+    let inline nativeDue (remaining: float) =
+        min 2147483647. (Math.Ceiling remaining)
+
+type private DeadlineTimer private (now: unit -> float, callback: Action) =
     inherit TimedTimer()
     let gate = obj ()
     let mutable active = false
     let mutable disposed = false
     let mutable deadline = 0.
-    let arm, disarm, dispose = create (Action this.Fire)
+    let mutable arm = Unchecked.defaultof<float -> unit>
+    let mutable disarm = Unchecked.defaultof<unit -> unit>
+    let mutable dispose = Unchecked.defaultof<unit -> unit>
 
-    let nativeDue (remaining: float) =
-        min 2147483647. (Math.Ceiling remaining)
+    member private this.Init(create: Action -> (float -> unit) * (unit -> unit) * (unit -> unit)) =
+        let a, d, disp = create (Action this.Fire)
+        arm <- a
+        disarm <- d
+        dispose <- disp
+
+    static member Create(now: unit -> float, create: Action -> (float -> unit) * (unit -> unit) * (unit -> unit), callback: Action) : TimedTimer =
+        let timer = new DeadlineTimer (now, callback)
+        timer.Init create
+        timer :> TimedTimer
 
     member private _.Fire() =
         let deliver =
@@ -47,7 +61,7 @@ type private DeadlineTimer(now: unit -> float, create: Action -> (float -> unit)
                     let remaining = deadline - now ()
 
                     if remaining > 0. then
-                        arm (nativeDue remaining)
+                        arm (DeadlineTimerHelpers.nativeDue remaining)
                         false
                     else
                         active <- false
@@ -66,7 +80,7 @@ type private DeadlineTimer(now: unit -> float, create: Action -> (float -> unit)
 
             deadline <- now () + delay.TotalMilliseconds
             active <- true
-            arm (nativeDue delay.TotalMilliseconds))
+            arm (DeadlineTimerHelpers.nativeDue delay.TotalMilliseconds))
 
     override _.Disarm() =
         lock gate (fun () ->
@@ -82,40 +96,35 @@ type private DeadlineTimer(now: unit -> float, create: Action -> (float -> unit)
                 dispose ())
 
 #if !FABLE_COMPILER
-type private SystemDeadlineTimer(callback: Action) as this =
-    inherit TimedTimer()
-
-    static let timerCallback =
-        Threading.TimerCallback (fun state -> (state :?> SystemDeadlineTimer).Fire())
-
-    let mutable active = false
-    let mutable disposed = false
-    let mutable deadline = 0.
-
-    let timer =
-        new Threading.Timer (timerCallback, this, Threading.Timeout.Infinite, Threading.Timeout.Infinite)
-
-    static let nowMilliseconds () =
+module private SystemClockHelpers =
+    let inline nowMilliseconds () =
         float (Diagnostics.Stopwatch.GetTimestamp ())
         * 1000.
         / float Diagnostics.Stopwatch.Frequency
 
-    static let nativeDue (remaining: float) =
+    let inline nativeDue (remaining: float) =
         int (min 2147483647. (Math.Ceiling remaining))
 
-    static member NowMilliseconds() =
-        nowMilliseconds ()
+type private SystemDeadlineTimer internal (callback: Action) =
+    inherit TimedTimer()
+    let mutable active = false
+    let mutable disposed = false
+    let mutable deadline = 0.
+    let mutable timer: Threading.Timer = null
 
-    member private this.Fire() =
+    member internal this.Init(cb: Threading.TimerCallback) =
+        timer <- new Threading.Timer (cb, this, Threading.Timeout.Infinite, Threading.Timeout.Infinite)
+
+    member internal this.Fire() =
         let deliver =
             lock this (fun () ->
                 if disposed || not active then
                     false
                 else
-                    let remaining = deadline - nowMilliseconds ()
+                    let remaining = deadline - SystemClockHelpers.nowMilliseconds ()
 
                     if remaining > 0. then
-                        timer.Change (nativeDue remaining, Threading.Timeout.Infinite)
+                        timer.Change (SystemClockHelpers.nativeDue remaining, Threading.Timeout.Infinite)
                         |> ignore
 
                         false
@@ -134,10 +143,13 @@ type private SystemDeadlineTimer(callback: Action) as this =
             if disposed then
                 raise (ObjectDisposedException (nameof TimedTimer))
 
-            deadline <- nowMilliseconds () + delay.TotalMilliseconds
+            deadline <-
+                SystemClockHelpers.nowMilliseconds ()
+                + delay.TotalMilliseconds
+
             active <- true
 
-            timer.Change (nativeDue delay.TotalMilliseconds, Threading.Timeout.Infinite)
+            timer.Change (SystemClockHelpers.nativeDue delay.TotalMilliseconds, Threading.Timeout.Infinite)
             |> ignore)
 
     override this.Disarm() =
@@ -154,6 +166,15 @@ type private SystemDeadlineTimer(callback: Action) as this =
                 disposed <- true
                 active <- false
                 timer.Dispose ())
+
+module private SystemDeadlineTimerFactory =
+    let private timerCallback =
+        Threading.TimerCallback (fun state -> (state :?> SystemDeadlineTimer).Fire())
+
+    let create (callback: Action) : TimedTimer =
+        let timer = new SystemDeadlineTimer (callback)
+        timer.Init timerCallback
+        timer :> TimedTimer
 #endif
 
 /// <summary>System and .NET time-provider adapters for timed values.</summary>
@@ -166,7 +187,7 @@ module TimedClock =
 #if FABLE_COMPILER
                     Fable.Core.JsInterop.emitJsExpr () "performance.now()"
 #else
-                    SystemDeadlineTimer.NowMilliseconds ()
+                    SystemClockHelpers.nowMilliseconds ()
 #endif
                 member this.CreateTimer(callback) =
                     if Platform.isNull callback then
@@ -187,9 +208,9 @@ module TimedClock =
 
                         start, stop, stop
 
-                    new DeadlineTimer ((fun () -> this.NowMilliseconds), create, callback) :> TimedTimer
+                    DeadlineTimer.Create ((fun () -> this.NowMilliseconds), create, callback)
 #else
-                    new SystemDeadlineTimer (callback) :> TimedTimer
+                    SystemDeadlineTimerFactory.create callback
 #endif
             }
 
@@ -230,6 +251,6 @@ module TimedClock =
                         |> ignore),
                     timer.Dispose
 
-                new DeadlineTimer ((fun () -> this.NowMilliseconds), create, callback) :> TimedTimer
+                DeadlineTimer.Create ((fun () -> this.NowMilliseconds), create, callback)
         }
 #endif

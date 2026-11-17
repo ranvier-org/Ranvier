@@ -504,3 +504,8 @@ Print Assumptions live_row_entry_agrees_with_find.
 Print Assumptions slice_outside_changed_range_noop.
 Print Assumptions window_trim_diff_refines_visit.
 Print Assumptions fold_ordered_cache_refines_lookup_fold.
+Print Assumptions optional_comparer_sentinel_eq.
+Print Assumptions clean_ready_source_read_split_eq.
+Print Assumptions direct_post_on_graph_thread_eq.
+Print Assumptions binding_concrete_memo_refresh_and_read_eq.
+Print Assumptions editable_versioned_state_refines_voption.
