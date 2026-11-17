@@ -202,7 +202,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
     let equal = graph.Options.Equality.Comparer<'S>()
 #if !FABLE_COMPILER
@@ -476,7 +476,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -507,7 +507,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
-                        sources.SourceAt(i).UpdateIfNecessary()
+                        sources.RefreshSourceAt i
 
                         if graph.ActiveSkips <> 0 then
                             this.CheckActiveSource i
@@ -624,7 +624,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
                             let mutable i = 0
 
                             while freshness = Freshness.Check && i < sources.Count do
-                                sources.SourceAt(i).UpdateIfNecessary()
+                                sources.RefreshSourceAt i
 
                                 if graph.ActiveSkips <> 0 then
                                     this.CheckActiveSource i

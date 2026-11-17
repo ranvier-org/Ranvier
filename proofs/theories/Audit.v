@@ -484,3 +484,9 @@ Print Assumptions default_comparer_null_sentinel_eq.
 Print Assumptions fast_write_token_iff.
 Print Assumptions Ranvier.Heap.Concurrency.default_comparer_null_sentinel_spec.
 Print Assumptions Ranvier.Heap.Concurrency.fast_write_token_spec.
+Print Assumptions sources_add_unrolled_eq.
+Print Assumptions signal_bit_handle_encoding.
+Print Assumptions resolve_step_skip_signal_eq.
+Print Assumptions walk_marks_hoist_slot0_eq.
+Print Assumptions fused_hosted_run_eq.
+Print Assumptions request_flush_from_entered_eq.

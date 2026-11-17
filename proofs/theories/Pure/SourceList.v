@@ -1235,3 +1235,44 @@ Fixpoint snapshot_trim (self : node_id) (l : list (node_id * option nat)) (w : E
 Example snapshot_trim_fails :
   (fun _ => ()) <$> snapshot_trim 100 (source_slots (sources_of aba_world 100)) aba_world = None.
 Proof. vm_compute. reflexivity. Qed.
+
+(** [SourceList.Add] with the [cur = 0] fast check unrolled ahead of the [0 < cur] branch. *)
+Definition sources_add_unrolled (self s : node_id) (w : EdgeWorld) : option EdgeWorld :=
+  let l := sources_of w self in
+  let cur := source_cursor l in
+  if decide (cur = 0) then
+    if decide (fst <$> source_slots l !! 0 = Some s) then
+      Some (set_sources self {| source_slots := source_slots l; source_cursor := 1 |} w)
+    else
+      sources_end_run self w ≫= fun w1 => Some (sources_link self s w1)
+  else if decide (fst <$> source_slots l !! cur = Some s) then
+    Some (set_sources self {| source_slots := source_slots l; source_cursor := S cur |} w)
+  else if decide (fst <$> source_slots l !! pred cur = Some s) then
+    Some w
+  else
+    sources_end_run self w ≫= fun w1 => Some (sources_link self s w1).
+
+(**md
+**Unrolling `cur = 0` in `SourceList.Add` refines `sources_add` with identical edge-world transitions.**
+
+Matches `SourceList.Add` (`Core.fs`): when `cursor = 0`, the repeat-read guard `0 < cursor` is statically
+false and `cursor + 1` is `1`, so checking slot `0` directly and skipping the repeat branch yields the exact
+same edge-world update as `sources_add`.
+
+- [self:] the computation recording the tracked read.
+- [s:] the source read.
+- [w:] the edge world before `Add`.
+*)
+Theorem sources_add_unrolled_eq (self s : node_id) (w : EdgeWorld) :
+  sources_add_unrolled self s w = sources_add self s w.
+Proof.
+  unfold sources_add_unrolled, sources_add.
+  destruct (decide (source_cursor (sources_of w self) = 0)) as [Hz|Hnz].
+  - rewrite Hz.
+    destruct (decide (fst <$> source_slots (sources_of w self) !! 0 = Some s)) as [Hm|Hm]; [done|].
+    rewrite decide_False by lia. reflexivity.
+  - destruct (decide (fst <$> source_slots (sources_of w self) !! source_cursor (sources_of w self) = Some s)); [done|].
+    destruct (decide (fst <$> source_slots (sources_of w self) !! pred (source_cursor (sources_of w self)) = Some s)) as [Hp|Hp].
+    + rewrite decide_True; [done | split; [lia | exact Hp]].
+    + rewrite decide_False; [done | intros [_ Hbad]; contradiction].
+Qed.
