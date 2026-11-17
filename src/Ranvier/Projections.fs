@@ -368,7 +368,7 @@ module internal ProjectionFailures =
 type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let id = graph.NextId ()
     do Tracer.Reserve (graph, id)
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
 
     /// <summary>
@@ -1195,7 +1195,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -1221,7 +1221,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         let mutable i = 0
 
         while freshness = Freshness.Check && i < sources.Count do
-            sources.SourceAt(i).UpdateIfNecessary()
+            sources.RefreshSourceAt i
 
             if graph.ActiveSkips <> 0 then
                 this.CheckActiveSource i
@@ -1266,7 +1266,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             let mutable i = 0
 
             while not invalidated && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSourceFailed i
@@ -1296,7 +1296,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         let mutable i = 0
 
         while not invalidated && i < sources.Count do
-            sources.SourceAt(i).UpdateIfNecessary()
+            sources.RefreshSourceAt i
 
             if graph.ActiveSkips <> 0 then
                 this.CheckActiveSourceFailed i

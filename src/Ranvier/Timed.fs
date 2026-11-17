@@ -34,7 +34,7 @@ type internal TimedMode =
 [<Sealed>]
 type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: TimeSpan, mode: TimedMode, read: unit -> 'T) =
     let id = graph.NextId ()
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     let observers = ObserverSet ()
     do Tracer.Bind (sources, graph, id)
     do Tracer.Bind (observers, graph, id)
@@ -336,7 +336,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -359,7 +359,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
-                        sources.SourceAt(i).UpdateIfNecessary()
+                        sources.RefreshSourceAt i
 
                         if graph.ActiveSkips <> 0 then
                             this.CheckActiveSource i

@@ -155,6 +155,18 @@ module internal EdgeHandle =
     [<Literal>]
     let ScanLimit = 8
 
+    /// <summary>Bit 30 marks an edge handle returned by a <c>Signal</c> so <c>ResolveCheck</c> skips <c>UpdateIfNecessary</c>.</summary>
+    [<Literal>]
+    let SignalBit = 0x40000000
+
+    /// <summary>Masks off <c>SignalBit</c> to recover the observer-set slot index.</summary>
+    [<Literal>]
+    let IndexMask = 0x3FFFFFFF
+
+    /// <summary>True when <c>handle</c> names an edge owned by a <c>Signal</c>.</summary>
+    let inline isSignal (handle: int) =
+        handle >= SignalBit
+
 /// <summary>
 /// Single-bitmask predicates over <see cref="Status"/> so hot reads inspect the status byte without calling <c>Enum.HasFlag</c>.
 /// </summary>
@@ -169,7 +181,10 @@ module internal StatusBits =
     let inline isError (status: Status) =
         (status &&& Status.Error) <> Status.None
 
-#if !FABLE_COMPILER
+#if FABLE_COMPILER
+    let inline isCleanAndReady (freshness: Freshness) (status: Status) =
+        ((int freshness) ||| (int status &&& 3)) = 0
+#else
     let inline isCleanAndReady (freshness: Freshness) (status: Status) =
         ((byte freshness) ||| (byte status &&& 3uy)) = 0uy
 #endif
@@ -205,7 +220,12 @@ module internal ObserverSlots =
     /// <summary>
     /// The zero-length list an observer set holds until its first observer.
     /// </summary>
+#if FABLE_COMPILER
     let none: ObserverSlot[] = [||]
+#else
+    let inline none () =
+        Array.Empty<ObserverSlot>()
+#endif
 
 #if FABLE_COMPILER
     /// <summary>
@@ -237,7 +257,7 @@ type internal ObserverSet() =
     /// </summary>
     let mutable restSlots: int[] = ObserverSlots.noSlots
 #else
-    let mutable rest: ObserverSlot[] = ObserverSlots.none
+    let mutable rest: ObserverSlot[] = ObserverSlots.none ()
 #endif
     let mutable count = 0
 
@@ -358,88 +378,98 @@ type internal ObserverSet() =
     /// <c>EdgeHandle.Unlinked</c> does nothing. A handle holding another observer raises
     /// <c>InvalidOperationException</c>, in every build.
     /// </remarks>
-    member this.RemoveAt(c: IComputation, handle: int) =
-        if handle >= 0 then
-            if
-                handle >= count
-                || not (
-                    if handle = 0 then
-                        obj.ReferenceEquals (first, c)
-                    else
-                        obj.ReferenceEquals ((Platform.itemAt (handle - 1) rest).Observer, c)
+    member private this.RemoveAtCore(c: IComputation, handle: int, tagMask: int) =
+        if
+            handle >= count
+            || not (
+                if handle = 0 then
+                    obj.ReferenceEquals (first, c)
+                else
+                    obj.ReferenceEquals ((Platform.itemAt (handle - 1) rest).Observer, c)
+            )
+        then
+            raise (
+                InvalidOperationException (
+                    "Edge handle "
+                    + string handle
+                    + " of "
+                    + string count
+                    + " does not hold the observer removed."
                 )
-            then
-                raise (
-                    InvalidOperationException (
-                        "Edge handle "
-                        + string handle
-                        + " of "
-                        + string count
-                        + " does not hold the observer removed."
-                    )
-                )
+            )
 
 #if RANVIER_COUNTERS
-            Counters.ObserverRemoved ()
+        Counters.ObserverRemoved ()
 #endif
-            Tracer.ObserverRemove (this, c)
-            let last = count - 1
+        Tracer.ObserverRemove (this, c)
+        let last = count - 1
 
-            if handle = 0 then
-                if last = 0 then
-                    // Blanked so a dropped observer is not kept alive after removal.
-                    first <- Unchecked.defaultof<IComputation>
-                    firstSlot <- EdgeHandle.Unlinked
-                    count <- 0
-                else
-                    let lastRest = last - 1
-                    let moved = (Platform.itemAt lastRest rest).Observer
-#if FABLE_COMPILER
-                    let movedSlot = Platform.itemAt lastRest restSlots
-                    Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
-                    Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
-#else
-                    let movedSlot = (Platform.itemAt lastRest rest).Slot
-                    rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
-#endif
-                    first <- moved
-                    firstSlot <- movedSlot
-                    count <- last
-
-                    if latest = last then
-                        latest <- 0
-
-                    moved.MovedIn (movedSlot, 0)
-            elif handle = last then
-                let lastRest = last - 1
-#if FABLE_COMPILER
-                Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
-                Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
-#else
-                rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
-#endif
-                count <- last
+        if handle = 0 then
+            if last = 0 then
+                // Blanked so a dropped observer is not kept alive after removal.
+                first <- Unchecked.defaultof<IComputation>
+                firstSlot <- EdgeHandle.Unlinked
+                count <- 0
             else
-                let handleRest = handle - 1
                 let lastRest = last - 1
                 let moved = (Platform.itemAt lastRest rest).Observer
 #if FABLE_COMPILER
                 let movedSlot = Platform.itemAt lastRest restSlots
-                Platform.setItemAt handleRest rest (ObserverSlot moved)
-                Platform.setItemAt handleRest restSlots movedSlot
                 Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
                 Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
 #else
                 let movedSlot = (Platform.itemAt lastRest rest).Slot
-                rest[handleRest] <- ObserverSlot (moved, movedSlot)
                 rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
 #endif
+                first <- moved
+                firstSlot <- movedSlot
                 count <- last
 
                 if latest = last then
-                    latest <- handle
+                    latest <- 0
 
-                moved.MovedIn (movedSlot, handle)
+                moved.MovedIn (movedSlot, tagMask)
+        elif handle = last then
+            let lastRest = last - 1
+#if FABLE_COMPILER
+            Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+            Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
+#else
+            rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
+            count <- last
+        else
+            let handleRest = handle - 1
+            let lastRest = last - 1
+            let moved = (Platform.itemAt lastRest rest).Observer
+#if FABLE_COMPILER
+            let movedSlot = Platform.itemAt lastRest restSlots
+            Platform.setItemAt handleRest rest (ObserverSlot moved)
+            Platform.setItemAt handleRest restSlots movedSlot
+            Platform.setItemAt lastRest rest (ObserverSlot Unchecked.defaultof<IComputation>)
+            Platform.setItemAt lastRest restSlots EdgeHandle.Unlinked
+#else
+            let movedSlot = (Platform.itemAt lastRest rest).Slot
+            rest[handleRest] <- ObserverSlot (moved, movedSlot)
+            rest[lastRest] <- ObserverSlot (Unchecked.defaultof<IComputation>, EdgeHandle.Unlinked)
+#endif
+            count <- last
+
+            if latest = last then
+                latest <- handle
+
+            moved.MovedIn (movedSlot, handle ||| tagMask)
+
+    member this.RemoveAt(c: IComputation, handle: int) =
+        if handle >= 0 then
+            this.RemoveAtCore (c, handle, 0)
+
+    /// <summary>
+    /// <c>RemoveAt</c> for <c>Signal</c> handles carrying <c>EdgeHandle.SignalBit</c>, preserving the tag on moved edges.
+    /// </summary>
+    member this.RemoveAtSignal(c: IComputation, taggedHandle: int) =
+        if taggedHandle >= 0 then
+            this.RemoveAtCore (c, taggedHandle &&& EdgeHandle.IndexMask, EdgeHandle.SignalBit)
 
     /// <summary>
     /// Marks every current observer dirty. Observers added during the loop
@@ -462,7 +492,7 @@ type internal ObserverSet() =
         elif count > 1 then
             let mutable i = count - 1
 
-            while i >= 0 do
+            while i > 0 do
                 if i >= count then
                     i <- count - 1
 
@@ -471,11 +501,11 @@ type internal ObserverSet() =
                     Tracer.Mark (this, observer, true)
                     observer.MarkDirty ()
                     i <- i - 1
-                elif i = 0 then
-                    let observer = first
-                    Tracer.Mark (this, observer, true)
-                    observer.MarkDirty ()
-                    i <- -1
+
+            if count > 0 then
+                let observer = first
+                Tracer.Mark (this, observer, true)
+                observer.MarkDirty ()
 
     /// <summary>
     /// <c>NotifyDirty</c>, skipping <c>running</c> when its current run has not yet read its edge to this source.
@@ -505,7 +535,7 @@ type internal ObserverSet() =
         elif count > 1 then
             let mutable i = count - 1
 
-            while i >= 0 do
+            while i > 0 do
                 if i >= count then
                     i <- count - 1
 
@@ -533,19 +563,18 @@ type internal ObserverSet() =
                         Tracer.MarkSkip (this, observer)
 
                     i <- i - 1
-                elif i = 0 then
-                    let observer = first
 
-                    if
-                        not (obj.ReferenceEquals (observer, running))
-                        || running.HasReadSlot firstSlot
-                    then
-                        Tracer.Mark (this, observer, true)
-                        observer.MarkDirty ()
-                    else
-                        Tracer.MarkSkip (this, observer)
+            if count > 0 then
+                let observer = first
 
-                    i <- -1
+                if
+                    not (obj.ReferenceEquals (observer, running))
+                    || running.HasReadSlot firstSlot
+                then
+                    Tracer.Mark (this, observer, true)
+                    observer.MarkDirty ()
+                else
+                    Tracer.MarkSkip (this, observer)
 
     /// <summary>
     /// <c>NotifyDirty</c>, unconditionally skipping <c>running</c>.
@@ -562,7 +591,7 @@ type internal ObserverSet() =
         elif count > 1 then
             let mutable i = count - 1
 
-            while i >= 0 do
+            while i > 0 do
                 if i >= count then
                     i <- count - 1
 
@@ -576,16 +605,15 @@ type internal ObserverSet() =
                         Tracer.MarkSkip (this, observer)
 
                     i <- i - 1
-                elif i = 0 then
-                    let observer = first
 
-                    if not (obj.ReferenceEquals (observer, running)) then
-                        Tracer.Mark (this, observer, true)
-                        observer.MarkDirty ()
-                    else
-                        Tracer.MarkSkip (this, observer)
+            if count > 0 then
+                let observer = first
 
-                    i <- -1
+                if not (obj.ReferenceEquals (observer, running)) then
+                    Tracer.Mark (this, observer, true)
+                    observer.MarkDirty ()
+                else
+                    Tracer.MarkSkip (this, observer)
 
     /// <summary>
     /// <c>NotifyDirty</c>'s weaker sibling: tells every observer that something
@@ -600,7 +628,7 @@ type internal ObserverSet() =
         elif count > 1 then
             let mutable i = count - 1
 
-            while i >= 0 do
+            while i > 0 do
                 if i >= count then
                     i <- count - 1
 
@@ -609,11 +637,11 @@ type internal ObserverSet() =
                     Tracer.Mark (this, observer, false)
                     observer.MarkCheck ()
                     i <- i - 1
-                elif i = 0 then
-                    let observer = first
-                    Tracer.Mark (this, observer, false)
-                    observer.MarkCheck ()
-                    i <- -1
+
+            if count > 0 then
+                let observer = first
+                Tracer.Mark (this, observer, false)
+                observer.MarkCheck ()
 
 #if RANVIER_TRACE
     interface ITraced with
@@ -691,7 +719,12 @@ module internal SourceSlots =
     /// <summary>
     /// The zero-length list a source list holds until its second source.
     /// </summary>
+#if FABLE_COMPILER
     let none: SourceSlot[] = [||]
+#else
+    let inline none () =
+        Array.Empty<SourceSlot>()
+#endif
 
 #if FABLE_COMPILER
     /// <summary>
@@ -733,6 +766,239 @@ module internal SourceSlots =
 /// after alien-signals), which also handles out-of-order re-reads by generation-stamping.
 /// </para>
 /// </remarks>
+#if !FABLE_COMPILER && !RANVIER_TRACE
+[<Struct; NoEquality; NoComparison>]
+type internal SourceList =
+    /// <summary>The source at position 0.</summary>
+    val mutable private first: ISource
+    /// <summary>The handle of position 0.</summary>
+    val mutable private firstHandle: int
+    /// <summary>Sources after the first. <c>rest[i - 1]</c> is the source at position <c>i</c>.</summary>
+    val mutable private rest: SourceSlot[]
+    val mutable private count: int
+    /// <summary>How far into the list the current run has matched. Meaningless outside a run.</summary>
+    val mutable private cursor: int
+    /// <summary>Every source in the list, for repeat checks over more than <c>EdgeHandle.ScanLimit</c> slots.</summary>
+    val mutable private held: Platform.RefIndex<ISource>
+
+    private new(unlinked: int) =
+        {
+            first = Unchecked.defaultof<ISource>
+            firstHandle = unlinked
+            rest = SourceSlots.none ()
+            count = 0
+            cursor = 0
+            held = null
+        }
+
+    static member Create() =
+        SourceList EdgeHandle.Unlinked
+
+    member private this.SourceAtRaw(i: int) =
+        if i = 0 then
+            this.first
+        else
+            (Platform.itemAt (i - 1) this.rest).Source
+
+    member private this.HandleAtRaw(i: int) =
+        if i = 0 then
+            this.firstHandle
+        else
+            (Platform.itemAt (i - 1) this.rest).Handle
+
+    member private this.SetHandle(i: int, handle: int) =
+        if i = 0 then
+            this.firstHandle <- handle
+        else
+            this.rest[i - 1].Handle <- handle
+
+    member private this.Grow() =
+        let size = max 4 (this.rest.Length * 2)
+        let grown = Array.zeroCreate size
+        Array.blit this.rest 0 grown 0 this.rest.Length
+        this.rest <- grown
+
+    member private this.HeldBefore(until: int, source: ISource) =
+        let mutable i = 0
+
+        while i < until
+              && not (obj.ReferenceEquals (this.SourceAtRaw i, source)) do
+            i <- i + 1
+
+        i < until
+
+    member private this.Holds(until: int, source: ISource) =
+        if until <= EdgeHandle.ScanLimit then
+            this.HeldBefore (until, source)
+        else
+            if Platform.isNull this.held then
+                this.held <- Platform.createRefIndex (until * 2)
+
+                for i in 0 .. until - 1 do
+                    Platform.refIndexSet this.held (this.SourceAtRaw i) i
+
+            Platform.refIndexFind this.held source >= 0
+
+    member private this.TrimFrom(self: IComputation, from: int) =
+        if not (Platform.isNull this.held) then
+            this.held <- null
+
+        // Each handle is read when its slot is reached: a removal can move this list's later edges.
+        for i in from .. this.count - 1 do
+            // Blanked so a source dropped by a conditional body is not kept
+            // alive by a slot past the end of the list.
+            if i = 0 then
+                if this.firstHandle >= 0 then
+                    this.first.RemoveObserverAt (self, this.firstHandle)
+
+                this.first <- Unchecked.defaultof<ISource>
+                this.firstHandle <- EdgeHandle.Unlinked
+            else
+                let k = i - 1
+                let slot = Platform.itemAt k this.rest
+
+                if slot.Handle >= 0 then
+                    slot.Source.RemoveObserverAt (self, slot.Handle)
+
+                this.rest[k] <- SourceSlot (Unchecked.defaultof<ISource>, EdgeHandle.Unlinked)
+#if RANVIER_COUNTERS
+            Counters.EdgeRemoved ()
+#endif
+
+        this.count <- from
+
+    member this.Count = this.count
+    member this.Cursor = this.cursor
+
+    /// <summary>Whether any recorded source is currently stale.</summary>
+    member this.HasStaleSource() =
+        if this.count = 0 then
+            false
+        elif
+            this.firstHandle < EdgeHandle.SignalBit
+            && this.first.IsStale
+        then
+            true
+        else
+            let limit = this.count - 1
+            let mutable i = 0
+
+            while i < limit
+                  && (let s = Platform.itemAt i this.rest
+
+                      s.Handle >= EdgeHandle.SignalBit
+                      || not s.Source.IsStale) do
+                i <- i + 1
+
+            i < limit
+
+    member this.SourceAt(i: int) =
+        this.SourceAtRaw i
+
+    member this.HandleAt(i: int) =
+        this.HandleAtRaw i
+
+    /// <summary>Updates slot <c>i</c> if its source is not a <c>Signal</c>.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member this.RefreshSourceAt(i: int) =
+        if i = 0 then
+            if this.firstHandle < EdgeHandle.SignalBit then
+                this.first.UpdateIfNecessary ()
+        else
+            let s = Platform.itemAt (i - 1) this.rest
+
+            if s.Handle < EdgeHandle.SignalBit then
+                s.Source.UpdateIfNecessary ()
+
+    /// <summary>Stores the handle a source's swap-remove gave the edge at <c>slot</c>.</summary>
+    member this.MovedIn(slot: int, handle: int) =
+        this.SetHandle (slot, handle)
+
+    /// <summary>Opens a run without detaching existing edges so matching reads reuse them.</summary>
+    member this.BeginRun() =
+        this.cursor <- 0
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.Append(self: IComputation, source: ISource) =
+        if this.cursor < this.count then
+            this.TrimFrom (self, this.cursor)
+
+        let slot = this.count
+
+        if slot = 0 then
+            this.first <- source
+            this.count <- 1
+            this.cursor <- 1
+#if RANVIER_COUNTERS
+            Counters.EdgeAdded ()
+#endif
+            this.firstHandle <- source.AddObserver (self, 0)
+        else
+            let k = slot - 1
+
+            if k = this.rest.Length then
+                this.Grow ()
+
+            this.rest[k] <- SourceSlot (source, EdgeHandle.Unlinked)
+            this.count <- slot + 1
+            this.cursor <- this.count
+#if RANVIER_COUNTERS
+            Counters.EdgeAdded ()
+#endif
+
+            // A source already in the list keeps the one edge it has: A, B, A links A once.
+            let tried = source.TryAddObserver (self, slot)
+
+            let handle =
+                if tried <> EdgeHandle.Unknown then tried
+                elif this.Holds (slot, source) then EdgeHandle.Unlinked
+                else source.AddObserver (self, slot)
+
+            this.rest[k].Handle <- handle
+
+            if not (Platform.isNull this.held) then
+                Platform.refIndexSet this.held source slot
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member this.Add(self: IComputation, source: ISource) =
+        let cur = this.cursor
+
+        if cur = 0 then
+            if
+                this.count > 0
+                && obj.ReferenceEquals (this.first, source)
+            then
+                this.cursor <- 1
+            else
+                this.Append (self, source)
+        elif
+            cur < this.count
+            && obj.ReferenceEquals ((Platform.itemAt (cur - 1) this.rest).Source, source)
+        then
+            this.cursor <- cur + 1
+        elif
+            obj.ReferenceEquals (
+                (if cur = 1 then
+                     this.first
+                 else
+                     (Platform.itemAt (cur - 2) this.rest).Source),
+                source
+            )
+        then
+            ()
+        else
+            this.Append (self, source)
+
+    /// <summary>Closes a run, dropping whatever the body did not read this time.</summary>
+    member this.EndRun(self: IComputation) =
+        if this.cursor < this.count then
+            this.TrimFrom (self, this.cursor)
+
+    /// <summary>Drops every edge. Disposal, not re-collection.</summary>
+    member this.Clear(self: IComputation) =
+        this.TrimFrom (self, 0)
+        this.cursor <- 0
+#else
 type internal SourceList() =
     /// <summary>
     /// The source at position 0.
@@ -747,7 +1013,11 @@ type internal SourceList() =
     /// <summary>
     /// Sources after the first. <c>rest[i - 1]</c> is the source at position <c>i</c>.
     /// </summary>
+#if FABLE_COMPILER
     let mutable rest: SourceSlot[] = SourceSlots.none
+#else
+    let mutable rest: SourceSlot[] = SourceSlots.none ()
+#endif
 
 #if FABLE_COMPILER
     /// <summary>
@@ -876,10 +1146,10 @@ type internal SourceList() =
                 Platform.setItemAt k rest (SourceSlot Unchecked.defaultof<ISource>)
                 Platform.setItemAt k restHandles EdgeHandle.Unlinked
 #else
-                let handle = (Platform.itemAt k rest).Handle
+                let slot = Platform.itemAt k rest
 
-                if handle >= 0 then
-                    (Platform.itemAt k rest).Source.RemoveObserverAt(self, handle)
+                if slot.Handle >= 0 then
+                    slot.Source.RemoveObserverAt (self, slot.Handle)
 
                 rest[k] <- SourceSlot (Unchecked.defaultof<ISource>, EdgeHandle.Unlinked)
 #endif
@@ -889,6 +1159,9 @@ type internal SourceList() =
 
         count <- from
 
+    static member Create() =
+        SourceList ()
+
     member _.Count = count
     member _.Cursor = cursor
 
@@ -896,12 +1169,33 @@ type internal SourceList() =
     /// Whether any recorded source is currently stale.
     /// </summary>
     member _.HasStaleSource() =
-        let mutable i = 0
+        if count = 0 then
+            false
+        elif
+            firstHandle < EdgeHandle.SignalBit
+            && first.IsStale
+        then
+            true
+        else
+            let limit = count - 1
+            let mutable i = 0
 
-        while i < count && not (sourceAt i).IsStale do
-            i <- i + 1
+            while i < limit
+                  && (
+#if FABLE_COMPILER
+                  Platform.itemAt i restHandles
+                  >= EdgeHandle.SignalBit
+                  || not (Platform.itemAt i rest).Source.IsStale
+#else
+                      let s = Platform.itemAt i rest
 
-        i < count
+                      s.Handle >= EdgeHandle.SignalBit
+                      || not s.Source.IsStale
+#endif
+                  ) do
+                i <- i + 1
+
+            i < limit
 
     /// <summary>
     /// The source at <c>i</c>. For the <c>Check</c> walk, which has to ask each source in
@@ -916,6 +1210,26 @@ type internal SourceList() =
     /// </summary>
     member _.HandleAt(i: int) =
         handleAt i
+
+    /// <summary>Updates slot <c>i</c> if its source is not a <c>Signal</c>.</summary>
+#if FABLE_COMPILER
+    member _.RefreshSourceAt(i: int) =
+        if i = 0 then
+            if firstHandle < EdgeHandle.SignalBit then
+                first.UpdateIfNecessary ()
+        elif Platform.itemAt (i - 1) restHandles < EdgeHandle.SignalBit then
+            (Platform.itemAt (i - 1) rest).Source.UpdateIfNecessary()
+#else
+    member _.RefreshSourceAt(i: int) =
+        if i = 0 then
+            if firstHandle < EdgeHandle.SignalBit then
+                first.UpdateIfNecessary ()
+        else
+            let s = Platform.itemAt (i - 1) rest
+
+            if s.Handle < EdgeHandle.SignalBit then
+                s.Source.UpdateIfNecessary ()
+#endif
 
     /// <summary>
     /// Stores the handle a source's swap-remove gave the edge at <c>slot</c>.
@@ -986,14 +1300,24 @@ type internal SourceList() =
                 Platform.refIndexSet held source slot
 
     member this.Add(self: IComputation, source: ISource) =
-        if
+        if cursor = 0 then
+            if count > 0 && obj.ReferenceEquals (first, source) then
+                cursor <- 1
+            else
+                this.Append (self, source)
+        elif
             cursor < count
-            && obj.ReferenceEquals (sourceAt cursor, source)
+            && obj.ReferenceEquals ((Platform.itemAt (cursor - 1) rest).Source, source)
         then
             cursor <- cursor + 1
         elif
-            cursor > 0
-            && obj.ReferenceEquals (sourceAt (cursor - 1), source)
+            obj.ReferenceEquals (
+                (if cursor = 1 then
+                     first
+                 else
+                     (Platform.itemAt (cursor - 2) rest).Source),
+                source
+            )
         then
             // The same source read twice in a row — a loop over one signal, or
             // a helper that reads what the caller just read. Recording it
@@ -1035,6 +1359,16 @@ type internal SourceList() =
         member _.Owner = traceId
         member _.IsSources = true
         member _.Ids = Array.init count (fun i -> (sourceAt i).Id)
+#endif
+#endif
+
+#if !FABLE_COMPILER
+/// <summary>One registered cleanup action paired with its acquisition order inside an <see cref="Owner"/>.</summary>
+[<Struct; NoEquality; NoComparison>]
+type internal CleanupEntry =
+    val Action: unit -> unit
+    val Order: int
+    new(action: unit -> unit, order: int) = { Action = action; Order = order }
 #endif
 
 /// <summary>
@@ -1120,12 +1454,16 @@ and Owner internal (sink: Owner) =
     /// The cleanups registered after <c>firstCleanup</c>. Allocated by the second <c>OnCleanup</c>; null while a
     /// teardown runs the cleanups it detached.
     /// </summary>
+#if FABLE_COMPILER
     let mutable cleanups: ResizeArray<unit -> unit> = null
 
     /// <summary>
     /// The acquisition count of each entry in <c>cleanups</c>.
     /// </summary>
     let mutable cleanupOrder: ResizeArray<int> = null
+#else
+    let mutable cleanups: ResizeArray<CleanupEntry> = null
+#endif
 
     /// <summary>
     /// Counts cleanups and children registered since the last teardown.
@@ -1315,12 +1653,19 @@ and Owner internal (sink: Owner) =
                 firstCleanup <- f
                 firstOrder <- acquisitions
             else
+#if FABLE_COMPILER
                 if Platform.isNull cleanups then
                     cleanups <- ResizeArray<unit -> unit>()
                     cleanupOrder <- ResizeArray<int>()
 
                 cleanups.Add f
                 cleanupOrder.Add acquisitions
+#else
+                if Platform.isNull cleanups then
+                    cleanups <- ResizeArray<CleanupEntry>()
+
+                cleanups.Add (CleanupEntry (f, acquisitions))
+#endif
 
             acquisitions <- acquisitions + 1
 
@@ -1346,7 +1691,9 @@ and Owner internal (sink: Owner) =
         let first = firstCleanup
         let firstAcquired = firstOrder
         let detached = cleanups
+#if FABLE_COMPILER
         let detachedOrder = cleanupOrder
+#endif
         let mutable node = tail
         head <- null
         tail <- null
@@ -1354,7 +1701,9 @@ and Owner internal (sink: Owner) =
         acquisitions <- 0
         firstCleanup <- Unchecked.defaultof<_>
         cleanups <- null
+#if FABLE_COMPILER
         cleanupOrder <- null
+#endif
 
         // Index 0 is `first` when it is set; the rest index `detached` from `offset`.
         let offset = if Platform.isNull (box first) then 0 else 1
@@ -1372,7 +1721,12 @@ and Owner internal (sink: Owner) =
                         (if index < offset then
                              firstAcquired
                          else
-                             Platform.entryAt (index - offset) detachedOrder))
+#if FABLE_COMPILER
+                             Platform.entryAt (index - offset) detachedOrder
+#else
+                             (Platform.entryAt (index - offset) detached).Order
+#endif
+                        ))
             then
                 let prev = node.Prev
 
@@ -1387,7 +1741,11 @@ and Owner internal (sink: Owner) =
                     if index < offset then
                         first ()
                     else
+#if FABLE_COMPILER
                         (Platform.entryAt (index - offset) detached) ()
+#else
+                        (Platform.entryAt (index - offset) detached).Action()
+#endif
                 with ex ->
                     this.RecordError ex
 
@@ -1399,11 +1757,15 @@ and Owner internal (sink: Owner) =
             // removed elements whether or not there were any.
             if detached.Count > 0 then
                 detached.Clear ()
+#if FABLE_COMPILER
                 detachedOrder.Clear ()
+#endif
 
             if Platform.isNull cleanups then
                 cleanups <- detached
+#if FABLE_COMPILER
                 cleanupOrder <- detachedOrder
+#endif
 
     /// <summary>
     /// Tears the scope down and retires it. Idempotent.
@@ -1606,10 +1968,76 @@ type internal IScopeHost =
     abstract CanOwn: bool
 
 /// <summary>
-/// A <c>Graph.Activate</c> call: the graph, the activating thread, and whether the graph is ambient on other threads.
+/// Holds each thread's <c>AmbientCell</c>. Held apart from <c>Graph</c>, whose static initialisation check would
+/// otherwise guard every access.
+/// </summary>
+[<AbstractClass; Sealed>]
+type internal AmbientSlot =
+    [<ThreadStatic; DefaultValue>]
+    static val mutable private cell: AmbientCell
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    static member internal InitCell() =
+        let created = AmbientCell ()
+        AmbientSlot.cell <- created
+        created
+
+    /// <summary>
+    /// The calling thread's cell, created on first use.
+    /// </summary>
+    static member inline Cell =
+        let c = AmbientSlot.cell
+
+        if not (Platform.isNull c) then
+            c
+        else
+            AmbientSlot.InitCell ()
+
+    /// <summary>
+    /// The calling thread's cell, or null before its first use.
+    /// </summary>
+    static member inline Existing = AmbientSlot.cell
+
+/// <summary>
+/// The running graph of one thread. A guarded graph holds its owner thread's
+/// cell. Re-entering the graph already in <c>Hosting</c> writes nothing.
+/// </summary>
+and [<Sealed; AllowNullLiteral>] internal AmbientCell() =
+    /// <summary>
+    /// The graph most recently running a body, a flush or a stale read.
+    /// Ambient while that graph is still running one.
+    /// </summary>
+    [<DefaultValue>]
+    val mutable Hosting: obj
+
+/// <summary>
+/// The innermost <c>Graph.Activate</c> call. On .NET it flows with the execution context: an activation inside an
+/// async body follows that body across an <c>await</c> and is invisible to other work on the activating thread.
+/// </summary>
+module internal Activation =
+#if FABLE_COMPILER
+    let mutable private activated: obj = null
+
+    let current () = activated
+
+    let set (entry: obj) =
+        activated <- entry
+#else
+    let private activated = AsyncLocal<obj>()
+
+    let current () =
+        activated.Value
+
+    let set (entry: obj) =
+        activated.Value <- entry
+#endif
+
+/// <summary>
+/// A <c>Graph.Activate</c> call: the graph, the activating thread, whether the graph is ambient on other threads,
+/// and the handle that restores the enclosing activation when disposed.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
-type internal ActivationEntry(graph: obj, thread: int, anyThread: bool) =
+type internal ActivationEntry(graph: obj, thread: int, anyThread: bool, previous: obj, cell: AmbientCell, previousHosting: obj) =
     /// <summary>
     /// The graph, when ambient on the calling thread, otherwise null.
     /// </summary>
@@ -1619,27 +2047,12 @@ type internal ActivationEntry(graph: obj, thread: int, anyThread: bool) =
         else
             null
 
-/// <summary>
-/// The innermost <c>Graph.Activate</c> call. On .NET it flows with the execution context: an activation inside an
-/// async body follows that body across an <c>await</c> and is invisible to other work on the activating thread.
-/// </summary>
-module internal Activation =
-#if FABLE_COMPILER
-    let mutable private activated: ActivationEntry = null
+    interface IDisposable with
+        member _.Dispose() =
+            Activation.set previous
 
-    let current () = activated
-
-    let set (entry: ActivationEntry) =
-        activated <- entry
-#else
-    let private activated = AsyncLocal<ActivationEntry>()
-
-    let current () =
-        activated.Value
-
-    let set (entry: ActivationEntry) =
-        activated.Value <- entry
-#endif
+            if obj.ReferenceEquals (AmbientSlot.Existing, cell) then
+                cell.Hosting <- previousHosting
 
 /// <summary>
 /// A failed node's exception and the node it originated in. Every node the exception reaches through reads holds the
@@ -1699,41 +2112,6 @@ type internal Failure(error: exn, origin: INode, supplied: bool) =
         && not (obj.ReferenceEquals (Failure.ErrorOf next, Failure.ErrorOf previous))
 
 /// <summary>
-/// Holds each thread's <c>AmbientCell</c>. Held apart from <c>Graph</c>, whose static initialisation check would
-/// otherwise guard every access.
-/// </summary>
-[<AbstractClass; Sealed>]
-type internal AmbientSlot =
-    [<ThreadStatic; DefaultValue>]
-    static val mutable private cell: AmbientCell
-
-    /// <summary>
-    /// The calling thread's cell, created on first use.
-    /// </summary>
-    static member Cell =
-        if Platform.isNull AmbientSlot.cell then
-            AmbientSlot.cell <- AmbientCell ()
-
-        AmbientSlot.cell
-
-    /// <summary>
-    /// The calling thread's cell, or null before its first use.
-    /// </summary>
-    static member Existing = AmbientSlot.cell
-
-/// <summary>
-/// The running graph of one thread. A guarded graph holds its owner thread's
-/// cell. Re-entering the graph already in <c>Hosting</c> writes nothing.
-/// </summary>
-and [<Sealed; AllowNullLiteral>] internal AmbientCell() =
-    /// <summary>
-    /// The graph most recently running a body, a flush or a stale read.
-    /// Ambient while that graph is still running one.
-    /// </summary>
-    [<DefaultValue>]
-    val mutable Hosting: obj
-
-/// <summary>
 /// The queue item that runs a graph's queued projection passes. Carries no id, so a trace records no node for it.
 /// </summary>
 [<Sealed>]
@@ -1776,12 +2154,23 @@ type internal PendingDispatch<'T>() =
             if this.TryClose () then
                 this.SetException error
 
+[<Sealed>]
+type private OwnerThreadLock = class end
+
 [<AbstractClass; Sealed>]
 type internal OwnerThreadCounter =
-    static let mutable next = 0L
+    [<DefaultValue>]
+    static val mutable private next: int64
 
     static member Next() : int64 =
-        Interlocked.Increment &next
+        Monitor.Enter typeof<OwnerThreadLock>
+
+        try
+            let assigned = OwnerThreadCounter.next + 1L
+            OwnerThreadCounter.next <- assigned
+            assigned
+        finally
+            Monitor.Exit typeof<OwnerThreadLock>
 
 /// <summary>
 /// Per-thread 64-bit token for <see cref="Graph"/> owner-thread checks on .NET. Held in a <c>.cctor</c>-free
@@ -1801,7 +2190,10 @@ type internal OwnerThreadToken =
         if t <> 0L then
             t
         else
-            let assigned = OwnerThreadCounter.Next ()
+            let assigned =
+                (OwnerThreadCounter.Next () <<< 32)
+                ||| int64 (uint32 (Platform.currentThreadId ()))
+
             OwnerThreadToken.token <- assigned
             assigned
 #endif
@@ -2319,6 +2711,14 @@ type internal HostedFrame(previous: IComputation, previousOwner: Owner, previous
     member _.Previous = previous
     member _.PreviousOwner = previousOwner
     member _.PreviousRaised = previousRaised
+
+/// <summary>Saved tracking, owner, and untracked-host state around an untracked hosted callback run.</summary>
+[<Struct; NoEquality; NoComparison>]
+type internal UntrackedHostedFrame(previous: IComputation, previousOwner: Owner, previousHost: IScopeHost, previousInBody: bool) =
+    member _.Previous = previous
+    member _.PreviousOwner = previousOwner
+    member _.PreviousHost = previousHost
+    member _.PreviousInBody = previousInBody
 #endif
 
 /// <summary>
@@ -2446,9 +2846,9 @@ type Graph(options: GraphOptions) =
     let context = SynchronizationContext.Current
 
     /// <summary>
-    /// The id of the thread inside a <c>Serialised</c> graph, or 0 when the graph is free.
+    /// Packed <c>OwnerThreadToken</c> of the thread inside a <c>Serialised</c> graph, or <c>0L</c> when free.
     /// </summary>
-    let mutable holder = 0
+    let mutable holder = 0L
 #endif
 
 #if !FABLE_COMPILER
@@ -2633,16 +3033,13 @@ type Graph(options: GraphOptions) =
         let cell = AmbientSlot.Cell
         let activated = Activation.current ()
         let hosting = cell.Hosting
-        Activation.set (ActivationEntry (this, Platform.currentThreadId (), not guarded))
+
+        let entry =
+            new ActivationEntry (this, Platform.currentThreadId (), not guarded, activated, cell, hosting)
+
+        Activation.set entry
         cell.Hosting <- null
-
-        { new IDisposable with
-            member _.Dispose() =
-                Activation.set activated
-
-                if obj.ReferenceEquals (AmbientSlot.Existing, cell) then
-                    cell.Hosting <- hosting
-        }
+        entry :> IDisposable
 
     /// <summary>
     /// The calling context's ambient graph, or null.
@@ -2653,12 +3050,9 @@ type Graph(options: GraphOptions) =
         match (if Platform.isNull cell then null else cell.Hosting) with
         | :? Graph as g when g.Running -> g
         | _ ->
-            let entry = Activation.current ()
-
-            if Platform.isNull entry then
-                null
-            else
-                entry.GraphOnCurrentThread
+            match Activation.current () with
+            | :? ActivationEntry as entry -> entry.GraphOnCurrentThread
+            | _ -> null
 
     /// <summary>
     /// True while the graph runs a body, a flush, a stale read or a teardown.
@@ -2735,16 +3129,16 @@ type Graph(options: GraphOptions) =
     /// The caller runs outside the construction context, or another thread holds the graph.
     /// </exception>
     member private this.Acquire(operation: string) : bool =
-        let me = Platform.currentThreadId ()
+        let me = OwnerThreadToken.Ensure ()
 
         if Volatile.Read &holder = me then
             false
         else
             this.CheckContext operation
-            let prior = Interlocked.CompareExchange (&holder, me, 0)
+            let prior = Interlocked.CompareExchange (&holder, me, 0L)
 
-            if prior <> 0 then
-                this.FailConcurrent (operation, prior)
+            if prior <> 0L then
+                this.FailConcurrent (operation, int (uint32 prior))
 
             true
 #endif
@@ -2755,7 +3149,7 @@ type Graph(options: GraphOptions) =
     member internal this.Release() =
 #if !FABLE_COMPILER
         // A full fence: the inbox check below observes every enqueue whose drain found the graph held by this thread.
-        Interlocked.Exchange (&holder, 0) |> ignore
+        Interlocked.Exchange (&holder, 0L) |> ignore
 
         if not inbox.IsEmpty then
             this.PostDrain ()
@@ -2957,9 +3351,10 @@ type Graph(options: GraphOptions) =
         true
 #else
         if serialised then
-            Volatile.Read &holder = Platform.currentThreadId ()
+            let tok = OwnerThreadToken.Current
+            tok <> 0L && Volatile.Read &holder = tok
         else
-            Platform.currentThreadId () = ownerThread
+            OwnerThreadToken.Current = ownerToken
 #endif
 
     /// <summary>
@@ -3205,7 +3600,7 @@ type Graph(options: GraphOptions) =
                         root.RecordError ex
 
             if ran > 0 then
-                this.RequestFlush ()
+                this.RequestFlushFromEntered ()
         finally
             if not (Platform.isNull carried) then
                 JournalAmbient.set carried
@@ -3220,7 +3615,7 @@ type Graph(options: GraphOptions) =
         if not serialised then
             this.Pump () |> ignore
         else
-            let me = Platform.currentThreadId ()
+            let me = OwnerThreadToken.Ensure ()
 
             if Volatile.Read &holder = me then
                 this.Drain () |> ignore
@@ -3228,7 +3623,7 @@ type Graph(options: GraphOptions) =
                 this.CheckContext "Pump"
 
                 // Held by another thread: its Release posts a new drain.
-                if Interlocked.CompareExchange (&holder, me, 0) = 0 then
+                if Interlocked.CompareExchange (&holder, me, 0L) = 0L then
                     try
                         this.Drain () |> ignore
                     finally
@@ -3274,10 +3669,11 @@ type Graph(options: GraphOptions) =
     /// </summary>
     member private this.CheckHeld(operation: string) =
         let held = Volatile.Read &holder
+        let me = OwnerThreadToken.Current
 
-        if held <> Platform.currentThreadId () then
-            if held <> 0 then
-                this.FailConcurrent (operation, held)
+        if held = 0L || held <> me then
+            if held <> 0L then
+                this.FailConcurrent (operation, int (uint32 held))
 
             this.CheckContext operation
 #endif
@@ -3466,6 +3862,20 @@ type Graph(options: GraphOptions) =
                 flushOwed <- true
 
     /// <summary>
+    /// <c>RequestFlush</c> from a caller that has already passed <c>Enter</c> (a signal write, batch exit, or inbox drain).
+    /// </summary>
+    member internal this.RequestFlushFromEntered() =
+        if queueHead < queueCount && batchDepth = 0 then
+            if
+                pullDepth = 0
+                && Platform.isNull (box current)
+                && not untrackedInBody
+            then
+                this.RunFlush ()
+            elif not flushing then
+                flushOwed <- true
+
+    /// <summary>
     /// Runs the owed flush when the caller is outside every body and read.
     /// </summary>
     member private this.SettleFlush() =
@@ -3501,8 +3911,8 @@ type Graph(options: GraphOptions) =
 #if !FABLE_COMPILER
         && not (
             serialised
-            && Volatile.Read &holder
-               <> Platform.currentThreadId ()
+            && (let tok = OwnerThreadToken.Current
+                tok = 0L || Volatile.Read &holder <> tok)
         )
 #endif
 
@@ -3670,7 +4080,7 @@ type Graph(options: GraphOptions) =
                         batchDepth <- batchDepth - 1
                         Tracer.BatchExit (this, batchDepth)
 
-                this.RequestFlush ()
+                this.RequestFlushFromEntered ()
                 result
         )
 #else
@@ -3691,7 +4101,7 @@ type Graph(options: GraphOptions) =
                 batchDepth <- batchDepth - 1
                 Tracer.BatchExit (this, batchDepth)
 
-        this.RequestFlush ()
+        this.RequestFlushFromEntered ()
         result
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
@@ -4297,6 +4707,26 @@ type Graph(options: GraphOptions) =
             untrackedInBody <- previousInBody
 
 #if !FABLE_COMPILER
+    member internal _.EnterUntrackedHosted(host: IScopeHost) : UntrackedHostedFrame =
+        let saved =
+            UntrackedHostedFrame (current, currentOwner, untrackedHost, untrackedInBody)
+
+        if not (Platform.isNull (box saved.Previous)) then
+            untrackedInBody <- true
+
+        current <- Unchecked.defaultof<IComputation>
+        currentOwner <- Unchecked.defaultof<Owner>
+        untrackedHost <- host
+        saved
+
+    member internal _.LeaveUntrackedHosted(saved: UntrackedHostedFrame) =
+        current <- saved.Previous
+        currentOwner <- saved.PreviousOwner
+        untrackedHost <- saved.PreviousHost
+        untrackedInBody <- saved.PreviousInBody
+#endif
+
+#if !FABLE_COMPILER
 // Normalizes the intrinsic fast-path comparer (EqualityComparer<'T>.Default for value types,
 // ReferenceComparer<'T> for reference types) to null so .NET hot paths avoid interface dispatch
 // and generic dictionary lookups, while preserving NullReferenceException for a faulty policy.
@@ -4311,7 +4741,7 @@ type private NullComparer<'T>() =
         member _.GetHashCode(_) =
             raise (NullReferenceException ())
 
-module private ComparerSentinel =
+module internal ComparerSentinel =
     let encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
         if obj.ReferenceEquals (comparer, null) then
             NullComparer<'T>.Instance
@@ -4384,18 +4814,20 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             if Platform.isNull (box observers) then
                 observers <- ObserverSet ()
 #endif
-            observers.Add (c, slot)
+            observers.Add (c, slot) ||| EdgeHandle.SignalBit
 
         member _.TryAddObserver(c, slot) =
 #if !RANVIER_TRACE
             if Platform.isNull (box observers) then
                 observers <- ObserverSet ()
 #endif
-            observers.TryAdd (c, slot)
+            let h = observers.TryAdd (c, slot)
+
+            if h >= 0 then h ||| EdgeHandle.SignalBit else h
 
         // A handle comes from an add, so the set exists.
         member _.RemoveObserverAt(c, handle) =
-            observers.RemoveAt (c, handle)
+            observers.RemoveAtSignal (c, handle)
 
         /// <summary>
         /// Nothing to bring current: the value is whatever was last written.
@@ -4438,7 +4870,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 
                             Tracer.Notified observers
 
-                            graph.RequestFlush ()
+                            graph.RequestFlushFromEntered ()
                         else
                             Tracer.Write (observers, false, box v)
             )
@@ -4488,7 +4920,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 
             Tracer.Notified observers
 
-            graph.RequestFlush ()
+            graph.RequestFlushFromEntered ()
         else
             Tracer.Write (observers, false, box v)
 
@@ -4515,7 +4947,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 
         Tracer.Notified observers
 
-        graph.RequestFlush ()
+        graph.RequestFlushFromEntered ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.SetJournaled(v: 'T) =
@@ -4538,7 +4970,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
 
                     Tracer.Notified observers
 
-                    graph.RequestFlush ()
+                    graph.RequestFlushFromEntered ()
                 else
                     Tracer.Write (observers, false, box v)
             else
@@ -4564,7 +4996,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                         observers.NotifyDirtyOther running
 
                     Tracer.Notified observers
-                    graph.RequestFlush ()
+                    graph.RequestFlushFromEntered ()
                 else
                     Tracer.Write (observers, false, box v)
         )
@@ -4603,7 +5035,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                 observers.NotifyDirtyOther running
 
             Tracer.Notified observers
-            graph.RequestFlush ()
+            graph.RequestFlushFromEntered ()
         else
             Tracer.Write (observers, false, box v)
 
@@ -4626,7 +5058,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
             observers.NotifyDirtyOther running
 
         Tracer.Notified observers
-        graph.RequestFlush ()
+        graph.RequestFlushFromEntered ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.WriteExceptAfterAcquire(v: 'T, running: IComputation) =
@@ -4886,14 +5318,18 @@ type AsyncSource<'T>(graph: Graph) =
 /// argument keeps its dependents clean.
 /// </para>
 /// </remarks>
+#if FABLE_COMPILER
 type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, equal: IEqualityComparer<'T>) =
+#else
+type Memo<'T> private (graph: Graph, compute: obj, mode: ScopeMode, equal: IEqualityComparer<'T>) =
+#endif
     let id = graph.NextId ()
 #if !FABLE_COMPILER
     let equal = ComparerSentinel.encode equal
 #endif
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
 
     /// <summary>
@@ -4948,7 +5384,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// A pure memo over <c>compute</c>.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>) as this =
-        Memo<'T>(graph, compute.Invoke, ScopeMode.Pure, graph.Options.Equality.Comparer<'T>())
+        Memo<'T>(graph, box compute, ScopeMode.Pure, graph.Options.Equality.Comparer<'T>())
         then this.Attach ()
 
     /// <summary>
@@ -4956,7 +5392,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// otherwise.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>, owning: bool) as this =
-        Memo<'T>(graph, compute.Invoke, (if owning then ScopeMode.Owning else ScopeMode.Pure), graph.Options.Equality.Comparer<'T>())
+        Memo<'T>(graph, box compute, (if owning then ScopeMode.Owning else ScopeMode.Pure), graph.Options.Equality.Comparer<'T>())
 
         then this.Attach ()
 
@@ -4966,7 +5402,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     new(graph: Graph, seed: 'T, compute: Func<'T, 'T>) as this =
         Memo<'T>(
             graph,
-            (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
+            box (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
             ScopeMode.Pure,
             graph.Options.Equality.Comparer<'T>()
         )
@@ -4980,7 +5416,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     new(graph: Graph, seed: 'T, compute: Func<'T, 'T>, owning: bool) as this =
         Memo<'T>(
             graph,
-            (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
+            box (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
             (if owning then ScopeMode.Owning else ScopeMode.Pure),
             graph.Options.Equality.Comparer<'T>()
         )
@@ -4992,15 +5428,33 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// A memo over <c>compute</c>, owned by the current owner.
     /// </summary>
     static member internal Create(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode) =
-        let memo = Memo<'T>(graph, compute, mode, graph.Options.Equality.Comparer<'T>())
+        let memo =
+#if FABLE_COMPILER
+            Memo<'T>(graph, compute, mode, graph.Options.Equality.Comparer<'T>())
+#else
+            Memo<'T>(graph, box compute, mode, graph.Options.Equality.Comparer<'T>())
+#endif
         memo.Attach ()
         memo
 
     /// <summary>A memo whose cutoff uses <c>comparer</c>, owned by the current owner.</summary>
     static member internal CreateWithComparer(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T>) =
-        let memo = Memo<'T>(graph, compute, mode, comparer)
+        let memo =
+#if FABLE_COMPILER
+            Memo<'T>(graph, compute, mode, comparer)
+#else
+            Memo<'T>(graph, box compute, mode, comparer)
+#endif
         memo.Attach ()
         memo
+
+#if !FABLE_COMPILER
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.InvokeCompute(prev: 'T voption) : 'T =
+        match compute with
+        | :? ('T voption -> 'T) as fn -> fn prev
+        | _ -> (unbox<Func<'T voption, 'T>> compute).Invoke prev
+#endif
 
     /// <summary>
     /// Attaches the memo to the current owner. Disposing that owner disposes
@@ -5080,6 +5534,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         active <- 1
 
         try
+#if FABLE_COMPILER
             try
                 let prev = if published then ValueSome previous else ValueNone
                 let result = graph.RunHosted (this :> IComputation, compute, prev)
@@ -5096,6 +5551,28 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     sources.Clear (this :> IComputation)
                 else
                     sources.EndRun (this :> IComputation)
+#else
+            let saved = graph.EnterHosted (this :> IComputation)
+
+            try
+                let prev = if published then ValueSome previous else ValueNone
+                let result = this.InvokeCompute prev
+                graph.CheckRaised ()
+
+                if violated then
+                    raise (InvalidOperationException (ScopeMessages.forMode mode))
+
+                value <- result
+                published <- true
+            finally
+                graph.LeaveHosted saved
+                active <- 0
+
+                if disposed then
+                    sources.Clear (this :> IComputation)
+                else
+                    sources.EndRun (this :> IComputation)
+#endif
         with
         | ex when violated ->
             violated <- false
@@ -5160,7 +5637,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -5191,7 +5668,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
         let mutable i = 0
 
         while freshness = Freshness.Check && i < sources.Count do
-            sources.SourceAt(i).UpdateIfNecessary()
+            sources.RefreshSourceAt i
 
             if graph.ActiveSkips <> 0 then
                 this.CheckActiveSource i
@@ -5502,26 +5979,11 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// </summary>
 #if FABLE_COMPILER
     member this.Value: 'T =
-        if
-            freshness <> Freshness.Clean
-            && not disposed
-            && (if graph.Deferring then
-                    this.Refresh ()
-                    freshness <> Freshness.Clean
-                else
-                    this.PullWithoutSettle ())
-        then
-            this.SettlePullAndRead ()
-        else
+        if StatusBits.isCleanAndReady freshness status then
             graph.Track (this :> ISource)
-
-            if StatusBits.isUnready status then
-                if StatusBits.isPending status then
-                    raise (graph.NotReady (this :> INode))
-
-                graph.Raise failure
-
             value
+        else
+            this.ReadSlow ()
 #else
     member this.Value: 'T = this.GetFast ()
 
@@ -5532,6 +5994,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             value
         else
             this.ReadSlow ()
+#endif
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ReadSlow() : 'T =
@@ -5555,33 +6018,17 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                 graph.Raise failure
 
             value
-#endif
 
     /// <summary>
     /// Non-throwing, tracked read.
     /// </summary>
 #if FABLE_COMPILER
     member this.TryValue: Reading<'T> =
-        if
-            freshness <> Freshness.Clean
-            && not disposed
-            && (if graph.Deferring then
-                    this.Refresh ()
-                    freshness <> Freshness.Clean
-                else
-                    this.PullWithoutSettle ())
-        then
-            this.SettlePullAndReadTry ()
-        else
+        if StatusBits.isCleanAndReady freshness status then
             graph.Track (this :> ISource)
-
-            if StatusBits.isUnready status then
-                if StatusBits.isPending status then
-                    Pending
-                else
-                    Failed failure.Error
-            else
-                Ready value
+            Ready value
+        else
+            this.ReadTrySlow ()
 #else
     member this.TryValue: Reading<'T> = this.GetTryFast ()
 
@@ -5592,6 +6039,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             Ready value
         else
             this.ReadTrySlow ()
+#endif
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ReadTrySlow() : Reading<'T> =
@@ -5615,7 +6063,6 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     Failed failure.Error
             else
                 Ready value
-#endif
 
     /// <summary>
     /// Non-throwing read that brings the memo up to date without recording a dependency.
@@ -5720,10 +6167,10 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 #if FABLE_COMPILER
 type Effect(graph: Graph, body: unit -> unit) as this =
 #else
-type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
+type Effect private (graph: Graph, body: obj, _unstarted: unit) =
 #endif
     let id = graph.NextId ()
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
     let mutable pendingSource: INode = Unchecked.defaultof<INode>
 
@@ -5786,7 +6233,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     /// its first run.
     /// </summary>
     new(graph: Graph, body: Action) as this =
-        new Effect (graph, body.Invoke, ())
+        new Effect (graph, box body, ())
         then this.Start ()
 #endif
 
@@ -5798,9 +6245,17 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 #if FABLE_COMPILER
         new Effect (graph, body)
 #else
-        let effect = new Effect (graph, body, ())
+        let effect = new Effect (graph, box body, ())
         effect.Start ()
         effect
+#endif
+
+#if !FABLE_COMPILER
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.InvokeBody() =
+        match body with
+        | :? (unit -> unit) as fn -> fn ()
+        | _ -> (unbox<Action> body).Invoke()
 #endif
 
     member private this.Start() =
@@ -5897,7 +6352,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -5925,7 +6380,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
-                        sources.SourceAt(i).UpdateIfNecessary()
+                        sources.RefreshSourceAt i
 
                         if graph.ActiveSkips <> 0 then
                             this.CheckActiveSource i
@@ -5987,6 +6442,7 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
         Tracer.RunStart (graph, id, runs)
 
         try
+#if FABLE_COMPILER
             try
                 if Platform.isNull graph.Journal then
                     graph.RunHosted (this :> IComputation, body)
@@ -5997,6 +6453,23 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
                     sources.Clear (this :> IComputation)
                 else
                     sources.EndRun (this :> IComputation)
+#else
+            if Platform.isNull graph.Journal then
+                let saved = graph.EnterHosted (this :> IComputation)
+
+                try
+                    this.InvokeBody ()
+                    graph.CheckRaised ()
+                finally
+                    graph.LeaveHosted saved
+
+                    if disposed then
+                        sources.Clear (this :> IComputation)
+                    else
+                        sources.EndRun (this :> IComputation)
+            else
+                this.RunBodyJournaled ()
+#endif
         with
         | NotReadyException source ->
             pendingSource <- source
@@ -6014,7 +6487,24 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
     // Out of line, so RunBody allocates no closure and, under Fable, no closure context when the graph has no journal.
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.RunBodyJournaled() =
+#if FABLE_COMPILER
         graph.Journal.RunWork (fun () -> graph.RunHosted (this :> IComputation, body))
+#else
+        try
+            graph.Journal.RunWork (fun () ->
+                let saved = graph.EnterHosted (this :> IComputation)
+
+                try
+                    this.InvokeBody ()
+                    graph.CheckRaised ()
+                finally
+                    graph.LeaveHosted saved)
+        finally
+            if disposed then
+                sources.Clear (this :> IComputation)
+            else
+                sources.EndRun (this :> IComputation)
+#endif
 
     /// <summary>
     /// Detaches from every source and discharges the run scope. Idempotent.
@@ -6103,7 +6593,10 @@ type Effect private (graph: Graph, body: unit -> unit, _unstarted: unit) =
 [<Sealed>]
 type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -> unit, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-    let sources = SourceList ()
+#if !FABLE_COMPILER
+    let equal = ComparerSentinel.encode equal
+#endif
+    let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
 
     /// <summary>
@@ -6166,6 +6659,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
         let mutable settled = false
 
         try
+#if FABLE_COMPILER
             try
                 v <- graph.RunHosted (this :> IComputation, compute)
 
@@ -6178,6 +6672,25 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                     sources.Clear (this :> IComputation)
                 else
                     sources.EndRun (this :> IComputation)
+#else
+            let saved = graph.EnterHosted (this :> IComputation)
+
+            try
+                v <- compute ()
+                graph.CheckRaised ()
+
+                if violated then
+                    raise (InvalidOperationException ScopeMessages.effectOn)
+
+                settled <- true
+            finally
+                graph.LeaveHosted saved
+
+                if disposed then
+                    sources.Clear (this :> IComputation)
+                else
+                    sources.EndRun (this :> IComputation)
+#endif
         with
         | ex when violated ->
             violated <- false
@@ -6193,7 +6706,11 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
         if settled && hasActed then
             try
+#if FABLE_COMPILER
                 unchanged <- equal.Equals (last, v)
+#else
+                unchanged <- ComparerSentinel.equals equal last v
+#endif
             with ex ->
                 settled <- false
                 error <- ex
@@ -6221,6 +6738,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
             acting <- true
 
             try
+#if FABLE_COMPILER
                 try
                     if Platform.isNull graph.Journal then
                         graph.RunUntrackedHostedWith (this :> IScopeHost, act, v)
@@ -6228,6 +6746,21 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                         this.ActJournaled v
                 finally
                     acting <- false
+#else
+                if Platform.isNull graph.Journal then
+                    let saved = graph.EnterUntrackedHosted (this :> IScopeHost)
+
+                    try
+                        act v
+                    finally
+                        graph.LeaveUntrackedHosted saved
+                        acting <- false
+                else
+                    try
+                        this.ActJournaled v
+                    finally
+                        acting <- false
+#endif
             with
             | NotReadyException _ -> status <- Status.Pending
             | ex ->
@@ -6332,7 +6865,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -6355,7 +6888,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                     let mutable i = 0
 
                     while freshness = Freshness.Check && i < sources.Count do
-                        sources.SourceAt(i).UpdateIfNecessary()
+                        sources.RefreshSourceAt i
 
                         if graph.ActiveSkips <> 0 then
                             this.CheckActiveSource i
@@ -6407,7 +6940,18 @@ type internal IPreviousSource<'T> =
 /// <summary>The completed <c>ValueNone</c> task shared by every node of one value type.</summary>
 [<AbstractClass; Sealed>]
 type internal NothingPublished<'T> private () =
+#if FABLE_COMPILER
     static member val Task: Task<'T voption> = Platform.completedWith ValueNone
+#else
+    [<DefaultValue>]
+    static val mutable private task: Task<'T voption>
+
+    static member Task: Task<'T voption> =
+        if obj.ReferenceEquals (NothingPublished<'T>.task, null) then
+            NothingPublished<'T>.task <- Platform.completedWith ValueNone
+
+        NothingPublished<'T>.task
+#endif
 
 /// <summary>
 /// The value an async memo published before a flight, handed to the flight's body.
@@ -6451,7 +6995,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
     let mutable pendingSource: INode = Unchecked.defaultof<INode>
 
@@ -6626,7 +7170,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             let mutable i = 0
 
             while i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
                 i <- i + 1
         finally
             graph.ExitPull ()
@@ -7186,7 +7730,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -7216,7 +7760,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                 let mutable i = 0
 
                 while freshness = Freshness.Check && i < sources.Count do
-                    sources.SourceAt(i).UpdateIfNecessary()
+                    sources.RefreshSourceAt i
 
                     if graph.ActiveSkips <> 0 then
                         this.CheckActiveSource i
@@ -7520,9 +8064,12 @@ type Boundary<'T>
     (graph: Graph, body: unit -> 'T, onPending: ('T voption -> 'T) voption, onError: (exn -> 'T voption -> 'T) voption, equal: IEqualityComparer<'T>)
     =
     let id = graph.NextId ()
+#if !FABLE_COMPILER
+    let equal = ComparerSentinel.encode equal
+#endif
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-    let sources = SourceList ()
+    let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
     let mutable pendingFirst: INode = Unchecked.defaultof<INode>
     let mutable pendingSecond: INode = Unchecked.defaultof<INode>
@@ -7688,6 +8235,10 @@ type Boundary<'T>
 
         active <- 1
 
+#if !FABLE_COMPILER
+        let saved = graph.EnterHosted (this :> IComputation)
+#endif
+
         try
 #if FABLE_COMPILER
             value <-
@@ -7723,41 +8274,39 @@ type Boundary<'T>
                         | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
                 )
 #else
-            let saved = graph.EnterHosted (this :> IComputation)
+            value <-
+                try
+                    let result = body ()
+                    graph.CheckRaised ()
+                    result
+                with
+                | NotReadyException source ->
+                    graph.ClearRaised ()
+                    this.RecordPending source
 
-            try
-                value <-
-                    try
-                        let result = body ()
-                        graph.CheckRaised ()
-                        result
-                    with
-                    | NotReadyException source ->
-                        graph.ClearRaised ()
-                        this.RecordPending source
+                    match onPending with
+                    | ValueSome fallback ->
+                        // Caught: the status stays clear, so nothing downstream
+                        // ever sees Pending. The edge to `source` is already
+                        // linked, which is what brings us back here when it
+                        // settles.
+                        try
+                            let substitute = fallback last
+                            graph.CheckRaised ()
+                            waiting <- true
+                            substitute
+                        with
+                        | NotReadyException inner -> this.Suspend inner
+                        | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
 
-                        match onPending with
-                        | ValueSome fallback ->
-                            // Caught: the status stays clear, so nothing downstream
-                            // ever sees Pending. The edge to `source` is already
-                            // linked, which is what brings us back here when it
-                            // settles.
-                            try
-                                let substitute = fallback last
-                                graph.CheckRaised ()
-                                waiting <- true
-                                substitute
-                            with
-                            | NotReadyException inner -> this.Suspend inner
-                            | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
+                    | ValueNone -> this.Suspend source
 
-                        | ValueNone -> this.Suspend source
-
-                    | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
-            finally
-                graph.LeaveHosted saved
+                | ex -> this.RecoverOrFail (ex, last, previousFailure, previousCaught)
 #endif
         finally
+#if !FABLE_COMPILER
+            graph.LeaveHosted saved
+#endif
             active <- 0
 
             if disposed then
@@ -7775,7 +8324,11 @@ type Boundary<'T>
 
         if not moved then
             try
+#if FABLE_COMPILER
                 moved <- not (equal.Equals (previous, value))
+#else
+                moved <- not (ComparerSentinel.equals equal previous value)
+#endif
             with ex ->
                 value <- previous
                 failure <- graph.FailureOf (ex, this, previousFailure)
@@ -7908,7 +8461,7 @@ type Boundary<'T>
             let mutable i = 0
 
             while freshness = Freshness.Check && i < sources.Count do
-                sources.SourceAt(i).UpdateIfNecessary()
+                sources.RefreshSourceAt i
 
                 if graph.ActiveSkips <> 0 then
                     this.CheckActiveSource i
@@ -7936,7 +8489,7 @@ type Boundary<'T>
                 let mutable i = 0
 
                 while freshness = Freshness.Check && i < sources.Count do
-                    sources.SourceAt(i).UpdateIfNecessary()
+                    sources.RefreshSourceAt i
 
                     if graph.ActiveSkips <> 0 then
                         this.CheckActiveSource i

@@ -823,3 +823,71 @@ Proof.
       * rewrite Haff, decide_True by exact Hme. symmetry. apply write_signal_unjournaled_eq.
     + apply (proj1 (signal_set_fast_split_refines me ctx f n v cs j s)).
 Qed.
+
+(**md
+**Packing a positive `OwnerThreadCounter` sequence in the upper 32 bits and `uint32 ManagedThreadId` in the lower 32 bits produces a strictly positive unique token from which `ManagedThreadId` is losslessly recovered.**
+
+Matches `OwnerThreadToken.Ensure` and `Graph.Acquire`/`CheckHeld` (`Core.fs`): encoding
+`(seq <<< 32) ||| int64 (uint32 tid)` satisfies `tok >= 1` (`0` remains sentinel for uninitialized/free),
+identifies each `(seq, tid)` uniquely, and recovers `tid = int (uint32 tok)` for concurrent-entry diagnostics
+without storing a second `holderThread` field on `Graph`.
+
+- [seq:] the positive sequence assigned by `OwnerThreadCounter.Next ()`.
+- [tid:] the `uint32` representation of the managed thread id (`0 <= tid < 2^32`).
+*)
+Theorem packed_owner_token_thread_id (seq tid : Z) :
+  (1 <= seq)%Z ->
+  (0 <= tid < 4294967296)%Z ->
+  let tok := (seq * 4294967296 + tid)%Z in
+  (1 <= tok)%Z /\
+  (tok `mod` 4294967296 = tid)%Z /\
+  (forall seq' tid' : Z,
+    (1 <= seq')%Z ->
+    (0 <= tid' < 4294967296)%Z ->
+    (seq * 4294967296 + tid = seq' * 4294967296 + tid')%Z ->
+    seq = seq' /\ tid = tid').
+Proof.
+  intros Hseq Htid tok. unfold tok.
+  assert (Hpack : forall a b : Z, (0 <= b < 4294967296)%Z -> ((a * 4294967296 + b) `mod` 4294967296 = b)%Z).
+  { intros a b Hb. rewrite Z.add_comm, Z.mod_add, Z.mod_small; lia. }
+  split_and!.
+  - lia.
+  - apply Hpack. exact Htid.
+  - intros seq' tid' Hseq' Htid' Heq.
+    assert (Hmod : ((seq * 4294967296 + tid) `mod` 4294967296 = (seq' * 4294967296 + tid') `mod` 4294967296)%Z)
+      by (rewrite Heq; reflexivity).
+    rewrite !Hpack in Hmod by assumption.
+    split; [lia | exact Hmod].
+Qed.
+
+(**md
+**Calling `RequestFlushFromEntered` after `graph_enter` has already succeeded skips a redundant `Enter`/`Release` round-trip identically to `RequestFlush`.**
+
+Matches `Graph.RequestFlushFromEntered` called from `Signal` writes, `Graph.RunBatchCore`, and
+`Graph.Drain` (`Core.fs`): once `graph_enter me ctx cs = Some (cs_entered, must_rel)`, re-entering
+the same thread immediately returns `Some (cs_entered, false)` with no state change or release duty,
+so calling `RunFlush` directly on `cs_entered` preserves concurrency and flush behavior across all
+`ThreadAffinity` modes.
+
+- [me:] the calling thread id (`me > 0` under `Serialised`).
+- [ctx:] the calling thread's `SynchronizationContext` id.
+- [cs:] the concurrency state before the outer entry.
+- [cs_entered:] the entered concurrency state.
+- [must_rel:] whether the outer entry must pair with `Release`.
+*)
+Theorem request_flush_from_entered_eq
+    (me ctx : nat) (cs cs_entered : concurrency_state) (must_rel : bool) :
+  (cs_affinity cs = AffSerialised -> me > 0) ->
+  graph_enter me ctx cs = Some (cs_entered, must_rel) ->
+  graph_enter me ctx cs_entered = Some (cs_entered, false).
+Proof.
+  intros Hme Hent. unfold graph_enter in *.
+  destruct (cs_affinity cs) eqn:Haff.
+  - destruct (decide (me = cs_owner_thread cs)) as [Heq|Hne]; [|discriminate].
+    simplify_eq. simpl. by rewrite Haff, decide_True by congruence.
+  - simplify_eq. simpl. by rewrite Haff.
+  - destruct (decide (cs_holder cs = me)) as [Hh|Hh].
+    + simplify_eq. simpl. by rewrite Haff, decide_True by congruence.
+    + destruct (decide (ctx = cs_context cs /\ cs_holder cs = 0)); [|discriminate].
+      simplify_eq. simpl. by rewrite ?Haff, decide_True by reflexivity.
+Qed.

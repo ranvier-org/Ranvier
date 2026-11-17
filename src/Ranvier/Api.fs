@@ -37,9 +37,6 @@ module internal Identity =
 /// <summary>A seed value with the number of its publication: 1 for the first, one more for each unequal value after it.</summary>
 #if FABLE_COMPILER
 [<Sealed; AllowNullLiteral>]
-#else
-[<Struct; NoEquality; NoComparison>]
-#endif
 type internal Stamp<'T>(version: int, value: 'T) =
     member _.Version = version
     member _.Value = value
@@ -55,17 +52,44 @@ type internal StampComparer<'T> private () =
             member _.GetHashCode(stamp) =
                 stamp.Version
         }
+#else
+[<Struct; CustomEquality; NoComparison>]
+type internal Stamp<'T>(version: int, value: 'T) =
+    member _.Version = version
+    member _.Value = value
+
+    interface IEquatable<Stamp<'T>> with
+        member _.Equals(other: Stamp<'T>) =
+            version = other.Version
+
+    override _.Equals(other: obj) =
+        match other with
+        | :? Stamp<'T> as o -> version = o.Version
+        | _ -> false
+
+    override _.GetHashCode() = version
+#endif
 
 /// <summary>
 /// Equality of two edits: both absent, or equal stamps whose values are equal under <c>equal</c>.
 /// </summary>
 [<Sealed>]
 type internal EditComparer<'T>(equal: Collections.Generic.IEqualityComparer<'T>) =
+#if !FABLE_COMPILER
+    let equal = ComparerSentinel.encode equal
+#endif
     interface Collections.Generic.IEqualityComparer<struct (int * 'T) voption> with
         member _.Equals(a, b) =
             match a, b with
             | ValueNone, ValueNone -> true
-            | ValueSome (struct (va, xa)), ValueSome (struct (vb, xb)) -> va = vb && equal.Equals (xa, xb)
+            | ValueSome (struct (va, xa)), ValueSome (struct (vb, xb)) ->
+                va = vb
+                &&
+#if FABLE_COMPILER
+                equal.Equals (xa, xb)
+#else
+                ComparerSentinel.equals equal xa xb
+#endif
             | _ -> false
 
         member _.GetHashCode(edit) =
@@ -91,7 +115,10 @@ type internal EditComparer<'T>(equal: Collections.Generic.IEqualityComparer<'T>)
 /// </remarks>
 [<Sealed>]
 type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
-    let equal = graph.Options.Equality.Comparer<'T>()
+    let rawEqual = graph.Options.Equality.Comparer<'T>()
+#if !FABLE_COMPILER
+    let equal = ComparerSentinel.encode rawEqual
+#endif
 
     /// <summary>The version of the seed's last published value; 0 before the first.</summary>
     let mutable settled = 0
@@ -110,7 +137,12 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
                 match previous with
                 | ValueSome stamp when
                     Identity.same stamp.Value next
-                    || equal.Equals (stamp.Value, next)
+                    ||
+#if FABLE_COMPILER
+                    rawEqual.Equals (stamp.Value, next)
+#else
+                    ComparerSentinel.equals equal stamp.Value next
+#endif
                     ->
                     stamp
                 | _ ->
@@ -122,11 +154,15 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
                     settled <- version
                     Stamp (version, next)),
             ScopeMode.Pure,
+#if FABLE_COMPILER
             StampComparer<'T>.Instance
+#else
+            EqualityComparer<Stamp<'T>>.Default
+#endif
         )
 
     let edit =
-        Signal<struct (int * 'T) voption>(graph, ValueNone, EditComparer<'T> equal)
+        Signal<struct (int * 'T) voption>(graph, ValueNone, EditComparer<'T> rawEqual)
 
     /// <summary>True when an edit made against seed version <c>version</c> is still in force. A tracked read of the seed.</summary>
     let inForce (version: int) =
@@ -753,7 +789,13 @@ module Api =
     /// </example>
     let createOptionMemo (select: unit -> 'A option) : Memo<'A option> =
         let graph = Graph.Current
-        let equal = graph.Options.Equality.Comparer<'A>()
+
+        let equal =
+#if FABLE_COMPILER
+            graph.Options.Equality.Comparer<'A>()
+#else
+            ComparerSentinel.encode (graph.Options.Equality.Comparer<'A>())
+#endif
 
         let compute (last: 'A option voption) =
             let next = select ()
@@ -761,7 +803,12 @@ module Api =
             match last, next with
             | ValueSome (Some previous as kept), Some current when
                 Identity.same previous current
-                || equal.Equals (previous, current)
+                ||
+#if FABLE_COMPILER
+                equal.Equals (previous, current)
+#else
+                ComparerSentinel.equals equal previous current
+#endif
                 ->
                 kept
             | _ -> next

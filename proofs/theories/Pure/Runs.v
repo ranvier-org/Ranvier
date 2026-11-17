@@ -3851,3 +3851,47 @@ Definition run_end_edges_are_reads_statement : Prop :=
 
 The reads are all the tracked reads since the outermost run start, nested runs included. `run_end_edges_are_reads_statement` is what the fix phase owes. The Confirmed bug `nested_self_recompute_resets_cursor` falsifies it, and [`run_end_edges_are_reads_falsified`](Ranvier.Pure.Witnesses.html#run_end_edges_are_reads_falsified) proves that. Until the fix, later layers use [`run_end_edges_are_latest_reads`](#run_end_edges_are_latest_reads) or [`run_end_edges_no_nested_run`](#run_end_edges_no_nested_run).
 *)
+
+(** Saved host frame for [`Graph.EnterHosted`] / [`Graph.LeaveHosted`]. *)
+Definition hosted_frame : Type := option node_id * option owner_id.
+
+Definition enter_hosted_state (n : node_id) (s : state) : state * hosted_frame :=
+  (with_current_owner None (with_current (Some n) s), (g_current s, g_current_owner s)).
+
+Definition leave_hosted_state (fr : hosted_frame) (s : state) : state :=
+  with_current_owner fr.2 (with_current fr.1 s).
+
+Definition fused_hosted_end {A} (n : node_id) (body : M A) : M A :=
+  fun s0 =>
+    let '(s_enter, fr) := enter_hosted_state n s0 in
+    match body s_enter with
+    | None => None
+    | Some (s1, r) =>
+      let s2 := leave_hosted_state fr s1 in
+      (let* d := get_node n in
+       let* _ := edges_opt (if n_disposed d then sources_clear n else sources_end_run n) in
+       m_return r) s2
+    end.
+
+(**md
+**Entering and leaving a `HostedFrame` around `body` followed by `EndRun`/`Clear` equals `hosted n body` composed with `EndRun`/`Clear`.**
+
+Matches the `.NET` `EnterHosted`/`LeaveHosted` decomposition in `Memo.Run`, `Effect.RunBody`,
+`EffectOn.Run`, and `Boundary.Run` (`Core.fs`): replacing the closure-taking `RunHosted` wrapper
+with `EnterHosted` before the body and `LeaveHosted` in the outer `finally` ahead of `sources.EndRun`/`Clear`
+yields identical engine states and outcomes without allocating a delegate or second exception handler.
+
+- [n:] the host computation running `body`.
+- [body:] the computation body returning type `A`.
+- [s0:] the engine state before entering the hosted frame.
+*)
+Theorem fused_hosted_run_eq {A} (n : node_id) (body : M A) (s0 : state) :
+  fused_hosted_end n body s0 =
+    (let* r := hosted n body in
+     let* d := get_node n in
+     let* _ := edges_opt (if n_disposed d then sources_clear n else sources_end_run n) in
+     m_return r) s0.
+Proof.
+  unfold fused_hosted_end, enter_hosted_state, leave_hosted_state, hosted, m_bind, m_modify, m_return.
+  simpl. destruct (body _); [destruct p; reflexivity | reflexivity].
+Qed.
