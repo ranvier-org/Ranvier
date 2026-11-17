@@ -8,21 +8,23 @@ open Ranvier
 /// <summary>Cached data, request state, and the initial-load suspension source for an entry.</summary>
 [<AllowNullLiteral>]
 type internal QueryEntry<'T>(graph: Graph, fetch: CancellationToken -> Task<'T>, guard: unit -> unit, onEvict: unit -> unit) =
-    let data = Signal<'T option>(graph, None, PublicationComparer<_>.Instance)
+    let data =
+        Signal<'T option>.CreateWithComparer(graph, None, PublicationComparer<_>.Instance)
 
     let metadata =
-        Signal<QueryMeta>(
-            graph,
-            {
-                FetchStatus = FetchStatus.Idle
-                Error = None
-                IsStale = true
-            },
-            PublicationComparer<_>.Instance
-        )
+        Signal<QueryMeta>
+            .CreateWithComparer(
+                graph,
+                {
+                    FetchStatus = FetchStatus.Idle
+                    Error = None
+                    IsStale = true
+                },
+                PublicationComparer<_>.Instance
+            )
 
     let gate =
-        Signal<AsyncSource<'T>>(graph, AsyncSource<'T>(graph), PublicationComparer<_>.Instance)
+        Signal<AsyncSource<'T>>.CreateWithComparer(graph, AsyncSource<'T>(graph), PublicationComparer<_>.Instance)
 
     let comparer = graph.Options.Equality.Comparer<'T>()
     let mutable generation = 0L

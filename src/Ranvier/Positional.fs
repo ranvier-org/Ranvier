@@ -95,18 +95,17 @@ module internal Positional =
             let prevTotal = previous.Length
             let nextTotal = next.Length
             let minLen = min prevTotal nextTotal
-            let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
             let mutable pref = 0
 
             while pref < minLen
-                  && equalKeys.Equals (Platform.itemAt pref previous, Platform.itemAt pref next) do
+                  && Platform.keyEquals (Platform.itemAt pref previous) (Platform.itemAt pref next) do
                 pref <- pref + 1
 
             let maxSuff = minLen - pref
             let mutable suff = 0
 
             while suff < maxSuff
-                  && equalKeys.Equals (Platform.itemAt (prevTotal - 1 - suff) previous, Platform.itemAt (nextTotal - 1 - suff) next) do
+                  && Platform.keyEquals (Platform.itemAt (prevTotal - 1 - suff) previous) (Platform.itemAt (nextTotal - 1 - suff) next) do
                 suff <- suff + 1
 
             let prevLen = prevTotal - pref - suff
@@ -130,80 +129,147 @@ module internal Positional =
             elif
                 prevLen = 2
                 && nextLen = 2
-                && equalKeys.Equals (Platform.itemAt pref previous, Platform.itemAt (pref + 1) next)
-                && equalKeys.Equals (Platform.itemAt (pref + 1) previous, Platform.itemAt pref next)
+                && Platform.keyEquals (Platform.itemAt pref previous) (Platform.itemAt (pref + 1) next)
+                && Platform.keyEquals (Platform.itemAt (pref + 1) previous) (Platform.itemAt pref next)
             then
                 edits.Add (PositionalChange.Move (pref, pref + 1))
             else
-                // One more than the key's middle-slice index in `next`; absent keys read as 0, or null under Fable, and fail `> 0`.
-                let target = Platform.KeyMap<'K, int>()
-                target.Reserve nextLen
+                let mutable fastHandled = false
 
-                for j in 0 .. nextLen - 1 do
-                    target.Set (Platform.itemAt (pref + j) next, j + 1)
+                if prevLen = nextLen then
+                    let firstPrev = Platform.itemAt pref previous
+                    let lastPrev = Platform.itemAt (pref + prevLen - 1) previous
+                    let firstNext = Platform.itemAt pref next
+                    let lastNext = Platform.itemAt (pref + prevLen - 1) next
 
-                for i = prevLen - 1 downto 0 do
-                    if not (target.Find (Platform.itemAt (pref + i) previous) > 0) then
-                        edits.Add (PositionalChange.RemoveAt (pref + i))
+                    if Platform.keyEquals firstPrev lastNext then
+                        let mutable shiftedLeft = true
+                        let mutable k = 0
 
-                let survivorTargets = ResizeArray<int>(prevLen)
+                        while shiftedLeft && k <= prevLen - 2 do
+                            if not (Platform.keyEquals (Platform.itemAt (pref + k + 1) previous) (Platform.itemAt (pref + k) next)) then
+                                shiftedLeft <- false
 
-                for i in 0 .. prevLen - 1 do
-                    let t = target.Find (Platform.itemAt (pref + i) previous)
+                            k <- k + 1
 
-                    if t > 0 then
-                        survivorTargets.Add (t - 1)
+                        if shiftedLeft then
+                            edits.Add (PositionalChange.Move (pref, pref + prevLen - 1))
+                            fastHandled <- true
 
-                let survivors = survivorTargets.Count
+                    if
+                        not fastHandled
+                        && Platform.keyEquals lastPrev firstNext
+                    then
+                        let mutable shiftedRight = true
+                        let mutable k = 0
 
-                if survivors = 0 then
+                        while shiftedRight && k <= prevLen - 2 do
+                            if not (Platform.keyEquals (Platform.itemAt (pref + k) previous) (Platform.itemAt (pref + k + 1) next)) then
+                                shiftedRight <- false
+
+                            k <- k + 1
+
+                        if shiftedRight then
+                            edits.Add (PositionalChange.Move (pref + prevLen - 1, pref))
+                            fastHandled <- true
+
+                    if
+                        not fastHandled
+                        && Platform.keyEquals firstPrev lastNext
+                        && Platform.keyEquals lastPrev firstNext
+                    then
+                        let mutable sameMid = true
+                        let mutable k = 1
+
+                        while sameMid && k <= prevLen - 2 do
+                            if not (Platform.keyEquals (Platform.itemAt (pref + k) previous) (Platform.itemAt (pref + k) next)) then
+                                sameMid <- false
+
+                            k <- k + 1
+
+                        if sameMid then
+                            edits.Add (PositionalChange.Move (pref + prevLen - 1, pref))
+                            edits.Add (PositionalChange.Move (pref + 1, pref + prevLen - 1))
+                            fastHandled <- true
+
+                if not fastHandled then
+                    // One more than the key's middle-slice index in `next`; absent keys read as 0, or null under Fable, and fail `> 0`.
+                    let target = Platform.KeyMap<'K, int>()
+                    target.Reserve nextLen
+
                     for j in 0 .. nextLen - 1 do
-                        edits.Add (PositionalChange.InsertAt (pref + j, Platform.itemAt (pref + j) next))
-                else
-                    let positions = survivorTargets.ToArray ()
-                    let staying = longestIncreasing positions
-                    // The survivor index of each middle-slice key of `next`, or -1 for an inserted key.
-                    let survivorAt = Array.create nextLen -1
+                        target.Set (Platform.itemAt (pref + j) next, j + 1)
 
-                    for s in 0 .. survivors - 1 do
-                        Platform.setItemAt (Platform.itemAt s positions) survivorAt s
+                    let rawTargets = Platform.positions prevLen
+                    let mutable survivors = 0
 
-                    // The target of the first staying survivor after each survivor, or the middle slice length when none follows.
-                    let stayingAfter = Platform.positions survivors
-                    let mutable upcoming = nextLen
+                    for i = prevLen - 1 downto 0 do
+                        let t = target.Find (Platform.itemAt (pref + i) previous)
 
-                    for s = survivors - 1 downto 0 do
-                        Platform.setItemAt s stayingAfter upcoming
-
-                        if Platform.itemAt s staying then
-                            upcoming <- Platform.itemAt s positions
-
-                    // Survivors not yet placed, by survivor index. Starts all ones: each node holds its range's length.
-                    let unplaced = Array.zeroCreate<int>(survivors + 1)
-
-                    for i in 1..survivors do
-                        Platform.setItemAt i unplaced (i &&& -i)
-
-                    // The survivor index of the last staying key placed; the keys placed since it follow it contiguously.
-                    let mutable anchor = 0
-
-                    for j in 0 .. nextLen - 1 do
-                        let s = Platform.itemAt j survivorAt
-
-                        if s < 0 then
-                            edits.Add (PositionalChange.InsertAt (pref + j + sumBelow unplaced anchor, Platform.itemAt (pref + j) next))
-                        elif Platform.itemAt s staying then
-                            addAt unplaced s -1
-                            anchor <- s
+                        if t > 0 then
+                            Platform.setItemAt i rawTargets t
+                            survivors <- survivors + 1
                         else
-                            let from =
-                                min j (Platform.itemAt s stayingAfter)
-                                + sumBelow unplaced s
+                            Platform.setItemAt i rawTargets 0
+                            edits.Add (PositionalChange.RemoveAt (pref + i))
 
-                            addAt unplaced s -1
-                            let into = j + sumBelow unplaced anchor
+                    if survivors = 0 then
+                        for j in 0 .. nextLen - 1 do
+                            edits.Add (PositionalChange.InsertAt (pref + j, Platform.itemAt (pref + j) next))
+                    else
+                        let positions = Platform.positions survivors
+                        let mutable s = 0
 
-                            if from <> into then
-                                edits.Add (PositionalChange.Move (pref + from, pref + into))
+                        for i in 0 .. prevLen - 1 do
+                            let t = Platform.itemAt i rawTargets
+
+                            if t > 0 then
+                                Platform.setItemAt s positions (t - 1)
+                                s <- s + 1
+
+                        let staying = longestIncreasing positions
+                        // The survivor index of each middle-slice key of `next`, or -1 for an inserted key.
+                        let survivorAt = Array.create nextLen -1
+
+                        for idx in 0 .. survivors - 1 do
+                            Platform.setItemAt (Platform.itemAt idx positions) survivorAt idx
+
+                        // The target of the first staying survivor after each survivor, or the middle slice length when none follows.
+                        let stayingAfter = Platform.positions survivors
+                        let mutable upcoming = nextLen
+
+                        for idx = survivors - 1 downto 0 do
+                            Platform.setItemAt idx stayingAfter upcoming
+
+                            if Platform.itemAt idx staying then
+                                upcoming <- Platform.itemAt idx positions
+
+                        // Survivors not yet placed, by survivor index. Starts all ones: each node holds its range's length.
+                        let unplaced = Array.zeroCreate<int>(survivors + 1)
+
+                        for i in 1..survivors do
+                            Platform.setItemAt i unplaced (i &&& -i)
+
+                        // The survivor index of the last staying key placed; the keys placed since it follow it contiguously.
+                        let mutable anchor = 0
+
+                        for j in 0 .. nextLen - 1 do
+                            let sidx = Platform.itemAt j survivorAt
+
+                            if sidx < 0 then
+                                edits.Add (PositionalChange.InsertAt (pref + j + sumBelow unplaced anchor, Platform.itemAt (pref + j) next))
+                            elif Platform.itemAt sidx staying then
+                                addAt unplaced sidx -1
+                                anchor <- sidx
+                            else
+                                let from =
+                                    min j (Platform.itemAt sidx stayingAfter)
+                                    + sumBelow unplaced sidx
+
+                                addAt unplaced sidx -1
+                                let into = j + sumBelow unplaced anchor
+
+                                if from <> into then
+                                    edits.Add (PositionalChange.Move (pref + from, pref + into))
 
         edits

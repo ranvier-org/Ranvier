@@ -2699,6 +2699,62 @@ type internal UntrackedHostedFrame(previous: IComputation, previousOwner: Owner,
     member _.PreviousInBody = previousInBody
 #endif
 
+// Normalizes the intrinsic fast-path comparer (EqualityComparer<'T>.Default / ReferenceComparer<'T> on .NET,
+// ReferenceComparer<'T> on Fable) to null so hot paths avoid interface dispatch and generic dictionary lookups,
+// while preserving NullReferenceException for a faulty policy.
+[<Sealed>]
+type internal NullComparer<'T>() =
+    static member val Instance: IEqualityComparer<'T> = NullComparer<'T>() :> IEqualityComparer<'T>
+
+    interface IEqualityComparer<'T> with
+        member _.Equals(_, _) =
+            raise (NullReferenceException ())
+
+        member _.GetHashCode(_) =
+            raise (NullReferenceException ())
+
+#if FABLE_COMPILER
+module internal ComparerSentinel =
+    let inline encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
+        if obj.ReferenceEquals (comparer, null) then
+            NullComparer<'T>.Instance
+        elif (box comparer) :? ReferenceComparerBase then
+            Unchecked.defaultof<IEqualityComparer<'T>>
+        else
+            comparer
+
+    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
+        if Platform.isNull (box encoded) then
+            obj.ReferenceEquals (box a, box b)
+        else
+            encoded.Equals (a, b)
+#else
+module internal ComparerSentinel =
+    let encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
+        if obj.ReferenceEquals (comparer, null) then
+            NullComparer<'T>.Instance
+        elif typeof<'T>.IsValueType then
+            if obj.ReferenceEquals (comparer, EqualityComparer<'T>.Default) then
+                null
+            else
+                comparer
+        elif comparer :? ReferenceComparer<'T> then
+            null
+        else
+            comparer
+
+    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
+        if typeof<'T>.IsValueType then
+            if obj.ReferenceEquals (encoded, null) then
+                EqualityComparer<'T>.Default.Equals(a, b)
+            else
+                encoded.Equals (a, b)
+        elif obj.ReferenceEquals (encoded, null) then
+            obj.ReferenceEquals (box a, box b)
+        else
+            encoded.Equals (a, b)
+#endif
+
 /// <summary>
 /// Owns the tracking context and the construction-time policy. One graph is a
 /// single consistency domain; on .NET that also means a single thread of
@@ -2945,9 +3001,24 @@ type Graph(options: GraphOptions) =
         | Some d -> d
         | None -> Platform.defaultDispatcher ()
 
+#if FABLE_COMPILER
+    let usesJsIdentity = (box options.Equality) :? JsIdentityPolicy
+#endif
+
     new() = new Graph (GraphOptions.Default)
 
     member _.Options = options
+
+#if FABLE_COMPILER
+    member internal _.EncodedComparer<'T>() : IEqualityComparer<'T> =
+        if usesJsIdentity then
+            Unchecked.defaultof<IEqualityComparer<'T>>
+        else
+            ComparerSentinel.encode (options.Equality.Comparer<'T>())
+#else
+    member inline internal this.EncodedComparer<'T>() : IEqualityComparer<'T> =
+        ComparerSentinel.encode (this.Options.Equality.Comparer<'T>())
+#endif
 
     /// <summary>
     /// The dispatcher this graph resolved at construction.
@@ -4566,7 +4637,6 @@ type Graph(options: GraphOptions) =
                     untrackedInBody <- previousInBody
         )
 
-#if !FABLE_COMPILER
     /// <summary>Evaluates <c>f arg</c> with tracking suppressed, avoiding per-call closure allocation.</summary>
     member internal this.RunUntrackedWith(f: 'A -> 'T, arg: 'A) : 'T =
         this.Entered (
@@ -4591,6 +4661,79 @@ type Graph(options: GraphOptions) =
                     untrackedHost <- previousHost
                     untrackedInBody <- previousInBody
         )
+
+    /// <summary>Evaluates <c>body</c> untracked inside one batch, flushing if allowed on return.</summary>
+    member internal this.RunUntrackedBatch(body: unit -> unit) =
+        this.Entered (
+            "An untracked read",
+            fun () ->
+                let previous = current
+                let previousHost = untrackedHost
+                let previousInBody = untrackedInBody
+
+                if not (Platform.isNull (box previous)) then
+                    untrackedInBody <- true
+
+                    if Platform.isNull (box currentOwner) then
+                        untrackedHost <- previous :?> IScopeHost
+
+                current <- Unchecked.defaultof<IComputation>
+                batchDepth <- batchDepth + 1
+                Tracer.BatchEnter (this, batchDepth)
+
+                try
+                    try
+                        body ()
+                    finally
+                        batchDepth <- batchDepth - 1
+                        Tracer.BatchExit (this, batchDepth)
+
+                    this.RequestFlushFromEntered ()
+                finally
+                    current <- previous
+                    untrackedHost <- previousHost
+                    untrackedInBody <- previousInBody
+        )
+
+#if !FABLE_COMPILER
+    /// <summary>Evaluates <c>f arg</c> untracked inside one batch without closure allocation.</summary>
+    member internal this.RunUntrackedBatchWith(f: 'A -> unit, arg: 'A) =
+        if not (this.Enter "An untracked read") then
+            this.RunUntrackedBatchCore (f, arg)
+        else
+            try
+                this.RunUntrackedBatchCore (f, arg)
+            finally
+                this.Release ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.RunUntrackedBatchCore(f: 'A -> unit, arg: 'A) =
+        let previous = current
+        let previousHost = untrackedHost
+        let previousInBody = untrackedInBody
+
+        if not (Platform.isNull (box previous)) then
+            untrackedInBody <- true
+
+            if Platform.isNull (box currentOwner) then
+                untrackedHost <- previous :?> IScopeHost
+
+        current <- Unchecked.defaultof<IComputation>
+        batchDepth <- batchDepth + 1
+        Tracer.BatchEnter (this, batchDepth)
+
+        try
+            try
+                f arg
+            finally
+                batchDepth <- batchDepth - 1
+                Tracer.BatchExit (this, batchDepth)
+
+            this.RequestFlushFromEntered ()
+        finally
+            current <- previous
+            untrackedHost <- previousHost
+            untrackedInBody <- previousInBody
 #endif
 
     /// <summary>
@@ -4702,55 +4845,11 @@ type Graph(options: GraphOptions) =
         untrackedInBody <- saved.PreviousInBody
 #endif
 
-#if !FABLE_COMPILER
-// Normalizes the intrinsic fast-path comparer (EqualityComparer<'T>.Default for value types,
-// ReferenceComparer<'T> for reference types) to null so .NET hot paths avoid interface dispatch
-// and generic dictionary lookups, while preserving NullReferenceException for a faulty policy.
-[<Sealed>]
-type private NullComparer<'T>() =
-    static member val Instance: IEqualityComparer<'T> = NullComparer<'T>() :> IEqualityComparer<'T>
-
-    interface IEqualityComparer<'T> with
-        member _.Equals(_, _) =
-            raise (NullReferenceException ())
-
-        member _.GetHashCode(_) =
-            raise (NullReferenceException ())
-
-module internal ComparerSentinel =
-    let encode (comparer: IEqualityComparer<'T>) : IEqualityComparer<'T> =
-        if obj.ReferenceEquals (comparer, null) then
-            NullComparer<'T>.Instance
-        elif typeof<'T>.IsValueType then
-            if obj.ReferenceEquals (comparer, EqualityComparer<'T>.Default) then
-                null
-            else
-                comparer
-        elif comparer :? ReferenceComparer<'T> then
-            null
-        else
-            comparer
-
-    let inline equals (encoded: IEqualityComparer<'T>) (a: 'T) (b: 'T) : bool =
-        if typeof<'T>.IsValueType then
-            if obj.ReferenceEquals (encoded, null) then
-                EqualityComparer<'T>.Default.Equals(a, b)
-            else
-                encoded.Equals (a, b)
-        elif obj.ReferenceEquals (encoded, null) then
-            obj.ReferenceEquals (box a, box b)
-        else
-            encoded.Equals (a, b)
-#endif
-
 /// <summary>
 /// A settable source.
 /// </summary>
-type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>) =
+type Signal<'T> private (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
-    let equal = ComparerSentinel.encode equal
-#endif
 #if RANVIER_TRACE
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
@@ -4772,7 +4871,13 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
     /// <summary>
     /// A signal holding <c>initial</c>, compared by the comparer <c>graph</c>'s equality policy supplies for <c>'T</c>.
     /// </summary>
-    new(graph: Graph, initial: 'T) = Signal<'T>(graph, initial, graph.Options.Equality.Comparer<'T>())
+    new(graph: Graph, initial: 'T) = Signal<'T>(graph, initial, graph.EncodedComparer<'T>())
+
+    static member internal CreateWithComparer(graph: Graph, initial: 'T, comparer: IEqualityComparer<'T>) =
+        Signal<'T>(graph, initial, ComparerSentinel.encode comparer)
+
+    static member internal OfEncoded(graph: Graph, initial: 'T, encodedEqual: IEqualityComparer<'T>) =
+        Signal<'T>(graph, initial, encodedEqual)
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -4837,7 +4942,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
                             && not (this.RecordWrite v)
                         )
                     then
-                        if not (equal.Equals (value, v)) then
+                        if not (ComparerSentinel.equals equal value v) then
                             value <- v
                             Tracer.Write (observers, true, box v)
 
@@ -4964,7 +5069,7 @@ type Signal<'T> internal (graph: Graph, initial: 'T, equal: IEqualityComparer<'T
         graph.Entered (
             "A signal write",
             fun () ->
-                if not (equal.Equals (value, v)) then
+                if not (ComparerSentinel.equals equal value v) then
                     value <- v
                     Tracer.Write (observers, true, box v)
 
@@ -5296,9 +5401,6 @@ type AsyncSource<'T>(graph: Graph) =
 /// </remarks>
 type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
-    let equal = ComparerSentinel.encode equal
-#endif
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let mutable sources = SourceList.Create ()
@@ -5356,7 +5458,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// A pure memo over <c>compute</c>.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>) as this =
-        Memo<'T>(graph, compute.Invoke, ScopeMode.Pure, graph.Options.Equality.Comparer<'T>())
+        Memo<'T>(graph, compute.Invoke, ScopeMode.Pure, graph.EncodedComparer<'T>())
         then this.Attach ()
 
     /// <summary>
@@ -5364,7 +5466,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// otherwise.
     /// </summary>
     new(graph: Graph, compute: Func<'T voption, 'T>, owning: bool) as this =
-        Memo<'T>(graph, compute.Invoke, (if owning then ScopeMode.Owning else ScopeMode.Pure), graph.Options.Equality.Comparer<'T>())
+        Memo<'T>(graph, compute.Invoke, (if owning then ScopeMode.Owning else ScopeMode.Pure), graph.EncodedComparer<'T>())
 
         then this.Attach ()
 
@@ -5372,12 +5474,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// A pure memo over <c>compute</c>, which receives the value last published, or <c>seed</c> before the first.
     /// </summary>
     new(graph: Graph, seed: 'T, compute: Func<'T, 'T>) as this =
-        Memo<'T>(
-            graph,
-            (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
-            ScopeMode.Pure,
-            graph.Options.Equality.Comparer<'T>()
-        )
+        Memo<'T>(graph, (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)), ScopeMode.Pure, graph.EncodedComparer<'T>())
 
         then this.Attach ()
 
@@ -5390,7 +5487,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
             graph,
             (fun previous -> compute.Invoke (ValueOption.defaultValue seed previous)),
             (if owning then ScopeMode.Owning else ScopeMode.Pure),
-            graph.Options.Equality.Comparer<'T>()
+            graph.EncodedComparer<'T>()
         )
 
         then this.Attach ()
@@ -5400,13 +5497,18 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
     /// A memo over <c>compute</c>, owned by the current owner.
     /// </summary>
     static member internal Create(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode) =
-        let memo = Memo<'T>(graph, compute, mode, graph.Options.Equality.Comparer<'T>())
+        let memo = Memo<'T>(graph, compute, mode, graph.EncodedComparer<'T>())
         memo.Attach ()
         memo
 
     /// <summary>A memo whose cutoff uses <c>comparer</c>, owned by the current owner.</summary>
     static member internal CreateWithComparer(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T>) =
-        let memo = Memo<'T>(graph, compute, mode, comparer)
+        let memo = Memo<'T>(graph, compute, mode, ComparerSentinel.encode comparer)
+        memo.Attach ()
+        memo
+
+    static member internal CreateEncoded(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, encodedEqual: IEqualityComparer<'T>) =
+        let memo = Memo<'T>(graph, compute, mode, encodedEqual)
         memo.Attach ()
         memo
 
@@ -5548,11 +5650,7 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
 
         if not moved then
             try
-#if FABLE_COMPILER
-                moved <- not (equal.Equals (previous, value))
-#else
                 moved <- not (ComparerSentinel.equals equal previous value)
-#endif
             with ex ->
                 value <- previous
                 failure <- graph.FailureOf (ex, this, previousFailure)
@@ -6015,6 +6113,30 @@ type Memo<'T> private (graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode,
                     Failed failure.Error
             else
                 Ready value
+
+    static member val private ReadUntrackedFn: Memo<'T> -> Reading<'T> = fun m -> m.ReadUntracked ()
+
+    member inline internal _.IsCleanAndReady = StatusBits.isCleanAndReady freshness status
+
+    /// <summary>
+    /// Zero-closure untracked non-throwing read: hits a clean inline check before falling back to <c>ReadUntracked</c>.
+    /// </summary>
+    member internal this.TryValueUntracked() : Reading<'T> =
+        graph.Entered (
+            "An untracked read",
+            fun () ->
+                if StatusBits.isCleanAndReady freshness status then
+                    Ready value
+                else
+                    this.TryValueUntrackedSlow ()
+        )
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.TryValueUntrackedSlow() : Reading<'T> =
+        if obj.ReferenceEquals (graph.CurrentComputation, null) then
+            this.ReadUntracked ()
+        else
+            graph.RunUntrackedWith (Memo<'T>.ReadUntrackedFn, this)
 
     /// <summary>
     /// Non-throwing read that brings the memo up to date without recording a dependency.
@@ -6545,9 +6667,6 @@ type Effect private (graph: Graph, body: obj, _unstarted: unit) =
 [<Sealed>]
 type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -> unit, equal: IEqualityComparer<'T>) =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
-    let equal = ComparerSentinel.encode equal
-#endif
     let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
 
@@ -6580,15 +6699,14 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
     /// <summary>An effect owned by the current owner, with its first run queued.</summary>
     static member internal Create(graph: Graph, compute: unit -> 'T, act: 'T -> unit) =
-        let node =
-            new EffectOn<'T> (graph, compute, act, graph.Options.Equality.Comparer<'T>())
+        let node = new EffectOn<'T> (graph, compute, act, graph.EncodedComparer<'T>())
 
         node.Start ()
         node
 
     /// <summary>An owned split effect whose cutoff uses <c>comparer</c>, with its first run queued.</summary>
     static member internal CreateWithComparer(graph: Graph, compute: unit -> 'T, act: 'T -> unit, comparer: IEqualityComparer<'T>) =
-        let node = new EffectOn<'T> (graph, compute, act, comparer)
+        let node = new EffectOn<'T> (graph, compute, act, ComparerSentinel.encode comparer)
         node.Start ()
         node
 
@@ -6658,11 +6776,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
         if settled && hasActed then
             try
-#if FABLE_COMPILER
-                unchanged <- equal.Equals (last, v)
-#else
                 unchanged <- ComparerSentinel.equals equal last v
-#endif
             with ex ->
                 settled <- false
                 error <- ex
@@ -8016,9 +8130,6 @@ type Boundary<'T>
     (graph: Graph, body: unit -> 'T, onPending: ('T voption -> 'T) voption, onError: (exn -> 'T voption -> 'T) voption, equal: IEqualityComparer<'T>)
     =
     let id = graph.NextId ()
-#if !FABLE_COMPILER
-    let equal = ComparerSentinel.encode equal
-#endif
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     let mutable sources = SourceList.Create ()
@@ -8056,7 +8167,7 @@ type Boundary<'T>
     /// </summary>
     static member internal Create(graph: Graph, body: unit -> 'T, onPending: ('T voption -> 'T) voption, onError: (exn -> 'T voption -> 'T) voption) =
         let boundary =
-            Boundary<'T>(graph, body, onPending, onError, graph.Options.Equality.Comparer<'T>())
+            Boundary<'T>(graph, body, onPending, onError, graph.EncodedComparer<'T>())
 
         boundary.Attach ()
         boundary
@@ -8070,7 +8181,9 @@ type Boundary<'T>
             onError: (exn -> 'T voption -> 'T) voption,
             comparer: IEqualityComparer<'T>
         ) =
-        let boundary = Boundary<'T>(graph, body, onPending, onError, comparer)
+        let boundary =
+            Boundary<'T>(graph, body, onPending, onError, ComparerSentinel.encode comparer)
+
         boundary.Attach ()
         boundary
 
@@ -8276,11 +8389,7 @@ type Boundary<'T>
 
         if not moved then
             try
-#if FABLE_COMPILER
-                moved <- not (equal.Equals (previous, value))
-#else
                 moved <- not (ComparerSentinel.equals equal previous value)
-#endif
             with ex ->
                 value <- previous
                 failure <- graph.FailureOf (ex, this, previousFailure)

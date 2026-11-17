@@ -162,7 +162,7 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
         )
 
     let edit =
-        Signal<struct (int * 'T) voption>(graph, ValueNone, EditComparer<'T> rawEqual)
+        Signal<struct (int * 'T) voption>.CreateWithComparer(graph, ValueNone, EditComparer<'T> rawEqual)
 
     /// <summary>True when an edit made against seed version <c>version</c> is still in force. A tracked read of the seed.</summary>
     let inForce (version: int) =
@@ -277,7 +277,7 @@ module Api =
     /// <exception cref="T:System.ArgumentNullException"><c>comparer</c> is null.</exception>
     let createSignalWithComparer (comparer: IEqualityComparer<'T>) (initial: 'T) =
         requireComparer comparer
-        Signal (Graph.Current, initial, comparer)
+        Signal.CreateWithComparer (Graph.Current, initial, comparer)
 
     /// <summary>
     /// A derived value, recomputed on read once something it read has changed.
@@ -789,13 +789,7 @@ module Api =
     /// </example>
     let createOptionMemo (select: unit -> 'A option) : Memo<'A option> =
         let graph = Graph.Current
-
-        let equal =
-#if FABLE_COMPILER
-            graph.Options.Equality.Comparer<'A>()
-#else
-            ComparerSentinel.encode (graph.Options.Equality.Comparer<'A>())
-#endif
+        let equal = graph.EncodedComparer<'A>()
 
         let compute (last: 'A option voption) =
             let next = select ()
@@ -803,12 +797,7 @@ module Api =
             match last, next with
             | ValueSome (Some previous as kept), Some current when
                 Identity.same previous current
-                ||
-#if FABLE_COMPILER
-                equal.Equals (previous, current)
-#else
-                ComparerSentinel.equals equal previous current
-#endif
+                || ComparerSentinel.equals equal previous current
                 ->
                 kept
             | _ -> next

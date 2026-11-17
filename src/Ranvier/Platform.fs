@@ -768,6 +768,36 @@ module internal Platform =
     let jsMapExists (map: JS.Map<'K, 'V>) (predicate: 'V -> bool) : bool = jsNative
 #endif
 
+#if !FABLE_COMPILER
+    type internal DefaultKeyTrait<'K when 'K: equality>() =
+        static let useDefault =
+            typeof<'K> = typeof<int>
+            || typeof<'K> = typeof<int64>
+            || typeof<'K> = typeof<string>
+            || typeof<'K> = typeof<Guid>
+            || typeof<'K> = typeof<uint32>
+            || typeof<'K> = typeof<uint64>
+            || typeof<'K> = typeof<int16>
+            || typeof<'K> = typeof<uint16>
+            || typeof<'K> = typeof<byte>
+            || typeof<'K> = typeof<sbyte>
+            || typeof<'K> = typeof<char>
+            || typeof<'K> = typeof<bool>
+
+        static member inline UseDefault = useDefault
+#endif
+
+#if FABLE_COMPILER
+    let inline keyEquals (a: 'K) (b: 'K) : bool =
+        EqualityComparer<'K>.Default.Equals(a, b)
+#else
+    let inline keyEquals<'K when 'K: equality> (a: 'K) (b: 'K) : bool =
+        if DefaultKeyTrait<'K>.UseDefault then
+            EqualityComparer<'K>.Default.Equals(a, b)
+        else
+            HashIdentity.Structural<'K>.Equals(a, b)
+#endif
+
     /// <summary>
     /// A map under structural key equality. Holds every key of <c>'K</c>, <c>None</c>
     /// and <c>()</c> included.
@@ -776,36 +806,45 @@ module internal Platform =
     type KeyMap<'K, 'V when 'K: equality>() =
 #if FABLE_COMPILER
         let prims = newJsMap<'K, 'V>()
-        let objs = Dictionary<'K, 'V>(HashIdentity.Structural)
+        let mutable objs: Dictionary<'K, 'V> = Unchecked.defaultof<_>
 
         member _.Prims = prims
         member _.Objs = objs
-        member _.Count = prims.size + objs.Count
+
+        member _.Count =
+            if isNull (box objs) then
+                prims.size
+            else
+                prims.size + objs.Count
 
         /// <summary>
         /// The value at <c>key</c>, or <c>Unchecked.defaultof&lt;'V></c> for an absent key.
         /// </summary>
         member _.Find(key: 'K) : 'V =
-            if primitiveKey key then
-                jsMapFind prims key
-            else
-                findOrDefault objs key
+            if primitiveKey key then jsMapFind prims key
+            elif isNull (box objs) then Unchecked.defaultof<'V>
+            else findOrDefault objs key
 
         member _.Set(key: 'K, value: 'V) =
             if primitiveKey key then
                 prims.set (key, value) |> ignore
             else
+                if isNull (box objs) then
+                    objs <- Dictionary<'K, 'V>(HashIdentity.Structural)
+
                 objs[key] <- value
 
         member _.Remove(key: 'K) =
             if primitiveKey key then
                 prims.delete key |> ignore
-            else
+            elif not (isNull (box objs)) then
                 objs.Remove key |> ignore
 
         member _.Clear() =
             prims.clear ()
-            objs.Clear ()
+
+            if not (isNull (box objs)) then
+                objs.Clear ()
 
         /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
         member _.Reserve(_count: int) = ()
@@ -816,22 +855,30 @@ module internal Platform =
         member inline this.Iterate([<InlineIfLambda>] f: 'K -> 'V -> unit) =
             this.Prims.forEach (fun value key _ -> f key value)
 
-            for pair in this.Objs do
-                f pair.Key pair.Value
+            if not (isNull (box this.Objs)) then
+                for pair in this.Objs do
+                    f pair.Key pair.Value
 
         /// <summary>
         /// Whether <c>predicate</c> holds for some value. Stops at the first match.
         /// </summary>
         member _.Exists(predicate: 'V -> bool) =
             let mutable found = jsMapExists prims predicate
-            let mutable e = objs.GetEnumerator ()
 
-            while not found && e.MoveNext () do
-                found <- predicate e.Current.Value
+            if not found && not (isNull (box objs)) then
+                let mutable e = objs.GetEnumerator ()
+
+                while not found && e.MoveNext () do
+                    found <- predicate e.Current.Value
 
             found
 #else
-        let table = Dictionary<'K, 'V>(HashIdentity.Structural)
+        let table =
+            if DefaultKeyTrait<'K>.UseDefault then
+                Dictionary<'K, 'V>()
+            else
+                Dictionary<'K, 'V>(HashIdentity.Structural)
+
         let mutable hasNull = false
         let mutable nullValue = Unchecked.defaultof<'V>
 
@@ -905,17 +952,21 @@ module internal Platform =
     type KeySet<'K when 'K: equality>() =
 #if FABLE_COMPILER
         let prims = newJsSet<'K>()
-        let objs = HashSet<'K>(HashIdentity.Structural)
+        let mutable objs: HashSet<'K> = Unchecked.defaultof<_>
 
         member _.Prims = prims
         member _.Objs = objs
-        member _.Count = prims.size + objs.Count
+
+        member _.Count =
+            if isNull (box objs) then
+                prims.size
+            else
+                prims.size + objs.Count
 
         member _.Contains(key: 'K) =
-            if primitiveKey key then
-                prims.has key
-            else
-                objs.Contains key
+            if primitiveKey key then prims.has key
+            elif isNull (box objs) then false
+            else objs.Contains key
 
         /// <summary>
         /// Adds <c>key</c>. Returns false if it was already present.
@@ -928,17 +979,22 @@ module internal Platform =
                     prims.add key |> ignore
                     true
             else
+                if isNull (box objs) then
+                    objs <- HashSet<'K>(HashIdentity.Structural)
+
                 objs.Add key
 
         member _.Remove(key: 'K) =
             if primitiveKey key then
                 prims.delete key |> ignore
-            else
+            elif not (isNull (box objs)) then
                 objs.Remove key |> ignore
 
         member _.Clear() =
             prims.clear ()
-            objs.Clear ()
+
+            if not (isNull (box objs)) then
+                objs.Clear ()
 
         /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
         member _.Reserve(_count: int) = ()
@@ -949,10 +1005,16 @@ module internal Platform =
         member inline this.Iterate([<InlineIfLambda>] f: 'K -> unit) =
             this.Prims.forEach (fun key _ _ -> f key)
 
-            for key in this.Objs do
-                f key
+            if not (isNull (box this.Objs)) then
+                for key in this.Objs do
+                    f key
 #else
-        let table = HashSet<'K>(HashIdentity.Structural)
+        let table =
+            if DefaultKeyTrait<'K>.UseDefault then
+                HashSet<'K>()
+            else
+                HashSet<'K>(HashIdentity.Structural)
+
         let mutable hasNull = false
 
         member _.Table = table
