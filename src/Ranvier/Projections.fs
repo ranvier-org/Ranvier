@@ -162,15 +162,6 @@ type internal KeyRow<'K, 'V>(key: 'K, tag: obj) =
     member val Tag = tag with get, set
 
 /// <summary>
-/// A read-only dictionary that enumerates in insertion order. Holds every key
-/// of <c>'K</c>, <c>None</c> and <c>()</c> included.
-/// </summary>
-#if FABLE_COMPILER
-[<Sealed; Fable.Core.AttachMembers>]
-#else
-[<Sealed>]
-#endif
-/// <summary>
 /// The window of the key array at version <c>To</c> that can differ from the key array at version <c>From</c>: the
 /// arrays agree before <c>Start</c>, and after <c>End</c> and <c>PreviousEnd</c>.
 /// </summary>
@@ -182,6 +173,15 @@ type internal KeyRange() =
     member val PreviousEnd = -1 with get, set
     member val End = -1 with get, set
 
+/// <summary>
+/// A read-only dictionary that enumerates in insertion order. Holds every key
+/// of <c>'K</c>, <c>None</c> and <c>()</c> included.
+/// </summary>
+#if FABLE_COMPILER
+[<Sealed; Fable.Core.AttachMembers>]
+#else
+[<Sealed>]
+#endif
 type internal RowSnapshot<'K, 'V when 'K: equality>(capacity: int) =
     let pairs = ResizeArray<KeyValuePair<'K, 'V>>(capacity)
 
@@ -740,14 +740,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// <summary>Whether a key reader is live.</summary>
     member internal _.HasKeyReaders = not (Platform.isNull log)
 
-    member private this.CommitRow(entry: RowEntry<'K, 'V>, value: 'V) : 'V =
-        if not entry.Row.Violated then
-            entry.Settled <- true
-
-        this.Report (entry, false)
-        value
-
-    member private this.FailRow(entry: RowEntry<'K, 'V>, ex: exn) =
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member internal this.FailRow(entry: RowEntry<'K, 'V>, ex: exn) =
         match ex with
         | NotReadyException _ -> this.Report (entry, true)
         | _ ->
@@ -762,28 +756,13 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </summary>
     member internal this.RunRow(entry: RowEntry<'K, 'V>) : 'V =
         try
-            this.CommitRow (entry, entry.Reader ())
-        with ex ->
-            this.FailRow (entry, ex)
-            reraise ()
+            let value = entry.Reader ()
 
-    member internal this.RunMappedValue(entry: RowEntry<'K, 'V>, source: Signal<'T>, map: 'T -> 'V) : 'V =
-        try
-            this.CommitRow (entry, map source.Value)
-        with ex ->
-            this.FailRow (entry, ex)
-            reraise ()
+            if not entry.Row.Violated then
+                entry.Settled <- true
 
-    member internal this.RunMappedKey(entry: RowEntry<'K, 'V>, map: 'K -> 'V) : 'V =
-        try
-            this.CommitRow (entry, map entry.Key)
-        with ex ->
-            this.FailRow (entry, ex)
-            reraise ()
-
-    member internal this.RunMappedEntry(entry: RowEntry<'K, 'V>, mapEntry: RowEntry<'K, 'V> -> 'V) : 'V =
-        try
-            this.CommitRow (entry, mapEntry entry)
+            this.Report (entry, false)
+            value
         with ex ->
             this.FailRow (entry, ex)
             reraise ()
@@ -792,7 +771,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// Records whether a live row is pending. A pending row is observed by
     /// <c>watch</c>, so its settle reaches the summary without a reader.
     /// </summary>
-    member private this.Report(entry: RowEntry<'K, 'V>, pending: bool) =
+    member internal this.Report(entry: RowEntry<'K, 'V>, pending: bool) =
         if entry.Live && pending <> entry.Watched then
             entry.Watched <- pending
 
@@ -2398,12 +2377,24 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     member private this.Compute(entry: RowEntry<'K, 'V>) : 'V voption -> 'V =
         fun _ -> this.RunRow entry
 
+    member private this.RunMappedItem(entry: ItemRow<'T, 'K, 'V>) : 'V =
+        try
+            let value = map entry.Item.Value
+
+            if not entry.Row.Violated then
+                entry.Settled <- true
+
+            this.Report (entry, false)
+            value
+        with ex ->
+            this.FailRow (entry, ex)
+            reraise ()
+
     member private this.CreateMapped() =
         for i in 0 .. adds.Count - 1 do
             let struct (key, item) = Platform.entryAt i adds
             let entry = this.NewRow (key, item)
-            let source = entry.Item
-            entry.Row <- Memo<'V>.CreateEncoded(graph, (fun _ -> this.RunMappedValue (entry, source, map)), rowMode, encodedValueEqual)
+            entry.Row <- Memo<'V>.CreateEncoded(graph, (fun _ -> this.RunMappedItem entry), rowMode, encodedValueEqual)
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
     member private this.FactoryFailure(key: 'K, error: exn, advice: string, before: int) : unit -> 'V =
@@ -2558,7 +2549,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 /// </summary>
 [<AbstractClass>]
 type internal RowsByKey<'K, 'V when 'K: equality>
-    (graph: Graph, map: 'K -> 'V, factory: 'K -> (unit -> 'V), ?tagged: bool, ?mapEntry: RowEntry<'K, 'V> -> 'V) =
+    (graph: Graph, map: 'K -> 'V, factory: 'K -> (unit -> 'V), ?tagged: bool, ?mapEntry: KeyRow<'K, 'V> -> 'V) =
     inherit Projection<'K, 'V>(graph)
 
     let tagged = defaultArg tagged false
@@ -2611,26 +2602,52 @@ type internal RowsByKey<'K, 'V when 'K: equality>
     member private this.Compute(entry: RowEntry<'K, 'V>) : 'V voption -> 'V =
         fun _ -> this.RunRow entry
 
+    member private this.RunMappedKey(entry: RowEntry<'K, 'V>) : 'V =
+        try
+            let value = map entry.Key
+
+            if not entry.Row.Violated then
+                entry.Settled <- true
+
+            this.Report (entry, false)
+            value
+        with ex ->
+            this.FailRow (entry, ex)
+            reraise ()
+
+    member private this.RunMappedKeyRow(entry: KeyRow<'K, 'V>) : 'V =
+        try
+            let value = mapEntry entry
+
+            if not entry.Row.Violated then
+                entry.Settled <- true
+
+            this.Report (entry, false)
+            value
+        with ex ->
+            this.FailRow (entry, ex)
+            reraise ()
+
     member private this.CreateMapped() =
         for i in 0 .. adds.Count - 1 do
             let struct (key, tag) = Platform.entryAt i adds
 
-            let entry =
-                if tagged then
-                    KeyRow<'K, 'V>(key, tag) :> RowEntry<'K, 'V>
-                else
-                    RowEntry<'K, 'V> key
+            if hasMapEntry then
+                let kr = KeyRow<'K, 'V>(key, tag)
+                let entry = kr :> RowEntry<'K, 'V>
+                this.AddEntry (key, entry)
+                entry.Row <- Memo<'V>.CreateEncoded(graph, (fun _ -> this.RunMappedKeyRow kr), rowMode, encodedValueEqual)
+                Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
+            else
+                let entry =
+                    if tagged then
+                        KeyRow<'K, 'V>(key, tag) :> RowEntry<'K, 'V>
+                    else
+                        RowEntry<'K, 'V> key
 
-            this.AddEntry (key, entry)
-
-            let compute =
-                if hasMapEntry then
-                    fun (_: 'V voption) -> this.RunMappedEntry (entry, mapEntry)
-                else
-                    fun (_: 'V voption) -> this.RunMappedKey (entry, map)
-
-            entry.Row <- Memo<'V>.CreateEncoded(graph, compute, rowMode, encodedValueEqual)
-            Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
+                this.AddEntry (key, entry)
+                entry.Row <- Memo<'V>.CreateEncoded(graph, (fun _ -> this.RunMappedKey entry), rowMode, encodedValueEqual)
+                Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
     member private this.CreateFactored(key: 'K, tag: obj) =
         let entry =

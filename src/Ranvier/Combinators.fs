@@ -130,8 +130,7 @@ type internal DualEntry<'K, 'A, 'B>(first: RowEntry<'K, 'A>, second: RowEntry<'K
     member val Second = second with get, set
 
 module internal EntryCache =
-    let inline readSingle (upstream: Projection<'K, 'V>) (entry: RowEntry<'K, 'U>) : 'V =
-        let kr = entry :?> KeyRow<'K, 'U>
+    let inline readSingle (upstream: Projection<'K, 'V>) (kr: KeyRow<'K, 'U>) : 'V =
         let key = kr.Key
         let mutable up = unbox<RowEntry<'K, 'V>> kr.Tag
 
@@ -141,8 +140,7 @@ module internal EntryCache =
 
         upstream.ReadEntry (key, up)
 
-    let inline readDual (first: Projection<'K, 'A>) (second: Projection<'K, 'B>) (entry: RowEntry<'K, 'U>) : struct ('A * 'B) =
-        let kr = entry :?> KeyRow<'K, 'U>
+    let inline readDual (first: Projection<'K, 'A>) (second: Projection<'K, 'B>) (kr: KeyRow<'K, 'U>) : struct ('A * 'B) =
         let key = kr.Key
         let mutable cached = unbox<DualEntry<'K, 'A, 'B>> kr.Tag
 
@@ -3053,40 +3051,11 @@ module internal Ranks =
 
     /// <summary>The order of <c>sortBy</c>.</summary>
     let ascending (a: 'S) (b: 'S) =
-        if typeof<'S> = typeof<int> then
-            let x = unbox<int>(box a)
-            let y = unbox<int>(box b)
-
-            if x < y then -1
-            elif x > y then 1
-            else 0
-        elif typeof<'S> = typeof<int64> then
-            let x = unbox<int64>(box a)
-            let y = unbox<int64>(box b)
-
-            if x < y then -1
-            elif x > y then 1
-            else 0
-        elif typeof<'S> = typeof<float> then
-            let x = unbox<float>(box a)
-            let y = unbox<float>(box b)
-
-            match System.Double.IsNaN x, System.Double.IsNaN y with
-            | true, true -> 0
-            | true, false -> 1
-            | false, true -> -1
-            | false, false ->
-                if x < y then -1
-                elif x > y then 1
-                else 0
-        elif typeof<'S> = typeof<string> then
-            System.String.CompareOrdinal (unbox<string>(box a), unbox<string>(box b))
-        else
-            match isNaN a, isNaN b with
-            | true, true -> 0
-            | true, false -> 1
-            | false, true -> -1
-            | false, false -> LanguagePrimitives.FastGenericComparer<'S>.Compare(a, b)
+        match isNaN a, isNaN b with
+        | true, true -> 0
+        | true, false -> 1
+        | false, true -> -1
+        | false, false -> LanguagePrimitives.FastGenericComparer<'S>.Compare(a, b)
 #endif
 
 /// <summary>
@@ -3280,70 +3249,14 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         || typeof<'S>.IsAssignableFrom typeof<float32>
 
     let isNaN (rank: 'S) =
-        floatRanks
-        && (match box rank with
-            | :? float as f -> System.Double.IsNaN f
-            | :? float32 as f -> System.Single.IsNaN f
-            | _ -> false)
+        match box rank with
+        | :? float as f -> System.Double.IsNaN f
+        | :? float32 as f -> System.Single.IsNaN f
+        | _ -> false
 
     /// <summary>The order of <c>sortByDescending</c> when <c>descending</c> is set, of <c>sortBy</c> otherwise.</summary>
     let compareRanks (a: 'S) (b: 'S) =
-        if typeof<'S> = typeof<int> then
-            let x = unbox<int>(box a)
-            let y = unbox<int>(box b)
-
-            if descending then
-                if y < x then -1
-                elif y > x then 1
-                else 0
-            elif x < y then
-                -1
-            elif x > y then
-                1
-            else
-                0
-        elif typeof<'S> = typeof<int64> then
-            let x = unbox<int64>(box a)
-            let y = unbox<int64>(box b)
-
-            if descending then
-                if y < x then -1
-                elif y > x then 1
-                else 0
-            elif x < y then
-                -1
-            elif x > y then
-                1
-            else
-                0
-        elif typeof<'S> = typeof<float> then
-            let x = unbox<float>(box a)
-            let y = unbox<float>(box b)
-
-            match System.Double.IsNaN x, System.Double.IsNaN y with
-            | true, true -> 0
-            | true, false -> 1
-            | false, true -> -1
-            | false, false ->
-                if descending then
-                    if y < x then -1
-                    elif y > x then 1
-                    else 0
-                elif x < y then
-                    -1
-                elif x > y then
-                    1
-                else
-                    0
-        elif typeof<'S> = typeof<string> then
-            let x = unbox<string>(box a)
-            let y = unbox<string>(box b)
-
-            if descending then
-                System.String.CompareOrdinal (y, x)
-            else
-                System.String.CompareOrdinal (x, y)
-        else
+        if floatRanks then
             match isNaN a, isNaN b with
             | true, true -> 0
             | true, false -> 1
@@ -3353,6 +3266,10 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
                     comparer.Compare (b, a)
                 else
                     comparer.Compare (a, b)
+        elif descending then
+            comparer.Compare (b, a)
+        else
+            comparer.Compare (a, b)
 #endif
 
     let incrementalLimit n =
@@ -3431,19 +3348,18 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
 
         sorted <- true
 #else
-    let slotOrderComparer =
-        System.Collections.Generic.Comparer<int>.Create(
-            System.Comparison<int>(fun i j ->
-                let a = Platform.itemAt i placedSlots
-                let b = Platform.itemAt j placedSlots
-                let byRank = compareRanks a.Rank b.Rank
+    let slotOrderComparison =
+        System.Comparison<int>(fun i j ->
+            let a = Platform.itemAt i placedSlots
+            let b = Platform.itemAt j placedSlots
+            let byRank = compareRanks a.Rank b.Rank
 
-                if byRank <> 0 then byRank
-                elif a.UpIdx < b.UpIdx then -1
-                elif a.UpIdx > b.UpIdx then 1
-                else 0)
-        )
+            if byRank <> 0 then byRank
+            elif a.UpIdx < b.UpIdx then -1
+            elif a.UpIdx > b.UpIdx then 1
+            else 0)
 
+#if NET5_0_OR_GREATER
     let fullSort () =
         sorted <- false
         orderPosValid <- false
@@ -3456,9 +3372,26 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             Platform.setItemAt i order i
 
         if placedCount > 1 then
-            System.Array.Sort<int>(order, 0, placedCount, slotOrderComparer)
+            System.MemoryExtensions.Sort<int>(System.Span<int>(order, 0, placedCount), slotOrderComparison)
 
         sorted <- true
+#else
+    let fullSort () =
+        sorted <- false
+        orderPosValid <- false
+        rangeOps <- 2
+
+        if order.Length <> placedCount then
+            order <- Array.zeroCreate<int> placedCount
+
+        for i in 0 .. placedCount - 1 do
+            Platform.setItemAt i order i
+
+        if placedCount > 1 then
+            System.Array.Sort<int>(order, slotOrderComparison)
+
+        sorted <- true
+#endif
 #endif
 
     let buildKeysArray () =
@@ -5685,7 +5618,20 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
         this.ExtraFailedCheck <- fun () -> resolveCheckStep (fun () -> not this.IsInvalidated)
         graph.RunUntracked (fun () -> this.Scope.OnCleanup dispose)
 
-    member private _.CreateAdded() =
+    member private this.RunGroupRow(entry: ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>) : Projection<'K, 'V> =
+        try
+            let value = entry.Item.Value
+
+            if not entry.Row.Violated then
+                entry.Settled <- true
+
+            this.Report (entry, false)
+            value
+        with ex ->
+            this.FailRow (entry, ex)
+            reraise ()
+
+    member private this.CreateAdded() =
         for i in 0 .. adds.Count - 1 do
             let struct (groupKey, group) = Platform.entryAt i adds
 
@@ -5695,9 +5641,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
             let entry = ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>(groupKey, source)
             this.AddEntry (groupKey, entry)
 
-            entry.Row <-
-                Memo<Projection<'K, 'V>>
-                    .CreateEncoded(graph, (fun _ -> this.RunMappedValue (entry, source, id)), ScopeMode.ValueRow, encodedGroupEqual)
+            entry.Row <- Memo<Projection<'K, 'V>>.CreateEncoded(graph, (fun _ -> this.RunGroupRow entry), ScopeMode.ValueRow, encodedGroupEqual)
 
     member private _.Enumerate() =
         if not initialized then
@@ -6542,35 +6486,7 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
         Ranks.ascending a b
 #else
     let compareAsc (a: 'S) (b: 'S) =
-        if typeof<'S> = typeof<int> then
-            let x = unbox<int>(box a)
-            let y = unbox<int>(box b)
-
-            if x < y then -1
-            elif x > y then 1
-            else 0
-        elif typeof<'S> = typeof<int64> then
-            let x = unbox<int64>(box a)
-            let y = unbox<int64>(box b)
-
-            if x < y then -1
-            elif x > y then 1
-            else 0
-        elif typeof<'S> = typeof<float> then
-            let x = unbox<float>(box a)
-            let y = unbox<float>(box b)
-
-            match System.Double.IsNaN x, System.Double.IsNaN y with
-            | true, true -> 0
-            | true, false -> 1
-            | false, true -> -1
-            | false, false ->
-                if x < y then -1
-                elif x > y then 1
-                else 0
-        elif typeof<'S> = typeof<string> then
-            System.String.CompareOrdinal (unbox<string>(box a), unbox<string>(box b))
-        elif floatRanks then
+        if floatRanks then
             Ranks.ascending a b
         else
             rankComparer.Compare (a, b)
