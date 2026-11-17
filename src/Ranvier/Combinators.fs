@@ -109,12 +109,11 @@ type internal HeldOut<'K when 'K: equality>(graph: Graph) =
         else
             let target = this.EnsureCell ()
             let current = target.Peek
-            let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
             let mutable same = current.Length = count
             let mutable i = 0
 
             while same && i < count do
-                if not (equalKeys.Equals (Platform.itemAt i current, Platform.entryAt i pass)) then
+                if not (Platform.keyEquals (Platform.itemAt i current) (Platform.entryAt i pass)) then
                     same <- false
 
                 i <- i + 1
@@ -124,13 +123,65 @@ type internal HeldOut<'K when 'K: equality>(graph: Graph) =
 
             pass.Clear ()
 
+/// <summary>Cached pair of upstream row entries for dual-input derived views.</summary>
+[<Sealed; AllowNullLiteral>]
+type internal DualEntry<'K, 'A, 'B>(first: RowEntry<'K, 'A>, second: RowEntry<'K, 'B>) =
+    member val First = first with get, set
+    member val Second = second with get, set
+
+module internal EntryCache =
+    let inline readSingle (upstream: Projection<'K, 'V>) (kr: KeyRow<'K, 'U>) : 'V =
+        let key = kr.Key
+        let mutable up = unbox<RowEntry<'K, 'V>> kr.Tag
+
+        if Platform.isNull up || not up.Live then
+            up <- upstream.Entries.Find key
+            kr.Tag <- box up
+
+        upstream.ReadEntry (key, up)
+
+    let inline readDual (first: Projection<'K, 'A>) (second: Projection<'K, 'B>) (kr: KeyRow<'K, 'U>) : struct ('A * 'B) =
+        let key = kr.Key
+        let mutable cached = unbox<DualEntry<'K, 'A, 'B>> kr.Tag
+
+        if Platform.isNull cached then
+            let e1 = first.Entries.Find key
+            let e2 = second.Entries.Find key
+            cached <- DualEntry (e1, e2)
+            kr.Tag <- box cached
+        else
+            if
+                Platform.isNull cached.First
+                || not cached.First.Live
+            then
+                cached.First <- first.Entries.Find key
+
+            if
+                Platform.isNull cached.Second
+                || not cached.Second.Live
+            then
+                cached.Second <- second.Entries.Find key
+
+        struct (first.ReadEntry (key, cached.First), second.ReadEntry (key, cached.Second))
+
 /// <summary>
 /// The keys of <c>upstream</c>, in upstream order, with rows from exactly one of <c>map</c> and <c>factory</c>, as on
 /// <c>KeyedProjection</c>.
 /// </summary>
 type internal MapView<'K, 'V, 'U when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, map: 'K -> 'U, factory: 'K -> (unit -> 'U), withHeldOut: bool) as this =
-    inherit RowsByKey<'K, 'U>(graph, map, factory, tagged = true)
+    (graph: Graph, upstream: Projection<'K, 'V>, map: 'K -> 'U, mapValue: 'V -> 'U, factory: 'K -> (unit -> 'U), withHeldOut: bool) as this =
+    inherit
+        RowsByKey<'K, 'U>(
+            graph,
+            map,
+            factory,
+            tagged = true,
+            ?mapEntry =
+                (if Platform.isNull (box mapValue) then
+                     None
+                 else
+                     Some (fun entry -> mapValue (EntryCache.readSingle upstream entry)))
+        )
 
     let heldOut =
         if
@@ -195,7 +246,14 @@ type internal MapView<'K, 'V, 'U when 'K: equality>
 /// offset past the last key or a negative count gives an empty window, and a count past the last key ends it at the last key.
 /// </remarks>
 type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, offset: unit -> int, count: unit -> int) =
-    inherit RowsByKey<'K, 'V>(graph, (fun key -> upstream.Get key), Unchecked.defaultof<_>)
+    inherit
+        RowsByKey<'K, 'V>(
+            graph,
+            Unchecked.defaultof<_>,
+            Unchecked.defaultof<_>,
+            tagged = true,
+            mapEntry = (fun entry -> EntryCache.readSingle upstream entry)
+        )
 
     let heldOut =
         if not (Platform.isNull (box upstream.PendingExtra)) then
@@ -203,10 +261,25 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
         else
             null
 
+    let mutable synced = false
+    let mutable lastUpVersion = -1
+    let mutable lastStart = 0
+    let mutable lastStop = 0
+    let mutable pendingUpVersion = -1
+    let mutable pendingStart = 0
+    let mutable pendingStop = 0
+    let mutable pendingRangeValid = false
+    let mutable pendingRangeFrom = -1
+    let mutable pendingRangeStart = 0
+    let mutable pendingRangePrevEnd = 0
+    let mutable pendingRangeEnd = 0
+
     /// <summary>The keys <c>upstream</c> held out of its <c>Keys</c> at the last pass. A tracked read.</summary>
     member _.HeldOut = heldOut.Keys
 
     override this.Enumerate() =
+        pendingRangeValid <- false
+
         if not (Platform.isNull heldOut) then
             heldOut.Begin ()
 
@@ -223,6 +296,7 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
                 count ()
 
         let keys = upstream.Keys
+        let upVer = upstream.PublishedVersion
         let start = min offset keys.Length
 
         let stop =
@@ -230,13 +304,115 @@ type internal SliceView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projec
             elif count >= keys.Length - start then keys.Length
             else start + count
 
-        this.Reserve (stop - start)
+        let winLen = stop - start
+        pendingUpVersion <- upVer
+        pendingStart <- start
+        pendingStop <- stop
 
-        for i in start .. stop - 1 do
-            this.Visit (Platform.itemAt i keys)
+        if synced then
+            let mutable unchanged =
+                (winLen = 0 && lastStart = lastStop)
+                || (upVer = lastUpVersion
+                    && start = lastStart
+                    && stop = lastStop)
+
+            if
+                not unchanged
+                && winLen = lastStop - lastStart
+                && lastUpVersion >= 0
+            then
+                match upstream.ChangedSince lastUpVersion with
+                | ValueSome (struct (chgStart, chgPrevEnd, chgEnd)) ->
+                    if
+                        (start = lastStart && stop <= chgStart)
+                        || (start > chgEnd
+                            && lastStart > chgPrevEnd
+                            && start - chgEnd = lastStart - chgPrevEnd)
+                    then
+                        unchanged <- true
+                | ValueNone -> ()
+
+            if unchanged then
+                this.StageRemovals ()
+                this.StageKeys null
+            else
+                let prev = this.PublishedKeys
+                let prevLen = prev.Length
+                let mutable p = 0
+
+                while p < prevLen
+                      && p < winLen
+                      && Platform.keyEquals (Platform.itemAt p prev) (Platform.itemAt (start + p) keys) do
+                    p <- p + 1
+
+                if p = prevLen && prevLen = winLen then
+                    this.StageRemovals ()
+                    this.StageKeys null
+                else
+                    let mutable s = 0
+
+                    while s < prevLen - p
+                          && s < winLen - p
+                          && Platform.keyEquals (Platform.itemAt (prevLen - 1 - s) prev) (Platform.itemAt (stop - 1 - s) keys) do
+                        s <- s + 1
+
+                    let middleStop = winLen - 1 - s
+
+                    for i in p..middleStop do
+                        let k = Platform.itemAt (start + i) keys
+                        this.Seen.Add k |> ignore
+                        this.StageAdd k
+
+                    for i in p .. prevLen - 1 - s do
+                        let k = Platform.itemAt i prev
+
+                        if not (this.Seen.Contains k) then
+                            this.Removed.Add k
+
+                    this.Seen.Clear ()
+                    this.StageRemovals ()
+
+                    let nextKeys =
+                        if winLen = 0 then
+                            Array.empty
+                        elif p = 0 && s = 0 && start = 0 && stop = keys.Length then
+                            keys
+                        else
+                            Array.sub keys start winLen
+
+                    this.StageKeys nextKeys
+                    pendingRangeFrom <- this.PublishedVersion
+                    pendingRangeStart <- p
+                    pendingRangePrevEnd <- prevLen - 1 - s
+                    pendingRangeEnd <- winLen - 1 - s
+                    pendingRangeValid <- true
+        else
+            this.Reserve winLen
+
+            for i in start .. stop - 1 do
+                this.Visit (Platform.itemAt i keys)
 
         if not (Platform.isNull heldOut) then
             heldOut.Publish upstream
+
+    override this.Applied() =
+        synced <- true
+        lastUpVersion <- pendingUpVersion
+        lastStart <- pendingStart
+        lastStop <- pendingStop
+
+        if
+            pendingRangeValid
+            && this.PublishedVersion = pendingRangeFrom + 1
+        then
+            this.RecordKeyRange (pendingRangeFrom, pendingRangeStart, pendingRangePrevEnd, pendingRangeEnd)
+
+        pendingRangeValid <- false
+
+    override _.Abandoned() =
+        synced <- false
+        lastUpVersion <- -1
+        pendingRangeValid <- false
 
 /// <summary>
 /// One-based Fenwick prefix-sum table over binary inclusion indicators, used to compute output key positions in
@@ -435,13 +611,17 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
         admit: bool
     ) =
     let viewNode = view :> IComputation
-    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
     let queue = SlotQueue<InclusionSlot<'K>>.Create view
     let dirtySlots = queue.Dirty
     let checkSlots = queue.Check
     let mutable initialized = false
     let mutable disposed = false
     let mutable synced = false
+    let mutable pendingRangeValid = false
+    let mutable pendingRangeFrom = -1
+    let mutable pendingRangeStart = 0
+    let mutable pendingRangePrevEnd = 0
+    let mutable pendingRangeEnd = 0
 
     let mutable keyReader: ProjectionReader<'K> =
         Unchecked.defaultof<ProjectionReader<'K>>
@@ -700,9 +880,36 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
                     Platform.setItemAt (j + 1) flipKeys key
 
                 let nextLen = includedCount + deltaIncluded
+                let mutable firstStart = 0
+                let mutable endOldPos = 0
+                let mutable endNewPos = 0
 
                 let nextKeys =
                     if nextLen = 0 then
+                        let mutable oldPos = 0
+                        let mutable newPos = 0
+
+                        for f in 0 .. flipCount - 1 do
+                            let uIdx = Platform.itemAt f flipIndices
+                            let dir = Platform.itemAt f flipDirs
+                            let oldRank = Fenwick.sumPrefix fenwick uIdx
+
+                            if f = 0 then
+                                firstStart <- oldRank
+
+                            let segLen = oldRank - oldPos
+
+                            if segLen > 0 then
+                                oldPos <- oldRank
+                                newPos <- newPos + segLen
+
+                            if dir > 0 then
+                                newPos <- newPos + 1
+                            else
+                                oldPos <- oldPos + 1
+
+                        endOldPos <- oldPos
+                        endNewPos <- newPos
                         Array.empty
                     else
                         let arr = Array.zeroCreate<'K> nextLen
@@ -713,6 +920,10 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
                             let uIdx = Platform.itemAt f flipIndices
                             let dir = Platform.itemAt f flipDirs
                             let oldRank = Fenwick.sumPrefix fenwick uIdx
+
+                            if f = 0 then
+                                firstStart <- oldRank
+
                             let segLen = oldRank - oldPos
 
                             if segLen > 0 then
@@ -726,6 +937,8 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
                             else
                                 oldPos <- oldPos + 1
 
+                        endOldPos <- oldPos
+                        endNewPos <- newPos
                         let tailLen = prevKeys.Length - oldPos
 
                         if tailLen > 0 then
@@ -737,6 +950,11 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
                     Fenwick.add fenwick treeCount (Platform.itemAt f flipIndices) (Platform.itemAt f flipDirs)
 
                 includedCount <- nextLen
+                pendingRangeFrom <- view.PublishedVersion
+                pendingRangeStart <- firstStart
+                pendingRangePrevEnd <- endOldPos - 1
+                pendingRangeEnd <- endNewPos - 1
+                pendingRangeValid <- true
                 struct (true, nextKeys)
 
     let runDenseBulk () =
@@ -941,7 +1159,7 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
                 let mutable i = 0
 
                 while samePrefix && i < count do
-                    if not (equalKeys.Equals ((Platform.itemAt i slots).Key, Platform.itemAt i newKeys)) then
+                    if not (Platform.keyEquals (Platform.itemAt i slots).Key (Platform.itemAt i newKeys)) then
                         samePrefix <- false
 
                     i <- i + 1
@@ -1026,6 +1244,17 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
 
                             includedCount <- nextKeys.Length
                             view.StageKeys nextKeys
+
+                            if addedIncluded.Count > 0 then
+                                if baseChanged then
+                                    pendingRangePrevEnd <- prevKeys.Length - 1
+                                    pendingRangeEnd <- nextKeys.Length - 1
+                                else
+                                    pendingRangeFrom <- view.PublishedVersion
+                                    pendingRangeStart <- prevKeys.Length
+                                    pendingRangePrevEnd <- prevKeys.Length - 1
+                                    pendingRangeEnd <- nextKeys.Length - 1
+                                    pendingRangeValid <- true
 
                         view.StageRemovals ()
                         true
@@ -1163,7 +1392,7 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
                 let mutable slot =
                     if
                         cursor < oldCount
-                        && equalKeys.Equals ((Platform.itemAt cursor oldSlots).Key, key)
+                        && Platform.keyEquals (Platform.itemAt cursor oldSlots).Key key
                     then
                         let hit = Platform.itemAt cursor oldSlots
                         cursor <- cursor + 1
@@ -1267,6 +1496,7 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
         if not initialized then
             init ()
 
+        pendingRangeValid <- false
         let wasSynced = synced
         synced <- false
         queue.CheckNotified <- false
@@ -1305,21 +1535,42 @@ type internal InclusionCore<'K, 'V, 'U, 'T when 'K: equality>
     member _.Applied() =
         synced <- true
 
+        if
+            pendingRangeValid
+            && view.PublishedVersion = pendingRangeFrom + 1
+        then
+            view.RecordKeyRange (pendingRangeFrom, pendingRangeStart, pendingRangePrevEnd, pendingRangeEnd)
+
+        pendingRangeValid <- false
+
     member _.Abandoned() =
         synced <- false
+        pendingRangeValid <- false
         queue.CheckNotified <- false
         queue.DirtyNotified <- false
 
 /// <summary>
-/// The keys of <c>inclusion</c> whose predicate row holds <c>admit</c>, each with the value of <c>read</c> at the key.
+/// The keys of <c>inclusion</c> whose predicate row holds <c>admit</c>, each reading the upstream value after forcing
+/// the predicate row.
 /// </summary>
 /// <remarks>
 /// A pending predicate keeps the key's last settled membership. A failed predicate leaves the key out of <c>Keys</c> and
-/// keeps its row, which raises the failure. <c>read</c> raises when the key's predicate row is pending or failed.
+/// keeps its row, which raises the failure.
 /// </remarks>
-type internal FilterView<'K, 'V, 'U when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, inclusion: Projection<'K, bool> ref, read: 'K -> 'U, admit: bool) as this =
-    inherit RowsByKey<'K, 'U>(graph, read, Unchecked.defaultof<_>)
+type internal FilterView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, inclusion: Projection<'K, bool> ref, admit: bool) as this
+    =
+    inherit
+        RowsByKey<'K, 'V>(
+            graph,
+            Unchecked.defaultof<_>,
+            Unchecked.defaultof<_>,
+            tagged = true,
+            mapEntry =
+                (fun entry ->
+                    let struct (_, v) = EntryCache.readDual inclusion.Value upstream entry
+
+                    v)
+        )
 
     let heldOut = HeldOut<'K> graph
 
@@ -1332,7 +1583,7 @@ type internal FilterView<'K, 'V, 'U when 'K: equality>
             else
                 ValueSome entry.Row
 
-        InclusionCore<'K, 'V, 'U, bool>(graph, upstream, this, heldOut, (fun () -> inclusion.Value), resolve, admit)
+        InclusionCore<'K, 'V, 'V, bool>(graph, upstream, this, heldOut, (fun () -> inclusion.Value), resolve, admit)
 
     /// <summary>
     /// The upstream keys whose predicate has never settled, in upstream order, followed by the keys <c>upstream</c> holds
@@ -1377,9 +1628,26 @@ type internal ChoiceGate<'K, 'U when 'K: equality>(key: 'K, source: Memo<'U opti
 /// Each key's boolean gate cuts off <c>Some</c>-to-<c>Some</c> edits before the view pass without maintaining a second
 /// projection, and retires with its <c>choices</c> row via <c>Memo.Adopt</c>.
 /// </remarks>
-type internal ChooseView<'K, 'V, 'U when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, choices: Projection<'K, 'U option> ref, read: 'K -> 'U) as this =
-    inherit RowsByKey<'K, 'U>(graph, read, Unchecked.defaultof<_>)
+type internal ChooseView<'K, 'V, 'U when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, choices: Projection<'K, 'U option> ref) as this =
+    inherit
+        RowsByKey<'K, 'U>(
+            graph,
+            Unchecked.defaultof<_>,
+            Unchecked.defaultof<_>,
+            tagged = true,
+            mapEntry =
+                (fun entry ->
+                    match EntryCache.readSingle choices.Value entry with
+                    | Some value -> value
+                    | None ->
+                        raise (
+                            System.Collections.Generic.KeyNotFoundException (
+                                "The projection has no key "
+                                + string entry.Key
+                                + "."
+                            )
+                        ))
+        )
 
     let heldOut = HeldOut<'K> graph
     let gates = Platform.KeyMap<'K, ChoiceGate<'K, 'U>>()
@@ -1401,14 +1669,7 @@ type internal ChooseView<'K, 'V, 'U when 'K: equality>
                     let gate =
                         graph.RunOwned (
                             this.Scope,
-                            fun () ->
-                                Memo<bool>
-                                    .CreateWithComparer(
-                                        graph,
-                                        (fun _ -> Option.isSome row.Value),
-                                        ScopeMode.Pure,
-                                        System.Collections.Generic.EqualityComparer<bool>.Default
-                                    )
+                            fun () -> Memo<bool>.CreateEncoded(graph, (fun _ -> Option.isSome row.Value), ScopeMode.Pure, Unchecked.defaultof<_>)
                         )
 
                     companion <- new ChoiceGate<'K, 'U> (key, row, gate, gates)
@@ -1598,21 +1859,28 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
     inherit
         RowsByKey<'K, 'V>(
             graph,
-            (fun key ->
-                values.Value.Get key |> ignore
-                upstream.Get key),
-            Unchecked.defaultof<_>
+            Unchecked.defaultof<_>,
+            Unchecked.defaultof<_>,
+            tagged = true,
+            mapEntry =
+                (fun entry ->
+                    let struct (_, v) = EntryCache.readDual values.Value upstream entry
+
+                    v)
         )
 
     let heldOut = HeldOut<'K> graph
-    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
-    let equalGroupKeys = System.Collections.Generic.EqualityComparer<'G>.Default
     let queue = SlotQueue<DistinctSlot<'K, 'G>>.Create this
     let dirtySlots = queue.Dirty
     let checkSlots = queue.Check
     let mutable initialized = false
     let mutable disposed = false
     let mutable synced = false
+    let mutable pendingRangeValid = false
+    let mutable pendingRangeFrom = -1
+    let mutable pendingRangeStart = 0
+    let mutable pendingRangePrevEnd = -1
+    let mutable pendingRangeEnd = -1
 
     let mutable keyReader: ProjectionReader<'K> =
         Unchecked.defaultof<ProjectionReader<'K>>
@@ -1853,7 +2121,7 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                 + (if slot.Unsettled then 1 else -1)
 
         if wasSettled && nowSettled then
-            if not (equalGroupKeys.Equals (prevVal, slot.Value)) then
+            if not (Platform.keyEquals prevVal slot.Value) then
                 detachFromBucket slot true
 
                 if insertNow then
@@ -2011,9 +2279,36 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                         Platform.setItemAt (j + 1) flipKeys key
 
                     let nextLen = includedCount + deltaIncluded
+                    let mutable firstStart = 0
+                    let mutable endOldPos = 0
+                    let mutable endNewPos = 0
 
                     let nextKeys =
                         if nextLen = 0 then
+                            let mutable oldPos = 0
+                            let mutable newPos = 0
+
+                            for f in 0 .. flipCount - 1 do
+                                let uIdx = Platform.itemAt f flipIndices
+                                let dir = Platform.itemAt f flipDirs
+                                let oldRank = Fenwick.sumPrefix fenwick uIdx
+
+                                if f = 0 then
+                                    firstStart <- oldRank
+
+                                let segLen = oldRank - oldPos
+
+                                if segLen > 0 then
+                                    oldPos <- oldRank
+                                    newPos <- newPos + segLen
+
+                                if dir > 0 then
+                                    newPos <- newPos + 1
+                                else
+                                    oldPos <- oldPos + 1
+
+                            endOldPos <- oldPos
+                            endNewPos <- newPos
                             Array.empty
                         else
                             let arr = Array.zeroCreate<'K> nextLen
@@ -2024,6 +2319,10 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                                 let uIdx = Platform.itemAt f flipIndices
                                 let dir = Platform.itemAt f flipDirs
                                 let oldRank = Fenwick.sumPrefix fenwick uIdx
+
+                                if f = 0 then
+                                    firstStart <- oldRank
+
                                 let segLen = oldRank - oldPos
 
                                 if segLen > 0 then
@@ -2037,6 +2336,8 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                                 else
                                     oldPos <- oldPos + 1
 
+                            endOldPos <- oldPos
+                            endNewPos <- newPos
                             let tailLen = prevKeys.Length - oldPos
 
                             if tailLen > 0 then
@@ -2048,6 +2349,11 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                         Fenwick.add fenwick treeCount (Platform.itemAt f flipIndices) (Platform.itemAt f flipDirs)
 
                     includedCount <- nextLen
+                    pendingRangeFrom <- this.PublishedVersion
+                    pendingRangeStart <- firstStart
+                    pendingRangePrevEnd <- endOldPos - 1
+                    pendingRangeEnd <- endNewPos - 1
+                    pendingRangeValid <- true
                     struct (true, nextKeys)
 
     let publishPassKeysIfChanged () =
@@ -2060,7 +2366,7 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                 let mutable i = 0
 
                 while eq && i < passCount do
-                    if not (equalKeys.Equals (Platform.itemAt i prevKeys, Platform.entryAt i this.PassKeys)) then
+                    if not (Platform.keyEquals (Platform.itemAt i prevKeys) (Platform.entryAt i this.PassKeys)) then
                         eq <- false
 
                     i <- i + 1
@@ -2096,7 +2402,7 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                     nextUnsettled <- nextUnsettled + 1
 
                 if wasSettled && nowSettled then
-                    if not (equalGroupKeys.Equals (prevVal, slot.Value)) then
+                    if not (Platform.keyEquals prevVal slot.Value) then
                         detachFromBucket slot false
                         insertIntoBucket slot false
                 else
@@ -2283,7 +2589,7 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
                 let mutable i = 0
 
                 while samePrefix && i < upCount do
-                    if not (equalKeys.Equals ((Platform.itemAt i upSlots).Key, Platform.itemAt i newKeys)) then
+                    if not (Platform.keyEquals (Platform.itemAt i upSlots).Key (Platform.itemAt i newKeys)) then
                         samePrefix <- false
 
                     i <- i + 1
@@ -2362,6 +2668,17 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
 
                             includedCount <- nextKeys.Length
                             this.StageKeys nextKeys
+
+                            if addedIncluded.Count > 0 then
+                                if baseChanged then
+                                    pendingRangePrevEnd <- prevKeys.Length - 1
+                                    pendingRangeEnd <- nextKeys.Length - 1
+                                else
+                                    pendingRangeFrom <- this.PublishedVersion
+                                    pendingRangeStart <- prevKeys.Length
+                                    pendingRangePrevEnd <- prevKeys.Length - 1
+                                    pendingRangeEnd <- nextKeys.Length - 1
+                                    pendingRangeValid <- true
 
                         true
 
@@ -2509,7 +2826,7 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
             let slot =
                 if
                     cursor < oldUpCount
-                    && equalKeys.Equals ((Platform.itemAt cursor oldUpSlots).Key, key)
+                    && Platform.keyEquals (Platform.itemAt cursor oldUpSlots).Key key
                 then
                     let hit = Platform.itemAt cursor oldUpSlots
                     cursor <- cursor + 1
@@ -2602,6 +2919,7 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
         if not disposed then
             disposed <- true
             synced <- false
+            pendingRangeValid <- false
             this.ExtraCheck <- Unchecked.defaultof<_>
             this.HasExtraCheck <- Unchecked.defaultof<_>
             this.ExtraFailedCheck <- Unchecked.defaultof<_>
@@ -2647,6 +2965,7 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
         if not initialized then
             init ()
 
+        pendingRangeValid <- false
         let wasSynced = synced
         synced <- false
         queue.CheckNotified <- false
@@ -2685,8 +3004,17 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
     override _.Applied() =
         synced <- true
 
+        if
+            pendingRangeValid
+            && this.PublishedVersion = pendingRangeFrom + 1
+        then
+            this.RecordKeyRange (pendingRangeFrom, pendingRangeStart, pendingRangePrevEnd, pendingRangeEnd)
+
+        pendingRangeValid <- false
+
     override _.Abandoned() =
         synced <- false
+        pendingRangeValid <- false
         queue.CheckNotified <- false
         queue.DirtyNotified <- false
 
@@ -2695,6 +3023,26 @@ type internal DistinctView<'K, 'V, 'G when 'K: equality and 'G: equality>(graph:
 /// other rank.
 /// </summary>
 module internal Ranks =
+#if FABLE_COMPILER
+    let isNaN (rank: 'S) =
+        match box rank with
+        | :? float as f -> System.Double.IsNaN f
+        | :? float32 as f -> System.Single.IsNaN f
+        | _ -> false
+
+    /// <summary>The order of <c>sortBy</c>.</summary>
+    let ascending (a: 'S) (b: 'S) =
+        let fast = Platform.compareNumberRanks a b false
+
+        if fast <> 2 then
+            fast
+        else
+            match isNaN a, isNaN b with
+            | true, true -> 0
+            | true, false -> 1
+            | false, true -> -1
+            | false, false -> compare a b
+#else
     let isNaN (rank: 'S) =
         match box rank with
         | :? float as f -> System.Double.IsNaN f
@@ -2707,11 +3055,7 @@ module internal Ranks =
         | true, true -> 0
         | true, false -> 1
         | false, true -> -1
-        | false, false ->
-#if FABLE_COMPILER
-            compare a b
-#else
-            LanguagePrimitives.FastGenericComparer<'S>.Compare(a, b)
+        | false, false -> LanguagePrimitives.FastGenericComparer<'S>.Compare(a, b)
 #endif
 
 /// <summary>
@@ -2816,20 +3160,39 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
     inherit
         RowsByKey<'K, 'V>(
             graph,
-            (fun key ->
-                sortKeys.Value.Get key |> ignore
-                upstream.Get key),
-            Unchecked.defaultof<_>
+            Unchecked.defaultof<_>,
+            Unchecked.defaultof<_>,
+            tagged = true,
+            mapEntry =
+                (fun entry ->
+                    let struct (_, v) = EntryCache.readDual sortKeys.Value upstream entry
+
+                    v)
         )
 
     let heldOut = HeldOut<'K> graph
-    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
     let queue = SlotQueue<SortSlot<'K, 'S>>.Create this
     let dirtySlots = queue.Dirty
     let checkSlots = queue.Check
     let mutable initialized = false
     let mutable disposed = false
     let mutable synced = false
+    let mutable rangeOps = 0
+    let mutable pendingRangeValid = false
+    let mutable pendingRangeFrom = -1
+    let mutable pendingRangeStart = 0
+    let mutable pendingRangePrevEnd = -1
+    let mutable pendingRangeEnd = -1
+
+    let recordRangeOp (opStart: int) (opPrevEnd: int) (opEnd: int) =
+        if rangeOps = 0 then
+            rangeOps <- 1
+            pendingRangeFrom <- this.PublishedVersion
+            pendingRangeStart <- opStart
+            pendingRangePrevEnd <- opPrevEnd
+            pendingRangeEnd <- opEnd
+        else
+            rangeOps <- 2
 
     let mutable keyReader: ProjectionReader<'K> =
         Unchecked.defaultof<ProjectionReader<'K>>
@@ -2847,17 +3210,36 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
     let mutable checkIndex = 0
 
     /// <summary>Positions into <c>placedSlots</c>, in output order.</summary>
-    let mutable order: int[] = Array.empty
+    let mutable order: int[] = Platform.positions 0
 
     /// <summary>Inverse permutation of <c>order</c>: for placed index <c>p</c>, <c>order[orderPos[p]] = p</c>.</summary>
-    let mutable orderPos: int[] = Array.empty
+    let mutable orderPos: int[] = Platform.positions 0
 
     let mutable orderPosValid = false
 
     /// <summary>Whether <c>order[0 .. placedCount - 1]</c> holds the result of a completed sort.</summary>
     let mutable sorted = false
 
-#if !FABLE_COMPILER
+#if FABLE_COMPILER
+    let isNaN (rank: 'S) =
+        match box rank with
+        | :? float as f -> System.Double.IsNaN f
+        | :? float32 as f -> System.Single.IsNaN f
+        | _ -> false
+
+    /// <summary>The order of <c>sortByDescending</c> when <c>descending</c> is set, of <c>sortBy</c> otherwise.</summary>
+    let compareRanks (a: 'S) (b: 'S) =
+        let fast = Platform.compareNumberRanks a b descending
+
+        if fast <> 2 then
+            fast
+        else
+            match isNaN a, isNaN b with
+            | true, true -> 0
+            | true, false -> 1
+            | false, true -> -1
+            | false, false -> if descending then compare b a else compare a b
+#else
     // The order of compare, unboxed for value types.
     let comparer = LanguagePrimitives.FastGenericComparer<'S>
 
@@ -2865,38 +3247,29 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
     let floatRanks =
         typeof<'S>.IsAssignableFrom typeof<float>
         || typeof<'S>.IsAssignableFrom typeof<float32>
-#endif
 
-    // Local copies of the Ranks orders: a call into Ranks, direct or through a closure, costs 5-15% per sorting pass.
-#if FABLE_COMPILER
     let isNaN (rank: 'S) =
         match box rank with
         | :? float as f -> System.Double.IsNaN f
         | :? float32 as f -> System.Single.IsNaN f
         | _ -> false
-#else
-    let isNaN (rank: 'S) =
-        floatRanks
-        && (match box rank with
-            | :? float as f -> System.Double.IsNaN f
-            | :? float32 as f -> System.Single.IsNaN f
-            | _ -> false)
-#endif
 
     /// <summary>The order of <c>sortByDescending</c> when <c>descending</c> is set, of <c>sortBy</c> otherwise.</summary>
     let compareRanks (a: 'S) (b: 'S) =
-        match isNaN a, isNaN b with
-        | true, true -> 0
-        | true, false -> 1
-        | false, true -> -1
-        | false, false ->
-#if FABLE_COMPILER
-            if descending then compare b a else compare a b
-#else
-            if descending then
-                comparer.Compare (b, a)
-            else
-                comparer.Compare (a, b)
+        if floatRanks then
+            match isNaN a, isNaN b with
+            | true, true -> 0
+            | true, false -> 1
+            | false, true -> -1
+            | false, false ->
+                if descending then
+                    comparer.Compare (b, a)
+                else
+                    comparer.Compare (a, b)
+        elif descending then
+            comparer.Compare (b, a)
+        else
+            comparer.Compare (a, b)
 #endif
 
     let incrementalLimit n =
@@ -2924,43 +3297,34 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
 
     let ensureOrderCapacity needed =
         if order.Length < needed then
-            let grown = Array.zeroCreate<int>(max (max 16 needed) (order.Length * 2))
+            let grown = Platform.positions (max (max 16 needed) (order.Length * 2))
 
             if placedCount > 0 then
-                Array.blit order 0 grown 0 placedCount
+                Platform.copyPositions order grown placedCount
 
             order <- grown
 
         if orderPosValid && orderPos.Length < needed then
-            let grownPos = Array.zeroCreate<int>(max (max 16 needed) (orderPos.Length * 2))
+            let grownPos = Platform.positions (max (max 16 needed) (orderPos.Length * 2))
 
             if placedCount > 0 then
-                Array.blit orderPos 0 grownPos 0 placedCount
+                Platform.copyPositions orderPos grownPos placedCount
 
             orderPos <- grownPos
 
     let ensureOrderPos () =
         if not orderPosValid then
             if orderPos.Length < placedSlots.Length then
-                orderPos <- Array.zeroCreate<int>(max 16 placedSlots.Length)
+                orderPos <- Platform.positions (max 16 placedSlots.Length)
 
             for pos in 0 .. placedCount - 1 do
                 Platform.setItemAt (Platform.itemAt pos order) orderPos pos
 
             orderPosValid <- true
 
-    let fullSort () =
-        sorted <- false
-        orderPosValid <- false
-
-        if order.Length <> placedCount then
-            order <- Array.zeroCreate<int> placedCount
-
-        for i in 0 .. placedCount - 1 do
-            Platform.setItemAt i order i
-
-        order
-        |> Array.sortInPlaceWith (fun i j ->
+#if FABLE_COMPILER
+    let slotOrderCmp =
+        System.Func<int, int, int>(fun i j ->
             let a = Platform.itemAt i placedSlots
             let b = Platform.itemAt j placedSlots
             let byRank = compareRanks a.Rank b.Rank
@@ -2970,7 +3334,65 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             elif a.UpIdx > b.UpIdx then 1
             else 0)
 
+    let fullSort () =
+        sorted <- false
+        orderPosValid <- false
+        rangeOps <- 2
+        order <- Platform.resizePositions order placedCount
+
+        for i in 0 .. placedCount - 1 do
+            Platform.setItemAt i order i
+
+        if placedCount > 1 then
+            Platform.sortPositions order slotOrderCmp
+
         sorted <- true
+#else
+    let slotOrderComparison =
+        System.Comparison<int>(fun i j ->
+            let a = Platform.itemAt i placedSlots
+            let b = Platform.itemAt j placedSlots
+            let byRank = compareRanks a.Rank b.Rank
+
+            if byRank <> 0 then byRank
+            elif a.UpIdx < b.UpIdx then -1
+            elif a.UpIdx > b.UpIdx then 1
+            else 0)
+
+#if NET5_0_OR_GREATER
+    let fullSort () =
+        sorted <- false
+        orderPosValid <- false
+        rangeOps <- 2
+
+        if order.Length < placedCount then
+            order <- Platform.positions (max 16 placedCount)
+
+        for i in 0 .. placedCount - 1 do
+            Platform.setItemAt i order i
+
+        if placedCount > 1 then
+            System.MemoryExtensions.Sort<int>(System.Span<int>(order, 0, placedCount), slotOrderComparison)
+
+        sorted <- true
+#else
+    let fullSort () =
+        sorted <- false
+        orderPosValid <- false
+        rangeOps <- 2
+
+        if order.Length <> placedCount then
+            order <- Array.zeroCreate<int> placedCount
+
+        for i in 0 .. placedCount - 1 do
+            Platform.setItemAt i order i
+
+        if placedCount > 1 then
+            System.Array.Sort<int>(order, slotOrderComparison)
+
+        sorted <- true
+#endif
+#endif
 
     let buildKeysArray () =
         if placedCount = 0 then
@@ -2996,7 +3418,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             while same && k < placedCount do
                 let pIdx = Platform.itemAt k order
 
-                if not (equalKeys.Equals (Platform.itemAt k prev, (Platform.itemAt pIdx placedSlots).Key)) then
+                if not (Platform.keyEquals (Platform.itemAt k prev) (Platform.itemAt pIdx placedSlots).Key) then
                     same <- false
 
                 k <- k + 1
@@ -3039,6 +3461,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         Platform.setItemAt insPos order pIdx
         Platform.setItemAt pIdx orderPos insPos
         placedCount <- pIdx + 1
+        recordRangeOp insPos (insPos - 1) insPos
 
     let removePlacedSlot (slot: SortSlot<'K, 'S>) =
         let pIdx = slot.PlacedIdx
@@ -3065,6 +3488,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             Platform.setItemAt lastIdx placedSlots Unchecked.defaultof<_>
             slot.PlacedIdx <- -1
             placedCount <- lastIdx
+            recordRangeOp oldPos oldPos (oldPos - 1)
 
     let reinsertPlacedSlot (slot: SortSlot<'K, 'S>) =
         if placedCount <= 1 then
@@ -3104,6 +3528,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
 
                 Platform.setItemAt newPos order pIdx
                 Platform.setItemAt pIdx orderPos newPos
+                recordRangeOp newPos oldPos oldPos
                 true
             elif newPos > oldPos then
                 let mutable k = oldPos
@@ -3116,6 +3541,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
 
                 Platform.setItemAt newPos order pIdx
                 Platform.setItemAt pIdx orderPos newPos
+                recordRangeOp oldPos newPos newPos
                 true
             else
                 false
@@ -3565,7 +3991,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
                 let mutable i = 0
 
                 while samePrefix && i < upCount do
-                    if not (equalKeys.Equals ((Platform.itemAt i upSlots).Key, Platform.itemAt i newKeys)) then
+                    if not (Platform.keyEquals (Platform.itemAt i upSlots).Key (Platform.itemAt i newKeys)) then
                         samePrefix <- false
 
                     i <- i + 1
@@ -3803,7 +4229,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             let mutable slot =
                 if
                     cursor < oldUpCount
-                    && equalKeys.Equals ((Platform.itemAt cursor oldUpSlots).Key, key)
+                    && Platform.keyEquals (Platform.itemAt cursor oldUpSlots).Key key
                 then
                     let hit = Platform.itemAt cursor oldUpSlots
                     cursor <- cursor + 1
@@ -3943,6 +4369,8 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             synced <- false
             sorted <- false
             orderPosValid <- false
+            rangeOps <- 0
+            pendingRangeValid <- false
             this.ExtraCheck <- Unchecked.defaultof<_>
             this.HasExtraCheck <- Unchecked.defaultof<_>
             this.ExtraFailedCheck <- Unchecked.defaultof<_>
@@ -3971,8 +4399,8 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             upSlots <- Array.empty
             scratchUpSlots <- Array.empty
             placedSlots <- Array.empty
-            order <- Array.empty
-            orderPos <- Array.empty
+            order <- Platform.positions 0
+            orderPos <- Platform.positions 0
             upCount <- 0
             placedCount <- 0
             unsettledCount <- 0
@@ -3996,6 +4424,8 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         if not initialized then
             init ()
 
+        rangeOps <- 0
+        pendingRangeValid <- false
         let wasSynced = synced
         synced <- false
         queue.CheckNotified <- false
@@ -4033,27 +4463,112 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             if not (tryTailAppend delta limit) then
                 applyGeneralDelta delta limit
 
+        pendingRangeValid <- rangeOps = 1
         finishPass ()
 
     override _.Applied() =
         synced <- true
 
+        if
+            pendingRangeValid
+            && this.PublishedVersion = pendingRangeFrom + 1
+        then
+            this.RecordKeyRange (pendingRangeFrom, pendingRangeStart, pendingRangePrevEnd, pendingRangeEnd)
+
+        pendingRangeValid <- false
+
     override _.Abandoned() =
         synced <- false
+        pendingRangeValid <- false
         queue.CheckNotified <- false
         queue.DirtyNotified <- false
 
 type internal GroupView<'K, 'V when 'K: equality>(graph: Graph, upstream: Projection<'K, 'V>, readMembers: unit -> 'K[]) as this =
-    inherit RowsByKey<'K, 'V>(graph, (fun key -> upstream.Get key), Unchecked.defaultof<_>)
+    inherit
+        RowsByKey<'K, 'V>(
+            graph,
+            Unchecked.defaultof<_>,
+            Unchecked.defaultof<_>,
+            tagged = true,
+            mapEntry = (fun entry -> EntryCache.readSingle upstream entry)
+        )
+
+    let mutable synced = false
+    let mutable pendingRangeValid = false
+    let mutable pendingRangeFrom = -1
+    let mutable pendingRangeStart = 0
+    let mutable pendingRangePrevEnd = 0
+    let mutable pendingRangeEnd = 0
 
     do this.GetRaisesDisposed <- true
 
     override this.Enumerate() =
+        pendingRangeValid <- false
         let keys = readMembers ()
-        this.Reserve keys.Length
+        let winLen = keys.Length
 
-        for i in 0 .. keys.Length - 1 do
-            this.Visit (Platform.itemAt i keys)
+        if synced then
+            let prev = this.PublishedKeys
+            let prevLen = prev.Length
+            let mutable p = 0
+
+            while p < prevLen
+                  && p < winLen
+                  && Platform.keyEquals (Platform.itemAt p prev) (Platform.itemAt p keys) do
+                p <- p + 1
+
+            if p = prevLen && prevLen = winLen then
+                this.StageRemovals ()
+                this.StageKeys null
+            else
+                let mutable s = 0
+
+                while s < prevLen - p
+                      && s < winLen - p
+                      && Platform.keyEquals (Platform.itemAt (prevLen - 1 - s) prev) (Platform.itemAt (winLen - 1 - s) keys) do
+                    s <- s + 1
+
+                let middleStop = winLen - 1 - s
+
+                for i in p..middleStop do
+                    let k = Platform.itemAt i keys
+                    this.Seen.Add k |> ignore
+                    this.StageAdd k
+
+                for i in p .. prevLen - 1 - s do
+                    let k = Platform.itemAt i prev
+
+                    if not (this.Seen.Contains k) then
+                        this.Removed.Add k
+
+                this.Seen.Clear ()
+                this.StageRemovals ()
+                this.StageKeys keys
+                pendingRangeFrom <- this.PublishedVersion
+                pendingRangeStart <- p
+                pendingRangePrevEnd <- prevLen - 1 - s
+                pendingRangeEnd <- middleStop
+                pendingRangeValid <- true
+        else
+            this.Reserve winLen
+
+            for i in 0 .. winLen - 1 do
+                this.Visit (Platform.itemAt i keys)
+
+    override this.Applied() =
+        synced <- true
+
+        if
+            pendingRangeValid
+            && this.PublishedVersion = pendingRangeFrom + 1
+        then
+            this.RecordKeyRange (pendingRangeFrom, pendingRangeStart, pendingRangePrevEnd, pendingRangeEnd)
+
+        pendingRangeValid <- false
+
+    override _.Abandoned() =
+        synced <- false
+        pendingRangeValid <- false
 
 /// <summary>
 /// A group of a <c>Grouping</c>: its members in upstream order and the inner view over them. The inner view's pass reads
@@ -4087,14 +4602,14 @@ type internal Group<'G, 'K, 'V when 'G: equality and 'K: equality> =
     member this.FirstIdx = (Platform.entryAt 0 this.Members).UpIdx
 
     /// <summary>Writes the group's sorted member keys when they differ from the last pass.</summary>
-    member this.Publish(equalKeys: System.Collections.Generic.EqualityComparer<'K>) =
+    member this.Publish() =
         let current = this.MembersCell.Peek
         let n = this.Members.Count
         let mutable same = current.Length = n
         let mutable i = 0
 
         while same && i < n do
-            if not (equalKeys.Equals (Platform.itemAt i current, (Platform.entryAt i this.Members).Key)) then
+            if not (Platform.keyEquals (Platform.itemAt i current) (Platform.entryAt i this.Members).Key) then
                 same <- false
 
             i <- i + 1
@@ -4216,8 +4731,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
     let heldOut = HeldOut<'K> graph
     let adds = ResizeArray<struct ('G * Group<'G, 'K, 'V>)>()
     let writes = ResizeArray<struct (Signal<Projection<'K, 'V>> * Projection<'K, 'V>)>()
-    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
-    let equalGroupKeys = System.Collections.Generic.EqualityComparer<'G>.Default
+    let encodedGroupEqual = graph.EncodedComparer<Projection<'K, 'V>>()
     let queue = SlotQueue<GroupSlot<'G, 'K, 'V>>.Create this
     let dirtySlots = queue.Dirty
     let checkSlots = queue.Check
@@ -4432,7 +4946,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
                     let mutable i = 0
 
                     while eq && i < n do
-                        if not (equalGroupKeys.Equals (Platform.itemAt i prev, (Platform.entryAt i orderedGroups).Key)) then
+                        if not (Platform.keyEquals (Platform.itemAt i prev) (Platform.entryAt i orderedGroups).Key) then
                             eq <- false
 
                         i <- i + 1
@@ -4476,7 +4990,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
                 group.Touched <- false
 
                 if group.Members.Count > 0 then
-                    group.Publish equalKeys
+                    group.Publish ()
 
                     if group.OrderIdx < 0 then
                         if outerOrderDirty then
@@ -4524,7 +5038,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
                 + (if slot.Ungrouped then 1 else -1)
 
         if not wasUngrouped && not slot.Ungrouped then
-            if not (equalGroupKeys.Equals (prevGroupKey, slot.GroupKey)) then
+            if not (Platform.keyEquals prevGroupKey slot.GroupKey) then
                 detachFromGroup slot true
 
                 if insertNow then
@@ -4651,7 +5165,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
             if g.Members.Count = 0 then
                 emptiedGroups.Add g
             else
-                g.Publish equalKeys
+                g.Publish ()
 
                 let entry = this.Entries.Find g.Key
 
@@ -4805,7 +5319,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
                 let mutable i = 0
 
                 while samePrefix && i < upCount do
-                    if not (equalKeys.Equals ((Platform.itemAt i upSlots).Key, Platform.itemAt i newKeys)) then
+                    if not (Platform.keyEquals (Platform.itemAt i upSlots).Key (Platform.itemAt i newKeys)) then
                         samePrefix <- false
 
                     i <- i + 1
@@ -5005,7 +5519,7 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
             let slot =
                 if
                     cursor < oldUpCount
-                    && equalKeys.Equals ((Platform.itemAt cursor oldUpSlots).Key, key)
+                    && Platform.keyEquals (Platform.itemAt cursor oldUpSlots).Key key
                 then
                     let hit = Platform.itemAt cursor oldUpSlots
                     cursor <- cursor + 1
@@ -5104,13 +5618,30 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
         this.ExtraFailedCheck <- fun () -> resolveCheckStep (fun () -> not this.IsInvalidated)
         graph.RunUntracked (fun () -> this.Scope.OnCleanup dispose)
 
-    member private _.CreateAdded() =
-        for struct (groupKey, group) in adds do
-            let source = Signal<Projection<'K, 'V>>(graph, group.View)
+    member private this.RunGroupRow(entry: ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>) : Projection<'K, 'V> =
+        try
+            let value = entry.Item.Value
+
+            if not entry.Row.Violated then
+                entry.Settled <- true
+
+            this.Report (entry, false)
+            value
+        with ex ->
+            this.FailRow (entry, ex)
+            reraise ()
+
+    member private this.CreateAdded() =
+        for i in 0 .. adds.Count - 1 do
+            let struct (groupKey, group) = Platform.entryAt i adds
+
+            let source =
+                Signal<Projection<'K, 'V>>.OfEncoded(graph, group.View, encodedGroupEqual)
+
             let entry = ItemRow<Projection<'K, 'V>, 'G, Projection<'K, 'V>>(groupKey, source)
             this.AddEntry (groupKey, entry)
-            entry.Reader <- fun () -> source.Value
-            entry.Row <- Memo<Projection<'K, 'V>>.Create(graph, (fun _ -> this.RunRow entry), ScopeMode.ValueRow)
+
+            entry.Row <- Memo<Projection<'K, 'V>>.CreateEncoded(graph, (fun _ -> this.RunGroupRow entry), ScopeMode.ValueRow, encodedGroupEqual)
 
     member private _.Enumerate() =
         if not initialized then
@@ -5179,7 +5710,8 @@ type Grouping<'G, 'K, 'V when 'G: equality and 'K: equality> internal (graph: Gr
         member _.AddedCount = adds.Count
 
         member _.CommitWrites() =
-            for struct (source, item) in writes do
+            for i in 0 .. writes.Count - 1 do
+                let struct (source, item) = Platform.entryAt i writes
                 source.Value <- item
 
         member _.ClearStaged() =
@@ -5371,18 +5903,40 @@ type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: Fo
 /// </remarks>
 [<Sealed>]
 type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
-    (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool) as this =
+    (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool) =
     let id = graph.NextId ()
     let observers = ObserverSet ()
-    let equal = graph.Options.Equality.Comparer<'V>()
+    let equal = graph.EncodedComparer<'V>()
     let rows = Platform.KeyMap<'K, FoldRow<'K, 'V>>()
     let queue = ResizeArray<FoldRow<'K, 'V>>()
     let added = ResizeArray<FoldRow<'K, 'V>>()
     let removed = ResizeArray<'K>()
 
+#if FABLE_COMPILER
+    let invokeAdd (s: 'S) (v: 'V) = add s v
+
+    let invokeSub (s: 'S) (v: 'V) =
+        subtract s v
+#else
+    let addFn = OptimizedClosures.FSharpFunc<'S, 'V, 'S>.Adapt add
+
+    let subFn =
+        if invertible then
+            OptimizedClosures.FSharpFunc<'S, 'V, 'S>.Adapt subtract
+        else
+            Unchecked.defaultof<OptimizedClosures.FSharpFunc<'S, 'V, 'S>>
+
+    let invokeAdd (s: 'S) (v: 'V) =
+        addFn.Invoke (s, v)
+
+    let invokeSub (s: 'S) (v: 'V) =
+        subFn.Invoke (s, v)
+#endif
+
     /// <summary>The <c>Keys</c> array of the last membership diff, or null before the first read.</summary>
     let mutable lastKeys: 'K[] = null
 
+    let mutable orderedRows: FoldRow<'K, 'V>[] = null
     let mutable generation = 0
     let mutable state = zero
 
@@ -5415,19 +5969,73 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             queue.Add row
             touch ()
 
-    do
+    let applyAdd (struct (s: 'S, v: 'V)) =
+        invokeAdd s v
+
+    let applyReplace (struct (s: 'S, old: 'V, v: 'V)) =
+        invokeAdd (invokeSub s old) v
+
+    let applySubtract (struct (s: 'S, old: 'V)) =
+        invokeSub s old
+
+    let foldAll () =
+        let keys = lastKeys
+        let mutable cached = orderedRows
+
+        if Platform.isNull cached && not invertible then
+            let n = keys.Length
+
+            let arr =
+                if n = 0 then
+                    Array.empty
+                else
+                    Array.zeroCreate<FoldRow<'K, 'V>> n
+
+            for i in 0 .. n - 1 do
+                Platform.setItemAt i arr (rows.Find (Platform.itemAt i keys))
+
+            cached <- arr
+            orderedRows <- arr
+
+        let mutable s = zero
+
+        if not (Platform.isNull cached) then
+            for i in 0 .. cached.Length - 1 do
+                let row = Platform.itemAt i cached
+
+                if not (Platform.isNull (box row)) && row.HasValue then
+                    s <- invokeAdd s row.Value
+        else
+            for i in 0 .. keys.Length - 1 do
+                let row = rows.Find (Platform.itemAt i keys)
+
+                if not (Platform.isNull (box row)) && row.HasValue then
+                    s <- invokeAdd s row.Value
+
+        s
+
+    member private this.Attach() =
         link <- graph.CurrentOwner.AttachLinked this
         keyReader <- upstream.NewInternalKeyReader ()
+
+    static member internal Create
+        (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool)
+        =
+        let fold =
+            new ProjectionFold<'K, 'V, 'S> (graph, upstream, add, subtract, zero, invertible)
+
+        fold.Attach ()
+        fold
 
     member _.Memo
         with get () = memo
         and set v = memo <- v
 
-    /// <summary>Applies <c>step</c> to the state, or marks the state for a full recompute when <c>step</c> raises.</summary>
-    member private _.Step(step: 'S -> 'S) =
+    /// <summary>Applies <c>step arg</c> to the state, or marks the state for a full recompute when <c>step</c> raises.</summary>
+    member private _.StepWith(step: 'A -> 'S, arg: 'A) =
         if not full then
             try
-                state <- graph.RunHosted (reads :> IComputation, fun () -> step state)
+                state <- graph.RunHosted (reads :> IComputation, step, arg)
                 moved <- true
             with _ ->
                 full <- true
@@ -5454,7 +6062,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 
     /// <summary>Reads the row untracked and moves its contribution to the row's value.</summary>
     member private this.Read(row: FoldRow<'K, 'V>) =
-        let reading = graph.RunUntracked (fun () -> row.Entry.Row.TryValue)
+        let reading = row.Entry.Row.TryValueUntracked ()
         row.Queued <- false
 
         match reading with
@@ -5467,7 +6075,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 valued <- valued + 1
 
                 if invertible then
-                    this.Step (fun s -> add s v)
+                    this.StepWith (applyAdd, struct (state, v))
                 else
                     full <- true
             else
@@ -5476,7 +6084,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 let mutable comparerError: exn = null
 
                 try
-                    changed <- not (equal.Equals (row.Value, v))
+                    changed <- not (ComparerSentinel.equals equal row.Value v)
                 with ex ->
                     comparerError <- ex
 
@@ -5487,7 +6095,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                     row.Value <- v
 
                     if invertible then
-                        this.Step (fun s -> add (subtract s old) v)
+                        this.StepWith (applyReplace, struct (state, old, v))
                     else
                         full <- true
         | Pending -> this.Unfail row
@@ -5512,7 +6120,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 state <- zero
                 moved <- true
             else
-                this.Step (fun s -> subtract s old)
+                this.StepWith (applySubtract, struct (state, old))
 
     /// <summary>Attaches a row to every added key and detaches the row of every removed key. O(N) in <c>keys</c>.</summary>
     member private this.Diff(keys: 'K[]) =
@@ -5545,13 +6153,16 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             if row.Generation <> generation then
                 removed.Add key)
 
-        for key in removed do
+        for i in 0 .. removed.Count - 1 do
+            let key = Platform.entryAt i removed
             this.Detach (rows.Find key)
             rows.Remove key
 
+        orderedRows <- null
         lastKeys <- keys
 
-        for row in added do
+        for i in 0 .. added.Count - 1 do
+            let row = Platform.entryAt i added
             row.Queued <- true
             row.Attached <- true
             row.Handle <- (row.Entry.Row :> ISource).AddObserver(row :> IComputation, 0)
@@ -5596,6 +6207,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                     rows.Set (change.Key, fresh)
                     added.Add fresh
 
+        orderedRows <- null
         lastKeys <- delta.Keys
 
         for i in 0 .. added.Count - 1 do
@@ -5610,21 +6222,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     /// <summary>Folds the cached row values in <c>Keys</c> order into a fresh state. O(N).</summary>
     member private _.Recompute() =
         reads.Clear ()
-
-        let fold () =
-            let mutable s = zero
-
-            let keys = lastKeys
-
-            for i in 0 .. keys.Length - 1 do
-                let row = rows.Find (Platform.itemAt i keys)
-
-                if not (Platform.isNull (box row)) && row.HasValue then
-                    s <- add s row.Value
-
-            s
-
-        state <- graph.RunHosted (reads :> IComputation, fold)
+        state <- graph.RunHosted (reads :> IComputation, foldAll)
         full <- false
         moved <- true
 
@@ -5639,9 +6237,15 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         if not (Platform.isNull (box delta)) then
             let hadKeys = not (Platform.isNull lastKeys)
 
-            if delta.IsReset then this.Diff delta.Keys
-            else if delta.ChangeCount > 0 then this.ApplyDelta delta
-            else lastKeys <- delta.Keys
+            if delta.IsReset then
+                this.Diff delta.Keys
+            else if delta.ChangeCount > 0 then
+                this.ApplyDelta delta
+            else
+                if delta.OrderChanged then
+                    orderedRows <- null
+
+                lastKeys <- delta.Keys
 
             if not invertible && hadKeys && delta.OrderChanged then
                 full <- true
@@ -5701,6 +6305,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     member this.Dispose() =
         if not disposed then
             disposed <- true
+            orderedRows <- null
 
             if not (Platform.isNull link) then
                 link.Detach ()
@@ -5822,16 +6427,15 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
         graph: Graph,
         upstream: Projection<'K, struct ('S * 'V)>,
         isMax: bool,
-        equalValues: System.Collections.Generic.IEqualityComparer<'V>,
+        encodedEqualValues: System.Collections.Generic.IEqualityComparer<'V>,
         finish: 'V option -> 'R
-    ) as this =
+    ) =
     let id = graph.NextId ()
     let observers = ObserverSet ()
-    let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
 #if !FABLE_COMPILER
-    let mayBeNaN =
-        typeof<'S> = typeof<float>
-        || typeof<'S> = typeof<float32>
+    let floatRanks =
+        typeof<'S>.IsAssignableFrom typeof<float>
+        || typeof<'S>.IsAssignableFrom typeof<float32>
 
     let rankComparer = LanguagePrimitives.FastGenericComparer<'S>
 #endif
@@ -5877,11 +6481,12 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
             queue.Add row
             touch ()
 
-    let compareAsc (a: 'S) (b: 'S) =
 #if FABLE_COMPILER
+    let compareAsc (a: 'S) (b: 'S) =
         Ranks.ascending a b
 #else
-        if mayBeNaN then
+    let compareAsc (a: 'S) (b: 'S) =
+        if floatRanks then
             Ranks.ascending a b
         else
             rankComparer.Compare (a, b)
@@ -5890,9 +6495,23 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
     let compareExtreme (a: 'S) (b: 'S) =
         if isMax then compareAsc b a else compareAsc a b
 
-    do
+    member private this.Attach() =
         link <- graph.CurrentOwner.AttachLinked this
         keyReader <- upstream.NewInternalKeyReader ()
+
+    static member internal Create
+        (
+            graph: Graph,
+            upstream: Projection<'K, struct ('S * 'V)>,
+            isMax: bool,
+            encodedEqualValues: System.Collections.Generic.IEqualityComparer<'V>,
+            finish: 'V option -> 'R
+        ) =
+        let extreme =
+            new ProjectionExtreme<'K, 'V, 'S, 'R> (graph, upstream, isMax, encodedEqualValues, finish)
+
+        extreme.Attach ()
+        extreme
 
     /// <summary>Selects the better of two optional settled leaf rows, favouring <c>left</c> on equal ranks.</summary>
     member private _.PickWinner(left: ExtremeRow<'K, 'V, 'S>, right: ExtremeRow<'K, 'V, 'S>) =
@@ -6016,7 +6635,7 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
 
     /// <summary>Reads the row untracked and updates its leaf in the tournament tree.</summary>
     member private this.Read(row: ExtremeRow<'K, 'V, 'S>) =
-        let reading = graph.RunUntracked (fun () -> row.Entry.Row.TryValue)
+        let reading = row.Entry.Row.TryValueUntracked ()
         row.Queued <- false
 
         match reading with
@@ -6121,13 +6740,15 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
             if row.Generation <> generation then
                 removed.Add key)
 
-        for key in removed do
+        for i in 0 .. removed.Count - 1 do
+            let key = Platform.entryAt i removed
             this.Detach (rows.Find key)
             rows.Remove key
 
         lastKeys <- keys
 
-        for row in added do
+        for i in 0 .. added.Count - 1 do
+            let row = Platform.entryAt i added
             row.Queued <- true
             row.Attached <- true
             row.Handle <- (row.Entry.Row :> ISource).AddObserver(row :> IComputation, 0)
@@ -6151,7 +6772,7 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
                 if not (Platform.isNull (box row)) then
                     if
                         k < expectedPlaced
-                        && equalKeys.Equals (row.Key, Platform.itemAt k keys)
+                        && Platform.keyEquals row.Key (Platform.itemAt k keys)
                     then
                         k <- k + 1
                     else
@@ -6375,7 +6996,7 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
                 finish None
             elif
                 hasPublished
-                && equalValues.Equals (stickyHolder.Value, publishedValue)
+                && ComparerSentinel.equals encodedEqualValues stickyHolder.Value publishedValue
             then
                 lastResult
             else
@@ -6453,7 +7074,7 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
                             moved <- true
                     elif not hasPublished then
                         moved <- true
-                    elif not (equalValues.Equals (stickyHolder.Value, publishedValue)) then
+                    elif not (ComparerSentinel.equals encodedEqualValues stickyHolder.Value publishedValue) then
                         moved <- true
                 with _ ->
                     moved <- true
@@ -6503,7 +7124,13 @@ module Projection =
 
     /// <summary>A projection over the keys of <c>upstream</c>, each row holding <c>f</c> of the upstream value.</summary>
     let private perKey (graph: Graph) (upstream: Projection<'K, 'V>) (f: 'V -> 'X) : Projection<'K, 'X> =
-        new MapView<'K, 'V, 'X> (graph, upstream, (fun key -> f (upstream.Get key)), Unchecked.defaultof<_>, false) :> Projection<'K, 'X>
+        new MapView<'K, 'V, 'X> (graph, upstream, Unchecked.defaultof<_>, f, Unchecked.defaultof<_>, false) :> Projection<'K, 'X>
+
+    let inline private raiseKeyNotFound (empty: exn ref) (message: string) =
+        if isNull empty.Value then
+            empty.Value <- System.Collections.Generic.KeyNotFoundException message :> exn
+
+        raise empty.Value
 
     /// <summary>
     /// A function returning the value inside <c>Some</c>, and raising one <c>KeyNotFoundException</c> instance with
@@ -6515,55 +7142,97 @@ module Projection =
         fun result ->
             match result with
             | Some value -> value
-            | None ->
-                if isNull empty.Value then
-                    empty.Value <- System.Collections.Generic.KeyNotFoundException message :> exn
+            | None -> raiseKeyNotFound empty message
 
-                raise empty.Value
+    let inline private boxPair (entry: struct ('K * 'V) voption) : ('K * 'V) option =
+        match entry with
+        | ValueSome (struct (k, v)) -> Some (k, v)
+        | ValueNone -> None
+
+    let inline private boxSnd (entry: struct ('K * 'V) voption) : 'V option =
+        match entry with
+        | ValueSome (struct (_, v)) -> Some v
+        | ValueNone -> None
+
+    let inline private boxFst (entry: struct ('K * 'V) voption) : 'K option =
+        match entry with
+        | ValueSome (struct (k, _)) -> Some k
+        | ValueNone -> None
+
+    let inline private pairOrRaise (message: string) : struct ('K * 'V) voption -> 'K * 'V =
+        let empty = ref (null: exn)
+
+        fun entry ->
+            match entry with
+            | ValueSome (struct (k, v)) -> (k, v)
+            | ValueNone -> raiseKeyNotFound empty message
+
+    let inline private sndOrRaise (message: string) : struct ('K * 'V) voption -> 'V =
+        let empty = ref (null: exn)
+
+        fun entry ->
+            match entry with
+            | ValueSome (struct (_, v)) -> v
+            | ValueNone -> raiseKeyNotFound empty message
+
+    let inline private fstOrRaise (message: string) : struct ('K * 'V) voption -> 'K =
+        let empty = ref (null: exn)
+
+        fun entry ->
+            match entry with
+            | ValueSome (struct (k, _)) -> k
+            | ValueNone -> raiseKeyNotFound empty message
 
     /// <summary>
     /// The key at position <c>position count</c> of <c>upstream</c>, where <c>count</c> is the key count, with its value;
-    /// <c>None</c> for a position outside <c>Keys</c>.
+    /// <c>ValueNone</c> for a position outside <c>Keys</c>.
     /// </summary>
     /// <remarks>Tracked reads of <c>Keys</c>, of what <c>position</c> reads, and of the row at the position.</remarks>
-    let private entryAt (upstream: Projection<'K, 'V>) (position: int -> int) : ('K * 'V) option =
+    let private entryAt (upstream: Projection<'K, 'V>) (position: int -> int) : struct ('K * 'V) voption =
         let keys = upstream.Keys
         let index = position keys.Length
 
         if index < 0 || index >= keys.Length then
-            None
+            ValueNone
         else
             let key = Platform.itemAt index keys
-            Some (key, upstream.Get key)
+            ValueSome (struct (key, upstream.Get key))
 
     /// <summary>A memo of <c>finish</c> applied to <c>entryAt upstream position</c>.</summary>
     /// <remarks>
     /// Readers re-run only when the entry changes: an equal entry returns the last result instance.
     /// </remarks>
-    let private positional (upstream: Projection<'K, 'V>) (position: int -> int) (finish: ('K * 'V) option -> 'R) : Memo<'R> =
-        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
-        let equalValues = upstream.Graph.Options.Equality.Comparer<'V>()
-        let lastEntry: ('K * 'V) option ref = ref None
-        let lastResult = ref Unchecked.defaultof<'R>
+    let private positional (upstream: Projection<'K, 'V>) (position: int -> int) (finish: struct ('K * 'V) voption -> 'R) : Memo<'R> =
+        let equalValues = upstream.Graph.EncodedComparer<'V>()
+        let mutable hasLast = false
+        let mutable lastKey = Unchecked.defaultof<'K>
+        let mutable lastValue = Unchecked.defaultof<'V>
+        let mutable lastResult = Unchecked.defaultof<'R>
 
         let compute (_: 'R voption) =
             let entry = entryAt upstream position
 
-            match entry, lastEntry.Value with
-            | Some (key, value), Some (lastKey, lastValue) when
-                equalKeys.Equals (key, lastKey)
-                && equalValues.Equals (value, lastValue)
-                ->
-                lastResult.Value
-            | Some _, _ ->
-                let result = finish entry
-                lastEntry.Value <- entry
-                lastResult.Value <- result
-                result
-            | None, _ ->
-                lastEntry.Value <- None
-                lastResult.Value <- Unchecked.defaultof<_>
-                finish entry
+            match entry with
+            | ValueSome (struct (key, value)) ->
+                if
+                    hasLast
+                    && Platform.keyEquals key lastKey
+                    && ComparerSentinel.equals equalValues value lastValue
+                then
+                    lastResult
+                else
+                    let result = finish entry
+                    hasLast <- true
+                    lastKey <- key
+                    lastValue <- value
+                    lastResult <- result
+                    result
+            | ValueNone ->
+                hasLast <- false
+                lastKey <- Unchecked.defaultof<'K>
+                lastValue <- Unchecked.defaultof<'V>
+                lastResult <- Unchecked.defaultof<'R>
+                finish ValueNone
 
         Memo<'R>.Create(upstream.Graph, compute, ScopeMode.Pure)
 
@@ -6589,12 +7258,7 @@ module Projection =
         upstream.RequireRowMemos "Projection.filter"
         let graph = upstream.Graph
         let inclusion = ref Unchecked.defaultof<Projection<'K, bool>>
-
-        let read key =
-            inclusion.Value.Get key |> ignore
-            upstream.Get key
-
-        let view = new FilterView<'K, 'V, 'V> (graph, upstream, inclusion, read, true)
+        let view = new FilterView<'K, 'V> (graph, upstream, inclusion, true)
 
         inclusion.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream predicate)
 
@@ -6627,27 +7291,11 @@ module Projection =
         upstream.RequireRowMemos "Projection.choose"
         let graph = upstream.Graph
         let choices = ref Unchecked.defaultof<Projection<'K, 'U option>>
-
-        let read key =
-            match choices.Value.Get key with
-            | Some value -> value
-            | None -> raise (System.Collections.Generic.KeyNotFoundException ("The projection has no key " + string key + "."))
-
-        let view = new ChooseView<'K, 'V, 'U> (graph, upstream, choices, read)
+        let view = new ChooseView<'K, 'V, 'U> (graph, upstream, choices)
 
         choices.Value <- graph.RunOwned (view.Scope, fun () -> perKey graph upstream chooser)
 
         view.PendingExtra <- fun () -> view.HeldOut
-        view :> Projection<'K, 'U>
-
-    /// <summary>The keys of <c>upstream</c>, in upstream order, each with the value of <c>mapping</c> at the key.</summary>
-    let private mapByKey (mapping: 'K -> 'U) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
-        let view =
-            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, mapping, Unchecked.defaultof<_>, true)
-
-        if not (Platform.isNull (box upstream.PendingExtra)) then
-            view.PendingExtra <- fun () -> view.HeldOut
-
         view :> Projection<'K, 'U>
 
     /// <summary>The keys of <c>upstream</c>, in upstream order, each with <c>mapping</c> of its value.</summary>
@@ -6658,7 +7306,14 @@ module Projection =
     /// </remarks>
     let map (mapping: 'V -> 'U) (upstream: Projection<'K, 'V>) : Projection<'K, 'U> =
         upstream.RequireRowMemos "Projection.map"
-        mapByKey (fun key -> mapping (upstream.Get key)) upstream
+
+        let view =
+            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, Unchecked.defaultof<_>, mapping, Unchecked.defaultof<_>, true)
+
+        if not (Platform.isNull (box upstream.PendingExtra)) then
+            view.PendingExtra <- fun () -> view.HeldOut
+
+        view :> Projection<'K, 'U>
 
     /// <summary>
     /// The keys of <c>upstream</c>, in upstream order, each row the reader <c>mapping</c> returns for the key and a
@@ -6682,7 +7337,7 @@ module Projection =
             mapping key (fun () -> upstream.Get key)
 
         let view =
-            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, Unchecked.defaultof<_>, factory, true)
+            new MapView<'K, 'V, 'U> (upstream.Graph, upstream, Unchecked.defaultof<_>, Unchecked.defaultof<_>, factory, true)
 
         if not (Platform.isNull (box upstream.PendingExtra)) then
             view.PendingExtra <- fun () -> view.HeldOut
@@ -6849,7 +7504,7 @@ module Projection =
         let owner = ownedScope graph
 
         let aggregate =
-            graph.RunOwned (owner, fun () -> new ProjectionFold<'K, 'U, 'S> (graph, rows (), add, subtract, zero, true))
+            graph.RunOwned (owner, fun () -> ProjectionFold<'K, 'U, 'S>.Create(graph, rows (), add, subtract, zero, true))
 
         let memo =
             Memo<'R>.Create(graph, (fun _ -> result (aggregate.Compute ValueNone)), ScopeMode.Pure)
@@ -6883,7 +7538,7 @@ module Projection =
         let graph = upstream.Graph
 
         let aggregate =
-            new ProjectionFold<'K, 'V, 'S> (graph, upstream, add, subtract, zero, true)
+            ProjectionFold<'K, 'V, 'S>.Create(graph, upstream, add, subtract, zero, true)
 
         let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
         aggregate.Memo <- memo
@@ -6900,7 +7555,7 @@ module Projection =
         let graph = upstream.Graph
 
         let aggregate =
-            new ProjectionFold<'K, 'V, 'S> (graph, upstream, folder, Unchecked.defaultof<_>, state, false)
+            ProjectionFold<'K, 'V, 'S>.Create(graph, upstream, folder, Unchecked.defaultof<_>, state, false)
 
         let memo = Memo<'S>.Create(graph, aggregate.Compute, ScopeMode.Pure)
         aggregate.Memo <- memo
@@ -7014,12 +7669,12 @@ module Projection =
     /// one makes it raise the row's exception.
     /// </remarks>
     let tryHead (upstream: Projection<'K, 'V>) : Memo<('K * 'V) option> =
-        positional upstream (fun _ -> 0) id
+        positional upstream (fun _ -> 0) boxPair
 
     /// <summary>A memo of the last key of <c>upstream</c> with its value, or <c>None</c> while <c>Keys</c> is empty.</summary>
     /// <remarks>Reads as <c>tryHead</c> does, at the last position.</remarks>
     let tryLast (upstream: Projection<'K, 'V>) : Memo<('K * 'V) option> =
-        positional upstream (fun count -> count - 1) id
+        positional upstream (fun count -> count - 1) boxPair
 
     /// <summary>
     /// A memo of the key at position <c>index ()</c> of <c>upstream</c> with its value, or <c>None</c> for a position
@@ -7030,22 +7685,22 @@ module Projection =
     /// throwing <c>index</c> fails the memo.
     /// </remarks>
     let tryItem (index: unit -> int) (upstream: Projection<'K, 'V>) : Memo<('K * 'V) option> =
-        positional upstream (fun _ -> index ()) id
+        positional upstream (fun _ -> index ()) boxPair
 
     /// <summary><c>tryHead</c>, raising <c>KeyNotFoundException</c> while <c>Keys</c> is empty.</summary>
     /// <remarks>The memo fails while empty and recovers once a key arrives; prefer <c>tryHead</c> for a binding.</remarks>
     let head (upstream: Projection<'K, 'V>) : Memo<'K * 'V> =
-        positional upstream (fun _ -> 0) (orRaise "Projection.head: the projection has no keys.")
+        positional upstream (fun _ -> 0) (pairOrRaise "Projection.head: the projection has no keys.")
 
     /// <summary><c>tryLast</c>, raising <c>KeyNotFoundException</c> while <c>Keys</c> is empty.</summary>
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let last (upstream: Projection<'K, 'V>) : Memo<'K * 'V> =
-        positional upstream (fun count -> count - 1) (orRaise "Projection.last: the projection has no keys.")
+        positional upstream (fun count -> count - 1) (pairOrRaise "Projection.last: the projection has no keys.")
 
     /// <summary><c>tryItem</c>, raising <c>KeyNotFoundException</c> for a position outside <c>Keys</c>.</summary>
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let item (index: unit -> int) (upstream: Projection<'K, 'V>) : Memo<'K * 'V> =
-        positional upstream (fun _ -> index ()) (orRaise "Projection.item: the projection has no key at the index.")
+        positional upstream (fun _ -> index ()) (pairOrRaise "Projection.item: the projection has no key at the index.")
 
     /// <summary>
     /// A memo of <c>finish</c> applied to the first key of the view returned by <c>build</c>, with its value. The memo owns
@@ -7055,34 +7710,51 @@ module Projection =
     /// Readers re-run only when the compared part changes: the key when <c>byKey</c> is true, and the value otherwise. An
     /// equal part returns the last result instance.
     /// </remarks>
-    let private firstOf (graph: Graph) (build: unit -> Projection<'K, 'U>) (byKey: bool) (finish: ('K * 'U) option -> 'R) : Memo<'R> =
+    let private firstOf (graph: Graph) (build: unit -> Projection<'K, 'U>) (byKey: bool) (finish: struct ('K * 'U) voption -> 'R) : Memo<'R> =
         let owner = ownedScope graph
         let view = graph.RunOwned (owner, build)
-        let equalKeys = System.Collections.Generic.EqualityComparer<'K>.Default
-        let equalValues = graph.Options.Equality.Comparer<'U>()
-        let lastEntry: ('K * 'U) option ref = ref None
-        let lastResult = ref Unchecked.defaultof<'R>
+
+        let equalValues =
+            if byKey then
+                Unchecked.defaultof<System.Collections.Generic.IEqualityComparer<'U>>
+            else
+                graph.EncodedComparer<'U>()
+
+        let mutable hasLast = false
+        let mutable lastKey = Unchecked.defaultof<'K>
+        let mutable lastValue = Unchecked.defaultof<'U>
+        let mutable lastResult = Unchecked.defaultof<'R>
 
         let compute (_: 'R voption) =
             let entry = entryAt view (fun _ -> 0)
 
-            match entry, lastEntry.Value with
-            | Some (key, value), Some (lastKey, lastValue) when
-                (if byKey then
-                     equalKeys.Equals (key, lastKey)
-                 else
-                     equalValues.Equals (value, lastValue))
-                ->
-                lastResult.Value
-            | Some _, _ ->
-                let result = finish entry
-                lastEntry.Value <- entry
-                lastResult.Value <- result
-                result
-            | None, _ ->
-                lastEntry.Value <- None
-                lastResult.Value <- Unchecked.defaultof<_>
-                finish entry
+            match entry with
+            | ValueSome (struct (key, value)) ->
+                let unchanged =
+                    hasLast
+                    && (if byKey then
+                            Platform.keyEquals key lastKey
+                        else
+                            ComparerSentinel.equals equalValues value lastValue)
+
+                if unchanged then
+                    lastResult
+                else
+                    let result = finish entry
+                    hasLast <- true
+                    lastKey <- key
+
+                    if not byKey then
+                        lastValue <- value
+
+                    lastResult <- result
+                    result
+            | ValueNone ->
+                hasLast <- false
+                lastKey <- Unchecked.defaultof<'K>
+                lastValue <- Unchecked.defaultof<'U>
+                lastResult <- Unchecked.defaultof<'R>
+                finish ValueNone
 
         let memo = Memo<'R>.Create(graph, compute, ScopeMode.Pure)
         memo.Adopt owner
@@ -7103,13 +7775,13 @@ module Projection =
     /// </example>
     let tryFind (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'V option> =
         upstream.RequireRowMemos "Projection.tryFind"
-        firstOf upstream.Graph (fun () -> filter predicate upstream) false (Option.map snd)
+        firstOf upstream.Graph (fun () -> filter predicate upstream) false boxSnd
 
     /// <summary>A memo of the first key of <c>upstream</c>, in upstream order, whose value satisfies <c>predicate</c>.</summary>
     /// <remarks>Follows <c>tryFind</c>.</remarks>
     let tryFindKey (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'K option> =
         upstream.RequireRowMemos "Projection.tryFindKey"
-        firstOf upstream.Graph (fun () -> filter predicate upstream) true (Option.map fst)
+        firstOf upstream.Graph (fun () -> filter predicate upstream) true boxFst
 
     /// <summary>
     /// A memo of the first <c>Some</c> returned by <c>chooser</c> over the values of <c>upstream</c>, in upstream order.
@@ -7117,43 +7789,28 @@ module Projection =
     /// <remarks>The memo owns a <c>choose</c> view; costs, pending and failure follow <c>tryFind</c>.</remarks>
     let tryPick (chooser: 'V -> 'U option) (upstream: Projection<'K, 'V>) : Memo<'U option> =
         upstream.RequireRowMemos "Projection.tryPick"
-        firstOf upstream.Graph (fun () -> choose chooser upstream) false (Option.map snd)
+        firstOf upstream.Graph (fun () -> choose chooser upstream) false boxSnd
 
     /// <summary><c>tryFind</c>, raising <c>KeyNotFoundException</c> while no value satisfies <c>predicate</c>.</summary>
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let find (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'V> =
         upstream.RequireRowMemos "Projection.find"
 
-        firstOf
-            upstream.Graph
-            (fun () -> filter predicate upstream)
-            false
-            (Option.map snd
-             >> orRaise "Projection.find: no value satisfies the predicate.")
+        firstOf upstream.Graph (fun () -> filter predicate upstream) false (sndOrRaise "Projection.find: no value satisfies the predicate.")
 
     /// <summary><c>tryFindKey</c>, raising <c>KeyNotFoundException</c> while no value satisfies <c>predicate</c>.</summary>
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let findKey (predicate: 'V -> bool) (upstream: Projection<'K, 'V>) : Memo<'K> =
         upstream.RequireRowMemos "Projection.findKey"
 
-        firstOf
-            upstream.Graph
-            (fun () -> filter predicate upstream)
-            true
-            (Option.map fst
-             >> orRaise "Projection.findKey: no value satisfies the predicate.")
+        firstOf upstream.Graph (fun () -> filter predicate upstream) true (fstOrRaise "Projection.findKey: no value satisfies the predicate.")
 
     /// <summary><c>tryPick</c>, raising <c>KeyNotFoundException</c> while <c>chooser</c> returns <c>None</c> for every value.</summary>
     /// <remarks>Fails and recovers as <c>head</c> does.</remarks>
     let pick (chooser: 'V -> 'U option) (upstream: Projection<'K, 'V>) : Memo<'U> =
         upstream.RequireRowMemos "Projection.pick"
 
-        firstOf
-            upstream.Graph
-            (fun () -> choose chooser upstream)
-            false
-            (Option.map snd
-             >> orRaise "Projection.pick: the chooser returns None for every value.")
+        firstOf upstream.Graph (fun () -> choose chooser upstream) false (sndOrRaise "Projection.pick: the chooser returns None for every value.")
 
     /// <summary>The mean of a <c>struct (sum, count)</c> state, or <c>None</c> at count zero.</summary>
     [<NoDynamicInvocation>]
@@ -7232,20 +7889,16 @@ module Projection =
         : Memo<'R> =
         upstream.RequireRowMemos operation
         let graph = upstream.Graph
-        let equalValues = graph.Options.Equality.Comparer<'V>()
+        let encodedEqualValues = graph.EncodedComparer<'V>()
         let owner = ownedScope graph
 
         let aggregate =
             graph.RunOwned (
                 owner,
                 fun () ->
-                    let ranked =
-                        upstream
-                        |> mapByKey (fun key ->
-                            let value = upstream.Get key
-                            struct (projection value, value))
+                    let ranked = perKey graph upstream (fun value -> struct (projection value, value))
 
-                    new ProjectionExtreme<'K, 'V, 'S, 'R> (graph, ranked, isMax, equalValues, finish)
+                    ProjectionExtreme<'K, 'V, 'S, 'R>.Create(graph, ranked, isMax, encodedEqualValues, finish)
             )
 
         let memo = Memo<'R>.Create(graph, aggregate.Compute, ScopeMode.Pure)
@@ -7319,12 +7972,8 @@ module Projection =
         let inclusion =
             ref (graph.RunOwned (owner, fun () -> perKey graph upstream predicate))
 
-        let read key =
-            inclusion.Value.Get key |> ignore
-            upstream.Get key
-
         let half admit =
-            let view = new FilterView<'K, 'V, 'V> (graph, upstream, inclusion, read, admit)
+            let view = new FilterView<'K, 'V> (graph, upstream, inclusion, admit)
             view.PendingExtra <- fun () -> view.HeldOut
             view :> Projection<'K, 'V>
 
