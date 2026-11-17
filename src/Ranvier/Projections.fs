@@ -484,12 +484,12 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// <summary>
     /// Whether <c>inFlight</c> is non-empty. Read by <c>AnyPending</c>.
     /// </summary>
-    let anyPending = Signal<bool>(graph, false, EqualityComparer<bool>.Default)
+    let anyPending = Signal<bool>.OfEncoded(graph, false, Unchecked.defaultof<_>)
 
     /// <summary>
     /// Bumped on every change to <c>inFlight</c>. Read by <c>PendingKeys</c>.
     /// </summary>
-    let inFlightVersion = Signal<int>(graph, 0, EqualityComparer<int>.Default)
+    let inFlightVersion = Signal<int>.OfEncoded(graph, 0, Unchecked.defaultof<_>)
 
     let removed = ResizeArray<'K>()
     let refreshing = ResizeArray<RowEntry<'K, 'V>>()
@@ -1929,7 +1929,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             raise (ObjectDisposedException (this.GetType().Name))
 
         let view = ObservableCollection<'V>()
-        let equal = ComparerSentinel.encode (graph.Options.Equality.Comparer<'V>())
+        let equal = graph.EncodedComparer<'V>()
         // The keys and values the view shows, and one more than each shown key's index.
         let shown = ref Array.empty<'K>
         let shownValues = ref Array.empty<'V>
@@ -2251,16 +2251,16 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 
     let adds = ResizeArray<struct ('K * 'T)>()
     let writes = ResizeArray<struct (Signal<'T> * 'T)>()
-    let rawItemEqual = graph.Options.Equality.Comparer<'T>()
-    let rawValueEqual = graph.Options.Equality.Comparer<'V>()
+    let encodedItemEqual = graph.EncodedComparer<'T>()
+    let encodedValueEqual = graph.EncodedComparer<'V>()
 
 #if !RANVIER_TRACE
 #if FABLE_COMPILER
-    let skipRefSame = Platform.isNull (box (ComparerSentinel.encode rawItemEqual))
+    let skipRefSame = Platform.isNull (box encodedItemEqual)
 #else
     let skipRefSame =
         not typeof<'T>.IsValueType
-        && obj.ReferenceEquals (ComparerSentinel.encode rawItemEqual, null)
+        && obj.ReferenceEquals (encodedItemEqual, null)
 #endif
 #endif
 
@@ -2322,7 +2322,9 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     default _.Abandoned() = ()
 
     member private this.NewRow(key: 'K, item: 'T) =
-        let entry = ItemRow<'T, 'K, 'V>(key, Signal<'T>(graph, item, rawItemEqual))
+        let entry =
+            ItemRow<'T, 'K, 'V>(key, Signal<'T>.OfEncoded(graph, item, encodedItemEqual))
+
         Tracer.Part (graph, (entry.Item :> INode).Id, (this :> INode).Id, box key)
         this.AddEntry (key, entry)
         entry
@@ -2336,7 +2338,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             let entry = this.NewRow (key, item)
             let source = entry.Item
             entry.Reader <- fun () -> map source.Value
-            entry.Row <- Memo<'V>.CreateWithComparer(graph, this.Compute entry, rowMode, rawValueEqual)
+            entry.Row <- Memo<'V>.CreateEncoded(graph, this.Compute entry, rowMode, encodedValueEqual)
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
     member private this.FactoryFailure(key: 'K, error: exn, advice: string, before: int) : unit -> 'V =
@@ -2363,7 +2365,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                     with ex ->
                         this.FactoryFailure (key, ex, " Read the source inside the reader the factory returns.", before)
 
-                entry.Row <- Memo<'V>.CreateWithComparer(graph, this.Compute entry, rowMode, rawValueEqual)
+                entry.Row <- Memo<'V>.CreateEncoded(graph, this.Compute entry, rowMode, encodedValueEqual)
                 Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
         )
 
@@ -2384,7 +2386,9 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                     row.Reader ())
 
     member private this.CreateOnce(key: 'K, item: 'T) =
-        let entry = OnceRow<'T, 'K, 'V>(key, Signal<'T>(graph, item, rawItemEqual))
+        let entry =
+            OnceRow<'T, 'K, 'V>(key, Signal<'T>.OfEncoded(graph, item, encodedItemEqual))
+
         Tracer.Part (graph, (entry.Item :> INode).Id, (this :> INode).Id, box key)
         this.AddEntry (key, entry)
         let keyScope = new Owner (graph.Root)
@@ -2501,6 +2505,7 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
             ScopeMode.FactoryRow
 
     let adds = ResizeArray<struct ('K * obj)>()
+    let encodedValueEqual = graph.EncodedComparer<'V>()
 
     /// <summary>Stages <c>key</c> with an upstream identity tag, creating a row only when absent from <c>Entries</c>.</summary>
     member internal this.VisitTagged(key: 'K, tag: obj) =
@@ -2539,7 +2544,9 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
         fun _ -> this.RunRow entry
 
     member private this.CreateMapped() =
-        for struct (key, tag) in adds do
+        for i in 0 .. adds.Count - 1 do
+            let struct (key, tag) = Platform.entryAt i adds
+
             let entry =
                 if tagged then
                     KeyRow<'K, 'V>(key, tag) :> RowEntry<'K, 'V>
@@ -2548,7 +2555,7 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
 
             this.AddEntry (key, entry)
             entry.Reader <- fun () -> map key
-            entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
+            entry.Row <- Memo<'V>.CreateEncoded(graph, this.Compute entry, rowMode, encodedValueEqual)
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
     member private this.CreateFactored(key: 'K, tag: obj) =
@@ -2581,7 +2588,7 @@ type internal RowsByKey<'K, 'V when 'K: equality>(graph: Graph, map: 'K -> 'V, f
                             ex
                             " Read the source inside the reader the factory returns."
 
-                entry.Row <- Memo<'V>.Create(graph, this.Compute entry, rowMode)
+                entry.Row <- Memo<'V>.CreateEncoded(graph, this.Compute entry, rowMode, encodedValueEqual)
                 Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
         )
 
@@ -2711,7 +2718,7 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
     /// <summary>The changed previous positions of the trimmed pass in progress.</summary>
     let changedAt = ResizeArray<int>()
 
-    let same = ComparerSentinel.encode (graph.Options.Equality.Comparer<'T>())
+    let same = graph.EncodedComparer<'T>()
 
     /// <summary><c>buffer</c> when it has <c>size</c> slots, else a larger array holding <c>buffer[0 .. count - 1]</c>.</summary>
     let grow (buffer: 'a[]) (count: int) (size: int) : 'a[] =
@@ -3134,7 +3141,7 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 type internal IndexProjection<'T, 'V>(graph: Graph, map: 'T -> 'V, factory: (unit -> 'T) -> (unit -> 'V), source: unit -> 'T seq) =
     inherit RowsOf<'T, int, 'V>(graph, map, factory)
 
-    let same = ComparerSentinel.encode (graph.Options.Equality.Comparer<'T>())
+    let same = graph.EncodedComparer<'T>()
     let mutable lastItems: 'T[] = Array.empty
     let mutable lastCount = 0
     let mutable spare: 'T[] = Array.empty
@@ -3484,7 +3491,7 @@ type internal LookupCell<'V>(graph: Graph, equal: IEqualityComparer<'V>, orphane
 [<AbstractClass>]
 type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let scope = new Owner (graph.Root)
-    let equal = ComparerSentinel.encode (graph.Options.Equality.Comparer<'V>())
+    let equal = graph.EncodedComparer<'V>()
     let cells = Platform.KeyMap<'K, LookupCell<'V>>()
 
     /// <summary>
@@ -3957,7 +3964,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 type internal LookupOf<'S, 'K, 'V when 'K: equality>(graph: Graph, f: 'S -> 'K -> 'V, affected: 'S -> 'S -> 'K seq, source: unit -> 'S) as this =
     inherit Lookup<'K, 'V>(graph)
 
-    let stateEqual = ComparerSentinel.encode (graph.Options.Equality.Comparer<'S>())
+    let stateEqual = graph.EncodedComparer<'S>()
 
     let state =
         graph.RunOwned (this.Scope, (fun () -> Memo<'S>.Create(graph, (fun _ -> source ()), ScopeMode.Owning)))
@@ -4146,7 +4153,7 @@ type internal LookupOf<'S, 'K, 'V when 'K: equality>(graph: Graph, f: 'S -> 'K -
 type internal SelectorLookup<'K when 'K: equality>(graph: Graph, source: unit -> 'K) as this =
     inherit Lookup<'K, bool>(graph)
 
-    let stateEqual = ComparerSentinel.encode (graph.Options.Equality.Comparer<'K>())
+    let stateEqual = graph.EncodedComparer<'K>()
 
     let state =
         graph.RunOwned (this.Scope, (fun () -> Memo<'K>.Create(graph, (fun _ -> source ()), ScopeMode.Owning)))

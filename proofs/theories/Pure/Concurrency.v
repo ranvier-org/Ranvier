@@ -855,3 +855,53 @@ Proof.
     + destruct (decide (ctx = cs_context cs /\ cs_holder cs = 0)); [|discriminate].
       simplify_eq. simpl. by rewrite ?Haff, decide_True by reflexivity.
 Qed.
+
+(**md Classification of `GraphOptions.Equality` (`Types.fs` lines 331–346, `Core.fs` `Graph.EncodedComparer`):
+    either `JsIdentityPolicy` (`PolJsIdentity`, where Fable's `Comparer<'T>()` always returns `ReferenceComparer<'T>`
+    with `is_val_type = false`) or a custom/structural policy (`PolCustom resolve`). *)
+Inductive equality_policy :=
+  | PolJsIdentity
+  | PolCustom (resolve : nullable_comparer).
+
+Definition resolve_policy_comparer (p : equality_policy) : nullable_comparer :=
+  match p with
+  | PolJsIdentity => CmpRefIdentity
+  | PolCustom c => c
+  end.
+
+Definition graph_uses_js_identity (p : equality_policy) : bool :=
+  match p with
+  | PolJsIdentity => true
+  | PolCustom _ => false
+  end.
+
+Definition graph_encoded_comparer_fable
+    (uses_js_id : bool) (val_eq ref_eq : Z -> Z -> bool) (p : equality_policy) : comparer_sentinel :=
+  if uses_js_id then SentDefaultNull
+  else encode_comparer_sentinel false val_eq ref_eq (resolve_policy_comparer p).
+
+(**md
+**Caching `usesJsIdentity` once per `Graph` and short-circuiting `Graph.EncodedComparer` to `null` (`SentDefaultNull`) produces the exact same sentinel and comparison outcomes as resolving `options.Equality.Comparer<'T>()` and encoding per node.**
+
+Matches `Graph.usesJsIdentity` and `Graph.EncodedComparer<'T>()` (`Core.fs`), plus `RowsOf` / `RowsByKey` pre-encoded
+row comparer reuse (`Projections.fs`): under `JsIdentityPolicy` on Fable (`is_val_type = false`, JS `===`),
+`Comparer<'T>()` always resolves to `ReferenceComparer<'T>` (`CmpRefIdentity`), whose encoded sentinel is `SentDefaultNull`.
+
+- [val_eq:] value equality relation.
+- [ref_eq:] JS `===` / reference equality relation.
+- [p:] the graph's immutable `IEqualityPolicy`.
+- [a:] the previous value.
+- [b:] the candidate value.
+*)
+Theorem graph_encoded_comparer_cache_eq
+    (val_eq ref_eq : Z -> Z -> bool) (p : equality_policy) (a b : Z) :
+  graph_encoded_comparer_fable (graph_uses_js_identity p) val_eq ref_eq p =
+    encode_comparer_sentinel false val_eq ref_eq (resolve_policy_comparer p) /\
+  eval_comparer_sentinel false val_eq ref_eq
+    (graph_encoded_comparer_fable (graph_uses_js_identity p) val_eq ref_eq p) a b =
+    eval_nullable_comparer val_eq ref_eq (resolve_policy_comparer p) a b.
+Proof.
+  destruct p as [|c]; simpl.
+  - split; reflexivity.
+  - split; [reflexivity | apply (proj1 (default_comparer_null_sentinel_eq false val_eq ref_eq c a b))].
+Qed.

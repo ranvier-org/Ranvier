@@ -54,7 +54,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-    let equal = ComparerSentinel.encode (graph.Options.Equality.Comparer<'V>())
+    let equal = graph.EncodedComparer<'V>()
     let rows = Platform.KeyMap<'K, ValueRow<'K, 'V>>()
     let seen = Platform.KeySet<'K>()
     let membership = KeyChanges<'K>()

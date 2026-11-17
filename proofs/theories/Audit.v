@@ -499,3 +499,4 @@ Print Assumptions trim_single_inplace_key_preserves_uniqueness.
 Print Assumptions trim_two_index_key_swap_preserves_uniqueness.
 Print Assumptions index_projection_dense_diff_refines_visit.
 Print Assumptions lookup_sync_clean_skip_and_affected_buf_eq.
+Print Assumptions graph_encoded_comparer_cache_eq.

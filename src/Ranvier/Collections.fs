@@ -19,7 +19,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality>(graph: Graph) as th
     let mutable head: CollectionItem<'K, 'V> = null
     let mutable tail: CollectionItem<'K, 'V> = null
     let mutable count = 0
-    let revision = Signal<int>(graph, 0, EqualityComparer<int>.Default)
+    let revision = Signal<int>.OfEncoded(graph, 0, Unchecked.defaultof<_>)
     let mutable changes = KeyChanges<'K>()
     let mutable previous: 'K[] = Array.empty
     let mutable first = true
