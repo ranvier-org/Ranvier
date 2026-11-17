@@ -490,3 +490,553 @@ Proof.
   rewrite <- app_assoc. simpl.
   split; reflexivity.
 Qed.
+
+(** ** 6. Elmish untracked/unjournaled bypass, lazy gate, inline staging, QueryKey, and linked leases *)
+
+Record arrive_env := {
+  ae_tracking : bool;
+  ae_host_set : bool;
+}.
+
+Definition arrive_run_untracked (e : arrive_env) (apply : bool -> Z) : Z * arrive_env :=
+  if ae_tracking e then
+    let _e_inner := {| ae_tracking := false; ae_host_set := true |} in
+    (apply false, {| ae_tracking := true; ae_host_set := ae_host_set e |})
+  else
+    (apply false, e).
+
+Definition arrive_fast (e : arrive_env) (apply : bool -> Z) : Z * arrive_env :=
+  if ae_tracking e then arrive_run_untracked e apply
+  else (apply false, e).
+
+Inductive cmd_work :=
+  | WorkNone
+  | WorkJournaled.
+
+Definition run_cmds_journaled_spec (has_journal : bool) (cmds : list mvu_cmd) (st : mvu_state)
+    : mvu_state * cmd_work :=
+  if has_journal then (mvu_run_cmds cmds st, WorkJournaled)
+  else (mvu_run_cmds cmds st, WorkNone).
+
+Definition run_cmds_opt (has_journal : bool) (cmds : list mvu_cmd) (st : mvu_state)
+    : mvu_state * cmd_work :=
+  if negb has_journal then (mvu_run_cmds cmds st, WorkNone)
+  else (mvu_run_cmds cmds st, WorkJournaled).
+
+(**md
+**`Mvu.Arrive` bypassing `RunUntracked` when `graph.IsTracking () = false` and `Mvu.RunCommands` skipping `JournalWork` when `graph.Options.Journal.IsNone` agree identically with the full untracked and journaled paths.**
+
+Proves the `Mvu.fs` hot-path bypasses:
+- For any tracking environment `e` and callback `apply`, `arrive_fast e apply = arrive_run_untracked e apply`, and when `ae_tracking e = false` it returns `(apply false, e)` directly without touching host scope state.
+- For any `has_journal` flag, command list `cmds`, and `Mvu` state `st`, `run_cmds_opt` agrees with `run_cmds_journaled_spec` while emitting `WorkNone` when `has_journal = false`.
+
+- [e:] the tracking environment at dispatch arrival.
+- [apply:] the message application function parameterized by whether tracking is active.
+- [has_journal:] whether `graph.Options.Journal.IsSome`.
+- [cmds:] the returned Elmish command list.
+- [st:] the initial `Mvu` state.
+*)
+Theorem mvu_untracked_bypass_and_direct_cmd_eq
+    (e : arrive_env) (apply : bool -> Z) (has_journal : bool) (cmds : list mvu_cmd) (st : mvu_state) :
+  arrive_fast e apply = arrive_run_untracked e apply /\
+  (ae_tracking e = false -> arrive_fast e apply = (apply false, e)) /\
+  run_cmds_opt has_journal cmds st = run_cmds_journaled_spec has_journal cmds st /\
+  run_cmds_opt false cmds st = (mvu_run_cmds cmds st, WorkNone).
+Proof.
+  split_and!.
+  - unfold arrive_fast, arrive_run_untracked. destruct (ae_tracking e); reflexivity.
+  - intros Hnt. unfold arrive_fast. rewrite Hnt. reflexivity.
+  - unfold run_cmds_opt, run_cmds_journaled_spec. destruct has_journal; reflexivity.
+  - reflexivity.
+Qed.
+
+Inductive gate_state :=
+  | GatePending
+  | GateSettled (v : Z)
+  | GateFailed (e : nat).
+
+Record eager_entry := {
+  ee_has_data : bool;
+  ee_data : Z;
+  ee_error : option nat;
+  ee_gate : gate_state;
+}.
+
+Record lazy_entry := {
+  le_has_data : bool;
+  le_data : Z;
+  le_error : option nat;
+  le_gate : option gate_state;
+}.
+
+Definition eager_init : eager_entry :=
+  {| ee_has_data := false; ee_data := 0%Z; ee_error := None; ee_gate := GatePending |}.
+
+Definition lazy_init : lazy_entry :=
+  {| le_has_data := false; le_data := 0%Z; le_error := None; le_gate := None |}.
+
+Inductive gate_op :=
+  | OpStart
+  | OpOk (v : Z)
+  | OpErr (e : nat)
+  | OpReadValue.
+
+Definition eval_gate (g : gate_state) : Z + option nat :=
+  match g with
+  | GatePending => inr None
+  | GateSettled v => inl v
+  | GateFailed e => inr (Some e)
+  end.
+
+Definition step_eager (op : gate_op) (ee : eager_entry) : option (Z + option nat) * eager_entry :=
+  match op with
+  | OpStart =>
+      (None, {| ee_has_data := ee_has_data ee;
+                ee_data := ee_data ee;
+                ee_error := None;
+                ee_gate := if ee_has_data ee then ee_gate ee else GatePending |})
+  | OpOk v =>
+      (None, {| ee_has_data := true;
+                ee_data := v;
+                ee_error := None;
+                ee_gate := if ee_has_data ee then ee_gate ee else GateSettled v |})
+  | OpErr e =>
+      (None, {| ee_has_data := ee_has_data ee;
+                ee_data := ee_data ee;
+                ee_error := Some e;
+                ee_gate := if ee_has_data ee then ee_gate ee else GateFailed e |})
+  | OpReadValue =>
+      let res := if ee_has_data ee then inl (ee_data ee) else eval_gate (ee_gate ee) in
+      (Some res, ee)
+  end.
+
+Definition ensure_gate (le : lazy_entry) : gate_state * lazy_entry :=
+  match le_gate le with
+  | Some g => (g, le)
+  | None =>
+      let g := match le_error le with
+               | Some e => GateFailed e
+               | None => GatePending
+               end in
+      (g, {| le_has_data := le_has_data le;
+             le_data := le_data le;
+             le_error := le_error le;
+             le_gate := Some g |})
+  end.
+
+Definition step_lazy (op : gate_op) (le : lazy_entry) : option (Z + option nat) * lazy_entry :=
+  match op with
+  | OpStart =>
+      (None, {| le_has_data := le_has_data le;
+                le_data := le_data le;
+                le_error := None;
+                le_gate := if le_has_data le then le_gate le
+                           else match le_gate le with
+                                | Some _ => Some GatePending
+                                | None => None
+                                end |})
+  | OpOk v =>
+      (None, {| le_has_data := true;
+                le_data := v;
+                le_error := None;
+                le_gate := if le_has_data le then le_gate le
+                           else match le_gate le with
+                                | Some _ => Some (GateSettled v)
+                                | None => None
+                                end |})
+  | OpErr e =>
+      (None, {| le_has_data := le_has_data le;
+                le_data := le_data le;
+                le_error := Some e;
+                le_gate := if le_has_data le then le_gate le
+                           else match le_gate le with
+                                | Some _ => Some (GateFailed e)
+                                | None => None
+                                end |})
+  | OpReadValue =>
+      if le_has_data le then (Some (inl (le_data le)), le)
+      else let '(g, le') := ensure_gate le in (Some (eval_gate g), le')
+  end.
+
+Fixpoint run_eager (ops : list gate_op) (ee : eager_entry)
+    : list (option (Z + option nat)) * eager_entry :=
+  match ops with
+  | [] => ([], ee)
+  | op :: rest =>
+      let '(r, ee1) := step_eager op ee in
+      let '(rs, ee') := run_eager rest ee1 in
+      (r :: rs, ee')
+  end.
+
+Fixpoint run_lazy (ops : list gate_op) (le : lazy_entry)
+    : list (option (Z + option nat)) * lazy_entry :=
+  match ops with
+  | [] => ([], le)
+  | op :: rest =>
+      let '(r, le1) := step_lazy op le in
+      let '(rs, le') := run_lazy rest le1 in
+      (r :: rs, le')
+  end.
+
+Definition entry_gate_rel (ee : eager_entry) (le : lazy_entry) : Prop :=
+  ee_has_data ee = le_has_data le /\
+  ee_data ee = le_data le /\
+  ee_error ee = le_error le /\
+  match le_gate le with
+  | Some g => ee_gate ee = g
+  | None =>
+      ee_has_data ee = false ->
+      ee_gate ee = match ee_error ee with
+                   | Some e => GateFailed e
+                   | None => GatePending
+                   end
+  end.
+
+Fixpoint reads_while_empty (ops : list gate_op) (has_data : bool) : bool :=
+  match ops with
+  | [] => false
+  | OpStart :: rest => reads_while_empty rest has_data
+  | OpOk _ :: rest => reads_while_empty rest true
+  | OpErr _ :: rest => reads_while_empty rest has_data
+  | OpReadValue :: rest => if negb has_data then true else reads_while_empty rest has_data
+  end.
+
+(**md
+**Lazy initial-load gate allocation (`EnsureGate`) simulates eager `AsyncSource` allocation across every trace of entry operations and leaves `le_gate = None` whenever `.Value` is never read while empty.**
+
+Proves the lazy `gate` optimization in `QueryEntry<'T>` (`Entry.fs`):
+- Across any sequence of `OpStart`, `OpOk`, `OpErr`, and `OpReadValue`, `run_lazy` preserves `entry_gate_rel` and produces the exact same sequence of read results as `run_eager`.
+- On any trace whose `OpReadValue` calls occur only after data has loaded (`reads_while_empty ops false = false`), `le_gate` stays `None` (zero `AsyncSource` allocations).
+
+- [ops:] the trace of entry operations starting from `eager_init` and `lazy_init`.
+*)
+Theorem lazy_query_gate_refines_eager (ops : list gate_op) :
+  (run_lazy ops lazy_init).1 = (run_eager ops eager_init).1 /\
+  entry_gate_rel (run_eager ops eager_init).2 (run_lazy ops lazy_init).2 /\
+  (reads_while_empty ops false = false -> le_gate (run_lazy ops lazy_init).2 = None).
+Proof.
+  assert (Hsim : forall trace ee le,
+    entry_gate_rel ee le ->
+    (run_lazy trace le).1 = (run_eager trace ee).1 /\
+    entry_gate_rel (run_eager trace ee).2 (run_lazy trace le).2).
+  { induction trace as [|op rest IH]; intros ee le Hrel.
+    - split; [reflexivity | exact Hrel].
+    - assert (Hstep :
+        (step_lazy op le).1 = (step_eager op ee).1 /\
+        entry_gate_rel (step_eager op ee).2 (step_lazy op le).2).
+      { destruct ee as [ehd edata eerr egate], le as [lhd ldata lerr lgate].
+        destruct Hrel as [Hd [Hv [He Hg]]]; simpl in *.
+        subst lhd ldata lerr.
+        destruct op as [|v|e|]; unfold entry_gate_rel, ensure_gate; simpl.
+        - destruct ehd, lgate as [g|]; simpl in *;
+            split_and!; try reflexivity; try exact Hg; try (intros Hfalse; discriminate Hfalse); try (intros _; reflexivity).
+        - destruct ehd, lgate as [g|]; simpl in *;
+            split_and!; try reflexivity; try exact Hg; try (intros Hfalse; discriminate Hfalse).
+        - destruct ehd, lgate as [g|]; simpl in *;
+            split_and!; try reflexivity; try exact Hg; try (intros Hfalse; discriminate Hfalse); try (intros _; reflexivity).
+        - destruct ehd, lgate as [g|]; simpl in *.
+          + split_and!; try reflexivity; exact Hg.
+          + split_and!; try reflexivity; intros Hfalse; discriminate Hfalse.
+          + rewrite Hg. split_and!; reflexivity.
+          + rewrite (Hg eq_refl). split_and!; reflexivity. }
+      destruct Hstep as [Hr Hrel'].
+      simpl. destruct (step_lazy op le) as [rl le1] eqn:El.
+      destruct (step_eager op ee) as [re ee1] eqn:Ee.
+      simpl in Hr, Hrel'.
+      specialize (IH ee1 le1 Hrel') as [Hrs Hrel''].
+      destruct (run_lazy rest le1) as [rls le2] eqn:Erl.
+      destruct (run_eager rest ee1) as [res ee2] eqn:Ere.
+      simpl in Hrs, Hrel''.
+      simpl. split; [rewrite Hr, Hrs; reflexivity | exact Hrel'']. }
+  assert (Hnone : forall trace le,
+    le_gate le = None ->
+    reads_while_empty trace (le_has_data le) = false ->
+    le_gate (run_lazy trace le).2 = None).
+  { induction trace as [|op rest IH]; intros [lhd ldata lerr lgate] Hgate Hno; simpl in *.
+    - exact Hgate.
+    - subst lgate. destruct op as [|v|e|]; simpl in *.
+      + destruct lhd; simpl in *;
+          [ pose proof (IH {| le_has_data := true; le_data := ldata; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec
+          | pose proof (IH {| le_has_data := false; le_data := ldata; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec ].
+      + destruct lhd; simpl in *;
+          [ pose proof (IH {| le_has_data := true; le_data := v; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec
+          | pose proof (IH {| le_has_data := true; le_data := v; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec ].
+      + destruct lhd; simpl in *;
+          [ pose proof (IH {| le_has_data := true; le_data := ldata; le_error := Some e; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec
+          | pose proof (IH {| le_has_data := false; le_data := ldata; le_error := Some e; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec ].
+      + destruct lhd; [|discriminate Hno]. simpl in *.
+        pose proof (IH {| le_has_data := true; le_data := ldata; le_error := lerr; le_gate := None |} eq_refl Hno) as Hrec.
+        destruct (run_lazy rest _) as [rs le']; exact Hrec. }
+  assert (Hinit_rel : entry_gate_rel eager_init lazy_init) by (repeat split; reflexivity).
+  destruct (Hsim ops eager_init lazy_init Hinit_rel) as [Hout Hfinal].
+  split; [exact Hout|].
+  split; [exact Hfinal|].
+  apply (Hnone ops lazy_init eq_refl).
+Qed.
+
+Inductive ext_draft_edit :=
+  | ExtUpdate (f : Z -> Z)
+  | ExtSet (v : Z)
+  | ExtInvalidate.
+
+Record inline_draft := {
+  id_staged : bool;
+  id_has_value : bool;
+  id_value : Z;
+  id_stale : bool;
+  id_updated : bool;
+}.
+
+Definition init_inline_draft (has_data : bool) (val : Z) : inline_draft :=
+  {| id_staged := true; id_has_value := has_data; id_value := val; id_stale := true; id_updated := false |}.
+
+Definition step_inline_draft (e : ext_draft_edit) (d : inline_draft) : inline_draft :=
+  match e with
+  | ExtUpdate f =>
+      if id_has_value d then
+        {| id_staged := true; id_has_value := true; id_value := f (id_value d); id_stale := false; id_updated := true |}
+      else d
+  | ExtSet v =>
+      if id_has_value d then
+        {| id_staged := true; id_has_value := true; id_value := v; id_stale := false; id_updated := true |}
+      else d
+  | ExtInvalidate =>
+      {| id_staged := true; id_has_value := id_has_value d; id_value := id_value d; id_stale := true; id_updated := id_updated d |}
+  end.
+
+Fixpoint apply_inline_drafts (es : list ext_draft_edit) (d : inline_draft) : inline_draft :=
+  match es with
+  | [] => d
+  | e :: rest => apply_inline_drafts rest (step_inline_draft e d)
+  end.
+
+Definition to_model_edit (e : ext_draft_edit) : draft_edit :=
+  match e with
+  | ExtUpdate f => DraftUpdate f
+  | ExtSet v => DraftUpdate (fun _ => v)
+  | ExtInvalidate => DraftInvalidate
+  end.
+
+Definition decode_draft (d : inline_draft) : query_draft_state :=
+  {| qd_data := if id_has_value d then Some (id_value d) else None;
+     qd_stale := id_stale d;
+     qd_updated := id_updated d |}.
+
+Definition inline_prepare (has_data : bool) (cur : Z) (eqb : Z -> Z -> bool) (d : inline_draft) : bool :=
+  if negb (id_updated d) || negb (id_has_value d) then false
+  else if negb has_data then true
+  else negb (eqb cur (id_value d)).
+
+Definition model_prepare (initial : option Z) (eqb : Z -> Z -> bool) (d : query_draft_state) : bool :=
+  match qd_updated d, initial, qd_data d with
+  | true, Some old, Some v => negb (eqb old v)
+  | true, None, None => false
+  | true, _, _ => true
+  | false, _, _ => false
+  end.
+
+Definition commit_reset_draft (publish : bool) (has_data : bool) (cur : Z) (d : inline_draft)
+    : bool * (bool * Z) :=
+  let next := if publish && id_has_value d then (true, id_value d) else (has_data, cur) in
+  (false, next).
+
+(**md
+**Unboxed `(hasData, data)` and per-entry inline `draftStaged` staging (with `DraftSet` fusion and pre-batch / rollback reset) refine map-allocated `QueryDraft` over `'T option` for arbitrary edit sequences.**
+
+Proves the `Entry.fs` / `Queries.fs` inline staging optimization:
+- For any initial `(has_data, cur)` and arbitrary sequence `es` of `ExtUpdate`, `ExtSet`, and `ExtInvalidate` edits, `decode_draft (apply_inline_drafts es (init_inline_draft has_data cur))` equals `apply_draft_edits (map to_model_edit es) (init_draft (if has_data then Some cur else None))`.
+- Under any edit sequence `es`, `inline_prepare` computes the exact same `changed` bit as `model_prepare`.
+- Both successful `Publish` (`publish = true`) and rollback `ResetDraft` (`publish = false`) clear `id_staged` to `false`, while rollback leaves `(has_data, cur)` unmodified.
+
+- [has_data:] whether the entry held a committed value before staging.
+- [cur:] the committed value stored in the unboxed `data` signal when `has_data = true`.
+- [eqb:] the graph's sentinel-encoded comparer predicate.
+- [es:] the ordered list of edits targeting this entry.
+*)
+Theorem unboxed_data_and_inline_draft_refines_staged_map
+    (has_data : bool) (cur : Z) (eqb : Z -> Z -> bool) (es : list ext_draft_edit) :
+  let initial_opt := if has_data then Some cur else None in
+  let final_inline := apply_inline_drafts es (init_inline_draft has_data cur) in
+  decode_draft final_inline = apply_draft_edits (map to_model_edit es) (init_draft initial_opt) /\
+  inline_prepare has_data cur eqb final_inline = model_prepare initial_opt eqb (decode_draft final_inline) /\
+  (commit_reset_draft true has_data cur final_inline).1 = false /\
+  commit_reset_draft false has_data cur final_inline = (false, (has_data, cur)).
+Proof.
+  assert (Hstep : forall edits d,
+    decode_draft (apply_inline_drafts edits d) =
+    apply_draft_edits (map to_model_edit edits) (decode_draft d) /\
+    id_has_value (apply_inline_drafts edits d) = id_has_value d /\
+    (id_has_value d = false -> id_updated d = false -> id_updated (apply_inline_drafts edits d) = false)).
+  { induction edits as [|e rest IH]; intros d.
+    - split; [reflexivity | split; [reflexivity | intros _ Hu; exact Hu]].
+    - destruct e as [f|v|]; simpl.
+      + destruct (id_has_value d) eqn:Ehv; simpl.
+        * destruct (IH {| id_staged := true; id_has_value := true; id_value := f (id_value d); id_stale := false; id_updated := true |})
+            as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [exact Hh | intros Hfalse; discriminate Hfalse]].
+        * destruct (IH d) as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [rewrite Hh, Ehv; reflexivity | intros _ Hu; exact (Hupd Ehv Hu)]].
+      + destruct (id_has_value d) eqn:Ehv; simpl.
+        * destruct (IH {| id_staged := true; id_has_value := true; id_value := v; id_stale := false; id_updated := true |})
+            as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [exact Hh | intros Hfalse; discriminate Hfalse]].
+        * destruct (IH d) as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [rewrite Hh, Ehv; reflexivity | intros _ Hu; exact (Hupd Ehv Hu)]].
+      + destruct (IH {| id_staged := true; id_has_value := id_has_value d; id_value := id_value d; id_stale := true; id_updated := id_updated d |})
+          as [Hdec [Hh Hupd]].
+        split; [exact Hdec | split; [exact Hh | exact Hupd]]. }
+  specialize (Hstep es (init_inline_draft has_data cur)).
+  destruct Hstep as [Hdec [Hh Hupd]].
+  split_and!.
+  - rewrite Hdec. unfold init_inline_draft, decode_draft, init_draft. simpl. reflexivity.
+  - unfold inline_prepare, model_prepare, decode_draft. simpl.
+    rewrite Hh. destruct has_data eqn:Ehd; simpl.
+    + destruct (id_updated (apply_inline_drafts es (init_inline_draft true cur))); reflexivity.
+    + rewrite (Hupd eq_refl eq_refl). reflexivity.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+Definition qk_default_eq (eqZ : Z -> Z -> bool) (k1 k2 : option Z) : bool :=
+  match k1, k2 with
+  | Some a, Some b => eqZ a b
+  | None, None => true
+  | _, _ => false
+  end.
+
+Definition qk_default_hash (hashZ : Z -> Z) (k : option Z) : Z :=
+  match k with
+  | Some a => hashZ a
+  | None => 0%Z
+  end.
+
+Definition session_guard_ok (on_thread disposed_client staging : bool) : bool :=
+  on_thread && negb disposed_client && negb staging.
+
+Definition single_checked_op {A : Type}
+    (on_thread disposed_client staging disposed_lease disposed_entry : bool) (op : A) : option A :=
+  if session_guard_ok on_thread disposed_client staging && negb disposed_lease && negb disposed_entry
+  then Some op
+  else None.
+
+Definition double_checked_op {A : Type}
+    (on_thread disposed_client staging disposed_lease disposed_entry : bool) (op : A) : option A :=
+  if session_guard_ok on_thread disposed_client staging && negb disposed_lease then
+    if session_guard_ok on_thread disposed_client staging && negb disposed_entry then Some op
+    else None
+  else None.
+
+(**md
+**`QueryKey` default-comparer equality/hashing handles nullable and `unit` (`None`) keys consistently, and checking `QuerySession.Guard` once at `QueryLease` matches double-checked `QueryLease` + `QueryEntry` guards.**
+
+Proves the `Queries.fs` `QueryKey` devirtualization and `QuerySession` single-guard elimination:
+- Whenever `eqZ` is reflexive (`eqZ x x = true`) and hash-compatible (`eqZ x y = true -> hashZ x = hashZ y`), `qk_default_eq eqZ` is reflexive on all `option Z` (including `None` for `unit`/`null`) and preserves `qk_default_hash hashZ` without invoking a null dereference on `None`.
+- For all thread, disposal, and staging flags, `single_checked_op` agrees with `double_checked_op`.
+
+- [eqZ:] the default equality predicate on non-null keys.
+- [hashZ:] the default hash function on non-null keys.
+- [k1:] first wrapped key (`None` represents `()` / null).
+- [k2:] second wrapped key.
+*)
+Theorem query_key_default_equatable_and_session_guard_eq
+    (eqZ : Z -> Z -> bool) (hashZ : Z -> Z) (k1 k2 : option Z) :
+  (forall x, eqZ x x = true) ->
+  (forall x y, eqZ x y = true -> hashZ x = hashZ y) ->
+  qk_default_eq eqZ k1 k1 = true /\
+  (qk_default_eq eqZ k1 k2 = true -> qk_default_hash hashZ k1 = qk_default_hash hashZ k2) /\
+  forall (A : Type) (on_thread dc st dl de : bool) (op : A),
+    single_checked_op on_thread dc st dl de op = double_checked_op on_thread dc st dl de op.
+Proof.
+  intros Hrefl Hhash. split_and!.
+  - destruct k1; simpl; [apply Hrefl | reflexivity].
+  - destruct k1, k2; simpl; try discriminate; [apply Hhash | intros _; reflexivity].
+  - intros A on_thread dc st dl de op.
+    unfold single_checked_op, double_checked_op, session_guard_ok.
+    destruct on_thread, dc, st, dl, de; reflexivity.
+Qed.
+
+Inductive await_outcome :=
+  | AwaitOk (v : Z)
+  | AwaitErr (err : nat)
+  | AwaitCanceled.
+
+Definition await_immediate_decision (err : option nat) (has_data stale : bool) (data_val : Z) : await_outcome :=
+  match err with
+  | Some e => AwaitErr e
+  | None => if has_data && negb stale then AwaitOk data_val else AwaitCanceled
+  end.
+
+Definition await_waiter_spec
+    (status : fetch_status) (err : option nat) (has_data stale : bool) (data_val : Z)
+    : bool * option await_outcome :=
+  match status with
+  | FsFetching => (true, None)
+  | FsIdle => (false, Some (await_immediate_decision err has_data stale data_val))
+  end.
+
+Definition await_fast_opt
+    (status : fetch_status) (err : option nat) (has_data stale : bool) (data_val : Z)
+    : bool * option await_outcome :=
+  match status with
+  | FsFetching => (true, None)
+  | FsIdle => (false, Some (await_immediate_decision err has_data stale data_val))
+  end.
+
+Record linked_lease_state := {
+  ll_lease_state : query_lease_state;
+  ll_owner_attached : bool;
+  ll_waiter_detached : bool;
+}.
+
+Definition linked_lease_dispose (st : linked_lease_state) : linked_lease_state :=
+  {| ll_lease_state := query_lease_dispose (ll_lease_state st);
+     ll_owner_attached := false;
+     ll_waiter_detached := true |}.
+
+(**md
+**`QueryEntry.AwaitImmediate` allocates zero waiters when `FetchStatus = FsIdle` with identical outcome, `QueryAwaiter.TryClaim` is idempotent, and `OwnerLink`-backed `QueryLease.Dispose` detaches cleanly and decrements refcount at most once.**
+
+Proves the `Entry.fs` / `Queries.fs` waiter and lease-link optimizations:
+- When `status = FsIdle`, `await_fast_opt` matches `await_waiter_spec` and requires zero waiter allocation (`fst = false`).
+- Disposing a `linked_lease_state` is idempotent (`linked_lease_dispose (linked_lease_dispose st) = linked_lease_dispose st`), sets `ll_owner_attached = false` and `ll_waiter_detached = true`, and decrements the entry's reference count once (`query_lease_dispose_idempotent_refcount`).
+
+- [status:] current `FetchStatus` of the entry.
+- [err:] current `Error` option in metadata.
+- [has_data:] whether data is loaded.
+- [stale:] whether cached data is stale.
+- [data_val:] cached payload value.
+- [st:] combined lease, owner-link, and waiter-claim state.
+- [k:] number of sibling leases remaining.
+*)
+Theorem waiter_fast_task_and_linked_lease_eq
+    (status : fetch_status) (err : option nat) (has_data stale : bool) (data_val : Z)
+    (st : linked_lease_state) (k : nat) :
+  await_fast_opt status err has_data stale data_val = await_waiter_spec status err has_data stale data_val /\
+  fst (await_fast_opt FsIdle err has_data stale data_val) = false /\
+  linked_lease_dispose (linked_lease_dispose st) = linked_lease_dispose st /\
+  ll_owner_attached (linked_lease_dispose st) = false /\
+  ll_waiter_detached (linked_lease_dispose st) = true /\
+  (ql_lease_disposed (ll_lease_state st) = false ->
+   ql_ref_count (ll_lease_state st) = S k ->
+   ql_entry_alive (ll_lease_state st) = true ->
+   ql_ref_count (ll_lease_state (linked_lease_dispose st)) = k /\
+   ql_entry_alive (ll_lease_state (linked_lease_dispose st)) = bool_decide (0 < k)).
+Proof.
+  split_and!.
+  - reflexivity.
+  - reflexivity.
+  - unfold linked_lease_dispose. simpl.
+    destruct (query_lease_dispose_idempotent_refcount (ll_lease_state st) k) as [Hid _].
+    rewrite Hid. reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - intros Hlive Hcnt Halive. simpl.
+    destruct (query_lease_dispose_idempotent_refcount (ll_lease_state st) k) as [_ Hdec].
+    exact (Hdec Hlive Hcnt Halive).
+Qed.

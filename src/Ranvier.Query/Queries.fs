@@ -8,72 +8,83 @@ open Ranvier
 
 /// <summary>A page-owned reference to a query. Dispose it when the page is removed.</summary>
 [<Sealed>]
-type QueryLease<'T> internal (entry: QueryEntry<'T>, guard: unit -> unit, disposeGuard: unit -> unit) =
+type QueryLease<'T> internal (session: QuerySession, entry: QueryEntry<'T>) =
     let mutable disposed = false
     let mutable held: QueryEntry<'T> = entry
     let mutable waiters: ResizeArray<QueryAwaiter<'T>> = null
+    let mutable link: OwnerLink = null
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     let check () =
-        guard ()
+        session.Guard ()
 
         if disposed then
             raise (ObjectDisposedException "QueryLease")
 
     let awaitCurrent () =
-        let waiter =
-            held.Await (fun current ->
-                if not (isNull waiters) then
-                    waiters.Remove current |> ignore)
-
-        if not waiter.IsCompleted then
+        if held.IsFetching then
             if isNull waiters then
                 waiters <- ResizeArray<QueryAwaiter<'T>>()
 
-            waiters.Add waiter
+            held.AttachWaiter waiters
+        else
+            held.AwaitImmediate ()
 
-        waiter.Task
+    member internal _.IsDisposed = disposed
+
+    member internal this.AttachTo(owner: Owner) =
+        let attached = owner.AttachLinked (this :> IOwned)
+
+        if not disposed then
+            link <- attached
 
     /// <summary>A tracked cached value; initial loading suspends and an initial failure throws.</summary>
     member _.Value =
         check ()
-        held.Value
+        held.ValueUnchecked
 
     /// <summary>A tracked snapshot, including retained data during refresh or refresh failure.</summary>
     member _.State =
         check ()
-        held.State
+        held.StateUnchecked
 
     /// <summary>Fetches missing or stale data, joining an existing request.</summary>
     member _.Ensure() =
         check ()
-        held.Ensure ()
+        held.EnsureUnchecked ()
 
     /// <summary>Starts a new request, superseding any existing one.</summary>
     member _.Refresh() =
         check ()
-        held.Refresh ()
+        held.RefreshUnchecked ()
 
     /// <summary>Loads missing or stale data and awaits graph publication, joining an existing request.</summary>
     /// <remarks>The task faults on fetch failure and cancels on supersession, reconciliation, or lease/client disposal.</remarks>
     member _.EnsureAsync() =
         check ()
-        held.Ensure ()
+        held.EnsureUnchecked ()
         awaitCurrent ()
 
     /// <summary>Supersedes the current request and awaits the replacement's graph publication.</summary>
     /// <remarks>Failure faults the task while retaining cached data. Retirement or disposal cancels the task.</remarks>
     member _.RefreshAsync() =
         check ()
-        held.Refresh ()
+        held.RefreshUnchecked ()
         awaitCurrent ()
 
     /// <summary>Releases this lease once. Further reads throw.</summary>
     member _.Dispose() =
         if not disposed then
-            disposeGuard ()
+            session.DisposeGuard ()
             disposed <- true
             let target = held
             held <- null
+            let attached = link
+            link <- null
+
+            if not (isNull attached) then
+                attached.Detach ()
+
             target.ReleaseLease ()
 
             if not (isNull waiters) then
@@ -86,10 +97,15 @@ type QueryLease<'T> internal (entry: QueryEntry<'T>, guard: unit -> unit, dispos
 
                 waiters <- null
 
+    interface IOwned with
+        member this.Release() =
+            this.Dispose ()
+
     interface IDisposable with
         member this.Dispose() =
             this.Dispose ()
 
+#if FABLE_COMPILER
 /// <summary>A non-null dictionary key containing the original typed key, including unit.</summary>
 [<Struct; NoEquality; NoComparison>]
 type internal QueryKey<'Key> = { Value: 'Key }
@@ -102,50 +118,128 @@ type internal QueryKeyComparer<'Key>(comparer: IEqualityComparer<'Key>) =
 
         member _.GetHashCode(key) =
             comparer.GetHashCode (key.Value)
+#else
+/// <summary>A non-null dictionary key containing the original typed key, including unit.</summary>
+[<Struct; CustomEquality; NoComparison>]
+type internal QueryKey<'Key>(value: 'Key) =
+    member _.Value = value
+
+    interface IEquatable<QueryKey<'Key>> with
+        member _.Equals(other: QueryKey<'Key>) =
+            EqualityComparer<'Key>.Default.Equals(value, other.Value)
+
+    override _.Equals(other: obj) =
+        match other with
+        | :? QueryKey<'Key> as otherKey -> EqualityComparer<'Key>.Default.Equals(value, otherKey.Value)
+        | _ -> false
+
+    override _.GetHashCode() =
+        if
+            not typeof<'Key>.IsValueType
+            && obj.ReferenceEquals (box value, null)
+        then
+            0
+        else
+            EqualityComparer<'Key>.Default.GetHashCode value
+
+/// <summary>Compares wrapped keys using the query family's supplied equality policy.</summary>
+type internal QueryKeyComparer<'Key>(comparer: IEqualityComparer<'Key>) =
+    interface IEqualityComparer<QueryKey<'Key>> with
+        member _.Equals(left, right) =
+            comparer.Equals (left.Value, right.Value)
+
+        member _.GetHashCode(key) =
+            comparer.GetHashCode (key.Value)
+#endif
+
+module private QueryKeys =
+    let inline wrap (key: 'Key) : QueryKey<'Key> =
+#if FABLE_COMPILER
+        { Value = key }
+#else
+        QueryKey<'Key>(key)
+#endif
+
+/// <summary>Family callback contract allowing entries to invoke fetches and evict themselves without closures.</summary>
+[<AllowNullLiteral>]
+type internal IQueryKeyOwner<'Key, 'T> =
+    abstract InvokeFetch: 'Key * CancellationToken -> Task<'T>
+    abstract EvictKey: 'Key -> unit
+
+/// <summary>Per-key query entry storing its own typed key and family reference without per-entry closures.</summary>
+and [<Sealed; AllowNullLiteral>] internal QueryFamilyEntry<'Key, 'T>(session: QuerySession, key: 'Key, owner: IQueryKeyOwner<'Key, 'T>) =
+    inherit QueryEntry<'T>(session)
+
+    override _.InvokeFetch(token: CancellationToken) =
+        owner.InvokeFetch (key, token)
+
+    override _.OnEvict() =
+        owner.EvictKey key
 
 /// <summary>A typed request definition. Define it once per client and include all request parameters in its key.</summary>
 [<Sealed>]
-type QueryFamily<'Key, 'T>
-    internal
-    (
-        graph: Graph,
-        keyComparer: IEqualityComparer<'Key>,
-        fetch: 'Key -> CancellationToken -> Task<'T>,
-        guard: unit -> unit,
-        disposeGuard: unit -> unit,
-        describeGuard: unit -> unit,
-        client: obj
-    ) =
+type QueryFamily<'Key, 'T> internal (session: QuerySession, keyComparer: IEqualityComparer<'Key>, fetch: 'Key -> CancellationToken -> Task<'T>) =
+    let graph = session.Graph
+
+#if !FABLE_COMPILER
+    let fetchFn =
+        OptimizedClosures.FSharpFunc<'Key, CancellationToken, Task<'T>>.Adapt fetch
+#endif
+
     let entries =
-        Dictionary<QueryKey<'Key>, QueryEntry<'T>>(QueryKeyComparer keyComparer)
+#if FABLE_COMPILER
+        Dictionary<QueryKey<'Key>, QueryFamilyEntry<'Key, 'T>>(QueryKeyComparer keyComparer)
+#else
+        if obj.ReferenceEquals (keyComparer, EqualityComparer<'Key>.Default) then
+            Dictionary<QueryKey<'Key>, QueryFamilyEntry<'Key, 'T>>()
+        else
+            Dictionary<QueryKey<'Key>, QueryFamilyEntry<'Key, 'T>>(QueryKeyComparer keyComparer)
+#endif
+
+    let entryOwner =
+        { new IQueryKeyOwner<'Key, 'T> with
+            member _.InvokeFetch(key, token) =
+#if FABLE_COMPILER
+                fetch key token
+#else
+                fetchFn.Invoke (key, token)
+#endif
+
+            member _.EvictKey(key) =
+                entries.Remove (QueryKeys.wrap key) |> ignore
+        }
 
     let acquire key (owner: Owner) =
-        guard ()
-        let wrapped = { Value = key }
+        session.Guard ()
+
+        let targetOwner =
+            if obj.ReferenceEquals (owner, null) then
+                graph.CurrentOwner
+            else
+                owner
+
+        let wrapped = QueryKeys.wrap key
 
         let entry =
             match entries.TryGetValue wrapped with
             | true, existing -> existing
             | false, _ ->
-                let created =
-                    QueryEntry<'T>(graph, fetch key, guard, fun () -> entries.Remove wrapped |> ignore)
-
+                let created = QueryFamilyEntry<'Key, 'T>(session, key, entryOwner)
                 entries.Add (wrapped, created)
                 created
 
         entry.AcquireLease ()
-        let lease = new QueryLease<'T> (entry, guard, disposeGuard)
+        let lease = new QueryLease<'T> (session, entry)
 
         try
-            if obj.ReferenceEquals (owner, null) then
-                graph.AddCleanup (fun () -> lease.Dispose ())
-            else
-                owner.AddCleanup (fun () -> lease.Dispose ())
+            lease.AttachTo targetOwner
         with error ->
             lease.Dispose ()
             raise error
 
-        entry.Ensure ()
+        if not lease.IsDisposed then
+            entry.EnsureUnchecked ()
+
         lease
 
     /// <summary>Acquires a shared query and starts missing or stale loading.</summary>
@@ -156,7 +250,7 @@ type QueryFamily<'Key, 'T>
     /// <summary>Acquires a shared query whose lease belongs to the explicit page owner.</summary>
     /// <remarks>The owner must be alive; dispose it when navigation removes the page. The surrounding view's owner is not used.</remarks>
     member _.AcquireOwned(key: 'Key, owner: Owner) =
-        guard ()
+        session.Guard ()
 
         if obj.ReferenceEquals (owner, null) then
             nullArg "owner"
@@ -170,106 +264,115 @@ type QueryFamily<'Key, 'T>
     /// <returns>An edit description for <c>Commit</c> or mutation reconciliation; creating it performs no write.</returns>
     /// <remarks>A loaded entry is patched, a pending empty entry is invalidated, and an absent entry remains absent.</remarks>
     member _.UpdateIfLoaded(key: 'Key, updater: 'T -> 'T) =
-        describeGuard ()
+        session.DescribeGuard ()
 
         QueryEdit (
-            client,
+            session,
             fun context ->
-                match entries.TryGetValue { Value = key } with
-                | true, entry -> entry.Draft(context).Update updater
+                match entries.TryGetValue (QueryKeys.wrap key) with
+                | true, entry -> entry.StageUpdate (context, updater)
                 | _ -> ()
         )
 
     /// <summary>Describes replacement of an existing loaded record.</summary>
     /// <returns>An edit for <c>Commit</c> or mutation reconciliation.</returns>
     /// <remarks>A pending empty entry is retired and invalidated; an absent entry remains absent.</remarks>
-    member this.SetIfLoaded(key: 'Key, value: 'T) =
-        this.UpdateIfLoaded (key, fun _ -> value)
+    member _.SetIfLoaded(key: 'Key, value: 'T) =
+        session.DescribeGuard ()
+
+        QueryEdit (
+            session,
+            fun context ->
+                match entries.TryGetValue (QueryKeys.wrap key) with
+                | true, entry -> entry.StageSet (context, value)
+                | _ -> ()
+        )
 
     /// <summary>Marks an existing key stale and retires its request without fetching.</summary>
     /// <returns>An edit description; pass it to <c>Commit</c> or return it from mutation reconciliation to execute it.</returns>
     member _.Invalidate(key: 'Key) =
-        describeGuard ()
+        session.DescribeGuard ()
 
         QueryEdit (
-            client,
+            session,
             fun context ->
-                match entries.TryGetValue { Value = key } with
-                | true, entry -> entry.Draft(context).Invalidate()
+                match entries.TryGetValue (QueryKeys.wrap key) with
+                | true, entry -> entry.StageInvalidate context
                 | _ -> ()
         )
 
     /// <summary>Invalidates matching existing keys; the predicate is evaluated during staging.</summary>
     /// <returns>An edit description; creating it neither invalidates entries nor starts IO.</returns>
     member _.InvalidateWhere(predicate: 'Key -> bool) =
-        describeGuard ()
+        session.DescribeGuard ()
 
         QueryEdit (
-            client,
+            session,
             fun context ->
                 for pair in entries do
                     if predicate pair.Key.Value then
-                        pair.Value.Draft(context).Invalidate()
+                        pair.Value.StageInvalidate context
         )
 
-    /// <summary>Stages all existing entries without invoking a user predicate.</summary>
-    member internal _.InvalidateAll(context: QueryStaging) =
-        for entry in entries.Values do
-            entry.Draft(context).Invalidate()
+    interface IQueryFamily with
+        member _.InvalidateAll(context: QueryStaging) =
+            for entry in entries.Values do
+                entry.StageInvalidate context
 
-    /// <summary>Evicts every entry in this family and retires outstanding requests.</summary>
-    member internal _.Close() =
-        if entries.Count > 0 then
-            let old = Seq.toArray entries.Values
-            entries.Clear ()
+        member _.Close() =
+            if entries.Count > 0 then
+                let old = Seq.toArray entries.Values
+                entries.Clear ()
 
-            for i = 0 to old.Length - 1 do
-                old[i].Dispose()
+                for i = 0 to old.Length - 1 do
+                    old[i].Dispose()
 
 /// <summary>A graph-bound query session. Dispose it on Home or logout; all actions run on the graph thread.</summary>
 [<Sealed>]
-type QueryClient(graph: Graph) as this =
-    let mutable disposed = false
-    let mutable staging = false
-    let identity = obj ()
-    let families = ResizeArray<unit -> unit>()
-    let invalidations = ResizeArray<QueryStaging -> unit>()
+type QueryClient(graph: Graph) =
+    let session = QuerySession graph
+    let families = ResizeArray<IQueryFamily>()
     let queue = System.Collections.Generic.Queue<IQueryMutation>()
     let mutable running = false
     let mutable draining = false
     let mutable pooledStaging: QueryStaging = null
+    let mutable ownerLink: OwnerLink = null
+    let mutable onMutationFinished: unit -> unit = Unchecked.defaultof<_>
+    let mutable invalidateAllAction: QueryStaging -> unit = Unchecked.defaultof<_>
 
-    let disposeGuard () =
-        graph.AssertOnGraphThread "QueryClient.Dispose"
+    let stageEdits (context: QueryStaging) (edits: QueryEdit list) =
+        let mutable rest = edits
 
-        if staging then
-            invalidOp "Query callbacks cannot reenter the client during reconciliation."
+        while not rest.IsEmpty do
+            let edit = rest.Head
 
-    let describeGuard () =
-        graph.AssertOnGraphThread "QueryClient"
-
-        if disposed then
-            raise (ObjectDisposedException "QueryClient")
-
-    let guard () =
-        describeGuard ()
-
-        if staging then
-            invalidOp "Query callbacks cannot reenter the client during reconciliation."
-
-    let stageEdits context edits =
-        for edit: QueryEdit in edits do
             if
                 isNull (box edit)
-                || not (obj.ReferenceEquals (edit.Client, identity))
+                || not (obj.ReferenceEquals (edit.Client, box session))
             then
                 invalidArg "edits" "All query edits must belong to this client."
 
-        for edit in edits do
-            edit.Stage context
+            rest <- rest.Tail
+
+        let mutable cur = edits
+
+        while not cur.IsEmpty do
+            cur.Head.Stage context
+            cur <- cur.Tail
+
+    let stageAndPrepare (context: QueryStaging) (edits: QueryEdit list) (build: QueryStaging -> unit) =
+        if isNull (box build) then
+            stageEdits context edits
+        else
+            build context
+
+        let drafts = context.Drafts
+
+        for i = 0 to drafts.Count - 1 do
+            drafts[i].Prepare()
 
     let commit (edits: QueryEdit list, build: QueryStaging -> unit) =
-        guard ()
+        session.Guard ()
 
         let context =
             match pooledStaging with
@@ -279,32 +382,32 @@ type QueryClient(graph: Graph) as this =
                 cached
 
         try
-            staging <- true
+            session.Staging <- true
 
             try
-                graph.RunUntracked (fun () ->
-                    if obj.ReferenceEquals (box build, null) then
-                        stageEdits context edits
+                if not (graph.IsTracking ()) then
+                    if not (graph.Enter "An untracked read") then
+                        stageAndPrepare context edits build
                     else
-                        build context
-
-                    let drafts = context.Drafts
-
-                    for i = 0 to drafts.Count - 1 do
-                        drafts[i].Prepare())
+                        try
+                            stageAndPrepare context edits build
+                        finally
+                            graph.Release ()
+                else
+                    graph.RunUntracked (fun () -> stageAndPrepare context edits build)
             finally
-                staging <- false
+                session.Staging <- false
 
             let drafts = context.Drafts
 
             if drafts.Count > 0 then
                 try
-                    graph.RunBatch (fun () ->
-                        for i = 0 to drafts.Count - 1 do
-                            drafts[i].Publish())
+                    graph.RunBatch context.PublishAction
                 finally
-                    for i = 0 to drafts.Count - 1 do
-                        drafts[i].Cancel()
+                    let retired = context.Retired
+
+                    for i = 0 to retired.Count - 1 do
+                        retired[i].Cancel()
         finally
             context.Reset ()
 
@@ -316,25 +419,67 @@ type QueryClient(graph: Graph) as this =
             draining <- true
 
             try
-                while not disposed && not running && queue.Count > 0 do
+                while not session.Disposed
+                      && not running
+                      && queue.Count > 0 do
                     running <- true
 
-                    queue
-                        .Peek()
-                        .Start(fun () ->
-                            if not disposed then
-                                queue.Dequeue () |> ignore
-                                running <- false
-                                drain ())
+                    if isNull (box onMutationFinished) then
+                        onMutationFinished <-
+                            fun () ->
+                                if not session.Disposed then
+                                    queue.Dequeue () |> ignore
+                                    running <- false
+                                    drain ()
+
+                    queue.Peek().Start(onMutationFinished)
             finally
                 draining <- false
 
-    do graph.AssertOnGraphThread "QueryClient"
-    do graph.AddCleanup (fun () -> this.Dispose ())
+    let disposeClient () =
+        if not session.Disposed then
+            session.DisposeGuard ()
+            session.Disposed <- true
+            let attached = ownerLink
+            ownerLink <- null
+
+            if not (isNull attached) then
+                attached.Detach ()
+
+            if queue.Count > 0 then
+                let pending = queue.ToArray ()
+                queue.Clear ()
+
+                for operation in pending do
+                    operation.Cancel ()
+
+            for i = 0 to families.Count - 1 do
+                families[i].Close()
+
+            families.Clear ()
+            pooledStaging <- null
+
+    do
+        graph.AssertOnGraphThread "QueryClient"
+        let owner = graph.CurrentOwner
+
+        let owned =
+            { new IOwned with
+                member _.Release() =
+                    disposeClient ()
+            }
+
+        let attached = owner.AttachLinked owned
+
+        if not session.Disposed then
+            ownerLink <- attached
+
+        if owner.IsDisposed then
+            graph.RequestFlush ()
 
     /// <summary>Defines a typed query family without performing IO. Keys use the supplied comparer.</summary>
     member _.Define(keyComparer: IEqualityComparer<'Key>, fetch: 'Key -> CancellationToken -> Task<'T>) =
-        guard ()
+        session.Guard ()
 
         if isNull keyComparer then
             nullArg "keyComparer"
@@ -342,11 +487,8 @@ type QueryClient(graph: Graph) as this =
         if obj.ReferenceEquals (fetch, null) then
             nullArg "fetch"
 
-        let family =
-            QueryFamily<'Key, 'T>(graph, keyComparer, fetch, guard, disposeGuard, describeGuard, identity)
-
-        families.Add (fun () -> family.Close ())
-        invalidations.Add family.InvalidateAll
+        let family = QueryFamily<'Key, 'T>(session, keyComparer, fetch)
+        families.Add (family :> IQueryFamily)
         family
 
     /// <summary>Defines a typed query without IO, using the default equality comparer for its keys.</summary>
@@ -359,46 +501,33 @@ type QueryClient(graph: Graph) as this =
         commit (edits, Unchecked.defaultof<_>)
 
     /// <summary>Builds mutation edits inside the protected staging phase.</summary>
-    member internal _.Reconcile(build: unit -> QueryEdit list) =
-        commit ([], fun context -> stageEdits context (build ()))
+    member internal _.ReconcileWith(reconcile: 'T -> QueryEdit list, result: 'T) =
+        commit ([], fun context -> stageEdits context (reconcile result))
 
     /// <summary>The explicit graph used to marshal remote completion.</summary>
     member internal _.Graph = graph
     /// <summary>Whether the client can still accept a remote result.</summary>
-    member internal _.IsDisposed = disposed
+    member internal _.IsDisposed = session.Disposed
 
     /// <summary>Admits a remote operation to the client-wide FIFO.</summary>
     member internal _.Enqueue(operation: IQueryMutation) =
-        guard ()
+        session.Guard ()
         queue.Enqueue operation
         drain ()
 
     /// <summary>Invalidates every cached query after an unsuccessful reconciliation.</summary>
     member internal _.InvalidateAll() =
-        commit (
-            [],
-            fun context ->
-                for i = 0 to invalidations.Count - 1 do
-                    invalidations[i] context
-        )
+        if isNull (box invalidateAllAction) then
+            invalidateAllAction <-
+                fun context ->
+                    for i = 0 to families.Count - 1 do
+                        families[i].InvalidateAll context
+
+        commit ([], invalidateAllAction)
 
     /// <summary>Closes the session. Further operations throw.</summary>
     member _.Dispose() =
-        if not disposed then
-            disposeGuard ()
-            disposed <- true
-            let pending = queue.ToArray ()
-            queue.Clear ()
-
-            for operation in pending do
-                operation.Cancel ()
-
-            for close in families do
-                close ()
-
-            families.Clear ()
-            invalidations.Clear ()
-            pooledStaging <- null
+        disposeClient ()
 
     interface IDisposable with
         member this.Dispose() =
