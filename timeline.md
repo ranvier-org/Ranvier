@@ -181,6 +181,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 76,632 | 100,777 | 1,620,028 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 74,804 | 99,302 | 1,624,173 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 73,284 | 98,750 | 1,611,738 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 73,287 | 98,481 | 1,607,230 |
 
 ## app-table
 
@@ -363,6 +364,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 3,238,083 | 6,038,586 | 78,339,431 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,198,313 | 6,033,049 | 77,432,807 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,188,511 | 6,038,225 | 75,334,904 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,820,690 | 4,751,933 | 60,404,668 |
 
 ## async-recover
 
@@ -545,6 +547,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 93,757 | 30,380 | 367,110 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 93,421 | 30,064 | 361,134 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 93,485 | 30,383 | 361,644 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 93,461 | 30,376 | 361,639 |
 
 ## async-resolve
 
@@ -727,6 +730,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,759,094 | 716,772 | 9,366,631 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,740,839 | 724,618 | 9,115,507 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,744,040 | 735,281 | 9,105,474 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,742,454 | 735,304 | 9,105,551 |
 
 ## chain
 
@@ -909,6 +913,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 13,020 | 318 | 2,377 | 4,419 | 3,180 | 72,358 | 67,911 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 13,083 | 318 | 2,350 | 4,419 | 3,133 | 72,358 | 67,271 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 13,021 | 318 | 2,350 | 4,419 | 3,260 | 72,358 | 66,422 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 13,149 | 318 | 2,350 | 4,419 | 3,260 | 72,358 | 66,422 |
 
 ## chain-affinity
 
@@ -1091,6 +1096,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,443 | 2,985 | 2,402 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,416 | 2,941 | 2,358 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,416 | 2,941 | 2,358 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,416 | 2,941 | 2,358 |
 
 ## control
 
@@ -1273,6 +1279,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 74,709 | 468,120 | 2,265,551 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 74,709 | 472,921 | 2,260,499 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 74,709 | 471,351 | 2,270,030 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 74,709 | 467,713 | 2,267,522 |
 
 ## create
 
@@ -1455,6 +1462,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 13,480,436 | 2,860,614 | 2,367,792 | 4,454,505 | 3,052,768 | 33,074,642 | 46,263,877 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 13,445,489 | 2,860,614 | 2,269,944 | 4,455,501 | 3,123,666 | 33,074,940 | 46,179,492 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 13,445,495 | 2,860,614 | 2,265,894 | 4,556,330 | 3,197,448 | 33,175,412 | 45,850,633 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 13,477,468 | 2,860,616 | 2,265,893 | 4,556,530 | 3,197,595 | 33,175,697 | 45,850,112 |
 
 ## create-on
 
@@ -1637,6 +1645,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,694,620 | 3,356,136 | 52,080,706 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,663,256 | 3,411,556 | 52,087,528 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,673,212 | 3,526,900 | 51,400,084 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,657,238 | 3,526,805 | 51,400,147 |
 
 ## cutoff
 
@@ -1819,6 +1828,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,183 | 50 | 74 | 65 | 51 | 1,095 | 1,006 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,182 | 50 | 74 | 65 | 51 | 1,095 | 1,006 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,184 | 50 | 74 | 65 | 56 | 1,095 | 831 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,184 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 
 ## derive-effect
 
@@ -2001,6 +2011,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 750 | 686 | 15,806 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 701 | 699 | 15,268 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 701 | 703 | 15,092 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 701 | 703 | 15,092 |
 
 ## derive-on
 
@@ -2183,6 +2194,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 719 | 690 | 15,824 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 634 | 689 | 15,286 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 650 | 696 | 14,938 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 634 | 696 | 14,938 |
 
 ## dispose
 
@@ -2365,6 +2377,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 2,707,643 | 806,288 | 354,486 | 479,663 | 500,244 | 11,184,994 | 8,962,575 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 2,707,642 | 806,288 | 355,483 | 480,124 | 501,539 | 11,184,607 | 9,120,679 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 2,706,242 | 806,288 | 355,483 | 480,135 | 501,373 | 11,184,905 | 9,120,220 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 2,707,643 | 806,288 | 355,483 | 480,033 | 501,554 | 11,184,480 | 9,120,212 |
 
 ## dispose-on
 
@@ -2547,6 +2560,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 333,486 | 492,256 | 8,758,842 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 334,483 | 493,388 | 8,916,894 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 334,483 | 493,255 | 8,916,651 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 334,483 | 493,594 | 8,916,598 |
 
 ## editable-edit
 
@@ -2729,6 +2743,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 173,909 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 164,309 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 164,309 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 164,309 |
 
 ## editable-upstream
 
@@ -2911,6 +2926,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 219,809 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 205,409 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 205,409 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 205,409 |
 
 ## fail-recompute
 
@@ -3093,6 +3109,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 65,314 | 1,325 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 55,239 | 1,310 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 55,307 | 1,310 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 55,339 | 1,310 |
 
 ## flight
 
@@ -3275,6 +3292,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 10,129 | 5,731 | 5,733 | 10,402 | 9,933 | 10,589 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 10,046 | 5,672 | 5,674 | 10,318 | 9,849 | 10,505 |
 
 ## keyed-insert
 
@@ -3457,6 +3475,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,831,584 | 53,717 | 54,705 | 2,492,873 | 660,723 | 235,947 | 41,864,660 | 3,000,361 | 3,020,019 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,807,543 | 53,704 | 54,666 | 2,454,737 | 657,970 | 669,643 | 41,429,350 | 2,999,026 | 3,018,502 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,809,478 | 33,817 | 34,644 | 2,443,766 | 169,455 | 523,417 | 40,068,459 | 2,747,332 | 2,764,274 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,791,366 | 33,820 | 34,536 | 2,414,960 | 169,330 | 537,016 | 39,836,890 | 2,745,782 | 2,762,474 |
 
 ## keyed-remove
 
@@ -3639,6 +3658,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,830,629 | 43,500 | 45,022 | 2,514,398 | 600,310 | 140,155 | 41,829,555 | 2,141,067 | 2,176,033 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,806,659 | 43,462 | 44,979 | 2,490,864 | 597,475 | 614,754 | 41,393,988 | 2,139,754 | 2,173,957 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,808,589 | 28,087 | 29,542 | 2,489,965 | 454,206 | 139,658 | 40,045,552 | 1,888,115 | 1,919,776 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,790,504 | 28,086 | 29,432 | 2,460,788 | 464,400 | 145,165 | 39,802,423 | 1,878,583 | 1,918,665 |
 
 ## keyed-swap
 
@@ -3821,6 +3841,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,826,364 | 46,114 | 46,768 | 2,542,525 | 518,686 | 528,390 | 42,566,124 | 914,341 | 930,876 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,802,363 | 46,087 | 46,747 | 2,576,636 | 517,152 | 91,903 | 42,130,598 | 913,001 | 930,444 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,789,512 | 31,557 | 32,202 | 2,510,847 | 375,536 | 383,042 | 40,613,959 | 709,646 | 726,893 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,771,465 | 31,553 | 32,155 | 3,047,690 | 365,919 | 80,566 | 40,371,416 | 693,130 | 710,309 |
 
 ## mvu-dispatch
 
@@ -4003,6 +4024,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 58,297 | 760 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 57,850 | 698 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 57,850 | 698 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 57,850 | 698 |
 
 ## persist-write
 
@@ -4185,6 +4207,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | — | — |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | — | — |
 
 ## project-chain
 
@@ -4367,6 +4390,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 92,014 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 91,233 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 69,428 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 68,820 |
 
 ## project-churn
 
@@ -4549,6 +4573,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 36,390 | 34,156 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 36,200 | 33,983 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 24,378 | 22,133 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 24,273 | 22,027 |
 
 ## project-edit
 
@@ -4731,6 +4756,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 50,401 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 50,254 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 29,685 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 29,651 |
 
 ## project-reorder
 
@@ -4913,6 +4939,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 620,100 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 619,979 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 463,136 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 463,119 |
 
 ## server-render
 
@@ -5095,6 +5122,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | — | — | — |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | — | — | — |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | — | — | — |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | — | — | — |
 
 ## shape-diamond
 
@@ -5277,6 +5305,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 59,526 | 79,993 | 1,744,544 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 57,370 | 83,159 | 1,747,879 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 57,370 | 83,971 | 1,730,706 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 57,370 | 83,970 | 1,730,706 |
 
 ## shape-dynamic
 
@@ -5459,6 +5488,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 82,167 | 105,984 | 1,945,042 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 79,026 | 103,524 | 1,875,339 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 79,026 | 103,747 | 1,866,489 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 79,026 | 103,745 | 1,866,488 |
 
 ## stream-burst-1
 
@@ -5641,6 +5671,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,800 | 1,430 | 2,436 | 5,539 | 8,612 | 11,689 | 37,063 | 35,266 | 45,894 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,732 | 1,440 | 2,372 | 13,382 | 2,492 | 11,117 | 36,240 | 34,669 | 45,089 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,732 | 1,440 | 2,372 | 13,258 | 2,495 | 10,982 | 36,074 | 34,499 | 44,918 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,732 | 1,440 | 2,370 | 13,260 | 2,495 | 10,987 | 36,074 | 34,499 | 44,918 |
 
 ## stream-burst-16
 
@@ -5823,6 +5854,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 3,825 | 22,670 | 5,646 | 7,718 | 26,398 | 14,160 | 91,896 | 552,049 | 101,971 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,757 | 22,830 | 5,582 | 14,922 | 27,482 | 13,559 | 91,073 | 542,430 | 101,170 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,757 | 22,830 | 5,582 | 14,800 | 27,562 | 13,423 | 90,907 | 539,738 | 101,003 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 3,757 | 22,830 | 5,580 | 14,799 | 27,562 | 13,425 | 90,907 | 539,738 | 101,003 |
 
 ## stream-burst-256
 
@@ -6005,6 +6037,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 36,201 | 362,510 | 56,985 | 89,873 | 418,287 | 36,688 | 969,386 | 8,819,174 | 998,707 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 36,133 | 365,070 | 56,921 | 88,263 | 415,216 | 36,467 | 968,566 | 8,665,319 | 997,923 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 36,133 | 365,070 | 56,921 | 88,160 | 416,490 | 36,471 | 968,414 | 8,622,296 | 997,744 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 36,133 | 365,070 | 56,919 | 88,052 | 416,493 | 36,514 | 968,417 | 8,622,229 | 997,741 |
 
 ## stream-restart
 
@@ -6187,6 +6220,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 3,865 | 4,850 | 14,709 | 6,201 | 41,889 | 71,201 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 3,762 | 4,792 | 7,003 | 6,095 | 41,013 | 70,010 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 3,762 | 4,792 | 7,717 | 6,138 | 40,834 | 69,930 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 3,762 | 4,794 | 7,714 | 6,134 | 40,836 | 69,932 |
 
 ## timed-admit-both
 
@@ -6369,6 +6403,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 108,187 | 132,594 | 2,532,664 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 112,329 | 130,222 | 2,490,328 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 108,233 | 130,206 | 2,490,246 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 108,233 | 130,215 | 2,490,036 |
 
 ## timed-admit-debounce
 
@@ -6551,6 +6586,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 107,739 | 131,186 | 2,518,210 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 111,881 | 128,812 | 2,475,902 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 107,785 | 128,831 | 2,475,765 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 107,785 | 128,815 | 2,475,739 |
 
 ## timed-admit-first
 
@@ -6733,6 +6769,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 67,932 | 77,253 | 1,583,488 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 71,050 | 75,479 | 1,538,621 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 67,978 | 75,478 | 1,538,445 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 67,978 | 75,482 | 1,538,446 |
 
 ## timed-admit-last
 
@@ -6915,6 +6952,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 107,995 | 131,508 | 2,528,092 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 112,137 | 129,135 | 2,485,758 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 108,041 | 129,127 | 2,485,618 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 108,041 | 129,125 | 2,485,595 |
 
 ## timed-capture-both
 
@@ -7097,6 +7135,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 35,075 | 43,794 | 865,682 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 34,161 | 42,332 | 842,836 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 34,161 | 42,333 | 842,781 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 34,161 | 42,301 | 842,567 |
 
 ## timed-capture-debounce
 
@@ -7279,6 +7318,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 34,947 | 46,807 | 866,053 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 34,033 | 44,192 | 843,209 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 34,033 | 44,194 | 843,034 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 34,033 | 44,195 | 843,034 |
 
 ## timed-capture-first
 
@@ -7461,6 +7501,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 31,299 | 36,735 | 748,414 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 30,385 | 35,278 | 725,572 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 30,385 | 35,281 | 725,395 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 30,385 | 35,281 | 725,395 |
 
 ## timed-capture-last
 
@@ -7643,6 +7684,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 34,883 | 46,741 | 858,181 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 33,969 | 44,128 | 835,338 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 33,969 | 44,128 | 835,162 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 33,969 | 44,132 | 835,162 |
 
 ## update
 
@@ -7825,6 +7867,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 1,087,490 | 38,805 | 80,105 | 196,905 | 95,682 | 2,533,220 | 1,773,728 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 1,087,390 | 38,805 | 73,905 | 196,667 | 88,599 | 2,533,217 | 1,701,631 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 1,089,190 | 38,805 | 73,905 | 196,851 | 88,999 | 2,533,212 | 1,683,956 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 1,089,190 | 38,805 | 73,905 | 196,648 | 88,999 | 2,533,174 | 1,684,046 |
 
 ## update-on
 
@@ -8007,6 +8050,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 91,605 | 115,590 | 2,101,120 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 83,005 | 107,584 | 2,029,038 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 84,605 | 108,899 | 1,994,229 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 83,005 | 108,898 | 1,994,206 |
 
 ## work-form
 
@@ -8189,6 +8233,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 165,688 | 162,903 | 297,881 | 293,072 | 4,997,448 | 4,910,516 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 146,579 | 140,635 | 290,721 | 241,060 | 4,770,273 | 4,683,146 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 146,579 | 140,602 | 291,700 | 242,293 | 4,726,489 | 4,639,574 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 146,579 | 140,570 | 291,721 | 242,301 | 4,726,490 | 4,639,514 |
 
 ## work-status
 
@@ -8371,6 +8416,7 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 98,945 | 77,035 | 200,173 | 92,530 | 1,881,839 | 1,613,854 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 92,745 | 68,655 | 194,000 | 94,730 | 1,827,986 | 1,560,004 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 92,746 | 70,255 | 194,332 | 95,672 | 1,810,474 | 1,525,130 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 92,745 | 68,655 | 194,381 | 95,632 | 1,810,412 | 1,525,190 |
 
 ## work-value
 
@@ -8553,4 +8599,5 @@
 | `808aebf` | 2026-11-16 | perf(core): inline signal cutoff and cached memo hot paths with Rocq proofs (#369) | 106,069 | 117,869 | 200,498 | 219,857 | 1,866,473 | 2,191,007 |
 | `f46a8b1` | 2026-11-17 | perf(core): inline SourceList, fuse hosted frames, and tag signal edges (#372) | 99,869 | 110,569 | 194,269 | 218,646 | 1,812,638 | 2,137,146 |
 | `59e1ba2` | 2026-11-17 | perf(collections): devirtualize KeyMap/KeySet and specialize projection trim, lookup, and positional paths (#373) | 99,869 | 112,168 | 194,702 | 219,577 | 1,795,092 | 2,102,296 |
+| `4026f9c` | 2026-11-17 | perf(collections): optimize SortView SliceView ReadEntry and ProjectionFold (#374) | 99,869 | 110,568 | 194,738 | 219,558 | 1,795,001 | 2,102,352 |
 
