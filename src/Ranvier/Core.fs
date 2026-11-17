@@ -4344,6 +4344,9 @@ type Graph(options: GraphOptions) =
     /// <c>ObserverSet.NotifyDirtyExcept</c>.
     /// </summary>
     member internal _.CurrentComputation = current
+
+    member internal _.IsTracking() =
+        not (obj.ReferenceEquals (current, null))
 #else
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.Track(source: ISource) =
@@ -4360,6 +4363,10 @@ type Graph(options: GraphOptions) =
     /// <c>ObserverSet.NotifyDirtyExcept</c>.
     /// </summary>
     member inline internal _.CurrentComputation = current
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.IsTracking() =
+        not (Platform.isNull (box current))
 #endif
 
     /// <summary>

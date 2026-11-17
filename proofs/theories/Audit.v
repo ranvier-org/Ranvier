@@ -509,3 +509,8 @@ Print Assumptions clean_ready_source_read_split_eq.
 Print Assumptions direct_post_on_graph_thread_eq.
 Print Assumptions binding_concrete_memo_refresh_and_read_eq.
 Print Assumptions editable_versioned_state_refines_voption.
+Print Assumptions mvu_untracked_bypass_and_direct_cmd_eq.
+Print Assumptions lazy_query_gate_refines_eager.
+Print Assumptions unboxed_data_and_inline_draft_refines_staged_map.
+Print Assumptions query_key_default_equatable_and_session_guard_eq.
+Print Assumptions waiter_fast_task_and_linked_lease_eq.

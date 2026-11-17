@@ -28,46 +28,89 @@ type Mvu<'Model, 'Msg>
     internal
     (graph: Graph, init: 'Model, update: 'Msg -> 'Model -> 'Model, step: 'Msg -> 'Model -> 'Model * (('Msg -> unit) -> unit) list, commanded: bool) =
     let root = Signal<'Model>(graph, init)
+#if !FABLE_COMPILER
+    let updateFn =
+        if commanded then
+            Unchecked.defaultof<_>
+        else
+            OptimizedClosures.FSharpFunc<'Msg, 'Model, 'Model>.Adapt update
+
+    let stepFn =
+        if commanded then
+            OptimizedClosures.FSharpFunc<'Msg, 'Model, 'Model * (('Msg -> unit) -> unit) list>.Adapt step
+        else
+            Unchecked.defaultof<_>
+#endif
     let mutable disposed = false
     let mutable site: JournalSite<'Msg> = null
+    let mutable applyFn: 'Msg -> unit = Unchecked.defaultof<_>
+    let mutable dispatchFn: 'Msg -> unit = Unchecked.defaultof<_>
+    let mutable initial: JournalWork = Unchecked.defaultof<_>
 
     do
-        if not (obj.ReferenceEquals (getOwner (), graph.Root)) then
-            onCleanup (fun () -> disposed <- true)
+        let owner = graph.CurrentOwner
+
+        if not (obj.ReferenceEquals (owner, graph.Root)) then
+            if owner.IsDisposed then
+                graph.AddCleanup (fun () -> disposed <- true)
+            else
+                owner.AddCleanup (fun () -> disposed <- true)
 
     member private this.Apply(msg: 'Msg) =
         if not disposed then
             if not commanded then
+#if FABLE_COMPILER
                 root.Value <- update msg root.Peek
+#else
+                root.Value <- updateFn.Invoke (msg, root.Peek)
+#endif
             else
+#if FABLE_COMPILER
                 let model, commands = step msg root.Peek
+#else
+                let model, commands = stepFn.Invoke (msg, root.Peek)
+#endif
                 root.Value <- model
-                this.Run commands |> ignore
+
+                if not commands.IsEmpty then
+                    this.RunCommands (commands, false)
 
     /// <summary>
-    /// Runs <c>commands</c> in order with a dispatch of their shared <c>JournalWork</c>, stopping once the owning scope
-    /// is torn down, and returns the work. The synchronous part of the commands runs in a derived section.
+    /// Runs <c>commands</c> in order, stopping once the owning scope is torn down. The synchronous part of journaled
+    /// commands runs in a derived section under a shared <c>JournalWork</c>.
     /// </summary>
-    member internal this.Run(commands: (('Msg -> unit) -> unit) list) : JournalWork option =
-        if commands.IsEmpty then
-            None
+    member internal this.RunCommands(commands: (('Msg -> unit) -> unit) list, isInitial: bool) : unit =
+        if graph.Options.Journal.IsNone then
+            let mutable dispatch = dispatchFn
+
+            if isNull (box dispatch) then
+                dispatch <- this.Dispatch
+                dispatchFn <- dispatch
+
+            let mutable rest = commands
+
+            while not disposed && not rest.IsEmpty do
+                rest.Head dispatch
+                rest <- rest.Tail
         else
-            let work = Journal.work graph
+            this.RunJournaled (commands, isInitial)
 
-            let dispatch (msg: 'Msg) =
-                Journal.produce work (fun () -> this.Arrive msg)
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RunJournaled(commands: (('Msg -> unit) -> unit) list, isInitial: bool) : unit =
+        let work = Journal.work graph
 
-            Journal.derived graph (fun () ->
-                let mutable rest = commands
+        let dispatch (msg: 'Msg) =
+            Journal.produce work (fun () -> this.Arrive msg)
 
-                while not disposed && not rest.IsEmpty do
-                    rest.Head dispatch
-                    rest <- rest.Tail)
+        Journal.derived graph (fun () ->
+            let mutable rest = commands
 
-            Some work
+            while not disposed && not rest.IsEmpty do
+                rest.Head dispatch
+                rest <- rest.Tail)
 
-    /// <summary>The work of the initial commands, if any.</summary>
-    member val internal Initial: JournalWork option = None with get, set
+        if isInitial then
+            initial <- work
 
     /// <summary>A tracked read of the model.</summary>
     member _.Model = root.Value
@@ -89,21 +132,52 @@ type Mvu<'Model, 'Msg>
     /// </para>
     /// </remarks>
     member this.Dispatch(msg: 'Msg) : unit =
+#if FABLE_COMPILER
+        this.Arrive msg
+#else
         if graph.IsOnGraphThread then
             this.Arrive msg
         else
-            graph.Dispatch (fun () -> this.Arrive msg)
+            this.PostArrive msg
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.PostArrive(msg: 'Msg) =
+        graph.Post (fun () -> this.Arrive msg)
+#endif
 
     member private this.Arrive(msg: 'Msg) =
         if isNull site then
-            graph.Untrack (fun () -> this.Apply msg)
+            if not (graph.IsTracking ()) then
+                this.Apply msg
+            else
+                this.ArriveTracked msg
         else
-            Journal.recordMessage site msg (fun () -> graph.Untrack (fun () -> this.Apply msg))
+            this.ArriveJournaled msg
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ArriveTracked(msg: 'Msg) =
+        let mutable fn = applyFn
+
+        if isNull (box fn) then
+            fn <- this.Apply
+            applyFn <- fn
+
+        graph.RunUntrackedWith (fn, msg)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ArriveJournaled(msg: 'Msg) =
+        Journal.recordMessage site msg (fun () ->
+            if not (graph.IsTracking ()) then
+                this.Apply msg
+            else
+                this.ArriveTracked msg)
 
     /// <summary>Registers the messages on the graph's journal under <c>key</c>.</summary>
     member internal this.Journal(key: string, codec: JournalCodec<'Msg>) =
         site <- Journal.messages key codec this.Dispatch graph
-        this.Initial |> Option.iter (Journal.name key)
+
+        if not (isNull (box initial)) then
+            Journal.name key initial
 
     /// <summary>A memo holding <c>select model</c>, owned by the current scope.</summary>
     /// <remarks>
@@ -112,11 +186,7 @@ type Mvu<'Model, 'Msg>
     /// </remarks>
     /// <exception cref="T:System.InvalidOperationException">Called inside a pure body, such as a <c>createMemo</c> body.</exception>
     member _.Select(select: 'Model -> 'A) : Memo<'A> =
-#if FABLE_COMPILER
-        createMemo (fun _ -> select root.Value)
-#else
-        new Memo<'A> (graph, Func<'A voption, 'A>(fun _ -> select root.Value))
-#endif
+        Memo<'A>.Create(graph, (fun _ -> select root.Value), ScopeMode.Pure)
 
 /// <summary>Constructors for <c>Mvu</c> over the current graph.</summary>
 [<RequireQualifiedAccess>]
@@ -163,7 +233,9 @@ module Mvu =
         let mvu =
             Mvu<'Model, 'Msg>(Graph.Current, model, Unchecked.defaultof<_>, update, true)
 
-        mvu.Initial <- mvu.Run commands
+        if not commands.IsEmpty then
+            mvu.RunCommands (commands, true)
+
         mvu
 
     /// <summary>

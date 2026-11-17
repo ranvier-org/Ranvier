@@ -663,4 +663,5 @@ module internal TestAccess =
     [<assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Ranvier.Benchmarks")>]
     [<assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Ranvier.Counters")>]
     [<assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Ranvier.Query")>]
+    [<assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Ranvier.Elmish")>]
     do ()
