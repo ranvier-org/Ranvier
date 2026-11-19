@@ -206,11 +206,26 @@ jobs:
         shell: pwsh
         run: ./tests/check-package-compatibility.ps1 -CheckFable
 
+  # The fickl release in .config/dotnet-tools.json carries the browser compiler the docs live editor runs. Runs on
+  # documentation-only changes too: the docs build only after a merge, so a roll that lacks it fails here first.
+  fickl-archives:
+    name: Fickl browser compiler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Check the release carries both archives
+        run: node .github/scripts/fickl-archives.cjs
+
   # The one CI check that branch rules require: it fails when any job failed or was cancelled, and passes when the
   # build and test jobs were skipped for a documentation-only change.
   result:
     name: CI result
-    needs: [changes, scripts, dotnet, aot, packages, format, docs-menus, fable]
+    needs: [changes, scripts, dotnet, aot, packages, format, docs-menus, fable, fickl-archives]
     if: always()
     runs-on: ubuntu-latest
     steps:
