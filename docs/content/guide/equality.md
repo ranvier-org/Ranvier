@@ -22,7 +22,8 @@ Individual nodes can override it with a typed comparer.
 
 :::tip Write a new object to propagate a change
 Under `JsIdentityPolicy`, mutating a referenced object in place and writing the same reference back
-is cut off. Write a new value to propagate a change.
+is cut off. Write a new value to propagate a change. For a large array rewritten on every frame, see
+[Buffers updated in place](#buffers-updated-in-place).
 :::
 
 :::details Compare the policies on .NET
@@ -125,6 +126,162 @@ a comparer exception fails the boundary directly.
 :::
 
 From C#, see [C# — Per-node equality](csharp.md#per-node-equality). Note that seeded boundaries do not have per-node comparer overloads and always use `GraphOptions.Equality`.
+
+## Buffers updated in place
+
+On .NET a signal compares an array by reference under both policies: `StructuralPolicy` does not
+compare array contents. An array rewritten in place and written back is cut off, and a new array
+propagates.
+
+For a small array, write a new one. For a large numeric buffer, publish the same array in one of
+two forms. `integrate` and `upload` stand for your kernel and your consumer.
+
+**A counter beside the buffer.** Readers track the counter and read the array directly. A reader
+that skips `version.Value` is not woken.
+
+```fsharp
+let positions = Array.zeroCreate<float32> 1_048_576
+let version = createSignal 0
+
+createEffect (fun () ->
+    version.Value |> ignore
+    upload positions)
+
+// One tick
+integrate positions
+version.Value <- version.Peek + 1
+```
+
+**A comparer that reports every write as a change.** The array travels through the signal, so a
+reader gets the tracked read and the data together.
+
+```fsharp
+let everyWrite =
+    { new System.Collections.Generic.IEqualityComparer<float32[]> with
+        member _.Equals(_, _) = false
+        member _.GetHashCode _ = 0 }
+
+let positions = createSignalWithComparer everyWrite (Array.zeroCreate<float32> 1_048_576)
+
+createEffect (fun () -> upload positions.Value)
+
+// One tick
+integrate positions.Peek
+positions.Value <- positions.Peek
+```
+
+Both forms follow these rules:
+
+- **A memo that returns the array is cut off.** Its own comparison sees the same reference, so its
+  readers stay asleep. Give the memo the comparer with `createMemoWithComparer`, or return a derived
+  value such as a sum.
+- **Readers see the current contents.** The signal holds one array. A reader sees its contents at
+  the time the reader runs, and the previous value a memo receives is that same array.
+- **Writes in one `batch` wake a reader once.** A [binding](bindings.md) on the comparer signal
+  writes its target once per flush in which the signal was written.
+- **Ranvier sees the signal write, not the element writes.** The thread-affinity guard covers the
+  write to the signal. Access to the array's elements from several threads is yours to order.
+
+Two arrays written in turn also avoid allocation: each write is a different reference, so the
+default comparison propagates it. A full rewrite then reads one array and writes the other, and a
+one-element edit first copies the whole array.
+
+### When to publish in place
+
+- **Up to a few kilobytes:** keep writing a new array. At 4 KB it cost about 110 to 170 ns more
+  per write than publishing in place.
+- **From 85,000 bytes:** publish in place. .NET allocates each new array of that size on the large
+  object heap, and at 512 KB a new array per write cost 3.9 times the rewrite alone.
+- **A few elements changed per write:** publish in place at any size. Its cost stayed between 37
+  and 40 ns from 4 KB to 4 MB, while a new array cost a copy of the whole buffer.
+
+:::details Check the wakes on .NET
+
+This example counts the effect runs caused by one in-place rewrite, excluding the initial run.
+
+```fsharp
+let inPlaceRows =
+    use graph = new Graph ()
+    use _ = graph.Activate ()
+    let buffer = Array.zeroCreate<float32> 4
+
+    let plain = createSignal buffer
+    let version = createSignal 0
+    let marked = createSignalWithComparer everyWrite buffer
+    let passed = createMemo (fun _ -> marked.Value)
+    let passedOn = createMemoWithComparer everyWrite (fun _ -> marked.Value)
+    let total = createMemo (fun _ -> Array.sum marked.Value)
+
+    let runs = Array.zeroCreate<int> 6
+    createEffect (fun () -> plain.Value |> ignore; runs[0] <- runs[0] + 1)
+    createEffect (fun () -> version.Value |> ignore; runs[1] <- runs[1] + 1)
+    createEffect (fun () -> marked.Value |> ignore; runs[2] <- runs[2] + 1)
+    createEffect (fun () -> passed.Value |> ignore; runs[3] <- runs[3] + 1)
+    createEffect (fun () -> passedOn.Value |> ignore; runs[4] <- runs[4] + 1)
+    createEffect (fun () -> total.Value |> ignore; runs[5] <- runs[5] + 1)
+
+    buffer[0] <- 1.0f
+    plain.Value <- buffer
+    version.Value <- version.Peek + 1
+    marked.Value <- buffer
+
+    [ "default signal, same array", runs[0] - 1
+      "counter signal", runs[1] - 1
+      "comparer signal, same array", runs[2] - 1
+      "memo returning the array", runs[3] - 1
+      "memo with the comparer", runs[4] - 1
+      "memo returning a sum", runs[5] - 1 ]
+
+for name, wakes in inPlaceRows do
+    printfn "%-28s wakes: %d" name wakes
+```
+
+```text
+default signal, same array   wakes: 0
+counter signal               wakes: 1
+comparer signal, same array  wakes: 1
+memo returning the array     wakes: 0
+memo with the comparer       wakes: 1
+memo returning a sum         wakes: 1
+```
+
+:::
+
+:::details Measured cost on .NET
+
+One tick rewrites a `float32` array, publishes it and runs one effect that reads two elements.
+**No graph** is the rewrite and the read alone. Times are per tick.
+
+Every element rewritten, one `Vector<float32>` at a time:
+
+| Elements | Array size | No graph | New array | Two arrays | Counter | Comparer |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,024 | 4 KB | 85 ns | 216 ns | 112 ns | 109 ns | 108 ns |
+| 16,384 | 64 KB | 1.42 µs | 2.74 µs | 1.40 µs | 1.50 µs | 1.49 µs |
+| 131,072 | 512 KB | 10.9 µs | 42.8 µs | 11.8 µs | 10.8 µs | 11.0 µs |
+| 1,048,576 | 4 MB | 87.1 µs | 478.3 µs | 99.6 µs | 88.1 µs | 89.9 µs |
+
+One element rewritten:
+
+| Elements | Array size | No graph | New array | Two arrays | Counter | Comparer |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,024 | 4 KB | 5.5 ns | 208 ns | 83.5 ns | 37.6 ns | 37.0 ns |
+| 16,384 | 64 KB | 5.5 ns | 1.61 µs | 697 ns | 38.2 ns | 37.3 ns |
+| 131,072 | 512 KB | 5.8 ns | 32.6 µs | 7.30 µs | 37.2 ns | 40.3 ns |
+| 1,048,576 | 4 MB | 5.8 ns | 403.2 µs | 179.6 µs | 39.6 ns | 37.4 ns |
+
+A new array per tick allocated the array's size on every tick. With every element rewritten it
+triggered 102 gen2 collections per 1,000 ticks at 512 KB and 199 at 4 MB. The other forms
+allocated nothing.
+
+Recorded 2026-11-19 on .NET 10.0.15, x64, an AMD Ryzen 9 9900X, with the workstation concurrent
+collector. Each figure is the middle of three processes, and each process reports the median of 25
+batches of 25 ms. Times are wall time on the calling thread, and other work was running on the
+machine during the recording. Source: `experiments/buffer-handoff-bench` against the core at commit
+`404f358`. Compare the columns with each other; the absolute times do not predict your
+application's performance.
+
+:::
 
 ## Graph-wide policies
 

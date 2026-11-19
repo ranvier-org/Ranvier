@@ -1,0 +1,70 @@
+buffer hand-off: .NET 10.0.15, X64, 24 logical processors
+server GC false, latency mode Interactive, Vector<float32>.Count 8, hardware accelerated true
+DOTNET_TieredCompilation unset, DOTNET_TieredPGO unset, DOTNET_gcConcurrent unset
+per strategy: 5 visits of 3 untimed and 5 timed batches, 25 ms a batch
+premise: one array changed in place and rewritten to a default signal woke the reader 0 time(s)
+verified: the five strategies hold equal buffers after 1,000 ticks, dense and sparse, N=64
+
+workload=dense  N=1,024  buffer=4 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare              81.3          75.9           0.0     1.00           0.0     0.000     0.000     0.000      329333
+fresh            207.2         175.1         125.9     2.55        4120.0     0.245     0.003     0.000      122870
+swap             107.2          97.2          26.0     1.32           0.0     0.000     0.000     0.000      245721
+version          109.1          95.6          27.8     1.34           0.0     0.000     0.000     0.000      260680
+always           107.6          97.4          26.3     1.32           0.0     0.000     0.000     0.000      248872
+
+workload=dense  N=16,384  buffer=64 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare            1415.3        1220.1           0.0     1.00           0.0     0.000     0.000     0.000       20246
+fresh           2737.5        2053.6        1322.2     1.93       65560.0     2.910     0.983     0.000       10171
+swap            1347.9        1261.2         -67.3     0.95           0.0     0.000     0.000     0.000       19506
+version         1531.5        1287.3         116.2     1.08           0.0     0.000     0.000     0.000       16519
+always          1490.6        1244.8          75.3     1.05           0.0     0.000     0.000     0.000       20484
+
+workload=dense  N=131,072  buffer=512 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare           10890.1        9626.6           0.0     1.00           0.0     0.000     0.000     0.000        2107
+fresh          42847.5       33246.1       31957.4     3.93      524312.0     0.000     0.000   102.314         579
+swap           11849.6       10239.7         959.5     1.09           0.0     0.000     0.000     0.000        2010
+version        10769.0        9906.4        -121.1     0.99           0.0     0.000     0.000     0.000        2227
+always         11025.2       10261.8         135.2     1.01           0.0     0.000     0.000     0.000        2563
+
+workload=dense  N=1,048,576  buffer=4,096 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare           87111.5       80616.9           0.0     1.00           0.0     0.000     0.000     0.000         260
+fresh         458298.0      408089.8      371186.4     5.26     4194328.0     0.000     0.000   198.367          49
+swap          109565.0       94299.0       22453.5     1.26           0.0     0.000     0.000     0.000         200
+version        88123.5       78197.6        1012.0     1.01           0.0     0.000     0.000     0.000         251
+always         89553.0       77509.1        2441.4     1.03           0.0     0.000     0.000     0.000         287
+
+workload=sparse  N=1,024  buffer=4 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare               4.8           3.4           0.0     1.00           0.0     0.000     0.000     0.000     4000000
+fresh            189.6         148.3         184.8    39.80        4120.0     0.241     0.004     0.000      150768
+swap              77.0          64.6          72.2    16.17           0.0     0.000     0.000     0.000      324612
+version           34.2          25.7          29.4     7.17           0.0     0.000     0.000     0.000     1042123
+always            33.3          23.3          28.5     6.98           0.0     0.000     0.000     0.000      731338
+
+workload=sparse  N=16,384  buffer=64 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare               5.7           4.7           0.0     1.00           0.0     0.000     0.000     0.000     4000000
+fresh           2409.6        1544.2        2403.9   421.25       65560.0     2.932     0.977     0.000       12277
+swap             697.3         631.7         691.5   121.90           0.0     0.000     0.000     0.000       25699
+version           39.3          30.4          33.6     6.87           0.0     0.000     0.000     0.000      493100
+always            37.3          27.1          31.6     6.53           0.0     0.000     0.000     0.000      600900
+
+workload=sparse  N=131,072  buffer=512 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare               6.0           4.8           0.0     1.00           0.0     0.000     0.000     0.000     4000000
+fresh          34329.6       20178.9       34323.5  5675.58      524312.0     0.000     0.000    91.839         473
+swap            7295.8        6039.8        7289.7  1206.18           0.0     0.000     0.000     0.000        2385
+version           42.1          31.8          36.1     6.97           0.0     0.000     0.000     0.000      574771
+always            41.2          27.7          35.1     6.81           0.0     0.000     0.000     0.000      838024
+
+workload=sparse  N=1,048,576  buffer=4,096 KB  samples=25  batch=25 ms
+strategy   ns/tick med   ns/tick min  over bare ns   x bare        B/tick   gen0/1k   gen1/1k   gen2/1k ticks/batch
+bare               5.8           4.1           0.0     1.00           0.0     0.000     0.000     0.000     4000000
+fresh         403223.2      338032.1      403217.4 69254.67     4194328.0     0.000     0.000   187.857          56
+swap          179561.1      154331.5      179555.3 30840.10           0.0     0.000     0.000     0.000         149
+version           41.7          27.7          35.9     7.16           0.0     0.000     0.000     0.000      611371
+always            37.4          23.9          31.6     6.42           0.0     0.000     0.000     0.000      561701
