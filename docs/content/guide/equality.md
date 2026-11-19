@@ -188,12 +188,12 @@ one-element edit first copies the whole array.
 
 ### When to publish in place
 
-- **Up to a few kilobytes:** keep writing a new array. At 4 KB it cost about 100 to 130 ns more
+- **Up to a few kilobytes:** keep writing a new array. At 4 KB it cost about 110 to 170 ns more
   per write than publishing in place.
 - **From 85,000 bytes:** publish in place. .NET allocates each new array of that size on the large
-  object heap, and at 512 KB a new array per write cost 3.7 times the rewrite alone.
-- **A few elements changed per write:** publish in place at any size. Its cost stayed between 27
-  and 31 ns from 4 KB to 4 MB, while a new array cost a copy of the whole buffer.
+  object heap, and at 512 KB a new array per write cost 3.9 times the rewrite alone.
+- **A few elements changed per write:** publish in place at any size. Its cost stayed between 37
+  and 40 ns from 4 KB to 4 MB, while a new array cost a copy of the whole buffer.
 
 :::details Check the wakes on .NET
 
@@ -256,29 +256,30 @@ Every element rewritten, one `Vector<float32>` at a time:
 
 | Elements | Array size | No graph | New array | Two arrays | Counter | Comparer |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1,024 | 4 KB | 79 ns | 206 ns | 103 ns | 104 ns | 108 ns |
-| 16,384 | 64 KB | 1.25 µs | 2.52 µs | 1.30 µs | 1.30 µs | 1.29 µs |
-| 131,072 | 512 KB | 10.5 µs | 39.1 µs | 10.6 µs | 10.0 µs | 10.2 µs |
-| 1,048,576 | 4 MB | 81.1 µs | 483.9 µs | 88.1 µs | 82.2 µs | 80.5 µs |
+| 1,024 | 4 KB | 85 ns | 216 ns | 112 ns | 109 ns | 108 ns |
+| 16,384 | 64 KB | 1.42 µs | 2.74 µs | 1.40 µs | 1.50 µs | 1.49 µs |
+| 131,072 | 512 KB | 10.9 µs | 42.8 µs | 11.8 µs | 10.8 µs | 11.0 µs |
+| 1,048,576 | 4 MB | 87.1 µs | 478.3 µs | 99.6 µs | 88.1 µs | 89.9 µs |
 
 One element rewritten:
 
 | Elements | Array size | No graph | New array | Two arrays | Counter | Comparer |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1,024 | 4 KB | 4.2 ns | 155 ns | 62.6 ns | 26.5 ns | 28.3 ns |
-| 16,384 | 64 KB | 4.2 ns | 1.27 µs | 718 ns | 28.2 ns | 26.8 ns |
-| 131,072 | 512 KB | 4.2 ns | 24.4 µs | 6.49 µs | 30.7 ns | 28.5 ns |
-| 1,048,576 | 4 MB | 4.5 ns | 401.6 µs | 190.0 µs | 28.5 ns | 27.2 ns |
+| 1,024 | 4 KB | 5.5 ns | 208 ns | 83.5 ns | 37.6 ns | 37.0 ns |
+| 16,384 | 64 KB | 5.5 ns | 1.61 µs | 697 ns | 38.2 ns | 37.3 ns |
+| 131,072 | 512 KB | 5.8 ns | 32.6 µs | 7.30 µs | 37.2 ns | 40.3 ns |
+| 1,048,576 | 4 MB | 5.8 ns | 403.2 µs | 179.6 µs | 39.6 ns | 37.4 ns |
 
 A new array per tick allocated the array's size on every tick. With every element rewritten it
-triggered 104 gen2 collections per 1,000 ticks at 512 KB and 199 at 4 MB. The other forms
+triggered 102 gen2 collections per 1,000 ticks at 512 KB and 199 at 4 MB. The other forms
 allocated nothing.
 
 Recorded 2026-11-19 on .NET 10.0.15, x64, an AMD Ryzen 9 9900X, with the workstation concurrent
 collector. Each figure is the middle of three processes, and each process reports the median of 25
-batches of 25 ms. Times are wall time on the calling thread. Source:
-`experiments/buffer-handoff-bench` against the core at commit `25a4452`. Compare the columns with
-each other; the absolute times do not predict your application's performance.
+batches of 25 ms. Times are wall time on the calling thread, and other work was running on the
+machine during the recording. Source: `experiments/buffer-handoff-bench` against the core at commit
+`404f358`. Compare the columns with each other; the absolute times do not predict your
+application's performance.
 
 :::
 
