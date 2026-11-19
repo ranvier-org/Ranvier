@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "title": "Reactive core",
+  "description": "Fine-grained reactive signals, memos, async boundaries, incremental collections, queries and C# bindings for .NET and Fable.",
+  "index": "index.md",
+  "unlisted": ["index.md"],
+  "styles": ["docs/theme/landing.css"],
+  "packages": [["animejs", "4.5.0"]],
+  "proofsUrl": "https://ranvier-org.github.io/Ranvier/proofs/",
+  "apiReference": {
+    "title": "API reference",
+    "projects": [
+      "src/Ranvier/Ranvier.fsproj",
+      "src/Ranvier.CSharp/Ranvier.CSharp.fsproj",
+      "src/Ranvier.Elmish/Ranvier.Elmish.fsproj",
+      "src/Ranvier.Query/Ranvier.Query.fsproj",
+      "src/Ranvier.Wire/Ranvier.Wire.fsproj",
+      "src/Ranvier.Dom/Ranvier.Dom.fsproj"
+    ],
+    "assemblies": [
+      "Ranvier",
+      "Ranvier.CSharp",
+      "Ranvier.Elmish",
+      "Ranvier.Query",
+      "Ranvier.Wire",
+      "Ranvier.Dom"
+    ]
+  },
+  "defaultOgImage": {
+    "image": "og/home.png",
+    "alt": "Ranvier: fine-grained reactive computation for .NET"
+  },
+  "ogCards": [
+    {
+      "segment": "nacara",
+      "image": "og/nacara.png",
+      "alt": "Runnable Ranvier documentation: components, signal maps and editable examples"
+    },
+    {
+      "segment": "async-and-pending",
+      "image": "og/async.png",
+      "alt": "Async and pending: boundary states along a nerve fibre"
+    },
+    {
+      "segment": "tracing",
+      "image": "og/tracing.png",
+      "alt": "Tracing: a cause chain traced back along a nerve fibre"
+    },
+    {
+      "segment": "signal-maps",
+      "image": "og/signal-maps.png",
+      "alt": "Signal maps: a traced graph drawn live, a write travelling its edges"
+    },
+    {
+      "segment": "timing",
+      "image": "og/timing.png",
+      "alt": "Debounce and throttle: capture changes now, admit them after quiet or at a fixed deadline"
+    },
+    {
+      "segment": "guide",
+      "image": "og/guide.png",
+      "alt": "Ranvier guide: build with signals"
+    },
+    {
+      "segment": "concepts",
+      "image": "og/concepts.png",
+      "alt": "Ranvier concepts: how the graph works"
+    },
+    {
+      "segment": "fable",
+      "image": "og/fable.png",
+      "alt": "Ranvier on Fable: the JavaScript target"
+    },
+    {
+      "segment": "benchmarks",
+      "image": "og/benchmarks.png",
+      "alt": "Ranvier benchmarks: measured per commit"
+    }
+  ],
+  "sections": [
+    {
+      "title": "Guide",
+      "items": [
+        {
+          "section": "Introduction",
+          "items": [
+            "guide/index.md",
+            "guide/installation.md",
+            "guide/getting-started.md",
+            "guide/csharp.md",
+            "guide/blazor-server.md",
+            "guide/examples.md"
+          ]
+        },
+        {
+          "section": "Core concepts",
+          "items": [
+            "guide/graph.fsx",
+            "guide/signals.fsx",
+            "guide/memos.md",
+            "guide/timing.md",
+            "guide/effects.md",
+            "guide/bindings.md",
+            "guide/roots.md",
+            "guide/cleanup.md",
+            "guide/untrack.md",
+            "guide/batch.md",
+            "guide/editable.md",
+            "guide/drafts.md",
+            "guide/equality.md"
+          ]
+        },
+        {
+          "section": "Async and pending",
+          "items": [
+            "guide/async-and-pending.md",
+            "guide/async-sources.md",
+            "guide/async-memos.md",
+            "guide/streams.md",
+            "guide/boundaries.md",
+            "guide/threading.md",
+            "guide/testing.md"
+          ]
+        },
+        {
+          "section": "Collections",
+          "items": [
+            "guide/collections.fsx",
+            "guide/projections.fsx",
+            "guide/lookups.fsx",
+            "guide/selectors.fsx",
+            "guide/collection-updates.fsx",
+            "guide/collection-views.fsx",
+            "guide/aggregates.fsx"
+          ]
+        },
+        {
+          "section": "Recipes",
+          "items": [
+            "guide/forms.md"
+          ]
+        },
+        {
+          "section": "Extensions",
+          "items": [
+            {
+              "section": "Ranvier.Query",
+              "items": [
+                "guide/queries.md",
+                "guide/query-navigation.md"
+              ]
+            },
+            {
+              "section": "Ranvier.Elmish",
+              "items": [
+                "guide/elmish.md"
+              ]
+            },
+            {
+              "section": "Ranvier.Mcp",
+              "items": [
+                "guide/mcp.md"
+              ]
+            }
+          ]
+        },
+        {
+          "section": "Diagnostics & tooling",
+          "items": [
+            "guide/tracing.md",
+            "guide/journal.md",
+            "guide/signal-maps.md",
+            "guide/nacara.md",
+            "guide/troubleshooting.md"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Fable",
+      "items": [
+        "fable/index.md"
+      ]
+    },
+    {
+      "title": "Concepts",
+      "items": [
+        "concepts/index.md",
+        "concepts/suspension.md",
+        "concepts/async-graph.md",
+        "concepts/contracts.md",
+        "concepts/ecosystem.md",
+        "concepts/roadmap.md"
+      ]
+    },
+    {
+      "title": "Benchmarks",
+      "items": [
+        "benchmarks/index.md",
+        "benchmarks/signals.md",
+        "benchmarks/memos.md",
+        "benchmarks/effects.md",
+        "benchmarks/lifetimes.md",
+        "benchmarks/projections.md",
+        "benchmarks/suspension.md",
+        "benchmarks/streams.md",
+        "benchmarks/counters.md",
+        "benchmarks/tracing.md",
+        "benchmarks/queries.md"
+      ]
+    },
+    {
+      "title": "Blog",
+      "items": [
+        "blog/index.md",
+        "blog/desktop-adaptive.md"
+      ]
+    }
+  ]
+}
