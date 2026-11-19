@@ -3,7 +3,7 @@ title: Forms
 ---
 
 Represent each field with its own signal, [editable value](editable.md), or [draft](drafts.md).
-A record of reactive fields lets each edit update only the readers of that field.
+A record of reactive fields lets each edit update only the readers of its field.
 
 ## A form as a record of signals
 
@@ -43,8 +43,7 @@ module PersonForm =
 :::
 
 - A field is a `Signal<'T>` when the form owns the value, and an `Editable<'T>` when it comes from upstream.
-- `snapshot` and a whole-record set are written by hand once per type. Put a multi-field set in a `batch`, so an
-  effect that reads several fields runs once.
+- `snapshot` and a whole-record set are written by hand once per type. Wrap a multi-field set in a [`batch`](batch.md) so an effect that reads several fields runs once.
 - `isDirty` is tracked: a memo or an effect over it wakes when any field's edit starts or ends.
 
 :::details Compare with a whole-record signal

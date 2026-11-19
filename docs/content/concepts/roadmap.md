@@ -3,12 +3,8 @@ title: Roadmap
 order: 6
 ---
 
-:::warning
-**Preview.** Ranvier is pre-release; its APIs may change.
-:::
-
-The guide describes current source. See [Installation](../guide/installation.md) for published
-versions and local builds. Exploratory items below have no delivery schedule.
+The guide describes current source. See [Installation](../guide/installation.md) for package
+versions and builds. Exploratory items below have no delivery schedule.
 
 ## Implemented in current source
 
@@ -34,13 +30,17 @@ versions and local builds. Exploratory items below have no delivery schedule.
   and failure provenance, with bounded-log checkpoints and export.
 - **C# integration:** delegate factories, XAML property/error bindings, commands and observable
   collections. See [C#](../guide/csharp.md).
-- **Views:** shared templates support DOM mounting, server HTML and hydration, with motion and
-  testing helpers. See [Views](https://ranvier-org.github.io/Ranvier.View/view/), [Server rendering](https://ranvier-org.github.io/Ranvier.View/server/) and
-  [Testing views](https://ranvier-org.github.io/Ranvier.View/view/testing/).
-- **Fable and deployment:** local package builds include standalone Fable source projects; CI
-  checks packed consumers. The core, C#, Elmish and Query packages have traced/untraced .NET 10
-  `linux-x64` trim/AOT smoke checks. See [Installation](../guide/installation.md) for scope and
-  [Fable](../fable/index.md) for target differences.
+- **Wire codecs & DOM contracts:** `Ranvier.Wire` (`0.2.1`) shares depth/item-bounded JSON codecs across
+  .NET and Fable; `Ranvier.Dom` and `Fable.Ranvier.Dom` (`0.1.0`) share generated WebKit DOM
+  interfaces across native hosts and browsers.
+- **Formal verification:** `proofs/` verifies graph propagation, equality cutoffs, ownership,
+  scheduler bounds, concurrency guards, and collection boundary refinements in Rocq and Iris; see
+  the [proof explorer](https://ranvier-org.github.io/Ranvier/proofs/).
+- **Views & animation:** shared templates support DOM mounting, server HTML and hydration (`Ranvier.View`),
+  motion over anime.js (`Ranvier.Anime` / `Fable.Ranvier.Anime`), and typed reactive CSS (`Ranvier.Css`).
+- **Fable and deployment:** package builds include standalone Fable source projects compiled with
+  `dotnet fickl`; CI validates packed Fable consumers and traced/untraced .NET 10 NativeAOT/trimming
+  smoke checks. See [Installation](../guide/installation.md) and [Fable](../fable/index.md).
 
 ## Experimental source
 
@@ -50,14 +50,12 @@ the whole graph.
 
 ## Under consideration
 
-- **Further collection incrementality:** filter, sort, grouping and some aggregate membership
-  paths still scan keys.
+- **Further collection incrementality:** sublinear persistent key storage to eliminate `Keys`
+  array copies on non-tail insertions and arbitrary upstream reorders in sorted and extreme structures.
 - **An F# `Async<'T>` adapter:** cold-workflow lifetime and restart contracts remain exploratory.
   See [The async graph](async-graph.md#not-implemented).
 - **Reusable lenses and prisms:** application code can express deep writes; reusable focus paths
   over collections remain open.
-- **Additional storage adapters:** persistence supplies memory, file and browser local-storage
-  stores; database-backed stores remain an extension point.
 - **Mixed traced/untraced primitives:** let individual graph branches pay for tracing
   ([#69](https://github.com/ranvier-org/Ranvier/issues/69)).
 

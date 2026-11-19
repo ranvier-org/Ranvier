@@ -39,7 +39,7 @@ graph.Run (fun () ->
 ### When an edit is dropped
 
 `createEditable` drops its edit when the seed publishes a different value under the graph's
-equality policy. This follows Solid 2.0's writable memo behaviour.
+equality policy. This follows Solid 2's writable memo behaviour.
 
 Edit both fields to `3`, then publish an upstream `5`. The editable follows the new seed;
 the draft keeps `3` until reset.

@@ -13,7 +13,7 @@
 //   ok         the program returned, or failed at its top level, and every column is complete
 //   stuck      the program reached a state with no F# meaning, where `exec` is stuck
 //   budget     the program passed the step or depth budget, and has no complete trace
-//   excluded   the program raised more than one zero divisor
+//   excluded   the program raised more than one zero divisor, or overflowed 32-bit int
 //   harness    the harness itself failed, with the reason in the trace column
 //
 // current.txt holds the index of the running program, and is absent otherwise. A crash leaves it behind, and run.sh
@@ -1075,10 +1075,11 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
     let mutable depth = 0
     let mutable runaway = false
     let mutable stuck = false
+    let mutable overflowed = false
     let mutable zeroDivisors = 0
 
     let tick () =
-        if stuck || runaway then
+        if stuck || runaway || overflowed then
             raise Abandoned
 
         steps <- steps + 1
@@ -1101,6 +1102,16 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
             let v = eval env b
             f u v
 
+        let inline checkedBin (f: int -> int -> int) a b =
+            let u = eval env a
+            let v = eval env b
+
+            try
+                f u v
+            with :? OverflowException ->
+                overflowed <- true
+                raise Abandoned
+
         match e with
         | K z -> z
         | V x ->
@@ -1111,11 +1122,11 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
             match env.TryFind PrevVar with
             | Some v -> v
             | None -> stick ()
-        | Add (a, b) -> bin (fun u v -> Checked.(+) u v) a b
-        | Sub (a, b) -> bin (fun u v -> Checked.(-) u v) a b
-        | Mul (a, b) -> bin (fun u v -> Checked.(*) u v) a b
+        | Add (a, b) -> checkedBin (fun u v -> Checked.(+) u v) a b
+        | Sub (a, b) -> checkedBin (fun u v -> Checked.(-) u v) a b
+        | Mul (a, b) -> checkedBin (fun u v -> Checked.(*) u v) a b
         | Div (a, b) ->
-            bin
+            checkedBin
                 (fun u v ->
                     if v = 0 then
                         zeroDivisors <- zeroDivisors + 1
@@ -1412,6 +1423,7 @@ type Interpreter(c: Ctx, coverage: Dictionary<string, int>) =
 
     member _.Runaway = runaway
     member _.Stuck = stuck
+    member _.Overflowed = overflowed
     member _.ZeroDivisors = zeroDivisors
 
     /// Counts the memos that ended a run stale, as a self-marking run does.
@@ -1450,7 +1462,9 @@ let runProgram (coverage: Dictionary<string, int>) (program: Cmd) : string list 
         | ex -> Some $"{ex.GetType().Name}: {ex.Message}"
 
     let usable () =
-        not interpreter.Stuck && not interpreter.Runaway
+        not interpreter.Stuck
+        && not interpreter.Runaway
+        && not interpreter.Overflowed
 
     let ended = ref ""
     let closed = ref ""
@@ -1467,14 +1481,18 @@ let runProgram (coverage: Dictionary<string, int>) (program: Cmd) : string list 
                         closed.Value <- interpreter.View ()))
 
     // A fresh failure identity moves a memo on every run where the model's one identity does not, so a self-reading memo
-    // with a zero divisor runs away on the F# side alone. The exclusion comes before the budget.
+    // with a zero divisor runs away on the F# side alone. Arithmetic also runs in checked 32-bit int while the model
+    // computes over unbounded Z, so an int32 overflow is excluded too. Both exclusions come before the budget.
     match escaped, c.Failures with
     | Some reason, _ -> [ "harness"; reason; ""; "" ]
     | None, (_ :: _ as failures) -> [ "harness"; String.concat " | " failures; ""; "" ]
     | None, [] ->
         if interpreter.Stuck then
             [ "stuck"; ""; ""; "" ]
-        elif interpreter.ZeroDivisors > 1 then
+        elif
+            interpreter.Overflowed
+            || interpreter.ZeroDivisors > 1
+        then
             [ "excluded"; ""; ""; "" ]
         elif interpreter.Runaway then
             [ "budget"; ""; ""; "" ]

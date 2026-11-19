@@ -3,10 +3,6 @@ title: Ecosystem
 order: 4
 ---
 
-:::warning
-**Preview.** Ranvier is pre-release; its APIs may change.
-:::
-
 Ranvier combines fine-grained dependency tracking with a propagating [pending channel](suspension.md).
 Signals hold state, memos derive it, and boundaries turn loading and failures into display values.
 It targets .NET and Fable, with an F# API and a C# facade.
@@ -39,7 +35,7 @@ It targets .NET and Fable, with an F# API and a C# facade.
   its own DOM layer, forms and router. Compare its
   [application-managed async state](https://github.com/fable-hub/Fable.Ripple/blob/main/docs/content/ripple-dom/async-data.md)
   with Ranvier's pending propagation.
-- [Solid's async design](https://github.com/solidjs/solid/tree/next/documentation/solid-2.0)
+- [Solid 2's async design](https://github.com/solidjs/solid/tree/next/documentation/solid-2.0)
   informs Ranvier's pending channel and boundaries. The projects have separate renderers,
   schedulers and APIs.
 
@@ -47,16 +43,17 @@ Use each project's own documentation for current versions and integrations.
 
 ## Collection tradeoffs
 
-Ranvier's [editable keyed sources](../guide/collection-updates.fsx#direct-edits) update an existing
-row without rescanning a source list or replacing the key array. Map views consume membership
-deltas and retain unchanged rows. Key readers report membership and order; value readers observe
-rows and report unequal settled values. The C# `AsObservableCollection` adapter consumes these
-value deltas for replacements.
-
-Filter, sort, grouping and some aggregate membership paths still scan keys. Changed ranks require
-a full sort; source membership changes copy key order. Whole-list sources reconcile their input
-when it changes. Readers coalesce changes between reads and recover from bounded-log overflow
-with a reset. See [view costs](../guide/collection-views.fsx) and
+Ranvier's [editable keyed sources](../guide/collection-updates.fsx#direct-edits) add, update, and
+remove keys in O(1) without rescanning a source list, and reuse the prior `Keys` array across
+net-empty add+remove batches. Map views consume membership deltas and retain unchanged rows;
+`filter`, `choose`, `partition`, and `distinctBy` update sparse row edits and tail appends in O(log N)
+via Fenwick binary-indexed trees. `sortBy` and `sortWith` skip equal-rank edits in O(1) and binary-search
+changed-rank keys in O(log N) comparisons; `minBy`/`maxBy` maintain tournament winner trees in O(log N),
+and group/fold aggregates update incrementally per changed key (with `Projection.fold` recomputing across
+cached rows on pure reorder). Non-tail structural inserts and upstream reorders fall back to full key
+rebuilds or array shifts; whole-list sources reconcile on input change, and `AsObservableCollection` diffs
+trimmed ranges. Readers coalesce changes and recover from overflow with a reset. See
+[view costs](../guide/collection-views.fsx), [aggregates](../guide/aggregates.fsx), and
 [reader costs](../guide/projections.fsx#reading-changes).
 
 Adaptive offers a broader established collection API; Ranvier combines keyed rows with ownership,
@@ -109,7 +106,8 @@ d = 34
 These intermediate emissions follow `CombineLatest`'s stream contract. This example does not imply every
 Rx architecture produces inconsistent state: an application can derive both branches from one combined
 state emission. Buffering or scheduling also changes delivery, but is not by itself a graph-consistency
-guarantee. Ranvier updates this derived graph in height order, and `d` runs after both inputs. Two writes that
+guarantee. Ranvier marks downstream readers for dirty or check propagation and pulls dependencies on demand,
+so `d` refreshes both `b` and `c` before running once. Two writes that
 belong together go in one [`batch`](../guide/batch.md).
 
 ## Owners instead of hooks

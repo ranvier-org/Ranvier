@@ -3,8 +3,6 @@ title: Tracing cost
 order: 11
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs and these figures may change.
-
 Tracing is a compile-time switch. `RanvierTrace=true` compiles the per-graph event log and the
 `Trace` queries into the library; it is the default in Debug and off in Release. This page states
 what the traced build costs against the untraced build of the same source, and the budget that

@@ -18,7 +18,7 @@ let newGraph () =
 ```
 
 When a completion arrives from another thread, pump the graph on its owning thread. See
-[Threading and dispatch](threading.md) and the `pumpUntil` helper in [Testing async state](testing.md).
+[Threading and dispatch](threading.md) and the `pumpUntil` helper in [Async memos](async-memos.md).
 
 Readers see the fallback or recovered value for the channel the boundary handles:
 
@@ -45,9 +45,14 @@ forever. Create the async value outside the boundary and read it in the body; se
 
 :::
 
-All three return a `Boundary<'T>`. `IsWaiting` is `true` while a fallback stands in for the body, and
-`Caught` holds the exception a `recover` handled on the current run, or `null`. Both are tracked reads that bring the
-boundary current, so an effect reading only `IsWaiting` wakes when the body settles.
+All three return a `Boundary<'T>`. `IsWaiting` is `true` while a fallback stands in for the body.
+`Caught` holds the exception a `recover` handled on the current run (or `null`), and `CaughtFrom`
+holds the originating node (`INode`, or `null`). All three are tracked reads that bring the boundary
+current, so an effect reading only `IsWaiting` or `CaughtFrom` wakes when the body settles.
+
+Boundaries obey the graph's equality cutoff on settled, fallback, and recovered outputs; pass a
+custom `IEqualityComparer<'T>` via `createSuspenseWithComparer`, `createErrorBoundaryWithComparer`,
+or `createBoundaryWithComparer` to override it per boundary.
 
 ### Stale while refreshing, and empty versus not yet known
 

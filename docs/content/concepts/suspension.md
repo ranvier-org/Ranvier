@@ -3,10 +3,6 @@ title: Suspension
 order: 2
 ---
 
-:::warning
-**Preview.** Ranvier is pre-release; its APIs may change.
-:::
-
 A pending read stops the current computation and records what it is waiting on. When that source
 settles, the computation starts again. Boundaries supply display values while it waits.
 
@@ -63,22 +59,23 @@ When a body reads `.Value` on a pending node, the read does the following, in th
 1. It links the dependency edge.
 2. It throws `NotReadyException`, which carries the source.
 
-The engine catches the exception around the body. It adds the source to the computation's pending sources,
-sets the computation's status to Pending, and publishes no value. When the source settles, the linked edge
-wakes the computation, and the body runs again **from the top**.
+The engine catches the exception around the body. It records that source as the computation's pending
+source (at most one per run on a memo, effect, or async memo; a boundary can record one for its body
+and one if its fallback or recovery handler suspends), sets the computation's status to Pending,
+and publishes no value. When the source settles, the linked edge wakes the computation, and the
+body runs again **from the top**.
 
 The order is required. If the read threw before linking the edge, the computation would never be woken and
 would stay pending indefinitely.
 
-Pending sources are kept as a set. A later write can reach a computation through a source that has
-already settled while another source is still in flight. In that case the computation stays Pending, and
-the unsettled source remains in its set. A settled branch that changes does not make a join readable while
-another branch is still in flight:
+Reading an already-settled source before hitting an unsettled one still links the settled source: a write
+to `b` re-runs `c`, which hits `a.Value` again, keeping `a` as its pending source without publishing
+while `a` remains in flight:
 
 ```fsharp
 let a = createAsyncSource<int> ()
 let b = createSignal 1
-let c = createMemo (fun _ -> a.Value + b.Value)
+let c = createMemo (fun _ -> b.Value + a.Value)
 
 c.TryValue        // Pending
 b.Value <- 2
@@ -87,12 +84,12 @@ a.Settle 10
 c.TryValue        // Ready 12
 ```
 
-In the map, a write to `b` while `a` is pending re-runs `c`, which stays pending and publishes nothing. Settling `a` lets `c` publish.
+In the map, reading `b.Value` before `a.Value` means writes to `b` re-run `c`, which remains pending and publishes nothing until `a` settles.
 
 ```fsharp map
 let a = createAsyncSource<int> ()
 let b = createSignal 1
-let c = createMemo (fun _ -> a.Value + b.Value)
+let c = createMemo (fun _ -> b.Value + a.Value)
 createEffect (fun () -> printfn "c = %d" c.Value)
 
 controls [
@@ -307,4 +304,4 @@ The examples and signal maps use these state labels:
 - **Real-world throw counts.** The estimate that a settle involves a handful of throws has not been measured
   in a real application.
 - **Additional async features.** Transitions and optimistic lanes remain outside the implemented
-  pending-channel model. Ranvier does not promise behavioral parity with Solid.
+  pending-channel model. Ranvier does not promise behavioral parity with Solid 2.

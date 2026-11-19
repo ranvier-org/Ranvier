@@ -16,14 +16,10 @@ open System.Text.Json
 open System.Text.Json.Nodes
 #endif
 
-/// <summary>
-/// The index of the first UTF-16 code unit of the text that is a surrogate without its pair; -1 when every surrogate
-/// is paired or the text is null.
-/// </summary>
-let loneSurrogate (text: string) : int =
-    let length = if isNull text then 0 else text.Length
+let private scanSurrogatesFrom (text: string) (start: int) : int =
+    let length = text.Length
     let mutable found = -1
-    let mutable i = 0
+    let mutable i = start
 
     while found < 0 && i < length do
         let code = int text[i]
@@ -43,6 +39,25 @@ let loneSurrogate (text: string) : int =
 
     found
 
+/// <summary>
+/// The index of the first UTF-16 code unit of the text that is a surrogate without its pair; -1 when every surrogate
+/// is paired or the text is null.
+/// </summary>
+let loneSurrogate (text: string) : int =
+    if isNull text || text.Length = 0 then
+        -1
+    else
+#if FABLE_COMPILER
+        scanSurrogatesFrom text 0
+#else
+#if NET8_0_OR_GREATER
+        let first = text.AsSpan().IndexOfAnyInRange('\uD800', '\uDFFF')
+        if first < 0 then -1 else scanSurrogatesFrom text first
+#else
+        scanSurrogatesFrom text 0
+#endif
+#endif
+
 let private requireScalars (text: string) =
     let index = loneSurrogate text
 
@@ -53,6 +68,12 @@ let private requireScalars (text: string) =
              + string index
              + "; wire text carries Unicode scalar values only.")
 
+let private requireCharScalar (value: char) =
+    let code = int value
+
+    if code >= 0xD800 && code <= 0xDFFF then
+        invalidArg "value" "A string holds a lone surrogate at index 0; wire text carries Unicode scalar values only."
+
 /// <summary>The helpers of <c>inner</c>, raising <c>ArgumentException</c> for a string, char or object key holding a lone surrogate.</summary>
 let encoding (inner: IEncoderHelpers<'J>) : IEncoderHelpers<'J> =
     { new IEncoderHelpers<'J> with
@@ -61,7 +82,7 @@ let encoding (inner: IEncoderHelpers<'J>) : IEncoderHelpers<'J> =
             inner.encodeString value
 
         member _.encodeChar value =
-            requireScalars (string value)
+            requireCharScalar value
             inner.encodeChar value
 
         member _.encodeDecimalNumber value =
@@ -74,12 +95,22 @@ let encoding (inner: IEncoderHelpers<'J>) : IEncoderHelpers<'J> =
             inner.encodeNull ()
 
         member _.encodeObject values =
+#if FABLE_COMPILER
             inner.encodeObject (
                 values
                 |> Seq.map (fun (key, value) ->
                     requireScalars key
                     key, value)
             )
+#else
+            let items = ResizeArray<string * 'J>()
+
+            for key, value in values do
+                requireScalars key
+                items.Add (key, value)
+
+            inner.encodeObject (items.ToArray ())
+#endif
 
         member _.encodeArray values =
             inner.encodeArray values
@@ -234,38 +265,90 @@ let private capEcho (text: string) : string =
 
 #if !FABLE_COMPILER
 /// <summary>
-/// Whether ECMAScript orders the key as an array index: the canonical decimal text of an integer from 0 to 4294967294.
+/// Parses <c>key</c> as an ECMAScript array index (canonical decimal integer from 0 to 4294967294), or returns -1L.
 /// </summary>
-let private isArrayIndex (key: string) =
-    let mutable result =
-        key.Length >= 1
-        && key.Length <= 10
-        && (key.Length = 1 || key[0] <> '0')
+let private tryParseArrayIndex (key: string) : int64 =
+    if
+        isNull key
+        || key.Length < 1
+        || key.Length > 10
+        || (key.Length > 1 && key[0] = '0')
+    then
+        -1L
+    else
+        let mutable value = 0L
+        let mutable i = 0
 
-    let mutable i = 0
+        while value >= 0L && i < key.Length do
+            let c = key[i]
 
-    while result && i < key.Length do
-        result <- key[i] >= '0' && key[i] <= '9'
-        i <- i + 1
+            if c >= '0' && c <= '9' then
+                value <- value * 10L + int64 (int c - int '0')
+                i <- i + 1
+            else
+                value <- -1L
 
-    result
-    && (key.Length < 10
-        || String.CompareOrdinal (key, "4294967294") <= 0)
+        if value >= 0L && value <= 4294967294L then value else -1L
 
 /// <summary>
 /// The items in ECMAScript own-property order of their keys: the array indexes in ascending numeric order, then the
 /// other keys in their given order.
 /// </summary>
 let private inPropertyOrder (key: 'T -> string) (items: 'T array) : 'T array =
-    if Array.exists (fun item -> isArrayIndex (key item)) items then
-        Array.append
-            (items
-             |> Array.filter (fun item -> isArrayIndex (key item))
-             |> Array.sortBy (fun item -> UInt32.Parse (key item, CultureInfo.InvariantCulture)))
-            (items
-             |> Array.filter (fun item -> not (isArrayIndex (key item))))
-    else
+    let mutable firstIdx = -1
+    let mutable firstOrder = -1L
+    let mutable i = 0
+
+    while firstIdx < 0 && i < items.Length do
+        let parsed = tryParseArrayIndex (key items[i])
+
+        if parsed >= 0L then
+            firstIdx <- i
+            firstOrder <- parsed
+        else
+            i <- i + 1
+
+    if firstIdx < 0 then
         items
+    else
+        let indexed = ResizeArray<struct (int64 * int * 'T)>()
+        indexed.Add (struct (firstOrder, firstIdx, items[firstIdx]))
+        let others = ResizeArray<'T>(max 0 (items.Length - 1))
+
+        for j = 0 to firstIdx - 1 do
+            others.Add items[j]
+
+        for j = firstIdx + 1 to items.Length - 1 do
+            let item = items[j]
+            let parsed = tryParseArrayIndex (key item)
+
+            if parsed >= 0L then
+                indexed.Add (struct (parsed, j, item))
+            else
+                others.Add item
+
+        let idxArr = indexed.ToArray ()
+
+        if idxArr.Length > 1 then
+            Array.Sort (
+                idxArr,
+                Comparison<struct (int64 * int * 'T)>(fun (struct (ka, ia, _)) (struct (kb, ib, _)) ->
+                    let c = ka.CompareTo kb
+                    if c <> 0 then c else ia.CompareTo ib)
+            )
+
+        let result = Array.zeroCreate<'T> items.Length
+
+        for j = 0 to idxArr.Length - 1 do
+            let struct (_, _, item) = idxArr[j]
+            result[j] <- item
+
+        let offset = idxArr.Length
+
+        for j = 0 to others.Count - 1 do
+            result[offset + j] <- others[j]
+
+        result
 
 /// <summary>
 /// The System.Text.Json encoder helpers, with every double written as ECMAScript number text and every object's keys
@@ -291,7 +374,12 @@ let netEncoding: IEncoderHelpers<JsonNode> =
             inner.encodeNull ()
 
         member _.encodeObject values =
-            inner.encodeObject (values |> Seq.toArray |> inPropertyOrder fst)
+            let arr =
+                match values with
+                | :? ((string * JsonNode) array) as ready -> ready
+                | _ -> Seq.toArray values
+
+            inner.encodeObject (inPropertyOrder fst arr)
 
         member _.encodeArray values =
             inner.encodeArray values
@@ -325,11 +413,11 @@ type private ObjectMembers(element: JsonElement) =
 
         for property in element.EnumerateObject () do
             let name = property.Name
-
-            if not (found.ContainsKey name) then
-                order.Add name
-
+            let prevCount = found.Count
             found[name] <- property.Value
+
+            if found.Count > prevCount then
+                order.Add name
 
         inPropertyOrder id (order.ToArray ())
 

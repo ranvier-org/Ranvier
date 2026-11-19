@@ -18,7 +18,7 @@ let newGraph () =
 ```
 
 When a completion arrives from another thread, pump the graph on its owning thread. See
-[Threading and dispatch](threading.md) and the `pumpUntil` helper in [Testing async state](testing.md).
+[Threading and dispatch](threading.md) and the `pumpUntil` helper in [Async memos](async-memos.md).
 
 `Settle value` publishes a value, and `Fail exn` publishes a failure. Both can be called more than
 once. Neither returns the source to pending; use an [async memo](async-memos.md) for requests

@@ -3,6 +3,7 @@ From Stdlib Require Import ZArith.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Edges Marking Engine Check Runs Scheduler Ownership Collections.
 From iris.heap_lang Require Import proofmode notation.
+From iris.heap_lang.lib Require Import array.
 From Ranvier.Heap Require Import ObserverSet SourceList Ghost Marking Run Scheduler Ownership.
 
 Open Scope nat_scope.
@@ -519,6 +520,245 @@ Proof.
       iIntros "_". wp_store. iModIntro. iApply "HΦ".
       rewrite /is_adopt /= list_val_eq. iFrame.
     + iModIntro. iApply "HΦ". rewrite /is_adopt /=. iFrame.
+Qed.
+
+(** ** 1-Based Fenwick Prefix Sums and Point Updates *)
+
+Definition fenwick_sum_loop : val :=
+  rec: "loop" "arr" "i" "acc" :=
+    if: #0 < "i" then
+      let: "v" := !("arr" +ₗ "i") in
+      let: "lsb" := BinOp AndOp "i" (- "i") in
+      "loop" "arr" ("i" - "lsb") ("acc" + "v")
+    else "acc".
+
+Definition fenwick_sum_code : val :=
+  λ: "arr" "i", fenwick_sum_loop "arr" "i" #0.
+
+Lemma fenwick_sum_loop_spec (arr : loc) (dq : dfrac) (tree : list Z) (i : nat) (acc : Z) :
+  (i < length tree)%nat ->
+  {{{ arr ↦∗{dq} ((fun z : Z => #z) <$> tree) }}}
+    fenwick_sum_loop #arr #(Z.of_nat i) #acc
+  {{{ RET #(fenwick_sum_go i tree i acc); arr ↦∗{dq} ((fun z : Z => #z) <$> tree) }}}.
+Proof.
+  revert acc. induction i as [i IH] using lt_wf_ind.
+  intros acc Hlen Φ. iIntros "Hpre HΦ".
+  wp_rec. wp_pures.
+  destruct (decide (1 <= i)%nat) as [Hi|Hni].
+  - rewrite bool_decide_eq_true_2; [|lia]. wp_pures.
+    destruct (lookup_lt_is_Some_2 tree i Hlen) as [v Hv].
+    wp_apply (wp_load_offset with "Hpre"); [by rewrite list_lookup_fmap Hv|].
+    iIntros "Hpre". wp_pures.
+    rewrite (z_land_opp_nat i Hi).
+    destruct (nat_lsb_bounds i Hi) as [Hpos Hle].
+    replace (Z.of_nat i - Z.of_nat (nat_lsb i))%Z with (Z.of_nat (i - nat_lsb i)) by lia.
+    wp_apply (IH (i - nat_lsb i) ltac:(lia) (acc + v)%Z ltac:(lia) with "Hpre").
+    iIntros "Hpre".
+    destruct i as [|i']; [lia|]. cbn [fenwick_sum_go].
+    destruct (decide (1 <= S i')%nat) as [_|]; [|lia].
+    rewrite Hv /=.
+    erewrite fenwick_sum_go_fuel_irrel; [iApply "HΦ"; iExact "Hpre" | lia | lia].
+  - assert (i = 0)%nat as -> by lia.
+    rewrite bool_decide_eq_false_2; [|lia]. wp_pures.
+    cbn [fenwick_sum_go]. iApply "HΦ". iExact "Hpre".
+Qed.
+
+(**md
+**1-based HeapLang Fenwick prefix sum matches pure `fenwick_sum_pure`.**
+
+Walking down `i` via two's-complement step `i - (i &&& -i)` over the
+fractional heap array `arr ↦∗{dq} tree` returns `fenwick_sum_pure tree i`
+without mutating the Fenwick tree.
+
+- [arr:] base heap location of the 1-based Fenwick array.
+- [dq:] fractional ownership held during the read-only prefix query.
+- [tree:] pure integer model of the Fenwick array entries.
+- [i:] 1-based prefix index to accumulate (`0` for the empty prefix).
+*)
+Theorem fenwick_sum_spec (arr : loc) (dq : dfrac) (tree : list Z) (i : nat) :
+  (i < length tree)%nat ->
+  {{{ arr ↦∗{dq} ((fun z : Z => #z) <$> tree) }}}
+    fenwick_sum_code #arr #(Z.of_nat i)
+  {{{ RET #(fenwick_sum_pure tree i); arr ↦∗{dq} ((fun z : Z => #z) <$> tree) }}}.
+Proof.
+  intros Hlen Φ. iIntros "Hpre HΦ".
+  wp_lam. wp_pures.
+  wp_apply (fenwick_sum_loop_spec with "Hpre"); [exact Hlen|].
+  iExact "HΦ".
+Qed.
+
+Definition fenwick_add_loop : val :=
+  rec: "loop" "arr" "n" "i" "delta" :=
+    if: "i" ≤ "n" then
+      let: "v" := !("arr" +ₗ "i") in
+      ("arr" +ₗ "i") <- ("v" + "delta") ;;
+      let: "lsb" := BinOp AndOp "i" (- "i") in
+      "loop" "arr" "n" ("i" + "lsb") "delta"
+    else #().
+
+Definition fenwick_add_code : val :=
+  λ: "arr" "n" "i" "delta", fenwick_add_loop "arr" "n" "i" "delta".
+
+Lemma fenwick_add_loop_spec (arr : loc) (tree : list Z) (n i : nat) (delta : Z) :
+  (1 <= i)%nat -> (S n <= length tree)%nat ->
+  {{{ arr ↦∗ ((fun z : Z => #z) <$> tree) }}}
+    fenwick_add_loop #arr #(Z.of_nat n) #(Z.of_nat i) #delta
+  {{{ RET #(); arr ↦∗ ((fun z : Z => #z) <$> fenwick_add_pure tree n i delta) }}}.
+Proof.
+  remember (S n - i)%nat as rem eqn:Hrem. revert tree i Hrem.
+  induction rem as [rem IH] using lt_wf_ind.
+  intros tree i Hrem Hi Hlen Φ. iIntros "Hpre HΦ".
+  wp_rec. wp_pures.
+  destruct (decide (i <= n)%nat) as [Hle|Hgt].
+  - rewrite bool_decide_eq_true_2; [|lia]. wp_pures.
+    assert (Hil : (i < length tree)%nat) by lia.
+    destruct (lookup_lt_is_Some_2 tree i Hil) as [v Hv].
+    wp_apply (wp_load_offset with "Hpre"); [by rewrite list_lookup_fmap Hv|].
+    iIntros "Hpre". wp_pures.
+    wp_apply (wp_store_offset with "Hpre"); [rewrite list_lookup_fmap Hv; eauto|].
+    iIntros "Hpre". rewrite -list_fmap_insert. wp_pures.
+    rewrite (z_land_opp_nat i Hi).
+    destruct (nat_lsb_bounds i Hi) as [Hpos _].
+    replace (Z.of_nat i + Z.of_nat (nat_lsb i))%Z with (Z.of_nat (i + nat_lsb i)) by lia.
+    set (tree' := <[i := (v + delta)%Z]> tree).
+    assert (Hlen' : (S n <= length tree')%nat) by (subst tree'; rewrite length_insert; lia).
+    wp_apply (IH (S n - (i + nat_lsb i))%nat ltac:(lia) tree' (i + nat_lsb i)%nat eq_refl ltac:(lia) Hlen' with "Hpre").
+    iIntros "Hpre". unfold fenwick_add_pure.
+    destruct (S n - i)%nat as [|f'] eqn:Hf; [lia|]. cbn [fenwick_add_go].
+    destruct (decide (1 <= i /\ i <= n)%nat) as [_|]; [|lia].
+    rewrite Hv. fold tree'.
+    erewrite (fenwick_add_go_fuel_irrel (S n - (i + nat_lsb i)) f');
+      [iApply "HΦ"; iExact "Hpre" | lia | lia | lia].
+  - rewrite bool_decide_eq_false_2; [|lia]. wp_pures.
+    unfold fenwick_add_pure. replace (S n - i)%nat with 0%nat by lia.
+    cbn [fenwick_add_go]. iApply "HΦ". iExact "Hpre".
+Qed.
+
+(**md
+**1-based HeapLang Fenwick point update matches pure `fenwick_add_pure`.**
+
+Climbing `i` via `i + (i &&& -i)` up to `n` adds `delta` at every covered
+Fenwick bucket in `arr` and leaves `arr` holding `fenwick_add_pure tree n i delta`.
+
+- [arr:] base heap location of the 1-based Fenwick array.
+- [tree:] initial integer model of the Fenwick array entries.
+- [n:] logical 1-based capacity upper bound (`S n <= length tree`).
+- [i:] starting 1-based index being updated (`1 <= i`).
+- [delta:] integer delta (`+1` or `-1`) added along the Fenwick ancestor chain.
+*)
+Theorem fenwick_add_spec (arr : loc) (tree : list Z) (n i : nat) (delta : Z) :
+  (1 <= i)%nat -> (S n <= length tree)%nat ->
+  {{{ arr ↦∗ ((fun z : Z => #z) <$> tree) }}}
+    fenwick_add_code #arr #(Z.of_nat n) #(Z.of_nat i) #delta
+  {{{ RET #(); arr ↦∗ ((fun z : Z => #z) <$> fenwick_add_pure tree n i delta) }}}.
+Proof.
+  intros Hi Hlen Φ. iIntros "Hpre HΦ".
+  wp_lam. wp_pures.
+  wp_apply (fenwick_add_loop_spec with "Hpre"); [exact Hi|exact Hlen|].
+  iExact "HΦ".
+Qed.
+
+(** ** 7. Incremental `SortView` inverse-order array shift (Combinators.fs) *)
+
+Definition inv_order_shift_loop : val :=
+  rec: "loop" "order_arr" "pos_arr" "k" "new_pos" :=
+    if: "new_pos" < "k" then
+      let: "km1" := "k" - #1 in
+      let: "moved" := !("order_arr" +ₗ "km1") in
+      ("order_arr" +ₗ "k") <- "moved" ;;
+      ("pos_arr" +ₗ "moved") <- "k" ;;
+      "loop" "order_arr" "pos_arr" "km1" "new_pos"
+    else #().
+
+Definition inv_order_shift_code : val :=
+  λ: "order_arr" "pos_arr" "old_pos" "new_pos" "p_idx",
+    inv_order_shift_loop "order_arr" "pos_arr" "old_pos" "new_pos" ;;
+    ("order_arr" +ₗ "new_pos") <- "p_idx" ;;
+    ("pos_arr" +ₗ "p_idx") <- "new_pos".
+
+Lemma inv_order_shift_loop_spec
+  (order_arr pos_arr : loc) (k new_pos free_p : nat) (order order_pos : list nat) :
+  (new_pos <= k)%nat ->
+  inv_order_hole k free_p order order_pos ->
+  {{{ order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order) ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos) }}}
+    inv_order_shift_loop #order_arr #pos_arr #(Z.of_nat k) #(Z.of_nat new_pos)
+  {{{ RET #();
+      let '(order1, order_pos1) := shift_right_steps (k - new_pos)%nat k order order_pos in
+      order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order1) ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos1) ∗
+      ⌜inv_order_hole new_pos free_p order1 order_pos1⌝ }}}.
+Proof.
+  remember (k - new_pos)%nat as rem eqn:Hrem.
+  revert k order order_pos Hrem.
+  induction rem as [|rem' IH]; intros k order order_pos Hrem Hle Hinv Φ; iIntros "[Ho Hp] HΦ".
+  - wp_rec. wp_pures.
+    rewrite bool_decide_eq_false_2; [|lia]. wp_pures.
+    assert (Hk : k = new_pos) by lia. subst k.
+    cbn [shift_right_steps]. iApply "HΦ". iFrame. iPureIntro. exact Hinv.
+  - wp_rec. wp_pures.
+    rewrite bool_decide_eq_true_2; [|lia]. wp_pures.
+    replace (Z.of_nat k - 1)%Z with (Z.of_nat (k - 1)) by lia.
+    destruct Hinv as (Hlen & Hk_lt & Hfree_lt & Hfw & Hbw).
+    assert (Hkm1_lt : (k - 1 < length order)%nat) by lia.
+    destruct (lookup_lt_is_Some_2 order (k - 1)%nat Hkm1_lt) as [moved Hmoved].
+    wp_apply (wp_load_offset with "Ho"); [by rewrite list_lookup_fmap Hmoved|].
+    iIntros "Ho". wp_pures.
+    wp_apply (wp_store_offset with "Ho"); [apply lookup_lt_is_Some_2; rewrite length_fmap; lia|].
+    iIntros "Ho". rewrite -list_fmap_insert. wp_pures.
+    pose proof (Hfw (k - 1)%nat moved ltac:(lia) Hmoved) as [_ Hmoved_pos].
+    wp_apply (wp_store_offset with "Hp"); [rewrite list_lookup_fmap Hmoved_pos; eauto|].
+    iIntros "Hp". rewrite -list_fmap_insert. wp_pures.
+    pose proof (inv_order_hole_step k free_p moved order order_pos ltac:(lia) (conj Hlen (conj Hk_lt (conj Hfree_lt (conj Hfw Hbw)))) Hmoved) as Hstep.
+    wp_apply (IH (k - 1)%nat (<[k := moved]> order) (<[moved := k]> order_pos) ltac:(lia) ltac:(lia) Hstep with "[$Ho $Hp]").
+    destruct (shift_right_steps rem' (k - 1)%nat (<[k := moved]> order) (<[moved := k]> order_pos)) as [o1 op1] eqn:Hsr1.
+    iIntros "(Ho & Hp & %Hinv1)".
+    cbn [shift_right_steps]. rewrite Hmoved Hsr1.
+    iApply "HΦ". iFrame. iPureIntro. exact Hinv1.
+Qed.
+
+(**md
+**HeapLang `inv_order_shift_code` refines `reinsert_left_pure` and preserves `inv_order`.**
+
+Executes `SortView`'s leftward reinsertion right-shift loop across heap arrays
+`order_arr` and `pos_arr`, then writes `p_idx` and `new_pos`, leaving both
+heap arrays equal to `reinsert_left_pure` with `inv_order` restored.
+
+- [order_arr:] base heap location of the output-position `order` array.
+- [pos_arr:] base heap location of the inverse `orderPos` array.
+- [order:] pure model of `order` before reinsertion.
+- [order_pos:] pure model of `orderPos` before reinsertion.
+- [old_pos:] prior output position holding `p_idx`.
+- [new_pos:] target output position (`new_pos <= old_pos`).
+- [p_idx:] placed-slot index moved leftward from `old_pos` to `new_pos`.
+*)
+Theorem inv_order_shift_spec
+  (order_arr pos_arr : loc) (order order_pos : list nat) (old_pos new_pos p_idx : nat) :
+  inv_order order order_pos ->
+  (new_pos <= old_pos)%nat ->
+  order !! old_pos = Some p_idx ->
+  {{{ order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order) ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos) }}}
+    inv_order_shift_code #order_arr #pos_arr #(Z.of_nat old_pos) #(Z.of_nat new_pos) #(Z.of_nat p_idx)
+  {{{ RET #();
+      let '(order', order_pos') := reinsert_left_pure old_pos new_pos p_idx order order_pos in
+      order_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order') ∗
+      pos_arr ↦∗ ((fun n : nat => #(Z.of_nat n)) <$> order_pos') ∗
+      ⌜inv_order order' order_pos'⌝ }}}.
+Proof.
+  intros Hinv Hle Hold Φ. iIntros "[Ho Hp] HΦ".
+  wp_lam. wp_pures.
+  wp_apply (inv_order_shift_loop_spec order_arr pos_arr old_pos new_pos p_idx order order_pos Hle (inv_order_to_hole order order_pos old_pos p_idx Hinv Hold) with "[$Ho $Hp]").
+  destruct (shift_right_steps (old_pos - new_pos)%nat old_pos order order_pos) as [order1 order_pos1] eqn:Hsr.
+  iIntros "(Ho & Hp & %Hhole)". wp_pures.
+  destruct (inv_order_close_hole new_pos p_idx order1 order_pos1 Hhole) as [Hinv' _].
+  destruct Hhole as (_ & Hnp_lt & Hp_lt & _).
+  wp_apply (wp_store_offset with "Ho"); [apply lookup_lt_is_Some_2; rewrite length_fmap; lia|].
+  iIntros "Ho". rewrite -list_fmap_insert. wp_pures.
+  wp_apply (wp_store_offset with "Hp"); [apply lookup_lt_is_Some_2; rewrite length_fmap; lia|].
+  iIntros "Hp". rewrite -list_fmap_insert.
+  unfold reinsert_left_pure. rewrite Hsr.
+  iApply "HΦ". iFrame. iPureIntro. exact Hinv'.
 Qed.
 
 End heap_collections.

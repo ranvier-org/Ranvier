@@ -1,5 +1,6 @@
-From stdpp Require Import prelude gmap.
+From stdpp Require Import prelude gmap strings.
 From Stdlib Require Import ZArith.
+From Stdlib Require String.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Marking Engine.
 
@@ -489,4 +490,1139 @@ Proof.
   unfold obs_cmd. simpl.
   rewrite <- app_assoc. simpl.
   split; reflexivity.
+Qed.
+
+(** ** 6. Elmish untracked/unjournaled bypass, lazy gate, inline staging, QueryKey, and linked leases *)
+
+Record arrive_env := {
+  ae_tracking : bool;
+  ae_host_set : bool;
+}.
+
+Definition arrive_run_untracked (e : arrive_env) (apply : bool -> Z) : Z * arrive_env :=
+  if ae_tracking e then
+    let _e_inner := {| ae_tracking := false; ae_host_set := true |} in
+    (apply false, {| ae_tracking := true; ae_host_set := ae_host_set e |})
+  else
+    (apply false, e).
+
+Definition arrive_fast (e : arrive_env) (apply : bool -> Z) : Z * arrive_env :=
+  if ae_tracking e then arrive_run_untracked e apply
+  else (apply false, e).
+
+Inductive cmd_work :=
+  | WorkNone
+  | WorkJournaled.
+
+Definition run_cmds_journaled_spec (has_journal : bool) (cmds : list mvu_cmd) (st : mvu_state)
+    : mvu_state * cmd_work :=
+  if has_journal then (mvu_run_cmds cmds st, WorkJournaled)
+  else (mvu_run_cmds cmds st, WorkNone).
+
+Definition run_cmds_opt (has_journal : bool) (cmds : list mvu_cmd) (st : mvu_state)
+    : mvu_state * cmd_work :=
+  if negb has_journal then (mvu_run_cmds cmds st, WorkNone)
+  else (mvu_run_cmds cmds st, WorkJournaled).
+
+(**md
+**`Mvu.Arrive` bypassing `RunUntracked` when `graph.IsTracking () = false` and `Mvu.RunCommands` skipping `JournalWork` when `graph.Options.Journal.IsNone` agree identically with the full untracked and journaled paths.**
+
+Proves the `Mvu.fs` hot-path bypasses:
+- For any tracking environment `e` and callback `apply`, `arrive_fast e apply = arrive_run_untracked e apply`, and when `ae_tracking e = false` it returns `(apply false, e)` directly without touching host scope state.
+- For any `has_journal` flag, command list `cmds`, and `Mvu` state `st`, `run_cmds_opt` agrees with `run_cmds_journaled_spec` while emitting `WorkNone` when `has_journal = false`.
+
+- [e:] the tracking environment at dispatch arrival.
+- [apply:] the message application function parameterized by whether tracking is active.
+- [has_journal:] whether `graph.Options.Journal.IsSome`.
+- [cmds:] the returned Elmish command list.
+- [st:] the initial `Mvu` state.
+*)
+Theorem mvu_untracked_bypass_and_direct_cmd_eq
+    (e : arrive_env) (apply : bool -> Z) (has_journal : bool) (cmds : list mvu_cmd) (st : mvu_state) :
+  arrive_fast e apply = arrive_run_untracked e apply /\
+  (ae_tracking e = false -> arrive_fast e apply = (apply false, e)) /\
+  run_cmds_opt has_journal cmds st = run_cmds_journaled_spec has_journal cmds st /\
+  run_cmds_opt false cmds st = (mvu_run_cmds cmds st, WorkNone).
+Proof.
+  split_and!.
+  - unfold arrive_fast, arrive_run_untracked. destruct (ae_tracking e); reflexivity.
+  - intros Hnt. unfold arrive_fast. rewrite Hnt. reflexivity.
+  - unfold run_cmds_opt, run_cmds_journaled_spec. destruct has_journal; reflexivity.
+  - reflexivity.
+Qed.
+
+Inductive gate_state :=
+  | GatePending
+  | GateSettled (v : Z)
+  | GateFailed (e : nat).
+
+Record eager_entry := {
+  ee_has_data : bool;
+  ee_data : Z;
+  ee_error : option nat;
+  ee_gate : gate_state;
+}.
+
+Record lazy_entry := {
+  le_has_data : bool;
+  le_data : Z;
+  le_error : option nat;
+  le_gate : option gate_state;
+}.
+
+Definition eager_init : eager_entry :=
+  {| ee_has_data := false; ee_data := 0%Z; ee_error := None; ee_gate := GatePending |}.
+
+Definition lazy_init : lazy_entry :=
+  {| le_has_data := false; le_data := 0%Z; le_error := None; le_gate := None |}.
+
+Inductive gate_op :=
+  | OpStart
+  | OpOk (v : Z)
+  | OpErr (e : nat)
+  | OpReadValue.
+
+Definition eval_gate (g : gate_state) : Z + option nat :=
+  match g with
+  | GatePending => inr None
+  | GateSettled v => inl v
+  | GateFailed e => inr (Some e)
+  end.
+
+Definition step_eager (op : gate_op) (ee : eager_entry) : option (Z + option nat) * eager_entry :=
+  match op with
+  | OpStart =>
+      (None, {| ee_has_data := ee_has_data ee;
+                ee_data := ee_data ee;
+                ee_error := None;
+                ee_gate := if ee_has_data ee then ee_gate ee else GatePending |})
+  | OpOk v =>
+      (None, {| ee_has_data := true;
+                ee_data := v;
+                ee_error := None;
+                ee_gate := if ee_has_data ee then ee_gate ee else GateSettled v |})
+  | OpErr e =>
+      (None, {| ee_has_data := ee_has_data ee;
+                ee_data := ee_data ee;
+                ee_error := Some e;
+                ee_gate := if ee_has_data ee then ee_gate ee else GateFailed e |})
+  | OpReadValue =>
+      let res := if ee_has_data ee then inl (ee_data ee) else eval_gate (ee_gate ee) in
+      (Some res, ee)
+  end.
+
+Definition ensure_gate (le : lazy_entry) : gate_state * lazy_entry :=
+  match le_gate le with
+  | Some g => (g, le)
+  | None =>
+      let g := match le_error le with
+               | Some e => GateFailed e
+               | None => GatePending
+               end in
+      (g, {| le_has_data := le_has_data le;
+             le_data := le_data le;
+             le_error := le_error le;
+             le_gate := Some g |})
+  end.
+
+Definition step_lazy (op : gate_op) (le : lazy_entry) : option (Z + option nat) * lazy_entry :=
+  match op with
+  | OpStart =>
+      (None, {| le_has_data := le_has_data le;
+                le_data := le_data le;
+                le_error := None;
+                le_gate := if le_has_data le then le_gate le
+                           else match le_gate le with
+                                | Some _ => Some GatePending
+                                | None => None
+                                end |})
+  | OpOk v =>
+      (None, {| le_has_data := true;
+                le_data := v;
+                le_error := None;
+                le_gate := if le_has_data le then le_gate le
+                           else match le_gate le with
+                                | Some _ => Some (GateSettled v)
+                                | None => None
+                                end |})
+  | OpErr e =>
+      (None, {| le_has_data := le_has_data le;
+                le_data := le_data le;
+                le_error := Some e;
+                le_gate := if le_has_data le then le_gate le
+                           else match le_gate le with
+                                | Some _ => Some (GateFailed e)
+                                | None => None
+                                end |})
+  | OpReadValue =>
+      if le_has_data le then (Some (inl (le_data le)), le)
+      else let '(g, le') := ensure_gate le in (Some (eval_gate g), le')
+  end.
+
+Fixpoint run_eager (ops : list gate_op) (ee : eager_entry)
+    : list (option (Z + option nat)) * eager_entry :=
+  match ops with
+  | [] => ([], ee)
+  | op :: rest =>
+      let '(r, ee1) := step_eager op ee in
+      let '(rs, ee') := run_eager rest ee1 in
+      (r :: rs, ee')
+  end.
+
+Fixpoint run_lazy (ops : list gate_op) (le : lazy_entry)
+    : list (option (Z + option nat)) * lazy_entry :=
+  match ops with
+  | [] => ([], le)
+  | op :: rest =>
+      let '(r, le1) := step_lazy op le in
+      let '(rs, le') := run_lazy rest le1 in
+      (r :: rs, le')
+  end.
+
+Definition entry_gate_rel (ee : eager_entry) (le : lazy_entry) : Prop :=
+  ee_has_data ee = le_has_data le /\
+  ee_data ee = le_data le /\
+  ee_error ee = le_error le /\
+  match le_gate le with
+  | Some g => ee_gate ee = g
+  | None =>
+      ee_has_data ee = false ->
+      ee_gate ee = match ee_error ee with
+                   | Some e => GateFailed e
+                   | None => GatePending
+                   end
+  end.
+
+Fixpoint reads_while_empty (ops : list gate_op) (has_data : bool) : bool :=
+  match ops with
+  | [] => false
+  | OpStart :: rest => reads_while_empty rest has_data
+  | OpOk _ :: rest => reads_while_empty rest true
+  | OpErr _ :: rest => reads_while_empty rest has_data
+  | OpReadValue :: rest => if negb has_data then true else reads_while_empty rest has_data
+  end.
+
+(**md
+**Lazy initial-load gate allocation (`EnsureGate`) simulates eager `AsyncSource` allocation across every trace of entry operations and leaves `le_gate = None` whenever `.Value` is never read while empty.**
+
+Proves the lazy `gate` optimization in `QueryEntry<'T>` (`Entry.fs`):
+- Across any sequence of `OpStart`, `OpOk`, `OpErr`, and `OpReadValue`, `run_lazy` preserves `entry_gate_rel` and produces the exact same sequence of read results as `run_eager`.
+- On any trace whose `OpReadValue` calls occur only after data has loaded (`reads_while_empty ops false = false`), `le_gate` stays `None` (zero `AsyncSource` allocations).
+
+- [ops:] the trace of entry operations starting from `eager_init` and `lazy_init`.
+*)
+Theorem lazy_query_gate_refines_eager (ops : list gate_op) :
+  (run_lazy ops lazy_init).1 = (run_eager ops eager_init).1 /\
+  entry_gate_rel (run_eager ops eager_init).2 (run_lazy ops lazy_init).2 /\
+  (reads_while_empty ops false = false -> le_gate (run_lazy ops lazy_init).2 = None).
+Proof.
+  assert (Hsim : forall trace ee le,
+    entry_gate_rel ee le ->
+    (run_lazy trace le).1 = (run_eager trace ee).1 /\
+    entry_gate_rel (run_eager trace ee).2 (run_lazy trace le).2).
+  { induction trace as [|op rest IH]; intros ee le Hrel.
+    - split; [reflexivity | exact Hrel].
+    - assert (Hstep :
+        (step_lazy op le).1 = (step_eager op ee).1 /\
+        entry_gate_rel (step_eager op ee).2 (step_lazy op le).2).
+      { destruct ee as [ehd edata eerr egate], le as [lhd ldata lerr lgate].
+        destruct Hrel as [Hd [Hv [He Hg]]]; simpl in *.
+        subst lhd ldata lerr.
+        destruct op as [|v|e|]; unfold entry_gate_rel, ensure_gate; simpl.
+        - destruct ehd, lgate as [g|]; simpl in *;
+            split_and!; try reflexivity; try exact Hg; try (intros Hfalse; discriminate Hfalse); try (intros _; reflexivity).
+        - destruct ehd, lgate as [g|]; simpl in *;
+            split_and!; try reflexivity; try exact Hg; try (intros Hfalse; discriminate Hfalse).
+        - destruct ehd, lgate as [g|]; simpl in *;
+            split_and!; try reflexivity; try exact Hg; try (intros Hfalse; discriminate Hfalse); try (intros _; reflexivity).
+        - destruct ehd, lgate as [g|]; simpl in *.
+          + split_and!; try reflexivity; exact Hg.
+          + split_and!; try reflexivity; intros Hfalse; discriminate Hfalse.
+          + rewrite Hg. split_and!; reflexivity.
+          + rewrite (Hg eq_refl). split_and!; reflexivity. }
+      destruct Hstep as [Hr Hrel'].
+      simpl. destruct (step_lazy op le) as [rl le1] eqn:El.
+      destruct (step_eager op ee) as [re ee1] eqn:Ee.
+      simpl in Hr, Hrel'.
+      specialize (IH ee1 le1 Hrel') as [Hrs Hrel''].
+      destruct (run_lazy rest le1) as [rls le2] eqn:Erl.
+      destruct (run_eager rest ee1) as [res ee2] eqn:Ere.
+      simpl in Hrs, Hrel''.
+      simpl. split; [rewrite Hr, Hrs; reflexivity | exact Hrel'']. }
+  assert (Hnone : forall trace le,
+    le_gate le = None ->
+    reads_while_empty trace (le_has_data le) = false ->
+    le_gate (run_lazy trace le).2 = None).
+  { induction trace as [|op rest IH]; intros [lhd ldata lerr lgate] Hgate Hno; simpl in *.
+    - exact Hgate.
+    - subst lgate. destruct op as [|v|e|]; simpl in *.
+      + destruct lhd; simpl in *;
+          [ pose proof (IH {| le_has_data := true; le_data := ldata; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec
+          | pose proof (IH {| le_has_data := false; le_data := ldata; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec ].
+      + destruct lhd; simpl in *;
+          [ pose proof (IH {| le_has_data := true; le_data := v; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec
+          | pose proof (IH {| le_has_data := true; le_data := v; le_error := None; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec ].
+      + destruct lhd; simpl in *;
+          [ pose proof (IH {| le_has_data := true; le_data := ldata; le_error := Some e; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec
+          | pose proof (IH {| le_has_data := false; le_data := ldata; le_error := Some e; le_gate := None |} eq_refl Hno) as Hrec;
+            destruct (run_lazy rest _) as [rs le']; exact Hrec ].
+      + destruct lhd; [|discriminate Hno]. simpl in *.
+        pose proof (IH {| le_has_data := true; le_data := ldata; le_error := lerr; le_gate := None |} eq_refl Hno) as Hrec.
+        destruct (run_lazy rest _) as [rs le']; exact Hrec. }
+  assert (Hinit_rel : entry_gate_rel eager_init lazy_init) by (repeat split; reflexivity).
+  destruct (Hsim ops eager_init lazy_init Hinit_rel) as [Hout Hfinal].
+  split; [exact Hout|].
+  split; [exact Hfinal|].
+  apply (Hnone ops lazy_init eq_refl).
+Qed.
+
+Inductive ext_draft_edit :=
+  | ExtUpdate (f : Z -> Z)
+  | ExtSet (v : Z)
+  | ExtInvalidate.
+
+Record inline_draft := {
+  id_staged : bool;
+  id_has_value : bool;
+  id_value : Z;
+  id_stale : bool;
+  id_updated : bool;
+}.
+
+Definition init_inline_draft (has_data : bool) (val : Z) : inline_draft :=
+  {| id_staged := true; id_has_value := has_data; id_value := val; id_stale := true; id_updated := false |}.
+
+Definition step_inline_draft (e : ext_draft_edit) (d : inline_draft) : inline_draft :=
+  match e with
+  | ExtUpdate f =>
+      if id_has_value d then
+        {| id_staged := true; id_has_value := true; id_value := f (id_value d); id_stale := false; id_updated := true |}
+      else d
+  | ExtSet v =>
+      if id_has_value d then
+        {| id_staged := true; id_has_value := true; id_value := v; id_stale := false; id_updated := true |}
+      else d
+  | ExtInvalidate =>
+      {| id_staged := true; id_has_value := id_has_value d; id_value := id_value d; id_stale := true; id_updated := id_updated d |}
+  end.
+
+Fixpoint apply_inline_drafts (es : list ext_draft_edit) (d : inline_draft) : inline_draft :=
+  match es with
+  | [] => d
+  | e :: rest => apply_inline_drafts rest (step_inline_draft e d)
+  end.
+
+Definition to_model_edit (e : ext_draft_edit) : draft_edit :=
+  match e with
+  | ExtUpdate f => DraftUpdate f
+  | ExtSet v => DraftUpdate (fun _ => v)
+  | ExtInvalidate => DraftInvalidate
+  end.
+
+Definition decode_draft (d : inline_draft) : query_draft_state :=
+  {| qd_data := if id_has_value d then Some (id_value d) else None;
+     qd_stale := id_stale d;
+     qd_updated := id_updated d |}.
+
+Definition inline_prepare (has_data : bool) (cur : Z) (eqb : Z -> Z -> bool) (d : inline_draft) : bool :=
+  if negb (id_updated d) || negb (id_has_value d) then false
+  else if negb has_data then true
+  else negb (eqb cur (id_value d)).
+
+Definition model_prepare (initial : option Z) (eqb : Z -> Z -> bool) (d : query_draft_state) : bool :=
+  match qd_updated d, initial, qd_data d with
+  | true, Some old, Some v => negb (eqb old v)
+  | true, None, None => false
+  | true, _, _ => true
+  | false, _, _ => false
+  end.
+
+Definition commit_reset_draft (publish : bool) (has_data : bool) (cur : Z) (d : inline_draft)
+    : bool * (bool * Z) :=
+  let next := if publish && id_has_value d then (true, id_value d) else (has_data, cur) in
+  (false, next).
+
+(**md
+**Unboxed `(hasData, data)` and per-entry inline `draftStaged` staging (with `DraftSet` fusion and pre-batch / rollback reset) refine map-allocated `QueryDraft` over `'T option` for arbitrary edit sequences.**
+
+Proves the `Entry.fs` / `Queries.fs` inline staging optimization:
+- For any initial `(has_data, cur)` and arbitrary sequence `es` of `ExtUpdate`, `ExtSet`, and `ExtInvalidate` edits, `decode_draft (apply_inline_drafts es (init_inline_draft has_data cur))` equals `apply_draft_edits (map to_model_edit es) (init_draft (if has_data then Some cur else None))`.
+- Under any edit sequence `es`, `inline_prepare` computes the exact same `changed` bit as `model_prepare`.
+- Both successful `Publish` (`publish = true`) and rollback `ResetDraft` (`publish = false`) clear `id_staged` to `false`, while rollback leaves `(has_data, cur)` unmodified.
+
+- [has_data:] whether the entry held a committed value before staging.
+- [cur:] the committed value stored in the unboxed `data` signal when `has_data = true`.
+- [eqb:] the graph's sentinel-encoded comparer predicate.
+- [es:] the ordered list of edits targeting this entry.
+*)
+Theorem unboxed_data_and_inline_draft_refines_staged_map
+    (has_data : bool) (cur : Z) (eqb : Z -> Z -> bool) (es : list ext_draft_edit) :
+  let initial_opt := if has_data then Some cur else None in
+  let final_inline := apply_inline_drafts es (init_inline_draft has_data cur) in
+  decode_draft final_inline = apply_draft_edits (map to_model_edit es) (init_draft initial_opt) /\
+  inline_prepare has_data cur eqb final_inline = model_prepare initial_opt eqb (decode_draft final_inline) /\
+  (commit_reset_draft true has_data cur final_inline).1 = false /\
+  commit_reset_draft false has_data cur final_inline = (false, (has_data, cur)).
+Proof.
+  assert (Hstep : forall edits d,
+    decode_draft (apply_inline_drafts edits d) =
+    apply_draft_edits (map to_model_edit edits) (decode_draft d) /\
+    id_has_value (apply_inline_drafts edits d) = id_has_value d /\
+    (id_has_value d = false -> id_updated d = false -> id_updated (apply_inline_drafts edits d) = false)).
+  { induction edits as [|e rest IH]; intros d.
+    - split; [reflexivity | split; [reflexivity | intros _ Hu; exact Hu]].
+    - destruct e as [f|v|]; simpl.
+      + destruct (id_has_value d) eqn:Ehv; simpl.
+        * destruct (IH {| id_staged := true; id_has_value := true; id_value := f (id_value d); id_stale := false; id_updated := true |})
+            as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [exact Hh | intros Hfalse; discriminate Hfalse]].
+        * destruct (IH d) as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [rewrite Hh, Ehv; reflexivity | intros _ Hu; exact (Hupd Ehv Hu)]].
+      + destruct (id_has_value d) eqn:Ehv; simpl.
+        * destruct (IH {| id_staged := true; id_has_value := true; id_value := v; id_stale := false; id_updated := true |})
+            as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [exact Hh | intros Hfalse; discriminate Hfalse]].
+        * destruct (IH d) as [Hdec [Hh Hupd]].
+          split; [exact Hdec | split; [rewrite Hh, Ehv; reflexivity | intros _ Hu; exact (Hupd Ehv Hu)]].
+      + destruct (IH {| id_staged := true; id_has_value := id_has_value d; id_value := id_value d; id_stale := true; id_updated := id_updated d |})
+          as [Hdec [Hh Hupd]].
+        split; [exact Hdec | split; [exact Hh | exact Hupd]]. }
+  specialize (Hstep es (init_inline_draft has_data cur)).
+  destruct Hstep as [Hdec [Hh Hupd]].
+  split_and!.
+  - rewrite Hdec. unfold init_inline_draft, decode_draft, init_draft. simpl. reflexivity.
+  - unfold inline_prepare, model_prepare, decode_draft. simpl.
+    rewrite Hh. destruct has_data eqn:Ehd; simpl.
+    + destruct (id_updated (apply_inline_drafts es (init_inline_draft true cur))); reflexivity.
+    + rewrite (Hupd eq_refl eq_refl). reflexivity.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+Definition qk_default_eq (eqZ : Z -> Z -> bool) (k1 k2 : option Z) : bool :=
+  match k1, k2 with
+  | Some a, Some b => eqZ a b
+  | None, None => true
+  | _, _ => false
+  end.
+
+Definition qk_default_hash (hashZ : Z -> Z) (k : option Z) : Z :=
+  match k with
+  | Some a => hashZ a
+  | None => 0%Z
+  end.
+
+Definition session_guard_ok (on_thread disposed_client staging : bool) : bool :=
+  on_thread && negb disposed_client && negb staging.
+
+Definition single_checked_op {A : Type}
+    (on_thread disposed_client staging disposed_lease disposed_entry : bool) (op : A) : option A :=
+  if session_guard_ok on_thread disposed_client staging && negb disposed_lease && negb disposed_entry
+  then Some op
+  else None.
+
+Definition double_checked_op {A : Type}
+    (on_thread disposed_client staging disposed_lease disposed_entry : bool) (op : A) : option A :=
+  if session_guard_ok on_thread disposed_client staging && negb disposed_lease then
+    if session_guard_ok on_thread disposed_client staging && negb disposed_entry then Some op
+    else None
+  else None.
+
+(**md
+**`QueryKey` default-comparer equality/hashing handles nullable and `unit` (`None`) keys consistently, and checking `QuerySession.Guard` once at `QueryLease` matches double-checked `QueryLease` + `QueryEntry` guards.**
+
+Proves the `Queries.fs` `QueryKey` devirtualization and `QuerySession` single-guard elimination:
+- Whenever `eqZ` is reflexive (`eqZ x x = true`) and hash-compatible (`eqZ x y = true -> hashZ x = hashZ y`), `qk_default_eq eqZ` is reflexive on all `option Z` (including `None` for `unit`/`null`) and preserves `qk_default_hash hashZ` without invoking a null dereference on `None`.
+- For all thread, disposal, and staging flags, `single_checked_op` agrees with `double_checked_op`.
+
+- [eqZ:] the default equality predicate on non-null keys.
+- [hashZ:] the default hash function on non-null keys.
+- [k1:] first wrapped key (`None` represents `()` / null).
+- [k2:] second wrapped key.
+*)
+Theorem query_key_default_equatable_and_session_guard_eq
+    (eqZ : Z -> Z -> bool) (hashZ : Z -> Z) (k1 k2 : option Z) :
+  (forall x, eqZ x x = true) ->
+  (forall x y, eqZ x y = true -> hashZ x = hashZ y) ->
+  qk_default_eq eqZ k1 k1 = true /\
+  (qk_default_eq eqZ k1 k2 = true -> qk_default_hash hashZ k1 = qk_default_hash hashZ k2) /\
+  forall (A : Type) (on_thread dc st dl de : bool) (op : A),
+    single_checked_op on_thread dc st dl de op = double_checked_op on_thread dc st dl de op.
+Proof.
+  intros Hrefl Hhash. split_and!.
+  - destruct k1; simpl; [apply Hrefl | reflexivity].
+  - destruct k1, k2; simpl; try discriminate; [apply Hhash | intros _; reflexivity].
+  - intros A on_thread dc st dl de op.
+    unfold single_checked_op, double_checked_op, session_guard_ok.
+    destruct on_thread, dc, st, dl, de; reflexivity.
+Qed.
+
+Inductive await_outcome :=
+  | AwaitOk (v : Z)
+  | AwaitErr (err : nat)
+  | AwaitCanceled.
+
+Definition await_immediate_decision (err : option nat) (has_data stale : bool) (data_val : Z) : await_outcome :=
+  match err with
+  | Some e => AwaitErr e
+  | None => if has_data && negb stale then AwaitOk data_val else AwaitCanceled
+  end.
+
+Definition await_waiter_spec
+    (status : fetch_status) (err : option nat) (has_data stale : bool) (data_val : Z)
+    : bool * option await_outcome :=
+  match status with
+  | FsFetching => (true, None)
+  | FsIdle => (false, Some (await_immediate_decision err has_data stale data_val))
+  end.
+
+Definition await_fast_opt
+    (status : fetch_status) (err : option nat) (has_data stale : bool) (data_val : Z)
+    : bool * option await_outcome :=
+  match status with
+  | FsFetching => (true, None)
+  | FsIdle => (false, Some (await_immediate_decision err has_data stale data_val))
+  end.
+
+Record linked_lease_state := {
+  ll_lease_state : query_lease_state;
+  ll_owner_attached : bool;
+  ll_waiter_detached : bool;
+}.
+
+Definition linked_lease_dispose (st : linked_lease_state) : linked_lease_state :=
+  {| ll_lease_state := query_lease_dispose (ll_lease_state st);
+     ll_owner_attached := false;
+     ll_waiter_detached := true |}.
+
+(**md
+**`QueryEntry.AwaitImmediate` allocates zero waiters when `FetchStatus = FsIdle` with identical outcome, `QueryAwaiter.TryClaim` is idempotent, and `OwnerLink`-backed `QueryLease.Dispose` detaches cleanly and decrements refcount at most once.**
+
+Proves the `Entry.fs` / `Queries.fs` waiter and lease-link optimizations:
+- When `status = FsIdle`, `await_fast_opt` matches `await_waiter_spec` and requires zero waiter allocation (`fst = false`).
+- Disposing a `linked_lease_state` is idempotent (`linked_lease_dispose (linked_lease_dispose st) = linked_lease_dispose st`), sets `ll_owner_attached = false` and `ll_waiter_detached = true`, and decrements the entry's reference count once (`query_lease_dispose_idempotent_refcount`).
+
+- [status:] current `FetchStatus` of the entry.
+- [err:] current `Error` option in metadata.
+- [has_data:] whether data is loaded.
+- [stale:] whether cached data is stale.
+- [data_val:] cached payload value.
+- [st:] combined lease, owner-link, and waiter-claim state.
+- [k:] number of sibling leases remaining.
+*)
+Theorem waiter_fast_task_and_linked_lease_eq
+    (status : fetch_status) (err : option nat) (has_data stale : bool) (data_val : Z)
+    (st : linked_lease_state) (k : nat) :
+  await_fast_opt status err has_data stale data_val = await_waiter_spec status err has_data stale data_val /\
+  fst (await_fast_opt FsIdle err has_data stale data_val) = false /\
+  linked_lease_dispose (linked_lease_dispose st) = linked_lease_dispose st /\
+  ll_owner_attached (linked_lease_dispose st) = false /\
+  ll_waiter_detached (linked_lease_dispose st) = true /\
+  (ql_lease_disposed (ll_lease_state st) = false ->
+   ql_ref_count (ll_lease_state st) = S k ->
+   ql_entry_alive (ll_lease_state st) = true ->
+   ql_ref_count (ll_lease_state (linked_lease_dispose st)) = k /\
+   ql_entry_alive (ll_lease_state (linked_lease_dispose st)) = bool_decide (0 < k)).
+Proof.
+  split_and!.
+  - reflexivity.
+  - reflexivity.
+  - unfold linked_lease_dispose. simpl.
+    destruct (query_lease_dispose_idempotent_refcount (ll_lease_state st) k) as [Hid _].
+    rewrite Hid. reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - intros Hlive Hcnt Halive. simpl.
+    destruct (query_lease_dispose_idempotent_refcount (ll_lease_state st) k) as [_ Hdec].
+    exact (Hdec Hlive Hcnt Halive).
+Qed.
+
+(** ** 7. Wave 6 CSharp, Wire, Mcp, and Dom optimisations *)
+
+Inductive bound_status := BStNone | BStPending | BStError.
+
+Inductive bound_reading :=
+  | BRReady (v : Z)
+  | BRPending
+  | BRFailed (e : nat).
+
+Definition decode_struct_reading (st : bound_status) (v : Z) (err : option nat) : bound_reading :=
+  match st, err with
+  | BStNone, _ => BRReady v
+  | BStPending, _ => BRPending
+  | BStError, Some e => BRFailed e
+  | BStError, None => BRFailed 0
+  end.
+
+Record bound_state := {
+  bs_val : Z;
+  bs_has : bool;
+  bs_loading : bool;
+  bs_error : option nat;
+}.
+
+Definition eq_opt_nat (a b : option nat) : bool :=
+  match a, b with
+  | None, None => true
+  | Some x, Some y => Nat.eqb x y
+  | _, _ => false
+  end.
+
+Definition bound_refresh_flags (eqZ : Z -> Z -> bool) (old : bound_state) (r : bound_reading)
+    : bool * bool * bool :=
+  match r with
+  | BRReady v =>
+      (negb (bs_has old) || negb (eqZ (bs_val old) v),
+       bs_loading old,
+       match bs_error old with None => false | Some _ => true end)
+  | BRPending =>
+      (false,
+       negb (bs_loading old),
+       match bs_error old with None => false | Some _ => true end)
+  | BRFailed e =>
+      (false,
+       bs_loading old,
+       negb (eq_opt_nat (bs_error old) (Some e)))
+  end.
+
+Definition bound_refresh_alloc (eqZ : Z -> Z -> bool) (old : bound_state) (r : bound_reading)
+    : bound_state * (bool * bool * bool) :=
+  let '(vc, lc, ec) := bound_refresh_flags eqZ old r in
+  let next :=
+    match r with
+    | BRReady v => {| bs_val := v; bs_has := true; bs_loading := false; bs_error := None |}
+    | BRPending => {| bs_val := bs_val old; bs_has := bs_has old; bs_loading := true; bs_error := None |}
+    | BRFailed e => {| bs_val := bs_val old; bs_has := bs_has old; bs_loading := false; bs_error := Some e |}
+    end in
+  (next, (vc, lc, ec)).
+
+Definition bound_refresh_reuse (custom_cmp : bool) (eqZ : Z -> Z -> bool) (old : bound_state) (r : bound_reading)
+    : bound_state * (bool * bool * bool) :=
+  let '(vc, lc, ec) := bound_refresh_flags eqZ old r in
+  let next :=
+    match r with
+    | BRReady v =>
+        if vc || lc || ec || custom_cmp then
+          {| bs_val := v; bs_has := true; bs_loading := false; bs_error := None |}
+        else old
+    | BRPending =>
+        if lc || ec then
+          {| bs_val := bs_val old; bs_has := bs_has old; bs_loading := true; bs_error := None |}
+        else old
+    | BRFailed e =>
+        if lc || ec then
+          {| bs_val := bs_val old; bs_has := bs_has old; bs_loading := false; bs_error := Some e |}
+        else old
+    end in
+  (next, (vc, lc, ec)).
+
+Definition direct_signal_dispatch (on_thread : bool) (inbox : list Z) (v : Z) : option Z * list Z :=
+  if on_thread then (Some v, inbox) else (None, inbox ++ [v]).
+
+Definition queued_signal_dispatch (on_thread : bool) (inbox : list Z) (v : Z) : option Z * list Z :=
+  if on_thread then (Some v, inbox) else (None, inbox ++ [v]).
+
+(**md
+**`BoundValue` / `BoundSignal` struct reads and unchanged-`BoundState` reuse match fresh allocations under default equality, and `BoundSignal.set_Value` direct on-thread dispatch matches `Graph.Dispatch`.**
+
+Proves the `Memo.TryReadStruct`, `BoundValue`/`BoundSignal` unchanged-state reuse, and `BoundSignal.set_Value` optimizations (`Core.fs`, `Bindings.fs`):
+- `decode_struct_reading` faithfully decodes `TryReadStruct` `(Status * 'T * exn)` tuples into `BRReady`, `BRPending`, and `BRFailed`.
+- Whenever `eqZ` respects strict equality when `custom_cmp = false` (`forall a b, eqZ a b = true -> a = b`), `bound_refresh_reuse false eqZ old r = bound_refresh_alloc eqZ old r` across all prior states `old` and readings `r`, and for `custom_cmp = true` both also agree unconditionally (`bound_refresh_reuse true eqZ old r = bound_refresh_alloc eqZ old r`).
+- `direct_signal_dispatch on_thread inbox v = queued_signal_dispatch on_thread inbox v`.
+
+- [eqZ:] equality predicate on values.
+- [old:] the previously published `bound_state` snapshot.
+- [r:] the current `Memo` / `Signal` reading.
+- [custom_cmp:] whether a custom `IEqualityComparer` was configured on the graph.
+- [on_thread:] whether the caller is currently on the graph thread.
+- [inbox:] pending cross-thread work queue before the write.
+- [v:] signal value written via `BoundSignal.Value <- v`.
+*)
+Theorem bound_slot_inplace_refresh_and_direct_dispatch_eq
+    (eqZ : Z -> Z -> bool) (old : bound_state) (r : bound_reading)
+    (custom_cmp on_thread : bool) (inbox : list Z) (v : Z) :
+  (custom_cmp = false -> forall a b, eqZ a b = true -> a = b) ->
+  bound_refresh_reuse custom_cmp eqZ old r = bound_refresh_alloc eqZ old r /\
+  direct_signal_dispatch on_thread inbox v = queued_signal_dispatch on_thread inbox v /\
+  decode_struct_reading BStNone v None = BRReady v /\
+  decode_struct_reading BStPending v None = BRPending /\
+  forall err, decode_struct_reading BStError v (Some err) = BRFailed err.
+Proof.
+  intros Hdef. split_and!.
+  - destruct old as [ov ohas oload oerr], r as [rv | | re], custom_cmp;
+      unfold bound_refresh_reuse, bound_refresh_alloc, bound_refresh_flags; simpl.
+    + rewrite orb_true_r. reflexivity.
+    + destruct ohas eqn:Ehas; simpl; [|reflexivity].
+      destruct (eqZ ov rv) eqn:Eeq; simpl; [|reflexivity].
+      destruct oload eqn:Eload; simpl; [reflexivity|].
+      destruct oerr as [e|] eqn:Eerr; simpl; [reflexivity|].
+      rewrite (Hdef eq_refl ov rv Eeq). reflexivity.
+    + destruct oload; destruct oerr; reflexivity.
+    + destruct oload; destruct oerr; reflexivity.
+    + destruct oload; simpl; [reflexivity|].
+      destruct oerr as [e|]; simpl; [|reflexivity].
+      destruct (Nat.eqb e re) eqn:Een; simpl; [rewrite (proj1 (Nat.eqb_eq e re) Een); reflexivity | reflexivity].
+    + destruct oload; simpl; [reflexivity|].
+      destruct oerr as [e|]; simpl; [|reflexivity].
+      destruct (Nat.eqb e re) eqn:Een; simpl; [rewrite (proj1 (Nat.eqb_eq e re) Een); reflexivity | reflexivity].
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - intros err. reflexivity.
+Qed.
+
+Record rc_state := {
+  rc_running : nat;
+  rc_error : option nat;
+  rc_journaled : bool;
+  rc_flights : nat;
+}.
+
+Inductive rc_task_outcome :=
+  | RcCompleted
+  | RcFaulted (e : nat)
+  | RcCanceled.
+
+Global Instance rc_task_outcome_eq_dec : EqDecision rc_task_outcome.
+Proof. solve_decision. Defined.
+
+Definition rc_sync_with_cts (failure : option nat) (st : rc_state) : rc_state * rc_task_outcome :=
+  let r1 := S (rc_running st) in
+  let r2 := r1 - 1 in
+  let err' := failure in
+  let task := match failure with Some e => RcFaulted e | None => RcCompleted end in
+  ({| rc_running := r2; rc_error := err'; rc_journaled := rc_journaled st; rc_flights := rc_flights st |}, task).
+
+Definition rc_sync_direct (failure : option nat) (st : rc_state) : rc_state * rc_task_outcome :=
+  let r1 := S (rc_running st) in
+  let write_err := negb (eq_opt_nat (rc_error st) failure) || rc_journaled st in
+  let err' := if write_err then failure else rc_error st in
+  let task := match failure with Some e => RcFaulted e | None => RcCompleted end in
+  ({| rc_running := r1 - 1; rc_error := err'; rc_journaled := rc_journaled st; rc_flights := rc_flights st |}, task).
+
+Definition rc_onthread_task (need_task : bool) (out : rc_task_outcome) : rc_task_outcome :=
+  if need_task then out else RcCompleted.
+
+Definition notify_delivered (has_changes has_handlers : bool) (notes : list nat) : bool * list nat :=
+  if has_changes && has_handlers then (true, notes) else (false, []).
+
+Definition notify_eager (has_changes has_handlers : bool) (notes : list nat) : list nat :=
+  if has_changes then (if has_handlers then notes else []) else [].
+
+(**md
+**Synchronous `ReactiveCommand` execution without `CancellationTokenSource` preserves exact running-count, error, and task-outcome semantics, and skipping `RunUntracked` without handlers emits identical events.**
+
+Proves the `ReactiveCommand` and `ReactiveBindings.notify` optimizations (`Bindings.fs`):
+- `rc_sync_direct failure st` produces the exact same post-execution `rc_state` (including restoring `rc_running` to `rc_running st`, updating `rc_error` to `failure`, and leaving `rc_flights` unchanged) and `rc_task_outcome` as `rc_sync_with_cts failure st`.
+- `rc_onthread_task need_task out` matches immediate completed task return when `need_task = false` and exact faulted/canceled propagation when `need_task = true`.
+- `notify_delivered` skips `RunUntracked` (`fst = false`) whenever `has_handlers = false` and produces the exact same delivered notifications `snd` as `notify_eager`.
+
+- [failure:] optional exception raised by synchronous execution.
+- [st:] initial `ReactiveCommand` state before execution.
+- [need_task:] whether the caller (`ExecuteAsync` vs `Execute`) observes the returned task.
+- [out:] completed outcome produced on the graph thread.
+- [has_changes:] whether any slot or command state changed during `notify`.
+- [has_handlers:] whether any `PropertyChanged`, `ErrorsChanged`, or `CanExecuteChanged` listener is subscribed.
+- [notes:] non-empty notification payload emitted when changes exist.
+*)
+Theorem reactive_command_inline_exec_and_lazy_notify_eq
+    (failure : option nat) (st : rc_state)
+    (need_task has_changes has_handlers : bool) (out : rc_task_outcome) (notes : list nat) :
+  rc_sync_direct failure st = rc_sync_with_cts failure st /\
+  rc_running (rc_sync_direct failure st).1 = rc_running st /\
+  (rc_onthread_task need_task out = if need_task then out else RcCompleted) /\
+  (notify_delivered has_changes has_handlers notes).2 = notify_eager has_changes has_handlers notes /\
+  (has_handlers = false -> (notify_delivered has_changes false notes).1 = false).
+Proof.
+  split_and!.
+  - unfold rc_sync_direct, rc_sync_with_cts.
+    destruct (rc_error st) as [e1|] eqn:E1, failure as [e2|]; simpl.
+    + destruct (Nat.eqb e1 e2) eqn:Eeq; simpl;
+        [rewrite (proj1 (Nat.eqb_eq e1 e2) Eeq); destruct (rc_journaled st); reflexivity | reflexivity].
+    + reflexivity.
+    + reflexivity.
+    + destruct (rc_journaled st); reflexivity.
+  - unfold rc_sync_direct. simpl. lia.
+  - reflexivity.
+  - unfold notify_delivered, notify_eager. destruct has_changes, has_handlers; reflexivity.
+  - intros _. unfold notify_delivered. destruct has_changes; reflexivity.
+Qed.
+
+Fixpoint any_pending_loop (is_pending : nat -> bool) (xs : list nat) : bool * list nat :=
+  match xs with
+  | [] => (false, [])
+  | x :: rest =>
+      if is_pending x then (true, [x])
+      else
+        let '(res, vis) := any_pending_loop is_pending rest in
+        (res, x :: vis)
+  end.
+
+Definition exposure_rev_diff (pairs : list (nat * Z * Z)) : list nat :=
+  fold_right (fun '(nm, oldv, newv) acc => if Z.eqb oldv newv then acc else nm :: acc) [] pairs.
+
+Definition exposure_filter_diff (pairs : list (nat * Z * Z)) : list nat :=
+  map (fun '(nm, _, _) => nm) (List.filter (fun '(_, oldv, newv) => negb (Z.eqb oldv newv)) pairs).
+
+Definition modifier_key_names : list string :=
+  [ "Shift"; "Control"; "Alt"; "Meta"; "AltGraph";
+    "CapsLock"; "Fn"; "FnLock"; "Hyper"; "Super";
+    "Symbol"; "SymbolLock"; "NumLock"; "ScrollLock"; "OS" ]%string.
+
+Definition is_modifier_key_match (k : string) : bool :=
+  match k with
+  | "Shift"%string | "Control"%string | "Alt"%string | "Meta"%string | "AltGraph"%string
+  | "CapsLock"%string | "Fn"%string | "FnLock"%string | "Hyper"%string | "Super"%string
+  | "Symbol"%string | "SymbolLock"%string | "NumLock"%string | "ScrollLock"%string | "OS"%string => true
+  | _ => false
+  end.
+
+Definition dispatch_dom_observers {A : Type} (obs : list A) : list A :=
+  if Nat.eqb (length obs) 0 then [] else obs.
+
+(**md
+**`Reactive.AnyPending` `while` loop short-circuits cleanly, `Exposure.publish` backwards scan preserves registration order with zero empty-diff changes, `InputState.isModifierKey` matches the 15 DOM modifier names, and empty-observer DOM fast-paths match full iteration.**
+
+Proves the loop, publishing, and observer-guard optimizations in `Reactive.fs`, `Exposure.fs`, and `Ranvier.Dom`:
+- `any_pending_loop is_pending xs` returns `(existsb is_pending xs, vis)` where `vis` is a prefix of `xs` that visits `xs` strictly in order up to the first pending node (all prior nodes non-pending, stopping immediately at `true`).
+- `exposure_rev_diff pairs` matches `exposure_filter_diff pairs` and is `[]` iff every entry text equals its previous text (`Forall (fun '(_, a, b) => a = b) pairs`).
+- `is_modifier_key_match k = existsb (String.eqb k) modifier_key_names` for every string `k`.
+- `dispatch_dom_observers obs = obs` for every observer snapshot `obs`.
+
+- [is_pending:] node pending-status predicate.
+- [xs:] registered source node ids passed to `AnyPending`.
+- [pairs:] triples `(entry_id, old_text, new_text)` in registration order.
+- [k:] keyboard `key` string inspected by `InputState`.
+- [obs:] subscriber callback list in `Ranvier.Dom`.
+*)
+Theorem any_pending_loop_and_unsubscribed_publish_eq
+    (is_pending : nat -> bool) (xs : list nat) (pairs : list (nat * Z * Z))
+    (k : string) {A : Type} (obs : list A) :
+  (any_pending_loop is_pending xs).1 = existsb is_pending xs /\
+  (exists tail,
+     (any_pending_loop is_pending xs).2 ++ tail = xs /\
+     ((any_pending_loop is_pending xs).1 = false ->
+      (any_pending_loop is_pending xs).2 = xs /\ Forall (fun x => is_pending x = false) xs)) /\
+  exposure_rev_diff pairs = exposure_filter_diff pairs /\
+  (exposure_rev_diff pairs = [] <-> Forall (fun '(_, a, b) => a = b) pairs) /\
+  is_modifier_key_match k = existsb (String.eqb k) modifier_key_names /\
+  dispatch_dom_observers obs = obs.
+Proof.
+  split_and!.
+  - induction xs as [|x rest IH]; simpl.
+    + reflexivity.
+    + destruct (is_pending x); simpl; [reflexivity|].
+      destruct (any_pending_loop is_pending rest) as [res vis] eqn:Eloop.
+      simpl in *. exact IH.
+  - induction xs as [|x rest IH]; simpl.
+    + exists []. split; [reflexivity | intros _; split; [reflexivity | constructor]].
+    + destruct (is_pending x) eqn:Hx; simpl.
+      * exists rest. split; [reflexivity | intros Hfalse; discriminate Hfalse].
+      * destruct (any_pending_loop is_pending rest) as [res vis] eqn:Eloop.
+        destruct IH as [tail [Happ Hfalse]]. simpl in *.
+        exists tail. split.
+        -- rewrite <- Happ. reflexivity.
+        -- intros Hres. destruct (Hfalse Hres) as [Hvis Hall].
+           subst vis. split; [reflexivity | constructor; assumption].
+  - unfold exposure_rev_diff, exposure_filter_diff.
+    induction pairs as [|[[nm oldv] newv] rest IH]; simpl; [reflexivity|].
+    destruct (Z.eqb oldv newv); simpl; rewrite IH; reflexivity.
+  - split.
+    + unfold exposure_rev_diff.
+      induction pairs as [|[[nm oldv] newv] rest IH]; simpl; [intros _; constructor|].
+      destruct (Z.eqb oldv newv) eqn:Eeq.
+      * intros Hnil. constructor; [exact (proj1 (Z.eqb_eq oldv newv) Eeq) | exact (IH Hnil)].
+      * intros Hcons. discriminate Hcons.
+    + unfold exposure_rev_diff.
+      induction pairs as [|[[nm oldv] newv] rest IH]; intros Hall; simpl; [reflexivity|].
+      inversion Hall as [|? ? Heq Hrest]; simpl in Heq.
+      rewrite (proj2 (Z.eqb_eq oldv newv) Heq). exact (IH Hrest).
+  - unfold is_modifier_key_match, modifier_key_names.
+    repeat (simpl; try reflexivity;
+      lazymatch goal with
+      | |- (match ?x with _ => _ end = _) =>
+          destruct x
+      end).
+  - unfold dispatch_dom_observers. destruct obs; reflexivity.
+Qed.
+
+Definition is_high_surr (c : Z) : bool :=
+  bool_decide (55296 <= c /\ c <= 56319)%Z.
+
+Definition is_low_surr (c : Z) : bool :=
+  bool_decide (56320 <= c /\ c <= 57343)%Z.
+
+Definition is_any_surr (c : Z) : bool :=
+  is_high_surr c || is_low_surr c.
+
+Fixpoint lone_surr_from (xs : list Z) (idx : nat) : option nat :=
+  match xs with
+  | [] => None
+  | c :: rest =>
+      if is_high_surr c then
+        match rest with
+        | d :: rest' => if is_low_surr d then lone_surr_from rest' (idx + 2) else Some idx
+        | [] => Some idx
+        end
+      else if is_low_surr c then Some idx
+      else lone_surr_from rest (S idx)
+  end.
+
+Fixpoint prescan_plain_loop (in_str : bool) (pending : nat) (xs : list Z) : option (bool * nat) :=
+  match xs with
+  | [] => Some (in_str, pending)
+  | c :: rest =>
+      if in_str then
+        if Z.eqb c 92%Z then None
+        else if Z.eqb c 34%Z then
+          if Nat.eqb pending 0 then prescan_plain_loop false 0 rest else None
+        else
+          if negb (Nat.eqb pending 0) then
+            if is_low_surr c then prescan_plain_loop true 0 rest else None
+          else if is_high_surr c then prescan_plain_loop true 1 rest
+          else if is_low_surr c then None
+          else prescan_plain_loop true 0 rest
+      else None
+  end.
+
+(**md
+**Skipping any surrogate-free prefix in `loneSurrogate`, validating single `char` scalars in-place, and skipping plain BMP runs inside `Prescan.check` strings preserve exact scanner results.**
+
+Proves the UTF-16 scalar validation and JSON string pre-scan optimizations (`Helpers.fs`, `Prescan.fs`):
+- For any surrogate-free prefix `pref` (`Forall (fun c => is_any_surr c = false) pref`) and any suffix `suf`, `lone_surr_from (pref ++ suf) idx = lone_surr_from suf (idx + length pref)` (and `None` when `suf = []`).
+- For a single UTF-16 code unit `c` (`encodeChar`), `lone_surr_from [c] 0 = (if is_any_surr c then Some 0 else None)`.
+- Whenever `pending = 0` inside a JSON string, skipping a contiguous run `plain` of unescaped non-quote characters below `0xD800` (`55296%Z`) leaves `prescan_plain_loop true 0 (plain ++ suf) = prescan_plain_loop true 0 suf`.
+
+- [pref:] surrogate-free leading slice skipped by SIMD `IndexOfAnyInRange`.
+- [suf:] trailing UTF-16 code units starting at the first surrogate candidate.
+- [idx:] starting index accumulator.
+- [c:] single UTF-16 code unit passed to `encodeChar`.
+- [plain:] contiguous plain BMP characters inside a string literal (`c <> 92`, `c <> 34`, `c < 55296`).
+*)
+Theorem wire_surrogate_prefix_skip_and_char_scalar_eq
+    (pref suf plain : list Z) (idx : nat) (c : Z) :
+  (Forall (fun u => is_any_surr u = false) pref ->
+   lone_surr_from (pref ++ suf) idx = lone_surr_from suf (idx + length pref)) /\
+  (Forall (fun u => is_any_surr u = false) pref ->
+   lone_surr_from pref idx = None) /\
+  lone_surr_from [c] 0 = (if is_any_surr c then Some 0 else None) /\
+  (Forall (fun u => u <> 92%Z /\ u <> 34%Z /\ (u < 55296)%Z) plain ->
+   prescan_plain_loop true 0 (plain ++ suf) = prescan_plain_loop true 0 suf).
+Proof.
+  split_and!.
+  - revert idx. induction pref as [|u rest IH]; intros i Hall; simpl.
+    + rewrite Nat.add_0_r. reflexivity.
+    + inversion Hall as [|? ? Hu Hrest]; subst.
+      unfold is_any_surr in Hu. apply orb_false_iff in Hu as [Hh Hl].
+      rewrite Hh, Hl. rewrite (IH (S i) Hrest). rewrite Nat.add_succ_r. reflexivity.
+  - revert idx. induction pref as [|u rest IH]; intros i Hall; simpl; [reflexivity|].
+    inversion Hall as [|? ? Hu Hrest]; subst.
+    unfold is_any_surr in Hu. apply orb_false_iff in Hu as [Hh Hl].
+    rewrite Hh, Hl. exact (IH (S i) Hrest).
+  - unfold is_any_surr. simpl. destruct (is_high_surr c), (is_low_surr c); reflexivity.
+  - induction plain as [|u rest IH]; intros Hall; simpl; [reflexivity|].
+    inversion Hall as [|? ? [Hbs [Hq Hbmp]] Hrest]; subst.
+    rewrite (proj2 (Z.eqb_neq u 92%Z) Hbs).
+    rewrite (proj2 (Z.eqb_neq u 34%Z) Hq).
+    assert (Hh : is_high_surr u = false)
+      by (unfold is_high_surr; apply bool_decide_eq_false_2; lia).
+    assert (Hl : is_low_surr u = false)
+      by (unfold is_low_surr; apply bool_decide_eq_false_2; lia).
+    rewrite Hh, Hl. simpl. exact (IH Hrest).
+Qed.
+
+Fixpoint strip_leading_zeros (xs : list Z) : list Z :=
+  match xs with
+  | [] => []
+  | c :: rest => if Z.eqb c 48%Z then strip_leading_zeros rest else c :: rest
+  end.
+
+Definition mantissa_digits (xs : list Z) : list Z :=
+  strip_leading_zeros (List.filter (fun c => negb (Z.eqb c 46%Z)) xs).
+
+Definition z_cmp (x y : Z) : Z :=
+  match Z.compare x y with
+  | Lt => (-1)%Z
+  | Eq => 0%Z
+  | Gt => 1%Z
+  end.
+
+Fixpoint list_lex_cmp (a b : list Z) : Z :=
+  match a, b with
+  | x :: xs, y :: ys =>
+      let c := z_cmp x y in
+      if Z.eqb c 0%Z then list_lex_cmp xs ys else c
+  | [], _ :: _ => (-1)%Z
+  | _ :: _, [] => 1%Z
+  | [], [] => 0%Z
+  end.
+
+Definition step_mantissa_scan (max_digits : list Z) (st : nat * Z) (c : Z) : nat * Z :=
+  let '(sig_len, cmp) := st in
+  if Z.eqb c 46%Z || (Nat.eqb sig_len 0 && Z.eqb c 48%Z) then st
+  else
+    let cmp' :=
+      if (sig_len <? length max_digits) && Z.eqb cmp 0%Z
+      then z_cmp c (nth sig_len max_digits 0%Z)
+      else cmp in
+    (S sig_len, cmp').
+
+Definition scan_mantissa (max_digits xs : list Z) : nat * Z :=
+  foldl (step_mantissa_scan max_digits) (0, 0%Z) xs.
+
+Definition ref_fits_mantissa (max_digits ds : list Z) : bool :=
+  (length ds <? length max_digits) ||
+  ((length ds =? length max_digits) && (list_lex_cmp ds max_digits <=? 0)%Z).
+
+Definition scan_fits_mantissa (max_digits xs : list Z) : bool :=
+  let '(sig_len, cmp) := scan_mantissa max_digits xs in
+  (sig_len <? length max_digits) || ((sig_len =? length max_digits) && (cmp <=? 0)%Z).
+
+(**md
+**`inPropertyOrder` without array-index keys is the identity, `Dictionary.Count` increase characterizes first-time member insertion, and `fitsDecimal` in-place mantissa scanning matches string-allocating normalization and ordinal comparison.**
+
+Proves the `Helpers.fs` and `Codecs.fs` zero-allocation algorithms:
+- Whenever `is_idx` is `false` on all elements of `xs`, `filter is_idx xs ++ filter (negb ∘ is_idx) xs = xs`.
+- For any finite dictionary `m : gmap nat Z`, inserting `(k, v)` strictly increases `size` iff `m !! k = None`.
+- On any digit/dot list `xs`, `scan_mantissa max_digits xs` computes `(length (mantissa_digits xs), cmp)` such that `scan_fits_mantissa max_digits xs = ref_fits_mantissa max_digits (mantissa_digits xs)` with zero intermediate list or string allocations.
+
+- [is_idx:] array-index predicate over property keys.
+- [xs:] list of items / code units scanned.
+- [m:] existing member map (`Dictionary<string, JsonElement>`).
+- [k:] member key being inserted.
+- [v:] member value being stored.
+- [max_digits:] reference decimal upper bound digits (`Decimal.MaxValue`).
+*)
+Theorem wire_property_order_member_dedup_and_decimal_scan_eq
+    (is_idx : Z -> bool) (xs max_digits : list Z) (m : gmap nat Z) (k : nat) (v : Z) :
+  (Forall (fun x => is_idx x = false) xs ->
+   List.filter is_idx xs ++ List.filter (fun x => negb (is_idx x)) xs = xs) /\
+  bool_decide (size m < size (<[k := v]> m)) = bool_decide (m !! k = None) /\
+  (scan_mantissa max_digits xs).1 = length (mantissa_digits xs) /\
+  scan_fits_mantissa max_digits xs = ref_fits_mantissa max_digits (mantissa_digits xs).
+Proof.
+  assert (Hfilt_empty : forall ys, Forall (fun x => is_idx x = false) ys -> List.filter is_idx ys = []).
+  { induction ys as [|x rest IH]; intros Hall; simpl; [reflexivity|].
+    inversion Hall as [|? ? Hx Hrest]; subst. rewrite Hx. exact (IH Hrest). }
+  assert (Hfilt_all : forall ys, Forall (fun x => is_idx x = false) ys -> List.filter (fun x => negb (is_idx x)) ys = ys).
+  { induction ys as [|x rest IH]; intros Hall; simpl; [reflexivity|].
+    inversion Hall as [|? ? Hx Hrest]; subst. rewrite Hx. simpl. rewrite (IH Hrest). reflexivity. }
+  assert (Hfilter : Forall (fun x => is_idx x = false) xs ->
+    List.filter is_idx xs ++ List.filter (fun x => negb (is_idx x)) xs = xs).
+  { intros Hall. rewrite (Hfilt_empty xs Hall), (Hfilt_all xs Hall). reflexivity. }
+  assert (Hsize : bool_decide (size m < size (<[k := v]> m)) = bool_decide (m !! k = None)).
+  { destruct (m !! k) as [z|] eqn:Hk.
+    - rewrite map_size_insert_Some; [|exists z; exact Hk].
+      rewrite bool_decide_eq_false_2; [reflexivity | lia].
+    - rewrite map_size_insert_None by exact Hk.
+      rewrite bool_decide_eq_true_2; [reflexivity | lia]. }
+  assert (Hdots : forall max_d ys st,
+    foldl (step_mantissa_scan max_d) st ys =
+    foldl (step_mantissa_scan max_d) st (List.filter (fun c => negb (Z.eqb c 46%Z)) ys)).
+  { intros max_d ys. induction ys as [|y rest IH]; intros [sl cmp]; [reflexivity|].
+    destruct (Z.eqb y 46%Z) eqn:Ed; cbn [foldl List.filter].
+    - replace (step_mantissa_scan max_d (sl, cmp) y) with (sl, cmp)
+        by (unfold step_mantissa_scan; rewrite Ed; reflexivity).
+      rewrite Ed. simpl. apply IH.
+    - rewrite Ed. simpl. apply IH. }
+  assert (Hzeros : forall max_d ys cmp,
+    Forall (fun c => c <> 46%Z) ys ->
+    foldl (step_mantissa_scan max_d) (0, cmp) ys =
+    foldl (step_mantissa_scan max_d) (0, cmp) (strip_leading_zeros ys)).
+  { intros max_d ys cmp Hall. induction ys as [|y rest IH]; simpl; [reflexivity|].
+    inversion Hall as [|? ? Hne46 Hrest]; subst.
+    destruct (Z.eqb y 48%Z) eqn:Ez; simpl; [|rewrite ?Ez; reflexivity].
+    rewrite (proj2 (Z.eqb_neq y 46%Z) Hne46), ?Ez. simpl.
+    exact (IH Hrest). }
+  assert (Hfilt_no46 : forall ys, Forall (fun c => c <> 46%Z) (List.filter (fun c => negb (Z.eqb c 46%Z)) ys)).
+  { induction ys as [|y rest IH]; simpl; [constructor|].
+    destruct (Z.eqb y 46%Z) eqn:Ed; simpl; [exact IH|].
+    constructor; [exact (proj1 (Z.eqb_neq y 46%Z) Ed) | exact IH]. }
+  assert (Hstrip_prop : forall ys,
+    Forall (fun c => c <> 46%Z) ys ->
+    Forall (fun c => c <> 46%Z) (strip_leading_zeros ys) /\
+    match strip_leading_zeros ys with [] => True | d0 :: _ => d0 <> 48%Z end).
+  { induction ys as [|y rest IH]; intros Hall; simpl; [split; [constructor | trivial]|].
+    inversion Hall as [|? ? Hy Hrest]; subst.
+    destruct (Z.eqb y 48%Z) eqn:Ez; [exact (IH Hrest)|].
+    split; [constructor; assumption | exact (proj1 (Z.eqb_neq y 48%Z) Ez)]. }
+  assert (Hlen_ds : forall max_d ds sl cmp,
+    Forall (fun c => c <> 46%Z) ds ->
+    (0 < sl \/ match ds with [] => True | d0 :: _ => d0 <> 48%Z end) ->
+    (foldl (step_mantissa_scan max_d) (sl, cmp) ds).1 = sl + length ds).
+  { intros max_d ds. induction ds as [|d rest IH]; intros sl cmp Hall Hguard; cbn [foldl length]; [simpl; lia|].
+    inversion Hall as [|? ? Hd Hrest]; subst.
+    assert (Hsl0 : (Nat.eqb sl 0 && Z.eqb d 48%Z) = false).
+    { destruct Hguard as [Hpos | Hnz].
+      - destruct sl; [lia | reflexivity].
+      - rewrite (proj2 (Z.eqb_neq d 48%Z) Hnz). rewrite andb_false_r. reflexivity. }
+    replace (step_mantissa_scan max_d (sl, cmp) d)
+      with (S sl, if (sl <? length max_d) && Z.eqb cmp 0%Z then z_cmp d (nth sl max_d 0%Z) else cmp)
+      by (unfold step_mantissa_scan; rewrite (proj2 (Z.eqb_neq d 46%Z) Hd), Hsl0; reflexivity).
+    rewrite (IH (S sl) _ Hrest (or_introl (Nat.lt_0_succ sl))). lia. }
+  assert (Hcmp_ds : forall ds pref max_rem cmp,
+    Forall (fun c => c <> 46%Z) ds ->
+    (0 < length pref \/ match ds with [] => True | d0 :: _ => d0 <> 48%Z end) ->
+    length ds = length max_rem ->
+    (foldl (step_mantissa_scan (pref ++ max_rem)) (length pref, cmp) ds).2 =
+    (if Z.eqb cmp 0%Z then list_lex_cmp ds max_rem else cmp)).
+  { induction ds as [|d rest IH]; intros pref max_rem cmp Hall Hguard Heqlen; cbn [foldl length list_lex_cmp] in *.
+    - destruct max_rem; [|discriminate Heqlen].
+      simpl. destruct (Z.eqb cmp 0%Z) eqn:E; [apply Z.eqb_eq in E; exact E | reflexivity].
+    - destruct max_rem as [|mx max_rem']; [discriminate Heqlen|].
+      injection Heqlen as Hrestlen.
+      inversion Hall as [|? ? Hd Hrest]; subst.
+      assert (Hsl0 : (Nat.eqb (length pref) 0 && Z.eqb d 48%Z) = false).
+      { destruct Hguard as [Hpos | Hnz].
+        - destruct (length pref); [lia | reflexivity].
+        - rewrite (proj2 (Z.eqb_neq d 48%Z) Hnz). rewrite andb_false_r. reflexivity. }
+      assert (Hlt : (length pref <? length (pref ++ mx :: max_rem')) = true).
+      { apply Nat.ltb_lt. rewrite length_app. simpl. lia. }
+      assert (Hnth : nth (length pref) (pref ++ mx :: max_rem') 0%Z = mx).
+      { rewrite app_nth2 by lia. rewrite Nat.sub_diag. reflexivity. }
+      replace (step_mantissa_scan (pref ++ mx :: max_rem') (length pref, cmp) d)
+        with (S (length pref), if Z.eqb cmp 0%Z then z_cmp d mx else cmp)
+        by (unfold step_mantissa_scan; rewrite (proj2 (Z.eqb_neq d 46%Z) Hd), Hsl0, Hlt, Hnth; simpl; reflexivity).
+      assert (Happ : pref ++ mx :: max_rem' = (pref ++ [mx]) ++ max_rem')
+        by (change (mx :: max_rem') with ([mx] ++ max_rem'); apply app_assoc).
+      rewrite Happ.
+      assert (Hnext_len : S (length pref) = length (pref ++ [mx]))
+        by (rewrite length_app; simpl; lia).
+      rewrite Hnext_len.
+      assert (Hpref'_pos : 0 < length (pref ++ [mx])) by (rewrite length_app; simpl; lia).
+      specialize (IH (pref ++ [mx]) max_rem'
+        (if Z.eqb cmp 0%Z then z_cmp d mx else cmp)
+        Hrest (or_introl Hpref'_pos) Hrestlen).
+      rewrite IH.
+      destruct (Z.eqb cmp 0%Z) eqn:Ecmp; simpl.
+      + destruct (Z.eqb (z_cmp d mx) 0%Z); reflexivity.
+      + rewrite ?Ecmp. reflexivity. }
+  assert (Hm_props := Hstrip_prop _ (Hfilt_no46 xs)).
+  destruct Hm_props as [Hm_no46 Hm_nz].
+  split_and!.
+  - exact Hfilter.
+  - exact Hsize.
+  - unfold scan_mantissa, mantissa_digits.
+    rewrite Hdots, Hzeros by apply Hfilt_no46.
+    exact (Hlen_ds max_digits _ 0 0%Z Hm_no46 (or_intror Hm_nz)).
+  - unfold scan_fits_mantissa, ref_fits_mantissa, scan_mantissa.
+    assert (Hlen_m : (foldl (step_mantissa_scan max_digits) (0, 0%Z) xs).1 = length (mantissa_digits xs)).
+    { unfold mantissa_digits. rewrite Hdots, Hzeros by apply Hfilt_no46.
+      exact (Hlen_ds max_digits _ 0 0%Z Hm_no46 (or_intror Hm_nz)). }
+    destruct (foldl (step_mantissa_scan max_digits) (0, 0%Z) xs) as [sl cmp] eqn:Efold.
+    simpl in Hlen_m. rewrite Hlen_m.
+    destruct (length (mantissa_digits xs) <? length max_digits) eqn:Elt; simpl; [reflexivity|].
+    destruct (length (mantissa_digits xs) =? length max_digits) eqn:Eeq; simpl; [|reflexivity].
+    apply Nat.eqb_eq in Eeq.
+    assert (Hcmp_m : cmp = list_lex_cmp (mantissa_digits xs) max_digits).
+    { replace cmp with (foldl (step_mantissa_scan max_digits) (0, 0%Z) xs).2 by (rewrite Efold; reflexivity).
+      unfold mantissa_digits in *.
+      rewrite Hdots, Hzeros by apply Hfilt_no46.
+      exact (Hcmp_ds _ [] max_digits 0%Z Hm_no46 (or_intror Hm_nz) Eeq). }
+    rewrite Hcmp_m. reflexivity.
 Qed.

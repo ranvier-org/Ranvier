@@ -334,69 +334,10 @@ that memo from the effect.
 
 ## Equality cutoff
 
-A write equal to the current value stops there: it does not schedule its readers ([`signal_update_noop`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#signal_update_noop)).
-
-A memo that recomputes to an equal value stops downstream bodies from running ([`cutoff`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#cutoff), [`check_cutoff_settled`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#check_cutoff_settled)). Unlike an equal
-signal write, the upstream change has already marked its readers for **check**. Those checks
-bring their dependencies current and resolve clean when no dependency publishes a change ([`resolve_clean_unmoved`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#resolve_clean_unmoved)).
-This can happen at any level of a chain. [Equality](equality.md) describes the graph-wide policy.
-
-::::details Test your understanding
-
-The count starts at `2`. We write `2`, then `4`. How many times do the effect and `isEven` run?
-
-```fsharp
-let cutoffRuns, parityRuns =
-    use graph = new Graph ()
-    use _ = graph.Activate ()
-    let count = createSignal 2
-    let isEven = createMemo (fun _ -> count.Value % 2 = 0)
-    let label = createMemo (fun _ -> if isEven.Value then "even" else "odd")
-    let mutable effectRuns = 0
-    createEffect (fun () -> label.Value |> ignore; effectRuns <- effectRuns + 1)
-
-    count.Value <- 2 // equal write
-    count.Value <- 4 // isEven recomputes to true again
-    effectRuns, isEven.Runs
-
-printfn "effect runs: %d, isEven runs: %d" cutoffRuns parityRuns
-```
-
-:::details Answer
-
-```text
-effect runs: 1, isEven runs: 2
-```
-
-The equal write of `2` stops at `count`. Writing `4` runs `isEven`, but its result is still `true`,
-so `label` and the effect do not run again.
-
-:::
-::::
-
-In the map, an equal write stops at `count`. A write that keeps the parity re-runs `isEven`, which recomputes to the same value and stops there. A write that flips the parity reaches the effect.
-
-```fsharp map replay code=collapsed
-let count = createSignal 2
-let isEven = createMemo (fun _ -> count.Value % 2 = 0)
-let label = createMemo (fun _ -> if isEven.Value then "even" else "odd")
-let mutable effectRuns = 0
-createEffect (fun () ->
-    effectRuns <- effectRuns + 1
-    printfn "%s" label.Value)
-
-controls [
-    button "Write 2 (equal)" (fun () -> count.Value <- 2)
-    |> describe "An equal write leaves the effect at its initial run."
-    |> expect "An equal write leaves the effect at its initial run." (fun () -> effectRuns = 1)
-    button "Write 4" (fun () -> count.Value <- 4)
-    |> describe "isEven remains true, so the label and effect stay unchanged."
-    |> expect "isEven remains true, so the label and effect stay unchanged." (fun () -> effectRuns = 1 && label.Peek = "even")
-    button "Write 3" (fun () -> count.Value <- 3)
-    |> describe "isEven changes to false and the effect prints odd."
-    |> expect "isEven changes to false and the effect prints odd." (fun () -> effectRuns = 2 && label.Peek = "odd")
-]
-```
+When a memo recomputes to a value equal to its cached result, downstream readers are not re-run
+([`cutoff`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Runs.html#cutoff), [`check_cutoff_settled`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#check_cutoff_settled)): their pending checks resolve clean once every dependency settles unmoved
+([`resolve_clean_unmoved`](https://ranvier-org.github.io/Ranvier/proofs/Ranvier.Pure.Check.html#resolve_clean_unmoved)). See [Signals — Equality](signals.fsx#equality) for the interactive signal-and-memo
+cutoff replay, and [Equality](equality.md) for policies and `WithComparer` factories.
 
 
 

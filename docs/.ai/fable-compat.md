@@ -52,7 +52,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
-| Projections.fs | 121 | 121 | 121 | 121 | 121 | 121 | 10 | 0 |
+| Projections.fs | 122 | 122 | 122 | 122 | 122 | 122 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 32 | 32 | 32 | 32 | 32 | 32 | 0 | 0 |
 | MemoScopes.fs | 28 | 28 | 28 | 28 | 28 | 28 | 0 | 0 |
@@ -61,7 +61,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 248 | 248 | 248 | 248 | 248 | 248 | 3 | 0 |
+| Combinators.fs | 272 | 272 | 272 | 272 | 272 | 272 | 3 | 0 |
 | Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1708 | 1694 | 1691 | 1930 | 1912 | 1909 | 148 | 1 |
+| **Total** | 1733 | 1719 | 1716 | 1955 | 1937 | 1934 | 148 | 1 |
 
 ## Tests.fs
 
@@ -1212,7 +1212,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>121 passed in every build and delivery that runs them</summary>
+<details><summary>122 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a projection nothing reads is never recomputed
@@ -1254,6 +1254,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Snapshot holds a None key beside Some keys
 - a positional diff turns previous into next, moving at most the survivors outside the longest ordered run
 - a positional diff moves one key for one swap of neighbours
+- a positional diff trims shared prefixes and suffixes across fast paths and option keys
 - a Snapshot read under a boundary wakes when the suspended pass settles
 - a tracked TryGet of an absent key wakes when the key arrives
 - a tracked TryGet of a live key wakes when the key is removed
@@ -1654,7 +1655,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>248 passed in every build and delivery that runs them</summary>
+<details><summary>272 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1667,6 +1668,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Get outside Keys raises KeyNotFoundException
 - removing a key disposes the key's memo
 - disposing the view detaches it from the upstream
+- check cutoff leaves filter Runs unchanged when predicate booleans stay equal
+- N=1000 single-key and 3-key flips over KeyedCollection update in O(Delta) calls and exact deltas
+- simultaneous multi-slot Check batch drains remaining checkSlots inside Enumerate
+- filter Failed state machine suppresses Excluded<->Failed deltas while keeping throwing rows
+- async HeldOut / PendingKeys and KeyedCollection tail append, removal, and >64 reset
 - choose keeps the Some keys in upstream order with their values
 - 200 single edits at N=1000 make 200 chooser calls
 - a Keys reader wakes only when membership flips, and a Get reader when the value changes
@@ -1678,6 +1684,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - removing a key disposes its chooser and gate
 - choose composes with filter and sortBy
 - choose composes with choose, and keeps a Some None value
+- choose Check cutoff leaves Runs unchanged on Some->Some and N=1000 delta flips match
+- choose handles Failed transitions and async PendingKeys
 - map follows upstream keys and order, and re-runs one mapping per edit
 - an effect reading Keys and Get runs exactly once per write
 - a throwing mapping keeps the key, and Get raises its error
@@ -1703,9 +1711,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - sortByDescending orders NaN last, across updates
 - sortByDescending orders None after Some
 - disposing a sortByDescending view detaches it from the upstream
+- incremental sortBy and sortByDescending resolve Check cutoff without running a pass
+- incremental sortBy and sortByDescending splice sparse single and multi-row edits on N=1000 matching List.sortWith with IsReset = false
+- incremental sortBy preserves upstream tie-breaking across equal-rank collisions, swap-removals, and tail appends
+- incremental sortBy and sortByDescending handle NaN transitions (NaN <-> finite and NaN -> NaN no-op)
+- incremental sortBy handles Pending and Failed transitions in sparse batches
 - tests reading the shared comparison counter / a pass whose sort keys and upstream order are unchanged does not re-sort
 - tests reading the shared comparison counter / a sortByDescending pass whose sort keys and upstream order are unchanged does not re-sort
-- tests reading the shared comparison counter / removing a non-extreme row costs no comparison; removing the extreme re-folds once
+- tests reading the shared comparison counter / removing or editing rows in tryMinBy updates the tournament in O(log N) comparisons
 - tests reading the shared comparison counter / a single changed sort key reinserts in O(log N) search comparisons across moves and ties
 - string, ordinal
 - float with NaN
@@ -1763,6 +1776,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a reader of UngroupedKeys wakes on a settle after a pass that leaves it unchanged
 - filter then groupBy lists the keys the filter holds out in UngroupedKeys
 - GroupOf returns a grouped key's group, and a pending key's last settled group
+- incremental groupBy resolves Check cutoff without running outer or inner passes
+- incremental groupBy on N=1000, G=20 isolates untouched inner views on sparse move and matches List.groupBy
+- incremental groupBy handles same-pass new-group creation before emptying and emptied-group refill on tail append
+- observing only an inner group view keeps Grouping live and wakes on enters and leaves
 - the end of filter then map lists a never-settled upstream key in PendingKeys, and not in AnyPending
 - an effect reading PendingKeys and Keys at the end of filter then map runs once when the upstream key settles
 - a key the first stage of filter then map excludes on failure moves from PendingKeys to absent
@@ -1881,6 +1898,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - minBy stays asleep while it stays empty
 - disposing the calling scope stops the rank calls
 - disposing the tryMinBy memo releases the upstream rows
+- worsening holder that still beats its sibling promotes a better cousin
+- tail-appending rows across capacity doublings keeps tournament results and O(log N) cost
+- tryMinBy and tryMaxBy agree with sequential sticky-extreme scan across randomized 40-seed histories
 - the halves are complementary, in upstream order
 - 200 single edits at N=1000 make 200 predicate calls across both halves
 - a throwing predicate excludes the key from both halves
@@ -1895,6 +1915,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pending key whose last settled value repeats an earlier holder stays out of Keys
 - a throwing value excludes the key, and Get and TryGet raise its error
 - disposing the view detaches it from the upstream
+- incremental distinctBy resolves Check cutoff without running a pass
+- incremental distinctBy keeps Keys unchanged when a non-winner moves to another already-held value
+- incremental distinctBy splices N=1000 winner promotion, displacement, tail append, and multi-row edits matching List.distinctBy
+- incremental distinctBy splices recovery of an earlier failed holder displacing a later holder
 - totals per group follow edits, moves and emptying
 - an edit within a group runs only that group's aggregate
 - an emptied group's aggregate is disposed, and a returning group gets a new one
@@ -1904,6 +1928,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a reorder that keeps group order and totals wakes no reader
 - a never-settled group key contributes to no total
 - disposing the result disposes every aggregate; disposing the grouping empties the result
+- Grouping.aggregate on G=20 groups recomputes only touched groups on a sparse move
 
 </details>
 

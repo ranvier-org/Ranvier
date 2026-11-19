@@ -1,4 +1,4 @@
-#requires -Version 7.0
+﻿#requires -Version 7.0
 $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ranvier-hooks-test-' + [guid]::NewGuid().ToString('N'))
@@ -6,7 +6,7 @@ $utf8 = [System.Text.UTF8Encoding]::new($false)
 $passed = 0
 
 function Invoke-TestGit([string[]] $GitArguments, [bool] $ShouldPass = $true) {
-    $output = @(& rtk proxy git @GitArguments 2>&1)
+    $output = @(& git @GitArguments 2>&1)
     $code = $LASTEXITCODE
     if (($code -eq 0) -ne $ShouldPass) { throw "Unexpected exit $code for git $GitArguments`n$($output -join "`n")" }
     if (-not $ShouldPass -and ($output -join "`n") -notmatch 'Pre-commit failed:') {
@@ -36,14 +36,14 @@ try {
     Invoke-TestGit @('config', 'user.email', 'hook-test@example.invalid') | Out-Null
     $otherHook = Join-Path $testRoot '.git/hooks/pre-push'
     [System.IO.File]::WriteAllText($otherHook, "#!/bin/sh`nexit 0`n", $utf8)
-    $refused = @(& rtk proxy pwsh -NoProfile -File scripts/setup-hooks.ps1 2>&1)
+    $refused = @(& pwsh -NoProfile -File scripts/setup-hooks.ps1 2>&1)
     if ($LASTEXITCODE -eq 0 -or ($refused -join "`n") -notmatch 'Existing hook files: pre-push') {
         throw 'Setup failed to protect the existing pre-push hook.'
     }
     $passed++
     Write-Host 'PASS setup protects other existing hooks'
     Remove-Item -LiteralPath $otherHook
-    & rtk proxy pwsh -NoProfile -File scripts/setup-hooks.ps1
+    & pwsh -NoProfile -File scripts/setup-hooks.ps1
     if ($LASTEXITCODE -ne 0) { throw 'Fixture hook setup failed.' }
     Invoke-TestGit @('add', '.editorconfig', '.gitattributes', '.config/dotnet-tools.json') | Out-Null
     Commit-Fixture 'non-F# commit passes'
@@ -92,7 +92,7 @@ try {
     Commit-Fixture 'corrected script passes'
 
     [System.IO.File]::WriteAllText((Join-Path $testRoot 'Config.fs'), "module Config`r`n`r`nlet answer () =`r`n    if true then`r`n        42`r`n    else`r`n        0`r`n", $utf8)
-    & rtk proxy dotnet fantomas Config.fs
+    & dotnet fantomas Config.fs
     if ($LASTEXITCODE -ne 0) { throw 'Could not format the configuration fixture.' }
     Invoke-TestGit @('add', 'Config.fs') | Out-Null
     $configPath = Join-Path $testRoot '.editorconfig'

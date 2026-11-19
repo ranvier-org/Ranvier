@@ -80,7 +80,7 @@ Writing the same object instance back is cut off on both targets.
 | --- | --- | --- | --- |
 | `int`, `float`, `string` | Cut off | Cut off | Cut off |
 | `nan` | Propagates | Propagates | Cut off on .NET, propagates under Fable |
-| `DateTime`, `DateTimeOffset`, `decimal` | Cut off | Propagates | Cut off |
+| `DateTime`, `DateTimeOffset`, `decimal`, `KeyValuePair` | Cut off | Propagates | Cut off |
 | Struct records, struct tuples | Cut off | Propagates | Cut off |
 | `Some 1` | Propagates | Cut off | Cut off |
 | `None` | Cut off | Cut off | Cut off |
@@ -125,12 +125,7 @@ the node through its existing error handling ([`comparer_throw_contained`](https
 a comparer exception fails the boundary directly.
 :::
 
-From C#, pass the comparer as an additional argument:
-
-```csharp
-var name = Reactive.Signal("Ada", StringComparer.OrdinalIgnoreCase);
-var label = Reactive.Memo(() => name.Value.Trim(), StringComparer.OrdinalIgnoreCase);
-```
+From C#, see [C# — Per-node equality](csharp.md#per-node-equality). Note that seeded boundaries do not have per-node comparer overloads and always use `GraphOptions.Equality`.
 
 ## Buffers updated in place
 
@@ -293,7 +288,7 @@ each other; the absolute times do not predict your application's performance.
 
 Pass an `IEqualityPolicy` as `GraphOptions.Equality`. Its `Comparer<'T>` supplies the comparer for
 each value type and is called once when a node using the graph policy is created. A per-node
-comparer overrides it for that node.
+comparer overrides it for the node.
 
 For example, this graph treats strings that differ only in case as equal:
 

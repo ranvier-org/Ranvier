@@ -48,8 +48,7 @@ let nuget (assetsFile: string) (package: string) (version: string) (framework: s
             )
         ))
 
-let private standaloneBytes (path: string) =
-    let bytes = File.ReadAllBytes path
+let private standaloneData (bytes: byte array) =
     use input = new MemoryStream (bytes, false)
     use assembly = AssemblyDefinition.ReadAssembly input
 
@@ -85,6 +84,9 @@ let private standaloneBytes (path: string) =
         use output = new MemoryStream ()
         assembly.Write output
         output.ToArray ()
+
+let private standaloneBytes (path: string) =
+    File.ReadAllBytes path |> standaloneData
 
 let private workerReferences =
     Regex (@"\[\s*""Browser\.Dom""\s*,\s*""Browser\.Blob""\s*,\s*""Browser\.Event""\s*,\s*""Browser\.WebStorage""\s*\]")
@@ -156,13 +158,32 @@ let register (assemblies: string list) (site: Site) : Site =
                         | [ directory ] -> directory
                         | _ -> invalidOp "LiveExample metadata: register after LiveExample with one .dll.txt checker reference directory"
 
+                    let prepared =
+                        { registry with
+                            Assets =
+                                registry.Assets
+                                |> List.map (fun asset ->
+                                    let destination = (RelativePath.value asset.Destination).Replace('\\', '/')
+
+                                    if
+                                        destination
+                                        <> directory + "/Fable.Precompiled.dll.txt"
+                                    then
+                                        asset
+                                    else
+                                        match asset with
+                                        | CopyFile (source, target) -> WriteBytes (standaloneBytes (AbsolutePath.value source), target)
+                                        | WriteBytes (bytes, target) -> WriteBytes (standaloneData bytes, target)
+                                        | _ -> invalidOp "LiveExample metadata: the precompiled checker reference must contain assembly bytes")
+                        }
+
                     let withReferences =
                         references
                         |> List.fold
                             (fun state (name, path) ->
                                 state
                                 |> Registry.asset (Asset.WriteBytes (standaloneBytes path, RelativePath.create $"{directory}/{name}.dll.txt")))
-                            registry
+                            prepared
 
                     withReferences
                     |> Registry.assetTransform

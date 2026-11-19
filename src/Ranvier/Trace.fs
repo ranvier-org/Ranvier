@@ -1042,8 +1042,9 @@ type internal Tracer =
     /// Binds <c>set</c>, a node's <c>ObserverSet</c> or <c>SourceList</c> or a <c>Binding</c>, to <c>graph</c>'s log and node <c>id</c>.
     /// </summary>
     [<Conditional("RANVIER_TRACE")>]
-    static member Bind(set: obj, graph: obj, id: int) =
+    static member Bind<'T>(set: 'T, graph: obj, id: int) =
 #if RANVIER_TRACE
+        let set = box set
         let traced = set :?> ITraced
         let log = (graph :?> ITraced).TraceLog
         traced.TraceLog <- log

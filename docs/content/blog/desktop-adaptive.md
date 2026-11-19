@@ -16,8 +16,8 @@ Max Paige asked:
 - **Considering Ranvier?** Look at its disposable owners, UI-thread graph, binding adapters and propagating pending/failure states.
 - **Building collection-heavy views?** Compare Adaptive's established set/list/map operators with Ranvier's keyed collection paths.
 
-:::info Preview
-Ranvier is pre-release; its APIs may change. Examples describe the desktop APIs; the collection status below is reviewed through `2ce4b7d` (2026-10-16). This article makes no comparative performance claim for your application.
+:::info Pre-1.0 note
+Examples describe the current desktop APIs. This article makes no comparative performance claim for your application.
 :::
 
 ## What connects state to a desktop control?
@@ -434,13 +434,10 @@ Key `2` keeps its position while its row changes. Use `AsObservableCollection` f
 The trade-offs depend on your operators:
 
 - **Adaptive:** an established, broader family of incremental set/list/map operations.
-- **Ranvier:** keyed rows, delta readers and ownership, with some membership paths still scanning keys and changed sort ranks using a full sort.
+- **Ranvier:** keyed rows, O(1) edits and removals, Fenwick/tournament incremental views and aggregates, delta readers and ownership; non-tail insertions and upstream reorders rebuild sorted/extreme structures.
 - **Either:** measure your edit/filter/sort/aggregate workload; deltas do not make every operation proportional to changed rows.
 
-The [projection follow-ups](../benchmarks/projections.md#keyed-pass-follow-ups) record prefix/suffix
-trimming and full-visit fallback at `2ce4b7d` (2026-10-16), with their measured costs and limitations.
-The later CI charts track subsequent changes. The [Fable core timings](../benchmarks/counters.md#fable-core-follow-up)
-concern Node experiments and do not establish desktop .NET performance.
+The [projection benchmarks](../benchmarks/projections.md) track current edit, filter, sort, and binding costs. The [Fable core timings](../benchmarks/counters.md#fable-core-follow-up) concern Node experiments and do not establish desktop .NET performance.
 
 See [collection bindings](../guide/csharp.md#editable-keyed-collections), [reader contracts](../guide/projections.fsx#reading-changes) and [current costs](../concepts/ecosystem.md). The [collection maps](../guide/signal-maps.md#collections) show per-row propagation.
 

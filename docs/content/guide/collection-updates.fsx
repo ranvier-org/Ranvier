@@ -159,9 +159,10 @@ observation, which ends when the last value reader is disposed. Initial observat
 all visible rows. Subsequent value-only pulls evaluate suspect rows.
 
 `Edit` batches synchronous changes and keeps applied changes if its callback throws. Direct
-updates preserve insertion order; removals search it in O(N), and membership passes copy key
-order. Map views consume key deltas. Filter, sort and grouping membership processing still
-scans keys.
+updates preserve insertion order; removals unlink an intrusive doubly-linked list in O(1), and
+membership passes copy key order. Map, filter, choose, partition, sort, distinct and grouping views
+consume sparse row edits and bounded key deltas incrementally, falling back to full passes on dense
+bursts or upstream reorderings.
 
 ### Selecting one element
 

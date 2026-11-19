@@ -40,11 +40,12 @@ instead of repeating a successful remote write. Updaters must return immutable
 values and must not reenter client operations.
 
 The layer uses public Ranvier primitives without changing the graph engine.
-Whole-record and list reconstruction costs remain. Supported targets are .NET 10,
-.NET Standard 2.1 and Fable; the untraced build supports NativeAOT. Use the
-matching `Ranvier.Query.Traced` package with a traced graph build.
+Whole-record and list reconstruction costs remain. Supported targets are .NET 10 (including
+NativeAOT), .NET Standard 2.1, and Fable. Use the matching `Ranvier.Query.Traced` package
+with a traced graph build.
 
 Package builds include Fable sources and a standalone source project, tested in CI through
 traced and untraced package consumers. Under Fable, promise results arrive on later microtasks;
-graph dispatch runs inline and needs no pump. See
-[Fable](https://ranvier-org.github.io/Ranvier/fable/) for the target differences.
+graph dispatch runs inline and needs no pump. See [Queries](https://ranvier-org.github.io/Ranvier/guide/queries/),
+[Query navigation](https://ranvier-org.github.io/Ranvier/guide/query-navigation/), and
+[Fable](https://ranvier-org.github.io/Ranvier/fable/).

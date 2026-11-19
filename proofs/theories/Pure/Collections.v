@@ -1,5 +1,5 @@
 From stdpp Require Import prelude gmap.
-From Stdlib Require Import ZArith Sorted.
+From Stdlib Require Import ZArith Sorted PArith NArith.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Edges Marking Engine Check Runs Scheduler Ownership.
 
@@ -32,7 +32,11 @@ This module proves the exact minimum specifications required by Ranvier's collec
 5. **Pass diff zero-removal cardinality skip and key-direct derived rows** (`apply_diff_zero_removals_iff`,
    `key_direct_row_retire_wakes_without_item_signal`): certifies skipping `entries.Iterate` in
    `Projection.ApplyDiff` whenever `entries.Count + AddedCount = seen.Count`, and certifies `RowsByKey`
-   derived rows that link directly to upstream rows without a per-row `Signal<'K>`. *)
+   derived rows that link directly to upstream rows without a per-row `Signal<'K>`.
+6. **Binary tournament winner tree and sticky-holder extremes** (`tournament_winner_optimal_and_first`,
+   `tournament_point_update_refines_eval`, `sticky_holder_refines_extreme_scan`): certifies left-biased
+   tournament winner selection, O(log N) `SiftUp` with early stop and zero-comparison capacity doubling,
+   and sticky tie retention for `Projection.tryMinBy` and `Projection.tryMaxBy`. *)
 
 (** ** Direct-observer edge boundary *)
 
@@ -1319,4 +1323,3152 @@ Proof.
   rewrite Hpart.
   rewrite <- (perm_middle_cons changedIdx before after).
   symmetry. exact Hfull_perm.
+Qed.
+
+(** * Incremental Filter, Choose, and 1-Based Fenwick Primitives *)
+
+Inductive col_view_freshness : Type := CVClean | CVCheck | CVDirty.
+
+Record inclusion_view_state : Type := {
+  ivs_fresh : col_view_freshness;
+  ivs_runs : nat;
+  ivs_values : list bool;
+}.
+
+Definition resolve_check_slots (old_vals new_vals : list bool) : bool :=
+  bool_decide (new_vals = old_vals).
+
+Definition ensure_current_step (st : inclusion_view_state) (new_vals : list bool) : inclusion_view_state :=
+  match st.(ivs_fresh) with
+  | CVClean => st
+  | CVCheck =>
+      if resolve_check_slots st.(ivs_values) new_vals then
+        {| ivs_fresh := CVClean; ivs_runs := st.(ivs_runs); ivs_values := st.(ivs_values) |}
+      else
+        {| ivs_fresh := CVClean; ivs_runs := S st.(ivs_runs); ivs_values := new_vals |}
+  | CVDirty =>
+      {| ivs_fresh := CVClean; ivs_runs := S st.(ivs_runs); ivs_values := new_vals |}
+  end.
+
+(**md
+**An unchanged `Check` pass resolves clean without advancing view runs.**
+
+When every per-row `InclusionSlot` predicate or chooser re-evaluates to its
+previously cached boolean inclusion flag, `ensure_current_step` resolves
+`CVCheck` directly back to `CVClean` while leaving `ivs_runs` and
+`ivs_values` unchanged.
+
+- [st:] current view freshness state, run counter, and cached boolean flags.
+- [new_vals:] re-evaluated per-row boolean flags on the current check pass.
+*)
+Theorem row_slot_check_cutoff_skips_pass
+  (st : inclusion_view_state) (new_vals : list bool) :
+  st.(ivs_fresh) = CVCheck ->
+  new_vals = st.(ivs_values) ->
+  (ensure_current_step st new_vals).(ivs_fresh) = CVClean /\
+  (ensure_current_step st new_vals).(ivs_runs) = st.(ivs_runs) /\
+  (ensure_current_step st new_vals).(ivs_values) = st.(ivs_values).
+Proof.
+  intros Hchk Heq. unfold ensure_current_step, resolve_check_slots.
+  rewrite Hchk, Heq, bool_decide_eq_true_2; [|reflexivity].
+  repeat split; reflexivity.
+Qed.
+
+Fixpoint count_true (bits : list bool) : nat :=
+  match bits with
+  | [] => 0
+  | b :: rest => (if b then 1 else 0) + count_true rest
+  end.
+
+Definition prefix_count (bits : list bool) (k : nat) : nat :=
+  count_true (take k bits).
+
+Lemma count_true_app (l1 l2 : list bool) :
+  count_true (l1 ++ l2) = count_true l1 + count_true l2.
+Proof.
+  induction l1 as [|b l1' IH]; cbn; [reflexivity|].
+  rewrite IH. lia.
+Qed.
+
+Lemma prefix_count_lookup_true (bits : list bool) (idx k : nat) :
+  bits !! idx = Some true ->
+  idx < k ->
+  1 <= prefix_count bits k.
+Proof.
+  revert idx k.
+  induction bits as [|b rest IH]; intros idx k Hlu Hlt; [discriminate|].
+  destruct k as [|k']; [lia|].
+  unfold prefix_count in *. cbn [take].
+  destruct idx as [|idx'].
+  - cbn in Hlu. injection Hlu as ->. cbn [count_true]. lia.
+  - cbn [count_true].
+    pose proof (IH idx' k' Hlu ltac:(lia)). lia.
+Qed.
+
+(**md
+**Point flipping a boolean slot updates every prefix count by exact +/-1.**
+
+Flipping entry `idx` from `b_old` to `b_new` alters `prefix_count bits k`
+only when `idx < k`, adding `1` if `b_new` is `true` and subtracting `1` if
+`b_old` is `true`.
+
+- [bits:] boolean inclusion mask indexed by upstream slot position.
+- [idx:] slot index being updated.
+- [k:] prefix bound at which the count is queried.
+- [b_old:] prior inclusion flag at slot `idx`.
+- [b_new:] new inclusion flag written at slot `idx`.
+*)
+Theorem prefix_count_point_update
+  (bits : list bool) (idx k : nat) (b_old b_new : bool) :
+  bits !! idx = Some b_old ->
+  prefix_count (<[idx := b_new]> bits) k =
+    (if decide (idx < k) then
+       prefix_count bits k + (if b_new then 1 else 0) - (if b_old then 1 else 0)
+     else prefix_count bits k).
+Proof.
+  revert idx k.
+  induction bits as [|x rest IH]; intros idx k Hlu; [discriminate|].
+  destruct k as [|k'].
+  - destruct (decide (idx < 0)); [lia|]. reflexivity.
+  - destruct idx as [|idx'].
+    + cbn in Hlu. injection Hlu as ->.
+      destruct (decide (0 < S k')); [|lia].
+      unfold prefix_count. cbn.
+      destruct b_old, b_new; lia.
+    + cbn [lookup] in Hlu.
+      unfold prefix_count.
+      change (<[S idx' := b_new]> (x :: rest)) with (x :: <[idx' := b_new]> rest).
+      cbn [take count_true].
+      destruct (decide (S idx' < S k')) as [Hlt|Hge].
+      * specialize (IH idx' k' Hlu).
+        unfold prefix_count in IH.
+        rewrite IH.
+        destruct (decide (idx' < k')); [|lia].
+        destruct b_old.
+        -- pose proof (prefix_count_lookup_true rest idx' k' Hlu ltac:(lia)) as Hpos.
+           unfold prefix_count in Hpos. lia.
+        -- lia.
+      * specialize (IH idx' k' Hlu).
+        unfold prefix_count in IH.
+        rewrite IH.
+        destruct (decide (idx' < k')); [lia|].
+        reflexivity.
+Qed.
+
+Fixpoint filter_scan {K : Type} (rows : list (K * bool)) : list K :=
+  match rows with
+  | [] => []
+  | (k, true) :: rest => k :: filter_scan rest
+  | (_, false) :: rest => filter_scan rest
+  end.
+
+Definition splice_insert_at {K : Type} (pos : nat) (k : K) (out : list K) : list K :=
+  take pos out ++ k :: drop pos out.
+
+Definition splice_remove_at {K : Type} (pos : nat) (out : list K) : list K :=
+  take pos out ++ drop (S pos) out.
+
+Definition filter_flip_at {K : Type} (rows : list (K * bool)) (idx : nat) (b_new : bool) (out : list K) : list K :=
+  match rows !! idx with
+  | None => out
+  | Some (k, b_old) =>
+      if Bool.eqb b_old b_new then out
+      else
+        let pos := prefix_count (snd <$> rows) idx in
+        if b_new then splice_insert_at pos k out else splice_remove_at pos out
+  end.
+
+Lemma prefix_count_snd_length {K : Type} (rows : list (K * bool)) (idx : nat) :
+  prefix_count (snd <$> rows) idx = length (filter_scan (take idx rows)).
+Proof.
+  revert idx.
+  induction rows as [|[k b] rest IH]; intros [|idx']; unfold prefix_count in *;
+    [reflexivity|reflexivity|reflexivity|].
+  change (snd <$> (k, b) :: rest) with (b :: (snd <$> rest)).
+  cbn [take filter_scan length count_true].
+  destruct b; cbn [count_true filter_scan length]; specialize (IH idx'); rewrite IH; lia.
+Qed.
+
+Lemma filter_scan_app {K : Type} (l1 l2 : list (K * bool)) :
+  filter_scan (l1 ++ l2) = filter_scan l1 ++ filter_scan l2.
+Proof.
+  induction l1 as [|[k [|]] rest IH]; cbn; [reflexivity| | ]; rewrite IH; reflexivity.
+Qed.
+
+Lemma take_prefix_filter {K : Type} (n : nat) (l : list (K * bool)) :
+  take (length (filter_scan (take n l))) (filter_scan l) = filter_scan (take n l).
+Proof.
+  rewrite <- (take_drop n l) at 2.
+  rewrite filter_scan_app, take_app_length. reflexivity.
+Qed.
+
+Lemma drop_prefix_filter {K : Type} (n : nat) (l : list (K * bool)) :
+  drop (length (filter_scan (take n l))) (filter_scan l) = filter_scan (drop n l).
+Proof.
+  rewrite <- (take_drop n l) at 2.
+  rewrite filter_scan_app, drop_app_length. reflexivity.
+Qed.
+
+Lemma drop_split_lookup {A : Type} (l : list A) (i : nat) (x : A) :
+  l !! i = Some x -> drop i l = x :: drop (S i) l.
+Proof.
+  revert i. induction l as [|y rest IH]; intros [|i'] Hlu; cbn in *; [discriminate|discriminate| |].
+  - injection Hlu as ->. reflexivity.
+  - apply IH, Hlu.
+Qed.
+
+Lemma filter_flip_at_correct {K : Type} (rows : list (K * bool)) (idx : nat) (b_new : bool) :
+  filter_flip_at rows idx b_new (filter_scan rows) =
+  filter_scan
+    (match rows !! idx with
+     | None => rows
+     | Some (k, _) => <[idx := (k, b_new)]> rows
+     end).
+Proof.
+  unfold filter_flip_at.
+  destruct (rows !! idx) as [[k b_old]|] eqn:Hlu; [|reflexivity].
+  pose proof (drop_split_lookup rows idx (k, b_old) Hlu) as Hdrop.
+  replace (<[idx := (k, b_new)]> rows) with (take idx rows ++ (k, b_new) :: drop (S idx) rows); last first.
+  { clear Hdrop. revert rows Hlu. induction idx as [|i IH]; intros [|x xs] Hlu; cbn in *; try discriminate.
+    - injection Hlu as _. reflexivity.
+    - f_equal. apply IH, Hlu. }
+  destruct (Bool.eqb b_old b_new) eqn:Heq.
+  - destruct b_old, b_new; cbn in Heq; try discriminate;
+      rewrite <- (take_drop idx rows) at 1;
+      rewrite !filter_scan_app, Hdrop; cbn; reflexivity.
+  - rewrite prefix_count_snd_length.
+    destruct b_old, b_new; cbn in Heq; try discriminate; cbv zeta.
+    + unfold splice_remove_at.
+      rewrite take_prefix_filter.
+      pose proof (drop_prefix_filter idx rows) as Hdr.
+      rewrite Hdrop in Hdr.
+      assert (Htail : drop (S (length (filter_scan (take idx rows)))) (filter_scan rows) =
+                      filter_scan (drop (S idx) rows)).
+      { replace (S (length (filter_scan (take idx rows))))
+          with (length (filter_scan (take idx rows)) + 1) by lia.
+        rewrite <- drop_drop. rewrite Hdr. reflexivity. }
+      rewrite Htail, filter_scan_app. cbn. reflexivity.
+    + unfold splice_insert_at.
+      rewrite take_prefix_filter, drop_prefix_filter, Hdrop, filter_scan_app.
+      cbn. reflexivity.
+Qed.
+
+Fixpoint apply_row_updates {K : Type} (rows : list (K * bool)) (flips : list (nat * bool)) : list (K * bool) :=
+  match flips with
+  | [] => rows
+  | (idx, b_new) :: rest =>
+      let rows' :=
+        match rows !! idx with
+        | None => rows
+        | Some (k, _) => <[idx := (k, b_new)]> rows
+        end in
+      apply_row_updates rows' rest
+  end.
+
+Fixpoint apply_filter_flips {K : Type} (rows : list (K * bool)) (flips : list (nat * bool)) (out : list K) : list K :=
+  match flips with
+  | [] => out
+  | (idx, b_new) :: rest =>
+      let out' := filter_flip_at rows idx b_new out in
+      let rows' :=
+        match rows !! idx with
+        | None => rows
+        | Some (k, _) => <[idx := (k, b_new)]> rows
+        end in
+      apply_filter_flips rows' rest out'
+  end.
+
+(**md
+**Splicing a batch of inclusion flips refines full `filter_scan`.**
+
+Starting from `filter_scan rows`, applying each flip `(idx, b_new)` via
+prefix-count splice insertion or removal produces the exact key list computed
+by scanning the updated row table `apply_row_updates rows flips`.
+
+- [K:] key type carried by upstream rows.
+- [rows:] initial sequence of keyed inclusion flags in upstream order.
+- [flips:] ordered batch of `(slot_index, new_flag)` dirty transitions.
+*)
+Theorem filter_incremental_step_refines_scan
+  {K : Type} (rows : list (K * bool)) (flips : list (nat * bool)) :
+  apply_filter_flips rows flips (filter_scan rows) =
+  filter_scan (apply_row_updates rows flips).
+Proof.
+  revert rows.
+  induction flips as [|[idx b_new] rest IH]; intros rows; [reflexivity|].
+  cbn [apply_filter_flips apply_row_updates].
+  rewrite filter_flip_at_correct.
+  apply IH.
+Qed.
+
+Inductive incl_state : Type := ISExcluded | ISIncluded | ISFailed.
+Inductive incl_kc : Type := IKCAdded | IKCRemoved | IKCChanged.
+
+Definition incl_kc_merge_opt (prev : option incl_kc) (next : incl_kc) : option incl_kc :=
+  match prev, next with
+  | None, _ => Some next
+  | Some IKCAdded, IKCRemoved => None
+  | Some IKCAdded, _ => Some IKCAdded
+  | Some IKCRemoved, IKCAdded => Some IKCChanged
+  | Some IKCRemoved, _ => Some IKCRemoved
+  | Some IKCChanged, IKCRemoved => Some IKCRemoved
+  | Some IKCChanged, _ => Some IKCChanged
+  end.
+
+Definition incl_transition_delta (s1 s2 : incl_state) (val_changed : bool) : option incl_kc :=
+  match s1, s2 with
+  | ISExcluded, ISExcluded => None
+  | ISExcluded, ISFailed => None
+  | ISFailed, ISExcluded => None
+  | ISFailed, ISFailed => None
+  | ISExcluded, ISIncluded => Some IKCAdded
+  | ISFailed, ISIncluded => Some IKCAdded
+  | ISIncluded, ISExcluded => Some IKCRemoved
+  | ISIncluded, ISFailed => Some IKCRemoved
+  | ISIncluded, ISIncluded => if val_changed then Some IKCChanged else None
+  end.
+
+Definition incl_step_acc (acc : option incl_kc) (s1 s2 : incl_state) (vc : bool) : option incl_kc :=
+  match incl_transition_delta s1 s2 vc with
+  | None => acc
+  | Some kc => incl_kc_merge_opt acc kc
+  end.
+
+(**md
+**Hidden `Excluded` / `Failed` / `Included` transitions cancel or coalesce exactly.**
+
+Over two sequential slot transitions `s0 -> s1 -> s2`, merging per-step
+membership changes keeps `ISExcluded <-> ISFailed` silent, cancels
+`ISExcluded -> ISIncluded -> ISFailed` back to `None`, and coalesces
+`ISIncluded -> ISFailed -> ISIncluded` to `Some IKCChanged`.
+
+- [s0:] initial inclusion state at pass start.
+- [s1:] intermediate inclusion state after the first transition.
+- [s2:] final inclusion state after the second transition.
+*)
+Theorem filter_hidden_transition_cancels_or_emits
+  (s0 s1 s2 : incl_state) :
+  incl_step_acc (incl_step_acc None s0 s1 false) s1 s2 false =
+  incl_transition_delta s0 s2
+    (match s0, s1, s2 with
+     | ISIncluded, ISExcluded, ISIncluded
+     | ISIncluded, ISFailed, ISIncluded => true
+     | _, _, _ => false
+     end).
+Proof.
+  destruct s0, s1, s2; reflexivity.
+Qed.
+
+Fixpoint pos_lsb (p : positive) : positive :=
+  match p with | xH => xH | xI _ => xH | xO q => xO (pos_lsb q) end.
+
+Lemma pos_lsb_le (p : positive) : (Pos.to_nat (pos_lsb p) <= Pos.to_nat p)%nat.
+Proof. induction p as [q _|q IH|]; cbn; lia. Qed.
+
+Definition nat_lsb (i : nat) : nat :=
+  match i with | 0 => 0 | S _ => Pos.to_nat (pos_lsb (Pos.of_nat i)) end.
+
+Lemma nat_lsb_bounds (i : nat) : (1 <= i -> 1 <= nat_lsb i /\ nat_lsb i <= i)%nat.
+Proof.
+  intro Hi. destruct i as [|i']; [lia|]. unfold nat_lsb. split.
+  - pose proof (Pos2Nat.is_pos (pos_lsb (Pos.of_nat (S i')))). lia.
+  - pose proof (pos_lsb_le (Pos.of_nat (S i'))) as Hle.
+    rewrite Nat2Pos.id in Hle; [exact Hle | lia].
+Qed.
+
+Lemma z_land_opp_pos (p : positive) : Z.land (Z.pos p) (- Z.pos p) = Z.pos (pos_lsb p).
+Proof.
+  change (- Z.pos p)%Z with (Z.neg p).
+  induction p as [q _|q IH|]; cbn [pos_lsb].
+  - change (Z.land (Z.pos (q~1)) (Z.neg (q~1))) with (Z.of_N (Pos.ldiff (q~1) (q~0))).
+    assert (Hdiag : Pos.ldiff q q = 0%N)
+      by (apply N.bits_inj => n; rewrite N.pos_ldiff_spec; rewrite N.bits_0; by rewrite andb_negb_r).
+    cbn. by rewrite Hdiag.
+  - change (Z.land (Z.pos (q~0)) (Z.neg (q~0)))
+      with (Z.of_N (N.ldiff (N.pos (q~0)) (Pos.pred_N (q~0)))).
+    replace (Z.pos (pos_lsb q)~0) with (Z.of_N (N.double (N.pos (pos_lsb q)))) by reflexivity.
+    assert (IH' : N.ldiff (N.pos q) (Pos.pred_N q) = N.pos (pos_lsb q))
+      by (apply N2Z.inj; exact IH).
+    rewrite <- IH'. f_equal. apply N.bits_inj => n.
+    destruct n as [|p0] using N.peano_ind.
+    + rewrite N.ldiff_spec; rewrite N.double_spec; rewrite N.testbit_even_0. reflexivity.
+    + clear IHp0.
+      rewrite N.ldiff_spec; rewrite N.double_spec; rewrite N.double_bits_succ; rewrite N.ldiff_spec.
+      rewrite <- N.div2_bits. rewrite <- N.div2_bits.
+      rewrite <- N.div2_div. rewrite <- N.div2_div.
+      cbn; destruct q; reflexivity.
+  - reflexivity.
+Qed.
+
+Lemma z_land_opp_nat (i : nat) :
+  (1 <= i)%nat -> Z.land (Z.of_nat i) (- Z.of_nat i)%Z = Z.of_nat (nat_lsb i).
+Proof.
+  intro Hi. destruct i as [|i']; [lia|]. unfold nat_lsb.
+  replace (Z.of_nat (S i')) with (Z.pos (Pos.of_nat (S i'))) by lia.
+  rewrite z_land_opp_pos. lia.
+Qed.
+
+Fixpoint fenwick_sum_go (fuel : nat) (tree : list Z) (i : nat) (acc : Z) : Z :=
+  match fuel with
+  | 0 => acc
+  | S fuel' =>
+      if decide (1 <= i)%nat then
+        fenwick_sum_go fuel' tree (i - nat_lsb i) (acc + default 0%Z (tree !! i))%Z
+      else acc
+  end.
+
+Definition fenwick_sum_pure (tree : list Z) (i : nat) : Z :=
+  fenwick_sum_go i tree i 0%Z.
+
+Lemma fenwick_sum_go_fuel_irrel (f1 f2 : nat) (tree : list Z) (i : nat) (acc : Z) :
+  (i <= f1)%nat -> (i <= f2)%nat ->
+  fenwick_sum_go f1 tree i acc = fenwick_sum_go f2 tree i acc.
+Proof.
+  revert f2 i acc. induction f1 as [|f1' IH]; intros [|f2'] i acc Hf1 Hf2.
+  - reflexivity.
+  - assert (i = 0)%nat as -> by lia. reflexivity.
+  - assert (i = 0)%nat as -> by lia. reflexivity.
+  - cbn [fenwick_sum_go]. destruct (decide (1 <= i)%nat) as [Hi|_]; [|reflexivity].
+    destruct (nat_lsb_bounds i Hi). apply IH; lia.
+Qed.
+
+Fixpoint fenwick_add_go (fuel : nat) (tree : list Z) (n i : nat) (delta : Z) : list Z :=
+  match fuel with
+  | 0 => tree
+  | S fuel' =>
+      if decide (1 <= i /\ i <= n)%nat then
+        fenwick_add_go fuel' (<[i := (default 0%Z (tree !! i) + delta)%Z]> tree) n (i + nat_lsb i) delta
+      else tree
+  end.
+
+Definition fenwick_add_pure (tree : list Z) (n i : nat) (delta : Z) : list Z :=
+  fenwick_add_go (S n - i) tree n i delta.
+
+Lemma fenwick_add_go_fuel_irrel (f1 f2 : nat) (tree : list Z) (n i : nat) (delta : Z) :
+  (1 <= i)%nat -> (S n - i <= f1)%nat -> (S n - i <= f2)%nat ->
+  fenwick_add_go f1 tree n i delta = fenwick_add_go f2 tree n i delta.
+Proof.
+  revert f2 tree i. induction f1 as [|f1' IH]; intros [|f2'] tree i Hi Hf1 Hf2.
+  - reflexivity.
+  - cbn [fenwick_add_go]. destruct (decide (1 <= i /\ i <= n)%nat); [lia|reflexivity].
+  - cbn [fenwick_add_go]. destruct (decide (1 <= i /\ i <= n)%nat); [lia|reflexivity].
+  - cbn [fenwick_add_go]. destruct (decide (1 <= i /\ i <= n)%nat) as [[_ Hle]|_]; [|reflexivity].
+    destruct (nat_lsb_bounds i Hi). apply IH; lia.
+Qed.
+
+(** ** 7. Incremental `SortView` inverse-order permutation and splice refinement *)
+
+(**md
+Inverse-permutation coherence between `SortView`'s `order` array (output position
+-> placed index) and `orderPos` array (placed index -> output position).
+*)
+Definition inv_order (order order_pos : list nat) : Prop :=
+  length order = length order_pos /\
+  (forall pos p, order !! pos = Some p -> order_pos !! p = Some pos) /\
+  (forall p pos, order_pos !! p = Some pos -> order !! pos = Some p).
+
+Definition inv_order_hole (hole free_p : nat) (order order_pos : list nat) : Prop :=
+  length order = length order_pos /\
+  (hole < length order)%nat /\
+  (free_p < length order_pos)%nat /\
+  (forall pos p, pos <> hole -> order !! pos = Some p -> p <> free_p /\ order_pos !! p = Some pos) /\
+  (forall p pos, p <> free_p -> order_pos !! p = Some pos -> pos <> hole /\ order !! pos = Some p).
+
+Fixpoint shift_right_steps (steps k : nat) (order order_pos : list nat) : list nat * list nat :=
+  match steps with
+  | 0 => (order, order_pos)
+  | S steps' =>
+      match order !! (k - 1)%nat with
+      | Some moved =>
+          shift_right_steps steps' (k - 1)%nat (<[k := moved]> order) (<[moved := k]> order_pos)
+      | None => (order, order_pos)
+      end
+  end.
+
+Definition reinsert_left_pure (old_pos new_pos p_idx : nat) (order order_pos : list nat) : list nat * list nat :=
+  let '(order1, order_pos1) := shift_right_steps (old_pos - new_pos)%nat old_pos order order_pos in
+  (<[new_pos := p_idx]> order1, <[p_idx := new_pos]> order_pos1).
+
+Lemma inv_order_to_hole (order order_pos : list nat) (old_pos p_idx : nat) :
+  inv_order order order_pos ->
+  order !! old_pos = Some p_idx ->
+  inv_order_hole old_pos p_idx order order_pos.
+Proof.
+  intros [Hlen [Hfw Hbw]] Hold.
+  assert (Hold_lt : (old_pos < length order)%nat) by (eapply lookup_lt_Some; exact Hold).
+  assert (Hp_ok : order_pos !! p_idx = Some old_pos) by (apply Hfw; exact Hold).
+  assert (Hp_lt : (p_idx < length order_pos)%nat) by (eapply lookup_lt_Some; exact Hp_ok).
+  split_and!; [exact Hlen | exact Hold_lt | exact Hp_lt | |].
+  - intros pos p Hne Hpos. pose proof (Hfw pos p Hpos) as Hpos'. split; [|exact Hpos'].
+    intro Heq. subst p. rewrite Hp_ok in Hpos'. congruence.
+  - intros p pos Hne Hp. pose proof (Hbw p pos Hp) as Hpos'. split; [|exact Hpos'].
+    intro Heq. subst pos. rewrite Hold in Hpos'. congruence.
+Qed.
+
+Lemma inv_order_hole_step (k free_p moved : nat) (order order_pos : list nat) :
+  (1 <= k)%nat ->
+  inv_order_hole k free_p order order_pos ->
+  order !! (k - 1)%nat = Some moved ->
+  inv_order_hole (k - 1)%nat free_p (<[k := moved]> order) (<[moved := k]> order_pos).
+Proof.
+  intros Hk (Hlen & Hk_lt & Hfree_lt & Hfw & Hbw) Hprev.
+  assert (Hmoved : moved <> free_p /\ order_pos !! moved = Some (k - 1)%nat).
+  { apply Hfw; [lia | exact Hprev]. }
+  destruct Hmoved as [Hmoved_ne Hmoved_pos].
+  assert (Hmoved_lt : (moved < length order_pos)%nat) by (eapply lookup_lt_Some; exact Hmoved_pos).
+  split_and!.
+  - rewrite !length_insert. exact Hlen.
+  - rewrite length_insert. lia.
+  - rewrite length_insert. exact Hfree_lt.
+  - intros pos p Hne Hpos.
+    destruct (decide (pos = k)) as [->|Hnek].
+    + rewrite list_lookup_insert_eq in Hpos; [|exact Hk_lt].
+      injection Hpos as <-. split; [exact Hmoved_ne|].
+      rewrite list_lookup_insert_eq; [reflexivity | exact Hmoved_lt].
+    + rewrite list_lookup_insert_ne in Hpos; [|lia].
+      destruct (Hfw pos p Hnek Hpos) as [Hp_ne Hpos_old].
+      split; [exact Hp_ne|].
+      assert (Hp_ne_moved : p <> moved).
+      { intro Heq. subst p. rewrite Hmoved_pos in Hpos_old. apply Hne. congruence. }
+      rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+  - intros p pos Hne Hp.
+    destruct (decide (p = moved)) as [->|Hnem].
+    + rewrite list_lookup_insert_eq in Hp; [|exact Hmoved_lt].
+      injection Hp as <-. split; [lia|].
+      rewrite list_lookup_insert_eq; [reflexivity | exact Hk_lt].
+    + rewrite list_lookup_insert_ne in Hp; [|lia].
+      destruct (Hbw p pos Hne Hp) as [Hpos_nek Hpos_old].
+      split.
+      * intro Heq. subst pos. rewrite Hprev in Hpos_old. apply Hnem. congruence.
+      * rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+Qed.
+
+Lemma shift_right_steps_hole (steps k free_p : nat) (order order_pos : list nat) :
+  (steps <= k)%nat ->
+  inv_order_hole k free_p order order_pos ->
+  let '(order', order_pos') := shift_right_steps steps k order order_pos in
+  inv_order_hole (k - steps)%nat free_p order' order_pos'.
+Proof.
+  revert k order order_pos.
+  induction steps as [|steps' IH]; intros k order order_pos Hle Hinv.
+  - cbn [shift_right_steps]. replace (k - 0)%nat with k by lia. exact Hinv.
+  - cbn [shift_right_steps].
+    destruct Hinv as (Hlen & Hk_lt & Hfree_lt & Hfw & Hbw).
+    assert (Hkm1_lt : (k - 1 < length order)%nat) by lia.
+    destruct (lookup_lt_is_Some_2 order (k - 1)%nat Hkm1_lt) as [moved Hprev].
+    rewrite Hprev.
+    pose proof (inv_order_hole_step k free_p moved order order_pos ltac:(lia) (conj Hlen (conj Hk_lt (conj Hfree_lt (conj Hfw Hbw)))) Hprev) as Hstep.
+    replace (k - S steps')%nat with ((k - 1) - steps')%nat by lia.
+    apply IH; [lia | exact Hstep].
+Qed.
+
+Lemma inv_order_close_hole (hole free_p : nat) (order order_pos : list nat) :
+  inv_order_hole hole free_p order order_pos ->
+  inv_order (<[hole := free_p]> order) (<[free_p := hole]> order_pos) /\
+  (<[hole := free_p]> order) !! hole = Some free_p.
+Proof.
+  intros (Hlen & Hhole_lt & Hfree_lt & Hfw & Hbw).
+  split.
+  - split_and!.
+    + rewrite !length_insert. exact Hlen.
+    + intros pos p Hpos.
+      destruct (decide (pos = hole)) as [->|Hne].
+      * rewrite list_lookup_insert_eq in Hpos; [|exact Hhole_lt].
+        injection Hpos as <-.
+        rewrite list_lookup_insert_eq; [reflexivity | exact Hfree_lt].
+      * rewrite list_lookup_insert_ne in Hpos; [|lia].
+        destruct (Hfw pos p Hne Hpos) as [Hp_ne Hpos_old].
+        rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+    + intros p pos Hpos.
+      destruct (decide (p = free_p)) as [->|Hne].
+      * rewrite list_lookup_insert_eq in Hpos; [|exact Hfree_lt].
+        injection Hpos as <-.
+        rewrite list_lookup_insert_eq; [reflexivity | exact Hhole_lt].
+      * rewrite list_lookup_insert_ne in Hpos; [|lia].
+        destruct (Hbw p pos Hne Hpos) as [Hpos_ne Hpos_old].
+        rewrite list_lookup_insert_ne; [exact Hpos_old | lia].
+  - rewrite list_lookup_insert_eq; [reflexivity | exact Hhole_lt].
+Qed.
+
+(**md
+**Leftward reinsertion preserves inverse-order array coherence (`inv_order`).**
+
+Mirrors `SortView.reinsertPlacedSlot`'s `newPos < oldPos` loop: shifting
+`order[old_pos - 1 .. new_pos]` right by one slot while updating `orderPos`
+and placing `p_idx` at `new_pos` preserves the bijection `order <-> orderPos`
+and installs `order' !! new_pos = Some p_idx`.
+
+- [order:] output-position to placed-index permutation before reinsertion.
+- [order_pos:] inverse placed-index to output-position map before reinsertion.
+- [old_pos:] prior output position holding `p_idx`.
+- [new_pos:] target output position (`new_pos <= old_pos`).
+- [p_idx:] placed-slot index moved from `old_pos` to `new_pos`.
+*)
+Theorem inv_order_reinsert_coherent
+  (order order_pos : list nat) (old_pos new_pos p_idx : nat) :
+  inv_order order order_pos ->
+  (new_pos <= old_pos)%nat ->
+  order !! old_pos = Some p_idx ->
+  let '(order', order_pos') := reinsert_left_pure old_pos new_pos p_idx order order_pos in
+  inv_order order' order_pos' /\ order' !! new_pos = Some p_idx.
+Proof.
+  intros Hinv Hle Hold.
+  unfold reinsert_left_pure.
+  pose proof (shift_right_steps_hole (old_pos - new_pos)%nat old_pos p_idx order order_pos ltac:(lia) (inv_order_to_hole order order_pos old_pos p_idx Hinv Hold)) as Hshift.
+  destruct (shift_right_steps (old_pos - new_pos)%nat old_pos order order_pos) as [order1 order_pos1].
+  replace (old_pos - (old_pos - new_pos))%nat with new_pos in Hshift by lia.
+  exact (inv_order_close_hole new_pos p_idx order1 order_pos1 Hshift).
+Qed.
+
+Definition rank_up_le (a b : nat * Z * nat) : Prop :=
+  (a.1.2 < b.1.2)%Z \/ (a.1.2 = b.1.2 /\ (a.2 <= b.2)%nat).
+
+Definition rank_up_le_b (a b : nat * Z * nat) : bool :=
+  bool_decide ((a.1.2 < b.1.2)%Z \/ (a.1.2 = b.1.2 /\ (a.2 <= b.2)%nat)).
+
+Lemma rank_up_le_b_spec (a b : nat * Z * nat) :
+  if rank_up_le_b a b then rank_up_le a b else rank_up_le b a.
+Proof.
+  unfold rank_up_le_b, rank_up_le.
+  destruct (bool_decide_reflect ((a.1.2 < b.1.2)%Z \/ (a.1.2 = b.1.2 /\ (a.2 <= b.2)%nat))); lia.
+Qed.
+
+Lemma rank_up_le_refl (a : nat * Z * nat) : rank_up_le a a.
+Proof. unfold rank_up_le. lia. Qed.
+
+Lemma rank_up_le_trans (a b c : nat * Z * nat) :
+  rank_up_le a b -> rank_up_le b c -> rank_up_le a c.
+Proof. unfold rank_up_le. lia. Qed.
+
+Fixpoint sorted_insert (x : nat * Z * nat) (l : list (nat * Z * nat)) : list (nat * Z * nat) :=
+  match l with
+  | [] => [x]
+  | y :: ys => if rank_up_le_b x y then x :: y :: ys else y :: sorted_insert x ys
+  end.
+
+Definition full_insertion_sort (xs : list (nat * Z * nat)) : list (nat * Z * nat) :=
+  foldr sorted_insert [] xs.
+
+Fixpoint sorted_remove_key (k : nat) (l : list (nat * Z * nat)) : list (nat * Z * nat) :=
+  match l with
+  | [] => []
+  | y :: ys =>
+      if decide (y.1.1 <> k) then y :: sorted_remove_key k ys
+      else sorted_remove_key k ys
+  end.
+
+Lemma sorted_insert_perm (x : nat * Z * nat) (l : list (nat * Z * nat)) :
+  sorted_insert x l ≡ₚ x :: l.
+Proof.
+  induction l as [|y ys IH]; cbn [sorted_insert].
+  - reflexivity.
+  - destruct (rank_up_le_b x y).
+    + reflexivity.
+    + rewrite IH. apply perm_swap.
+Qed.
+
+Lemma full_insertion_sort_perm (xs : list (nat * Z * nat)) :
+  full_insertion_sort xs ≡ₚ xs.
+Proof.
+  induction xs as [|x xs IH]; cbn [full_insertion_sort foldr].
+  - reflexivity.
+  - rewrite sorted_insert_perm, IH. reflexivity.
+Qed.
+
+Lemma sorted_insert_sorts (x : nat * Z * nat) (l : list (nat * Z * nat)) :
+  StronglySorted rank_up_le l ->
+  StronglySorted rank_up_le (sorted_insert x l).
+Proof.
+  induction l as [|y ys IH]; intro Hsort; cbn [sorted_insert].
+  - constructor; [constructor | constructor].
+  - inversion Hsort as [|? ? Hsys Hfy]; subst.
+    pose proof (rank_up_le_b_spec x y) as Hcmp.
+    destruct (rank_up_le_b x y).
+    + constructor; [exact Hsort|].
+      constructor; [exact Hcmp|].
+      eapply Forall_impl; [exact Hfy|].
+      intros z Hyz. eapply rank_up_le_trans; [exact Hcmp | exact Hyz].
+    + constructor; [apply IH; exact Hsys|].
+      rewrite Forall_forall. intros z Hz.
+      assert (Hz_in : z ∈ x :: ys).
+      { rewrite <- (sorted_insert_perm x ys). exact Hz. }
+      apply elem_of_cons in Hz_in as [-> | Hys].
+      * exact Hcmp.
+      * rewrite Forall_forall in Hfy. apply Hfy; exact Hys.
+Qed.
+
+Lemma full_insertion_sort_sorts (xs : list (nat * Z * nat)) :
+  StronglySorted rank_up_le (full_insertion_sort xs).
+Proof.
+  induction xs as [|x xs IH]; cbn [full_insertion_sort foldr].
+  - constructor.
+  - apply sorted_insert_sorts; exact IH.
+Qed.
+
+Lemma sorted_remove_key_eq_filter (k : nat) (l : list (nat * Z * nat)) :
+  sorted_remove_key k l = filter (fun y : nat * Z * nat => y.1.1 <> k) l.
+Proof.
+  induction l as [|y ys IH]; cbn [sorted_remove_key].
+  - rewrite filter_nil. reflexivity.
+  - destruct (decide (y.1.1 <> k)) as [Hy|Hy].
+    + rewrite filter_cons_True by exact Hy. rewrite IH. reflexivity.
+    + rewrite filter_cons_False by exact Hy. exact IH.
+Qed.
+
+Lemma filter_elem_of {A : Type} (P : A -> Prop) `{!forall x, Decision (P x)}
+  (l : list A) (z : A) :
+  z ∈ filter P l -> P z /\ z ∈ l.
+Proof.
+  induction l as [|y ys IH]; intro Hz.
+  - rewrite filter_nil in Hz. inversion Hz.
+  - destruct (decide (P y)) as [HPy|HPy].
+    + rewrite filter_cons_True in Hz by exact HPy.
+      apply elem_of_cons in Hz as [-> | Hz].
+      * split; [exact HPy | left].
+      * destruct (IH Hz) as [HPz Hz']. split; [exact HPz | right; exact Hz'].
+    + rewrite filter_cons_False in Hz by exact HPy.
+      destruct (IH Hz) as [HPz Hz']. split; [exact HPz | right; exact Hz'].
+Qed.
+
+Lemma strongly_sorted_filter (P : nat * Z * nat -> Prop) `{!forall y, Decision (P y)}
+  (l : list (nat * Z * nat)) :
+  StronglySorted rank_up_le l ->
+  StronglySorted rank_up_le (filter P l).
+Proof.
+  induction l as [|y ys IH]; intro Hsort.
+  - rewrite filter_nil. constructor.
+  - inversion Hsort as [|? ? Hsys Hfy]; subst.
+    destruct (decide (P y)) as [HPy|HPy].
+    + rewrite filter_cons_True by exact HPy.
+      constructor; [apply IH; exact Hsys|].
+      rewrite Forall_forall in Hfy |- *.
+      intros z Hz. apply filter_elem_of in Hz as [_ Hz].
+      apply Hfy; exact Hz.
+    + rewrite filter_cons_False by exact HPy.
+      apply IH; exact Hsys.
+Qed.
+
+Lemma list_filter_perm {A : Type} (P : A -> Prop) `{!forall x, Decision (P x)}
+  (l1 l2 : list A) :
+  l1 ≡ₚ l2 -> filter P l1 ≡ₚ filter P l2.
+Proof.
+  intro Hp. induction Hp as [|x l1 l2 Hsub IH|x y l|l1 l2 l3 Hsub1 IH1 Hsub2 IH2].
+  - rewrite filter_nil. reflexivity.
+  - destruct (decide (P x)) as [HPx|HPx].
+    + rewrite !filter_cons_True by exact HPx. constructor. exact IH.
+    + rewrite !filter_cons_False by exact HPx. exact IH.
+  - destruct (decide (P x)) as [HPx|HPx], (decide (P y)) as [HPy|HPy];
+      repeat first [ rewrite filter_cons_True by done | rewrite filter_cons_False by done ];
+      try apply perm_swap; reflexivity.
+  - etrans; [exact IH1 | exact IH2].
+Qed.
+
+Lemma list_fmap_perm {A B : Type} (f : A -> B) (l1 l2 : list A) :
+  l1 ≡ₚ l2 -> (f <$> l1) ≡ₚ (f <$> l2).
+Proof.
+  intro Hp. induction Hp as [|x l1 l2 Hsub IH|x y l|l1 l2 l3 Hsub1 IH1 Hsub2 IH2];
+    cbn [fmap list_fmap].
+  - reflexivity.
+  - constructor. exact IH.
+  - apply perm_swap.
+  - etrans; [exact IH1 | exact IH2].
+Qed.
+
+Lemma nodup_snd_filter (P : nat * Z * nat -> Prop) `{!forall y, Decision (P y)}
+  (xs : list (nat * Z * nat)) :
+  NoDup (snd <$> xs) ->
+  NoDup (snd <$> filter P xs).
+Proof.
+  induction xs as [|y ys IH]; intro Hnd.
+  - rewrite filter_nil. constructor.
+  - cbn [fmap list_fmap] in Hnd. inversion Hnd as [|? ? Hnot Hnd']; subst.
+    destruct (decide (P y)) as [HPy|HPy].
+    + rewrite filter_cons_True by exact HPy.
+      cbn [fmap list_fmap]. constructor.
+      * intro Hin. apply Hnot.
+        apply list_elem_of_fmap in Hin as [z [Heq Hz]].
+        apply filter_elem_of in Hz as [_ Hz].
+        subst. apply list_elem_of_fmap. eauto.
+      * apply IH; exact Hnd'.
+    + rewrite filter_cons_False by exact HPy.
+      apply IH; exact Hnd'.
+Qed.
+
+Lemma strongly_sorted_nodup_unique (l1 l2 : list (nat * Z * nat)) :
+  StronglySorted rank_up_le l1 ->
+  StronglySorted rank_up_le l2 ->
+  l1 ≡ₚ l2 ->
+  NoDup (snd <$> l1) ->
+  l1 = l2.
+Proof.
+  revert l2. induction l1 as [|a l1' IH]; intros l2 Hs1 Hs2 Hperm Hnd1.
+  - symmetry. apply Permutation_nil. exact Hperm.
+  - destruct l2 as [|b l2']; [exfalso; eapply Permutation_nil_cons; symmetry; exact Hperm|].
+    inversion Hs1 as [|? ? Hs1' Hfa]; subst.
+    inversion Hs2 as [|? ? Hs2' Hfb]; subst.
+    cbn [fmap list_fmap] in Hnd1. inversion Hnd1 as [|? ? Ha_not Hnd1']; subst.
+    assert (Hb_in : b ∈ a :: l1') by (rewrite Hperm; constructor).
+    assert (Ha_in : a ∈ b :: l2') by (rewrite <- Hperm; constructor).
+    assert (Hab : rank_up_le a b).
+    { apply elem_of_cons in Hb_in as [-> | Hb_in].
+      - apply rank_up_le_refl.
+      - rewrite Forall_forall in Hfa. apply Hfa; exact Hb_in. }
+    assert (Hba : rank_up_le b a).
+    { apply elem_of_cons in Ha_in as [-> | Ha_in].
+      - apply rank_up_le_refl.
+      - rewrite Forall_forall in Hfb. apply Hfb; exact Ha_in. }
+    assert (Heq_rk : a.1.2 = b.1.2 /\ a.2 = b.2) by (unfold rank_up_le in Hab, Hba; lia).
+    destruct Heq_rk as [_ Heq_snd].
+    apply elem_of_cons in Hb_in as [Heq | Hb_l1'].
+    + subst b. f_equal. apply IH; [exact Hs1' | exact Hs2' | | exact Hnd1'].
+      eapply Permutation_cons_inv; exact Hperm.
+    + exfalso. apply Ha_not. rewrite Heq_snd.
+      apply list_elem_of_fmap. exists b. split; [reflexivity | exact Hb_l1'].
+Qed.
+
+(**md
+**Incremental single-slot insertion and key removal refine full upstream-tie-broken sorting.**
+
+Under distinct upstream indices (`NoDup (snd <$> ...)`), `sorted_insert` on
+the already-sorted list equals `full_insertion_sort` of `(x :: xs)`, and
+`sorted_remove_key k` equals `full_insertion_sort` over the filtered list
+with key `k` removed.
+
+- [x:] newly placed or reinserted `(key, rank, up_idx)` triple.
+- [k:] removed upstream key.
+- [xs:] sorted upstream triple collection prior to the incremental edit.
+*)
+Theorem sortview_insert_remove_refines_sort
+  (x : nat * Z * nat) (k : nat) (xs : list (nat * Z * nat)) :
+  (NoDup (snd <$> (x :: xs)) ->
+   sorted_insert x (full_insertion_sort xs) = full_insertion_sort (x :: xs)) /\
+  (NoDup (snd <$> xs) ->
+   sorted_remove_key k (full_insertion_sort xs) =
+     full_insertion_sort (filter (fun y : nat * Z * nat => y.1.1 <> k) xs)).
+Proof.
+  split.
+  - intros _. reflexivity.
+  - intro Hnd. rewrite sorted_remove_key_eq_filter.
+    set (P := fun y : nat * Z * nat => y.1.1 <> k).
+    apply strongly_sorted_nodup_unique.
+    + apply strongly_sorted_filter. apply full_insertion_sort_sorts.
+    + apply full_insertion_sort_sorts.
+    + rewrite (list_filter_perm P _ _ (full_insertion_sort_perm xs)).
+      symmetry. apply full_insertion_sort_perm.
+    + rewrite (list_fmap_perm snd _ _ (list_filter_perm P _ _ (full_insertion_sort_perm xs))).
+      exact (nodup_snd_filter P xs Hnd).
+Qed.
+
+(** ** Incremental `DistinctView` and `Grouping` bucket refinement *)
+
+Definition row_up (r : nat * nat * option Z) : nat := r.1.1.
+Definition row_key (r : nat * nat * option Z) : nat := r.1.2.
+Definition row_grp (r : nat * nat * option Z) : option Z := r.2.
+
+Fixpoint bucket_members (g : Z) (xs : list (nat * nat * option Z)) : list (nat * nat) :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      if decide (row_grp r = Some g) then
+        (row_up r, row_key r) :: bucket_members g xs'
+      else
+        bucket_members g xs'
+  end.
+
+Fixpoint bucket_remove (u0 : nat) (ms : list (nat * nat)) : list (nat * nat) :=
+  match ms with
+  | [] => []
+  | m :: ms' =>
+      if decide (m.1 = u0) then bucket_remove u0 ms'
+      else m :: bucket_remove u0 ms'
+  end.
+
+Fixpoint bucket_insert (m : nat * nat) (ms : list (nat * nat)) : list (nat * nat) :=
+  match ms with
+  | [] => [m]
+  | m' :: ms' =>
+      if decide (m.1 < m'.1)%nat then m :: m' :: ms'
+      else m' :: bucket_insert m ms'
+  end.
+
+Fixpoint update_row_group (u0 : nat) (mg' : option Z) (xs : list (nat * nat * option Z))
+  : list (nat * nat * option Z) :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      if decide (row_up r = u0) then
+        (row_up r, row_key r, mg') :: update_row_group u0 mg' xs'
+      else
+        r :: update_row_group u0 mg' xs'
+  end.
+
+Definition bucket_map_apply_old
+  (u0 : nat) (mg_old : option Z) (bmap : Z -> list (nat * nat)) (g : Z) : list (nat * nat) :=
+  match mg_old with
+  | Some g_old => if decide (g = g_old) then bucket_remove u0 (bmap g) else bmap g
+  | None => bmap g
+  end.
+
+Definition bucket_map_update
+  (u0 k0 : nat) (mg_old mg_new : option Z) (bmap : Z -> list (nat * nat)) (g : Z) : list (nat * nat) :=
+  let bmap1 := bucket_map_apply_old u0 mg_old bmap in
+  match mg_new with
+  | Some g_new => if decide (g = g_new) then bucket_insert (u0, k0) (bmap1 g) else bmap1 g
+  | None => bmap1 g
+  end.
+
+Fixpoint distinct_scan_aux (seen : list Z) (xs : list (nat * nat * option Z)) : list nat :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      match row_grp r with
+      | None => distinct_scan_aux seen xs'
+      | Some g =>
+          if decide (g ∈ seen) then distinct_scan_aux seen xs'
+          else row_key r :: distinct_scan_aux (g :: seen) xs'
+      end
+  end.
+
+Definition distinct_scan (xs : list (nat * nat * option Z)) : list nat :=
+  distinct_scan_aux [] xs.
+
+Definition is_bucket_winner (bmap : Z -> list (nat * nat)) (r : nat * nat * option Z) : bool :=
+  match row_grp r with
+  | None => false
+  | Some g =>
+      match bmap g with
+      | [] => false
+      | m :: _ => bool_decide (m.1 = row_up r /\ m.2 = row_key r)
+      end
+  end.
+
+Fixpoint distinct_by_buckets (bmap : Z -> list (nat * nat)) (xs : list (nat * nat * option Z)) : list nat :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      if is_bucket_winner bmap r then row_key r :: distinct_by_buckets bmap xs'
+      else distinct_by_buckets bmap xs'
+  end.
+
+Fixpoint group_scan_order_aux (seen : list Z) (xs : list (nat * nat * option Z)) : list Z :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      match row_grp r with
+      | None => group_scan_order_aux seen xs'
+      | Some g =>
+          if decide (g ∈ seen) then group_scan_order_aux seen xs'
+          else g :: group_scan_order_aux (g :: seen) xs'
+      end
+  end.
+
+Definition group_scan_order (xs : list (nat * nat * option Z)) : list Z :=
+  group_scan_order_aux [] xs.
+
+Definition group_scan_members (g : Z) (xs : list (nat * nat * option Z)) : list nat :=
+  snd <$> bucket_members g xs.
+
+Fixpoint insert_first_idx (p : nat * Z) (l : list (nat * Z)) : list (nat * Z) :=
+  match l with
+  | [] => [p]
+  | q :: l' =>
+      if decide (p.1 < q.1)%nat then p :: q :: l'
+      else q :: insert_first_idx p l'
+  end.
+
+Definition active_group_pairs (bmap : Z -> list (nat * nat)) (gs : list Z) : list (nat * Z) :=
+  foldr (fun g acc =>
+    match bmap g with
+    | [] => acc
+    | m :: _ => insert_first_idx (m.1, g) acc
+    end) [] gs.
+
+Definition ordered_groups_by_first_idx (bmap : Z -> list (nat * nat)) (gs : list Z) : list Z :=
+  snd <$> active_group_pairs bmap gs.
+
+Lemma row_up_update_row_group (u0 : nat) (mg' : option Z) (xs : list (nat * nat * option Z)) :
+  row_up <$> update_row_group u0 mg' xs = row_up <$> xs.
+Proof.
+  induction xs as [|r xs' IH]; cbn [update_row_group fmap list_fmap].
+  - reflexivity.
+  - destruct (decide (row_up r = u0)); cbn [fmap list_fmap row_up].
+    + destruct r as [[u k] mg]; cbn in *. rewrite IH. reflexivity.
+    + rewrite IH. reflexivity.
+Qed.
+
+Lemma strongly_sorted_row_up_update (u0 : nat) (mg' : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  StronglySorted Nat.lt (row_up <$> update_row_group u0 mg' xs).
+Proof.
+  rewrite row_up_update_row_group. trivial.
+Qed.
+
+Lemma strongly_sorted_tail_lt (r : nat * nat * option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> (r :: xs)) ->
+  StronglySorted Nat.lt (row_up <$> xs) /\ Forall (fun q => (row_up r < row_up q)%nat) xs.
+Proof.
+  intro Hsort. cbn [fmap list_fmap] in Hsort.
+  inversion Hsort as [|? ? Hxs Hfa]; subst.
+  split; [exact Hxs|].
+  rewrite Forall_forall. intros q Hq.
+  rewrite Forall_forall in Hfa.
+  apply Hfa. apply list_elem_of_fmap. exists q. split; [reflexivity | exact Hq].
+Qed.
+
+Lemma bucket_remove_members (g : Z) (u0 : nat) (xs : list (nat * nat * option Z)) :
+  bucket_remove u0 (bucket_members g xs) = bucket_members g (update_row_group u0 None xs).
+Proof.
+  induction xs as [|r xs' IH]; cbn [bucket_members update_row_group].
+  - reflexivity.
+  - destruct (decide (row_grp r = Some g)) as [Hg|Hg], (decide (row_up r = u0)) as [Hu|Hu];
+      cbn [bucket_members bucket_remove row_grp row_up] in *.
+    + rewrite decide_True by exact Hu. exact IH.
+    + rewrite decide_False by exact Hu. rewrite decide_True by exact Hg.
+      cbn [fst]. rewrite IH. reflexivity.
+    + rewrite decide_False by discriminate. exact IH.
+    + rewrite decide_False by exact Hg. exact IH.
+Qed.
+
+Lemma update_row_group_gt (u0 : nat) (mg : option Z) (xs : list (nat * nat * option Z)) :
+  Forall (fun q => (u0 < row_up q)%nat) xs ->
+  update_row_group u0 mg xs = xs.
+Proof.
+  induction xs as [|q xs' IH]; intro Hfa; cbn [update_row_group].
+  - reflexivity.
+  - inversion Hfa as [|? ? Hq Hfa']; subst.
+    rewrite decide_False by lia. f_equal. exact (IH Hfa').
+Qed.
+
+Lemma bucket_members_update_none_ne (g : Z) (u0 k0 : nat) (mg_old : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  Some g <> mg_old ->
+  bucket_members g xs = bucket_members g (update_row_group u0 None xs).
+Proof.
+  induction xs as [|r xs' IH]; intros Hsort Hin Hne.
+  - inversion Hin.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    apply elem_of_cons in Hin as [<- | Hin'].
+    + cbn [update_row_group].
+      rewrite decide_True by reflexivity.
+      change (row_up (u0, k0, mg_old)) with u0 in Hlt'.
+      rewrite (update_row_group_gt u0 None xs' Hlt').
+      cbn [bucket_members].
+      rewrite decide_False by (cbn; congruence).
+      rewrite decide_False by (cbn; discriminate).
+      reflexivity.
+    + assert (Hru : row_up r <> u0).
+      { intro Heq. rewrite Forall_forall in Hlt'.
+        pose proof (Hlt' (u0, k0, mg_old) Hin') as Hlt_u.
+        cbn [row_up fst] in Hlt_u. rewrite Heq in Hlt_u. lia. }
+      cbn [update_row_group].
+      rewrite decide_False by exact Hru.
+      cbn [bucket_members].
+      destruct (decide (row_grp r = Some g)); [f_equal|]; exact (IH Hsort' Hin' Hne).
+Qed.
+
+Lemma bucket_map_apply_old_correct (g : Z) (u0 k0 : nat) (mg_old : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  bucket_map_apply_old u0 mg_old (fun g' => bucket_members g' xs) g =
+  bucket_members g (update_row_group u0 None xs).
+Proof.
+  intros Hsort Hin.
+  destruct mg_old as [g_old|]; cbn [bucket_map_apply_old].
+  - destruct (decide (g = g_old)) as [-> | Hne].
+    + apply bucket_remove_members.
+    + apply (bucket_members_update_none_ne g u0 k0 (Some g_old) xs Hsort Hin).
+      intro Heq. injection Heq. contradiction.
+  - apply (bucket_members_update_none_ne g u0 k0 None xs Hsort Hin).
+    discriminate.
+Qed.
+
+Lemma bucket_members_all_gt (u0 : nat) (g : Z) (xs : list (nat * nat * option Z)) :
+  Forall (fun q => (u0 < row_up q)%nat) xs ->
+  Forall (fun m : nat * nat => (u0 < m.1)%nat) (bucket_members g xs).
+Proof.
+  induction xs as [|r xs' IH]; intro Hfa; cbn [bucket_members].
+  - constructor.
+  - inversion Hfa as [|? ? Hr Hfa']; subst.
+    destruct (decide (row_grp r = Some g)); [constructor; [exact Hr | apply IH; exact Hfa'] | apply IH; exact Hfa'].
+Qed.
+
+Lemma update_row_group_absent (u0 : nat) (mg1 mg2 : option Z) (xs : list (nat * nat * option Z)) :
+  Forall (fun q => (u0 < row_up q)%nat) xs ->
+  update_row_group u0 mg1 xs = update_row_group u0 mg2 xs.
+Proof.
+  induction xs as [|r xs' IH]; intro Hfa; cbn [update_row_group].
+  - reflexivity.
+  - inversion Hfa as [|? ? Hr Hfa']; subst.
+    rewrite !decide_False by lia. f_equal. apply IH. exact Hfa'.
+Qed.
+
+Lemma bucket_members_update_ne (g : Z) (mg' : option Z) (u_idx : nat) (xs : list (nat * nat * option Z)) :
+  Some g <> mg' ->
+  bucket_members g (update_row_group u_idx mg' xs) =
+  bucket_members g (update_row_group u_idx None xs).
+Proof.
+  intros Hne. induction xs as [|r xs' IH]; cbn [update_row_group].
+  - reflexivity.
+  - destruct (decide (row_up r = u_idx)) as [Hu|Hu]; cbn [bucket_members].
+    + rewrite decide_False by (cbn; congruence).
+      rewrite decide_False by (cbn; discriminate).
+      exact IH.
+    + destruct (decide (row_grp r = Some g)); [f_equal|]; exact IH.
+Qed.
+
+Lemma bucket_insert_members_eq (g_new : Z) (u0 k0 : nat) (mg_old : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  bucket_insert (u0, k0) (bucket_members g_new (update_row_group u0 None xs)) =
+  bucket_members g_new (update_row_group u0 (Some g_new) xs).
+Proof.
+  induction xs as [|r xs' IH]; intros Hsort Hin.
+  - inversion Hin.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    apply elem_of_cons in Hin as [<- | Hin'].
+    + change (row_up (u0, k0, mg_old)) with u0 in Hlt'.
+      cbn [update_row_group]. rewrite !decide_True by reflexivity.
+      rewrite (update_row_group_gt u0 None xs' Hlt').
+      rewrite (update_row_group_gt u0 (Some g_new) xs' Hlt').
+      cbn [bucket_members].
+      rewrite decide_False by (cbn; discriminate).
+      rewrite decide_True by reflexivity.
+      cbn [row_up row_key fst].
+      set (tail := bucket_members g_new xs').
+      assert (Htail : Forall (fun m : nat * nat => (u0 < m.1)%nat) tail).
+      { subst tail. apply bucket_members_all_gt. exact Hlt'. }
+      destruct tail as [|m ms'].
+      * reflexivity.
+      * inversion Htail as [|? ? Hm _]; subst.
+        cbn [bucket_insert fst]. rewrite decide_True by exact Hm. reflexivity.
+    + assert (Hru_lt : (row_up r < u0)%nat).
+      { rewrite Forall_forall in Hlt'. exact (Hlt' (u0, k0, mg_old) Hin'). }
+      cbn [update_row_group]. rewrite !decide_False by lia.
+      cbn [bucket_members].
+      destruct (decide (row_grp r = Some g_new)) as [Hgr|Hgr].
+      * cbn [bucket_insert]. rewrite decide_False by (cbn [fst]; lia).
+        f_equal. exact (IH Hsort' Hin').
+      * exact (IH Hsort' Hin').
+Qed.
+
+Lemma bucket_map_update_members_eq
+  (u0 k0 : nat) (mg_old mg_new : option Z) (xs : list (nat * nat * option Z)) (g : Z) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  bucket_map_update u0 k0 mg_old mg_new (fun g' => bucket_members g' xs) g =
+  bucket_members g (update_row_group u0 mg_new xs).
+Proof.
+  intros Hsort Hin.
+  unfold bucket_map_update.
+  rewrite (bucket_map_apply_old_correct g u0 k0 mg_old xs Hsort Hin).
+  destruct mg_new as [g_new|].
+  - destruct (decide (g = g_new)) as [->|Hne].
+    + apply (bucket_insert_members_eq g_new u0 k0 mg_old xs Hsort Hin).
+    + symmetry. apply bucket_members_update_ne. congruence.
+  - reflexivity.
+Qed.
+
+Lemma bucket_map_update_untouched
+  (u0 k0 : nat) (mg_old mg_new : option Z) (bmap : Z -> list (nat * nat)) (g : Z) :
+  Some g <> mg_old ->
+  Some g <> mg_new ->
+  bucket_map_update u0 k0 mg_old mg_new bmap g = bmap g.
+Proof.
+  intros Hold Hnew. unfold bucket_map_update, bucket_map_apply_old.
+  destruct mg_old as [g1|], mg_new as [g2|];
+    repeat rewrite decide_False by congruence; reflexivity.
+Qed.
+
+Definition distinct_seen_ok
+  (seen : list Z) (bmap : Z -> list (nat * nat)) (xs : list (nat * nat * option Z)) : Prop :=
+  (forall g, g ∈ seen ->
+    exists m ms, bmap g = m :: ms /\ Forall (fun r => (m.1 < row_up r)%nat) xs) /\
+  (forall g, g ∉ seen -> bmap g = bucket_members g xs).
+
+Lemma distinct_by_buckets_seen
+  (seen : list Z) (bmap : Z -> list (nat * nat)) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  distinct_seen_ok seen bmap xs ->
+  distinct_by_buckets bmap xs = distinct_scan_aux seen xs.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hsort [Hseen Hunseen].
+  - reflexivity.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    cbn [distinct_by_buckets distinct_scan_aux].
+    destruct (row_grp r) as [g|] eqn:Hgrp.
+    + destruct (decide (g ∈ seen)) as [Hin|Hnot].
+      * destruct (Hseen g Hin) as [m [ms [Hbmap Hfa]]].
+        inversion Hfa as [|? ? Hm_lt _]; subst.
+        unfold is_bucket_winner. rewrite Hgrp, Hbmap.
+        rewrite bool_decide_false by lia.
+        apply IH; [exact Hsort'|]. split.
+        -- intros g' Hg'. destruct (Hseen g' Hg') as [m' [ms' [Hb' Hfa']]].
+           inversion Hfa'; subst. exists m', ms'. split; assumption.
+        -- intros g' Hg'. assert (Hne : g' <> g) by (intro; subst; apply Hg'; exact Hin).
+           rewrite (Hunseen g' Hg'). cbn [bucket_members].
+           rewrite Hgrp, decide_False by congruence. reflexivity.
+      * pose proof (Hunseen g Hnot) as Hbmap.
+        cbn [bucket_members] in Hbmap. rewrite Hgrp, decide_True in Hbmap by reflexivity.
+        unfold is_bucket_winner. rewrite Hgrp, Hbmap.
+        rewrite bool_decide_true by (split; reflexivity).
+        f_equal. apply IH; [exact Hsort'|]. split.
+        -- intros g' Hg'. apply elem_of_cons in Hg' as [-> | Hg'].
+           ++ exists (row_up r, row_key r), (bucket_members g xs').
+              split; [exact Hbmap | exact Hlt'].
+           ++ destruct (Hseen g' Hg') as [m' [ms' [Hb' Hfa']]].
+              inversion Hfa'; subst. exists m', ms'. split; assumption.
+        -- intros g' Hg'.
+           assert (Hg'_not : g' ∉ seen) by (intro; apply Hg'; right; assumption).
+           assert (Hne : g' <> g) by (intro; subst; apply Hg'; left).
+           rewrite (Hunseen g' Hg'_not). cbn [bucket_members].
+           rewrite Hgrp, decide_False by congruence. reflexivity.
+    + unfold is_bucket_winner. rewrite Hgrp.
+      apply IH; [exact Hsort'|]. split.
+      * intros g' Hg'. destruct (Hseen g' Hg') as [m' [ms' [Hb' Hfa']]].
+        inversion Hfa'; subst. exists m', ms'. split; assumption.
+      * intros g' Hg'. rewrite (Hunseen g' Hg'). cbn [bucket_members].
+        rewrite Hgrp, decide_False by discriminate. reflexivity.
+Qed.
+
+Lemma distinct_by_buckets_refines_scan (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  distinct_by_buckets (fun g => bucket_members g xs) xs = distinct_scan xs.
+Proof.
+  intro Hsort. unfold distinct_scan.
+  apply distinct_by_buckets_seen; [exact Hsort|].
+  split; [intros g Hin; inversion Hin | intros g _; reflexivity].
+Qed.
+
+(**md
+**Incremental 2-bucket updates and `Members[0]` winner selection in `DistinctView` refine `distinct_scan`.**
+
+Updating row `u0` from optional settled value `mg_old` to `mg_new` removes `u0`
+from bucket `mg_old` (if `Some`), inserts `(u0, k0)` by ascending upstream index
+into bucket `mg_new` (if `Some`), leaves every other bucket untouched, and
+preserves the exact `Members[0]` winner sequence computed by sequential
+`distinct_scan` over the updated rows.
+
+- [u0:] upstream slot index of the updated row.
+- [k0:] upstream key held at slot `u0`.
+- [mg_old:] prior settled distinct value (or `None` when unsettled/failed).
+- [mg_new:] next settled distinct value (or `None` when unsettled/failed).
+- [xs:] upstream rows in strictly ascending `UpIdx` order prior to the update.
+*)
+Theorem distinct_bucket_update_refines_scan
+  (u0 k0 : nat) (mg_old mg_new : option Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  let bmap' := bucket_map_update u0 k0 mg_old mg_new (fun g => bucket_members g xs) in
+  let xs' := update_row_group u0 mg_new xs in
+  (forall g, Some g <> mg_old -> Some g <> mg_new -> bmap' g = bucket_members g xs) /\
+  (forall g, bmap' g = bucket_members g xs') /\
+  distinct_by_buckets bmap' xs' = distinct_scan xs'.
+Proof.
+  intros Hsort Hin bmap' xs'.
+  split_and!.
+  - intros g Hold Hnew. unfold bmap'.
+    apply (bucket_map_update_untouched u0 k0 mg_old mg_new (fun g0 => bucket_members g0 xs) g Hold Hnew).
+  - intro g. unfold bmap', xs'.
+    apply (bucket_map_update_members_eq u0 k0 mg_old mg_new xs g Hsort Hin).
+  - rewrite (distinct_by_buckets_seen [] bmap' xs').
+    + reflexivity.
+    + unfold xs'. apply strongly_sorted_row_up_update; exact Hsort.
+    + split.
+      * intros g Hnil. inversion Hnil.
+      * intros g _. unfold bmap', xs'.
+        apply (bucket_map_update_members_eq u0 k0 mg_old mg_new xs g Hsort Hin).
+Qed.
+
+Fixpoint group_scan_pairs_aux (seen : list Z) (xs : list (nat * nat * option Z)) : list (nat * Z) :=
+  match xs with
+  | [] => []
+  | r :: xs' =>
+      match row_grp r with
+      | None => group_scan_pairs_aux seen xs'
+      | Some g =>
+          if decide (g ∈ seen) then group_scan_pairs_aux seen xs'
+          else (row_up r, g) :: group_scan_pairs_aux (g :: seen) xs'
+      end
+  end.
+
+Lemma group_scan_pairs_snd (seen : list Z) (xs : list (nat * nat * option Z)) :
+  snd <$> group_scan_pairs_aux seen xs = group_scan_order_aux seen xs.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intro seen; cbn [group_scan_pairs_aux group_scan_order_aux].
+  - reflexivity.
+  - destruct (row_grp r) as [g0|]; [|apply IH].
+    destruct (decide (g0 ∈ seen)); [apply IH|].
+    cbn [fmap list_fmap snd]. f_equal. apply IH.
+Qed.
+
+Lemma group_scan_pairs_in_lt
+  (seen : list Z) (xs : list (nat * nat * option Z)) (u : nat) (g : Z) (u_bound : nat) :
+  Forall (fun r => (u_bound < row_up r)%nat) xs ->
+  (u, g) ∈ group_scan_pairs_aux seen xs ->
+  (u_bound < u)%nat.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hfa Hin; cbn [group_scan_pairs_aux] in Hin.
+  - inversion Hin.
+  - inversion Hfa as [|? ? Hr Hfa']; subst.
+    destruct (row_grp r) as [g0|]; [|eapply IH; eassumption].
+    destruct (decide (g0 ∈ seen)); [eapply IH; eassumption|].
+    apply elem_of_cons in Hin as [Heq | Hin'].
+    + injection Heq as -> ->. exact Hr.
+    + eapply IH; eassumption.
+Qed.
+
+Lemma group_scan_pairs_sorted (seen : list Z) (xs : list (nat * nat * option Z)) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) (group_scan_pairs_aux seen xs).
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hsort; cbn [group_scan_pairs_aux].
+  - constructor.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    destruct (row_grp r) as [g0|]; [|apply IH; exact Hsort'].
+    destruct (decide (g0 ∈ seen)); [apply IH; exact Hsort'|].
+    constructor; [apply IH; exact Hsort'|].
+    rewrite Forall_forall. intros [u g] Hmem. cbn [fst].
+    eapply group_scan_pairs_in_lt; eassumption.
+Qed.
+
+Lemma group_scan_pairs_not_seen (seen : list Z) (xs : list (nat * nat * option Z)) (u : nat) (g : Z) :
+  (u, g) ∈ group_scan_pairs_aux seen xs ->
+  g ∉ seen.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intros seen Hin Hg_in; cbn [group_scan_pairs_aux] in Hin.
+  - inversion Hin.
+  - destruct (row_grp r) as [g0|]; [|eapply IH; eassumption].
+    destruct (decide (g0 ∈ seen)).
+    + eapply IH; eassumption.
+    + apply elem_of_cons in Hin as [Heq | Hin'].
+      * injection Heq as -> ->. contradiction.
+      * apply (IH _ Hin'). right. exact Hg_in.
+Qed.
+
+Lemma group_scan_pairs_elem_iff (seen : list Z) (xs : list (nat * nat * option Z)) (u : nat) (g : Z) :
+  (u, g) ∈ group_scan_pairs_aux seen xs <->
+  g ∉ seen /\ exists k ms, bucket_members g xs = (u, k) :: ms.
+Proof.
+  revert seen. induction xs as [|r xs' IH]; intro seen; cbn [group_scan_pairs_aux bucket_members].
+  - split; [intro H; inversion H | intros [_ [k [ms H]]]; discriminate H].
+  - destruct (row_grp r) as [g0|].
+    + destruct (decide (g0 ∈ seen)) as [Hg0_seen|Hg0_not].
+      * rewrite IH. split; intros [Hg_not [k [ms Hmem]]]; split; try exact Hg_not; exists k, ms.
+        -- assert (Hne : g <> g0) by (intro; subst; contradiction).
+           rewrite decide_False by congruence. exact Hmem.
+        -- assert (Hne : g <> g0) by (intro; subst; contradiction).
+           rewrite decide_False in Hmem by congruence. exact Hmem.
+      * split.
+        -- intro Hin. apply elem_of_cons in Hin as [Heq | Hin'].
+           ++ injection Heq as -> ->. split; [exact Hg0_not|].
+              exists (row_key r), (bucket_members g0 xs').
+              rewrite decide_True by reflexivity. reflexivity.
+           ++ pose proof (group_scan_pairs_not_seen _ _ _ _ Hin') as Hg_ns.
+              apply IH in Hin' as [_ Hmem].
+              assert (Hg_not : g ∉ seen) by (intro; apply Hg_ns; right; assumption).
+              assert (Hne : g <> g0) by (intro; subst; apply Hg_ns; left).
+              split; [exact Hg_not|].
+              destruct Hmem as [k [ms Hmem']].
+              exists k, ms. rewrite decide_False by congruence. exact Hmem'.
+        -- intros [Hg_not [k [ms Hmem]]].
+           destruct (decide (g = g0)) as [-> | Hne].
+           ++ rewrite decide_True in Hmem by reflexivity.
+              injection Hmem as -> _. left.
+           ++ right. apply IH. split; [intro Hc; apply elem_of_cons in Hc as [?|?]; contradiction|].
+              exists k, ms. rewrite decide_False in Hmem by congruence. exact Hmem.
+    + rewrite IH.
+      split; intros [Hg_not [k [ms Hmem]]]; split; try exact Hg_not; exists k, ms.
+      * rewrite decide_False by discriminate. exact Hmem.
+      * rewrite decide_False in Hmem by discriminate. exact Hmem.
+Qed.
+
+Lemma insert_first_idx_perm (p : nat * Z) (l : list (nat * Z)) :
+  insert_first_idx p l ≡ₚ p :: l.
+Proof.
+  induction l as [|q l' IH]; cbn [insert_first_idx].
+  - reflexivity.
+  - destruct (decide (p.1 < q.1)%nat); [reflexivity | rewrite IH; apply perm_swap].
+Qed.
+
+Lemma insert_first_idx_sorts (p : nat * Z) (l : list (nat * Z)) :
+  (forall q, q ∈ l -> q.1 <> p.1) ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) l ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) (insert_first_idx p l).
+Proof.
+  induction l as [|q l' IH]; intros Hne Hsort; cbn [insert_first_idx].
+  - constructor; [constructor | constructor].
+  - inversion Hsort as [|? ? Hsort' Hfa]; subst.
+    assert (Hqne : q.1 <> p.1) by (apply Hne; left).
+    destruct (decide (p.1 < q.1)%nat) as [Hlt|Hge].
+    + constructor; [exact Hsort|].
+      constructor; [exact Hlt|].
+      eapply Forall_impl; [exact Hfa|]. intros z Hz. destruct p, q, z; cbn in *; lia.
+    + constructor; [apply IH; [intros z Hz; apply Hne; right; exact Hz | exact Hsort']|].
+      rewrite Forall_forall. intros z Hz.
+      assert (Hz_in : z ∈ p :: l') by (rewrite <- (insert_first_idx_perm p l'); exact Hz).
+      apply elem_of_cons in Hz_in as [-> | Hz_in'].
+      * destruct p, q; cbn in *; lia.
+      * rewrite Forall_forall in Hfa. apply Hfa; exact Hz_in'.
+Qed.
+
+Lemma active_group_pairs_in_iff (bmap : Z -> list (nat * nat)) (gs : list Z) (p : nat * Z) :
+  p ∈ active_group_pairs bmap gs <->
+  p.2 ∈ gs /\ exists m ms, bmap p.2 = m :: ms /\ p.1 = m.1.
+Proof.
+  induction gs as [|g gs' IH]; cbn [active_group_pairs foldr].
+  - split; [intro H; inversion H | intros [H _]; inversion H].
+  - destruct (bmap g) as [|m ms] eqn:Hbm.
+    + rewrite IH. split; intros [Hin Hrest]; split; try assumption.
+      * right. exact Hin.
+      * apply elem_of_cons in Hin as [Heq | Hin']; [|exact Hin'].
+        subst g. destruct Hrest as [m' [ms' [Hbm' _]]]. rewrite Hbm in Hbm'. discriminate Hbm'.
+    + rewrite insert_first_idx_perm. split.
+      * intro Hin. apply elem_of_cons in Hin as [-> | Hin'].
+        -- split; [cbn; left | exists m, ms; split; [exact Hbm | reflexivity]].
+        -- apply IH in Hin' as [Hin_gs Hrest]. split; [right; exact Hin_gs | exact Hrest].
+      * intros [Hin Hrest]. apply elem_of_cons in Hin as [Heq | Hin'].
+        -- destruct Hrest as [m' [ms' [Hbm' Hp1]]].
+           rewrite Heq, Hbm in Hbm'. injection Hbm' as <- _.
+           destruct p as [p1 p2]; cbn [fst snd] in *; subst; left.
+        -- right. apply IH. split; [exact Hin' | exact Hrest].
+Qed.
+
+Lemma bucket_members_first_lt_unique
+  (g1 g2 : Z) (m1 m2 : nat * nat) (ms1 ms2 : list (nat * nat)) (xs : list (nat * nat * option Z)) :
+  bucket_members g1 xs = m1 :: ms1 ->
+  bucket_members g2 xs = m2 :: ms2 ->
+  g1 <> g2 ->
+  m1.1 = m2.1 ->
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  False.
+Proof.
+  induction xs as [|r xs' IH]; intros Hm1 Hm2 Hne Heq1 Hsort.
+  - discriminate Hm1.
+  - destruct (strongly_sorted_tail_lt r xs' Hsort) as [Hsort' Hlt'].
+    cbn [bucket_members] in Hm1, Hm2.
+    destruct (decide (row_grp r = Some g1)) as [Hg1|Hg1],
+             (decide (row_grp r = Some g2)) as [Hg2|Hg2].
+    + rewrite Hg1 in Hg2. injection Hg2 as <-. contradiction.
+    + injection Hm1 as <- <-.
+      assert (Hm2_in : m2 ∈ bucket_members g2 xs') by (rewrite Hm2; left).
+      assert (Hfa2 := bucket_members_all_gt (row_up r) g2 xs' Hlt').
+      rewrite Forall_forall in Hfa2. pose proof (Hfa2 m2 Hm2_in) as Hlt. cbn [fst] in *. lia.
+    + injection Hm2 as <- <-.
+      assert (Hm1_in : m1 ∈ bucket_members g1 xs') by (rewrite Hm1; left).
+      assert (Hfa1 := bucket_members_all_gt (row_up r) g1 xs' Hlt').
+      rewrite Forall_forall in Hfa1. pose proof (Hfa1 m1 Hm1_in) as Hlt. cbn [fst] in *. lia.
+    + exact (IH Hm1 Hm2 Hne Heq1 Hsort').
+Qed.
+
+Lemma active_group_pairs_sorted (xs : list (nat * nat * option Z)) (gs : list Z) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  NoDup gs ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) (active_group_pairs (fun g => bucket_members g xs) gs).
+Proof.
+  intros Hsort Hnd. induction gs as [|g gs' IH]; cbn [active_group_pairs foldr].
+  - constructor.
+  - inversion Hnd as [|? ? Hg_not Hnd']; subst.
+    destruct (bucket_members g xs) as [|m ms] eqn:Hbm.
+    + apply IH. exact Hnd'.
+    + apply insert_first_idx_sorts.
+      * intros [u g'] Hmem. cbn [fst].
+        apply active_group_pairs_in_iff in Hmem as [Hg'_in [m' [ms' [Hbm' Hu_eq]]]].
+        cbn [fst snd] in *.
+        assert (Hne : g <> g') by (intro; subst; contradiction).
+        intro Heq. eapply (bucket_members_first_lt_unique g g' m m' ms ms' xs Hbm Hbm' Hne); [congruence | exact Hsort].
+      * apply IH. exact Hnd'.
+Qed.
+
+Lemma strongly_sorted_pair_lt_unique (l1 l2 : list (nat * Z)) :
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) l1 ->
+  StronglySorted (fun a b : nat * Z => (a.1 < b.1)%nat) l2 ->
+  (forall x, x ∈ l1 <-> x ∈ l2) ->
+  l1 = l2.
+Proof.
+  revert l2. induction l1 as [|a l1' IH]; intros l2 Hs1 Hs2 Hiff.
+  - destruct l2 as [|b l2']; [reflexivity|].
+    exfalso. pose proof (proj2 (Hiff b) ltac:(left)) as Hnil. inversion Hnil.
+  - destruct l2 as [|b l2'].
+    + exfalso. pose proof (proj1 (Hiff a) ltac:(left)) as Hnil. inversion Hnil.
+    + inversion Hs1 as [|? ? Hs1' Hfa]; subst.
+      inversion Hs2 as [|? ? Hs2' Hfb]; subst.
+      assert (Hb_in : b ∈ a :: l1') by (apply Hiff; left).
+      assert (Ha_in : a ∈ b :: l2') by (apply Hiff; left).
+      apply elem_of_cons in Hb_in as [Heq_ba | Hb_l1'].
+      * subst b. f_equal. apply IH; [exact Hs1' | exact Hs2'|].
+        assert (Ha1 : a ∉ l1').
+        { intro Hc. rewrite Forall_forall in Hfa. pose proof (Hfa a Hc) as Hlt. lia. }
+        assert (Ha2 : a ∉ l2').
+        { intro Hc. rewrite Forall_forall in Hfb. pose proof (Hfb a Hc) as Hlt. lia. }
+        intro x. split; intro Hx.
+        -- assert (Hne : x <> a) by (intro; subst; contradiction).
+           pose proof (proj1 (Hiff x) ltac:(right; exact Hx)) as Hx'.
+           apply elem_of_cons in Hx' as [?|?]; [contradiction | assumption].
+        -- assert (Hne : x <> a) by (intro; subst; contradiction).
+           pose proof (proj2 (Hiff x) ltac:(right; exact Hx)) as Hx'.
+           apply elem_of_cons in Hx' as [?|?]; [contradiction | assumption].
+      * rewrite Forall_forall in Hfa. pose proof (Hfa b Hb_l1') as Hab.
+        apply elem_of_cons in Ha_in as [Heq_ab | Ha_l2']; [subst; lia|].
+        rewrite Forall_forall in Hfb. pose proof (Hfb a Ha_l2') as Hba.
+        lia.
+Qed.
+
+Lemma active_group_pairs_ext (b1 b2 : Z -> list (nat * nat)) (gs : list Z) :
+  (forall g, g ∈ gs -> b1 g = b2 g) ->
+  active_group_pairs b1 gs = active_group_pairs b2 gs.
+Proof.
+  induction gs as [|g gs' IH]; intro Hext; cbn [active_group_pairs foldr].
+  - reflexivity.
+  - unfold active_group_pairs in IH.
+    rewrite (Hext g ltac:(left)).
+    rewrite (IH (fun g' Hg' => Hext g' ltac:(right; exact Hg'))).
+    reflexivity.
+Qed.
+
+Lemma bucket_members_nonempty_in_xs (g : Z) (m : nat * nat) (ms : list (nat * nat)) (xs : list (nat * nat * option Z)) :
+  bucket_members g xs = m :: ms ->
+  exists r, r ∈ xs /\ row_grp r = Some g.
+Proof.
+  induction xs as [|r xs' IH]; intro Hbm; cbn [bucket_members] in Hbm.
+  - discriminate Hbm.
+  - destruct (decide (row_grp r = Some g)) as [Hg|Hg].
+    + exists r. split; [left | exact Hg].
+    + destruct (IH Hbm) as [r' [Hr' Hgr']]. exists r'. split; [right; exact Hr' | exact Hgr'].
+Qed.
+
+(**md
+**Incremental `Grouping` move isolates untouched inner views and refines member and outer `FirstIdx` scans.**
+
+Moving row `u0` from optional group `mg_old` to `mg_new` removes `u0` from group
+`mg_old` (if `Some`), inserts `(u0, k0)` by ascending upstream index into group
+`mg_new` (if `Some`), leaves every other group's member cell completely untouched,
+yields exact `group_scan_members` for every group (so untouched inner `GroupView`
+readers stay asleep), and sorting active non-empty groups by `FirstIdx`
+(`Members[0].UpIdx`) equals `group_scan_order` over the updated rows.
+
+- [u0:] upstream slot index of the moved row.
+- [k0:] upstream key held at slot `u0`.
+- [mg_old:] prior group key (or `None` when ungrouped).
+- [mg_new:] next group key (or `None` when ungrouped).
+- [xs:] upstream rows in strictly ascending `UpIdx` order prior to the move.
+- [gs:] duplicate-free candidate group list covering all active groups in the updated rows.
+*)
+Theorem grouping_move_refines_scan
+  (u0 k0 : nat) (mg_old mg_new : option Z)
+  (xs : list (nat * nat * option Z)) (gs : list Z) :
+  StronglySorted Nat.lt (row_up <$> xs) ->
+  (u0, k0, mg_old) ∈ xs ->
+  let bmap' := bucket_map_update u0 k0 mg_old mg_new (fun g => bucket_members g xs) in
+  let xs' := update_row_group u0 mg_new xs in
+  NoDup gs ->
+  (forall r g, r ∈ xs' -> row_grp r = Some g -> g ∈ gs) ->
+  (forall g, Some g <> mg_old -> Some g <> mg_new -> bmap' g = bucket_members g xs) /\
+  (forall g, snd <$> bmap' g = group_scan_members g xs') /\
+  ordered_groups_by_first_idx bmap' gs = group_scan_order xs'.
+Proof.
+  intros Hsort Hin bmap' xs' Hnd Hcov.
+  assert (Hbmap' : forall g, bmap' g = bucket_members g xs').
+  { intro g. unfold bmap', xs'.
+    apply (bucket_map_update_members_eq u0 k0 mg_old mg_new xs g Hsort Hin). }
+  assert (Hsort' : StronglySorted Nat.lt (row_up <$> xs')).
+  { unfold xs'. apply strongly_sorted_row_up_update; exact Hsort. }
+  split_and!.
+  - intros g Hold Hnew. unfold bmap'.
+    apply (bucket_map_update_untouched u0 k0 mg_old mg_new (fun g0 => bucket_members g0 xs) g Hold Hnew).
+  - intro g. unfold group_scan_members. rewrite Hbmap'. reflexivity.
+  - unfold ordered_groups_by_first_idx, group_scan_order.
+    rewrite (active_group_pairs_ext bmap' (fun g => bucket_members g xs') gs (fun g _ => Hbmap' g)).
+    rewrite <- (group_scan_pairs_snd [] xs').
+    f_equal. apply strongly_sorted_pair_lt_unique.
+    + apply active_group_pairs_sorted; assumption.
+    + apply group_scan_pairs_sorted; exact Hsort'.
+    + intros [u g]. rewrite active_group_pairs_in_iff, group_scan_pairs_elem_iff.
+      cbn [fst snd]. split.
+      * intros [_ [m [ms [Hbm ->]]]].
+        split; [intro Hnil; inversion Hnil | destruct m as [m1 m2]; exists m2, ms; exact Hbm].
+      * intros [_ [k [ms Hbm]]].
+        destruct (bucket_members_nonempty_in_xs g (u, k) ms xs' Hbm) as [r [Hr Hgrp]].
+        split; [exact (Hcov r g Hr Hgrp) | exists (u, k), ms; split; [exact Hbm | reflexivity]].
+Qed.
+
+(** ** Binary tournament winner tree and sticky-holder extremes *)
+
+Definition tour_entry : Type := option (nat * Z).
+
+Definition pick_winner (a b : tour_entry) : tour_entry :=
+  match a, b with
+  | None, _ => b
+  | Some _, None => a
+  | Some (ia, ra), Some (ib, rb) =>
+      if Z.leb ra rb then Some (ia, ra) else Some (ib, rb)
+  end.
+
+Lemma pick_winner_none_r (a : tour_entry) :
+  pick_winner a None = a.
+Proof.
+  destruct a as [[ia ra]|]; reflexivity.
+Qed.
+
+Lemma pick_winner_assoc (a b c : tour_entry) :
+  pick_winner (pick_winner a b) c = pick_winner a (pick_winner b c).
+Proof.
+  destruct a as [[ia ra]|], b as [[ib rb]|], c as [[ic rc]|]; cbn [pick_winner];
+  repeat match goal with
+  | |- context [Z.leb ?x ?y] => destruct (Z.leb_spec x y); cbn [pick_winner]
+  end; try reflexivity; lia.
+Qed.
+
+Inductive tour_tree :=
+| TLeaf (val : tour_entry)
+| TNode (win : tour_entry) (left right : tour_tree).
+
+Definition tour_winner (t : tour_tree) : tour_entry :=
+  match t with
+  | TLeaf w => w
+  | TNode w _ _ => w
+  end.
+
+Fixpoint build_tour (h base : nat) (leaves : nat -> option Z) : tour_tree :=
+  match h with
+  | 0 =>
+      TLeaf (match leaves base with
+             | Some r => Some (base, r)
+             | None => None
+             end)
+  | S h' =>
+      let l := build_tour h' base leaves in
+      let r := build_tour h' (base + Nat.pow 2 h') leaves in
+      TNode (pick_winner (tour_winner l) (tour_winner r)) l r
+  end.
+
+Fixpoint extreme_scan (base len : nat) (leaves : nat -> option Z) : tour_entry :=
+  match len with
+  | 0 => None
+  | S len' =>
+      let here := match leaves base with
+                  | Some r => Some (base, r)
+                  | None => None
+                  end in
+      pick_winner here (extreme_scan (S base) len' leaves)
+  end.
+
+Lemma extreme_scan_app (len1 len2 base : nat) (leaves : nat -> option Z) :
+  extreme_scan base (len1 + len2) leaves =
+  pick_winner (extreme_scan base len1 leaves) (extreme_scan (base + len1) len2 leaves).
+Proof.
+  revert base. induction len1 as [|len1' IH]; intro base.
+  - cbn [Nat.add extreme_scan pick_winner]. rewrite Nat.add_0_r. reflexivity.
+  - cbn [Nat.add extreme_scan]. rewrite IH.
+    rewrite <- pick_winner_assoc, Nat.add_succ_r. reflexivity.
+Qed.
+
+Lemma tour_winner_build_eq_scan (h base : nat) (leaves : nat -> option Z) :
+  tour_winner (build_tour h base leaves) = extreme_scan base (Nat.pow 2 h) leaves.
+Proof.
+  revert base. induction h as [|h' IH]; intro base.
+  - cbn [build_tour Nat.pow extreme_scan tour_winner]. rewrite pick_winner_none_r. reflexivity.
+  - cbn [build_tour Nat.pow Nat.mul tour_winner].
+    rewrite Nat.add_0_r, !IH, extreme_scan_app. reflexivity.
+Qed.
+
+Lemma extreme_scan_none_spec (len base : nat) (leaves : nat -> option Z) :
+  extreme_scan base len leaves = None ->
+  forall j, base <= j < base + len -> leaves j = None.
+Proof.
+  revert base. induction len as [|len' IH]; intros base Hnone j Hj.
+  - lia.
+  - cbn [extreme_scan] in Hnone.
+    destruct (leaves base) as [r|] eqn:Hbase.
+    + destruct (extreme_scan (S base) len' leaves) as [[ib rb]|]; cbn [pick_winner] in Hnone;
+        [destruct (Z.leb r rb) |]; discriminate.
+    + cbn [pick_winner] in Hnone.
+      destruct (decide (j = base)) as [->|Hne].
+      * exact Hbase.
+      * apply (IH (S base) Hnone j). lia.
+Qed.
+
+Lemma extreme_scan_some_spec (len base iw : nat) (rw : Z) (leaves : nat -> option Z) :
+  extreme_scan base len leaves = Some (iw, rw) ->
+  base <= iw < base + len /\
+  leaves iw = Some rw /\
+  (forall j r, base <= j < base + len -> leaves j = Some r -> (rw <= r)%Z) /\
+  (forall j r, base <= j < iw -> leaves j = Some r -> (rw < r)%Z).
+Proof.
+  revert base iw rw. induction len as [|len' IH]; intros base iw rw Hsome.
+  - cbn [extreme_scan] in Hsome. discriminate.
+  - cbn [extreme_scan] in Hsome.
+    destruct (leaves base) as [rb|] eqn:Hbase.
+    + destruct (extreme_scan (S base) len' leaves) as [[it rt]|] eqn:Hrest.
+      * cbn [pick_winner] in Hsome. destruct (Z.leb_spec rb rt) as [Hle|Hgt].
+        -- inversion Hsome; subst iw rw; clear Hsome.
+           destruct (IH (S base) it rt Hrest) as (_ & _ & Hmin & _).
+           repeat split; try lia; try exact Hbase.
+           intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+           ++ rewrite Hbase in Hlj. inversion Hlj; lia.
+           ++ pose proof (Hmin j r ltac:(lia) Hlj). lia.
+        -- inversion Hsome; subst iw rw; clear Hsome.
+           destruct (IH (S base) it rt Hrest) as (Hbounds & Hlt & Hmin & Hstrict).
+           repeat split; try lia; try exact Hlt.
+           ++ intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+              ** rewrite Hbase in Hlj. inversion Hlj; lia.
+              ** apply (Hmin j r ltac:(lia) Hlj).
+           ++ intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+              ** rewrite Hbase in Hlj. inversion Hlj; lia.
+              ** apply (Hstrict j r ltac:(lia) Hlj).
+      * cbn [pick_winner] in Hsome. inversion Hsome; subst iw rw; clear Hsome.
+        pose proof (extreme_scan_none_spec len' (S base) leaves Hrest) as Hallnone.
+        repeat split; try lia; try exact Hbase.
+        intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+        -- rewrite Hbase in Hlj. inversion Hlj; lia.
+        -- rewrite (Hallnone j ltac:(lia)) in Hlj. discriminate.
+    + cbn [pick_winner] in Hsome.
+      destruct (IH (S base) iw rw Hsome) as (Hbounds & Hlw & Hmin & Hstrict).
+      repeat split; try lia; try exact Hlw.
+      * intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+        -- rewrite Hbase in Hlj. discriminate.
+        -- apply (Hmin j r ltac:(lia) Hlj).
+      * intros j r Hj Hlj. destruct (decide (j = base)) as [->|Hne].
+        -- rewrite Hbase in Hlj. discriminate.
+        -- apply (Hstrict j r ltac:(lia) Hlj).
+Qed.
+
+(**md
+**Bottom-up tournament build finds an optimal rank at the earliest `Keys`-order slot.**
+
+For any tree height `h`, base slot index `base`, and optional slot ranks `leaves`:
+
+- `tour_winner (build_tour h base leaves)` equals the left-to-right `extreme_scan` over
+  `[base, base + 2^h)`, and
+- if it returns `Some (i_win, r_win)`, then `i_win` is a settled slot in `[base, base + 2^h)`
+  with rank `r_win`, `(r_win <= r)%Z` for every settled slot in `[base, base + 2^h)`, and
+  strictly `(r_win < r)%Z` for every settled slot strictly before `i_win`.
+*)
+Theorem tournament_winner_optimal_and_first (h base : nat) (leaves : nat -> option Z) :
+  tour_winner (build_tour h base leaves) = extreme_scan base (Nat.pow 2 h) leaves /\
+  forall i_win r_win,
+    tour_winner (build_tour h base leaves) = Some (i_win, r_win) ->
+    base <= i_win < base + Nat.pow 2 h /\
+    leaves i_win = Some r_win /\
+    (forall j r, base <= j < base + Nat.pow 2 h -> leaves j = Some r -> (r_win <= r)%Z) /\
+    (forall j r, base <= j < i_win -> leaves j = Some r -> (r_win < r)%Z).
+Proof.
+  rewrite tour_winner_build_eq_scan. split.
+  - reflexivity.
+  - intros iw rw Hsome. apply extreme_scan_some_spec; exact Hsome.
+Qed.
+
+Inductive id_tree :=
+| ILeaf (wid : option nat)
+| INode (wid : option nat) (left right : id_tree).
+
+Definition id_winner (t : id_tree) : option nat :=
+  match t with
+  | ILeaf w => w
+  | INode w _ _ => w
+  end.
+
+Definition eval_id (leaves : nat -> option Z) (w : option nat) : tour_entry :=
+  match w with
+  | None => None
+  | Some i =>
+      match leaves i with
+      | Some r => Some (i, r)
+      | None => None
+      end
+  end.
+
+Definition pick_id (leaves : nat -> option Z) (a b : option nat) : option nat :=
+  fst <$> pick_winner (eval_id leaves a) (eval_id leaves b).
+
+Lemma pick_id_source (leaves : nat -> option Z) (a b : option nat) (nw : nat) :
+  pick_id leaves a b = Some nw -> a = Some nw \/ b = Some nw.
+Proof.
+  unfold pick_id, eval_id.
+  destruct a as [ia|], b as [ib|];
+    try destruct (leaves ia) as [ra|]; try destruct (leaves ib) as [rb|];
+    cbn [pick_winner]; try destruct (Z.leb ra rb);
+    cbn [fmap option_fmap option_map fst];
+    intro H; inversion H; auto.
+Qed.
+
+Fixpoint build_id_tree (h base : nat) (leaves : nat -> option Z) : id_tree :=
+  match h with
+  | 0 => ILeaf (match leaves base with Some _ => Some base | None => None end)
+  | S h' =>
+      let l := build_id_tree h' base leaves in
+      let r := build_id_tree h' (base + Nat.pow 2 h') leaves in
+      INode (pick_id leaves (id_winner l) (id_winner r)) l r
+  end.
+
+Lemma eval_build_id_tree (h base : nat) (leaves : nat -> option Z) :
+  eval_id leaves (id_winner (build_id_tree h base leaves)) =
+  tour_winner (build_tour h base leaves) /\
+  forall iw, id_winner (build_id_tree h base leaves) = Some iw ->
+    base <= iw < base + Nat.pow 2 h /\ exists r, leaves iw = Some r.
+Proof.
+  revert base. induction h as [|h' IH]; intro base.
+  - cbn [build_id_tree build_tour id_winner tour_winner Nat.pow].
+    destruct (leaves base) as [r|] eqn:Hb; cbn [eval_id]; split.
+    + rewrite Hb. reflexivity.
+    + intros iw Hw. inversion Hw; subst iw. split; [lia | exists r; exact Hb].
+    + reflexivity.
+    + intros iw Hw. discriminate.
+  - cbn [build_id_tree build_tour id_winner tour_winner Nat.pow Nat.mul].
+    rewrite Nat.add_0_r.
+    destruct (IH base) as [IHl Hlbound].
+    destruct (IH (base + Nat.pow 2 h')) as [IHr Hrbound].
+    set (wl := id_winner (build_id_tree h' base leaves)) in *.
+    set (wr := id_winner (build_id_tree h' (base + Nat.pow 2 h') leaves)) in *.
+    unfold pick_id.
+    destruct wl as [il|] eqn:Hwl; destruct wr as [ir|] eqn:Hwr.
+    + destruct (Hlbound il eq_refl) as (Hlb & rl & Hrl).
+      destruct (Hrbound ir eq_refl) as (Hrb & rr & Hrr).
+      cbn [eval_id] in *. rewrite Hrl in *. rewrite Hrr in *.
+      rewrite <- IHl, <- IHr. cbn [pick_winner].
+      destruct (Z.leb rl rr); cbn [fmap option_fmap option_map fst eval_id]; split.
+      * rewrite Hrl. reflexivity.
+      * intros iw Hw. inversion Hw; subst iw. split; [lia | exists rl; exact Hrl].
+      * rewrite Hrr. reflexivity.
+      * intros iw Hw. inversion Hw; subst iw. split; [lia | exists rr; exact Hrr].
+    + destruct (Hlbound il eq_refl) as (Hlb & rl & Hrl).
+      cbn [eval_id] in *. rewrite Hrl in *.
+      rewrite <- IHl, <- IHr.
+      cbn [pick_winner fmap option_fmap option_map fst eval_id].
+      split; [rewrite Hrl; reflexivity | intros iw Hw; inversion Hw; subst iw; split; [lia | exists rl; exact Hrl]].
+    + destruct (Hrbound ir eq_refl) as (Hrb & rr & Hrr).
+      cbn [eval_id] in *. rewrite Hrr in *.
+      rewrite <- IHl, <- IHr.
+      cbn [pick_winner fmap option_fmap option_map fst eval_id].
+      split; [rewrite Hrr; reflexivity | intros iw Hw; inversion Hw; subst iw; split; [lia | exists rr; exact Hrr]].
+    + rewrite <- IHl, <- IHr. cbn [eval_id pick_winner fmap option_fmap option_map fst].
+      split; [reflexivity | intros iw Hw; discriminate].
+Qed.
+
+Lemma build_id_tree_ext (h base : nat) (l1 l2 : nat -> option Z) :
+  (forall j, base <= j < base + Nat.pow 2 h -> l1 j = l2 j) ->
+  build_id_tree h base l1 = build_id_tree h base l2.
+Proof.
+  revert base. induction h as [|h' IH]; intros base Hext.
+  - cbn [build_id_tree]. rewrite (Hext base).
+    + reflexivity.
+    + cbn [Nat.pow]. lia.
+  - cbn [build_id_tree Nat.pow Nat.mul] in *. rewrite Nat.add_0_r in *.
+    rewrite (IH base (fun j Hj => Hext j ltac:(lia))).
+    rewrite (IH (base + Nat.pow 2 h') (fun j Hj => Hext j ltac:(lia))).
+    set (l := build_id_tree h' base l2).
+    set (r := build_id_tree h' (base + Nat.pow 2 h') l2).
+    f_equal.
+    unfold pick_id, eval_id.
+    (destruct (id_winner l) as [il|] eqn:Hil;
+      [ destruct (proj2 (eval_build_id_tree h' base l2) il Hil) as [Hbl _];
+        rewrite (Hext il ltac:(lia)) | ]);
+    (destruct (id_winner r) as [ir|] eqn:Hir;
+      [ destruct (proj2 (eval_build_id_tree h' (base + Nat.pow 2 h') l2) ir Hir) as [Hbr _];
+        rewrite (Hext ir ltac:(lia)) | ]);
+    reflexivity.
+Qed.
+
+Lemma build_id_tree_upper_none (h base : nat) (leaves : nat -> option Z) :
+  (forall j, base <= j < base + Nat.pow 2 h -> leaves j = None) ->
+  id_winner (build_id_tree h base leaves) = None.
+Proof.
+  intro Hall.
+  destruct (id_winner (build_id_tree h base leaves)) as [iw|] eqn:Hw; [|reflexivity].
+  destruct (proj2 (eval_build_id_tree h base leaves) iw Hw) as (Hb & r & Hrw).
+  rewrite (Hall iw Hb) in Hrw. discriminate.
+Qed.
+
+Lemma build_id_tree_double_cap (h base : nat) (leaves : nat -> option Z) :
+  (forall j, base + Nat.pow 2 h <= j < base + Nat.pow 2 (S h) -> leaves j = None) ->
+  id_winner (build_id_tree (S h) base leaves) = id_winner (build_id_tree h base leaves).
+Proof.
+  intro Hupper.
+  simpl build_id_tree. cbn [id_winner].
+  rewrite (build_id_tree_upper_none h (base + Nat.pow 2 h) leaves).
+  - unfold pick_id. cbn [eval_id]. rewrite pick_winner_none_r.
+    destruct (id_winner (build_id_tree h base leaves)) as [iw|] eqn:Hw.
+    + destruct (proj2 (eval_build_id_tree h base leaves) iw Hw) as (_ & r & Hrw).
+      unfold eval_id. rewrite Hrw. reflexivity.
+    + reflexivity.
+  - intros j Hj. apply Hupper. cbn [Nat.pow Nat.mul] in *. lia.
+Qed.
+
+Definition option_nat_eqb (a b : option nat) : bool :=
+  match a, b with
+  | None, None => true
+  | Some x, Some y => Nat.eqb x y
+  | _, _ => false
+  end.
+
+Fixpoint sift_id_step (h base target : nat) (leaves' : nat -> option Z) (t : id_tree) : id_tree * bool :=
+  match h, t with
+  | 0, ILeaf _ =>
+      (ILeaf (match leaves' target with Some _ => Some target | None => None end), true)
+  | S h', INode oldW l r =>
+      let mid := base + Nat.pow 2 h' in
+      if Nat.ltb target mid then
+        let '(l', cont) := sift_id_step h' base target leaves' l in
+        if negb cont then
+          (INode oldW l' r, false)
+        else
+          let nextW := pick_id leaves' (id_winner l') (id_winner r) in
+          if option_nat_eqb oldW nextW then
+            match nextW, id_winner l' with
+            | Some nw, Some cw => (INode oldW l' r, Nat.eqb nw cw)
+            | _, _ => (INode oldW l' r, false)
+            end
+          else
+            (INode nextW l' r, true)
+      else
+        let '(r', cont) := sift_id_step h' mid target leaves' r in
+        if negb cont then
+          (INode oldW l r', false)
+        else
+          let nextW := pick_id leaves' (id_winner l) (id_winner r') in
+          if option_nat_eqb oldW nextW then
+            match nextW, id_winner r' with
+            | Some nw, Some cw => (INode oldW l r', Nat.eqb nw cw)
+            | _, _ => (INode oldW l r', false)
+            end
+          else
+            (INode nextW l r', true)
+  | _, _ => (t, false)
+  end.
+
+(**md
+**Incremental `SiftUp` with early stop agrees bit-for-bit with a full tournament rebuild.**
+
+Updating slot `target` in `[base, base + 2^h)` from `leaves` to `leaves'` (`v_new` at
+`target`, `leaves` everywhere else) and running `sift_id_step` along the ancestor path of
+`target` yields `build_id_tree h base leaves'`, preserves exact equality whenever the
+early-stop condition fires (`cont = false` implies `nextW = oldW` and `nextW <> Some target`),
+and shifts left-justified leaves under capacity doubling (`build_id_tree_double_cap`) with
+zero comparisons.
+*)
+Theorem tournament_point_update_refines_eval
+  (h base target : nat) (v_new : option Z) (leaves : nat -> option Z) :
+  base <= target < base + Nat.pow 2 h ->
+  let leaves' := fun j => if decide (j = target) then v_new else leaves j in
+  let '(t', cont) := sift_id_step h base target leaves' (build_id_tree h base leaves) in
+  t' = build_id_tree h base leaves' /\
+  eval_id leaves' (id_winner t') = extreme_scan base (Nat.pow 2 h) leaves' /\
+  (cont = false ->
+     id_winner t' = id_winner (build_id_tree h base leaves) /\
+     id_winner t' <> Some target).
+Proof.
+  intros Htarget leaves'.
+  assert (Hmain :
+    let '(t', cont) := sift_id_step h base target leaves' (build_id_tree h base leaves) in
+    t' = build_id_tree h base leaves' /\
+    (cont = false ->
+       id_winner t' = id_winner (build_id_tree h base leaves) /\
+       id_winner t' <> Some target)).
+  { subst leaves'. revert base target Htarget.
+    induction h as [|h' IH]; intros base target Htarget;
+    set (leaves' := fun j => if decide (j = target) then v_new else leaves j).
+    - cbn [Nat.pow] in Htarget.
+      assert (Heq : target = base) by lia. subst target.
+      cbn [build_id_tree sift_id_step].
+      split; [reflexivity | discriminate].
+    - cbn [Nat.pow Nat.mul] in Htarget. rewrite Nat.add_0_r in Htarget.
+      remember (build_id_tree (S h') base leaves') as tree_new eqn:Htree_new.
+      cbn [build_id_tree sift_id_step].
+      subst tree_new.
+      set (mid := base + Nat.pow 2 h') in *.
+      set (l_old := build_id_tree h' base leaves) in *.
+      set (r_old := build_id_tree h' mid leaves) in *.
+      set (oldW := pick_id leaves (id_winner l_old) (id_winner r_old)) in *.
+      destruct (Nat.ltb_spec target mid) as [Hleft|Hright].
+      + pose proof (IH base target ltac:(lia)) as IHl.
+        fold leaves' in IHl. fold l_old in IHl.
+        destruct (sift_id_step h' base target leaves' l_old) as [l' contl] eqn:Hstep.
+        destruct IHl as [Hl' Hcontl].
+        assert (Hr_eq : r_old = build_id_tree h' mid leaves').
+        { unfold r_old. apply build_id_tree_ext.
+          intros j Hj. unfold leaves'. rewrite decide_False by lia. reflexivity. }
+        destruct contl; cbn [negb].
+        * remember (pick_id leaves' (id_winner l') (id_winner r_old)) as nextW eqn:HnextW.
+          assert (Hbuild' : build_id_tree (S h') base leaves' =
+                            INode nextW l' r_old).
+          { simpl build_id_tree. fold mid. rewrite <- Hl', <- Hr_eq, <- HnextW. reflexivity. }
+          destruct (option_nat_eqb oldW nextW) eqn:Heqw.
+          -- assert (oldW = nextW) as Hweq.
+             { destruct oldW as [x|], nextW as [y|]; cbn [option_nat_eqb] in Heqw;
+                 try discriminate; [f_equal; apply Nat.eqb_eq; exact Heqw | reflexivity]. }
+             destruct nextW as [nw|]; destruct (id_winner l') as [cw|] eqn:Hcw.
+             ++ destruct (Nat.eqb_spec nw cw) as [->|Hne].
+                ** split; [rewrite Hbuild', Hweq; reflexivity | discriminate].
+                ** split; [rewrite Hbuild', Hweq; reflexivity |].
+                   intro. cbn [id_winner]. split; [reflexivity |].
+                   rewrite Hweq. symmetry in HnextW.
+                   destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr].
+                   --- inversion Heql; subst; contradiction.
+                   --- destruct (proj2 (eval_build_id_tree h' mid leaves) nw Heqr) as [Hbr _].
+                       intro Heqt; inversion Heqt; lia.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity |].
+                rewrite Hweq. symmetry in HnextW.
+                destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr]; [discriminate |].
+                destruct (proj2 (eval_build_id_tree h' mid leaves) nw Heqr) as [Hbr _].
+                intro Heqt; inversion Heqt; lia.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+          -- split; [rewrite Hbuild'; reflexivity | discriminate].
+        * destruct (Hcontl eq_refl) as [Hwl_eq Hwl_nt].
+          assert (Hpick_eq : pick_id leaves' (id_winner l') (id_winner r_old) = oldW).
+          { unfold oldW, pick_id. rewrite Hwl_eq.
+            assert (Heval_l : eval_id leaves' (id_winner l_old) = eval_id leaves (id_winner l_old)).
+            { destruct (id_winner l_old) as [il|] eqn:Hil; [|reflexivity].
+              assert (il <> target) by (intro Heq; apply Hwl_nt; rewrite Hwl_eq, Heq; reflexivity).
+              unfold eval_id, leaves'. rewrite decide_False by assumption. reflexivity. }
+            assert (Heval_r : eval_id leaves' (id_winner r_old) = eval_id leaves (id_winner r_old)).
+            { destruct (id_winner r_old) as [ir|] eqn:Hir; [|reflexivity].
+              destruct (proj2 (eval_build_id_tree h' mid leaves) ir Hir) as [Hbr _].
+              unfold eval_id, leaves'. rewrite decide_False by lia. reflexivity. }
+            rewrite Heval_l, Heval_r. reflexivity. }
+          assert (Hold_nt : oldW <> Some target).
+          { intro Heqt. unfold oldW in Heqt.
+            destruct (pick_id_source _ _ _ _ Heqt) as [Heql|Heqr].
+            - apply Hwl_nt. rewrite Hwl_eq. exact Heql.
+            - destruct (proj2 (eval_build_id_tree h' mid leaves) target Heqr) as [Hbr _]. lia. }
+          split.
+          -- simpl build_id_tree. fold mid. rewrite <- Hl', <- Hr_eq, Hpick_eq. reflexivity.
+          -- intro. cbn [id_winner]. split; [reflexivity | exact Hold_nt].
+      + pose proof (IH mid target ltac:(lia)) as IHr.
+        fold leaves' in IHr. fold r_old in IHr.
+        destruct (sift_id_step h' mid target leaves' r_old) as [r' contr] eqn:Hstep.
+        destruct IHr as [Hr' Hcontr].
+        assert (Hl_ext : l_old = build_id_tree h' base leaves').
+        { unfold l_old. apply build_id_tree_ext.
+          intros j Hj. unfold leaves'. rewrite decide_False by lia. reflexivity. }
+        destruct contr; cbn [negb].
+        * remember (pick_id leaves' (id_winner l_old) (id_winner r')) as nextW eqn:HnextW.
+          assert (Hbuild' : build_id_tree (S h') base leaves' =
+                            INode nextW l_old r').
+          { simpl build_id_tree. fold mid. rewrite <- Hl_ext, <- Hr', <- HnextW. reflexivity. }
+          destruct (option_nat_eqb oldW nextW) eqn:Heqw.
+          -- assert (oldW = nextW) as Hweq.
+             { destruct oldW as [x|], nextW as [y|]; cbn [option_nat_eqb] in Heqw;
+                 try discriminate; [f_equal; apply Nat.eqb_eq; exact Heqw | reflexivity]. }
+             destruct nextW as [nw|]; destruct (id_winner r') as [cw|] eqn:Hcw.
+             ++ destruct (Nat.eqb_spec nw cw) as [->|Hne].
+                ** split; [rewrite Hbuild', Hweq; reflexivity | discriminate].
+                ** split; [rewrite Hbuild', Hweq; reflexivity |].
+                   intro. cbn [id_winner]. split; [reflexivity |].
+                   rewrite Hweq. symmetry in HnextW.
+                   destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr].
+                   --- destruct (proj2 (eval_build_id_tree h' base leaves) nw Heql) as [Hbl _].
+                       intro Heqt; inversion Heqt; lia.
+                   --- inversion Heqr; subst; contradiction.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity |].
+                rewrite Hweq. symmetry in HnextW.
+                destruct (pick_id_source _ _ _ _ HnextW) as [Heql|Heqr]; [|discriminate].
+                destruct (proj2 (eval_build_id_tree h' base leaves) nw Heql) as [Hbl _].
+                intro Heqt; inversion Heqt; lia.
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+             ++ split; [rewrite Hbuild', Hweq; reflexivity |].
+                intro. cbn [id_winner]. split; [reflexivity | rewrite Hweq; discriminate].
+          -- split; [rewrite Hbuild'; reflexivity | discriminate].
+        * destruct (Hcontr eq_refl) as [Hwr_eq Hwr_nt].
+          assert (Hpick_eq : pick_id leaves' (id_winner l_old) (id_winner r') = oldW).
+          { unfold oldW, pick_id. rewrite Hwr_eq.
+            assert (Heval_l : eval_id leaves' (id_winner l_old) = eval_id leaves (id_winner l_old)).
+            { destruct (id_winner l_old) as [il|] eqn:Hil; [|reflexivity].
+              destruct (proj2 (eval_build_id_tree h' base leaves) il Hil) as [Hbl _].
+              unfold eval_id, leaves'. rewrite decide_False by lia. reflexivity. }
+            assert (Heval_r : eval_id leaves' (id_winner r_old) = eval_id leaves (id_winner r_old)).
+            { destruct (id_winner r_old) as [ir|] eqn:Hir; [|reflexivity].
+              assert (ir <> target) by (intro Heq; apply Hwr_nt; rewrite Hwr_eq, Heq; reflexivity).
+              unfold eval_id, leaves'. rewrite decide_False by assumption. reflexivity. }
+            rewrite Heval_l, Heval_r. reflexivity. }
+          assert (Hold_nt : oldW <> Some target).
+          { intro Heqt. unfold oldW in Heqt.
+            destruct (pick_id_source _ _ _ _ Heqt) as [Heql|Heqr].
+            - destruct (proj2 (eval_build_id_tree h' base leaves) target Heql) as [Hbl _]. lia.
+            - apply Hwr_nt. rewrite Hwr_eq. exact Heqr. }
+          split.
+          -- simpl build_id_tree. fold mid. rewrite <- Hl_ext, <- Hr', Hpick_eq. reflexivity.
+          -- intro. cbn [id_winner]. split; [reflexivity | exact Hold_nt]. }
+  destruct (sift_id_step h base target leaves' (build_id_tree h base leaves)) as [t' cont] eqn:Hsift.
+  destruct Hmain as [Ht' Hcont].
+  split; [exact Ht' | split; [| exact Hcont]].
+  rewrite Ht'.
+  rewrite (proj1 (eval_build_id_tree h base leaves')).
+  rewrite tour_winner_build_eq_scan. reflexivity.
+Qed.
+
+Definition sticky_select (sticky_prev : option nat) (leaves : nat -> option Z) (top : tour_entry) : tour_entry :=
+  match top with
+  | None => None
+  | Some (iw, rw) =>
+      match sticky_prev with
+      | Some ks =>
+          match leaves ks with
+          | Some rs => if Z.leb rs rw then Some (ks, rs) else Some (iw, rw)
+          | None => Some (iw, rw)
+          end
+      | None => Some (iw, rw)
+      end
+  end.
+
+Definition pick_sticky (sticky_prev : option nat) (a b : tour_entry) : tour_entry :=
+  match a, b with
+  | None, _ => b
+  | Some _, None => a
+  | Some (ia, ra), Some (ib, rb) =>
+      if Z.ltb rb ra || match sticky_prev with Some ks => Nat.eqb ib ks && Z.leb rb ra | None => false end
+      then Some (ib, rb)
+      else Some (ia, ra)
+  end.
+
+Lemma pick_sticky_none_r (sticky_prev : option nat) (a : tour_entry) :
+  pick_sticky sticky_prev a None = a.
+Proof.
+  destruct a as [[ia ra]|]; reflexivity.
+Qed.
+
+Lemma pick_sticky_assoc (sticky_prev : option nat) (a b c : tour_entry) :
+  pick_sticky sticky_prev (pick_sticky sticky_prev a b) c =
+  pick_sticky sticky_prev a (pick_sticky sticky_prev b c).
+Proof.
+  destruct a as [[ia ra]|], b as [[ib rb]|], c as [[ic rc]|];
+    destruct sticky_prev as [ks|]; cbn [pick_sticky];
+    repeat match goal with
+    | |- context [Nat.eqb ?x ?y] => destruct (Nat.eqb_spec x y); subst; cbn [andb orb pick_sticky]
+    | |- context [Z.ltb ?x ?y] => destruct (Z.ltb_spec x y); cbn [andb orb pick_sticky]
+    | |- context [Z.leb ?x ?y] => destruct (Z.leb_spec x y); cbn [andb orb pick_sticky]
+    end; try reflexivity; lia.
+Qed.
+
+Fixpoint sticky_extreme_scan
+  (sticky_prev : option nat) (base len : nat) (leaves : nat -> option Z) (acc : tour_entry) : tour_entry :=
+  match len with
+  | 0 => acc
+  | S len' =>
+      let here := match leaves base with Some r => Some (base, r) | None => None end in
+      sticky_extreme_scan sticky_prev (S base) len' leaves (pick_sticky sticky_prev acc here)
+  end.
+
+Fixpoint sticky_scan_right
+  (sticky_prev : option nat) (base len : nat) (leaves : nat -> option Z) : tour_entry :=
+  match len with
+  | 0 => None
+  | S len' =>
+      let here := match leaves base with Some r => Some (base, r) | None => None end in
+      pick_sticky sticky_prev here (sticky_scan_right sticky_prev (S base) len' leaves)
+  end.
+
+Lemma sticky_extreme_scan_eq_right
+  (sticky_prev : option nat) (len base : nat) (leaves : nat -> option Z) (acc : tour_entry) :
+  sticky_extreme_scan sticky_prev base len leaves acc =
+  pick_sticky sticky_prev acc (sticky_scan_right sticky_prev base len leaves).
+Proof.
+  revert base acc. induction len as [|len' IH]; intros base acc.
+  - cbn [sticky_extreme_scan sticky_scan_right]. rewrite pick_sticky_none_r. reflexivity.
+  - cbn [sticky_extreme_scan sticky_scan_right].
+    rewrite IH, pick_sticky_assoc. reflexivity.
+Qed.
+
+Lemma sticky_scan_right_rel
+  (sticky_prev : option nat) (len base : nat) (leaves : nat -> option Z) :
+  sticky_scan_right sticky_prev base len leaves =
+  match extreme_scan base len leaves with
+  | None => None
+  | Some (iw, rw) =>
+      match sticky_prev with
+      | Some ks =>
+          if decide (base <= ks < base + len) then
+            match leaves ks with
+            | Some rs => if Z.leb rs rw then Some (ks, rs) else Some (iw, rw)
+            | None => Some (iw, rw)
+            end
+          else Some (iw, rw)
+      | None => Some (iw, rw)
+      end
+  end.
+Proof.
+  revert base. induction len as [|len' IH]; intro base.
+  - cbn [sticky_scan_right extreme_scan]. reflexivity.
+  - cbn [sticky_scan_right extreme_scan].
+    rewrite IH.
+    destruct (leaves base) as [rb|] eqn:Hbase.
+    + destruct (extreme_scan (S base) len' leaves) as [[it rt]|] eqn:Hrest.
+      * destruct (extreme_scan_some_spec len' (S base) it rt leaves Hrest) as (Hitb & Hlit & Hmin & _).
+        cbn [pick_winner].
+        destruct sticky_prev as [ks|].
+        -- destruct (decide (ks = base)) as [->|Hneb].
+           ++ rewrite decide_False by lia.
+              destruct (Z.leb_spec rb rt); rewrite decide_True by lia; rewrite Hbase;
+                cbn [pick_sticky];
+                rewrite (proj2 (Nat.eqb_neq it base) ltac:(lia)); cbn [andb orb];
+                destruct (Z.ltb_spec rt rb), (Z.leb_spec rb rt); try rewrite Z.leb_refl; try reflexivity; lia.
+           ++ destruct (decide (S base <= ks < S base + len')) as [Hin|Hout].
+              ** destruct (Z.leb_spec rb rt); rewrite decide_True by lia;
+                   destruct (leaves ks) as [rs|] eqn:Hks.
+                 --- pose proof (Hmin ks rs Hin Hks) as Hrt_le_rs.
+                     destruct (Z.leb_spec rs rt); cbn [pick_sticky].
+                     +++ rewrite Nat.eqb_refl; cbn [andb].
+                         destruct (Z.ltb_spec rs rb), (Z.leb_spec rs rb); cbn [orb]; try reflexivity; lia.
+                     +++ destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; inversion Hlit; lia |].
+                         cbn [andb orb].
+                         destruct (Z.ltb_spec rt rb), (Z.leb_spec rs rb); try reflexivity; lia.
+                 --- cbn [pick_sticky].
+                     destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; discriminate |].
+                     cbn [andb orb].
+                     destruct (Z.ltb_spec rt rb); [lia | reflexivity].
+                 --- pose proof (Hmin ks rs Hin Hks) as Hrt_le_rs.
+                     destruct (Z.leb_spec rs rt); cbn [pick_sticky].
+                     +++ rewrite Nat.eqb_refl; cbn [andb].
+                         destruct (Z.ltb_spec rs rb), (Z.leb_spec rs rb); cbn [orb]; try reflexivity; lia.
+                     +++ destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; inversion Hlit; lia |].
+                         cbn [andb orb].
+                         destruct (Z.ltb_spec rt rb); [reflexivity | lia].
+                 --- cbn [pick_sticky].
+                     destruct (Nat.eqb_spec it ks) as [->|]; [rewrite Hks in Hlit; discriminate |].
+                     cbn [andb orb].
+                     destruct (Z.ltb_spec rt rb); [reflexivity | lia].
+              ** destruct (Z.leb_spec rb rt); rewrite decide_False by lia;
+                   cbn [pick_sticky];
+                   rewrite (proj2 (Nat.eqb_neq it ks) ltac:(lia)); cbn [andb orb];
+                   destruct (Z.ltb_spec rt rb); try reflexivity; lia.
+        -- destruct (Z.leb_spec rb rt); cbn [pick_sticky];
+             destruct (Z.ltb_spec rt rb); try reflexivity; lia.
+      * cbn [pick_sticky pick_winner].
+        destruct sticky_prev as [ks|]; [|reflexivity].
+        destruct (decide (ks = base)) as [->|Hne].
+        -- rewrite decide_True by lia. rewrite Hbase, Z.leb_refl. reflexivity.
+        -- destruct (decide (base <= ks < base + S len')) as [Hin|]; [|reflexivity].
+           pose proof (extreme_scan_none_spec len' (S base) leaves Hrest ks ltac:(lia)) as Hks_none.
+           rewrite Hks_none. reflexivity.
+    + cbn [pick_sticky pick_winner].
+      destruct (extreme_scan (S base) len' leaves) as [[it rt]|] eqn:Hrest; [|reflexivity].
+      destruct sticky_prev as [ks|]; [|reflexivity].
+      destruct (decide (ks = base)) as [->|Hne].
+      * rewrite decide_False by lia. rewrite decide_True by lia. rewrite Hbase. reflexivity.
+      * destruct (decide (S base <= ks < S base + len'));
+          [rewrite decide_True by lia | rewrite decide_False by lia]; reflexivity.
+Qed.
+
+(**md
+**Winner-tree selection with `sticky_select` refines sequential `sticky_extreme_scan`.**
+
+For any tree height `h` with valid slot bounds (`None` or `< 2^h`) for the previous sticky
+holder `sticky_prev`: resolving `sticky_select` against `tour_winner (build_tour h 0 leaves)`
+yields the exact same key and rank (including sticky tie preservation when the previous holder
+remains tied for best rank) as a full `Keys`-order scan `sticky_extreme_scan`.
+*)
+Theorem sticky_holder_refines_extreme_scan
+  (h : nat) (sticky_prev : option nat) (leaves : nat -> option Z) :
+  (forall ks, sticky_prev = Some ks -> ks < Nat.pow 2 h) ->
+  sticky_select sticky_prev leaves (tour_winner (build_tour h 0 leaves)) =
+  sticky_extreme_scan sticky_prev 0 (Nat.pow 2 h) leaves None.
+Proof.
+  intro Hbound.
+  rewrite sticky_extreme_scan_eq_right. cbn [pick_sticky].
+  rewrite tour_winner_build_eq_scan, sticky_scan_right_rel.
+  destruct (extreme_scan 0 (Nat.pow 2 h) leaves) as [[iw rw]|]; [|reflexivity].
+  destruct sticky_prev as [ks|]; [|reflexivity].
+  rewrite decide_True by (split; [lia | apply Hbound; reflexivity]).
+  reflexivity.
+Qed.
+
+(** ** Lazy partitioned KeyMap, aligned Trim, dense IndexProjection, and Lookup sync *)
+
+Record lazy_part_map (K V : Type) `{Countable K} := mk_lpm {
+  lpm_prims : gmap K V;
+  lpm_objs : option (gmap K V);
+}.
+Arguments mk_lpm {K V _ _} _ _.
+Arguments lpm_prims {K V _ _} _.
+Arguments lpm_objs {K V _ _} _.
+
+Definition lpm_empty {K V : Type} `{Countable K} : lazy_part_map K V :=
+  mk_lpm ∅ None.
+
+Definition lpm_abs {K V : Type} `{Countable K} (m : lazy_part_map K V) : gmap K V :=
+  lpm_prims m ∪ default ∅ (lpm_objs m).
+
+Definition lpm_wf {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) : Prop :=
+  (forall k, is_Some (lpm_prims m !! k) -> is_prim k = true) /\
+  match lpm_objs m with
+  | None => True
+  | Some om => forall k, is_Some (om !! k) -> is_prim k = false
+  end.
+
+Definition lpm_find {K V : Type} `{Countable K} (is_prim : K -> bool) (k : K) (m : lazy_part_map K V) : option V :=
+  if is_prim k then lpm_prims m !! k
+  else match lpm_objs m with None => None | Some om => om !! k end.
+
+Definition lpm_set {K V : Type} `{Countable K} (is_prim : K -> bool) (k : K) (v : V) (m : lazy_part_map K V)
+    : lazy_part_map K V :=
+  if is_prim k then
+    mk_lpm (<[k := v]> (lpm_prims m)) (lpm_objs m)
+  else
+    let om := match lpm_objs m with None => ∅ | Some om => om end in
+    mk_lpm (lpm_prims m) (Some (<[k := v]> om)).
+
+Definition lpm_remove {K V : Type} `{Countable K} (is_prim : K -> bool) (k : K) (m : lazy_part_map K V)
+    : lazy_part_map K V :=
+  if is_prim k then
+    mk_lpm (delete k (lpm_prims m)) (lpm_objs m)
+  else
+    match lpm_objs m with
+    | None => m
+    | Some om => mk_lpm (lpm_prims m) (Some (delete k om))
+    end.
+
+Definition lpm_count {K V : Type} `{Countable K} (m : lazy_part_map K V) : nat :=
+  size (lpm_prims m) + match lpm_objs m with None => 0 | Some om => size om end.
+
+Lemma lpm_prims_none_on_obj {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) (k : K) :
+  lpm_wf is_prim m -> is_prim k = false -> lpm_prims m !! k = None.
+Proof.
+  intros [Hp _] Hfalse.
+  destruct (lpm_prims m !! k) as [v|] eqn:E; [|reflexivity].
+  pose proof (Hp k (ex_intro _ v E)) as Htrue. congruence.
+Qed.
+
+Lemma lpm_objs_none_on_prim {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) (k : K) :
+  lpm_wf is_prim m -> is_prim k = true -> default (∅ : gmap K V) (lpm_objs m) !! k = None.
+Proof.
+  intros [_ Ho] Htrue.
+  destruct (lpm_objs m) as [om|]; simpl; [|apply lookup_empty].
+  destruct (om !! k) as [v|] eqn:E; [|reflexivity].
+  pose proof (Ho k (ex_intro _ v E)) as Hfalse. congruence.
+Qed.
+
+(**md
+**A lazily allocated partitioned map `(prims, option objs)` starting at `(∅, None)` and allocating `objs` only on the first non-primitive insert refines a total `gmap K V` across `Find`, `Set`, `Remove`, and `Count` (`Platform.fs`).**
+
+- [is_prim:] predicate distinguishing primitive keys stored in `prims` from non-primitive keys stored in `objs`.
+- [m:] the partitioned map state.
+*)
+Theorem lazy_partitioned_map_refines_total_map
+    {K V : Type} `{Countable K} (is_prim : K -> bool) (m : lazy_part_map K V) :
+  lpm_wf is_prim (lpm_empty (K := K) (V := V)) /\
+  lpm_abs (lpm_empty (K := K) (V := V)) = ∅ /\
+  lpm_objs (lpm_empty (K := K) (V := V)) = None /\
+  (lpm_wf is_prim m ->
+   (forall k v, is_prim k = true -> lpm_objs m = None -> lpm_objs (lpm_set is_prim k v m) = None) /\
+   (forall k, lpm_find is_prim k m = lpm_abs m !! k) /\
+   (forall k v, lpm_wf is_prim (lpm_set is_prim k v m) /\ lpm_abs (lpm_set is_prim k v m) = <[k := v]> (lpm_abs m)) /\
+   (forall k, lpm_wf is_prim (lpm_remove is_prim k m) /\ lpm_abs (lpm_remove is_prim k m) = delete k (lpm_abs m)) /\
+   lpm_count m = size (lpm_abs m)).
+Proof.
+  split_and!.
+  - unfold lpm_wf; simpl. split; [|done].
+    intros k [v Hv]. rewrite lookup_empty in Hv. discriminate.
+  - unfold lpm_abs, lpm_empty; simpl.
+    apply map_eq. intros q. rewrite lookup_union, !lookup_empty. reflexivity.
+  - reflexivity.
+  - intros Hwf. split_and!.
+    + intros k v Htrue Hnone. unfold lpm_set. rewrite Htrue. simpl. exact Hnone.
+    + intros k. unfold lpm_find, lpm_abs. rewrite lookup_union.
+      destruct (is_prim k) eqn:Hp.
+      * rewrite (lpm_objs_none_on_prim is_prim m k Hwf Hp).
+        destruct (lpm_prims m !! k); reflexivity.
+      * rewrite (lpm_prims_none_on_obj is_prim m k Hwf Hp).
+        destruct (lpm_objs m) as [om|]; simpl; [destruct (om !! k); reflexivity | rewrite lookup_empty; reflexivity].
+    + intros k v. unfold lpm_set, lpm_wf, lpm_abs.
+      destruct (is_prim k) eqn:Hp; simpl.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hok : default (∅ : gmap K V) (lpm_objs m) !! k = None)
+          by (apply (lpm_objs_none_on_prim is_prim m k (conj Hprims Hobjs) Hp)).
+        split.
+        -- split; [|exact Hobjs].
+           intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne]; [exact Hp|].
+           rewrite lookup_insert_ne in Hvq; [|symmetry; exact Hne].
+           apply Hprims. eexists; exact Hvq.
+        -- apply map_eq. intros q. rewrite !lookup_union.
+           destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite !lookup_insert_eq, Hok. reflexivity.
+           ++ rewrite !lookup_insert_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union. reflexivity.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hpk : lpm_prims m !! k = None) by (apply (lpm_prims_none_on_obj is_prim m k (conj Hprims Hobjs) Hp)).
+        split.
+        -- split; [exact Hprims|].
+           intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne]; [exact Hp|].
+           rewrite lookup_insert_ne in Hvq; [|symmetry; exact Hne].
+           destruct (lpm_objs m) as [om|]; simpl in *.
+           ++ apply Hobjs. eexists; exact Hvq.
+           ++ rewrite lookup_empty in Hvq. discriminate.
+        -- destruct (lpm_objs m) as [om|] eqn:Eo; simpl; apply map_eq; intros q; rewrite !lookup_union;
+             destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite Hpk, !lookup_insert_eq. reflexivity.
+           ++ rewrite !lookup_insert_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union. reflexivity.
+           ++ rewrite Hpk, !lookup_insert_eq. reflexivity.
+           ++ rewrite !lookup_insert_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union, !lookup_empty. reflexivity.
+    + intros k. unfold lpm_remove, lpm_wf, lpm_abs.
+      destruct (is_prim k) eqn:Hp; simpl.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hok : default (∅ : gmap K V) (lpm_objs m) !! k = None)
+          by (apply (lpm_objs_none_on_prim is_prim m k (conj Hprims Hobjs) Hp)).
+        split.
+        -- split; [|exact Hobjs].
+           intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite lookup_delete_eq in Hvq. discriminate.
+           ++ rewrite lookup_delete_ne in Hvq; [|symmetry; exact Hne].
+              apply Hprims. eexists; exact Hvq.
+        -- apply map_eq. intros q. rewrite !lookup_union.
+           destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite !lookup_delete_eq, Hok. reflexivity.
+           ++ rewrite !lookup_delete_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+              rewrite lookup_union. reflexivity.
+      * destruct Hwf as [Hprims Hobjs].
+        assert (Hpk : lpm_prims m !! k = None) by (apply (lpm_prims_none_on_obj is_prim m k (conj Hprims Hobjs) Hp)).
+        destruct (lpm_objs m) as [om|] eqn:Eo; simpl.
+        -- split.
+           ++ split; [exact Hprims|].
+              intros q [vq Hvq]. destruct (decide (q = k)) as [->|Hne].
+              ** rewrite lookup_delete_eq in Hvq. discriminate.
+              ** rewrite lookup_delete_ne in Hvq; [|symmetry; exact Hne].
+                 apply Hobjs. eexists; exact Hvq.
+           ++ apply map_eq. intros q. rewrite !lookup_union.
+              destruct (decide (q = k)) as [->|Hne].
+              ** rewrite !lookup_delete_eq, Hpk. reflexivity.
+              ** rewrite !lookup_delete_ne; [|symmetry; exact Hne | symmetry; exact Hne].
+                 rewrite lookup_union. reflexivity.
+        -- split; [split; [exact Hprims | rewrite Eo; exact I] |].
+           rewrite Eo. simpl.
+           apply map_eq. intros q.
+           destruct (decide (q = k)) as [->|Hne].
+           ++ rewrite lookup_delete_eq, lookup_union, Hpk, lookup_empty. reflexivity.
+           ++ rewrite lookup_delete_ne; [reflexivity | symmetry; exact Hne].
+    + unfold lpm_count, lpm_abs.
+      destruct (lpm_objs m) as [om|] eqn:Eo; simpl.
+      * rewrite <- !size_dom, dom_union_L, fin_sets.size_union; [reflexivity|].
+        intros q Hqp%elem_of_dom Hqo%elem_of_dom.
+        destruct Hwf as [Hprims Hobjs]. rewrite Eo in Hobjs.
+        pose proof (Hprims q Hqp) as Ht. pose proof (Hobjs q Hqo) as Hf. congruence.
+      * assert (Hum : lpm_prims m ∪ (∅ : gmap K V) = lpm_prims m)
+          by (apply map_eq; intros q; rewrite lookup_union, lookup_empty; destruct (lpm_prims m !! q); reflexivity).
+        rewrite Hum. lia.
+Qed.
+
+Definition trim_single_removed {K : Type} `{EqDecision K} (pk k : K) : list K :=
+  if decide (k = pk) then [] else [pk].
+
+(**md
+**In a `NoDup` key array `prevKeys` where slot `idx` holds `pk`, single-index `Trim` replacement preserves `prevKeys` with `removed = []` when `k = pk`, preserves `NoDup (<[idx := k]> prevKeys)` if and only if `(k <> pk -> k ∉ prevKeys)`, and drops precisely `trim_single_removed pk k` (`Projections.fs`).**
+
+- [prevKeys:] the previous `NoDup` published key sequence.
+- [idx:] the unique changed item index (`changedAt.Count = 1`).
+- [pk:] the previous key at index `idx`.
+- [k:] the recomputed key at index `idx`.
+*)
+Theorem trim_single_inplace_key_preserves_uniqueness
+    {K : Type} `{EqDecision K} (prevKeys : list K) (idx : nat) (pk k : K) :
+  NoDup prevKeys ->
+  prevKeys !! idx = Some pk ->
+  (k = pk -> <[idx := k]> prevKeys = prevKeys /\ trim_single_removed pk k = []) /\
+  (NoDup (<[idx := k]> prevKeys) <-> (k <> pk -> k ∉ prevKeys)) /\
+  (forall x, (x ∈ prevKeys /\ x ∉ <[idx := k]> prevKeys) <-> x ∈ trim_single_removed pk k).
+Proof.
+  intros Hnd Hidx.
+  pose proof (lookup_lt_Some _ _ _ Hidx) as Hlt.
+  pose proof (take_drop_middle prevKeys idx pk Hidx) as Hmid.
+  set (L := take idx prevKeys) in *.
+  set (R := drop (S idx) prevKeys) in *.
+  assert (HlenL : length L = idx) by (subst L; apply length_take_le; lia).
+  assert (Hins : <[idx := k]> prevKeys = L ++ k :: R).
+  { rewrite <- Hmid at 1. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenL, Nat.sub_diag. simpl. reflexivity. }
+  assert (Hnd_decomp : NoDup L /\ (forall x, x ∈ L -> x ∉ pk :: R) /\ pk ∉ R /\ NoDup R).
+  { rewrite <- Hmid in Hnd.
+    apply NoDup_app in Hnd as (HndL & HdisjL & Hnd_rest).
+    apply NoDup_cons in Hnd_rest as (HpkR & HndR).
+    repeat split; assumption. }
+  destruct Hnd_decomp as (HndL & HdisjL & HpkR & HndR).
+  split_and!.
+  - intros ->. rewrite Hins, <- Hmid.
+    unfold trim_single_removed. rewrite decide_True by reflexivity. split; reflexivity.
+  - rewrite Hins. split.
+    + intros Hnd' Hne Hkin.
+      apply NoDup_app in Hnd' as (_ & Hdisj' & Hnd_rest').
+      apply NoDup_cons in Hnd_rest' as (HkR & _).
+      rewrite <- Hmid in Hkin.
+      apply elem_of_app in Hkin as [HkL | Hk_rest].
+      * apply (Hdisj' k HkL). by left.
+      * apply elem_of_cons in Hk_rest as [Heq | HkR']; [exact (Hne Heq) | exact (HkR HkR')].
+    + intros Hnot.
+      destruct (decide (k = pk)) as [-> | Hne].
+      * rewrite Hmid. exact Hnd.
+      * pose proof (Hnot Hne) as Hnin.
+        rewrite <- Hmid in Hnin.
+        apply NoDup_app. split_and!; [exact HndL | |].
+        -- intros x HxL Hxin. apply elem_of_cons in Hxin as [-> | HxR].
+           ++ apply Hnin. apply elem_of_app. by left.
+           ++ apply (HdisjL x HxL). apply elem_of_cons. by right.
+        -- apply NoDup_cons. split; [|exact HndR].
+           intros HkR. apply Hnin. apply elem_of_app. right. apply elem_of_cons. by right.
+  - intros x. rewrite Hins. rewrite <- Hmid at 1.
+    unfold trim_single_removed.
+    destruct (decide (k = pk)) as [-> | Hne].
+    + rewrite elem_of_nil. split; [intros [Hin Hnin]; contradiction | intros []].
+    + split.
+      * intros [Hin Hnin].
+        apply elem_of_app in Hin as [HxL | Hx_rest].
+        -- exfalso. apply Hnin. apply elem_of_app. by left.
+        -- apply elem_of_cons in Hx_rest as [-> | HxR]; [by left |].
+           exfalso. apply Hnin. apply elem_of_app. right. apply elem_of_cons. by right.
+      * intros Hmem. apply elem_of_cons in Hmem as [-> | Hnil]; [|inversion Hnil]. split.
+        -- apply elem_of_app. right. by left.
+        -- intros Hinx. apply elem_of_app in Hinx as [HpkL | Hpk_rest].
+           ++ apply (HdisjL pk HpkL). by left.
+           ++ apply elem_of_cons in Hpk_rest as [Heq | HpkR']; [exact (Hne (eq_sym Heq)) | exact (HpkR HpkR')].
+Qed.
+
+Definition trim_two_removed {K : Type} `{EqDecision K} (pk0 pk1 k0 k1 : K) : list K :=
+  (if decide (pk0 = k0 \/ pk0 = k1) then [] else [pk0]) ++
+  (if decide (pk1 = k0 \/ pk1 = k1) then [] else [pk1]).
+
+(**md
+**In a `NoDup` key array `prevKeys` where distinct slots `i0 < i1` hold `pk0` and `pk1`, updating those slots to `(k0, k1)` preserves `NoDup` iff `k1 <> k0` and neither `k0` nor `k1` collides with an outside key, while emitting duplicate-free removals matching set difference (`Projections.fs`).**
+
+- [prevKeys:] the previous `NoDup` published key sequence.
+- [i0:] the first changed index (`i0 < i1`).
+- [i1:] the second changed index.
+- [pk0:] the previous key at index `i0`.
+- [pk1:] the previous key at index `i1`.
+- [k0:] the recomputed key at index `i0`.
+- [k1:] the recomputed key at index `i1`.
+*)
+Theorem trim_two_index_key_swap_preserves_uniqueness
+    {K : Type} `{EqDecision K} (prevKeys : list K) (i0 i1 : nat) (pk0 pk1 k0 k1 : K) :
+  NoDup prevKeys ->
+  i0 < i1 ->
+  prevKeys !! i0 = Some pk0 ->
+  prevKeys !! i1 = Some pk1 ->
+  (NoDup (<[i1 := k1]> (<[i0 := k0]> prevKeys)) <->
+   (k1 <> k0 /\
+    (k0 <> pk0 /\ k0 <> pk1 -> k0 ∉ prevKeys) /\
+    (k1 <> pk0 /\ k1 <> pk1 -> k1 ∉ prevKeys))) /\
+  NoDup (trim_two_removed pk0 pk1 k0 k1) /\
+  (forall x, (x ∈ prevKeys /\ x ∉ <[i1 := k1]> (<[i0 := k0]> prevKeys)) <->
+             x ∈ trim_two_removed pk0 pk1 k0 k1).
+Proof.
+  intros Hnd Hlt H0 H1.
+  pose proof (lookup_lt_Some _ _ _ H0) as Hlt0.
+  pose proof (lookup_lt_Some _ _ _ H1) as Hlt1.
+  pose proof (take_drop_middle prevKeys i0 pk0 H0) as Hmid0.
+  set (L := take i0 prevKeys) in *.
+  set (Rest := drop (S i0) prevKeys) in *.
+  assert (HlenL : length L = i0) by (subst L; apply length_take_le; lia).
+  set (j := i1 - S i0) in *.
+  assert (Hj : Rest !! j = Some pk1).
+  { subst Rest j. rewrite lookup_drop. replace (S i0 + (i1 - S i0)) with i1 by lia. exact H1. }
+  pose proof (take_drop_middle Rest j pk1 Hj) as Hmid1.
+  set (M := take j Rest) in *.
+  set (R := drop (S j) Rest) in *.
+  assert (HlenM : length M = j) by (subst M; apply length_take_le; pose proof (lookup_lt_Some _ _ _ Hj); lia).
+  assert (Hdecomp : prevKeys = L ++ pk0 :: M ++ pk1 :: R)
+    by exact (eq_trans (eq_sym Hmid0) (f_equal (fun s => L ++ pk0 :: s) (eq_sym Hmid1))).
+  assert (Hins0 : <[i0 := k0]> prevKeys = L ++ k0 :: M ++ pk1 :: R).
+  { rewrite Hdecomp at 1. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenL, Nat.sub_diag. simpl. reflexivity. }
+  assert (Hins1 : <[i1 := k1]> (<[i0 := k0]> prevKeys) = L ++ k0 :: M ++ k1 :: R).
+  { rewrite Hins0. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenL. replace (i1 - i0) with (S j) by lia. simpl.
+    f_equal. f_equal. rewrite insert_app_r_alt; [|lia].
+    rewrite HlenM, Nat.sub_diag. simpl. reflexivity. }
+  rewrite Hdecomp in Hnd.
+  apply NoDup_app in Hnd as (HndL & HdisjL & Hnd_rest0).
+  apply NoDup_cons in Hnd_rest0 as (Hpk0_nin & Hnd_rest1).
+  apply NoDup_app in Hnd_rest1 as (HndM & HdisjM & Hnd_rest2).
+  apply NoDup_cons in Hnd_rest2 as (Hpk1R & HndR).
+  assert (Hpk_ne : pk0 <> pk1).
+  { intros Heq. apply Hpk0_nin. apply elem_of_app. right. rewrite Heq. by left. }
+  assert (Hpk0L : pk0 ∉ L) by (intros Hin; apply (HdisjL pk0 Hin); by left).
+  assert (Hpk1L : pk1 ∉ L) by (intros Hin; apply (HdisjL pk1 Hin); apply elem_of_cons; right; apply elem_of_app; right; by left).
+  assert (Hpk0M : pk0 ∉ M) by (intros Hin; apply Hpk0_nin; apply elem_of_app; by left).
+  assert (Hpk1M : pk1 ∉ M) by (intros Hin; apply (HdisjM pk1 Hin); by left).
+  assert (Hpk0R : pk0 ∉ R) by (intros Hin; apply Hpk0_nin; apply elem_of_app; right; apply elem_of_cons; by right).
+  split_and!.
+  - rewrite Hins1. split.
+    + intros Hnd'.
+      apply NoDup_app in Hnd' as (_ & HdisjL' & Hnd_r0).
+      apply NoDup_cons in Hnd_r0 as (Hk0_nin & Hnd_r1).
+      apply NoDup_app in Hnd_r1 as (_ & HdisjM' & Hnd_r2).
+      apply NoDup_cons in Hnd_r2 as (Hk1R & _).
+      assert (Hk_ne : k1 <> k0).
+      { intros Heq. apply Hk0_nin. apply elem_of_app. right. rewrite Heq. by left. }
+      repeat split; try exact Hk_ne; rewrite Hdecomp; intros [Hn0 Hn1] Hin.
+      * apply elem_of_app in Hin as [HinL | Hin].
+        { apply (HdisjL' k0 HinL). by left. }
+        apply elem_of_cons in Hin as [Heq | Hin]; [exact (Hn0 Heq)|].
+        apply elem_of_app in Hin as [HinM | Hin].
+        { apply Hk0_nin. apply elem_of_app. by left. }
+        apply elem_of_cons in Hin as [Heq | HinR]; [exact (Hn1 Heq)|].
+        apply Hk0_nin. apply elem_of_app. right. apply elem_of_cons. by right.
+      * apply elem_of_app in Hin as [HinL | Hin].
+        { apply (HdisjL' k1 HinL). apply elem_of_cons. right. apply elem_of_app. right. by left. }
+        apply elem_of_cons in Hin as [Heq | Hin]; [exact (Hn0 Heq)|].
+        apply elem_of_app in Hin as [HinM | Hin].
+        { apply (HdisjM' k1 HinM). by left. }
+        apply elem_of_cons in Hin as [Heq | HinR]; [exact (Hn1 Heq)|].
+        exact (Hk1R HinR).
+    + intros (Hk_ne & Hk0_out & Hk1_out).
+      assert (Hk0_L : k0 ∉ L).
+      { intros Hin. apply Hk0_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. by left. }
+      assert (Hk0_M : k0 ∉ M).
+      { intros Hin. apply Hk0_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. by left. }
+      assert (Hk0_R : k0 ∉ R).
+      { intros Hin. apply Hk0_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. right. apply elem_of_cons. by right. }
+      assert (Hk1_L : k1 ∉ L).
+      { intros Hin. apply Hk1_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. by left. }
+      assert (Hk1_M : k1 ∉ M).
+      { intros Hin. apply Hk1_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. by left. }
+      assert (Hk1_R : k1 ∉ R).
+      { intros Hin. apply Hk1_out; [split; [intros ->; contradiction | intros ->; contradiction]|].
+        rewrite Hdecomp. apply elem_of_app. right. apply elem_of_cons. right. apply elem_of_app. right. apply elem_of_cons. by right. }
+      apply NoDup_app. split_and!; [exact HndL| |].
+      * intros x HxL Hxin.
+        apply elem_of_cons in Hxin as [-> | Hxin]; [exact (Hk0_L HxL)|].
+        apply elem_of_app in Hxin as [HxM | Hxin].
+        { apply (HdisjL x HxL). apply elem_of_cons. right. apply elem_of_app. by left. }
+        apply elem_of_cons in Hxin as [-> | HxR]; [exact (Hk1_L HxL)|].
+        apply (HdisjL x HxL). apply elem_of_cons. right. apply elem_of_app. right. apply elem_of_cons. by right.
+      * apply NoDup_cons. split.
+        -- intros Hxin. apply elem_of_app in Hxin as [Hk0M | Hxin]; [exact (Hk0_M Hk0M)|].
+           apply elem_of_cons in Hxin as [Heq | Hk0R]; [exact (Hk_ne (eq_sym Heq)) | exact (Hk0_R Hk0R)].
+        -- apply NoDup_app. split_and!; [exact HndM| |].
+           ++ intros x HxM Hxin. apply elem_of_cons in Hxin as [-> | HxR]; [exact (Hk1_M HxM)|].
+              apply (HdisjM x HxM). apply elem_of_cons. by right.
+           ++ apply NoDup_cons. split; [exact Hk1_R | exact HndR].
+  - unfold trim_two_removed.
+    destruct (decide (pk0 = k0 \/ pk0 = k1)), (decide (pk1 = k0 \/ pk1 = k1)); simpl.
+    + constructor.
+    + apply NoDup_singleton.
+    + apply NoDup_singleton.
+    + apply NoDup_cons. split; [rewrite elem_of_cons, elem_of_nil; intros [Heq|Hnil]; [exact (Hpk_ne Heq) | inversion Hnil] | apply NoDup_singleton].
+  - intros x. rewrite Hins1, Hdecomp. unfold trim_two_removed.
+    assert (Hout : x ∈ (L ++ k0 :: M ++ k1 :: R) <-> (x ∈ L \/ x = k0 \/ x ∈ M \/ x = k1 \/ x ∈ R)).
+    { repeat (rewrite elem_of_app || rewrite elem_of_cons); tauto. }
+    assert (Hin : x ∈ (L ++ pk0 :: M ++ pk1 :: R) <-> (x ∈ L \/ x = pk0 \/ x ∈ M \/ x = pk1 \/ x ∈ R)).
+    { repeat (rewrite elem_of_app || rewrite elem_of_cons); tauto. }
+    rewrite Hin, Hout.
+    split.
+    + intros [[HxL | [-> | [HxM | [-> | HxR]]]] Hnin].
+      * exfalso; apply Hnin; by left.
+      * apply elem_of_app. left. rewrite decide_False; [by left |].
+        intros [-> | ->]; apply Hnin; tauto.
+      * exfalso; apply Hnin; tauto.
+      * apply elem_of_app. right. rewrite decide_False; [by left |].
+        intros [-> | ->]; apply Hnin; tauto.
+      * exfalso; apply Hnin; tauto.
+    + intros Hmem.
+      apply elem_of_app in Hmem as [Hm0 | Hm1].
+      * destruct (decide (pk0 = k0 \/ pk0 = k1)) as [_|Hn0]; [inversion Hm0|].
+        apply elem_of_cons in Hm0 as [-> | Hm0]; [|inversion Hm0].
+        split; [tauto|].
+        intros [HpL | [Heq | [HpM | [Heq | HpR]]]];
+          [exact (Hpk0L HpL) | exact (Hn0 (or_introl Heq)) | exact (Hpk0M HpM) | exact (Hn0 (or_intror Heq)) | exact (Hpk0R HpR)].
+      * destruct (decide (pk1 = k0 \/ pk1 = k1)) as [_|Hn1]; [inversion Hm1|].
+        apply elem_of_cons in Hm1 as [-> | Hm1]; [|inversion Hm1].
+        split; [tauto|].
+        intros [HpL | [Heq | [HpM | [Heq | HpR]]]];
+          [exact (Hpk1L HpL) | exact (Hn1 (or_introl Heq)) | exact (Hpk1M HpM) | exact (Hn1 (or_intror Heq)) | exact (Hpk1R HpR)].
+Qed.
+
+Fixpoint dense_entries {V : Type} (start : nat) (xs : list V) : gmap nat V :=
+  match xs with
+  | [] => ∅
+  | v :: xs' => <[start := v]> (dense_entries (S start) xs')
+  end.
+
+Lemma lookup_dense_entries {V : Type} (start i : nat) (xs : list V) :
+  dense_entries start xs !! i =
+  if decide (start <= i) then xs !! (i - start) else None.
+Proof.
+  revert start.
+  induction xs as [|v xs' IH]; intros start; simpl.
+  - rewrite lookup_empty. destruct (decide (start <= i)); reflexivity.
+  - destruct (decide (start <= i)) as [Hle|Hgt].
+    + destruct (decide (i = start)) as [->|Hne].
+      * rewrite lookup_insert_eq, Nat.sub_diag. reflexivity.
+      * rewrite lookup_insert_ne; [|symmetry; exact Hne].
+        rewrite IH, decide_True; [|lia].
+        replace (i - start) with (S (i - S start)) by lia.
+        reflexivity.
+    + rewrite lookup_insert_ne; [|lia].
+      rewrite IH, decide_False; [reflexivity | lia].
+Qed.
+
+Definition dense_step {V : Type} `{EqDecision V}
+    (prev cur : list V) (i : nat) (m : gmap nat V) : gmap nat V :=
+  if decide (i < Nat.min (length prev) (length cur)) then
+    if decide (prev !! i = cur !! i) then m
+    else match cur !! i with Some v => <[i := v]> m | None => m end
+  else if decide (i < length cur) then
+    match cur !! i with Some v => <[i := v]> m | None => m end
+  else
+    delete i m.
+
+Fixpoint dense_stage_upto {V : Type} `{EqDecision V}
+    (prev cur : list V) (n : nat) (m : gmap nat V) : gmap nat V :=
+  match n with
+  | 0 => m
+  | S n' => dense_step prev cur n' (dense_stage_upto prev cur n' m)
+  end.
+
+Lemma dense_step_lookup_ne {V : Type} `{EqDecision V}
+    (prev cur : list V) (i q : nat) (m : gmap nat V) :
+  q <> i -> dense_step prev cur i m !! q = m !! q.
+Proof.
+  intros Hne. unfold dense_step.
+  destruct (decide (i < Nat.min (length prev) (length cur))).
+  - destruct (decide (prev !! i = cur !! i)); [reflexivity|].
+    destruct (cur !! i); [apply lookup_insert_ne; symmetry; exact Hne | reflexivity].
+  - destruct (decide (i < length cur)).
+    + destruct (cur !! i); [apply lookup_insert_ne; symmetry; exact Hne | reflexivity].
+    + apply lookup_delete_ne; symmetry; exact Hne.
+Qed.
+
+Lemma dense_stage_upto_hi {V : Type} `{EqDecision V}
+    (prev cur : list V) (n q : nat) (m : gmap nat V) :
+  n <= q ->
+  dense_stage_upto prev cur n m !! q = m !! q.
+Proof.
+  induction n as [|n' IH]; intros Hle; simpl; [reflexivity|].
+  rewrite dense_step_lookup_ne by lia. apply IH. lia.
+Qed.
+
+Lemma dense_stage_upto_spec {V : Type} `{EqDecision V}
+    (prev cur : list V) (n : nat) (m : gmap nat V) (q : nat) :
+  m !! q = prev !! q ->
+  dense_stage_upto prev cur n m !! q = if decide (q < n) then cur !! q else m !! q.
+Proof.
+  intros Hinit.
+  induction n as [|n' IH]; simpl.
+  - destruct (decide (q < 0)); [lia | reflexivity].
+  - destruct (decide (q < S n')) as [Hlt|Hge].
+    + destruct (decide (q = n')) as [->|Hne].
+      * pose proof (dense_stage_upto_hi prev cur n' n' m ltac:(lia)) as Hhi.
+        unfold dense_step.
+        destruct (decide (n' < Nat.min (length prev) (length cur))) as [Hmin|Hnmin].
+        -- destruct (decide (prev !! n' = cur !! n')) as [Heq|Hdiff].
+           ++ rewrite Hhi, Hinit. exact Heq.
+           ++ destruct (lookup_lt_is_Some_2 cur n' ltac:(lia)) as [v Hv].
+              rewrite Hv, lookup_insert_eq. reflexivity.
+        -- destruct (decide (n' < length cur)) as [Hcur|Hncur].
+           ++ destruct (lookup_lt_is_Some_2 cur n' Hcur) as [v Hv].
+              rewrite Hv, lookup_insert_eq. reflexivity.
+           ++ rewrite lookup_delete_eq. symmetry. apply lookup_ge_None_2. lia.
+      * rewrite dense_step_lookup_ne by lia.
+        rewrite IH, decide_True by lia. reflexivity.
+    + rewrite dense_step_lookup_ne by lia.
+      rewrite IH, decide_False by lia. reflexivity.
+Qed.
+
+Lemma lookup_dense_entries_0 {V : Type} (i : nat) (xs : list V) :
+  dense_entries 0 xs !! i = xs !! i.
+Proof.
+  rewrite lookup_dense_entries, decide_True; [|lia].
+  rewrite Nat.sub_0_r. reflexivity.
+Qed.
+
+(**md
+**`IndexProjection`'s dense positional pass transforms `dense_entries 0 prev` directly into `dense_entries 0 cur` while skipping unchanged overlap slots (`prev !! i = cur !! i`), skipping `Keys` publication iff `length cur = length prev`, and preserving unchanged reference-equal row values (`Projections.fs`).**
+
+- [prev:] previous materialized item slice.
+- [cur:] current materialized item slice.
+*)
+Theorem index_projection_dense_diff_refines_visit
+    {V : Type} `{EqDecision V} (prev cur : list V) :
+  dense_stage_upto prev cur (Nat.max (length prev) (length cur)) (dense_entries 0 prev) =
+    dense_entries 0 cur /\
+  (seq 0 (length cur) = seq 0 (length prev) <-> length cur = length prev) /\
+  (forall i v, i < Nat.min (length prev) (length cur) ->
+    prev !! i = Some v -> cur !! i = Some v ->
+    dense_entries 0 prev !! i = dense_entries 0 cur !! i).
+Proof.
+  split_and!.
+  - apply map_eq. intros q.
+    rewrite dense_stage_upto_spec; [|apply lookup_dense_entries_0].
+    rewrite !lookup_dense_entries_0.
+    destruct (decide (q < Nat.max (length prev) (length cur))) as [Hlt|Hge]; [reflexivity|].
+    rewrite (lookup_ge_None_2 prev q ltac:(lia)), (lookup_ge_None_2 cur q ltac:(lia)). reflexivity.
+  - split; [intro Heq; apply (f_equal (@length nat)) in Heq; rewrite !length_seq in Heq; exact Heq | intros ->; reflexivity].
+  - intros i v Hmin Hprev Hcur.
+    rewrite !lookup_dense_entries_0. congruence.
+Qed.
+
+Inductive ls_upstream (S : Type) :=
+  | LsPending
+  | LsFailed
+  | LsReady (v : S).
+Arguments LsPending {S}.
+Arguments LsFailed {S}.
+Arguments LsReady {S} v.
+
+Record lookup_sync_state (S T : Type) := mk_ls {
+  ls_synced_run : Z;
+  ls_primed : bool;
+  ls_pending : bool;
+  ls_failed : bool;
+  ls_prev_state : S;
+  ls_table : T;
+}.
+Arguments mk_ls {S T} _ _ _ _ _ _.
+Arguments ls_synced_run {S T} _.
+Arguments ls_primed {S T} _.
+Arguments ls_pending {S T} _.
+Arguments ls_failed {S T} _.
+Arguments ls_prev_state {S T} _.
+Arguments ls_table {S T} _.
+
+Definition ls_refresh {S T : Type} `{EqDecision S}
+    (up_runs : Z) (u : ls_upstream S) (recompute : S -> T) (st : lookup_sync_state S T)
+    : lookup_sync_state S T :=
+  match u with
+  | LsPending =>
+      {| ls_synced_run := (-1)%Z;
+         ls_primed := ls_primed st;
+         ls_pending := true;
+         ls_failed := false;
+         ls_prev_state := ls_prev_state st;
+         ls_table := ls_table st |}
+  | LsFailed =>
+      {| ls_synced_run := (-1)%Z;
+         ls_primed := ls_primed st;
+         ls_pending := false;
+         ls_failed := true;
+         ls_prev_state := ls_prev_state st;
+         ls_table := ls_table st |}
+  | LsReady v =>
+      if negb (ls_primed st) then
+        {| ls_synced_run := up_runs;
+           ls_primed := true;
+           ls_pending := false;
+           ls_failed := false;
+           ls_prev_state := v;
+           ls_table := ls_table st |}
+      else if ls_pending st || ls_failed st || negb (bool_decide (ls_prev_state st = v)) then
+        {| ls_synced_run := up_runs;
+           ls_primed := true;
+           ls_pending := false;
+           ls_failed := false;
+           ls_prev_state := v;
+           ls_table := recompute v |}
+      else
+        {| ls_synced_run := up_runs;
+           ls_primed := true;
+           ls_pending := false;
+           ls_failed := false;
+           ls_prev_state := ls_prev_state st;
+           ls_table := ls_table st |}
+  end.
+
+Definition ls_sync_fast {S T : Type} `{EqDecision S}
+    (up_runs : Z) (up_clean_ready : bool) (u : ls_upstream S)
+    (recompute : S -> T) (st : lookup_sync_state S T)
+    : lookup_sync_state S T :=
+  if bool_decide (ls_synced_run st = up_runs) && up_clean_ready then st
+  else ls_refresh up_runs u recompute st.
+
+Definition ls_sync_inv {S T : Type}
+    (up_runs : Z) (u : ls_upstream S) (st : lookup_sync_state S T) : Prop :=
+  ls_synced_run st = up_runs ->
+  exists v,
+    u = LsReady v /\
+    ls_primed st = true /\
+    ls_pending st = false /\
+    ls_failed st = false /\
+    ls_prev_state st = v.
+
+Record affected_buf_state (K : Type) := mk_ab {
+  ab_collecting : bool;
+  ab_buf : list K;
+}.
+Arguments mk_ab {K} _ _.
+Arguments ab_collecting {K} _.
+Arguments ab_buf {K} _.
+
+Definition ab_inv {K : Type} (st : affected_buf_state K) : Prop :=
+  ab_collecting st = false -> ab_buf st = [].
+
+Definition ab_collect_step {K : Type}
+    (st : affected_buf_state K) (xs : list K) : list K * affected_buf_state K :=
+  if negb (ab_collecting st) then
+    let st_busy := {| ab_collecting := true; ab_buf := xs |} in
+    let delivered := ab_buf st_busy in
+    (delivered, {| ab_collecting := false; ab_buf := [] |})
+  else
+    (xs, st).
+
+(**md
+**Skipping `Lookup.Refresh` when `syncedRun = state.Runs && state.IsCleanAndReady` is identical to running `Refresh`, `Refresh` preserves `ls_sync_inv` on non-negative runs, and pooling `affectedBuf` under `collectingAffected` isolates reentrant notifications and restores the empty buffer (`Projections.fs`).**
+
+- [up_runs:] upstream `state.Runs` generation counter.
+- [up_clean_ready:] whether upstream `state.IsCleanAndReady` holds.
+- [u:] upstream `TryValueUntracked` outcome.
+- [recompute:] table invalidation/recomputation function when upstream changes.
+- [st:] `Lookup` sync state.
+- [ab:] pooled `affectedBuf` state.
+- [xs:] top-level affected key batch.
+- [nested:] reentrant nested affected key batch.
+*)
+Theorem lookup_sync_clean_skip_and_affected_buf_eq
+    {S T K : Type} `{EqDecision S}
+    (up_runs : Z) (up_clean_ready : bool) (u : ls_upstream S)
+    (recompute : S -> T) (st : lookup_sync_state S T)
+    (ab : affected_buf_state K) (xs nested : list K) :
+  (up_clean_ready = true -> exists v, u = LsReady v) ->
+  (ls_sync_inv up_runs u st ->
+   ls_sync_fast up_runs up_clean_ready u recompute st = ls_refresh up_runs u recompute st) /\
+  ((0 <= up_runs)%Z ->
+   ls_sync_inv up_runs u (ls_refresh up_runs u recompute st)) /\
+  (ab_inv ab -> ab_collecting ab = false ->
+   let st_during := {| ab_collecting := true; ab_buf := xs |} in
+   ab_collect_step st_during nested = (nested, st_during) /\
+   ab_collect_step ab xs = (xs, {| ab_collecting := false; ab_buf := ([] : list K) |}) /\
+   ab_inv {| ab_collecting := false; ab_buf := ([] : list K) |}).
+Proof.
+  intro Hclean.
+  split_and!.
+  - intro Hinv. unfold ls_sync_fast.
+    destruct (bool_decide (ls_synced_run st = up_runs)) eqn:Hrun;
+      destruct up_clean_ready; simpl; try reflexivity.
+    apply bool_decide_eq_true_1 in Hrun.
+    destruct (Hinv Hrun) as (v & -> & Hp & Hpend & Hfail & <-).
+    unfold ls_refresh. rewrite Hp, Hpend, Hfail. simpl.
+    rewrite bool_decide_eq_true_2 by reflexivity. simpl.
+    destruct st; simpl in *; subst; reflexivity.
+  - intros Hpos Heq.
+    destruct u as [| |v]; unfold ls_refresh in Heq; simpl in Heq; try lia.
+    exists v. unfold ls_refresh.
+    destruct (ls_primed st); simpl.
+    + destruct (ls_pending st || ls_failed st || negb (bool_decide (ls_prev_state st = v))) eqn:Econd; simpl;
+        [split_and!; reflexivity|].
+      destruct (ls_pending st), (ls_failed st), (bool_decide (ls_prev_state st = v)) eqn:Ebd;
+        simpl in Econd; try discriminate.
+      apply bool_decide_eq_true_1 in Ebd.
+      split_and!; try reflexivity; exact Ebd.
+    + split_and!; reflexivity.
+  - intros _ Hfalse. simpl.
+    unfold ab_collect_step, ab_inv. rewrite Hfalse. simpl.
+    split_and!; [reflexivity | reflexivity | intro; reflexivity].
+Qed.
+
+(** ** Cached row-entry reads, slice/group-view window diffs, and non-invertible fold row cache *)
+
+Record cached_entry (V : Type) := {
+  ce_live : bool;
+  ce_val : V;
+}.
+Arguments ce_live {V} _.
+Arguments ce_val {V} _.
+
+Definition read_entry_cached {K V : Type} `{Countable K}
+    (entries : gmap K (cached_entry V)) (key : K) (cached : option (cached_entry V))
+    : option (cached_entry V) :=
+  match cached with
+  | Some e => if ce_live e then Some e else entries !! key
+  | None => entries !! key
+  end.
+
+(**md
+**Reading a cached `RowEntry` directly whenever `ce_live e = true`, and falling back to `entries !! key` on `None` or retirement (`ce_live e = false`), agrees with `entries !! key` under the live-entry invariant (`Projections.fs` `ReadEntry`, `Combinators.fs` `EntryCache`).**
+
+- [entries:] live key-to-entry map at the read.
+- [entries':] updated key-to-entry map after entry retirement.
+- [key:] row key.
+- [cached:] cached entry reference (`Tag` or `DualEntry`).
+- [v0:] payload retained on a retired entry.
+*)
+Theorem live_row_entry_agrees_with_find
+    {K V : Type} `{Countable K}
+    (entries entries' : gmap K (cached_entry V))
+    (key : K) (cached : option (cached_entry V)) (v0 : V) :
+  (forall e, cached = Some e -> ce_live e = true -> entries !! key = Some e) ->
+  read_entry_cached entries key cached = entries !! key /\
+  read_entry_cached entries' key (Some {| ce_live := false; ce_val := v0 |}) = entries' !! key.
+Proof.
+  intro Hlive. split.
+  - destruct cached as [e|]; simpl; [|reflexivity].
+    destruct (ce_live e) eqn:Hl; [symmetry; apply Hlive; [reflexivity | exact Hl] | reflexivity].
+  - simpl. reflexivity.
+Qed.
+
+Definition slice_win {K : Type} (xs : list K) (start win_len : nat) : list K :=
+  take win_len (drop start xs).
+
+(**md
+**When upstream changes only `[chg_start .. chg_prev_end]` into `[chg_start .. chg_end]` (`pref ++ mid_old ++ suf` to `pref ++ mid_new ++ suf`), a fixed-length `SliceView` window strictly before `chg_start` or strictly after the edited range with constant shift relative to `chg_end`/`chg_prev_end` yields the identical slice in $O(1)$ (`Combinators.fs` `SliceView.Enumerate`).**
+
+- [pref:] shared prefix before `chg_start`.
+- [mid_old:] old edited segment in `prev`.
+- [mid_new:] replacement edited segment in `cur`.
+- [suf:] shared suffix after the edited segment.
+- [start:] current `SliceView` window start index.
+- [last_start:] prior `SliceView` window start index.
+- [win_len:] preserved window length.
+*)
+Theorem slice_outside_changed_range_noop
+    {K : Type} (pref mid_old mid_new suf : list K) (start last_start win_len : nat) :
+  let prev := pref ++ mid_old ++ suf in
+  let cur := pref ++ mid_new ++ suf in
+  let chg_start := length pref in
+  let chg_prev_end := (Z.of_nat (length pref + length mid_old) - 1)%Z in
+  let chg_end := (Z.of_nat (length pref + length mid_new) - 1)%Z in
+  ((start = last_start /\ start + win_len <= chg_start) \/
+   ((Z.of_nat start > chg_end)%Z /\
+    (Z.of_nat last_start > chg_prev_end)%Z /\
+    (Z.of_nat start - chg_end = Z.of_nat last_start - chg_prev_end)%Z)) ->
+  slice_win cur start win_len = slice_win prev last_start win_len.
+Proof.
+  intros prev cur chg_start chg_prev_end chg_end Hcase.
+  subst prev cur chg_start chg_prev_end chg_end.
+  unfold slice_win.
+  destruct Hcase as [[-> Hpre] | [Hs [Hls Hdiff]]].
+  - rewrite !drop_app_le by lia.
+    rewrite !take_app_le by (rewrite length_drop; lia).
+    reflexivity.
+  - rewrite !app_assoc.
+    rewrite !drop_app_ge by (rewrite length_app; lia).
+    rewrite !length_app.
+    replace (start - (length pref + length mid_new))
+       with (last_start - (length pref + length mid_old)) by lia.
+    reflexivity.
+Qed.
+
+Fixpoint filter_absent {K : Type} `{EqDecision K} (known xs : list K) : list K :=
+  match xs with
+  | [] => []
+  | k :: rest =>
+      if decide (k ∈ known) then filter_absent known rest
+      else k :: filter_absent known rest
+  end.
+
+Lemma filter_absent_app {K : Type} `{EqDecision K} (known xs ys : list K) :
+  filter_absent known (xs ++ ys) = filter_absent known xs ++ filter_absent known ys.
+Proof.
+  induction xs as [|k xs IH]; simpl; [reflexivity|].
+  destruct (decide (k ∈ known)); simpl; [exact IH | rewrite IH; reflexivity].
+Qed.
+
+Lemma filter_absent_sub {K : Type} `{EqDecision K} (known xs : list K) :
+  (forall x, x ∈ xs -> x ∈ known) ->
+  filter_absent known xs = [].
+Proof.
+  induction xs as [|k xs IH]; intro Hsub; simpl; [reflexivity|].
+  rewrite decide_True by (apply Hsub; left).
+  apply IH. intros x Hx. apply Hsub. right; exact Hx.
+Qed.
+
+Lemma filter_absent_ext_in {K : Type} `{EqDecision K} (k1 k2 xs : list K) :
+  (forall x, x ∈ xs -> (x ∈ k1 <-> x ∈ k2)) ->
+  filter_absent k1 xs = filter_absent k2 xs.
+Proof.
+  induction xs as [|k xs IH]; intro Hext; simpl; [reflexivity|].
+  assert (Hiff : k ∈ k1 <-> k ∈ k2) by (apply Hext; left).
+  destruct (decide (k ∈ k1)) as [Hk1|Hk1];
+    destruct (decide (k ∈ k2)) as [Hk2|Hk2]; try tauto.
+  - apply IH. intros x Hx. apply Hext. right; exact Hx.
+  - f_equal. apply IH. intros x Hx. apply Hext. right; exact Hx.
+Qed.
+
+(**md
+**Trimming equal shared prefix `pref` and suffix `suf` before diffing `prev = pref ++ mid_prev ++ suf` against `next = pref ++ mid_next ++ suf` (under `NoDup prev`) visits only `mid_next` for additions and detects removals only within `mid_prev` via membership in `mid_next` (`Combinators.fs` `SliceView.Enumerate`, `GroupView.Enumerate`).**
+
+- [pref:] shared prefix keys.
+- [mid_prev:] differing window in `prev`.
+- [mid_next:] differing window in `next`.
+- [suf:] shared suffix keys.
+*)
+Theorem window_trim_diff_refines_visit
+    {K : Type} `{EqDecision K} (pref mid_prev mid_next suf : list K) :
+  let prev := pref ++ mid_prev ++ suf in
+  let next := pref ++ mid_next ++ suf in
+  NoDup prev ->
+  filter_absent prev next = filter_absent prev mid_next /\
+  filter_absent next prev = filter_absent mid_next mid_prev.
+Proof.
+  intros prev next Hnd.
+  assert (Hprev_pref : forall x, x ∈ pref -> x ∈ prev).
+  { intros x Hx. subst prev. rewrite elem_of_app; left; exact Hx. }
+  assert (Hprev_suf : forall x, x ∈ suf -> x ∈ prev).
+  { intros x Hx. subst prev. rewrite !elem_of_app; right; right; exact Hx. }
+  assert (Hnext_pref : forall x, x ∈ pref -> x ∈ next).
+  { intros x Hx. subst next. rewrite elem_of_app; left; exact Hx. }
+  assert (Hnext_suf : forall x, x ∈ suf -> x ∈ next).
+  { intros x Hx. subst next. rewrite !elem_of_app; right; right; exact Hx. }
+  split.
+  - subst next. rewrite !filter_absent_app.
+    rewrite (filter_absent_sub prev pref Hprev_pref), (filter_absent_sub prev suf Hprev_suf).
+    simpl. rewrite app_nil_r. reflexivity.
+  - subst prev. rewrite !filter_absent_app.
+    rewrite (filter_absent_sub next pref Hnext_pref), (filter_absent_sub next suf Hnext_suf).
+    simpl. rewrite app_nil_r.
+    apply filter_absent_ext_in. intros x Hx.
+    subst next. rewrite !elem_of_app.
+    rewrite !NoDup_app in Hnd.
+    destruct Hnd as (_ & Hdisj1 & _ & Hdisj2 & _).
+    split.
+    + intros [Hp | [Hm | Hs]].
+      * exfalso. eapply Hdisj1; [exact Hp | rewrite elem_of_app; left; exact Hx].
+      * exact Hm.
+      * exfalso. eapply Hdisj2; [exact Hx | exact Hs].
+    + intro Hm. right; left; exact Hm.
+Qed.
+
+Definition fold_lookup_rows {K V S : Type} `{Countable K}
+    (folder : S -> V -> S) (zero : S) (by_key : gmap K nat) (row_state : gmap nat V) (keys : list K) : S :=
+  foldl (fun acc k =>
+    match by_key !! k with
+    | Some rid => match row_state !! rid with Some v => folder acc v | None => acc end
+    | None => acc
+    end) zero keys.
+
+Definition fold_ordered_cache {V S : Type}
+    (folder : S -> V -> S) (zero : S) (row_state : gmap nat V) (ordered_rids : list (option nat)) : S :=
+  foldl (fun acc mrid =>
+    match mrid with
+    | Some rid => match row_state !! rid with Some v => folder acc v | None => acc end
+    | None => acc
+    end) zero ordered_rids.
+
+(**md
+**Caching the `Keys`-ordered sequence of `FoldRow` references (`orderedRows`) whenever key membership or order is unchanged makes non-invertible `Projection.fold` recomputation over `orderedRows` identical to `keys.Length` hash lookups across arbitrary in-place row value updates (`Combinators.fs` `ProjectionFold`).**
+
+- [folder:] the fold accumulator function.
+- [zero:] initial fold accumulator seed.
+- [by_key:] current `rows` key-to-slot map.
+- [row_state:] mutable per-row state (`HasValue` / `Value`) map.
+- [row_state':] updated per-row state after in-place value edits.
+- [keys:] upstream `Keys` sequence (`lastKeys`).
+- [ordered_rids:] cached `orderedRows` sequence built from `keys` and `by_key`.
+*)
+Theorem fold_ordered_cache_refines_lookup_fold
+    {K V S : Type} `{Countable K}
+    (folder : S -> V -> S) (zero : S) (by_key : gmap K nat) (row_state row_state' : gmap nat V)
+    (keys : list K) (ordered_rids : list (option nat)) :
+  ordered_rids = (fun k => by_key !! k) <$> keys ->
+  fold_ordered_cache folder zero row_state ordered_rids =
+    fold_lookup_rows folder zero by_key row_state keys /\
+  fold_ordered_cache folder zero row_state' ordered_rids =
+    fold_lookup_rows folder zero by_key row_state' keys.
+Proof.
+  intros ->.
+  assert (Hgen : forall (st : gmap nat V) z,
+    fold_ordered_cache folder z st ((fun k => by_key !! k) <$> keys) =
+    fold_lookup_rows folder z by_key st keys).
+  { intros st z. unfold fold_ordered_cache, fold_lookup_rows. revert z.
+    induction keys as [|k ks IH]; intro z; simpl.
+    - reflexivity.
+    - apply IH. }
+  split; apply Hgen.
 Qed.

@@ -1101,6 +1101,95 @@ let tests =
                 Expect.isEmpty (Positional.diff [| 1; 2; 3 |] [| 1; 2; 3 |]) "no edits for an unchanged order"
             }
 
+            test "a positional diff trims shared prefixes and suffixes across fast paths and option keys" {
+                let identical = [| 1; 2; 3; 4 |]
+                Expect.isEmpty (Positional.diff identical identical) "reference-equal arrays emit no edits"
+                Expect.isEmpty (Positional.diff [||] [||]) "empty arrays emit no edits"
+
+                Expect.sequenceEqual
+                    (Positional.diff [| 1; 2 |] [| 1; 2; 3; 4 |])
+                    [ PositionalChange.InsertAt (2, 3); PositionalChange.InsertAt (3, 4) ]
+                    "pure tail append"
+
+                Expect.sequenceEqual
+                    (Positional.diff [| 3; 4 |] [| 1; 2; 3; 4 |])
+                    [ PositionalChange.InsertAt (0, 1); PositionalChange.InsertAt (1, 2) ]
+                    "pure head prepend"
+
+                Expect.sequenceEqual
+                    (Positional.diff [| 1; 2; 5 |] [| 1; 2; 3; 4; 5 |])
+                    [ PositionalChange.InsertAt (2, 3); PositionalChange.InsertAt (3, 4) ]
+                    "pure middle insert"
+
+                Expect.sequenceEqual
+                    (Positional.diff [| 1; 2; 3; 4; 5 |] [| 1; 5 |])
+                    [
+                        PositionalChange.RemoveAt 3
+                        PositionalChange.RemoveAt 2
+                        PositionalChange.RemoveAt 1
+                    ]
+                    "pure middle removal runs back to front"
+
+                Expect.sequenceEqual
+                    (Positional.diff [| 1; 2; 3 |] [| 1; 9; 3 |])
+                    [ PositionalChange.RemoveAt 1; PositionalChange.InsertAt (1, 9) ]
+                    "single middle replacement"
+
+                Expect.sequenceEqual
+                    (Positional.diff [| 1; 2; 3; 4; 5 |] [| 1; 3; 2; 4; 5 |])
+                    [ PositionalChange.Move (1, 2) ]
+                    "adjacent swap inside prefix and suffix"
+
+                let disjointPrev = [| 1; 2; 10; 11; 3; 4 |]
+                let disjointNext = [| 1; 2; 20; 21; 22; 3; 4 |]
+
+                let disjointEdits =
+                    Positional.diff disjointPrev disjointNext
+                    |> List.ofSeq
+
+                Expect.sequenceEqual (replay disjointPrev disjointEdits) disjointNext "disjoint middle block replacement replays"
+
+                Expect.sequenceEqual
+                    disjointEdits
+                    [
+                        PositionalChange.RemoveAt 3
+                        PositionalChange.RemoveAt 2
+                        PositionalChange.InsertAt (2, 20)
+                        PositionalChange.InsertAt (3, 21)
+                        PositionalChange.InsertAt (4, 22)
+                    ]
+                    "disjoint middle replacement emits only removals and inserts"
+
+                let optPrev = [| Some 1; None; Some 10; Some 11; Some 2 |]
+                let optNext = [| Some 1; None; Some 20; Some 10; Some 2 |]
+                let optEdits = Positional.diff optPrev optNext |> List.ofSeq
+                Expect.sequenceEqual (replay optPrev optEdits) optNext "option keys including None replay cleanly"
+
+                let largePrev = [| 0..999 |]
+
+                let largeNext =
+                    [|
+                        yield! [| 0..499 |]
+                        yield 1001
+                        yield 503
+                        yield 501
+                        yield 500
+                        yield 1002
+                        yield! [| 506..999 |]
+                    |]
+
+                let largeEdits = Positional.diff largePrev largeNext |> List.ofSeq
+                Expect.sequenceEqual (replay largePrev largeEdits) largeNext "large trimmed array replays"
+
+                let largeMoves =
+                    largeEdits
+                    |> List.sumBy (function
+                        | PositionalChange.Move _ -> 1
+                        | _ -> 0)
+
+                Expect.isLessThanOrEqual largeMoves 2 "at most 2 moves needed outside the LIS of [503; 501; 500]"
+            }
+
 #if !FABLE_COMPILER
             // .NET only: AsObservableCollection returns an ObservableCollection, which the library omits under Fable.
             test "AsObservableCollection follows the projection" {

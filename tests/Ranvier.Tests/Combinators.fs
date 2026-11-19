@@ -281,6 +281,288 @@ let filterTests =
                 Expect.equal calls.Value 0 "no predicate runs after disposal"
                 Expect.isEmpty view.Keys "a disposed view is empty"
             }
+
+            test "check cutoff leaves filter Runs unchanged when predicate booleans stay equal" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+                col.AddOrUpdate { Id = 1; N = 1 }
+                col.AddOrUpdate { Id = 2; N = 2 }
+                let calls = ref 0
+
+                let view =
+                    col.Rows
+                    |> Projection.filter (fun x ->
+                        calls.Value <- calls.Value + 1
+                        x.N % 2 = 0)
+
+                let keysRuns = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    keysRuns.Value <- keysRuns.Value + 1)
+
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+                let baseRuns = view.Runs
+                let baseKeysRuns = keysRuns.Value
+                calls.Value <- 0
+
+                col.AddOrUpdate { Id = 2; N = 4 }
+                col.AddOrUpdate { Id = 1; N = 3 }
+
+                Expect.equal calls.Value 2 "only the two edited keys ran"
+                Expect.equal view.Runs baseRuns "no view pass ran when booleans stayed equal"
+                Expect.equal keysRuns.Value baseKeysRuns "Keys reader stayed asleep"
+                Expect.equal (kr.Read ()).Changes.Count 0 "no key delta emitted"
+                Expect.equal (view.Get 2).N 4 "upstream value still updated"
+            }
+
+            test "N=1000 single-key and 3-key flips over KeyedCollection update in O(Delta) calls and exact deltas" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..1000 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let calls = ref 0
+
+                let view =
+                    col.Rows
+                    |> Projection.filter (fun x ->
+                        calls.Value <- calls.Value + 1
+                        x.N % 2 = 0)
+
+                keysAndRows view |> ignore
+                let kr = view.NewKeyReader ()
+                let initial = kr.Read ()
+                Expect.equal initial.Keys.Length 500 "500 initial even keys"
+                calls.Value <- 0
+
+                col.AddOrUpdate { Id = 501; N = 502 }
+                Expect.equal calls.Value 1 "single edit calls predicate once"
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "single flip is incremental"
+                Expect.equal [ for c in d1.Changes -> c.Key, c.Value ] [ 501, KeyChange.Added ] "key 501 added"
+                Expect.equal d1.Keys.Length 501 "501 included keys"
+                Expect.equal d1.Keys[249] 500 "predecessor in output"
+                Expect.equal d1.Keys[250] 501 "inserted at Fenwick rank"
+                Expect.equal d1.Keys[251] 502 "successor in output"
+
+                calls.Value <- 0
+                col.AddOrUpdate { Id = 501; N = 501 }
+                Expect.equal calls.Value 1 "single revert calls predicate once"
+                let d2 = kr.Read ()
+                Expect.isFalse d2.IsReset "single removal flip is incremental"
+                Expect.equal [ for c in d2.Changes -> c.Key, c.Value ] [ 501, KeyChange.Removed ] "key 501 removed"
+                Expect.equal d2.Keys.Length 500 "back to 500 keys"
+
+                calls.Value <- 0
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 2 }
+                    edit.AddOrUpdate { Id = 2; N = 3 }
+                    edit.AddOrUpdate { Id = 1000; N = 1001 })
+
+                Expect.equal calls.Value 3 "3-key batch calls predicate 3 times"
+                let d3 = kr.Read ()
+                Expect.isFalse d3.IsReset "3-key batch is incremental"
+                Expect.equal d3.Changes.Count 3 "three changes"
+
+                let changes =
+                    [ for c in d3.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes [ 1, KeyChange.Added; 2, KeyChange.Removed; 1000, KeyChange.Removed ] "exact 3-key change set"
+
+                Expect.equal d3.Keys.Length 499 "499 included keys"
+                Expect.equal d3.Keys[0] 1 "key 1 first"
+                Expect.equal d3.Keys[1] 4 "key 4 second"
+                Expect.equal (Array.last d3.Keys) 998 "key 998 last"
+            }
+
+            test "simultaneous multi-slot Check batch drains remaining checkSlots inside Enumerate" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s1 = createSignal 1
+                let s2 = createSignal 2
+                let s3 = createSignal 4
+
+                let upstream =
+                    createProjection
+                        id
+                        (fun k ->
+                            if k = 1 then s1.Value
+                            elif k = 2 then s2.Value
+                            else s3.Value)
+                        (fun () -> [ 1; 2; 3 ])
+
+                let view = upstream |> Projection.filter (fun n -> n % 2 = 0)
+                keysAndRows view |> ignore
+                let kr = view.NewKeyReader ()
+                Expect.sequenceEqual (kr.Read ()).Keys [ 2; 3 ] "initial keys"
+
+                batch (fun () ->
+                    s1.Value <- 2
+                    s2.Value <- 1)
+
+                Expect.sequenceEqual view.Keys [ 1; 3 ] "both flips applied in one batch"
+                let d1 = kr.Read ()
+
+                let changes1 =
+                    [ for c in d1.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes1 [ 1, KeyChange.Added; 2, KeyChange.Removed ] "both Check-queued flips in delta"
+
+                batch (fun () ->
+                    s2.Value <- 2
+                    s1.Value <- 1)
+
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "reverse queued order also drains both"
+                let d2 = kr.Read ()
+
+                let changes2 =
+                    [ for c in d2.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes2 [ 1, KeyChange.Removed; 2, KeyChange.Added ] "reverse delta matches"
+            }
+
+            test "filter Failed state machine suppresses Excluded<->Failed deltas while keeping throwing rows" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+                col.AddOrUpdate { Id = 1; N = 1 }
+                col.AddOrUpdate { Id = 2; N = 2 }
+                col.AddOrUpdate { Id = 3; N = 1 }
+
+                let view =
+                    col.Rows
+                    |> Projection.filter (fun x -> if x.N < 0 then failwith "neg" else x.N % 2 = 0)
+
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+
+                col.AddOrUpdate { Id = 1; N = -1 }
+                Expect.sequenceEqual view.Keys [ 2 ] "Excluded -> Failed leaves Keys alone"
+                Expect.equal (kr.Read ()).Changes.Count 0 "Excluded -> Failed emits no key delta"
+
+                let err1 = ref ""
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> err1.Value <- e.Message)
+                Expect.equal err1.Value "neg" "Failed row still raises"
+
+                col.AddOrUpdate { Id = 3; N = 4 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "unrelated flip adds key 3"
+                let d2 = kr.Read ()
+                Expect.equal [ for c in d2.Changes -> c.Key, c.Value ] [ 3, KeyChange.Added ] "only key 3 reported while key 1 remains Failed"
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> err1.Value <- e.Message)
+                Expect.equal err1.Value "neg" "key 1 still Failed"
+
+                col.AddOrUpdate { Id = 1; N = 2 }
+                Expect.sequenceEqual view.Keys [ 1; 2; 3 ] "Failed -> Included joins in upstream order"
+                let d3 = kr.Read ()
+                Expect.equal [ for c in d3.Changes -> c.Key, c.Value ] [ 1, KeyChange.Added ] "Failed -> Included emits Added"
+                Expect.equal (view.Get 1).N 2 "key 1 readable"
+
+                col.AddOrUpdate { Id = 1; N = -2 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "Included -> Failed removes from Keys"
+                let d4 = kr.Read ()
+                Expect.equal [ for c in d4.Changes -> c.Key, c.Value ] [ 1, KeyChange.Removed ] "Included -> Failed emits Removed"
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> err1.Value <- e.Message)
+
+                col.AddOrUpdate { Id = 1; N = 1 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "Failed -> Excluded stays out of Keys"
+                Expect.equal (kr.Read ()).Changes.Count 0 "Failed -> Excluded emits no delta"
+                Expect.throwsT<System.Collections.Generic.KeyNotFoundException> (fun () -> view.Get 1 |> ignore) "excluded row retired"
+            }
+
+            test "async HeldOut / PendingKeys and KeyedCollection tail append, removal, and >64 reset" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let a1 = createAsyncSource<int>()
+                let a2 = createAsyncSource<int>()
+
+                let u =
+                    createProjection
+                        id
+                        (fun k ->
+                            if k = 1 then a1.Value
+                            elif k = 2 then a2.Value
+                            else 4)
+                        (fun () -> [ 1; 2; 3 ])
+
+                let v = u |> Projection.filter (fun n -> n % 2 = 0)
+                let downstream = v |> Projection.map (fun n -> n * 10)
+
+                Expect.sequenceEqual v.Keys [ 3 ] "only settled included key in Keys"
+                Expect.sequenceEqual v.PendingKeys [ 1; 2 ] "unsettled keys held out in PendingKeys"
+                Expect.sequenceEqual downstream.PendingKeys [ 1; 2 ] "downstream inherits PendingKeys"
+                Expect.isFalse v.AnyPending "unsettled held-out rows do not mark AnyPending"
+
+                a1.Settle 1
+                Expect.sequenceEqual v.Keys [ 3 ] "excluded settle leaves Keys alone"
+                Expect.sequenceEqual v.PendingKeys [ 2 ] "key 1 leaves PendingKeys"
+                Expect.sequenceEqual downstream.PendingKeys [ 2 ] "downstream PendingKeys updates"
+
+                a2.Settle 2
+                Expect.sequenceEqual v.Keys [ 2; 3 ] "included settle inserts in upstream order"
+                Expect.isEmpty v.PendingKeys "PendingKeys empty"
+                Expect.isEmpty downstream.PendingKeys "downstream PendingKeys empty"
+
+                let col = createKeyedCollection (fun x -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..50 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let fv =
+                    col.Rows
+                    |> Projection.filter (fun x -> x.N % 2 = 0)
+
+                createEffect (fun () -> fv.Keys |> ignore)
+                let kr = fv.NewKeyReader ()
+                kr.Read () |> ignore
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 51; N = 51 }
+                    edit.AddOrUpdate { Id = 52; N = 52 }
+                    edit.AddOrUpdate { Id = 53; N = 53 })
+
+                let tailDelta = kr.Read ()
+                Expect.isFalse tailDelta.IsReset "tail append is incremental"
+                Expect.equal [ for c in tailDelta.Changes -> c.Key, c.Value ] [ 52, KeyChange.Added ] "one included key added"
+                Expect.equal (Array.last fv.Keys) 52 "tail key 52 at end"
+
+                col.Edit (fun edit ->
+                    edit.Remove 20 |> ignore
+                    edit.Remove 21 |> ignore)
+
+                let remDelta = kr.Read ()
+                Expect.isFalse remDelta.IsReset "middle removal is incremental"
+                Expect.equal [ for c in remDelta.Changes -> c.Key, c.Value ] [ 20, KeyChange.Removed ] "only included removed key reported"
+
+                col.Edit (fun edit ->
+                    for i in 54..140 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                Expect.equal (kr.Read ()).Keys fv.Keys "reader matches keys after >64 reset rebuild"
+
+                let expected =
+                    [|
+                        for i in 1..53 do
+                            if i <> 20 && i <> 21 && i % 2 = 0 then
+                                yield i
+                        for i in 54..140 do
+                            if i % 2 = 0 then
+                                yield i
+                    |]
+
+                Expect.sequenceEqual fv.Keys expected "Keys exact after reset rebuild"
+            }
         ]
 
 [<Tests>]
@@ -564,6 +846,122 @@ let chooseTests =
                 source.Value <- items [ 1, 8; 2, 6; 3, 4 ]
                 Expect.sequenceEqual twice.Keys [ 1; 2; 3 ] "key 2 joins once its value is even"
                 Expect.equal (twice.Get 2) 6 "the unwrapped value"
+            }
+
+            test "choose Check cutoff leaves Runs unchanged on Some->Some and N=1000 delta flips match" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun x -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..1000 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let calls = ref 0
+
+                let view =
+                    col.Rows
+                    |> Projection.choose (fun x ->
+                        calls.Value <- calls.Value + 1
+                        if x.N % 2 = 0 then Some (x.N * 10) else None)
+
+                let keysRuns = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    keysRuns.Value <- keysRuns.Value + 1)
+
+                let kr = view.NewKeyReader ()
+                Expect.equal (kr.Read ()).Keys.Length 500 "initial 500 Some keys"
+                let baseRuns = view.Runs
+                let baseKeysRuns = keysRuns.Value
+                calls.Value <- 0
+
+                col.AddOrUpdate { Id = 2; N = 4 }
+                Expect.equal calls.Value 1 "single edit calls chooser once"
+                Expect.equal view.Runs baseRuns "Some -> Some gate cutoff skips view pass"
+                Expect.equal keysRuns.Value baseKeysRuns "Keys reader stayed asleep"
+                Expect.equal (view.Get 2) 40 "value updated inside row"
+                Expect.equal (kr.Read ()).Changes.Count 0 "no membership delta"
+
+                calls.Value <- 0
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 10 }
+                    edit.AddOrUpdate { Id = 2; N = 3 }
+                    edit.AddOrUpdate { Id = 999; N = 1000 })
+
+                Expect.equal calls.Value 3 "3-key edit runs chooser 3 times"
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "3-key choose batch is incremental"
+
+                let changes =
+                    [ for c in d1.Changes -> c.Key, c.Value ]
+                    |> List.sortBy fst
+
+                Expect.equal changes [ 1, KeyChange.Added; 2, KeyChange.Removed; 999, KeyChange.Added ] "exact choose membership delta"
+
+                Expect.equal (view.Get 1) 100 "newly added chosen value"
+                Expect.equal (view.Get 999) 10000 "second newly added chosen value"
+            }
+
+            test "choose handles Failed transitions and async PendingKeys" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let a3 = createAsyncSource<int option>()
+                let a4 = createAsyncSource<int option>()
+                let col = createKeyedCollection (fun x -> x.Id)
+                col.AddOrUpdate { Id = 1; N = 1 }
+                col.AddOrUpdate { Id = 2; N = 2 }
+                col.AddOrUpdate { Id = 3; N = 0 }
+                col.AddOrUpdate { Id = 4; N = 0 }
+
+                let view =
+                    col.Rows
+                    |> Projection.choose (fun x ->
+                        if x.Id = 3 then a3.Value
+                        elif x.Id = 4 then a4.Value
+                        elif x.N < 0 then failwith "bad"
+                        elif x.N % 2 = 0 then Some (x.N * 10)
+                        else None)
+
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+                Expect.sequenceEqual view.Keys [ 2 ] "pending keys 3 and 4 held out, key 1 None"
+                Expect.sequenceEqual view.PendingKeys [ 3; 4 ] "pending keys in PendingKeys"
+
+                col.AddOrUpdate { Id = 1; N = -1 }
+                Expect.sequenceEqual view.Keys [ 2 ] "None -> Failed leaves Keys alone"
+                Expect.equal (kr.Read ()).Changes.Count 0 "None -> Failed emits no delta"
+                let msg = ref ""
+                Expect.throwsC (fun () -> view.Get 1 |> ignore) (fun e -> msg.Value <- e.Message)
+                Expect.equal msg.Value "bad" "Failed key raises"
+
+                a4.Settle None
+                Expect.sequenceEqual view.Keys [ 2 ] "settling None clears PendingKeys without joining Keys"
+                Expect.sequenceEqual view.PendingKeys [ 3 ] "key 4 leaves PendingKeys"
+
+                a3.Settle (Some 60)
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "settling Some adds key 3"
+                Expect.equal (view.Get 3) 60 "settled value"
+                Expect.isEmpty view.PendingKeys "PendingKeys cleared"
+                Expect.equal (kr.Read ()).Changes.Count 1 "key 3 added"
+
+                col.AddOrUpdate { Id = 1; N = 4 }
+                Expect.sequenceEqual view.Keys [ 1; 2; 3 ] "Failed -> Some joins in order"
+                Expect.equal (view.Get 1) 40 "value ready"
+                let d3 = kr.Read ()
+                Expect.equal [ for c in d3.Changes -> c.Key, c.Value ] [ 1, KeyChange.Added ] "Added"
+
+                col.AddOrUpdate { Id = 1; N = -2 }
+                Expect.sequenceEqual view.Keys [ 2; 3 ] "Some -> Failed removes from Keys"
+                let d4 = kr.Read ()
+                Expect.equal [ for c in d4.Changes -> c.Key, c.Value ] [ 1, KeyChange.Removed ] "Removed"
+
+                col.AddOrUpdate { Id = 1; N = 3 }
+                Expect.equal (kr.Read ()).Changes.Count 0 "Failed -> None emits no delta"
+                Expect.throwsT<System.Collections.Generic.KeyNotFoundException> (fun () -> view.Get 1 |> ignore) "retired"
             }
         ]
 
@@ -914,7 +1312,7 @@ let sortByTests =
                             Expect.equal view.Keys[0] 2 "key 2 sorts first"
                         }
 
-                        test "removing a non-extreme row costs no comparison; removing the extreme re-folds once" {
+                        test "removing or editing rows in tryMinBy updates the tournament in O(log N) comparisons" {
                             use g = new Graph ()
                             use _ = g.Activate ()
                             let source = createSignal (items [ for i in 1..1000 -> i, i ])
@@ -923,12 +1321,19 @@ let sortByTests =
                             createEffect (fun () -> least.Value |> ignore)
                             comparisons.Value <- 0
                             source.Value <- source.Value |> List.filter (fun x -> x.Id <> 500)
-                            Expect.equal comparisons.Value 0 "a non-extreme removal subtracts in O(1)"
+                            Expect.equal comparisons.Value 0 "a non-extreme right-leaf removal needs no comparison"
                             Expect.equal least.Value (Some 1) "key 1 holds"
 
                             source.Value <- source.Value |> List.filter (fun x -> x.Id <> 1)
-                            Expect.equal comparisons.Value 997 "one re-fold over the 998 cached values"
+                            Expect.isGreaterThan comparisons.Value 0 "removing the extreme sifts the winner tree"
+                            Expect.isLessThanOrEqual comparisons.Value 12 "removing the extreme sifts in O(log N)"
                             Expect.equal least.Value (Some 2) "key 2 holds"
+
+                            comparisons.Value <- 0
+                            source.Value <- setN 2 5000 source.Value
+                            Expect.isGreaterThan comparisons.Value 0 "editing the holder sifts the winner tree"
+                            Expect.isLessThanOrEqual comparisons.Value 15 "editing the holder sifts in O(log N)"
+                            Expect.equal least.Value (Some 3) "key 3 holds"
 
                             comparisons.Value <- 0
                             source.Value <- setN 10 5000 source.Value
@@ -1242,6 +1647,315 @@ let sortByTests =
 
                 Expect.equal calls.Value 0 "no sort-key runs after disposal"
                 Expect.isEmpty view.Keys "a disposed view is empty"
+            }
+
+            test "incremental sortBy and sortByDescending resolve Check cutoff without running a pass" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..20 -> i, i * 10 ])
+                let gateRuns = ref 0
+
+                let asc =
+                    rows source
+                    |> Projection.sortBy (fun n ->
+                        gateRuns.Value <- gateRuns.Value + 1
+                        n / 100)
+
+                let desc =
+                    rows source
+                    |> Projection.sortByDescending (fun n -> n / 100)
+
+                let ascEffects = ref 0
+                let descEffects = ref 0
+
+                createEffect (fun () ->
+                    asc.Keys |> ignore
+                    ascEffects.Value <- ascEffects.Value + 1)
+
+                createEffect (fun () ->
+                    desc.Keys |> ignore
+                    descEffects.Value <- descEffects.Value + 1)
+
+                let initialAscKeys = asc.Keys
+                let initialDescKeys = desc.Keys
+                let ascPasses = asc.Runs
+                let descPasses = desc.Runs
+                gateRuns.Value <- 0
+
+                source.Value <- setN 3 35 source.Value
+
+                Expect.equal gateRuns.Value 1 "only the edited row's sort-key memo ran"
+                Expect.equal asc.Runs ascPasses "sortBy resolved Check without running a pass"
+                Expect.equal desc.Runs descPasses "sortByDescending resolved Check without running a pass"
+                Expect.equal ascEffects.Value 1 "sortBy Keys observer stayed asleep"
+                Expect.equal descEffects.Value 1 "sortByDescending Keys observer stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (asc.Keys, initialAscKeys)) "sortBy kept same Keys array reference"
+                Expect.isTrue (obj.ReferenceEquals (desc.Keys, initialDescKeys)) "sortByDescending kept same Keys array reference"
+            }
+
+            test
+                "incremental sortBy and sortByDescending splice sparse single and multi-row edits on N=1000 matching List.sortWith with IsReset = false" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                let pairs = [ for i in 1..1000 -> i, (i * 7919) % 251 ]
+
+                col.Edit (fun edit ->
+                    for id, n in pairs do
+                        edit.AddOrUpdate { Id = id; N = n })
+
+                let current = Collections.Generic.Dictionary<int, int>()
+
+                for id, n in pairs do
+                    current[id] <- n
+
+                let orderedIds = ResizeArray<int>(pairs |> List.map fst)
+
+                let expected (desc: bool) =
+                    orderedIds
+                    |> Seq.map (fun id -> id, current[id])
+                    |> Seq.toList
+                    |> (if desc then List.sortByDescending snd else List.sortBy snd)
+                    |> List.map fst
+
+                let asc = col.Rows |> Projection.sortBy (fun x -> x.N)
+
+                let desc =
+                    col.Rows
+                    |> Projection.sortByDescending (fun x -> x.N)
+
+                let ascCalls = ref 0
+                let descCalls = ref 0
+
+                createEffect (fun () ->
+                    asc.Keys |> ignore
+                    ascCalls.Value <- ascCalls.Value + 1)
+
+                createEffect (fun () ->
+                    desc.Keys |> ignore
+                    descCalls.Value <- descCalls.Value + 1)
+
+                let ascReader = asc.NewKeyReader ()
+                let descReader = desc.NewKeyReader ()
+                ascReader.Read () |> ignore
+                descReader.Read () |> ignore
+
+                // Single-row edit
+                col.AddOrUpdate { Id = 17; N = 500 }
+                current[17] <- 500
+                let d1Asc = ascReader.Read ()
+                let d1Desc = descReader.Read ()
+                Expect.isFalse d1Asc.IsReset "single edit sortBy is incremental"
+                Expect.isFalse d1Desc.IsReset "single edit sortByDescending is incremental"
+                Expect.sequenceEqual asc.Keys (expected false) "single edit sortBy matches List.sortWith"
+                Expect.sequenceEqual desc.Keys (expected true) "single edit sortByDescending matches List.sortWith"
+
+                // Multi-row sparse batch (Delta = 5)
+                col.Edit (fun edit ->
+                    for k, v in [ 5, -10; 120, 999; 450, 0; 777, 125; 999, 125 ] do
+                        edit.AddOrUpdate { Id = k; N = v }
+                        current[k] <- v)
+
+                let d2Asc = ascReader.Read ()
+                let d2Desc = descReader.Read ()
+                Expect.isFalse d2Asc.IsReset "multi-row sparse sortBy is incremental"
+                Expect.isFalse d2Desc.IsReset "multi-row sparse sortByDescending is incremental"
+                Expect.sequenceEqual asc.Keys (expected false) "multi-row sparse sortBy matches List.sortWith"
+                Expect.sequenceEqual desc.Keys (expected true) "multi-row sparse sortByDescending matches List.sortWith"
+            }
+
+            test "incremental sortBy preserves upstream tie-breaking across equal-rank collisions, swap-removals, and tail appends" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                let initial = [ for i in 1..40 -> i, (i % 5) ]
+
+                col.Edit (fun edit ->
+                    for id, n in initial do
+                        edit.AddOrUpdate { Id = id; N = n })
+
+                let listOrder = ResizeArray<int>(initial |> List.map fst)
+                let ranks = Collections.Generic.Dictionary<int, int>()
+
+                for id, n in initial do
+                    ranks[id] <- n
+
+                let expected () =
+                    [ for id in listOrder -> id, ranks[id] ]
+                    |> List.sortBy snd
+                    |> List.map fst
+
+                let view = col.Rows |> Projection.sortBy (fun x -> x.N)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+
+                // Equal-rank collision edits
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 2; N = 2 }
+                    ranks[2] <- 2
+                    edit.AddOrUpdate { Id = 37; N = 2 }
+                    ranks[37] <- 2)
+
+                let dCol = kr.Read ()
+                Expect.isFalse dCol.IsReset "collision update is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tie-break preserves upstream order after collisions"
+
+                // Remove middle key and test swap-removal in placedSlots
+                col.Edit (fun edit ->
+                    edit.Remove 12 |> ignore
+                    edit.Remove 13 |> ignore)
+
+                listOrder.Remove 12 |> ignore
+                listOrder.Remove 13 |> ignore
+                ranks.Remove 12 |> ignore
+                ranks.Remove 13 |> ignore
+                let dRem = kr.Read ()
+                Expect.isFalse dRem.IsReset "middle removal is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tie-break preserves upstream order after middle removals"
+
+                // Tail append with ties matching earlier elements
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 41; N = 2 }
+                    listOrder.Add 41
+                    ranks[41] <- 2
+                    edit.AddOrUpdate { Id = 42; N = 0 }
+                    listOrder.Add 42
+                    ranks[42] <- 0)
+
+                let dTail = kr.Read ()
+                Expect.isFalse dTail.IsReset "tail append is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tie-break places tail appends after earlier equal ranks"
+
+                // Another collision edit after swap-removals and tail append
+                col.AddOrUpdate { Id = 42; N = 2 }
+                ranks[42] <- 2
+                Expect.sequenceEqual view.Keys (expected ()) "post-tail reinsert preserves exact tie order"
+            }
+
+            test "incremental sortBy and sortByDescending handle NaN transitions (NaN <-> finite and NaN -> NaN no-op)" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let ranks64 = [| 2.0; nan; -1.0; nan; 0.0 |]
+                let ranks32 = [| 2.0f; nanf; -1.0f; nanf; 0.0f |]
+                let s64 = createSignal [ for i in 0 .. ranks64.Length - 1 -> i, ranks64[i] ]
+                let s32 = createSignal [ for i in 0 .. ranks32.Length - 1 -> i, ranks32[i] ]
+                let up64 = createProjection fst snd (fun () -> s64.Value)
+                let up32 = createProjection fst snd (fun () -> s32.Value)
+
+                let v64Asc = up64 |> Projection.sortBy id
+                let v64Desc = up64 |> Projection.sortByDescending id
+                let v32Asc = up32 |> Projection.sortBy id
+
+                let ascRuns = ref 0
+
+                createEffect (fun () ->
+                    v64Asc.Keys |> ignore
+                    ascRuns.Value <- ascRuns.Value + 1)
+
+                let kBefore = v64Asc.Keys
+                let passesBefore = v64Asc.Runs
+
+                // NaN -> NaN edit cuts off (compareRanks = 0)
+                s64.Value <- [ for i in 0 .. ranks64.Length - 1 -> i, (if i = 1 then -nan else ranks64[i]) ]
+                Expect.isTrue (obj.ReferenceEquals (v64Asc.Keys, kBefore)) "NaN -> NaN keeps exact Keys array"
+                Expect.equal ascRuns.Value 1 "NaN -> NaN does not wake Keys reader"
+                ignore passesBefore
+
+                let sortNan64 (desc: bool) (xs: (int * float) list) =
+                    xs
+                    |> List.mapi (fun i (k, v) -> i, k, v)
+                    |> List.sortWith (fun (i1, _, v1) (i2, _, v2) ->
+                        match Double.IsNaN v1, Double.IsNaN v2 with
+                        | true, true -> compare i1 i2
+                        | true, false -> 1
+                        | false, true -> -1
+                        | false, false ->
+                            let c = if desc then compare v2 v1 else compare v1 v2
+                            if c <> 0 then c else compare i1 i2)
+                    |> List.map (fun (_, k, _) -> k)
+
+                let sortNan32 (xs: (int * float32) list) =
+                    xs
+                    |> List.mapi (fun i (k, v) -> i, k, v)
+                    |> List.sortWith (fun (i1, _, v1) (i2, _, v2) ->
+                        match Single.IsNaN v1, Single.IsNaN v2 with
+                        | true, true -> compare i1 i2
+                        | true, false -> 1
+                        | false, true -> -1
+                        | false, false ->
+                            let c = compare v1 v2
+                            if c <> 0 then c else compare i1 i2)
+                    |> List.map (fun (_, k, _) -> k)
+
+                // finite -> NaN -> finite in asc/desc
+                let next1 = [| nan; nan; -1.0; 10.0; 0.0 |]
+                s64.Value <- [ for i in 0 .. next1.Length - 1 -> i, next1[i] ]
+
+                Expect.sequenceEqual v64Asc.Keys (sortNan64 false [ for i in 0 .. next1.Length - 1 -> i, next1[i] ]) "float64 NaN <-> finite asc"
+
+                Expect.sequenceEqual v64Desc.Keys (sortNan64 true [ for i in 0 .. next1.Length - 1 -> i, next1[i] ]) "float64 NaN <-> finite desc"
+
+                let next32 = [| nanf; 3.0f; -1.0f; nanf; 0.0f |]
+                s32.Value <- [ for i in 0 .. next32.Length - 1 -> i, next32[i] ]
+
+                Expect.sequenceEqual v32Asc.Keys (sortNan32 [ for i in 0 .. next32.Length - 1 -> i, next32[i] ]) "float32 NaN <-> finite asc"
+            }
+
+            test "incremental sortBy handles Pending and Failed transitions in sparse batches" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                let flights =
+                    dict
+                        [
+                            for i in 1..200 do
+                                let src = createAsyncSource<int>()
+
+                                if i <> 10 then
+                                    src.Settle (200 - i)
+
+                                yield i, src
+                        ]
+
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..200 do
+                        edit.AddOrUpdate { Id = i; N = i })
+
+                let failKey15 = createSignal false
+
+                let view =
+                    col.Rows
+                    |> Projection.sortBy (fun x ->
+                        if x.Id = 15 && failKey15.Value then
+                            invalidOp "rank boom 15"
+                        elif x.Id = 10 then
+                            flights[10].Value
+                        else
+                            x.N * -1)
+
+                Expect.sequenceEqual view.PendingKeys [ 10 ] "initial unsettled key 10 held out"
+                Expect.isFalse (Array.contains 10 view.Keys) "unsettled key 10 excluded from Keys"
+                Expect.equal view.Keys.Length 199 "199 settled keys sorted"
+
+                // Settle key 10 to rank -1000 (first!)
+                flights[10].Settle -1000
+                Expect.isEmpty view.PendingKeys "key 10 settled"
+                Expect.equal view.Keys[0] 10 "key 10 promoted to first position"
+
+                // Sparse transition to Failed and recovery
+                failKey15.Value <- true
+                Expect.isFalse (Array.contains 15 view.Keys) "failed key 15 removed from Keys"
+                Expect.equal view.Keys.Length 199 "199 remaining included keys"
+                Expect.throwsT<InvalidOperationException> (fun () -> view.Get 15 |> ignore) "failed key row raises"
+
+                failKey15.Value <- false
+                Expect.isTrue (Array.contains 15 view.Keys) "recovered key 15 back in Keys"
+                Expect.equal view.Keys.Length 200 "all 200 keys included"
+                Expect.equal (view.Get 15).N 15 "recovered row readable"
             }
         ]
 
@@ -1831,7 +2545,7 @@ let mapWithTests =
         ]
 
 /// <summary>The keys of each group of <c>view</c>, in group order.</summary>
-let private groupsOf (view: Projection<'G, Projection<int, int>>) =
+let private groupsOf (view: Projection<'G, Projection<'K, 'V>>) =
     [ for key in view.Keys -> key, List.ofArray (view.Get key).Keys ]
 
 [<Tests>]
@@ -2197,6 +2911,228 @@ let groupByTests =
 
                 flights[11].Settle 2
                 Expect.equal (view.GroupOf 1) 2 "the settled group"
+            }
+
+            test "incremental groupBy resolves Check cutoff without running outer or inner passes" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..20 -> i, i * 10 ])
+                let gateRuns = ref 0
+
+                let view =
+                    rows source
+                    |> Projection.groupBy (fun n ->
+                        gateRuns.Value <- gateRuns.Value + 1
+                        n / 100)
+
+                let g0 = view.Get 0
+                let g1 = view.Get 1
+                let outerEffects = ref 0
+                let innerEffects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    outerEffects.Value <- outerEffects.Value + 1)
+
+                createEffect (fun () ->
+                    g0.Keys |> ignore
+                    g1.Keys |> ignore
+                    innerEffects.Value <- innerEffects.Value + 1)
+
+                let initialOuter = view.Keys
+                let initialG0 = g0.Keys
+                let outerPasses = view.Runs
+                let g0Passes = g0.Runs
+                let g1Passes = g1.Runs
+                gateRuns.Value <- 0
+
+                source.Value <- setN 3 35 source.Value
+
+                Expect.equal gateRuns.Value 1 "only the edited row's group-key memo ran"
+                Expect.equal view.Runs outerPasses "Grouping resolved Check without running an outer pass"
+                Expect.equal g0.Runs g0Passes "group 0 inner view stayed asleep"
+                Expect.equal g1.Runs g1Passes "group 1 inner view stayed asleep"
+                Expect.equal outerEffects.Value 1 "outer Keys effect stayed asleep"
+                Expect.equal innerEffects.Value 1 "inner Keys effect stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, initialOuter)) "outer kept same Keys array reference"
+                Expect.isTrue (obj.ReferenceEquals (g0.Keys, initialG0)) "group 0 kept same Keys array reference"
+            }
+
+            test "incremental groupBy on N=1000, G=20 isolates untouched inner views on sparse move and matches List.groupBy" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+                let pairs = [ for i in 1..1000 -> i, (i - 1) % 20 ]
+
+                col.Edit (fun edit ->
+                    for id, grp in pairs do
+                        edit.AddOrUpdate { Id = id; N = grp })
+
+                let current = Collections.Generic.Dictionary<int, int>()
+
+                for id, grp in pairs do
+                    current[id] <- grp
+
+                let orderedIds = ResizeArray<int>(pairs |> List.map fst)
+
+                let expected () =
+                    [ for id in orderedIds -> id, current[id] ]
+                    |> List.groupBy snd
+                    |> List.map (fun (gk, xs) -> gk, xs |> List.map fst)
+
+                let view = col.Rows |> Projection.groupBy (fun x -> x.N)
+                let outerEffects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    outerEffects.Value <- outerEffects.Value + 1)
+
+                let inners = [| for gk in 0..19 -> view.Get gk |]
+                let innerEffects = Array.zeroCreate<int> 20
+
+                for gk in 0..19 do
+                    let idx = gk
+
+                    createEffect (fun () ->
+                        inners[idx].Keys |> ignore
+                        innerEffects[idx] <- innerEffects[idx] + 1)
+
+                let outerReader = view.NewKeyReader ()
+                outerReader.Read () |> ignore
+                let outerKeys0 = view.Keys
+                let outerEffects0 = outerEffects.Value
+                let runsBefore = Array.init 20 (fun gk -> inners[gk].Runs)
+                let effectsBefore = Array.copy innerEffects
+
+                // Move non-first key 101 from group 0 to group 1; first members 1 and 2 stay put.
+                col.AddOrUpdate { Id = 101; N = 1 }
+                current[101] <- 1
+
+                Expect.equal outerEffects.Value outerEffects0 "outer Keys observer stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, outerKeys0)) "outer Keys array reference preserved"
+                Expect.isTrue ((outerReader.Read ()).IsEmpty) "outer KeyReader saw no changes"
+                Expect.equal inners[0].Runs (runsBefore[0] + 1) "source group 0 ran once"
+                Expect.equal inners[1].Runs (runsBefore[1] + 1) "target group 1 ran once"
+                Expect.equal innerEffects[0] (effectsBefore[0] + 1) "group 0 observer woke"
+                Expect.equal innerEffects[1] (effectsBefore[1] + 1) "group 1 observer woke"
+
+                for gk in 2..19 do
+                    Expect.equal inners[gk].Runs runsBefore[gk] $"untouched group {gk} did not re-run"
+                    Expect.equal innerEffects[gk] effectsBefore[gk] $"untouched group {gk} observer stayed asleep"
+
+                Expect.equal (groupsOf view) (expected ()) "groups match List.groupBy"
+
+                // Tail append an item into group 5 and move first member 1 from group 0 to group 19 (reordering outer keys)
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1001; N = 5 }
+                    edit.AddOrUpdate { Id = 1; N = 19 })
+
+                orderedIds.Add 1001
+                current[1001] <- 5
+                current[1] <- 19
+                let dOuter = outerReader.Read ()
+                Expect.isFalse dOuter.IsReset "outer reorder delta stays incremental"
+                Expect.equal (groupsOf view) (expected ()) "groups match List.groupBy after FirstIdx reorder and tail append"
+            }
+
+            test "incremental groupBy handles same-pass new-group creation before emptying and emptied-group refill on tail append" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 10 }
+                    edit.AddOrUpdate { Id = 2; N = 20 }
+                    edit.AddOrUpdate { Id = 3; N = 20 })
+
+                let view = col.Rows |> Projection.groupBy (fun x -> x.N)
+                let g20 = view.Get 20
+                Expect.equal (groupsOf view) [ 10, [ 1 ]; 20, [ 2; 3 ] ] "initial two groups"
+
+                // Create new group 99 (via Id=2) before emptying existing group 10 (via Id=1) in one batch.
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 2; N = 99 }
+                    edit.AddOrUpdate { Id = 1; N = 20 })
+
+                Expect.equal (groupsOf view) [ 20, [ 1; 3 ]; 99, [ 2 ] ] "emptied 10 and inserted 99 in upstream FirstIdx order"
+
+                // Emptying 99 while creating 50 in one batch also disposes 99's inner view.
+                let g99 = view.Get 99
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 50 }
+                    edit.AddOrUpdate { Id = 2; N = 20 })
+
+                Expect.isEmpty g99.Keys "emptied group's inner view reads empty"
+
+                Expect.throwsT<ObjectDisposedException>
+                    (fun () -> g99.Get 2 |> ignore)
+                    "emptied group's inner view rejects Get with ObjectDisposedException"
+
+                Expect.equal (groupsOf view) [ 50, [ 1 ]; 20, [ 2; 3 ] ] "50 before 20 by FirstIdx"
+                Expect.isFalse (Array.isEmpty g20.Keys) "live group 20 remains intact"
+
+                // Dirty-slot emptying group 10 (Id=1 becomes ungrouped) followed by tail append re-filling group 10 in one pull.
+                let col2 = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col2.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 10 }
+                    edit.AddOrUpdate { Id = 2; N = 20 })
+
+                let externalGate = createSignal false
+
+                let view2 =
+                    col2.Rows
+                    |> Projection.groupBy (fun x ->
+                        if x.Id = 1 && externalGate.Value then
+                            invalidOp "ungroup 1"
+
+                        x.N)
+
+                Expect.equal (groupsOf view2) [ 10, [ 1 ]; 20, [ 2 ] ] "initial view2 groups"
+                let kr2 = view2.NewKeyReader ()
+                kr2.Read () |> ignore
+                externalGate.Value <- true
+                col2.AddOrUpdate { Id = 3; N = 10 }
+                let d2 = kr2.Read ()
+                Expect.isFalse d2.IsReset "dirty-slot empty + tail-append refill stays incremental"
+
+                Expect.equal
+                    (groupsOf view2)
+                    [ 20, [ 2 ]; 10, [ 3 ] ]
+                    "group 10 moved after 20 when emptied by dirty slot and refilled by tail append"
+
+                Expect.sequenceEqual view2.UngroupedKeys [ 1 ] "failed key 1 moved to UngroupedKeys"
+            }
+
+            test "observing only an inner group view keeps Grouping live and wakes on enters and leaves" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 0 }
+                    edit.AddOrUpdate { Id = 2; N = 1 }
+                    edit.AddOrUpdate { Id = 3; N = 2 })
+
+                let grouping = col.Rows |> Projection.groupBy (fun x -> x.N)
+                let inner0 = g.RunUntracked (fun () -> grouping.Get 0)
+                let seen0 = ResizeArray<int list>()
+
+                createEffect (fun () -> seen0.Add (List.ofArray inner0.Keys))
+                Expect.equal (List.ofSeq seen0) [ [ 1 ] ] "initial inner group 0"
+
+                // Unrelated move from group 1 -> group 2 must not wake inner0's effect.
+                col.AddOrUpdate { Id = 2; N = 2 }
+                Expect.equal (List.ofSeq seen0) [ [ 1 ] ] "unrelated group move leaves inner0 effect asleep"
+
+                // Key 3 enters group 0
+                col.AddOrUpdate { Id = 3; N = 0 }
+                Expect.equal (List.ofSeq seen0) [ [ 1 ]; [ 1; 3 ] ] "key 3 enters group 0 via ExtraObserved"
+
+                // Key 1 leaves group 0 for group 1
+                col.AddOrUpdate { Id = 1; N = 1 }
+                Expect.equal (List.ofSeq seen0) [ [ 1 ]; [ 1; 3 ]; [ 3 ] ] "key 1 leaves group 0"
             }
         ]
 
@@ -3771,6 +4707,152 @@ let averageTests =
             }
         ]
 
+let private rankFloat (v: float) = v
+
+let private stepStickyModel (isMax: bool) (prevKey: int option) (rowsList: (int * float) list) =
+    let better a b =
+        let ord = ascendingRank (rankFloat a) (rankFloat b)
+        if isMax then ord > 0 else ord < 0
+
+    let mutable hasBest = false
+    let mutable bestK = 0
+    let mutable bestV = 0.0
+
+    for k, v in rowsList do
+        let take =
+            if not hasBest then
+                true
+            elif better v bestV then
+                true
+            else
+                match prevKey with
+                | Some pk when pk = k && not (better bestV v) -> true
+                | _ -> false
+
+        if take then
+            hasBest <- true
+            bestK <- k
+            bestV <- v
+
+    if hasBest then Some (bestK, bestV) else None
+
+let private floatEq (a: float) (b: float) =
+    (Double.IsNaN a && Double.IsNaN b) || a = b
+
+let private optFloatEq (a: float option) (b: float option) =
+    match a, b with
+    | None, None -> true
+    | Some x, Some y -> floatEq x y
+    | _ -> false
+
+let private runExtremeStickySeed (checkWakeups: bool) (values: float[]) (seed: int) =
+    use g = new Graph ()
+    use _ = g.Activate ()
+    let mutable state = uint32 seed * 747796405u + 2891336453u
+
+    let nextInt bound =
+        state <- state * 1664525u + 1013904223u
+        int (state % uint32 bound)
+
+    let mutable cur = [ for k in 1..6 -> k, values[nextInt values.Length] ]
+    let source = createSignal [ for k, v in cur -> k, v ]
+    let up = createProjection fst snd (fun () -> source.Value)
+
+    let least =
+        up
+        |> Projection.tryMinBy (fun v -> if Double.IsNaN v then nan else v)
+
+    let most =
+        up
+        |> Projection.tryMaxBy (fun v -> if Double.IsNaN v then nan else v)
+
+    let minWakeups = ref 0
+    let maxWakeups = ref 0
+
+    createEffect (fun () ->
+        minWakeups.Value <- minWakeups.Value + 1
+        least.Value |> ignore)
+
+    createEffect (fun () ->
+        maxWakeups.Value <- maxWakeups.Value + 1
+        most.Value |> ignore)
+
+    let mutable stickyMin = stepStickyModel false None cur
+    let mutable stickyMax = stepStickyModel true None cur
+    let mutable expectedMinWakeups = 1
+    let mutable expectedMaxWakeups = 1
+    let mutable nextKeyId = 7
+
+    for step in 1..30 do
+        let op = nextInt 6
+
+        cur <-
+            if op = 0 && cur.Length > 0 then
+                // Edit an existing row (possibly keeping equal rank or turning NaN).
+                let idx = nextInt cur.Length
+                let vNew = values[nextInt values.Length]
+
+                cur
+                |> List.mapi (fun i (k, v) -> if i = idx then k, vNew else k, v)
+            elif op = 1 && cur.Length > 0 then
+                // Remove an arbitrary row.
+                let idx = nextInt cur.Length
+
+                cur
+                |> List.mapi (fun i x -> i, x)
+                |> List.filter (fun (i, _) -> i <> idx)
+                |> List.map snd
+            elif op = 2 then
+                // Tail append.
+                let k = nextKeyId
+                nextKeyId <- nextKeyId + 1
+                cur @ [ k, values[nextInt values.Length] ]
+            elif op = 3 then
+                // Prepend / middle insert.
+                let k = nextKeyId
+                nextKeyId <- nextKeyId + 1
+                let idx = if cur.Length = 0 then 0 else nextInt (cur.Length + 1)
+                let before, after = List.splitAt idx cur
+
+                before
+                @ [ k, values[nextInt values.Length] ]
+                @ after
+            elif op = 4 then
+                // Pure reorder.
+                List.rev cur
+            else if
+                // Reset to empty or fresh batch.
+                cur.Length = 0
+            then
+                let k1 = nextKeyId
+                let k2 = nextKeyId + 1
+                nextKeyId <- nextKeyId + 2
+                [ k1, values[nextInt values.Length]; k2, values[nextInt values.Length] ]
+            else
+                []
+
+        source.Value <- cur
+
+        let nextStickyMin = stepStickyModel false (Option.map fst stickyMin) cur
+        let nextStickyMax = stepStickyModel true (Option.map fst stickyMax) cur
+
+        if not (optFloatEq (Option.map snd stickyMin) (Option.map snd nextStickyMin)) then
+            expectedMinWakeups <- expectedMinWakeups + 1
+
+        if not (optFloatEq (Option.map snd stickyMax) (Option.map snd nextStickyMax)) then
+            expectedMaxWakeups <- expectedMaxWakeups + 1
+
+        stickyMin <- nextStickyMin
+        stickyMax <- nextStickyMax
+
+        Expect.isTrue (optFloatEq least.Value (Option.map snd stickyMin)) $"seed {seed} step {step}: tryMinBy value"
+
+        Expect.isTrue (optFloatEq most.Value (Option.map snd stickyMax)) $"seed {seed} step {step}: tryMaxBy value"
+
+        if checkWakeups then
+            Expect.equal minWakeups.Value expectedMinWakeups $"seed {seed} step {step}: min wakeups"
+            Expect.equal maxWakeups.Value expectedMaxWakeups $"seed {seed} step {step}: max wakeups"
+
 [<Tests>]
 let extremeTests =
     testList
@@ -3973,6 +5055,47 @@ let extremeTests =
                 Expect.isGreaterThan (readersOf up 1) 0 "the rank view reads row 1"
                 least.Dispose ()
                 Expect.equal (readersOf up 1) 0 "disposing the memo disposed its view and fold"
+            }
+
+            test "worsening holder that still beats its sibling promotes a better cousin" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 10; 2, 100; 3, 20; 4, 200 ])
+                let least = rows source |> Projection.tryMinBy id
+
+                Expect.equal least.Value (Some 10) "initial holder is key 1"
+                source.Value <- setN 1 50 source.Value
+                Expect.equal least.Value (Some 20) "key 1 still beats sibling key 2 (50 < 100) yet promotes cousin key 3"
+                source.Value <- setN 3 150 source.Value
+                Expect.equal least.Value (Some 50) "key 1 reclaims from key 3 when key 3 worsens past 50"
+            }
+
+            test "tail-appending rows across capacity doublings keeps tournament results and O(log N) cost" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ 1, 1000 ])
+                let up = rows source
+                let least = up |> Projection.tryMinBy (fun n -> Counted n)
+                let most = up |> Projection.tryMaxBy (fun n -> Counted n)
+
+                Expect.equal least.Value (Some 1000) "initial min"
+                Expect.equal most.Value (Some 1000) "initial max"
+
+                for i in 2..100 do
+                    let rank = if i % 7 = 0 then 1000 + i else 1000 - i
+                    source.Value <- source.Value @ items [ i, rank ]
+
+                Expect.equal least.Value (Some (1000 - 100)) "min after 100 tail appends across doublings"
+                Expect.equal most.Value (Some (1000 + 98)) "max after 100 tail appends across doublings"
+            }
+
+            test "tryMinBy and tryMaxBy agree with sequential sticky-extreme scan across randomized 40-seed histories" {
+                let finiteValues = [| 0.0; 1.0; 1.0; 2.0; -3.5; 5.0; 5.0 |]
+                let nanValues = [| 0.0; 1.0; 1.0; 2.0; -3.5; nan; 5.0 |]
+
+                for seed in 1..40 do
+                    runExtremeStickySeed true finiteValues seed
+                    runExtremeStickySeed false nanValues seed
             }
         ]
 
@@ -4274,6 +5397,176 @@ let distinctByTests =
                 Expect.equal calls.Value 0 "no projection runs after disposal"
                 Expect.isEmpty view.Keys "a disposed view is empty"
             }
+
+            test "incremental distinctBy resolves Check cutoff without running a pass" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal (items [ for i in 1..20 -> i, i * 10 ])
+                let gateRuns = ref 0
+
+                let view =
+                    rows source
+                    |> Projection.distinctBy (fun n ->
+                        gateRuns.Value <- gateRuns.Value + 1
+                        n / 100)
+
+                let effects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    effects.Value <- effects.Value + 1)
+
+                let initialKeys = view.Keys
+                let passes = view.Runs
+                gateRuns.Value <- 0
+
+                source.Value <- setN 3 35 source.Value
+
+                Expect.equal gateRuns.Value 1 "only the edited row's distinct-key memo ran"
+                Expect.equal view.Runs passes "distinctBy resolved Check without running a pass"
+                Expect.equal effects.Value 1 "Keys observer stayed asleep"
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, initialKeys)) "same Keys array reference preserved"
+            }
+
+            test "incremental distinctBy keeps Keys unchanged when a non-winner moves to another already-held value" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                col.Edit (fun edit ->
+                    for i in 1..20 do
+                        edit.AddOrUpdate { Id = i; N = i % 5 })
+
+                let view = col.Rows |> Projection.distinctBy (fun x -> x.N)
+                let effects = ref 0
+
+                createEffect (fun () ->
+                    view.Keys |> ignore
+                    effects.Value <- effects.Value + 1)
+
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+                let initialKeys = view.Keys
+
+                // Key 12 has distinct key 2 (held by key 2); changing to 4 (held by key 4) changes neither winner.
+                col.AddOrUpdate { Id = 12; N = 4 }
+
+                Expect.isTrue (obj.ReferenceEquals (view.Keys, initialKeys)) "non-winner move kept same Keys array reference"
+                Expect.equal effects.Value 1 "Keys observer stayed asleep"
+                Expect.isTrue ((kr.Read ()).IsEmpty) "KeyReader saw no changes"
+            }
+
+            test "incremental distinctBy splices N=1000 winner promotion, displacement, tail append, and multi-row edits matching List.distinctBy" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+                let pairs = [ for i in 1..1000 -> i, (i * 37) % 100 ]
+
+                col.Edit (fun edit ->
+                    for id, n in pairs do
+                        edit.AddOrUpdate { Id = id; N = n })
+
+                let current = Collections.Generic.Dictionary<int, int>()
+
+                for id, n in pairs do
+                    current[id] <- n
+
+                let orderedIds = ResizeArray<int>(pairs |> List.map fst)
+
+                let expected () =
+                    [ for id in orderedIds -> id, current[id] ]
+                    |> List.distinctBy snd
+                    |> List.map fst
+
+                let view = col.Rows |> Projection.distinctBy (fun x -> x.N)
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                kr.Read () |> ignore
+
+                Expect.sequenceEqual view.Keys (expected ()) "initial N=1000 distinctBy matches List.distinctBy"
+
+                // Winner departure + displacement in one batch: key 1 (winner for 37) moves to 9999; key 50 moves to 1111;
+                // key 10 displaces winner 100 (at index 99) by claiming current[100] = 0; key 200 joins key 6's value.
+                let displaceTarget = current[100]
+                let key200Target = current[orderedIds[5]]
+
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1; N = 9999 }
+                    edit.AddOrUpdate { Id = 10; N = displaceTarget }
+                    edit.AddOrUpdate { Id = 50; N = 1111 }
+                    edit.AddOrUpdate { Id = 200; N = key200Target })
+
+                current[1] <- 9999
+                current[10] <- displaceTarget
+                current[50] <- 1111
+                current[200] <- key200Target
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "sparse winner swap is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "sparse winner promotion/displacement matches List.distinctBy"
+
+                // Tail append: one duplicate distinct value and one new distinct value
+                col.Edit (fun edit ->
+                    edit.AddOrUpdate { Id = 1001; N = 9999 }
+                    edit.AddOrUpdate { Id = 1002; N = 10001 })
+
+                orderedIds.Add 1001
+                orderedIds.Add 1002
+                current[1001] <- 9999
+                current[1002] <- 10001
+                let d2 = kr.Read ()
+                Expect.isFalse d2.IsReset "tail append distinctBy is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "tail append matches List.distinctBy"
+
+                // Removals + edits in general sparse delta
+                col.Edit (fun edit ->
+                    edit.Remove 2 |> ignore
+                    edit.Remove 3 |> ignore
+                    edit.AddOrUpdate { Id = 4; N = 12345 }
+                    edit.AddOrUpdate { Id = 600; N = 37 })
+
+                orderedIds.Remove 2 |> ignore
+                orderedIds.Remove 3 |> ignore
+                current.Remove 2 |> ignore
+                current.Remove 3 |> ignore
+                current[4] <- 12345
+                current[600] <- 37
+                let d3 = kr.Read ()
+                Expect.isFalse d3.IsReset "multi-row sparse distinctBy delta is incremental"
+                Expect.sequenceEqual view.Keys (expected ()) "multi-row removal and edit matches List.distinctBy"
+            }
+
+            test "incremental distinctBy splices recovery of an earlier failed holder displacing a later holder" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let failing = createSignal (set [ 1 ])
+
+                let view =
+                    createProjection id id (fun () -> [ 10; 1; 6; 2 ])
+                    |> Projection.distinctBy (fun n ->
+                        if failing.Value.Contains n then
+                            invalidOp $"boom {n}"
+
+                        n % 5)
+
+                createEffect (fun () -> view.Keys |> ignore)
+                let kr = view.NewKeyReader ()
+                let d0 = kr.Read ()
+                Expect.isTrue d0.IsReset "initial read is reset"
+                Expect.sequenceEqual view.Keys [ 10; 6; 2 ] "initial holders skip failed key 1"
+
+                failing.Value <- Set.empty
+                let d1 = kr.Read ()
+                Expect.isFalse d1.IsReset "recovery splice is incremental"
+                Expect.sequenceEqual view.Keys [ 10; 1; 2 ] "recovered key 1 displaces 6 while preserving trailing holder 2"
+                Expect.sequenceEqual d1.Keys [ 10; 1; 2 ] "delta Keys matches view Keys"
+
+                let changes =
+                    d1.Changes
+                    |> Seq.map (fun kv -> kv.Key, kv.Value)
+                    |> Set.ofSeq
+
+                Expect.equal changes (set [ 6, KeyChange.Removed; 1, KeyChange.Added ]) "delta records 6 removed and 1 added"
+            }
         ]
 
 /// <summary>The keys of <c>view</c> with their values, in <c>Keys</c> order.</summary>
@@ -4483,5 +5776,56 @@ let groupingAggregateTests =
                 Expect.equal (pairsOf again) [ 1, 11; 0, 12 ] "a new result"
                 grouping.Dispose ()
                 Expect.isEmpty again.Keys "the result of a disposed grouping is empty"
+            }
+
+            test "Grouping.aggregate on G=20 groups recomputes only touched groups on a sparse move" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (x: Item) -> x.Id)
+
+                // Group = N / 100 (0..19), Amount = N % 100
+                col.Edit (fun edit ->
+                    for i in 1..200 do
+                        let grp = (i - 1) % 20
+                        let amt = (i % 17) + 1
+                        edit.AddOrUpdate { Id = i; N = grp * 100 + amt })
+
+                let agg =
+                    col.Rows
+                    |> Projection.groupBy (fun x -> x.N / 100)
+                    |> Grouping.aggregate (Projection.sumBy (fun x -> x.N % 100))
+
+                let outerEffects = ref 0
+
+                createEffect (fun () ->
+                    agg.Keys |> ignore
+                    outerEffects.Value <- outerEffects.Value + 1)
+
+                let groupEffects = Array.zeroCreate<int> 20
+                let groupTotals = Array.zeroCreate<int> 20
+
+                for gk in 0..19 do
+                    let idx = gk
+
+                    createEffect (fun () ->
+                        groupTotals[idx] <- agg.Get idx
+                        groupEffects[idx] <- groupEffects[idx] + 1)
+
+                let outerEffects0 = outerEffects.Value
+                let effectsBefore = Array.copy groupEffects
+                let total0Before = groupTotals[0]
+                let total1Before = groupTotals[1]
+
+                // Move non-first item 101: amount (101 % 17) + 1 = 17, from group 0 to group 1
+                col.AddOrUpdate { Id = 101; N = 1 * 100 + 17 }
+
+                Expect.equal outerEffects.Value outerEffects0 "outer aggregate Keys observer stayed asleep"
+                Expect.equal groupEffects[0] (effectsBefore[0] + 1) "source group 0 aggregate updated once"
+                Expect.equal groupEffects[1] (effectsBefore[1] + 1) "target group 1 aggregate updated once"
+                Expect.equal groupTotals[0] (total0Before - 17) "group 0 sum decreased by 17"
+                Expect.equal groupTotals[1] (total1Before + 17) "group 1 sum increased by 17"
+
+                for gk in 2..19 do
+                    Expect.equal groupEffects[gk] effectsBefore[gk] $"untouched group {gk} aggregate stayed asleep"
             }
         ]

@@ -54,7 +54,7 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
-    let equal = graph.Options.Equality.Comparer<'V>()
+    let equal = graph.EncodedComparer<'V>()
     let rows = Platform.KeyMap<'K, ValueRow<'K, 'V>>()
     let seen = Platform.KeySet<'K>()
     let membership = KeyChanges<'K>()
@@ -110,7 +110,8 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
             if not (seen.Contains key) then
                 removed.Add key)
 
-        for key in removed do
+        for i in 0 .. removed.Count - 1 do
+            let key = Platform.entryAt i removed
             this.Detach (rows.Find key)
             rows.Remove key
 
@@ -181,11 +182,11 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
 
                         try
                             if row.Attached && row.Entry.Live then
-                                match graph.RunUntracked (fun () -> row.Entry.Row.TryValue) with
+                                match row.Entry.Row.TryValueUntracked () with
                                 | Ready value ->
                                     if
                                         not row.HasValue
-                                        || not (equal.Equals (row.Value, value))
+                                        || not (ComparerSentinel.equals equal row.Value value)
                                     then
                                         changed row.Entry.Key
                                         row.Value <- value
@@ -247,6 +248,13 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
             seeded <- false
             keys <- null
 
+#if !FABLE_COMPILER
+    static member val private RefreshFromKeysFn: ProjectionValues<'K, 'V> -> unit = fun self -> self.RefreshFromKeys ()
+
+    member private this.RefreshFromKeys() =
+        this.Refresh (readKeys ())
+#endif
+
     interface INode with
         member _.Id = id
         member _.Status = Status.None
@@ -264,7 +272,11 @@ type internal ProjectionValues<'K, 'V when 'K: equality>(graph: Graph, find: 'K 
         member this.UpdateIfNecessary() =
             if not disposed then
                 try
+#if FABLE_COMPILER
                     graph.RunUntracked (fun () -> this.Refresh (readKeys ()))
+#else
+                    graph.RunUntrackedWith (ProjectionValues<'K, 'V>.RefreshFromKeysFn, this)
+#endif
                 with _ ->
                     observers.NotifyDirty ()
 

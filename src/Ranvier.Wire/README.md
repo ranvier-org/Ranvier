@@ -1,7 +1,8 @@
 # Ranvier.Wire
 
-The JSON wire codec of Ranvier's transports. A `WireCodec<'T>` writes a value as text and reads it back with the same
-text on .NET, including NativeAOT, and under Fable. It is built on a vendored copy of
+The JSON wire codec of Ranvier's transports (`net10.0` with NativeAOT support, `netstandard2.1`, Fable, and
+`Ranvier.Wire.Traced`). A `WireCodec<'T>` writes a value as text and reads it back with the same text on
+.NET, including NativeAOT, and under Fable. It is built on a vendored copy of
 [Thoth.Json](https://github.com/thoth-org/Thoth.Json) ([Vendor/Thoth.Json](Vendor/Thoth.Json/README.md)) under the
 namespace `Ranvier.Wire.Thoth.Json.Core`: write the contract's codecs with Thoth's `objectCodec` and `variantCodec`,
 and wrap them once.

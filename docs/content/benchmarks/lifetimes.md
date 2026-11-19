@@ -3,14 +3,8 @@ title: Lifetimes
 order: 5
 ---
 
-> **Preview** — Ranvier is pre-release; its APIs may change.
-
 ## CI instruction counts
-**Library comparison** shows the latest recorded engine measurements; **Trends** follows scenarios
-across commits. Choose a runtime, metric or commit, filter scenarios, and toggle libraries in the
-legend. The site remembers your tab; runtime and metric selections carry between tabs.
-See [chart controls and uncertainty](counters.md#interactive-chart-controls) for bands, relative values
-and library-counter markers.
+Recorded engine comparisons and commit trends ([chart controls and uncertainty](counters.md#interactive-chart-controls)):
 
 <div data-perf-tabs data-perf-data="lifetimes"><p role="status">Loading recorded measurements…</p></div>
 <link rel="stylesheet" href="/Ranvier/benchmarks/perf-charts.css">
@@ -124,5 +118,3 @@ The shallow size of each node type: the `Allocated` column of an uninitialised i
 | `Failure` | `Failure`, the record a failed node holds. |
 
 `SizeOfProbe` has no counter scenario and no published figure yet. It is in the suite for local runs: `dotnet run --project bench/Ranvier.Benchmarks -c Release -- --filter "*SizeOfProbe*"`.
-
-The `Ratio` and `Alloc Ratio` columns, where present, compare each method with the baseline method *of the same class* on the same run. They describe the relative cost of two operations inside Ranvier, not a comparison with any other library.

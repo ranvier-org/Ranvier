@@ -14,11 +14,15 @@
 > French anatomist Louis-Antoine Ranvier. A signal jumps from node to node and is regenerated at each
 > one, instead of flowing along every point of the fibre.
 
-> **Preview.** Ranvier is pre-release. Its APIs may change before 1.0. Install from NuGet as
-> [`Ranvier`](https://www.nuget.org/packages/Ranvier), or [`Ranvier.CSharp`](https://www.nuget.org/packages/Ranvier.CSharp) from C#.
-> The Elmish-style MVU bridge ships separately as [`Ranvier.Elmish`](https://www.nuget.org/packages/Ranvier.Elmish).
-> [`Ranvier.Query`](https://www.nuget.org/packages/Ranvier.Query) adds shared remote queries and mutation reconciliation.
-> The guide tracks current source; published versions can lag merged features. See [Installation](docs/content/guide/installation.md) for checked package versions and Fable packaging status.
+> **Preview.** Ranvier is pre-release (`0.2.1` core packages, `0.1.0` DOM packages). Its APIs may change
+> before 1.0. Install from NuGet as [`Ranvier`](https://www.nuget.org/packages/Ranvier), or
+> [`Ranvier.CSharp`](https://www.nuget.org/packages/Ranvier.CSharp) from C#.
+> [`Ranvier.Elmish`](https://www.nuget.org/packages/Ranvier.Elmish) adds an Elmish-style MVU bridge,
+> [`Ranvier.Query`](https://www.nuget.org/packages/Ranvier.Query) adds shared remote queries and mutation reconciliation,
+> [`Ranvier.Wire`](https://www.nuget.org/packages/Ranvier.Wire) provides cross-target JSON wire codecs, and
+> [`Ranvier.Dom`](https://www.nuget.org/packages/Ranvier.Dom) / [`Fable.Ranvier.Dom`](https://www.nuget.org/packages/Fable.Ranvier.Dom)
+> supply generated DOM contracts. Every packable library ships an untraced package and a `.Traced` variant.
+> See [Installation](docs/content/guide/installation.md) for package details, target frameworks, and Fable packaging.
 
 ## Overview
 
@@ -68,6 +72,9 @@ Read the [full documentation](https://ranvier-org.github.io/Ranvier/).
 - [Debounce and throttle](docs/content/guide/timing.md) control when captured values reach downstream readers and async requests.
 - [Collections](docs/content/guide/collections.fsx) provide editable keyed sources, per-row projections, change readers, views and aggregates.
 - [Queries and mutations](docs/content/guide/queries.md) share acquired remote data, retain accepted data during refresh, and reconcile loaded queries in one batch.
+- [Wire codecs](src/Ranvier.Wire/README.md) encode and decode matching JSON payloads across .NET (including NativeAOT) and Fable.
+- [Shared DOM contracts](src/Ranvier.Dom/README.md) expose generated WebKit IDL interfaces across .NET and Fable.
+- [Formal proofs](proofs/README.md) machine-check graph invariants, execution soundness, async flights, and collection incrementality in Rocq and Iris.
 - [Views](https://ranvier-org.github.io/Ranvier.View/) use typed F# components for browser rendering, server HTML and hydration. They are built in [ranvier-org/Ranvier.View](https://github.com/ranvier-org/Ranvier.View), with [typed CSS](https://github.com/ranvier-org/Ranvier.Css) and [persistence](https://github.com/ranvier-org/Ranvier.Persistence) in their own repositories.
 - [Fable](docs/content/fable/index.md) compiles the same model to JavaScript. Package builds include standalone Fable source projects, and CI checks package consumers. The guide documents target differences.
 
@@ -88,99 +95,31 @@ See [Examples](docs/content/guide/examples.md) in the guide for each workflow an
 
 Ranvier began as experiments in a repository called Partas.Signals.
 
-## Build CLI
+## Contributing
 
-Every repository task runs through `build.fsx`, a [Partas.Build](https://github.com/shayanhabibi/partas.build)
-script, so the tasks are typed, composable and discoverable:
-
-```shell
-dotnet fsi build.fsx -- --help
-```
-
-| Command | What it does |
-|---------|--------------|
-| `build` | Restores and builds the source projects |
-| `test` | Cleans, then runs the F# (Expecto) and C# (xUnit) suites (`--skip-tests` to skip them) |
-| `test-fable` | Compiles and runs traced and untraced Fable suites, then writes the compatibility report |
-| `format` | Formats every source file with Fantomas (`--dry-format` checks instead) |
-| `compile` | Compiles the Fable projects to JavaScript (`--watch` to stay resident) |
-| `publish` | Builds, tests, packs and pushes to NuGet (`--api-key`, or the `NUGET_API_KEY` env var; `--dry-publish` lists the packages instead of pushing) |
-| `bump` | Bumps the version of a project |
-| `docs` | Builds the Nacara site from `docs/docs.fsproj` (`--watch` to serve it) |
-
-For automated releases, see [Publishing packages](docs/releasing.md).
-
-Global flags: `--quick` skips restores and cleaning,
-`--format` formats before building, `--dry-format` checks formatting before building,
-`-c` picks the configuration (default `Release`).
-
-## Git hooks
-
-Enable the tracked pre-commit hook after cloning (requires Git, RTK, PowerShell 7 and the .NET SDK):
-
-```powershell
-rtk proxy pwsh -NoProfile -File scripts/setup-hooks.ps1
-```
-
-It checks staged whitespace, F# formatting with the pinned Fantomas version, and `FOR-REVIEW`
-comments with the bundled comment-hygiene scanner. Whole staged F# files must pass; existing
-review markers in a changed file also block its commit. String literals containing markers are
-allowed. Checks use a temporary copy of index contents and never modify or stage your files.
-
-Run it manually with `rtk proxy pwsh -NoProfile -File scripts/check-staged.ps1`.
-Full test suites remain explicit verification commands and CI checks. `git commit --no-verify`
-bypasses the local hook when needed.
-
-Verify the hook itself with `rtk proxy pwsh -NoProfile -File scripts/test-hooks.ps1`.
-Its commit-level tests run in a disposable repository.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions and the CI checks, including performance.
+Repository tasks run through `build.fsx`, a [Partas.Build](https://github.com/shayanhabibi/partas.build) script (`dotnet fsi build.fsx -- --help`).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the build CLI, git hooks, commit rules, and PR checks, [AGENTS.md](AGENTS.md) for coding-agent tooling, and [Publishing packages](docs/releasing.md) for release automation.
 
 ## Layout
 
 ```
-build.fsx                      the build CLI
-src/Ranvier/                   the library
-src/Ranvier.CSharp/            the C# façade
-src/Ranvier.Elmish/            the MVU bridge (Mvu)
-src/Ranvier.Query/             shared remote queries and mutation reconciliation
-src/Ranvier.Wire/              the JSON wire codec (vendors Thoth.Json)
-tests/Ranvier.Tests/           the Expecto suite
-tests/Ranvier.Wire.Tests/      the wire suite, also run under Fable
-tests/Ranvier.CSharp.Tests/    the xUnit suite, written in C#
-docs/docs.fsproj               the Nacara site (net10.0)
-docs/content/                  the pages
-fable/                         Fable tests and counter scenarios
-bench/                         BenchmarkDotNet suites
+build.fsx                         the build CLI
+src/Ranvier/                      the core reactive graph library
+src/Ranvier.CSharp/               the C# façade
+src/Ranvier.Elmish/               the MVU bridge (Mvu)
+src/Ranvier.Query/                shared remote queries and mutation reconciliation
+src/Ranvier.Wire/                 the JSON wire codec (vendors Thoth.Json)
+src/Ranvier.Dom/                  generated WebKit DOM contracts for .NET
+src/Fable.Ranvier.Dom/            generated WebKit DOM contracts for Fable
+src/Ranvier.Mcp/                  local MCP graph-inspection adapter (unpacked)
+proofs/                           Rocq and Iris formal verification and Navigator site
+examples/                         workload benchmarks, MCP sample, and dictionary app
+tests/                            Expecto, xUnit, wire, MCP, NativeAOT, and DOM mutation suites
+docs/docs.fsproj                  the Nacara documentation site (net10.0)
+docs/content/                     the guide, concepts, and benchmark pages
+fable/                            Fable test suites and counter scenarios
+bench/                            BenchmarkDotNet suites
 ```
-
-### Adding a project
-
-The build CLI addresses the repository through `Partas.TypeProvider.BuildHelper`,
-so projects are discovered at compile time: anything under `src/` is a source
-project, anything under `tests/` is a test project. Add the project to the
-solution and it is picked up by `build`, `test`
-and `publish`
-on the next run.
-
-### Adding a step
-
-A step is a stage of a command. A stage that needs a flag binds it in an
-`input { }` block, which is also what puts the flag into `--help`:
-
-```fsharp
-let myStep = input {
-    let! quick = Options.quick
-    return stage "my step" {
-        when' (not quick)
-        run "dotnet ..."
-    }
-}
-```
-
-Add it to any `command "..." { }` block. Because the condition lives in the
-stage, the command carries no flags of its own, and adding the stage to a
-second command registers `--quick` there too.
 
 ## License
 

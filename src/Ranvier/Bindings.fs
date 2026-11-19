@@ -27,6 +27,17 @@ type internal Binding<'Target, 'T>
     let mutable traceId = 0
 #endif
 
+#if FABLE_COMPILER
+    member private _.WriteTarget(value: 'T) =
+        write target value
+#else
+    let writeFn = OptimizedClosures.FSharpFunc<'Target, 'T, unit>.Adapt write
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.WriteTarget(value: 'T) =
+        writeFn.Invoke (target, value)
+#endif
+
     static member internal OfSignal(graph: Graph, source: Signal<'T>, target: 'Target, write: 'Target -> 'T -> unit) =
         let binding =
             new Binding<'Target, 'T> (graph, source :> ISource, source, Unchecked.defaultof<_>, target, write)
@@ -60,13 +71,17 @@ type internal Binding<'Target, 'T>
             if Platform.isNull (box memo) then
                 status <- Status.None
                 failure <- null
-                write target signal.Peek
+                this.WriteTarget signal.Peek
+            elif memo.IsCleanAndReady then
+                status <- Status.None
+                failure <- null
+                this.WriteTarget memo.Peek
             else
                 match memo.ReadUntracked () with
                 | Ready value ->
                     status <- Status.None
                     failure <- null
-                    write target value
+                    this.WriteTarget value
                 | Pending -> status <- Status.Pending
                 | Failed _ ->
                     status <- Status.Error
@@ -159,19 +174,20 @@ type internal Binding<'Target, 'T>
                 if freshness = Freshness.Check then
                     Tracer.CheckStart (graph, id)
 
-                    while freshness = Freshness.Check && source.IsStale do
-                        source.UpdateIfNecessary ()
+                    if not (Platform.isNull (box memo)) then
+                        while freshness = Freshness.Check && memo.IsStaleNode do
+                            memo.EnsureCurrent ()
 
-                        if
-                            freshness = Freshness.Check
-                            && source.IsStale
-                            && source.IsActive
-                        then
-                            (this :> IComputation).MarkDirty()
+                            if
+                                freshness = Freshness.Check
+                                && memo.IsStaleNode
+                                && memo.IsActiveNode
+                            then
+                                (this :> IComputation).MarkDirty()
 
                     Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
                 elif not (Platform.isNull (box memo)) then
-                    source.UpdateIfNecessary ()
+                    memo.EnsureCurrent ()
 
                 let shouldRun = freshness = Freshness.Dirty
                 queued <- false

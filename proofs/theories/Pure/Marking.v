@@ -1287,3 +1287,86 @@ Proof.
   - simpl. rewrite Hd, Hk, decide_True by done. reflexivity.
   - unfold mark_dirty. simpl. rewrite Hd, Hk, decide_True by done. reflexivity.
 Qed.
+
+(** The backward observer walk restricted to indices strictly above slot [0]. *)
+Fixpoint walk_marks_above0 (mark : node_id -> state -> option state) (src : node_id) (n : nat) (s : state)
+    : option state :=
+  match n with
+  | 0 | 1 => Some s
+  | S i =>
+    if decide (length (observer_items (observers_of (g_edges s) src)) <= i) then walk_marks_above0 mark src i s
+    else match observer_items (observers_of (g_edges s) src) !! i with
+         | Some (c, _) => mark c s ≫= walk_marks_above0 mark src i
+         | None => None
+         end
+  end.
+
+(** [notify_with] with slot [0] hoisted out of the [i > 0] loop. *)
+Definition notify_with_hoisted0 (mark : node_id -> state -> option state) (src : node_id) (s : state)
+    : option state :=
+  match length (observer_items (observers_of (g_edges s) src)) with
+  | 0 => Some s
+  | n =>
+    walk_marks_above0 mark src n s ≫= fun s1 =>
+    match observer_items (observers_of (g_edges s1) src) !! 0 with
+    | Some (c0, _) => mark c0 s1
+    | None => Some s1
+    end
+  end.
+
+Lemma walk_marks_split_0 mark src n s :
+  (1 <= n)%nat ->
+  walk_marks mark src n s =
+    walk_marks_above0 mark src n s ≫= fun s1 =>
+    match observer_items (observers_of (g_edges s1) src) !! 0 with
+    | Some (c0, _) => mark c0 s1
+    | None => Some s1
+    end.
+Proof.
+  revert s. induction n as [|k IH]; intros s Hn; [lia|].
+  destruct k as [|m].
+  - cbn [walk_marks walk_marks_above0]. simpl.
+    destruct (decide (length (observer_items (observers_of (g_edges s) src)) <= 0)) as [Hle|Hgt].
+    + assert (Hnil : observer_items (observers_of (g_edges s) src) = []).
+      { apply nil_length_inv. lia. }
+      rewrite Hnil. reflexivity.
+    + destruct (observer_items (observers_of (g_edges s) src) !! 0) as [p0|] eqn:E.
+      * destruct p0 as [c0 sl0]. destruct (mark c0 s); reflexivity.
+      * exfalso. apply lookup_ge_None in E. lia.
+  - change (walk_marks mark src (S (S m)) s) with
+      (if decide (length (observer_items (observers_of (g_edges s) src)) <= S m) then walk_marks mark src (S m) s
+       else match observer_items (observers_of (g_edges s) src) !! S m with
+            | Some (c, _) => mark c s ≫= walk_marks mark src (S m)
+            | None => None
+            end).
+    change (walk_marks_above0 mark src (S (S m)) s) with
+      (if decide (length (observer_items (observers_of (g_edges s) src)) <= S m) then walk_marks_above0 mark src (S m) s
+       else match observer_items (observers_of (g_edges s) src) !! S m with
+            | Some (c, _) => mark c s ≫= walk_marks_above0 mark src (S m)
+            | None => None
+            end).
+    destruct (decide (length (observer_items (observers_of (g_edges s) src)) <= S m)); [apply IH; lia|].
+    destruct (observer_items (observers_of (g_edges s) src) !! S m) as [p|]; [|reflexivity].
+    destruct p as [c sl].
+    destruct (mark c s) as [s1|] eqn:Em; [apply IH; lia | reflexivity].
+Qed.
+
+(**md
+**Hoisting slot `0` out of the `while i > 0` notification loop preserves `notify_with` across all dynamic observer-set mutations.**
+
+Matches `ObserverSet.NotifyDirty`, `NotifyDirtyExcept`, `NotifyDirtyOther`, and `NotifyCheck` (`Core.fs`):
+walking overflow observers down to index `1` (`while i > 0`) and handling slot `0` (`first`) afterward
+executes the identical sequence of observer marks and handles dynamic removal of slot `0` identically.
+
+- [mark:] the observer mark function applied to each visited observer.
+- [src:] the source node whose observers are notified.
+- [s:] the engine state before notification.
+*)
+Theorem walk_marks_hoist_slot0_eq (mark : node_id -> state -> option state) (src : node_id) (s : state) :
+  notify_with_hoisted0 mark src s = notify_with mark src s.
+Proof.
+  unfold notify_with_hoisted0, notify_with.
+  destruct (length (observer_items (observers_of (g_edges s) src))) as [|n] eqn:El.
+  - reflexivity.
+  - symmetry. apply walk_marks_split_0. lia.
+Qed.

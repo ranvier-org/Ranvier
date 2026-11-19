@@ -87,18 +87,7 @@ module Codecs =
         else
             String.replicate (width - text.Length) "0" + text
 
-    /// <summary>
-    /// The value's clock time in its own offset as <c>yyyy-MM-ddTHH:mm:ss.fff±HH:mm</c>, truncated to the
-    /// millisecond at or before the instant.
-    /// </summary>
-    let private formatDateTimeOffset (value: DateTimeOffset) =
-        let offset = int64 value.Offset.TotalMinutes
-        let local = value.ToUnixTimeMilliseconds () + offset * 60000L
-        let days = floorDiv local millisecondsPerDay
-        let ofDay = local - days * millisecondsPerDay
-        let year, month, day = civilFromDays days
-        let size = abs offset
-
+    let private formatDateTimeOffsetPadded (year: int64) (month: int64) (day: int64) (ofDay: int64) (offset: int64) (size: int64) =
         padded 4 year
         + "-"
         + padded 2 month
@@ -116,6 +105,66 @@ module Codecs =
         + padded 2 (size / 60L)
         + ":"
         + padded 2 (size % 60L)
+
+    /// <summary>
+    /// The value's clock time in its own offset as <c>yyyy-MM-ddTHH:mm:ss.fff±HH:mm</c>, truncated to the
+    /// millisecond at or before the instant.
+    /// </summary>
+    let private formatDateTimeOffset (value: DateTimeOffset) =
+        let offset = int64 value.Offset.TotalMinutes
+        let local = value.ToUnixTimeMilliseconds () + offset * 60000L
+        let days = floorDiv local millisecondsPerDay
+        let ofDay = local - days * millisecondsPerDay
+        let year, month, day = civilFromDays days
+        let size = abs offset
+#if FABLE_COMPILER
+        formatDateTimeOffsetPadded year month day ofDay offset size
+#else
+        if year >= 0L && year <= 9999L && size < 6000L then
+            let chars: char array = Array.zeroCreate 29
+            let y = int year
+            let m = int month
+            let d = int day
+            let hour = int (ofDay / 3600000L)
+            let minute = int (ofDay / 60000L % 60L)
+            let second = int (ofDay / 1000L % 60L)
+            let ms = int (ofDay % 1000L)
+            let offHours = int (size / 60L)
+            let offMinutes = int (size % 60L)
+            let zero = int '0'
+            chars[0] <- char (zero + y / 1000)
+            chars[1] <- char (zero + y / 100 % 10)
+            chars[2] <- char (zero + y / 10 % 10)
+            chars[3] <- char (zero + y % 10)
+            chars[4] <- '-'
+            chars[5] <- char (zero + m / 10)
+            chars[6] <- char (zero + m % 10)
+            chars[7] <- '-'
+            chars[8] <- char (zero + d / 10)
+            chars[9] <- char (zero + d % 10)
+            chars[10] <- 'T'
+            chars[11] <- char (zero + hour / 10)
+            chars[12] <- char (zero + hour % 10)
+            chars[13] <- ':'
+            chars[14] <- char (zero + minute / 10)
+            chars[15] <- char (zero + minute % 10)
+            chars[16] <- ':'
+            chars[17] <- char (zero + second / 10)
+            chars[18] <- char (zero + second % 10)
+            chars[19] <- '.'
+            chars[20] <- char (zero + ms / 100)
+            chars[21] <- char (zero + ms / 10 % 10)
+            chars[22] <- char (zero + ms % 10)
+            chars[23] <- if offset < 0L then '-' else '+'
+            chars[24] <- char (zero + offHours / 10)
+            chars[25] <- char (zero + offHours % 10)
+            chars[26] <- ':'
+            chars[27] <- char (zero + offMinutes / 10)
+            chars[28] <- char (zero + offMinutes % 10)
+            String chars
+        else
+            formatDateTimeOffsetPadded year month day ofDay offset size
+#endif
 
     /// <summary>The value of <c>count</c> ASCII digits from <c>start</c>, or -1 when any is not a digit.</summary>
     let private digitsAt (text: string) (start: int) (count: int) =
@@ -146,7 +195,10 @@ module Codecs =
                   || text[length - 1] = '\n') do
             length <- length - 1
 
-        text.Substring (0, length)
+        if length = text.Length then
+            text
+        else
+            text.Substring (0, length)
 
     /// <summary>
     /// The UTC Unix milliseconds and the offset in minutes of a <c>yyyy-MM-dd(T|t)HH:mm:ss[.f{1,7}](Z|z|±HH:mm)</c>
@@ -286,45 +338,70 @@ module Codecs =
     let dateTimeOffset: Codec<DateTimeOffset> =
         Codec.create (fun value -> Encode.string (formatDateTimeOffset value)) dateTimeOffsetDecoder
 
-    let private allDigits (text: string) =
-        let mutable result = text.Length > 0
-        let mutable i = 0
+    let private allDigitsRange (text: string) (start: int) (finish: int) =
+        let mutable result = finish > start
+        let mutable i = start
 
-        while result && i < text.Length do
-            result <- text[i] >= '0' && text[i] <= '9'
+        while result && i < finish do
+            let c = text[i]
+            result <- c >= '0' && c <= '9'
             i <- i + 1
 
         result
 
-    let private unsigned (text: string) =
-        if text.Length > 0 && text[0] = '-' then
-            text.Substring 1
-        else
-            text
+    let private unsignedStart (text: string) =
+        if text.Length > 0 && text[0] = '-' then 1 else 0
+
+    let private maxDecimalDigits = "79228162514264337593543950335"
 
     /// <summary>Whether the text is <c>-?digits(.digits)?</c>.</summary>
     let private isDecimalText (text: string) =
-        let body = unsigned text
-        let point = body.IndexOf '.'
+        let start = unsignedStart text
 
-        if point < 0 then
-            allDigits body
+        if start >= text.Length then
+            false
         else
-            allDigits (body.Substring (0, point))
-            && allDigits (body.Substring (point + 1))
+            let point = text.IndexOf ('.', start)
+
+            if point < 0 then
+                allDigitsRange text start text.Length
+            else
+                allDigitsRange text start point
+                && allDigitsRange text (point + 1) text.Length
 
     /// <summary>Whether a decimal text has at most 28 fraction digits and a mantissa of at most Decimal.MaxValue's.</summary>
     let private fitsDecimal (text: string) =
-        let body = unsigned text
-        let point = body.IndexOf '.'
-        let fractionDigits = if point < 0 then 0 else body.Length - point - 1
-        let mantissa = body.Replace(".", "").TrimStart '0'
+        let start = unsignedStart text
 
-        fractionDigits <= 28
-        && (mantissa.Length < 29
-            || (mantissa.Length = 29
-                && String.CompareOrdinal (mantissa, "79228162514264337593543950335")
-                   <= 0))
+        let point =
+            if start >= text.Length then
+                -1
+            else
+                text.IndexOf ('.', start)
+
+        let fractionDigits = if point < 0 then 0 else text.Length - point - 1
+
+        if fractionDigits > 28 then
+            false
+        else
+            let mutable sigLen = 0
+            let mutable cmp = 0
+
+            for i = start to text.Length - 1 do
+                let c = text[i]
+
+                if c <> '.' && (sigLen > 0 || c <> '0') then
+                    if sigLen < 29 && cmp = 0 then
+                        let m = maxDecimalDigits[sigLen]
+
+                        if c < m then
+                            cmp <- -1
+                        elif c > m then
+                            cmp <- 1
+
+                    sigLen <- sigLen + 1
+
+            sigLen < 29 || (sigLen = 29 && cmp <= 0)
 
     /// <summary>The text of a JSON string, or the source text of a JSON number.</summary>
     let private numericText (helpers: IDecoderHelpers<'J>) (value: 'J) =
@@ -339,33 +416,38 @@ module Codecs =
         { new Decoder<BigInteger> with
             member _.Decode(helpers, value) =
                 match numericText helpers value with
-                | Some text when allDigits (unsigned text) ->
-                    let digits = (unsigned text).Length
+                | Some text ->
+                    let start = unsignedStart text
 
-                    let cap, raises =
-                        match box helpers with
-                        | :? Helpers.DecodeScope as scope -> scope.MaxBigIntDigits, not scope.LimitIsError
-                        | _ -> WireLimits.Default.MaxBigIntDigits, false
+                    if allDigitsRange text start text.Length then
+                        let digits = text.Length - start
 
-                    if digits <= cap then
+                        let cap, raises =
+                            match box helpers with
+                            | :? Helpers.DecodeScope as scope -> scope.MaxBigIntDigits, not scope.LimitIsError
+                            | _ -> WireLimits.Default.MaxBigIntDigits, false
+
+                        if digits <= cap then
 #if FABLE_COMPILER
-                        Ok (BigInteger.Parse text)
+                            Ok (BigInteger.Parse text)
 #else
-                        Ok (BigInteger.Parse (text, CultureInfo.InvariantCulture))
+                            Ok (BigInteger.Parse (text, CultureInfo.InvariantCulture))
 #endif
-                    else
-                        let message =
-                            "The bigint has "
-                            + string digits
-                            + " digits, more than "
-                            + string cap
-                            + "."
-
-                        if raises then
-                            raise (Helpers.LimitExceeded message)
                         else
-                            Error ("", BadPrimitiveExtra ("a bigint", value, message))
-                | _ -> Error ("", BadPrimitive ("a bigint written as digits", value))
+                            let message =
+                                "The bigint has "
+                                + string digits
+                                + " digits, more than "
+                                + string cap
+                                + "."
+
+                            if raises then
+                                raise (Helpers.LimitExceeded message)
+                            else
+                                Error ("", BadPrimitiveExtra ("a bigint", value, message))
+                    else
+                        Error ("", BadPrimitive ("a bigint written as digits", value))
+                | None -> Error ("", BadPrimitive ("a bigint written as digits", value))
         }
 
     let private decimalDecoder: Decoder<decimal> =

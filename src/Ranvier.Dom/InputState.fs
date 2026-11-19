@@ -135,25 +135,24 @@ type InputStateService =
 /// <summary>Creates input state services over a window EventTarget and reports their capabilities.</summary>
 [<RequireQualifiedAccess>]
 module InputState =
-    let private modifierKeys =
-        set
-            [
-                "Shift"
-                "Control"
-                "Alt"
-                "Meta"
-                "AltGraph"
-                "CapsLock"
-                "Fn"
-                "FnLock"
-                "Hyper"
-                "Super"
-                "Symbol"
-                "SymbolLock"
-                "NumLock"
-                "ScrollLock"
-                "OS"
-            ]
+    let private isModifierKey (key: string) =
+        match key with
+        | "Shift"
+        | "Control"
+        | "Alt"
+        | "Meta"
+        | "AltGraph"
+        | "CapsLock"
+        | "Fn"
+        | "FnLock"
+        | "Hyper"
+        | "Super"
+        | "Symbol"
+        | "SymbolLock"
+        | "NumLock"
+        | "ScrollLock"
+        | "OS" -> true
+        | _ -> false
 
     /// <summary>The PlatformFacility keys of <c>capabilities</c>.</summary>
     let keys =
@@ -181,9 +180,10 @@ module InputState =
         let captures = Dictionary<int, Element>()
 
         let publish change =
-            for _, observer in observers.ToArray () do
-                if not disposed then
-                    observer change
+            if observers.Count > 0 then
+                for _, observer in observers.ToArray () do
+                    if not disposed then
+                        observer change
 
         let setModality value =
             if modality <> value then
@@ -205,7 +205,7 @@ module InputState =
                         key.ctrlKey
                         || key.altKey
                         || key.metaKey
-                        || modifierKeys.Contains key.key
+                        || isModifierKey key.key
                     )
                 then
                     setModality InputModality.Keyboard
