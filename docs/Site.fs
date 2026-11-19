@@ -265,7 +265,10 @@ let site =
     |> FSharpApi.register apiOptions
     |> LinkValidator.register
     |> LiveExample.registerWith (
-        LiveExample.preset (
+        LiveExample.fable (Hosted ("fickl", Fickl.version, Fickl.standaloneUrl, Fickl.metadataUrl))
+        >> LiveExample.fableCommand "dotnet" [ "fickl" ]
+        >> LiveExample.requirePrecompile true
+        >> LiveExample.preset (
             LiveExamplePreset.create "maps"
             |> LiveExamplePreset.project "maps/Ranvier.Docs.Maps.fsproj"
             |> LiveExamplePreset.property "RanvierTrace" "true"

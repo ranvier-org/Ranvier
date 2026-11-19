@@ -281,6 +281,18 @@ test("the landing state dial honours reduced motion and remains keyboard accessi
   await expect(dial.locator(".rv-dial__dot")).not.toHaveClass(/is-moving/);
 });
 
+test("the live editor runs the manifest's fickl compiler", async ({ page, problems }) => {
+  const expected = process.env.FICKL_COMPILER_VERSION;
+  expect(expected, "FICKL_COMPILER_VERSION holds the output of `dotnet fickl --version`").toBeTruthy();
+  test.setTimeout(75_000);
+  await page.goto(guide);
+  const run = page.getByRole("button", { name: "Run", exact: true });
+  await run.click();
+  await expect(run).toBeEnabled({ timeout: coldCompilerBudgetMs });
+  const loaded = await page.evaluate(() => (globalThis.__docsWorkerProtocol ?? []).find(message => message.tag === "Loaded")?.version);
+  expect(loaded).toBe(expected);
+});
+
 test("the editable example compiles and mounts its map on Run", async ({ page, problems }) => {
   test.setTimeout(70_000);
   await page.goto(guide);

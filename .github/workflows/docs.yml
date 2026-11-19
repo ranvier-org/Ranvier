@@ -95,6 +95,9 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+      # The live editor's browser compiler and the command-line tool come from the manifest's one fickl release.
+      - name: Record the fickl compiler version
+        run: echo "FICKL_COMPILER_VERSION=$(dotnet fickl --version)" >> "$GITHUB_ENV"
       - name: Check the signal maps in a browser
         if: inputs.compiler_diagnostic != true
         working-directory: docs/maps/tests/browser
