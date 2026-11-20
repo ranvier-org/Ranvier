@@ -186,6 +186,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 73,284 | 98,023 | 1,602,923 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 73,285 | 98,025 | 1,602,896 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 73,285 | 98,028 | 1,602,890 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 73,286 | 98,020 | 1,602,940 |
 
 ## app-table
 
@@ -373,6 +374,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 2,820,690 | 4,744,455 | 60,407,711 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 2,820,696 | 4,744,631 | 60,407,758 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,820,706 | 4,742,675 | 60,407,724 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,820,730 | 4,744,262 | 60,408,822 |
 
 ## async-recover
 
@@ -560,6 +562,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 93,861 | 30,047 | 361,698 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 93,861 | 30,050 | 361,697 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 93,861 | 30,042 | 361,688 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 93,861 | 30,050 | 361,696 |
 
 ## async-resolve
 
@@ -747,6 +750,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 2,754,654 | 720,280 | 9,088,889 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 2,754,646 | 720,264 | 9,088,889 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,754,639 | 720,300 | 9,088,915 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,754,656 | 719,020 | 9,058,227 |
 
 ## chain
 
@@ -934,6 +938,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 13,083 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 13,083 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 
 ## chain-affinity
 
@@ -1121,6 +1126,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 2,416 | 2,941 | 2,358 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 2,416 | 2,941 | 2,358 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,416 | 2,941 | 2,358 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,416 | 2,941 | 2,358 |
 
 ## control
 
@@ -1308,6 +1314,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 74,709 | 462,042 | 2,277,178 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 74,709 | 462,058 | 2,277,120 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 74,709 | 462,040 | 2,277,129 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 74,709 | 458,340 | 2,267,596 |
 
 ## create
 
@@ -1495,6 +1502,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 13,495,675 | 2,866,614 | 2,265,909 | 4,454,503 | 3,098,797 | 33,073,291 | 45,751,346 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 13,463,634 | 2,866,614 | 2,265,893 | 4,454,385 | 3,098,974 | 33,073,386 | 45,751,619 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 13,463,621 | 2,882,613 | 2,265,909 | 4,454,114 | 3,098,647 | 33,073,748 | 45,751,731 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 13,573,163 | 2,866,614 | 2,265,907 | 4,442,500 | 3,093,922 | 32,788,176 | 45,466,981 |
 
 ## create-on
 
@@ -1682,6 +1690,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 2,657,238 | 3,428,065 | 51,301,342 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 2,673,270 | 3,428,058 | 51,301,481 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,657,260 | 3,428,063 | 51,301,523 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,673,254 | 3,406,913 | 51,017,454 |
 
 ## cutoff
 
@@ -1869,6 +1878,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 
 ## derive-effect
 
@@ -2056,6 +2066,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 701 | 703 | 15,092 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 701 | 703 | 15,092 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 701 | 703 | 15,092 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 701 | 703 | 15,092 |
 
 ## derive-on
 
@@ -2243,6 +2254,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 634 | 696 | 14,938 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 650 | 696 | 14,938 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 634 | 696 | 14,938 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 650 | 696 | 14,938 |
 
 ## dispose
 
@@ -2430,6 +2442,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 2,707,644 | 806,288 | 355,483 | 479,837 | 501,480 | 11,184,693 | 9,120,162 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 2,707,641 | 806,288 | 355,483 | 480,118 | 501,611 | 11,184,592 | 9,120,608 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,707,638 | 806,288 | 355,483 | 480,024 | 501,504 | 11,184,874 | 9,120,819 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,706,758 | 806,288 | 355,483 | 480,101 | 501,558 | 11,185,044 | 9,120,785 |
 
 ## dispose-on
 
@@ -2617,6 +2630,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 334,483 | 493,326 | 8,916,695 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 334,483 | 493,397 | 8,916,710 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 334,483 | 493,329 | 8,916,372 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 334,483 | 493,381 | 8,917,163 |
 
 ## editable-edit
 
@@ -2804,6 +2818,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 160,709 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 160,709 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 160,709 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 160,709 |
 
 ## editable-upstream
 
@@ -2991,6 +3006,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 205,109 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 205,109 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 205,109 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 205,109 |
 
 ## fail-recompute
 
@@ -3178,6 +3194,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 55,295 | 1,310 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 55,263 | 1,310 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 55,263 | 1,310 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 55,263 | 1,310 |
 
 ## flight
 
@@ -3365,6 +3382,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 9,844 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 
 ## keyed-insert
 
@@ -3552,6 +3570,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 1,791,431 | 33,820 | 34,568 | 2,413,957 | 169,042 | 536,564 | 39,858,070 | 2,745,336 | 2,762,290 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 1,791,366 | 33,834 | 34,536 | 2,413,938 | 169,012 | 536,638 | 39,858,093 | 2,741,053 | 2,762,225 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,791,367 | 33,833 | 34,536 | 2,414,024 | 169,045 | 536,592 | 39,858,079 | 2,741,125 | 2,762,237 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,791,367 | 33,802 | 34,537 | 2,414,037 | 169,145 | 536,394 | 39,867,694 | 2,738,159 | 2,761,866 |
 
 ## keyed-remove
 
@@ -3739,6 +3758,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 1,790,564 | 28,086 | 29,480 | 2,459,619 | 463,981 | 144,917 | 39,827,779 | 1,879,468 | 1,918,794 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 1,790,500 | 28,102 | 29,432 | 2,459,641 | 463,927 | 144,888 | 39,827,778 | 1,879,459 | 1,918,782 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,790,499 | 28,103 | 29,432 | 2,459,697 | 464,016 | 144,921 | 39,827,768 | 1,879,501 | 1,918,760 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,790,507 | 28,071 | 29,432 | 2,459,841 | 463,989 | 144,940 | 39,842,605 | 1,879,551 | 1,918,065 |
 
 ## keyed-swap
 
@@ -3926,6 +3946,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 1,771,529 | 31,552 | 32,187 | 3,046,517 | 365,578 | 80,361 | 40,389,744 | 692,864 | 710,106 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 1,771,465 | 31,571 | 32,155 | 3,046,630 | 365,582 | 80,416 | 40,389,732 | 692,847 | 710,109 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,771,466 | 31,566 | 32,155 | 3,046,594 | 365,586 | 80,350 | 40,389,741 | 692,855 | 710,060 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,771,465 | 31,536 | 32,155 | 3,046,218 | 365,624 | 80,334 | 40,403,455 | 692,921 | 710,063 |
 
 ## mvu-dispatch
 
@@ -4113,6 +4134,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 57,337 | 698 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 57,336 | 698 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 57,337 | 698 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 57,337 | 698 |
 
 ## persist-write
 
@@ -4300,6 +4322,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | — | — |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | — | — |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | — | — |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — |
 
 ## project-chain
 
@@ -4487,6 +4510,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 68,821 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 68,862 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 68,829 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 68,851 |
 
 ## project-churn
 
@@ -4674,6 +4698,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 24,273 | 22,027 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 24,273 | 22,028 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 24,273 | 22,027 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 24,273 | 22,028 |
 
 ## project-edit
 
@@ -4861,6 +4886,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 29,699 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 29,635 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 29,635 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 29,635 |
 
 ## project-reorder
 
@@ -5048,6 +5074,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 463,167 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 463,103 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 463,103 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 463,103 |
 
 ## server-render
 
@@ -5235,6 +5262,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | — | — | — |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | — | — | — |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | — | — | — |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — | — |
 
 ## shape-diamond
 
@@ -5422,6 +5450,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 57,370 | 83,971 | 1,730,751 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 57,370 | 83,971 | 1,730,751 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 57,370 | 83,971 | 1,730,751 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 57,370 | 83,970 | 1,730,751 |
 
 ## shape-dynamic
 
@@ -5609,6 +5638,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 79,026 | 103,741 | 1,866,485 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 79,026 | 103,744 | 1,866,485 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 79,026 | 103,742 | 1,866,485 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 79,026 | 103,742 | 1,866,486 |
 
 ## stream-burst-1
 
@@ -5796,6 +5826,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 1,711 | 1,419 | 2,256 | 13,266 | 2,495 | 11,116 | 36,095 | 34,518 | 44,691 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 1,711 | 1,419 | 2,258 | 13,269 | 2,495 | 11,116 | 36,095 | 34,518 | 44,692 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,711 | 1,419 | 2,258 | 13,241 | 2,495 | 11,116 | 36,095 | 34,518 | 44,692 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,711 | 1,419 | 2,258 | 13,266 | 2,492 | 11,114 | 36,095 | 34,518 | 44,692 |
 
 ## stream-burst-16
 
@@ -5983,6 +6014,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 3,736 | 22,494 | 4,626 | 14,800 | 27,562 | 13,367 | 90,925 | 540,091 | 100,222 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 3,736 | 22,494 | 4,628 | 14,800 | 27,562 | 13,370 | 90,925 | 540,091 | 100,222 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 3,736 | 22,494 | 4,628 | 14,800 | 27,562 | 13,368 | 90,922 | 540,091 | 100,217 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 3,736 | 22,494 | 4,628 | 14,802 | 27,562 | 13,372 | 90,925 | 540,090 | 100,222 |
 
 ## stream-burst-256
 
@@ -6170,6 +6202,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 36,112 | 359,694 | 42,525 | 88,092 | 448,442 | 66,918 | 968,422 | 8,627,820 | 988,074 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 36,112 | 359,694 | 42,527 | 88,089 | 448,442 | 66,914 | 968,416 | 8,627,820 | 988,094 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 36,112 | 359,694 | 42,527 | 88,092 | 448,442 | 66,910 | 968,421 | 8,627,820 | 988,076 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 36,112 | 359,694 | 42,527 | 88,089 | 448,442 | 66,955 | 968,419 | 8,627,816 | 988,076 |
 
 ## stream-restart
 
@@ -6357,6 +6390,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 3,659 | 4,530 | 7,740 | 6,162 | 41,437 | 70,578 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 3,659 | 4,530 | 7,741 | 6,166 | 41,435 | 70,578 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 3,659 | 4,530 | 7,740 | 6,161 | 41,434 | 70,576 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 3,659 | 4,530 | 7,741 | 6,164 | 41,438 | 70,581 |
 
 ## timed-admit-both
 
@@ -6544,6 +6578,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 106,889 | 130,801 | 2,467,790 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 106,889 | 130,797 | 2,467,791 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 106,889 | 130,797 | 2,467,777 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,889 | 130,793 | 2,467,739 |
 
 ## timed-admit-debounce
 
@@ -6731,6 +6766,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 106,441 | 129,375 | 2,453,670 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 106,441 | 129,391 | 2,453,670 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 106,441 | 129,377 | 2,453,670 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,441 | 129,368 | 2,453,683 |
 
 ## timed-admit-first
 
@@ -6918,6 +6954,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 66,634 | 76,122 | 1,516,393 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 66,634 | 76,122 | 1,516,393 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 66,634 | 76,118 | 1,516,393 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 66,634 | 76,123 | 1,516,393 |
 
 ## timed-admit-last
 
@@ -7105,6 +7142,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 106,697 | 129,715 | 2,463,526 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 106,697 | 129,700 | 2,463,525 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 106,697 | 129,711 | 2,463,526 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,697 | 129,699 | 2,463,541 |
 
 ## timed-capture-both
 
@@ -7292,6 +7330,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 34,545 | 42,650 | 831,343 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 34,545 | 42,650 | 831,342 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 34,545 | 42,647 | 831,342 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,545 | 42,655 | 831,358 |
 
 ## timed-capture-debounce
 
@@ -7479,6 +7518,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 34,417 | 44,514 | 832,009 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 34,417 | 44,514 | 832,009 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 34,417 | 44,514 | 832,009 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,417 | 44,514 | 832,009 |
 
 ## timed-capture-first
 
@@ -7666,6 +7706,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 30,769 | 35,601 | 714,370 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 30,769 | 35,601 | 714,370 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 30,769 | 35,601 | 714,370 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 30,769 | 35,602 | 714,370 |
 
 ## timed-capture-last
 
@@ -7853,6 +7894,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 34,353 | 44,450 | 824,137 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 34,353 | 44,450 | 824,137 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 34,353 | 44,452 | 824,137 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,353 | 44,448 | 824,137 |
 
 ## update
 
@@ -8040,6 +8082,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 1,088,990 | 38,805 | 73,905 | 196,956 | 88,983 | 2,533,195 | 1,684,076 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 1,087,390 | 38,805 | 73,905 | 196,957 | 88,981 | 2,533,176 | 1,684,050 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,087,391 | 38,805 | 73,905 | 196,898 | 88,981 | 2,533,160 | 1,684,049 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,088,990 | 38,805 | 73,905 | 196,951 | 88,984 | 2,533,172 | 1,684,070 |
 
 ## update-on
 
@@ -8227,6 +8270,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 83,005 | 108,881 | 1,994,243 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 84,605 | 108,881 | 1,994,248 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 83,005 | 108,853 | 1,994,109 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 84,605 | 108,862 | 1,994,245 |
 
 ## work-form
 
@@ -8414,6 +8458,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 146,579 | 140,570 | 291,705 | 242,329 | 4,726,469 | 4,639,516 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 146,579 | 142,570 | 291,695 | 242,283 | 4,726,415 | 4,639,514 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 146,579 | 142,570 | 291,696 | 242,295 | 4,726,490 | 4,639,551 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 146,579 | 140,570 | 291,728 | 242,301 | 4,726,522 | 4,639,290 |
 
 ## work-status
 
@@ -8601,6 +8646,7 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 92,745 | 68,655 | 194,368 | 95,648 | 1,810,369 | 1,525,238 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 92,745 | 70,255 | 194,371 | 95,645 | 1,810,319 | 1,525,216 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 92,745 | 68,655 | 194,380 | 95,654 | 1,810,408 | 1,525,191 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 92,745 | 70,255 | 194,389 | 95,478 | 1,810,411 | 1,525,236 |
 
 ## work-value
 
@@ -8788,4 +8834,5 @@
 | `3f68562` | 2026-11-17 | perf(extensions): optimise Elmish MVU dispatch and Query staging and leases (#376) | 99,869 | 110,569 | 194,724 | 219,557 | 1,795,133 | 2,102,404 |
 | `404f358` | 2026-11-17 | perf(extensions): optimise CSharp bindings Wire codecs Mcp and Dom (#377) | 99,869 | 112,169 | 194,744 | 219,541 | 1,795,113 | 2,102,397 |
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 99,869 | 110,569 | 194,718 | 219,532 | 1,795,052 | 2,102,343 |
+| `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 99,869 | 112,168 | 194,733 | 219,545 | 1,795,055 | 2,102,312 |
 
