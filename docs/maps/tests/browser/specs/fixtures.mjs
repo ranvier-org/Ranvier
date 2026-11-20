@@ -14,9 +14,14 @@ export const test = base.extend({
       const started = performance.now();
       const record = (direction, packet) => {
         if (messages.length >= 100) return;
-        let tag;
-        try { tag = typeof packet === "string" ? JSON.parse(packet)?.[0] : undefined; } catch {}
-        if (typeof tag === "string") messages.push({ ms: Math.round(performance.now() - started), direction, tag });
+        let parsed;
+        try { parsed = typeof packet === "string" ? JSON.parse(packet) : undefined; } catch {}
+        const tag = parsed?.[0];
+        if (typeof tag !== "string") return;
+        const message = { ms: Math.round(performance.now() - started), direction, tag };
+        // Loaded carries the version the compiler reports, which a test compares with the command-line tool's.
+        if (tag === "Loaded" && typeof parsed[1] === "string") message.version = parsed[1];
+        messages.push(message);
       };
       const OriginalWorker = globalThis.Worker;
       if (!OriginalWorker) return;
