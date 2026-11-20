@@ -96,8 +96,12 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
       # The live editor's browser compiler and the command-line tool come from the manifest's one fickl release.
+      # On Linux, fickl prints its version in ANSI colours, with the colour reset on a line of its own.
       - name: Record the fickl compiler version
-        run: echo "FICKL_COMPILER_VERSION=$(dotnet fickl --version)" >> "$GITHUB_ENV"
+        run: |
+          version=$(dotnet fickl --version)
+          version=$(printf '%s\n' "$version" | sed 's/\x1b\[[0-9;]*m//g' | grep -m 1 -E '^[0-9]')
+          echo "FICKL_COMPILER_VERSION=$version" >> "$GITHUB_ENV"
       - name: Check the signal maps in a browser
         if: inputs.compiler_diagnostic != true
         working-directory: docs/maps/tests/browser
