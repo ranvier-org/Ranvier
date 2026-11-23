@@ -188,6 +188,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 73,285 | 98,028 | 1,602,890 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 73,286 | 98,020 | 1,602,940 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 73,282 | 97,998 | 1,602,906 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 73,299 | 97,978 | 1,602,959 |
 
 ## app-table
 
@@ -377,6 +378,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,820,706 | 4,742,675 | 60,407,724 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,820,730 | 4,744,262 | 60,408,822 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,820,696 | 4,744,280 | 60,408,854 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,820,697 | 4,744,278 | 60,522,645 |
 
 ## async-recover
 
@@ -566,6 +568,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 93,861 | 30,042 | 361,688 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 93,861 | 30,050 | 361,696 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 93,861 | 30,048 | 361,698 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 93,861 | 30,050 | 361,701 |
 
 ## async-resolve
 
@@ -755,6 +758,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,754,639 | 720,300 | 9,088,915 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,754,656 | 719,020 | 9,058,227 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,754,645 | 719,028 | 9,058,184 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,753,844 | 719,060 | 9,058,187 |
 
 ## chain
 
@@ -944,6 +948,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 13,083 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 13,083 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 
 ## chain-affinity
 
@@ -1133,6 +1138,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,416 | 2,941 | 2,358 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,416 | 2,941 | 2,358 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,416 | 2,941 | 2,358 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,416 | 2,941 | 2,358 |
 
 ## control
 
@@ -1322,6 +1328,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 74,709 | 462,040 | 2,277,129 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 74,709 | 458,340 | 2,267,596 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 74,709 | 458,463 | 2,267,653 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 74,709 | 466,694 | 2,267,660 |
 
 ## create
 
@@ -1511,6 +1518,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 13,463,621 | 2,882,613 | 2,265,909 | 4,454,114 | 3,098,647 | 33,073,748 | 45,751,731 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 13,573,163 | 2,866,614 | 2,265,907 | 4,442,500 | 3,093,922 | 32,788,176 | 45,466,981 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 13,447,656 | 2,866,615 | 2,265,893 | 4,442,504 | 3,093,757 | 32,788,182 | 45,467,113 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 13,637,184 | 2,896,617 | 2,264,925 | 4,443,259 | 3,093,722 | 32,788,182 | 45,467,086 |
 
 ## create-on
 
@@ -1700,6 +1708,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,657,260 | 3,428,063 | 51,301,523 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,673,254 | 3,406,913 | 51,017,454 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,673,212 | 3,407,139 | 51,017,163 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,686,238 | 3,407,065 | 51,017,240 |
 
 ## cutoff
 
@@ -1889,6 +1898,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 
 ## derive-effect
 
@@ -2078,6 +2088,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 701 | 703 | 15,092 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 701 | 703 | 15,092 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 701 | 703 | 15,092 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 701 | 703 | 15,092 |
 
 ## derive-on
 
@@ -2267,6 +2278,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 634 | 696 | 14,938 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 650 | 696 | 14,938 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 650 | 696 | 14,938 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 666 | 696 | 14,938 |
 
 ## dispose
 
@@ -2456,6 +2468,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 2,707,638 | 806,288 | 355,483 | 480,024 | 501,504 | 11,184,874 | 9,120,819 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,706,758 | 806,288 | 355,483 | 480,101 | 501,558 | 11,185,044 | 9,120,785 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,707,645 | 806,288 | 355,483 | 480,070 | 501,594 | 11,184,829 | 9,120,395 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,707,646 | 806,290 | 355,483 | 480,211 | 501,548 | 11,184,819 | 9,120,661 |
 
 ## dispose-on
 
@@ -2645,6 +2658,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 334,483 | 493,329 | 8,916,372 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 334,483 | 493,381 | 8,917,163 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 334,483 | 493,397 | 8,916,995 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 334,483 | 493,405 | 8,916,980 |
 
 ## editable-edit
 
@@ -2834,6 +2848,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 160,709 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 160,709 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 160,709 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 160,709 |
 
 ## editable-upstream
 
@@ -3023,6 +3038,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 205,109 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 205,109 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 205,109 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 205,109 |
 
 ## fail-recompute
 
@@ -3212,6 +3228,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 55,263 | 1,310 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 55,263 | 1,310 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 55,263 | 1,310 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 55,355 | 1,310 |
 
 ## flight
 
@@ -3401,6 +3418,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 9,844 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 
 ## keyed-insert
 
@@ -3590,6 +3608,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,791,367 | 33,833 | 34,536 | 2,414,024 | 169,045 | 536,592 | 39,858,079 | 2,741,125 | 2,762,237 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,791,367 | 33,802 | 34,537 | 2,414,037 | 169,145 | 536,394 | 39,867,694 | 2,738,159 | 2,761,866 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,791,450 | 33,842 | 34,584 | 2,414,033 | 169,115 | 536,428 | 39,867,707 | 2,738,070 | 2,761,886 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,791,389 | 33,816 | 34,568 | 2,414,077 | 169,111 | 536,492 | 39,867,698 | 2,738,121 | 2,761,881 |
 
 ## keyed-remove
 
@@ -3779,6 +3798,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,790,499 | 28,103 | 29,432 | 2,459,697 | 464,016 | 144,921 | 39,827,768 | 1,879,501 | 1,918,760 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,790,507 | 28,071 | 29,432 | 2,459,841 | 463,989 | 144,940 | 39,842,605 | 1,879,551 | 1,918,065 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,790,590 | 28,110 | 29,480 | 2,459,775 | 463,990 | 144,944 | 39,842,585 | 1,879,616 | 1,918,088 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,790,526 | 28,089 | 29,470 | 2,459,763 | 463,990 | 144,950 | 39,842,615 | 1,879,554 | 1,918,077 |
 
 ## keyed-swap
 
@@ -3968,6 +3988,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,771,466 | 31,566 | 32,155 | 3,046,594 | 365,586 | 80,350 | 40,389,741 | 692,855 | 710,060 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,771,465 | 31,536 | 32,155 | 3,046,218 | 365,624 | 80,334 | 40,403,455 | 692,921 | 710,063 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,771,549 | 31,566 | 32,203 | 3,046,212 | 365,620 | 80,335 | 40,403,437 | 692,899 | 710,079 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,771,489 | 31,550 | 32,187 | 3,046,204 | 365,599 | 80,344 | 40,403,451 | 692,928 | 710,112 |
 
 ## mvu-dispatch
 
@@ -4157,6 +4178,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 57,337 | 698 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 57,337 | 698 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 57,337 | 698 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 57,336 | 698 |
 
 ## persist-write
 
@@ -4346,6 +4368,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | — | — |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — |
 
 ## project-chain
 
@@ -4535,6 +4558,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 68,829 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 68,851 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 68,827 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 68,841 |
 
 ## project-churn
 
@@ -4724,6 +4748,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 24,273 | 22,027 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 24,273 | 22,028 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 24,273 | 22,027 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 24,289 | 22,027 |
 
 ## project-edit
 
@@ -4913,6 +4938,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 29,635 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 29,635 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 29,651 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 29,667 |
 
 ## project-reorder
 
@@ -5102,6 +5128,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 463,103 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 463,103 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 463,119 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 463,145 |
 
 ## server-render
 
@@ -5291,6 +5318,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | — | — | — |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — | — |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — | — |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — | — |
 
 ## shape-diamond
 
@@ -5480,6 +5508,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 57,370 | 83,971 | 1,730,751 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 57,370 | 83,970 | 1,730,751 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 57,370 | 83,971 | 1,730,751 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 57,370 | 83,971 | 1,730,751 |
 
 ## shape-dynamic
 
@@ -5669,6 +5698,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 79,026 | 103,742 | 1,866,485 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 79,026 | 103,742 | 1,866,486 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 79,026 | 103,744 | 1,866,486 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 79,026 | 103,744 | 1,866,487 |
 
 ## stream-burst-1
 
@@ -5858,6 +5888,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,711 | 1,419 | 2,258 | 13,241 | 2,495 | 11,116 | 36,095 | 34,518 | 44,692 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,711 | 1,419 | 2,258 | 13,266 | 2,492 | 11,114 | 36,095 | 34,518 | 44,692 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,711 | 1,419 | 2,258 | 13,266 | 2,495 | 11,114 | 36,095 | 34,518 | 44,692 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,711 | 1,419 | 2,256 | 13,266 | 2,495 | 11,115 | 36,095 | 34,518 | 44,691 |
 
 ## stream-burst-16
 
@@ -6047,6 +6078,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 3,736 | 22,494 | 4,628 | 14,800 | 27,562 | 13,368 | 90,922 | 540,091 | 100,217 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 3,736 | 22,494 | 4,628 | 14,802 | 27,562 | 13,372 | 90,925 | 540,090 | 100,222 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 3,736 | 22,494 | 4,628 | 14,800 | 27,562 | 13,368 | 90,925 | 540,090 | 100,222 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 3,736 | 22,494 | 4,626 | 14,803 | 27,562 | 13,372 | 90,925 | 540,090 | 100,223 |
 
 ## stream-burst-256
 
@@ -6236,6 +6268,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 36,112 | 359,694 | 42,527 | 88,092 | 448,442 | 66,910 | 968,421 | 8,627,820 | 988,076 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 36,112 | 359,694 | 42,527 | 88,089 | 448,442 | 66,955 | 968,419 | 8,627,816 | 988,076 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 36,112 | 359,694 | 42,527 | 88,092 | 448,442 | 66,955 | 968,426 | 8,627,816 | 988,093 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 36,112 | 359,694 | 42,525 | 88,092 | 448,442 | 66,958 | 968,421 | 8,627,816 | 988,078 |
 
 ## stream-restart
 
@@ -6425,6 +6458,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 3,659 | 4,530 | 7,740 | 6,161 | 41,434 | 70,576 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 3,659 | 4,530 | 7,741 | 6,164 | 41,438 | 70,581 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 3,659 | 4,530 | 7,741 | 6,165 | 41,434 | 70,581 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 3,659 | 4,530 | 7,741 | 6,166 | 41,438 | 70,582 |
 
 ## timed-admit-both
 
@@ -6614,6 +6648,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 106,889 | 130,797 | 2,467,777 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,889 | 130,793 | 2,467,739 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,913 | 130,793 | 2,467,738 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,889 | 130,787 | 2,467,738 |
 
 ## timed-admit-debounce
 
@@ -6803,6 +6838,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 106,441 | 129,377 | 2,453,670 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,441 | 129,368 | 2,453,683 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,465 | 129,380 | 2,453,685 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,441 | 129,379 | 2,453,685 |
 
 ## timed-admit-first
 
@@ -6992,6 +7028,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 66,634 | 76,118 | 1,516,393 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 66,634 | 76,123 | 1,516,393 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 67,658 | 76,123 | 1,516,393 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 66,634 | 76,123 | 1,516,393 |
 
 ## timed-admit-last
 
@@ -7181,6 +7218,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 106,697 | 129,711 | 2,463,526 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,697 | 129,699 | 2,463,541 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,721 | 129,702 | 2,463,541 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,697 | 129,699 | 2,463,529 |
 
 ## timed-capture-both
 
@@ -7370,6 +7408,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 34,545 | 42,647 | 831,342 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,545 | 42,655 | 831,358 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,545 | 42,650 | 831,357 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,545 | 42,652 | 831,357 |
 
 ## timed-capture-debounce
 
@@ -7559,6 +7598,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 34,417 | 44,514 | 832,009 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,417 | 44,514 | 832,009 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,417 | 44,515 | 832,009 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,417 | 44,515 | 832,010 |
 
 ## timed-capture-first
 
@@ -7748,6 +7788,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 30,769 | 35,601 | 714,370 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 30,769 | 35,602 | 714,370 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 30,769 | 35,602 | 714,370 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 30,769 | 35,602 | 714,370 |
 
 ## timed-capture-last
 
@@ -7937,6 +7978,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 34,353 | 44,452 | 824,137 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,353 | 44,448 | 824,137 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,353 | 44,448 | 824,137 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,353 | 44,450 | 824,137 |
 
 ## update
 
@@ -8126,6 +8168,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 1,087,391 | 38,805 | 73,905 | 196,898 | 88,981 | 2,533,160 | 1,684,049 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,088,990 | 38,805 | 73,905 | 196,951 | 88,984 | 2,533,172 | 1,684,070 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,090,590 | 38,805 | 73,905 | 196,922 | 88,983 | 2,533,236 | 1,684,076 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,088,990 | 38,805 | 73,905 | 196,936 | 88,983 | 2,533,214 | 1,684,062 |
 
 ## update-on
 
@@ -8315,6 +8358,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 83,005 | 108,853 | 1,994,109 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 84,605 | 108,862 | 1,994,245 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 84,605 | 108,899 | 1,994,254 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 86,205 | 108,886 | 1,994,255 |
 
 ## work-form
 
@@ -8504,6 +8548,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 146,579 | 142,570 | 291,696 | 242,295 | 4,726,490 | 4,639,551 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 146,579 | 140,570 | 291,728 | 242,301 | 4,726,522 | 4,639,290 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 146,579 | 140,586 | 291,721 | 242,309 | 4,726,481 | 4,639,329 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 146,579 | 140,570 | 291,727 | 242,312 | 4,726,448 | 4,639,333 |
 
 ## work-status
 
@@ -8693,6 +8738,7 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 92,745 | 68,655 | 194,380 | 95,654 | 1,810,408 | 1,525,191 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 92,745 | 70,255 | 194,389 | 95,478 | 1,810,411 | 1,525,236 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 92,745 | 70,255 | 194,381 | 95,496 | 1,810,481 | 1,525,230 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 92,745 | 71,855 | 194,396 | 95,498 | 1,810,455 | 1,525,252 |
 
 ## work-value
 
@@ -8882,4 +8928,5 @@
 | `05781b2` | 2026-11-19 | docs(guide): document buffers updated in place, with a hand-off benchmark (#378) | 99,869 | 110,569 | 194,718 | 219,532 | 1,795,052 | 2,102,343 |
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 99,869 | 112,168 | 194,733 | 219,545 | 1,795,055 | 2,102,312 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 99,869 | 112,169 | 194,664 | 219,560 | 1,795,133 | 2,102,403 |
+| `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 99,869 | 113,769 | 194,691 | 219,542 | 1,795,096 | 2,102,371 |
 
