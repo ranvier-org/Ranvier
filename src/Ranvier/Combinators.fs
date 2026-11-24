@@ -6008,10 +6008,16 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     // Function objects built once by Attach. A let-bound lambda compiles to a method, and passing it as a value
     // allocates a closure at every use; a mutable field assigned once holds one object.
     let mutable touchedFn: FoldRow<'K, 'V> -> unit = Unchecked.defaultof<_>
+    let mutable foldAllFn: unit -> 'S = Unchecked.defaultof<_>
 #if FABLE_COMPILER
-    let mutable applyAddFn: struct ('S * 'V) -> 'S = Unchecked.defaultof<_>
-    let mutable applyReplaceFn: struct ('S * 'V * 'V) -> 'S = Unchecked.defaultof<_>
-    let mutable applySubtractFn: struct ('S * 'V) -> 'S = Unchecked.defaultof<_>
+    // Under Fable a struct tuple is an array and a Reading is an object. A step parks its row values in these fields
+    // and runs a thunk; a row read returns its status alone.
+    let mutable stepOld = Unchecked.defaultof<'V>
+    let mutable stepNew = Unchecked.defaultof<'V>
+    let mutable applyAddFn: unit -> 'S = Unchecked.defaultof<_>
+    let mutable applyReplaceFn: unit -> 'S = Unchecked.defaultof<_>
+    let mutable applySubtractFn: unit -> 'S = Unchecked.defaultof<_>
+    let mutable ensureRowFn: Memo<'V> -> Status = Unchecked.defaultof<_>
 #endif
 
     let foldAll () =
@@ -6052,10 +6058,17 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 
     member private this.Attach() =
         touchedFn <- touched
+        foldAllFn <- foldAll
 #if FABLE_COMPILER
-        applyAddFn <- fun (struct (s, v)) -> invokeAdd s v
-        applyReplaceFn <- fun (struct (s, old, v)) -> invokeAdd (invokeSub s old) v
-        applySubtractFn <- fun (struct (s, old)) -> invokeSub s old
+        applyAddFn <- fun () -> invokeAdd state stepNew
+
+        applyReplaceFn <-
+            fun () ->
+                let v = stepNew
+                invokeAdd (invokeSub state stepOld) v
+
+        applySubtractFn <- fun () -> invokeSub state stepOld
+        ensureRowFn <- fun row -> row.EnsureCurrentUntracked ()
 #endif
         link <- graph.CurrentOwner.AttachLinked this
         keyReader <- upstream.NewInternalKeyReader ()
@@ -6074,23 +6087,32 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         and set v = memo <- v
 
 #if FABLE_COMPILER
-    /// <summary>Applies <c>step arg</c> to the state, or marks the state for a full recompute when <c>step</c> raises.</summary>
-    member private _.StepWith(step: 'A -> 'S, arg: 'A) =
+    /// <summary>
+    /// Applies <c>step</c> to the state over the parked row values <c>old</c> and <c>v</c>, tracking its reads in
+    /// <c>reads</c>, or marks the state for a full recompute when <c>step</c> raises.
+    /// </summary>
+    member private _.StepWith(step: unit -> 'S, old: 'V, v: 'V) =
         if not full then
+            stepOld <- old
+            stepNew <- v
+
             try
-                state <- graph.RunHosted (reads :> IComputation, step, arg)
+                state <- graph.RunHosted (reads :> IComputation, step)
                 moved <- true
             with _ ->
                 full <- true
 
+            stepOld <- Unchecked.defaultof<'V>
+            stepNew <- Unchecked.defaultof<'V>
+
     member private this.StepAdd(v: 'V) =
-        this.StepWith (applyAddFn, struct (state, v))
+        this.StepWith (applyAddFn, Unchecked.defaultof<'V>, v)
 
     member private this.StepSubtract(old: 'V) =
-        this.StepWith (applySubtractFn, struct (state, old))
+        this.StepWith (applySubtractFn, old, Unchecked.defaultof<'V>)
 
     member private this.StepReplace(old: 'V, v: 'V) =
-        this.StepWith (applyReplaceFn, struct (state, old, v))
+        this.StepWith (applyReplaceFn, old, v)
 #else
     /// <summary>
     /// Applies <c>subtract old</c> when <c>subtracts</c>, then <c>add v</c> when <c>adds</c>, to the state, tracking their
@@ -6190,9 +6212,6 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 
     /// <summary>Reads the row untracked and moves its contribution to the row's value.</summary>
     member private this.Read(row: FoldRow<'K, 'V>) =
-#if FABLE_COMPILER
-        this.ReadStale row
-#else
         let source = row.Entry.Row
 
         // A clean, ready row outside a tracking context: the value the untracked read returns.
@@ -6204,19 +6223,27 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             this.ReadReady (row, source.Peek)
         else
             this.ReadStale row
-#endif
 
     /// <summary><c>Read</c> for a row that is stale, pending or failed, or read inside a tracking context.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ReadStale(row: FoldRow<'K, 'V>) =
 #if FABLE_COMPILER
-        let reading = row.Entry.Row.TryValueUntracked ()
+        let source = row.Entry.Row
+
+        let status =
+            if graph.IsTracking () then
+                graph.RunUntrackedWith (ensureRowFn, source)
+            else
+                source.EnsureCurrentUntracked ()
+
         row.Queued <- false
 
-        match reading with
-        | Ready v -> this.ReadReady (row, v)
-        | Pending -> this.Unfail row
-        | Failed ex -> this.Fail (row, ex)
+        if not (StatusBits.isUnready status) then
+            this.ReadReady (row, source.Peek)
+        elif StatusBits.isPending status then
+            this.Unfail row
+        else
+            this.Fail (row, source.Failure.Error)
 #else
         let struct (status, v, error) = row.Entry.Row.TryReadUntrackedStruct ()
         row.Queued <- false
@@ -6350,7 +6377,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     /// <summary>Folds the cached row values in <c>Keys</c> order into a fresh state. O(N).</summary>
     member private _.Recompute() =
         reads.Clear ()
-        state <- graph.RunHosted (reads :> IComputation, foldAll)
+        state <- graph.RunHosted (reads :> IComputation, foldAllFn)
         full <- false
         moved <- true
 

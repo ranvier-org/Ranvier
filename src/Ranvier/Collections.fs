@@ -31,12 +31,19 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     let mutable first = true
     let mutable stopped = false
 
-    // The batch bodies, built once by Init and bound to this collection. They take their arguments as a struct, so an
-    // edit allocates no closure. A let-bound lambda would compile to a method and a fresh closure at each use; a mutable
-    // field assigned once holds one object.
-    let mutable addOrUpdateFn: struct ('K * 'V) -> unit = Unchecked.defaultof<_>
-    let mutable removeFn: 'K -> bool = Unchecked.defaultof<_>
+    // The batch bodies, built once by Init and bound to this collection, so an edit allocates no closure. A let-bound
+    // lambda would compile to a method and a fresh closure at each use; a mutable field assigned once holds one object.
     let mutable clearFn: unit -> unit = Unchecked.defaultof<_>
+#if FABLE_COMPILER
+    // Under Fable, RunBatchWith wraps its argument in a closure. An edit parks its body and argument in these fields
+    // and runs a thunk built once.
+    let mutable parkedBody: obj -> unit = Unchecked.defaultof<_>
+    let mutable parkedArg: obj = null
+    let mutable runParked: unit -> unit = Unchecked.defaultof<_>
+    let mutable removeParked: unit -> bool = Unchecked.defaultof<_>
+#else
+    let mutable removeFn: 'K -> bool = Unchecked.defaultof<_>
+#endif
 
     let toArray () =
         if count = 0 then
@@ -57,9 +64,13 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     member private this.Init() =
         // A key's item signal is immutable: a replaced or removed key retires its row, and a re-added key gets a new row.
         this.DirectBody <- Func<_, _, _>(fun entry signal -> this.RowBody (entry, signal))
-        addOrUpdateFn <- fun (struct (key, value)) -> this.AddOrUpdateInBatch (key, value)
-        removeFn <- fun key -> this.RemoveInBatch key
         clearFn <- fun () -> this.ClearInBatch ()
+#if FABLE_COMPILER
+        runParked <- fun () -> this.RunParked ()
+        removeParked <- fun () -> this.RemoveParked ()
+#else
+        removeFn <- fun key -> this.RemoveInBatch key
+#endif
 
         this.ReadDelta <-
             fun () ->
@@ -168,10 +179,6 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
             lastItem <- item
             item.Signal.SetFromEnteredBatch value
 
-    member internal this.AddOrUpdateInBatch(key: 'K, value: 'V) =
-        this.EnsureLive ()
-        this.AddOrUpdateCore (key, value)
-
     member internal this.AddOrUpdateByInBatch(keyOf: 'V -> 'K, value: 'V) =
         this.EnsureLive ()
         let key = keyOf value
@@ -228,22 +235,52 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
             count <- 0
             revision.Value <- revision.Peek + 1
 
-    member this.AddOrUpdate(key: 'K, value: 'V) =
-        graph.RunBatchUnitWith (addOrUpdateFn, struct (key, value))
+#if FABLE_COMPILER
+    /// <summary>
+    /// Runs the parked edit body on the parked argument. Takes the argument before the body runs, so the body may park
+    /// an edit of its own.
+    /// </summary>
+    member private _.RunParked() =
+        // Called through the field: binding the body to a local makes Fable wrap it in a closure.
+        let arg = parkedArg
+        parkedArg <- null
+        parkedBody arg
+
+    /// <summary><c>RemoveInBatch</c> of the parked key.</summary>
+    member private this.RemoveParked() : bool =
+        let key = unbox<'K> parkedArg
+        parkedArg <- null
+        this.RemoveInBatch key
+#endif
 
     /// <summary>The upsert of a value under <c>keyOf value</c>, as a batch body for <c>EditWith</c>.</summary>
     member this.UpsertBody(keyOf: 'V -> 'K) : 'V -> unit =
         fun value -> this.AddOrUpdateByInBatch (keyOf, value)
 
     member this.Remove(key: 'K) : bool =
+#if FABLE_COMPILER
+        parkedArg <- box key
+        graph.RunBatch removeParked
+#else
         graph.RunBatchWith (removeFn, key)
+#endif
 
     member this.Clear() =
+#if FABLE_COMPILER
+        graph.RunBatch clearFn
+#else
         graph.RunBatchUnitWith (clearFn, ())
+#endif
 
     /// <summary>Runs <c>body arg</c> in one batch. The body checks liveness itself, through <c>CheckLive</c>.</summary>
     member this.EditWith(body: 'A -> unit, arg: 'A) =
+#if FABLE_COMPILER
+        parkedBody <- unbox<obj -> unit>(box body)
+        parkedArg <- box arg
+        graph.RunBatch runParked
+#else
         graph.RunBatchUnitWith (body, arg)
+#endif
 
     override this.Enumerate() =
         revision.Value |> ignore
@@ -284,11 +321,20 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
     // One function object for every upsert.
     let upsert = rows.UpsertBody keyOf
 
+#if FABLE_COMPILER
+    /// <summary>
+    /// Runs an edit callback inside the batch, after the liveness check. One object per collection, built by the first
+    /// <c>Edit</c>: under Fable a struct tuple of the collection and the callback is an array.
+    /// </summary>
+    let mutable editBody: Action<KeyedCollection<'K, 'V>> -> unit =
+        Unchecked.defaultof<_>
+#else
     /// <summary>Runs the edit callback inside the batch, after the liveness check. One object per instantiation.</summary>
     static member val private EditBody: struct (KeyedCollection<'K, 'V> * Action<KeyedCollection<'K, 'V>>) -> unit =
         (fun (struct (self, edit)) ->
             self.CheckLive ()
             edit.Invoke self) with get
+#endif
 
     /// <summary>The reactive view used by collection operators and readers.</summary>
     member _.Rows = rows :> Projection<'K, 'V>
@@ -313,7 +359,17 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
         if Platform.isNull edit then
             nullArg "edit"
 
+#if FABLE_COMPILER
+        if Platform.isNull (box editBody) then
+            editBody <-
+                fun edit ->
+                    rows.CheckLive ()
+                    edit.Invoke this
+
+        rows.EditWith (editBody, edit)
+#else
         rows.EditWith (KeyedCollection<'K, 'V>.EditBody, struct (this, edit))
+#endif
 
     /// <summary>Disposes the rows and resets existing readers to empty. Idempotent.</summary>
     member _.Dispose() =

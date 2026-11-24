@@ -765,6 +765,182 @@ let tests =
                 Expect.sequenceEqual seen [ 0; 5; 6; 0 ] "the disposal empties the fold after a value edit"
             }
 
+            test "a keyed collection created under a disposed owner is disposed at once" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let owner = createRoot id
+                owner.Dispose ()
+
+                let col =
+                    runWithOwner owner (fun () -> createKeyedCollection (fun (k: int, _: int) -> k))
+
+                throwsDisposed (fun () -> col.AddOrUpdate (1, 1)) "the collection was disposed as it attached"
+                Expect.isEmpty col.Rows.Keys "a disposed collection reads as empty"
+                Expect.equal owner.ErrorCount 0 "the disposal raised nothing"
+            }
+
+            test "a projection and its views created under a disposed owner read as empty" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1; 2; 3 ]
+                let live = createProjection id (fun x -> x * 10) (fun () -> items.Value)
+                let owner = createRoot id
+                owner.Dispose ()
+
+                let direct =
+                    runWithOwner owner (fun () -> createProjection id (fun x -> x * 10) (fun () -> items.Value))
+
+                let mapped = runWithOwner owner (fun () -> live |> Projection.map (fun v -> v + 1))
+
+                let filtered =
+                    runWithOwner owner (fun () -> live |> Projection.filter (fun v -> v > 10))
+
+                let sorted = runWithOwner owner (fun () -> live |> Projection.sortBy (fun v -> -v))
+
+                Expect.isEmpty direct.Keys "the projection was disposed as it attached"
+                Expect.isEmpty mapped.Keys "the mapped view was disposed as it attached"
+                Expect.isEmpty filtered.Keys "the filtered view was disposed as it attached"
+                Expect.isEmpty sorted.Keys "the sorted view was disposed as it attached"
+                Expect.equal owner.ErrorCount 0 "the disposals raised nothing"
+                Expect.sequenceEqual live.Keys [| 1; 2; 3 |] "the upstream projection keeps its rows"
+                Expect.equal (live.Get 2) 20 "and their values"
+            }
+
+            test "an Edit inside an Edit applies its removals and upserts in order, in one flush" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                let runs = countRuns (fun () -> col.Rows.Keys)
+
+                col.Edit (fun c ->
+                    c.AddOrUpdate (1, 1)
+                    c.AddOrUpdate (2, 2)
+
+                    c.Edit (fun inner ->
+                        Expect.isTrue (inner.Remove 1) "the nested removal finds the key the outer edit added"
+                        Expect.isFalse (inner.Remove 9) "an absent key reports false"
+                        inner.AddOrUpdate (3, 3))
+
+                    Expect.equal runs.Value 1 "the reader waits for the outer edit"
+                    c.AddOrUpdate (2, 20))
+
+                Expect.sequenceEqual col.Rows.Keys [| 2; 3 |] "the nested removal and upsert are applied between the outer ones"
+                Expect.equal (col.Rows.Get 2) (2, 20) "the upsert after the nested edit is applied last"
+                Expect.equal runs.Value 2 "the outer edit flushes once"
+            }
+
+            test "a Clear and an upsert inside an Edit reach the key reader once" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 1)
+                col.AddOrUpdate (2, 2)
+                let runs = countRuns (fun () -> col.Rows.Keys)
+
+                col.Edit (fun c ->
+                    c.Clear ()
+                    c.AddOrUpdate (2, 20)
+                    Expect.isFalse (c.Remove 1) "the cleared key is absent")
+
+                Expect.sequenceEqual col.Rows.Keys [| 2 |] "the key upserted after the clear is the only row"
+                Expect.equal (col.Rows.Get 2) (2, 20) "it holds the upserted value"
+                Expect.equal runs.Value 2 "the edit flushes once"
+            }
+
+            test "an Edit whose callback throws keeps the edits before the throw and the collection usable" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+
+                Expect.throws
+                    (fun () ->
+                        col.Edit (fun c ->
+                            c.AddOrUpdate (1, 1)
+                            failwith "edit failed"))
+                    "the callback's failure reaches the caller"
+
+                col.AddOrUpdate (2, 2)
+                Expect.isTrue (col.Remove 1) "the upsert before the throw was applied"
+                Expect.sequenceEqual col.Rows.Keys [| 2 |] "later edits apply as usual"
+            }
+
+            test "a fold over a projection raises a failed row's exception and recovers with the row" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1; 2 ]
+                let bad = createSignal false
+
+                let proj =
+                    createProjection id (fun x -> if x = 2 && bad.Value then failwith "row failed" else x * 10) (fun () -> items.Value)
+
+                let total = proj |> Projection.foldGroup (+) (-) 0
+                countRuns (fun () -> total.TryValue) |> ignore
+                Expect.equal total.Value 30 "both rows are folded"
+
+                bad.Value <- true
+
+                match total.TryValue with
+                | Failed ex -> Expect.equal ex.Message "row failed" "the fold raises the row's exception"
+                | other -> failtestf "expected the row's failure, got %A" other
+
+                bad.Value <- false
+                Expect.equal total.Value 30 "the recovered row's value is folded again"
+
+                items.Value <- [ 1; 2; 3 ]
+                Expect.equal total.Value 60 "an added row steps the total"
+            }
+
+            test "a fold over a projection keeps a pending row's last value and follows its settle" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let items = createSignal [ 1; 2 ]
+                let wait = createSignal false
+                let later = createAsyncSource<int>()
+
+                let proj =
+                    createProjection id (fun x -> if x = 2 && wait.Value then later.Value else x * 10) (fun () -> items.Value)
+
+                let total = proj |> Projection.foldGroup (+) (-) 0
+                countRuns (fun () -> total.TryValue) |> ignore
+                Expect.equal total.Value 30 "both rows are folded"
+
+                wait.Value <- true
+                Expect.equal total.Value 30 "the pending row keeps its last settled value in the total"
+
+                later.Settle 7
+                Expect.equal total.Value 17 "the settled value replaces it"
+            }
+
+            test "a fold without a subtract folds the row values once for each value edit" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 2)
+                col.AddOrUpdate (2, 3)
+                let folds = ref 0
+
+                let total =
+                    col.Rows
+                    |> Projection.fold
+                        (fun n (k, p) ->
+                            if k = 1 then
+                                folds.Value <- folds.Value + 1
+
+                            n + p)
+                        0
+
+                let seen = ResizeArray<int>()
+                createEffectOn (fun () -> total.Value) seen.Add
+                let first = folds.Value
+
+                col.AddOrUpdate (1, 10)
+                Expect.equal folds.Value (first + 1) "a changed value folds the rows once"
+                col.AddOrUpdate (2, 4)
+                Expect.equal folds.Value (first + 2) "and so does the next"
+
+                Expect.sequenceEqual seen [ 5; 13; 14 ] "each changed value reaches the total"
+            }
+
 #if !FABLE_COMPILER
             // .NET only: JavaScript exposes no allocation counter.
             untracedOnly

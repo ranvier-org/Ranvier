@@ -26,11 +26,16 @@ module internal Awaited =
 /// refresh, so a row that settles or fails updates <c>AnyPending</c> and <c>PendingKeys</c> without a reader of its own.
 /// </summary>
 [<Sealed>]
-type internal RowWatch(graph: Graph, refresh: unit -> unit, touched: unit -> unit) =
+type internal RowWatch(graph: Graph, touched: unit -> unit) =
     let id = graph.NextId ()
     do Tracer.RowWatchNew (graph, id)
     let mutable queued = false
     let mutable running = false
+    let mutable refresh: unit -> unit = Unchecked.defaultof<_>
+
+    /// <summary>Sets the refresh a scheduled run makes. Called once, before the first <c>Request</c>.</summary>
+    member _.Bind(run: unit -> unit) =
+        refresh <- run
 
     member this.Request() =
         if not queued && not running then
@@ -89,11 +94,16 @@ type internal IBeaconHost =
 /// reads before the reader's body runs.
 /// </remarks>
 [<Sealed; NoEquality; NoComparison>]
-type internal ProjectionBeacon(graph: Graph, host: IBeaconHost) =
+type internal ProjectionBeacon(graph: Graph) =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     do Tracer.BeaconNew (graph, id)
+    let mutable host: IBeaconHost = Unchecked.defaultof<_>
+
+    /// <summary>Sets the projection behind the beacon. Called once, before the beacon has an observer.</summary>
+    member _.Bind(projection: IBeaconHost) =
+        host <- projection
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -365,7 +375,11 @@ module internal ProjectionFailures =
 /// reader also wakes when a pass fails, suspends or recovers.
 /// </remarks>
 [<AbstractClass>]
+#if FABLE_COMPILER
 type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
+#else
+type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
+#endif
     let id = graph.NextId ()
     do Tracer.Reserve (graph, id)
     let mutable sources = SourceList.Create ()
@@ -409,7 +423,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     let mutable values: ProjectionValues<'K, 'V> = Unchecked.defaultof<_>
 
-    let beacon = ProjectionBeacon (graph, this)
+    let beacon = ProjectionBeacon graph
 #if !FABLE_COMPILER
     let mutable passCached: IProjectionPass = Unchecked.defaultof<_>
 #endif
@@ -429,6 +443,13 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let mutable status = Status.None
     let mutable disposed = false
     let mutable link: OwnerLink = null
+
+    /// <summary>
+    /// False until <c>Attach</c> returns. A projection attached to a disposed owner is disposed inside <c>Attach</c>,
+    /// ahead of its subclass's constructor, and skips the pass's <c>Abandoned</c>.
+    /// </summary>
+    let mutable attached = false
+
     let mutable runs = 0
     let mutable queued = false
 
@@ -509,16 +530,11 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         inFlightVersion.NotifyCheck ()
         Tracer.Notified graph
 
-    let watch = RowWatch (graph, (fun () -> this.RefreshSummary ()), touchSummary)
+    let watch = RowWatch (graph, touchSummary)
 
-    do link <- graph.CurrentOwner.AttachLinked this
-    do Tracer.ProjectionNew (graph, id, link.Owner)
-    do Tracer.ScopeNew (scope, graph, id)
-    do Tracer.Part (graph, (keys :> INode).Id, id, null)
-    do Tracer.Part (graph, (beacon :> INode).Id, id, null)
-    do Tracer.Part (graph, (watch :> INode).Id, id, null)
-    do Tracer.Part (graph, (anyPending :> INode).Id, id, null)
-    do Tracer.Part (graph, (inFlightVersion :> INode).Id, id, null)
+#if FABLE_COMPILER
+    do this.Attach ()
+#endif
 
     /// <summary>
     /// Links the source a suspended pass awaits into the running reader.
@@ -580,6 +596,23 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let rowObserved (entry: RowEntry<'K, 'V>) =
         not (Platform.isNull (box entry.Row))
         && entry.Row.ObserverCount > (if entry.Watched then 1 else 0)
+
+    /// <summary>
+    /// Binds the beacon and the row watch to the projection and attaches it to the current owner. Disposing that owner
+    /// disposes the projection. Run once, by the constructor.
+    /// </summary>
+    member private this.Attach() =
+        beacon.Bind this
+        watch.Bind this.RefreshSummary
+        link <- graph.CurrentOwner.AttachLinked this
+        attached <- true
+        Tracer.ProjectionNew (graph, id, link.Owner)
+        Tracer.ScopeNew (scope, graph, id)
+        Tracer.Part (graph, (keys :> INode).Id, id, null)
+        Tracer.Part (graph, (beacon :> INode).Id, id, null)
+        Tracer.Part (graph, (watch :> INode).Id, id, null)
+        Tracer.Part (graph, (anyPending :> INode).Id, id, null)
+        Tracer.Part (graph, (inFlightVersion :> INode).Id, id, null)
 
 #if FABLE_COMPILER
     member inline private this.Pass = box this :?> IProjectionPass
@@ -2247,7 +2280,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member this.Dispose() =
         if not disposed then
             disposed <- true
-            this.Pass.Abandoned ()
+
+            if attached then
+                this.Pass.Abandoned ()
+
             Tracer.NodeDispose (graph, id)
 
             if not (Platform.isNull link) then
@@ -2384,6 +2420,19 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         member this.Release() =
             link <- null
             this.Dispose ()
+
+// The constructor lives in an intrinsic augmentation: it attaches the projection it built, which needs a self-identifier,
+// and on the type's own declaration that would put an initialisation check on every member of the type and of each
+// subclass. Fable cannot translate a secondary constructor with a self-identifier; under Fable the primary constructor
+// attaches. The attribute comes first because F# reads an accessibility keyword directly after `with` as the start of a
+// property accessor.
+#if !FABLE_COMPILER
+type Projection<'K, 'V when 'K: equality> with
+    [<System.Diagnostics.DebuggerStepThrough>]
+    internal new(graph: Graph) as this =
+        new Projection<'K, 'V> (graph, 0)
+        then this.Attach ()
+#endif
 
 /// <summary>
 /// The rows of a projection over items of type <c>'T</c>: one item source per key,
@@ -3708,7 +3757,11 @@ type internal LookupCell<'V>(graph: Graph, equal: IEqualityComparer<'V>, orphane
 /// </para>
 /// </remarks>
 [<AbstractClass>]
+#if FABLE_COMPILER
 type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
+#else
+type Lookup<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
+#endif
     let scope = new Owner (graph.Root)
     let equal = graph.EncodedComparer<'V>()
     let cells = Platform.KeyMap<'K, LookupCell<'V>>()
@@ -3748,10 +3801,11 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let mutable computeCached: 'K -> 'V = Unchecked.defaultof<_>
 #endif
 
-    do link <- graph.CurrentOwner.AttachLinked this
-    do Tracer.OwnerAdopt (link.Owner, scope, false)
 #if FABLE_COMPILER
-    let computeKey = fun (key: 'K) -> (box this :?> ILookupSource<'K, 'V>).Compute key
+    // One function object for every key's computation, built by Attach. A let-bound lambda compiles to a method, and
+    // passing it as a value allocates a closure at every use.
+    let mutable computeKey: 'K -> 'V = Unchecked.defaultof<_>
+    do this.Attach ()
 
     member private this.Source = box this :?> ILookupSource<'K, 'V>
 
@@ -3763,6 +3817,16 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     member inline private _.Source = sourceCached
 #endif
+
+    /// <summary>
+    /// Attaches the lookup to the current owner. Disposing that owner disposes the lookup. Run once, by the constructor.
+    /// </summary>
+    member private this.Attach() =
+#if FABLE_COMPILER
+        computeKey <- fun key -> this.Source.Compute key
+#endif
+        link <- graph.CurrentOwner.AttachLinked this
+        Tracer.OwnerAdopt (link.Owner, scope, false)
 
     member internal _.Graph = graph
 
@@ -3776,7 +3840,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             and set value = traceHost <- value
 #endif
 
-    member private _.NewCell(key: 'K) =
+    member private this.NewCell(key: 'K) =
         let cell =
             LookupCell<'V>(
                 graph,
@@ -4174,6 +4238,15 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         member this.Release() =
             link <- null
             this.Dispose ()
+
+// The constructor lives in an intrinsic augmentation, as on `Projection`.
+#if !FABLE_COMPILER
+type Lookup<'K, 'V when 'K: equality> with
+    [<System.Diagnostics.DebuggerStepThrough>]
+    internal new(graph: Graph) as this =
+        new Lookup<'K, 'V> (graph, 0)
+        then this.Attach ()
+#endif
 
 /// <summary>
 /// A lookup over a source of type <c>'S</c>. The source is held in a memo; an
