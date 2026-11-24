@@ -549,3 +549,5 @@ Print Assumptions stamp_version_eq_equivalence.
 Print Assumptions timed_wake_volatile_reset_no_lost_wakeup.
 Print Assumptions clean_ready_row_peek_refines_untracked_read.
 Print Assumptions certified_strict_order_skips_sort.
+Print Assumptions idle_first_run_effect_fusion_eq.
+Print Assumptions certified_reverse_order_reverses_to_sorted.

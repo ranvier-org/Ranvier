@@ -4912,3 +4912,68 @@ Proof.
   - intros Hbool. apply Hloc.
     eapply is_rank_up_sorted_locally. exact Hbool.
 Qed.
+
+Lemma locally_sorted_gt_forall (x : nat * Z * nat) (xs : list (nat * Z * nat)) :
+  LocallySorted (fun a b => (a.1.2 > b.1.2)%Z) (x :: xs) ->
+  Forall (fun z => (z.1.2 < x.1.2)%Z) xs.
+Proof.
+  revert x. induction xs as [|y ys IH]; intros x Hls.
+  - constructor.
+  - inversion Hls; subst.
+    constructor; [lia|].
+    assert (Hsub : Forall (fun z => (z.1.2 < y.1.2)%Z) ys) by (apply IH; assumption).
+    clear IH Hls H1.
+    induction Hsub as [|z zs Hz Htail IHzs].
+    + constructor.
+    + constructor; [eapply Z.lt_trans; [exact Hz|lia]|exact IHzs].
+Qed.
+
+Lemma forall_app_snoc_gt {A} (P : A -> Prop) (l : list A) (x : A) :
+  Forall P l -> P x -> Forall P (l ++ [x]).
+Proof.
+  intros Hl Hx. induction Hl as [|y ys Hy Htail IH]; simpl.
+  - constructor; [exact Hx|constructor].
+  - constructor; [exact Hy|exact IH].
+Qed.
+
+Lemma forall_rev_list {A} (P : A -> Prop) (xs : list A) :
+  Forall P xs -> Forall P (rev xs).
+Proof.
+  induction xs as [|x xs IH]; intros H.
+  - simpl. constructor.
+  - inversion H; subst. simpl.
+    apply forall_app_snoc_gt; [by apply IH|exact H2].
+Qed.
+
+Lemma sorted_insert_gt_all (x : nat * Z * nat) (l : list (nat * Z * nat)) :
+  Forall (fun z => (z.1.2 < x.1.2)%Z) l ->
+  sorted_insert x l = l ++ [x].
+Proof.
+  induction l as [|y ys IH]; intros Hfa.
+  - reflexivity.
+  - inversion Hfa; subst.
+    cbn [sorted_insert]. unfold rank_up_le_b.
+    rewrite bool_decide_false by lia.
+    simpl. f_equal. by apply IH.
+Qed.
+
+(**md
+**When incoming ranked items are strictly descending by rank (`LocallySorted (fun x y => (x.1.2 > y.1.2)%Z) xs`), `full_insertion_sort xs` produces `rev xs` in linear pass without general sorting (`Combinators.fs:3365`).**
+
+- [xs:] list of `(item, rank, up_idx)` entries ordered strictly descending by rank.
+*)
+Theorem certified_reverse_order_reverses_to_sorted
+    (xs : list (nat * Z * nat)) :
+  LocallySorted (fun x y => (x.1.2 > y.1.2)%Z) xs ->
+  full_insertion_sort xs = rev xs.
+Proof.
+  induction xs as [|x xs IH]; intros Hls.
+  - reflexivity.
+  - pose proof (locally_sorted_gt_forall x xs Hls) as Hfa.
+    assert (Htail : LocallySorted (fun a b => (a.1.2 > b.1.2)%Z) xs).
+    { inversion Hls; subst; [constructor|assumption]. }
+    unfold full_insertion_sort in *. simpl.
+    rewrite (IH Htail).
+    apply sorted_insert_gt_all.
+    by apply forall_rev_list.
+Qed.

@@ -7551,47 +7551,47 @@ Proof.
   repeat split; assumption.
 Qed.
 
-Definition obs_node_slot_bit : N := (2 ^ 30)%N.
-Definition obs_slot_mask : N := N.ones 30.
+Definition obs_node_slot_bit : N := (2 ^ 29)%N.
+Definition obs_slot_mask : N := N.ones 29.
 
 Definition encode_observer_slot (is_node : bool) (slot : N) : N :=
   N.lor (if is_node then obs_node_slot_bit else 0%N) slot.
 
-Definition decode_obs_is_node (w : N) : bool := N.testbit w 30.
+Definition decode_obs_is_node (w : N) : bool := N.testbit w 29.
 Definition decode_obs_slot (w : N) : N := N.land w obs_slot_mask.
 
 (**md
-**Tagging an observer slot index `< 2^30` with `NodeSlotBit = 2^30` encodes both the `is_node` bit and `slot` losslessly within 31 bits (`< 2^31`).**
+**Tagging an observer slot index `< 2^29` with `NodeSlotBit = 2^29` encodes both the `is_node` bit and `slot` losslessly within 30 bits (`< 2^30`, matching `EdgeHandle.NodeSlotBit = 0x20000000` and `SlotMask = 0x1FFFFFFF` in `Core.fs:417,421`).**
 
-- [is_node:] `true` when observer slot holds an `INode`, `false` for non-node observer handles.
-- [slot:] observer slot index below `2^30`.
+- [is_node:] `true` when observer slot holds a `Node`, `false` for non-node observer handles.
+- [slot:] observer slot index below `2^29`.
 *)
 Theorem observer_slot_tag_lossless (is_node : bool) (slot : N) :
-  (slot < 2 ^ 30)%N ->
+  (slot < 2 ^ 29)%N ->
   let w := encode_observer_slot is_node slot in
   decode_obs_is_node w = is_node /\
   decode_obs_slot w = slot /\
-  (w < 2 ^ 31)%N.
+  (w < 2 ^ 30)%N.
 Proof.
   intros Hslot. cbv zeta.
   split.
   - unfold decode_obs_is_node, encode_observer_slot, obs_node_slot_bit.
-    rewrite N.lor_spec, (N_testbit_lt_pow2 slot 30 30 Hslot) by lia.
+    rewrite N.lor_spec, (N_testbit_lt_pow2 slot 29 29 Hslot) by lia.
     destruct is_node; [rewrite N.pow2_bits_true|rewrite N.bits_0]; reflexivity.
   - split.
     + unfold decode_obs_slot, encode_observer_slot, obs_node_slot_bit, obs_slot_mask.
       apply N.bits_inj. intros k.
       rewrite N.land_spec, N.lor_spec.
-      destruct (N.ltb_spec0 k 30) as [Hk|Hk].
+      destruct (N.ltb_spec0 k 29) as [Hk|Hk].
       * rewrite N.ones_spec_low by exact Hk.
-        destruct is_node; [rewrite (N.pow2_bits_false 30 k) by lia|rewrite N.bits_0];
+        destruct is_node; [rewrite (N.pow2_bits_false 29 k) by lia|rewrite N.bits_0];
         simpl; apply andb_true_r.
       * rewrite N.ones_spec_high by lia.
         rewrite andb_false_r. symmetry.
-        exact (N_testbit_lt_pow2 slot 30 k Hslot ltac:(lia)).
+        exact (N_testbit_lt_pow2 slot 29 k Hslot ltac:(lia)).
     + apply N_lt_pow2_of_bits. intros k Hk.
       unfold encode_observer_slot, obs_node_slot_bit.
-      rewrite N.lor_spec, (N_testbit_lt_pow2 slot 30 k Hslot) by lia.
+      rewrite N.lor_spec, (N_testbit_lt_pow2 slot 29 k Hslot) by lia.
       destruct is_node; [repeat rewrite N.pow2_bits_false by lia|repeat rewrite N.bits_0]; reflexivity.
 Qed.
 
@@ -7947,7 +7947,9 @@ Record node_flags_unpacked := {
   nf_publishes : bool;
   nf_violated : bool;
   nf_published : bool;
-  nf_safe_eq : bool
+  nf_safe_eq : bool;
+  nf_has_acted : bool;
+  nf_acting : bool
 }.
 
 Definition nf_wf (nf : node_flags_unpacked) : Prop :=
@@ -7971,7 +7973,9 @@ Definition pack_node_flags (nf : node_flags_unpacked) : N :=
                   (N.lor (nf_bool_bit (nf_publishes nf) 14)
                     (N.lor (nf_bool_bit (nf_violated nf) 15)
                       (N.lor (nf_bool_bit (nf_published nf) 16)
-                             (nf_bool_bit (nf_safe_eq nf) 17))))))))))).
+                        (N.lor (nf_bool_bit (nf_safe_eq nf) 17)
+                          (N.lor (nf_bool_bit (nf_has_acted nf) 18)
+                                 (nf_bool_bit (nf_acting nf) 19))))))))))))).
 
 Definition unpack_node_flags (w : N) : node_flags_unpacked := {|
   nf_kind := N.land w (N.ones 2);
@@ -7985,7 +7989,9 @@ Definition unpack_node_flags (w : N) : node_flags_unpacked := {|
   nf_publishes := N.testbit w 14;
   nf_violated := N.testbit w 15;
   nf_published := N.testbit w 16;
-  nf_safe_eq := N.testbit w 17
+  nf_safe_eq := N.testbit w 17;
+  nf_has_acted := N.testbit w 18;
+  nf_acting := N.testbit w 19
 |}.
 
 Lemma N_testbit_bool_bit b pos k :
@@ -8049,7 +8055,9 @@ Lemma N_testbit_pack_bit_exact nf k :
   (k = 15%N -> N.testbit (pack_node_flags nf) k = nf_violated nf) /\
   (k = 16%N -> N.testbit (pack_node_flags nf) k = nf_published nf) /\
   (k = 17%N -> N.testbit (pack_node_flags nf) k = nf_safe_eq nf) /\
-  ((18 <= k)%N -> N.testbit (pack_node_flags nf) k = false).
+  (k = 18%N -> N.testbit (pack_node_flags nf) k = nf_has_acted nf) /\
+  (k = 19%N -> N.testbit (pack_node_flags nf) k = nf_acting nf) /\
+  ((20 <= k)%N -> N.testbit (pack_node_flags nf) k = false).
 Proof.
   intros (Hk & Hf & Hs & Ha).
   change 4%N with (2 ^ 2)%N in Hk, Hf, Ha.
@@ -8068,28 +8076,29 @@ Proof.
 Qed.
 
 (**md
-**Packing `Kind` (2b), `Freshness` (2b), `Status` (4b), `Active` (2b), and all 8 boolean node flags into a 32-bit word (`< 2^32`) is a lossless exact bijection on well-formed unpacked flag records.**
+**Packing `Kind` (2b), `Freshness` (2b), `Status` (4b), `Active` (2b), and all 10 boolean node flags (`Disposed`, `Unannounced`, `Queued`, `InCleanup`, `Publishes`, `Violated`, `Published`, `SafeEq`, `HasActed`, `Acting`) into a 31-bit Smi word (`< 2^31`) is a lossless exact bijection on well-formed unpacked flag records.**
 
 - [nf:] well-formed unpacked `node_flags_unpacked` record whose multi-bit fields fit their bit widths (`Kind < 4`, `Freshness < 4`, `Status < 16`, `Active < 4`).
 *)
 Theorem packed_node_flags_bijection (nf : node_flags_unpacked) :
   nf_wf nf ->
   let w := pack_node_flags nf in
-  (w < 2 ^ 32)%N /\ unpack_node_flags w = nf.
+  (w < 2 ^ 31)%N /\ unpack_node_flags w = nf.
 Proof.
   intros Hwf. pose proof Hwf as (Hk & Hf & Hs & Ha).
   change 4%N with (2 ^ 2)%N in Hk, Hf, Ha.
   change 16%N with (2 ^ 4)%N in Hs.
   cbv zeta. split.
-  - apply N_lt_pow2_of_bits. intros k Hk32.
-    destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+  - apply N_lt_pow2_of_bits. intros k Hk31.
+    destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
     apply Hhi. lia.
   - unfold unpack_node_flags.
-    destruct nf as [k0 f0 s0 a0 b10 b11 b12 b13 b14 b15 b16 b17].
+    destruct nf as [k0 f0 s0 a0 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19].
     simpl in *.
     assert (Ek : N.land (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) (N.ones 2) = k0).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |}) (N.ones 2) = k0).
     { apply N.bits_inj. intros j. rewrite N.land_spec.
       destruct (N.ltb_spec0 j 2) as [Hj|Hj].
       - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
@@ -8098,7 +8107,8 @@ Proof.
         eapply N_testbit_lt_pow2; [exact Hk|lia]. }
     assert (Ef : N.land (N.shiftr (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) 2) (N.ones 2) = f0).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |}) 2) (N.ones 2) = f0).
     { apply N.bits_inj. intros j. rewrite N.land_spec, N.shiftr_spec by lia.
       destruct (N.ltb_spec0 j 2) as [Hj|Hj].
       - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
@@ -8108,7 +8118,8 @@ Proof.
         eapply N_testbit_lt_pow2; [exact Hf|lia]. }
     assert (Es : N.land (N.shiftr (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) 4) (N.ones 4) = s0).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |}) 4) (N.ones 4) = s0).
     { apply N.bits_inj. intros j. rewrite N.land_spec, N.shiftr_spec by lia.
       destruct (N.ltb_spec0 j 4) as [Hj|Hj].
       - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
@@ -8118,7 +8129,8 @@ Proof.
         eapply N_testbit_lt_pow2; [exact Hs|lia]. }
     assert (Ea : N.land (N.shiftr (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) 8) (N.ones 2) = a0).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |}) 8) (N.ones 2) = a0).
     { apply N.bits_inj. intros j. rewrite N.land_spec, N.shiftr_spec by lia.
       destruct (N.ltb_spec0 j 2) as [Hj|Hj].
       - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
@@ -8128,35 +8140,51 @@ Proof.
         eapply N_testbit_lt_pow2; [exact Ha|lia]. }
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 10 Hwf) as (_&_&_&_&H10&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 10 Hwf) as (_&_&_&_&H10&_).
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 11 Hwf) as (_&_&_&_&_&H11&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 11 Hwf) as (_&_&_&_&_&H11&_).
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 12 Hwf) as (_&_&_&_&_&_&H12&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 12 Hwf) as (_&_&_&_&_&_&H12&_).
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 13 Hwf) as (_&_&_&_&_&_&_&H13&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 13 Hwf) as (_&_&_&_&_&_&_&H13&_).
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 14 Hwf) as (_&_&_&_&_&_&_&_&H14&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 14 Hwf) as (_&_&_&_&_&_&_&_&H14&_).
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 15 Hwf) as (_&_&_&_&_&_&_&_&_&H15&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 15 Hwf) as (_&_&_&_&_&_&_&_&_&H15&_).
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 16 Hwf) as (_&_&_&_&_&_&_&_&_&_&H16&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 16 Hwf) as (_&_&_&_&_&_&_&_&_&_&H16&_).
     destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
       nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
-      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 17 Hwf) as (_&_&_&_&_&_&_&_&_&_&_&H17&_).
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 17 Hwf) as (_&_&_&_&_&_&_&_&_&_&_&H17&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 18 Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&H18&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17;
+      nf_has_acted := b18; nf_acting := b19 |} 19 Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&_&H19&_).
     rewrite Ek, Ef, Es, Ea.
-    rewrite H10, H11, H12, H13, H14, H15, H16, H17 by reflexivity.
+    rewrite H10, H11, H12, H13, H14, H15, H16, H17, H18, H19 by reflexivity.
     reflexivity.
 Qed.
 
 Definition packed_idle_effect_mask : N :=
-  N.lor (N.ones 4) (N.lor (N.shiftl 1%N 10) (N.lor (N.shiftl 1%N 12) (N.shiftl 1%N 13))).
+  N.lor (N.ones 4) (N.lor (N.shiftl 1%N 10) (N.lor (N.shiftl 1%N 12) (N.lor (N.shiftl 1%N 13) (N.shiftl 1%N 14)))).
 Definition packed_idle_effect_val : N := 1%N.
 
 Definition packed_clean_leaf_memo_mask : N :=
@@ -8164,11 +8192,14 @@ Definition packed_clean_leaf_memo_mask : N :=
 Definition packed_clean_leaf_memo_val : N := 0%N.
 
 Definition packed_ready_published_memo_mask : N :=
-  N.lor (N.ones 2) (N.lor (N.shiftl (N.ones 4) 4) (N.lor (N.shiftl 1%N 10) (N.shiftl 1%N 16))).
-Definition packed_ready_published_memo_val : N := N.shiftl 1%N 16.
+  N.lor (N.shiftl (N.ones 4) 4)
+    (N.lor (N.shiftl (N.ones 2) 8)
+      (N.lor (N.shiftl 1%N 10) (N.lor (N.shiftl 1%N 16) (N.shiftl 1%N 17)))).
+Definition packed_ready_published_memo_val : N :=
+  N.lor (N.shiftl 1%N 16) (N.shiftl 1%N 17).
 
 (**md
-**Single-word mask-and-compare guards on packed 32-bit `Node.Flags` are logically equivalent to the unpacked multi-field conjunctions for idle effects, clean leaf memos, and ready published memos.**
+**Single-word mask-and-compare guards on packed 31-bit `Node.Flags` are logically equivalent to the unpacked multi-field conjunctions for idle effects (`0x740F`, `Core.fs:340`), clean leaf memos (`0x40F`), and ready published safe-eq memos (`0x307F0` / `0x30000`, `Core.fs:324,328`).**
 
 - [nf:] well-formed unpacked `node_flags_unpacked` record whose bit-packed representation is tested.
 *)
@@ -8177,12 +8208,13 @@ Theorem packed_guard_refines_unpacked (nf : node_flags_unpacked) :
   let w := pack_node_flags nf in
   ((N.land w packed_idle_effect_mask =? packed_idle_effect_val)%N = true <->
     nf_kind nf = 1%N /\ nf_freshness nf = 0%N /\
-    nf_disposed nf = false /\ nf_queued nf = false /\ nf_in_cleanup nf = false) /\
+    nf_disposed nf = false /\ nf_queued nf = false /\
+    nf_in_cleanup nf = false /\ nf_publishes nf = false) /\
   ((N.land w packed_clean_leaf_memo_mask =? packed_clean_leaf_memo_val)%N = true <->
     nf_kind nf = 0%N /\ nf_freshness nf = 0%N /\ nf_disposed nf = false) /\
   ((N.land w packed_ready_published_memo_mask =? packed_ready_published_memo_val)%N = true <->
-    nf_kind nf = 0%N /\ nf_status nf = 0%N /\
-    nf_disposed nf = false /\ nf_published nf = true).
+    nf_status nf = 0%N /\ nf_active nf = 0%N /\
+    nf_disposed nf = false /\ nf_published nf = true /\ nf_safe_eq nf = true).
 Proof.
   intros Hwf. cbv zeta.
   pose proof (packed_node_flags_bijection nf Hwf) as [_ Hunp].
@@ -8193,8 +8225,8 @@ Proof.
   assert (Hm1_2 : N.land (N.shiftr packed_idle_effect_mask 2) (N.ones 2) = N.ones 2) by reflexivity.
   assert (Hm2_0 : N.land packed_clean_leaf_memo_mask (N.ones 2) = N.ones 2) by reflexivity.
   assert (Hm2_2 : N.land (N.shiftr packed_clean_leaf_memo_mask 2) (N.ones 2) = N.ones 2) by reflexivity.
-  assert (Hm3_0 : N.land packed_ready_published_memo_mask (N.ones 2) = N.ones 2) by reflexivity.
   assert (Hm3_4 : N.land (N.shiftr packed_ready_published_memo_mask 4) (N.ones 4) = N.ones 4) by reflexivity.
+  assert (Hm3_8 : N.land (N.shiftr packed_ready_published_memo_mask 8) (N.ones 2) = N.ones 2) by reflexivity.
   assert (Hunp_shiftr : forall m n pos width,
     N.land (N.shiftr (N.land n m) pos) (N.ones width) =
     N.land (N.land (N.shiftr n pos) (N.ones width)) (N.land (N.shiftr m pos) (N.ones width))).
@@ -8237,28 +8269,36 @@ Proof.
       rewrite andb_true_r in B13.
       assert (Hc : nf_in_cleanup (unpack_node_flags (pack_node_flags nf)) = false) by (exact B13).
       rewrite Hunp in Hc. exact Hc.
-  - intros (Hk & Hf & Hd & Hq & Hc).
+    + pose proof (proj1 (Hbit_eq _ _) Heq 14%N) as B14.
+      rewrite N.land_spec in B14.
+      change (N.testbit packed_idle_effect_mask 14) with true in B14.
+      change (N.testbit packed_idle_effect_val 14) with false in B14.
+      rewrite andb_true_r in B14.
+      assert (Hp : nf_publishes (unpack_node_flags (pack_node_flags nf)) = false) by (exact B14).
+      rewrite Hunp in Hp. exact Hp.
+  - intros (Hk & Hf & Hd & Hq & Hc & Hpub).
     apply N.bits_inj. intros k. rewrite N.land_spec.
-    destruct (N.ltb_spec0 k 18) as [Hk18|Hk18].
+    destruct (N.ltb_spec0 k 20) as [Hk20|Hk20].
     + destruct (N_testbit_pack_bit_exact nf k Hwf)
-        as (P0 & P2 & P4 & P8 & P10 & P11 & P12 & P13 & P14 & P15 & P16 & P17 & _).
+        as (P0 & P2 & P4 & P8 & P10 & P11 & P12 & P13 & P14 & P15 & P16 & P17 & P18 & P19 & _).
       assert (Hkcases : k = 0%N \/ k = 1%N \/ k = 2%N \/ k = 3%N \/
                         k = 4%N \/ k = 5%N \/ k = 6%N \/ k = 7%N \/
                         k = 8%N \/ k = 9%N \/ k = 10%N \/ k = 11%N \/
                         k = 12%N \/ k = 13%N \/ k = 14%N \/ k = 15%N \/
-                        k = 16%N \/ k = 17%N) by lia.
+                        k = 16%N \/ k = 17%N \/ k = 18%N \/ k = 19%N) by lia.
       repeat destruct Hkcases as [->|Hkcases];
         try (rewrite P0 by lia; rewrite Hk; reflexivity);
         try (rewrite P2 by lia; rewrite Hf; reflexivity);
         try (rewrite P10 by reflexivity; rewrite Hd; reflexivity);
         try (rewrite P12 by reflexivity; rewrite Hq; reflexivity);
         try (rewrite P13 by reflexivity; rewrite Hc; reflexivity);
+        try (rewrite P14 by reflexivity; rewrite Hpub; reflexivity);
         try (change (N.testbit packed_idle_effect_mask _) with false; rewrite andb_false_r; reflexivity).
-      subst k. rewrite P17 by reflexivity. change (N.testbit packed_idle_effect_mask 17) with false.
+      subst k. rewrite P19 by reflexivity. change (N.testbit packed_idle_effect_mask 19) with false.
       rewrite andb_false_r. reflexivity.
-    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
       rewrite Hhi by lia. rewrite andb_false_l.
-      symmetry. eapply N_testbit_lt_pow2; [instantiate (1 := 18%N); vm_compute; reflexivity|lia].
+      symmetry. eapply N_testbit_lt_pow2; [instantiate (1 := 20%N); vm_compute; reflexivity|lia].
   - intros Heq. repeat split.
     + pose proof (f_equal (fun u => N.land u (N.ones 2)) Heq) as Hk.
       cbv beta in Hk. rewrite <- N.land_assoc, Hm2_0 in Hk.
@@ -8282,29 +8322,24 @@ Proof.
       rewrite Hunp in Hd. exact Hd.
   - intros (Hk & Hf & Hd).
     apply N.bits_inj. intros k. rewrite N.land_spec.
-    destruct (N.ltb_spec0 k 18) as [Hk18|Hk18].
+    destruct (N.ltb_spec0 k 20) as [Hk20|Hk20].
     + destruct (N_testbit_pack_bit_exact nf k Hwf)
         as (P0 & P2 & _ & _ & P10 & _).
       assert (Hkcases : k = 0%N \/ k = 1%N \/ k = 2%N \/ k = 3%N \/
                         k = 4%N \/ k = 5%N \/ k = 6%N \/ k = 7%N \/
                         k = 8%N \/ k = 9%N \/ k = 10%N \/ k = 11%N \/
                         k = 12%N \/ k = 13%N \/ k = 14%N \/ k = 15%N \/
-                        k = 16%N \/ k = 17%N) by lia.
+                        k = 16%N \/ k = 17%N \/ k = 18%N \/ k = 19%N) by lia.
       repeat destruct Hkcases as [->|Hkcases];
         try (rewrite P0 by lia; rewrite Hk; reflexivity);
         try (rewrite P2 by lia; rewrite Hf; reflexivity);
         try (rewrite P10 by reflexivity; rewrite Hd; reflexivity);
         try (change (N.testbit packed_clean_leaf_memo_mask _) with false; rewrite andb_false_r; reflexivity).
-      subst k. change (N.testbit packed_clean_leaf_memo_mask 17) with false. rewrite andb_false_r. reflexivity.
-    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+      subst k. change (N.testbit packed_clean_leaf_memo_mask 19) with false. rewrite andb_false_r. reflexivity.
+    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
       rewrite Hhi by lia. rewrite andb_false_l.
       symmetry. apply N.bits_0.
   - intros Heq. repeat split.
-    + pose proof (f_equal (fun u => N.land u (N.ones 2)) Heq) as Hk.
-      cbv beta in Hk. rewrite <- N.land_assoc, Hm3_0 in Hk.
-      assert (Hk' : nf_kind (unpack_node_flags (pack_node_flags nf)) = 0%N)
-        by (unfold unpack_node_flags; simpl; rewrite Hk; reflexivity).
-      rewrite Hunp in Hk'. exact Hk'.
     + pose proof (f_equal (fun u => N.land (N.shiftr u 4) (N.ones 4)) Heq) as Hs.
       cbv beta in Hs. rewrite Hunp_shiftr, Hm3_4 in Hs.
       assert (Hs' : nf_status (unpack_node_flags (pack_node_flags nf)) = 0%N).
@@ -8313,6 +8348,14 @@ Proof.
         replace (N.land (N.ones 4) (N.ones 4)) with (N.ones 4) in Hs by reflexivity.
         rewrite Hs. reflexivity. }
       rewrite Hunp in Hs'. exact Hs'.
+    + pose proof (f_equal (fun u => N.land (N.shiftr u 8) (N.ones 2)) Heq) as Ha.
+      cbv beta in Ha. rewrite Hunp_shiftr, Hm3_8 in Ha.
+      assert (Ha' : nf_active (unpack_node_flags (pack_node_flags nf)) = 0%N).
+      { unfold unpack_node_flags; simpl.
+        rewrite <- N.land_assoc in Ha.
+        replace (N.land (N.ones 2) (N.ones 2)) with (N.ones 2) in Ha by reflexivity.
+        rewrite Ha. reflexivity. }
+      rewrite Hunp in Ha'. exact Ha'.
     + pose proof (proj1 (Hbit_eq _ _) Heq 10%N) as B10.
       rewrite N.land_spec in B10.
       change (N.testbit packed_ready_published_memo_mask 10) with true in B10.
@@ -8327,26 +8370,34 @@ Proof.
       rewrite andb_true_r in B16.
       assert (Hp : nf_published (unpack_node_flags (pack_node_flags nf)) = true) by (exact B16).
       rewrite Hunp in Hp. exact Hp.
-  - intros (Hk & Hs & Hd & Hp).
+    + pose proof (proj1 (Hbit_eq _ _) Heq 17%N) as B17.
+      rewrite N.land_spec in B17.
+      change (N.testbit packed_ready_published_memo_mask 17) with true in B17.
+      change (N.testbit packed_ready_published_memo_val 17) with true in B17.
+      rewrite andb_true_r in B17.
+      assert (Hseq : nf_safe_eq (unpack_node_flags (pack_node_flags nf)) = true) by (exact B17).
+      rewrite Hunp in Hseq. exact Hseq.
+  - intros (Hs & Ha & Hd & Hp & Hseq).
     apply N.bits_inj. intros k. rewrite N.land_spec.
-    destruct (N.ltb_spec0 k 18) as [Hk18|Hk18].
+    destruct (N.ltb_spec0 k 20) as [Hk20|Hk20].
     + destruct (N_testbit_pack_bit_exact nf k Hwf)
-        as (P0 & _ & P4 & _ & P10 & _ & _ & _ & _ & _ & P16 & _).
+        as (_ & _ & P4 & P8 & P10 & _ & _ & _ & _ & _ & P16 & P17 & _).
       assert (Hkcases : k = 0%N \/ k = 1%N \/ k = 2%N \/ k = 3%N \/
                         k = 4%N \/ k = 5%N \/ k = 6%N \/ k = 7%N \/
                         k = 8%N \/ k = 9%N \/ k = 10%N \/ k = 11%N \/
                         k = 12%N \/ k = 13%N \/ k = 14%N \/ k = 15%N \/
-                        k = 16%N \/ k = 17%N) by lia.
+                        k = 16%N \/ k = 17%N \/ k = 18%N \/ k = 19%N) by lia.
       repeat destruct Hkcases as [->|Hkcases];
-        try (rewrite P0 by lia; rewrite Hk; reflexivity);
         try (rewrite P4 by lia; rewrite Hs; reflexivity);
+        try (rewrite P8 by lia; rewrite Ha; reflexivity);
         try (rewrite P10 by reflexivity; rewrite Hd; reflexivity);
         try (rewrite P16 by reflexivity; rewrite Hp; reflexivity);
+        try (rewrite P17 by reflexivity; rewrite Hseq; reflexivity);
         try (change (N.testbit packed_ready_published_memo_mask _) with false; rewrite andb_false_r; reflexivity).
-      subst k. change (N.testbit packed_ready_published_memo_mask 17) with false. rewrite andb_false_r. reflexivity.
-    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+      subst k. change (N.testbit packed_ready_published_memo_mask 19) with false. rewrite andb_false_r. reflexivity.
+    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
       rewrite Hhi by lia. rewrite andb_false_l.
-      symmetry. eapply N_testbit_lt_pow2; [instantiate (1 := 18%N); vm_compute; reflexivity|lia].
+      symmetry. eapply N_testbit_lt_pow2; [instantiate (1 := 20%N); vm_compute; reflexivity|lia].
 Qed.
 
 (** ** B9. Leaf-memo cutoff skip and custom-comparer fused flush *)
@@ -8563,7 +8614,209 @@ Proof.
     + exists (S f'). rewrite Hws_same. exact Hf.
 Qed.
 
-(** ** B10. Lazy-epoch AmbientCell trace soundness *)
+(** * B9b: Idle first-run effect fusion (`EffectNode.Start` / `EffectOn.Start`) *)
+
+Definition fused_first_run_effect (f : nat) (eff : node_id) : M unit :=
+  let* _ := m_modify (fun s => with_flush_owed false (with_flushing true s)) in
+  let* _ := run_effect f eff in
+  let* _ := drain f in
+  m_modify (with_flushing false).
+
+(**md
+**When a newly attached `Clean`, unqueued, non-disposed effect `eff` is triggered for its first run on an idle graph with empty pending queue, `mark_dirty` followed by `request_flush` is observationally and state-identical to opening the flush window directly, running `eff`, draining any newly enqueued work, and closing `flushing` (`EffectNode.Start` / `EffectOn.Start`, `Core.fs:8478,13125`).**
+
+- [eff:] newly attached effect node id.
+- [de:] descriptor of `eff` in the idle starting state `s`.
+- [s:] idle starting engine state with empty pending queue.
+- [s':] final engine state after flush completes.
+*)
+Theorem idle_first_run_effect_fusion_eq eff de s s' :
+  g_nodes s !! eff = Some de ->
+  n_kind de = KEffect ->
+  n_freshness de = Clean ->
+  n_disposed de = false ->
+  n_in_cleanup de = false ->
+  n_queued de = false ->
+  g_batch_depth s = 0 ->
+  g_pull_depth s = 0 ->
+  g_flushing s = false ->
+  g_current s = None ->
+  g_untracked s = false ->
+  g_flush_owed s = false ->
+  pending s = [] ->
+  g_queue_head s <= length (g_queue s) ->
+  (exists f,
+    (let* _ := m_step (mark_dirty f eff) in request_flush f) s = Some (s', tt)) <->
+  (exists f, fused_first_run_effect f eff s = Some (s', tt)).
+Proof.
+  intros Heff Hke Hcf Hde Hclean Hnq Hbd Hpd Hfl Hcur Hunt Hfo Hpend Hqle.
+  assert (Hqhd : g_queue_head s = length (g_queue s)).
+  { unfold pending in Hpend. pose proof (f_equal length Hpend) as Hlen.
+    rewrite length_drop in Hlen. simpl in Hlen. lia. }
+  assert (Hde_id :
+    node_with_freshness Clean (node_with_queued false (node_marked Dirty (n_unannounced de) true de)) = de).
+  { rewrite node_clean_unqueued_marked_dirty. destruct de; simpl in *; subst; reflexivity. }
+  set (s1 := enqueue eff (set_node eff (node_marked Dirty (n_unannounced de) true de) s)).
+  set (s2 := with_flush_owed false (with_flushing true s1)).
+  set (s3 := with_queue_head (S (g_queue_head s)) s2).
+  set (s_pre := with_queue_head (S (g_queue_head s))
+                  (with_flush_owed false (with_flushing true (enqueue eff s)))).
+  set (sw0 := with_flush_owed false (with_flushing true s)).
+  assert (Hs_pre_eq : set_node eff de s3 = s_pre).
+  { unfold s_pre, s3, s2, s1, enqueue, set_node; simpl.
+    rewrite insert_insert_eq, (insert_id _ _ _ Heff).
+    destruct s; reflexivity. }
+  assert (Hs3_eff : g_nodes s3 !! eff = Some (node_marked Dirty (n_unannounced de) true de)).
+  { unfold s3, s2, s1, enqueue, set_node; simpl. apply lookup_insert_eq. }
+  assert (Hrel : queue_rel s_pre sw0).
+  { unfold queue_rel, pending, s_pre, sw0, enqueue; simpl.
+    split; [destruct s; reflexivity|].
+    split; [rewrite drop_ge; [symmetry; exact Hpend|rewrite length_app; simpl; lia]|].
+    rewrite length_app; simpl. split; [lia|exact Hqle]. }
+  assert (Hmark : forall f',
+    m_step (mark_dirty (S f') eff) s = Some (s1, tt)).
+  { intros f'. unfold m_step. cbn [mark_dirty].
+    rewrite Heff, Hke. unfold effect_marked.
+    rewrite Hde, Hclean, Hnq. reflexivity. }
+  assert (Hreq : forall f',
+    request_flush (S f') s1 = run_flush f' s1).
+  { intros f'. cbn [request_flush]. rewrite bind_get.
+    assert (Hlq : live_queue s1 = true).
+    { unfold live_queue, s1, enqueue; simpl.
+      rewrite length_app, Hqhd; simpl. apply bool_decide_true; lia. }
+    assert (Hob : outside_bodies s1 = true).
+    { unfold outside_bodies, s1, enqueue, set_node; simpl.
+      rewrite Hpd, Hcur, Hunt, bool_decide_true by reflexivity. reflexivity. }
+    assert (Hsbd : bool_decide (g_batch_depth s1 = 0%nat) = true).
+    { unfold s1, enqueue, set_node; simpl. rewrite Hbd. apply bool_decide_true; reflexivity. }
+    rewrite Hlq, Hsbd, Hob. reflexivity. }
+  assert (Hrf : forall f',
+    run_flush (S f') s1 =
+    (let* _ := drain f' in m_modify (with_flushing false)) s2).
+  { intros f'. cbn [run_flush]. rewrite bind_get.
+    assert (Hsfl : g_flushing s1 = false) by exact Hfl.
+    rewrite Hsfl. unfold m_bind at 1, m_modify. reflexivity. }
+  assert (Hdr : forall f',
+    drain (S f') s2 =
+    (let* _ := execute_effect f' eff in drain f') s3).
+  { intros f'. cbn [drain]. rewrite bind_get.
+    assert (Hluq : g_queue s2 !! g_queue_head s2 = Some eff).
+    { unfold s2, s1, enqueue, set_node; simpl.
+      rewrite Hqhd, lookup_app_r, Nat.sub_diag by lia. reflexivity. }
+    rewrite Hluq. unfold m_bind at 1, m_modify. reflexivity. }
+  assert (Hexe : forall k,
+    execute_effect (S k) eff s3 = run_effect k eff s_pre).
+  { intros k. cbn [execute_effect].
+    unfold m_bind at 1, get_node at 1. rewrite Hs3_eff.
+    simpl. rewrite Hde. simpl.
+    unfold m_bind at 1, m_return at 1. simpl.
+    unfold m_bind at 1, get_node at 1. rewrite Hs3_eff. simpl.
+    unfold m_bind at 1, modify_node at 1. rewrite Hs3_eff. simpl.
+    rewrite Hde_id, Hs_pre_eq.
+    reflexivity. }
+  assert (Hunder4 : forall f,
+    f < 4 ->
+    (let* _ := m_step (mark_dirty f eff) in request_flush f) s = None).
+  { intros f Hf. destruct f as [|[|[|[|k]]]]; try lia.
+    - reflexivity.
+    - unfold m_bind at 1. rewrite Hmark, Hreq. reflexivity.
+    - unfold m_bind at 1. rewrite Hmark, Hreq, Hrf. reflexivity.
+    - unfold m_bind at 1. rewrite Hmark, Hreq, Hrf.
+      unfold m_bind at 1. rewrite Hdr. reflexivity. }
+  assert (Hpre : forall k,
+    (let* _ := m_step (mark_dirty (S (S (S (S k)))) eff) in
+     request_flush (S (S (S (S k))))) s =
+    (let* _ := run_effect k eff in
+     let* _ := drain (S k) in
+     m_modify (with_flushing false)) s_pre).
+  { intros k. unfold m_bind at 1.
+    rewrite Hmark, Hreq, Hrf.
+    unfold m_bind at 1. rewrite Hdr.
+    unfold m_bind. rewrite Hexe.
+    destruct (run_effect k eff s_pre) as [[sf []]|]; [|reflexivity].
+    destruct (drain (S k) sf) as [[sf' []]|]; reflexivity. }
+  split.
+  - intros [f Hf].
+    destruct f as [|[|[|[|k]]]].
+    + rewrite Hunder4 in Hf by lia. discriminate.
+    + rewrite Hunder4 in Hf by lia. discriminate.
+    + rewrite Hunder4 in Hf by lia. discriminate.
+    + rewrite Hunder4 in Hf by lia. discriminate.
+    + rewrite Hpre in Hf.
+      eapply bind_inv in Hf as (sf1 & [] & Hre & Hf).
+      eapply bind_inv in Hf as (sf2 & [] & Hdr_f & Hf).
+      unfold m_modify in Hf. inversion Hf as [Hs']; clear Hf.
+      assert (Hre_b : exists fb, b1_run_effect fb eff s_pre = Some (sf1, tt))
+        by (apply b1_run_effect_eq; exists k; exact Hre).
+      destruct Hre_b as [fb1 Hre_b].
+      destruct (B1Qrun_effect _ (b1_qrel_all fb1) eff _ _ _ _ Hre_b Hrel)
+        as (sw1 & Hre_w & Hrel1).
+      assert (Hre_e : exists f_re, run_effect f_re eff sw0 = Some (sw1, tt))
+        by (apply b1_run_effect_eq; exists fb1; exact Hre_w).
+      destruct Hre_e as [f_re Hre_e].
+      assert (Hdr_b : exists fb, b1_drain fb sf1 = Some (sf2, tt))
+        by (apply b1_drain_eq; exists (S k); exact Hdr_f).
+      destruct Hdr_b as [fb2 Hdr_b].
+      destruct (B1Qdrain _ (b1_qrel_all fb2) _ _ _ _ Hdr_b Hrel1)
+        as (sw2 & Hdr_w & Hrel2).
+      destruct (drain_resets _ _ _ Hdr_f) as [Hq_sf2 Hh_sf2].
+      destruct (b1_drain_resets _ _ _ Hdr_w) as [Hq_sw2 Hh_sw2].
+      assert (Heq2 : sf2 = sw2) by (eapply queue_rel_drained_eq; eassumption).
+      rewrite <- Heq2 in Hdr_w.
+      assert (Hdr_e : exists f_dr, drain f_dr sw1 = Some (sf2, tt))
+        by (apply b1_drain_eq; exists fb2; exact Hdr_w).
+      destruct Hdr_e as [f_dr Hdr_e].
+      exists (Nat.max f_re f_dr).
+      change (fused_first_run_effect (Nat.max f_re f_dr) eff s) with
+        ((let* _ := run_effect (Nat.max f_re f_dr) eff in
+          let* _ := drain (Nat.max f_re f_dr) in
+          m_modify (with_flushing false)) sw0).
+      assert (Hre_m : run_effect (Nat.max f_re f_dr) eff sw0 = Some (sw1, tt))
+        by (eapply (Mrun_effect _ (engine_mono_all f_re)); [lia|exact Hre_e]).
+      assert (Hdr_m : drain (Nat.max f_re f_dr) sw1 = Some (sf2, tt))
+        by (eapply (Mdrain _ (engine_mono_all f_dr)); [lia|exact Hdr_e]).
+      unfold m_bind at 1. rewrite Hre_m. cbv iota.
+      unfold m_bind at 1. rewrite Hdr_m. cbv iota.
+      unfold m_modify. rewrite Hs'. reflexivity.
+  - intros [f Hf].
+    change (fused_first_run_effect f eff s) with
+      ((let* _ := run_effect f eff in
+        let* _ := drain f in
+        m_modify (with_flushing false)) sw0) in Hf.
+    eapply bind_inv in Hf as (sw1 & [] & Hre & Hf).
+    eapply bind_inv in Hf as (sw2 & [] & Hdr_f & Hf).
+    unfold m_modify in Hf. inversion Hf as [Hs']; clear Hf.
+    pose proof (queue_rel_sym _ _ Hrel) as Hrel'.
+    assert (Hre_b : exists fb, b1_run_effect fb eff sw0 = Some (sw1, tt))
+      by (apply b1_run_effect_eq; exists f; exact Hre).
+    destruct Hre_b as [fb1 Hre_b].
+    destruct (B1Qrun_effect _ (b1_qrel_all fb1) eff _ _ _ _ Hre_b Hrel')
+      as (sf1 & Hre_f & Hrel1).
+    assert (Hre_e : exists f_re, run_effect f_re eff s_pre = Some (sf1, tt))
+      by (apply b1_run_effect_eq; exists fb1; exact Hre_f).
+    destruct Hre_e as [f_re Hre_e].
+    assert (Hdr_b : exists fb, b1_drain fb sw1 = Some (sw2, tt))
+      by (apply b1_drain_eq; exists f; exact Hdr_f).
+    destruct Hdr_b as [fb2 Hdr_b].
+    destruct (B1Qdrain _ (b1_qrel_all fb2) _ _ _ _ Hdr_b Hrel1)
+      as (sf2 & Hdr_w & Hrel2).
+    destruct (drain_resets _ _ _ Hdr_f) as [Hq_sw2 Hh_sw2].
+    destruct (b1_drain_resets _ _ _ Hdr_w) as [Hq_sf2 Hh_sf2].
+    assert (Heq2 : sw2 = sf2) by (eapply queue_rel_drained_eq; eassumption).
+    rewrite <- Heq2 in Hdr_w.
+    assert (Hdr_e : exists f_dr, drain f_dr sf1 = Some (sw2, tt))
+      by (apply b1_drain_eq; exists fb2; exact Hdr_w).
+    destruct Hdr_e as [f_dr Hdr_e].
+    exists (S (S (S (S (Nat.max f_re f_dr))))).
+    rewrite Hpre.
+    assert (Hre_m : run_effect (Nat.max f_re f_dr) eff s_pre = Some (sf1, tt))
+      by (eapply (Mrun_effect _ (engine_mono_all f_re)); [lia|exact Hre_e]).
+    assert (Hdr_m : drain (S (Nat.max f_re f_dr)) sf1 = Some (sw2, tt))
+      by (eapply (Mdrain _ (engine_mono_all f_dr)); [lia|exact Hdr_e]).
+    unfold m_bind at 1. rewrite Hre_m. cbv iota.
+    unfold m_bind at 1. rewrite Hdr_m. cbv iota.
+    unfold m_modify. rewrite Hs'. reflexivity.
+Qed.
 
 Inductive ambient_op :=
   | AEnter (g : nat)
@@ -10619,16 +10872,17 @@ Qed.
 (** ** B13. Timed now-reuse non-immediate fire & Stamp non-throwing version equality *)
 
 (**md
-**Reusing the captured `now` timestamp for a strictly positive delay `ms > 0` guarantees `deadline = now + ms` lies strictly in the future (`(now <? now + ms)%Z = true /\ ~ (now >= now + ms)%Z`) so the freshly armed timer cannot immediately fire on the same tick.**
+**Reusing the captured `now` timestamp for a strictly positive delay `ms > 0` guarantees both `deadline = now + ms` lies strictly in the future (`(now <? now + ms)%Z = true /\ ~ (now >= now + ms)%Z`) and the immediate elapsed-time test `now - startedAt` (`now - now = 0`) is strictly below `ms` (`(now - now <? ms)%Z = true /\ ~ (now - now >= ms)%Z`), so a freshly armed `Timed` node cannot immediately fire on the same tick.**
 
 - [now:] current millisecond clock reading at arming.
 - [ms:] strictly positive delay duration in milliseconds.
 *)
 Theorem timed_capture_now_reuse_no_immediate_fire (now ms : Z) :
   (ms > 0)%Z ->
-  (now <? now + ms)%Z = true /\ ~ (now >= now + ms)%Z.
+  ((now <? now + ms)%Z = true /\ ~ (now >= now + ms)%Z) /\
+  ((now - now <? ms)%Z = true /\ ~ (now - now >= ms)%Z).
 Proof.
-  intros Hms. split; [apply Z.ltb_lt|]; lia.
+  intros Hms. split; split; [apply Z.ltb_lt| |apply Z.ltb_lt|]; lia.
 Qed.
 
 Definition stamp_version_rel {A : Type} (x y : Z * A) : Prop := x.1 = y.1.
