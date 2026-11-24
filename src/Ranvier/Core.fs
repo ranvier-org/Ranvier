@@ -2176,7 +2176,30 @@ and [<Sealed; AllowNullLiteral>] internal AmbientCell() =
     /// Ambient while that graph is still running one.
     /// </summary>
     [<DefaultValue>]
+#if FABLE_COMPILER
     val mutable Hosting: obj
+#else
+    val mutable Current: obj
+
+    [<DefaultValue>]
+    val mutable StickyGraph: obj
+
+    [<DefaultValue>]
+    val mutable StickyActive: byte
+
+    // An activation can resume on another thread. Its original cell may keep this hint until its next activation.
+    [<DefaultValue>]
+    val mutable FlushHint: WeakReference<obj>
+
+    member val ThreadId = Platform.currentThreadId ()
+
+    member inline cell.Hosting
+        with get () = if cell.StickyActive <> 0uy then cell.StickyGraph else cell.Current
+        and set (host: obj) =
+            cell.StickyActive <- 0uy
+            cell.Current <- host
+
+#endif
 
 /// <summary>
 /// The innermost <c>Graph.Activate</c> call. On .NET it flows with the execution context: an activation inside an
@@ -2206,6 +2229,11 @@ module internal Activation =
 /// </summary>
 [<Sealed; AllowNullLiteral>]
 type internal ActivationEntry(graph: obj, thread: int, anyThread: bool, previous: obj, cell: AmbientCell, previousHosting: obj) =
+#if !FABLE_COMPILER
+    let previousHint = cell.FlushHint
+    let previousSticky = cell.StickyActive
+#endif
+
     /// <summary>
     /// The graph, when ambient on the calling thread, otherwise null.
     /// </summary>
@@ -2220,7 +2248,17 @@ type internal ActivationEntry(graph: obj, thread: int, anyThread: bool, previous
             Activation.set previous
 
             if obj.ReferenceEquals (AmbientSlot.Existing, cell) then
+#if FABLE_COMPILER
                 cell.Hosting <- previousHosting
+#else
+                cell.FlushHint <- previousHint
+                if previousSticky <> 0uy then
+                    cell.Current <- null
+                    cell.StickyGraph <- previousHosting
+                    cell.StickyActive <- previousSticky
+                else
+                    cell.Hosting <- previousHosting
+#endif
 
 /// <summary>
 /// A failed node's exception and the node it originated in. Every node the exception reaches through reads holds the
@@ -2916,25 +2954,32 @@ module internal ComparerSentinel =
 #endif
 
 #if !FABLE_COMPILER
-/// <summary>
-/// Whether <c>EqualityComparer&lt;'T&gt;.Default</c> cannot raise for <c>'T</c>: a reference type, compared by reference
-/// when encoded as null, or a primitive, enum or framework value type. A user struct's <c>Equals</c> may raise.
-/// </summary>
-/// <remarks>
-/// Lets a cutoff with the encoded null comparer compare without an exception handler. No reflection beyond the
-/// type's own flags, so the assembly stays AOT-clean.
-/// </remarks>
+module private DefaultEquality =
+    let rec isSafeType (t: Type) =
+        if t.IsPrimitive || t.IsEnum || t = typeof<string> || t = typeof<decimal> || t = typeof<Guid>
+           || t = typeof<DateTime> || t = typeof<DateTimeOffset> || t = typeof<TimeSpan> then
+            true
+        elif t.IsValueType && t.IsGenericType then
+            let d = t.GetGenericTypeDefinition ()
+            (d = typedefof<ValueTuple<_>>
+             || d = typedefof<ValueTuple<_, _>>
+             || d = typedefof<ValueTuple<_, _, _>>
+             || d = typedefof<ValueTuple<_, _, _, _>>
+             || d = typedefof<ValueTuple<_, _, _, _, _>>
+             || d = typedefof<ValueTuple<_, _, _, _, _, _>>
+             || d = typedefof<ValueTuple<_, _, _, _, _, _, _>>
+             || d = typedefof<ValueTuple<_, _, _, _, _, _, _, _>>
+             || d = typedefof<voption<_>>
+             || d = typedefof<Nullable<_>>
+             || d = typedefof<KeyValuePair<_, _>>)
+            && Array.forall isSafeType (t.GetGenericArguments ())
+        else
+            false
+
+/// <summary>Whether the null-encoded comparer uses reference identity or a nonthrowing value comparison.</summary>
 [<AbstractClass; Sealed>]
 type internal NonThrowingDefaultEq<'T> private () =
-    static member val IsSafe: bool =
-        not typeof<'T>.IsValueType
-        || typeof<'T>.IsPrimitive
-        || typeof<'T>.IsEnum
-        || typeof<'T> = typeof<decimal>
-        || typeof<'T> = typeof<Guid>
-        || typeof<'T> = typeof<DateTime>
-        || typeof<'T> = typeof<DateTimeOffset>
-        || typeof<'T> = typeof<TimeSpan>
+    static member val IsSafe = not typeof<'T>.IsValueType || DefaultEquality.isSafeType typeof<'T>
 #endif
 
 module internal SafeEquality =
@@ -3101,13 +3146,11 @@ type Graph(options: GraphOptions) =
 #endif
     let guarded = options.ThreadAffinity = Guarded
 
-    /// <summary>
-    /// The owner thread's ambient cell when the graph is guarded, otherwise
-    /// null: an unguarded graph resolves the calling thread's cell each time.
-    /// </summary>
+#if FABLE_COMPILER
     let ownerAmbient = if guarded then AmbientSlot.Cell else null
-
-#if !FABLE_COMPILER
+#else
+    let ownerAmbient = AmbientSlot.Cell
+    let mutable flushHint: WeakReference<obj> = null
     let serialised = options.ThreadAffinity = Serialised
 
     /// <summary>
@@ -3129,7 +3172,8 @@ type Graph(options: GraphOptions) =
 #endif
 
     let mutable batchDepth = 0
-    let mutable flushing = false
+    // The physical thread running the flush, or zero when idle. Fable uses one for its single thread.
+    let mutable flushingThread = 0
 
     /// <summary>The recorder of <c>options.Journal</c>, or null when the graph has no journal.</summary>
     let journal =
@@ -3334,27 +3378,46 @@ type Graph(options: GraphOptions) =
             new ActivationEntry (this, Platform.currentThreadId (), not guarded, activated, cell, hosting)
 
         Activation.set entry
+#if !FABLE_COMPILER
+        if Platform.isNull flushHint then
+            Interlocked.CompareExchange (&flushHint, WeakReference<obj>(this), null) |> ignore
+
+        cell.FlushHint <- flushHint
+#endif
         cell.Hosting <- null
         entry :> IDisposable
 
-    /// <summary>
-    /// The calling context's ambient graph, or null.
-    /// </summary>
+    static member private ActivatedGraph() =
+        match Activation.current () with
+        | :? ActivationEntry as entry -> entry.GraphOnCurrentThread
+        | _ -> null
+
+#if !FABLE_COMPILER
+    member private _.IsFlushingOn(cell: AmbientCell) = Volatile.Read &flushingThread = cell.ThreadId
+#endif
+
+    /// <summary>The calling context's ambient graph, or null.</summary>
     static member private Ambient: obj =
         let cell = AmbientSlot.Existing
 
         match (if Platform.isNull cell then null else cell.Hosting) with
         | :? Graph as g when g.Running -> g
-        | _ ->
-            match Activation.current () with
-            | :? ActivationEntry as entry -> entry.GraphOnCurrentThread
-            | _ -> null
+#if !FABLE_COMPILER
+        | _ when not (Platform.isNull cell) && not (Platform.isNull cell.FlushHint) ->
+            let mutable hinted: obj = null
+
+            if cell.FlushHint.TryGetTarget &hinted && (Platform.fastCast<Graph> hinted).IsFlushingOn cell then
+                hinted
+            else
+                Graph.ActivatedGraph ()
+#endif
+        | _ -> Graph.ActivatedGraph ()
 
     /// <summary>
     /// True while the graph runs a body, a flush, a stale read or a teardown.
     /// </summary>
     member internal _.Running =
-        flushing
+        flushingThread <> 0
         || pullDepth > 0
         || not (obj.ReferenceEquals (currentNode, null))
         || not (Platform.isNull (box current))
@@ -3383,6 +3446,7 @@ type Graph(options: GraphOptions) =
         else
             false
 
+#if FABLE_COMPILER
     /// <summary>
     /// Makes this graph ambient and returns the graph it replaced in <c>Hosting</c>.
     /// </summary>
@@ -3404,12 +3468,6 @@ type Graph(options: GraphOptions) =
     /// Restores the enclosing host. A guarded graph can stay cached on its owner thread between runs.
     /// </summary>
     member inline private this.LeaveAmbient(previous: obj) =
-#if !FABLE_COMPILER
-        if Platform.isNull ownerAmbient then
-            if not (obj.ReferenceEquals (previous, this)) then
-                AmbientSlot.Cell.Hosting <- previous
-        else
-#endif
         if not (obj.ReferenceEquals (previous, this)) then
             match previous with
             | :? Graph as g when g.Running ->
@@ -3421,6 +3479,44 @@ type Graph(options: GraphOptions) =
 
                 cell.Hosting <- previous
             | _ -> ()
+
+#else
+    member inline private _.AmbientCell() =
+        if guarded || Platform.currentThreadId () = ownerThread then ownerAmbient else AmbientSlot.Cell
+
+    member inline private this.PushAmbient(cell: AmbientCell) =
+        let previous = cell.Hosting
+
+        if not (obj.ReferenceEquals (previous, this)) then
+            if not guarded && obj.ReferenceEquals (cell, ownerAmbient) && Platform.isNull previous then
+                if not (obj.ReferenceEquals (cell.StickyGraph, this)) then
+                    cell.StickyGraph <- this
+
+                cell.StickyActive <- 1uy
+            else
+                cell.Hosting <- this
+
+        previous
+
+    member inline private this.PushFlushAmbient(cell: AmbientCell) =
+        if not (Platform.isNull flushHint) && obj.ReferenceEquals (cell.FlushHint, flushHint) && Platform.isNull cell.Hosting then
+            box this
+        else
+            this.PushAmbient cell
+
+    member inline private this.PopAmbient(cell: AmbientCell, previous: obj) =
+        if not (obj.ReferenceEquals (previous, this)) then
+            if not guarded then
+                cell.StickyActive <- 0uy
+
+                if not (obj.ReferenceEquals (cell.Current, previous)) then
+                    cell.Current <- previous
+            elif not (Platform.isNull previous) && (Platform.fastCast<Graph> previous).Running then
+                cell.Hosting <- previous
+
+    member inline private this.EnterAmbient() = this.PushAmbient (this.AmbientCell ())
+    member inline private this.LeaveAmbient(previous: obj) = this.PopAmbient (this.AmbientCell (), previous)
+#endif
 
 #if !FABLE_COMPILER
     /// <summary>
@@ -3634,11 +3730,14 @@ type Graph(options: GraphOptions) =
                     item.Abandon (ObjectDisposedException (nameof Graph))
 #endif
 
-                if
-                    not (Platform.isNull ownerAmbient)
-                    && obj.ReferenceEquals (ownerAmbient.Hosting, this)
-                then
+#if FABLE_COMPILER
+                if not (Platform.isNull ownerAmbient) && obj.ReferenceEquals (ownerAmbient.Hosting, this) then
                     ownerAmbient.Hosting <- null
+#else
+                let cell = this.AmbientCell ()
+                if obj.ReferenceEquals (cell.Hosting, this) then cell.Hosting <- null
+                Interlocked.CompareExchange (&ownerAmbient.StickyGraph, null, box this) |> ignore
+#endif
         )
 
     interface IDisposable with
@@ -4143,24 +4242,25 @@ type Graph(options: GraphOptions) =
 
 #if !FABLE_COMPILER && !RANVIER_TRACE
     member private this.RunFlush() =
-        if not flushing then
+        if flushingThread = 0 then
 #if RANVIER_COUNTERS
             Counters.Flushed ()
 #endif
-            flushing <- true
+            let cell = this.AmbientCell ()
+            flushingThread <- cell.ThreadId
             flushOwed <- false
-            let previousAmbient = this.EnterAmbient ()
+            let previousAmbient = this.PushFlushAmbient cell
 
             if passCount = 0 && Platform.isNull journal then
-                this.DrainNodesFast previousAmbient
+                this.DrainNodesFast (cell, previousAmbient)
             else
-                this.DrainSlow previousAmbient
+                this.DrainSlow (cell, previousAmbient)
 
     /// <summary>
     /// Drains effect and split-effect nodes without an exception frame (<c>drain_no_escape</c>): neither <c>NodeOps.Execute</c>
     /// nor any <c>UpdateIfNecessary</c> lets an exception escape. Falls back to <c>DrainSlow</c> on the first non-node item.
     /// </summary>
-    member private this.DrainNodesFast(previousAmbient: obj) =
+    member private this.DrainNodesFast(cell: AmbientCell, previousAmbient: obj) =
         let mutable fast = true
 
         while fast && queueHead < queueCount do
@@ -4176,7 +4276,7 @@ type Graph(options: GraphOptions) =
         if fast then
             queueHead <- 0
             queueCount <- 0
-            flushing <- false
+            flushingThread <- 0
 
             if staleTransitions <> 0 && pullDepth = 0 then
                 staleTransitions <- 0
@@ -4185,12 +4285,12 @@ type Graph(options: GraphOptions) =
             if not (Platform.isNull lastRaised) then
                 lastRaised <- null
 
-            this.LeaveAmbient previousAmbient
+            this.PopAmbient (cell, previousAmbient)
         else
-            this.DrainSlow previousAmbient
+            this.DrainSlow (cell, previousAmbient)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.DrainSlow(previousAmbient: obj) =
+    member private this.DrainSlow(cell: AmbientCell, previousAmbient: obj) =
         try
             if passCount <> 0 then
                 this.RunPasses ()
@@ -4208,7 +4308,7 @@ type Graph(options: GraphOptions) =
             queueHead <- 0
             queueCount <- 0
         finally
-            flushing <- false
+            flushingThread <- 0
 
             if staleTransitions <> 0 && pullDepth = 0 then
                 staleTransitions <- 0
@@ -4217,7 +4317,7 @@ type Graph(options: GraphOptions) =
             if not (Platform.isNull lastRaised) then
                 lastRaised <- null
 
-            this.LeaveAmbient previousAmbient
+            this.PopAmbient (cell, previousAmbient)
 
             if not (Platform.isNull journal) then
                 journal.Boundary ()
@@ -4232,7 +4332,7 @@ type Graph(options: GraphOptions) =
     member internal _.CanFuseIdleFlush() : bool =
         fastWriteToken >= 0L
         && ((batchDepth ||| pullDepth ||| passCount) = 0)
-        && not flushing
+        && flushingThread = 0
         && not untrackedInBody
         && queueHead = queueCount
         && obj.ReferenceEquals (currentNode, null)
@@ -4241,10 +4341,10 @@ type Graph(options: GraphOptions) =
     /// <summary>True when neither a stale read nor a flush is active, so <c>NoteStaleTransition</c> is a no-op.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.IsIdleForMarks() : bool =
-        pullDepth = 0 && not flushing
+        pullDepth = 0 && flushingThread = 0
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal this.BeginFusedFlush() : obj =
+    member internal this.BeginFusedFlush() =
 #if RANVIER_COUNTERS
         Counters.Flushed ()
 #endif
@@ -4253,18 +4353,19 @@ type Graph(options: GraphOptions) =
 
         queueHead <- 1
         queueCount <- 1
-        flushing <- true
+        let cell = this.AmbientCell ()
+        flushingThread <- cell.ThreadId
         flushOwed <- false
-        this.EnterAmbient ()
+        struct (cell, this.PushFlushAmbient cell)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal this.EndFusedFlush(previousAmbient: obj) =
+    member internal this.EndFusedFlush(struct (cell, previousAmbient)) =
         if queueHead < queueCount || passCount <> 0 then
-            this.DrainNodesFast previousAmbient
+            this.DrainNodesFast (cell, previousAmbient)
         else
             queueHead <- 0
             queueCount <- 0
-            flushing <- false
+            flushingThread <- 0
 
             if staleTransitions <> 0 then
                 staleTransitions <- 0
@@ -4273,17 +4374,23 @@ type Graph(options: GraphOptions) =
             if not (Platform.isNull lastRaised) then
                 lastRaised <- null
 
-            this.LeaveAmbient previousAmbient
+            this.PopAmbient (cell, previousAmbient)
 #else
     member private this.RunFlush() =
-        if not flushing then
+        if flushingThread = 0 then
 #if RANVIER_COUNTERS
             Counters.Flushed ()
 #endif
             Tracer.FlushStart this
-            flushing <- true
-            flushOwed <- false
+#if FABLE_COMPILER
+            flushingThread <- 1
             let previousAmbient = this.EnterAmbient ()
+#else
+            let cell = this.AmbientCell ()
+            flushingThread <- cell.ThreadId
+            let previousAmbient = this.PushFlushAmbient cell
+#endif
+            flushOwed <- false
 
             try
                 if passCount <> 0 then
@@ -4318,7 +4425,7 @@ type Graph(options: GraphOptions) =
                 queueHead <- 0
                 queueCount <- 0
             finally
-                flushing <- false
+                flushingThread <- 0
 
                 if staleTransitions <> 0 && pullDepth = 0 then
                     staleTransitions <- 0
@@ -4350,7 +4457,7 @@ type Graph(options: GraphOptions) =
                 && not untrackedInBody
             then
                 this.Flush ()
-            elif not flushing then
+            elif flushingThread = 0 then
                 flushOwed <- true
 
     /// <summary>
@@ -4365,7 +4472,7 @@ type Graph(options: GraphOptions) =
                 && not untrackedInBody
             then
                 this.RunFlush ()
-            elif not flushing then
+            elif flushingThread = 0 then
                 flushOwed <- true
 
     /// <summary>
@@ -4389,7 +4496,7 @@ type Graph(options: GraphOptions) =
         if
             queueHead < queueCount
             && batchDepth = 0
-            && not flushing
+            && flushingThread = 0
         then
             flushOwed <- true
 
@@ -4420,7 +4527,7 @@ type Graph(options: GraphOptions) =
     /// </summary>
     member internal _.Deferring
         with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () =
-            (flushing
+            (flushingThread <> 0
              || pullDepth > 0
              || not (obj.ReferenceEquals (currentNode, null))
              || not (Platform.isNull (box current)))
@@ -4456,8 +4563,8 @@ type Graph(options: GraphOptions) =
     member internal this.TryEnterPullFast() : bool =
         if
             pullDepth = 0
-            && not (Platform.isNull ownerAmbient)
-            && obj.ReferenceEquals (AmbientSlot.Existing, ownerAmbient)
+            && guarded
+            && OwnerThreadToken.Current = ownerToken
             && obj.ReferenceEquals (ownerAmbient.Hosting, this)
         then
             pullDepth <- 1
@@ -4495,7 +4602,7 @@ type Graph(options: GraphOptions) =
         if flushOwed then
             true
         else
-            if staleTransitions <> 0 && not flushing then
+            if staleTransitions <> 0 && flushingThread = 0 then
                 staleTransitions <- 0
                 activeSkips <- 0
 
@@ -4513,7 +4620,7 @@ type Graph(options: GraphOptions) =
             if not (Platform.isNull lastRaised) then
                 lastRaised <- null
 
-            if staleTransitions <> 0 && not flushing then
+            if staleTransitions <> 0 && flushingThread = 0 then
                 staleTransitions <- 0
                 activeSkips <- 0
 
@@ -4550,7 +4657,7 @@ type Graph(options: GraphOptions) =
             if flushOwed then
                 true
             else
-                if staleTransitions <> 0 && not flushing then
+                if staleTransitions <> 0 && flushingThread = 0 then
                     staleTransitions <- 0
                     activeSkips <- 0
 
@@ -4565,7 +4672,7 @@ type Graph(options: GraphOptions) =
 
     member internal this.FinishPullSettle() =
         if pullDepth = 0 then
-            if staleTransitions <> 0 && not flushing then
+            if staleTransitions <> 0 && flushingThread = 0 then
                 staleTransitions <- 0
                 activeSkips <- 0
 
@@ -4908,7 +5015,7 @@ type Graph(options: GraphOptions) =
     member inline internal _.ActiveSkips = activeSkips
 
     member inline internal _.NoteStaleTransition() =
-        if pullDepth > 0 || flushing then
+        if pullDepth > 0 || flushingThread <> 0 then
             staleTransitions <- staleTransitions + 1
 
     member internal _.NoteActiveSkip() =
@@ -5037,10 +5144,14 @@ type Graph(options: GraphOptions) =
             current.MarkCheck ()
 
 #if !FABLE_COMPILER
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.EnterHosted(host: IComputation) : HostedFrame =
         let saved = HostedFrame (current, currentNode, currentOwner, ownerPending, raisedPending)
         current <- host
-        currentNode <- Unchecked.defaultof<Node>
+
+        if not (obj.ReferenceEquals (currentNode, null)) then
+            currentNode <- Unchecked.defaultof<Node>
+
         ownerPending <- true
 
         if not (Platform.isNull (box raisedPending)) then
@@ -5048,39 +5159,46 @@ type Graph(options: GraphOptions) =
 
         saved
 
-    /// <summary><c>EnterHosted</c> for a memo, effect or split effect, so <c>Track</c> reaches its node directly.</summary>
-    /// <summary>True when no hosted computation, pending owner or raised pending node is active.</summary>
+    /// <summary>True when a hosted node can install its reader without saving an enclosing reader or pending read.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.CanEnterHostedTop() : bool =
         obj.ReferenceEquals (currentNode, null)
         && Platform.isNull (box current)
-        && not ownerPending
         && Platform.isNull (box raisedPending)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal _.EnterHostedTop(host: Node) : Owner =
-        let prevOwner = currentOwner
-        currentNode <- host
-        ownerPending <- true
-        prevOwner
+    member internal this.CanPullTopDirect() =
+        pullDepth = 0 && flushingThread = 0 && this.CanEnterHostedTop () && not ownerPending
+        && guarded && OwnerThreadToken.Current = ownerToken && obj.ReferenceEquals (ownerAmbient.Current, this)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal _.LeaveHostedTop(prevOwner: Owner) =
+    member internal _.EnterPullDirect() = pullDepth <- 1
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.CanPullUncached() =
+        pullDepth = 0 && flushingThread = 0 && not serialised && this.CanEnterHostedTop ()
+
+    member inline internal _.OwnerPending = ownerPending
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.EnterHostedTop(host: Node) : Owner =
+        let saved = currentOwner
+        currentNode <- host
+        ownerPending <- true
+        saved
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.LeaveHostedTop(previousOwner: Owner, previousPending: bool) =
         currentNode <- Unchecked.defaultof<Node>
 
         if not ownerPending then
-            currentOwner <- prevOwner
+            currentOwner <- previousOwner
 
-        ownerPending <- false
+        ownerPending <- previousPending
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member internal _.LeaveHostedTopFailed(prevOwner: Owner) =
-        currentNode <- Unchecked.defaultof<Node>
-
-        if not ownerPending then
-            currentOwner <- prevOwner
-
-        ownerPending <- false
+    member internal this.LeaveHostedTopFailed(previousOwner: Owner, previousPending: bool) =
+        this.LeaveHostedTop (previousOwner, previousPending)
 
         if not (Platform.isNull (box raisedPending)) then
             raisedPending <- Unchecked.defaultof<INode>
@@ -5300,7 +5418,7 @@ type Graph(options: GraphOptions) =
     /// </summary>
     /// <remarks>Records nothing outside every stale read and flush.</remarks>
     member internal _.Raised(failure: Failure) =
-        if pullDepth > 0 || flushing then
+        if pullDepth > 0 || flushingThread <> 0 then
             lastRaised <- failure
 
     /// <summary>Raises the exception of <c>failure</c> to the reader of a failed node, as recorded by <c>Raised</c>.</summary>
@@ -5952,16 +6070,25 @@ and [<Struct; NoEquality; NoComparison>] internal ObserverList =
 
     /// <summary>Marks observers in reverse order while the graph has no active pull or flush.</summary>
     member this.NotifyDirtyIdle() =
+        let mutable rest = this.Rest
         let mutable i = this.Count - 1
 
         while i > 0 do
-            if i >= this.Count then
-                i <- this.Count - 1
+            let entry = Platform.itemAt (i - 1) rest
+            let m = Platform.fastCast<Node> entry.Node
+            i <- i - 1
 
-            if i > 0 then
-                let entry = Platform.itemAt (i - 1) this.Rest
+            if
+                not (obj.ReferenceEquals (m, null))
+                && m.Kind = NodeKind.Memo
+                && m.Freshness = Freshness.Clean
+                && m.Observers.Count = 0
+            then
+                m.Freshness <- Freshness.Dirty
+            else
                 ObserverList.MarkIdle (entry.Observer, entry.Node)
-                i <- i - 1
+                rest <- this.Rest
+                i <- min i (this.Count - 1)
 
         if this.Count > 0 then
             ObserverList.MarkIdle (this.First, this.FirstNode)
@@ -6601,13 +6728,57 @@ and [<AbstractClass; Sealed>] internal NodeOps =
         && not (Platform.isNull n.Sources.firstNode)
 
     /// <summary>
-    /// Iterative single-memo <c>Check</c>-chain refresh without an EH frame or recursive call stack (Theorem B4,
-    /// <c>iterative_chain_refresh_eq</c>).
+    /// Resolves the first 24 check frames on the call stack and deeper frames through <c>CheckParent</c>.
     /// </summary>
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member RefreshChain(n: Node) =
         let g = n.Graph
-        let before = g.StaleTransitions
+        NodeOps.RefreshChainStep (g, n, g.StaleTransitions, 0)
+
+    static member private RefreshChainStep(g: Graph, cur: Node, before: int, depth: int) =
+        cur.Active <- 2uy
+        let source = Platform.fastCast<Node> cur.Sources.firstNode
+
+        if NodeOps.CanDescendChain source then
+            if depth = 23 then
+                NodeOps.RefreshChainTail (g, source, before)
+            else
+                NodeOps.RefreshChainStep (g, source, before, depth + 1)
+        else
+            NodeOps.RefreshChainLeaf (g, source)
+
+        NodeOps.UnwindChain (g, cur, before)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member private CanDescendChain(source: Node) =
+        source.Freshness = Freshness.Check && source.Active = 0uy && not source.Disposed && NodeOps.SingleMemoSource source
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member private RefreshChainLeaf(g: Graph, source: Node) =
+        if source.Freshness = Freshness.Dirty && source.Active = 0uy && not source.Disposed then
+            NodeOps.Recompute source
+            g.ClearLastRaisedIfTop ()
+        else
+            NodeOps.RefreshOtherChainLeaf source
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    static member private RefreshOtherChainLeaf(source: Node) = NodeOps.EnsureCurrent source
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member private UnwindChain(g: Graph, x: Node, before: int) =
+        if g.ActiveSkips <> 0 || x.Freshness = Freshness.Check then
+            NodeOps.FinishChainCheck (g, x, before)
+
+        x.Active <- 0uy
+
+        if x.Freshness = Freshness.Check then
+            x.Freshness <- Freshness.Clean
+            x.Unannounced <- false
+        elif x.Freshness = Freshness.Dirty then
+            NodeOps.Recompute x
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    static member private RefreshChainTail(g: Graph, n: Node, before: int) =
         let mutable cur = n
         let mutable parent = Unchecked.defaultof<Node>
         let mutable descending = true
@@ -6618,20 +6789,10 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             parent <- cur
             let source = Platform.fastCast<Node> cur.Sources.firstNode
 
-            if
-                source.Freshness = Freshness.Check
-                && source.Active = 0uy
-                && not source.Disposed
-                && NodeOps.SingleMemoSource source
-            then
+            if NodeOps.CanDescendChain source then
                 cur <- source
             else
-                if source.Freshness = Freshness.Dirty && source.Active = 0uy && not source.Disposed then
-                    NodeOps.Recompute source
-                    g.ClearLastRaisedIfTop ()
-                else
-                    NodeOps.EnsureCurrent source
-
+                NodeOps.RefreshChainLeaf (g, source)
                 descending <- false
 
         while not (obj.ReferenceEquals (parent, null)) do
@@ -6639,16 +6800,7 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             parent <- x.CheckParent
             x.CheckParent <- Unchecked.defaultof<Node>
 
-            if g.ActiveSkips <> 0 || x.Freshness = Freshness.Check then
-                NodeOps.FinishChainCheck (g, x, before)
-
-            x.Active <- 0uy
-
-            if x.Freshness = Freshness.Check then
-                x.Freshness <- Freshness.Clean
-                x.Unannounced <- false
-            elif not (obj.ReferenceEquals (parent, null)) && x.Freshness = Freshness.Dirty then
-                NodeOps.Recompute x
+            NodeOps.UnwindChain (g, x, before)
 
     static member private FinishChainCheck(g: Graph, x: Node, before: int) =
         if g.ActiveSkips <> 0 && x.Sources.count > 0 then
@@ -6707,25 +6859,22 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     /// <summary>Brings a stale memo current.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member Refresh(n: Node) =
-        if n.Active = 0uy then
-            if n.Freshness = Freshness.Check then
-#if !FABLE_COMPILER && !RANVIER_TRACE
-                if
-                    not (Platform.isNull n.Sources.firstNode)
-                    && (n.Sources.count = 1 || (Platform.fastCast<Node> n.Sources.firstNode).Freshness = Freshness.Dirty)
-                    && n.Graph.Deferring
-                then
-                    NodeOps.RefreshChain n
-                else
-                    NodeOps.ResolveCheck n
-#else
-                NodeOps.ResolveCheck n
-#endif
-
-            if n.Freshness = Freshness.Dirty then
-                NodeOps.Recompute n
-        else
+        if n.Active <> 0uy then
             NodeOps.RefreshActive n
+        elif n.Freshness = Freshness.Dirty then
+            NodeOps.Recompute n
+        elif n.Freshness = Freshness.Check then
+#if !FABLE_COMPILER && !RANVIER_TRACE
+            if
+                not (Platform.isNull n.Sources.firstNode)
+                && (n.Sources.count = 1 || (Platform.fastCast<Node> n.Sources.firstNode).Freshness = Freshness.Dirty)
+                && n.Graph.Deferring
+            then
+                NodeOps.RefreshChain n
+            else
+#endif
+            NodeOps.ResolveCheck n
+            if n.Freshness = Freshness.Dirty then NodeOps.Recompute n
 
     /// <summary>Brings a stale memo current when <c>Graph.Deferring</c> is false.</summary>
     static member Pull(n: Node) =
@@ -7532,8 +7681,6 @@ type Memo<'T>
         mode: ScopeMode,
         equal: IEqualityComparer<'T>
     ) =
-    // Exactly one of computeFn, computeFunc and seededFunc is set: the body is invoked through the delegate it was
-    // given, not through a wrapper around it.
     let node =
         NodeOps.Create (graph, NodeKind.Memo, Memo<'T>.RunFn, Freshness.Dirty)
 
@@ -7541,6 +7688,9 @@ type Memo<'T>
     do Tracer.Bind (node.Sources, graph, node.Id)
 
     let mutable value = Unchecked.defaultof<'T>
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    let mutable directSignal = Unchecked.defaultof<Signal<'T>>
+#endif
 
     /// <summary>The companion disposed with the memo, or null.</summary>
     let mutable adopted: IDisposable = null
@@ -7568,6 +7718,21 @@ type Memo<'T>
 
         memo.Attach ()
         memo
+
+    /// <summary>A value row that tracks a single item signal.</summary>
+    static member internal CreateSignalRow(graph: Graph, signal: Signal<'T>) : Memo<'T> =
+#if FABLE_COMPILER || RANVIER_TRACE
+        Memo<'T>.Create (graph, (fun _ -> signal.Value), ScopeMode.ValueRow)
+#else
+        let memo =
+            Memo<'T>(graph, Unchecked.defaultof<_>, null, Unchecked.defaultof<_>, null, ScopeMode.ValueRow, graph.EncodedComparer<'T>())
+
+        memo.SetSignalRow signal
+        memo.Attach ()
+        memo
+
+    member private _.SetSignalRow(signal: Signal<'T>) = directSignal <- signal
+#endif
 
     /// <summary>A memo whose cutoff uses <c>comparer</c>, owned by the current owner.</summary>
     static member internal CreateWithComparer(graph: Graph, compute: 'T voption -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T>) =
@@ -7610,6 +7775,11 @@ type Memo<'T>
     /// <summary>Invokes the body with the argument its delegate takes.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private _.Invoke(previous: 'T) : 'T =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        if not (Platform.isNull (box directSignal)) then
+            directSignal.Value
+        else
+#endif
         if not (Platform.isNull computeFunc) then
             computeFunc.Invoke (if node.Published then ValueSome previous else ValueNone)
         elif not (Platform.isNull (box computeFn)) then
@@ -7630,7 +7800,7 @@ type Memo<'T>
             && SafeEquality.isSafe equal
         then
             if graph.CanEnterHostedTop () then
-                this.RunTopCore n
+                if graph.OwnerPending then this.RunTopPending n else this.RunTopCore (n, false)
             elif graph.CanNestInReader then
                 this.RunReadyNested n
             else
@@ -7643,25 +7813,25 @@ type Memo<'T>
 
 #if !FABLE_COMPILER && !RANVIER_TRACE
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member private this.RunTopCore(n: Node) =
+    member private this.RunTopCore(n: Node, previousPending: bool) =
         let prevOwner = graph.EnterHostedTop n
         let previous = value
         let result = this.ComputePublished (n, previous)
 
         if not (Platform.isNull graph.Caught) || graph.RaisedPending || n.Violated then
-            this.RunFailedTop (n, prevOwner, this.TakeBodyException ())
+            this.RunFailedTop (n, prevOwner, previousPending, this.TakeBodyException ())
         else
             value <- result
-            graph.LeaveHostedTop prevOwner
+            graph.LeaveHostedTop (prevOwner, previousPending)
             n.Active <- 0uy
 
             let trim = n.Disposed || n.Sources.cursor < n.Sources.count
 
             if trim then
-                this.FinishTop (n, prevOwner, previous, true)
+                this.FinishTop (n, prevOwner, previousPending, previous, true)
             elif
                 (n.Observers.Count <> 0 || graph.QueuePending)
-                && not (ComparerSentinel.equals equal previous value)
+                && not (ComparerSentinel.equals null previous value)
             then
                 if NodeOps.TryPromoteTop n then
                     if graph.QueuePending then
@@ -7670,9 +7840,12 @@ type Memo<'T>
                     if n.Freshness <> Freshness.Clean then
                         this.NoteStale n
                 else
-                    this.FinishTop (n, prevOwner, previous, false)
+                    this.FinishTop (n, prevOwner, previousPending, previous, false)
             elif n.Freshness <> Freshness.Clean then
                 this.NoteStale n
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RunTopPending(n: Node) = this.RunTopCore (n, true)
 
     member private _.NoteStale(n: Node) =
         n.Unannounced <- true
@@ -7696,7 +7869,7 @@ type Memo<'T>
             let saved = HostedFrame (Unchecked.defaultof<IComputation>, parent, previousOwner, true, Unchecked.defaultof<INode>)
             this.RunFailed (saved, this.TakeBodyException (), null)
 
-        if failed || not (ComparerSentinel.equals equal previous value) then
+        if failed || not (ComparerSentinel.equals null previous value) then
             if n.Observers.Count <> 1 || not (obj.ReferenceEquals (n.Observers.FirstNode, parent)) || graph.StaleTransitions <> 0 then
                 NodeOps.NotifyMoved n
 
@@ -7716,7 +7889,10 @@ type Memo<'T>
         Counters.MemoRecomputed ()
 #endif
         n.Active <- 1uy
-        this.InvokePublished previous
+        if Platform.isNull (box directSignal) then
+            this.InvokePublished previous
+        else
+            directSignal.Value
 
     member private _.InvokePublished(previous: 'T) =
         try
@@ -7743,12 +7919,12 @@ type Memo<'T>
             graph.Caught <- null
             ex
 
-    member private this.FinishTop(n: Node, prevOwner: Owner, previous: 'T, trim: bool) =
+    member private this.FinishTop(n: Node, prevOwner: Owner, previousPending: bool, previous: 'T, trim: bool) =
         try
             if trim then
                 this.FinishSources ()
 
-            if not trim || not (ComparerSentinel.equals equal previous value) then
+            if not trim || not (ComparerSentinel.equals null previous value) then
                 NodeOps.NotifyMovedTop n
 
                 if graph.QueuePending then
@@ -7757,11 +7933,11 @@ type Memo<'T>
             if n.Freshness <> Freshness.Clean then
                 this.NoteStale n
         with ex ->
-            this.RunFailedTop (n, prevOwner, ex)
+            this.RunFailedTop (n, prevOwner, previousPending, ex)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.RunFailedTop(n: Node, prevOwner: Owner, ex: exn) =
-        graph.LeaveHostedTopFailed prevOwner
+    member private this.RunFailedTop(n: Node, prevOwner: Owner, previousPending: bool, ex: exn) =
+        graph.LeaveHostedTopFailed (prevOwner, previousPending)
         n.Active <- 0uy
 
         if n.Disposed then
@@ -8209,9 +8385,10 @@ type Memo<'T>
             && n.Status = Status.None
             && SafeEquality.isSafe equal
         then
-            if graph.IsIdleForMarks () && graph.CanEnterHostedTop () && graph.TryEnterPullFast () then
+            if graph.CanPullTopDirect () then
+                graph.EnterPullDirect ()
                 if n.Freshness = Freshness.Dirty then
-                    this.RunTopCore n
+                    this.RunTopCore (n, false)
                 else
                     this.RefreshIdleCheck n
 
@@ -8230,10 +8407,21 @@ type Memo<'T>
                     graph.Track (this :> ISource)
 
                     if StatusBits.isUnready n.Status then this.RaiseUnready n else value
+            elif n.Freshness = Freshness.Dirty && graph.CanPullUncached () then
+                this.ReadUncachedTop n
             else
                 this.ReadSlowGeneral n
         else
             this.ReadSlowGeneral n
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadUncachedTop(n: Node) =
+        graph.EnterPull ()
+        this.RunTopCore (n, graph.OwnerPending)
+
+        if graph.ExitPullDeferSettle () || n.Freshness <> Freshness.Clean then this.SettlePullAndRead ()
+        elif StatusBits.isUnready n.Status then this.RaiseUnready n
+        else value
 
     member private this.RefreshIdleCheck(n: Node) =
         try
@@ -8668,7 +8856,7 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
             && not n.Disposed
             && n.Status = Status.None
             && Platform.isNull graph.Journal
-            && graph.CanEnterHostedTop ()
+            && not graph.OwnerPending && graph.CanEnterHostedTop ()
         then
             this.RunTopCore n
         else
@@ -8688,7 +8876,7 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
         let ex = this.TryInvokeBody ()
 
         if Platform.isNull ex then
-            graph.LeaveHostedTop prevOwner
+            graph.LeaveHostedTop (prevOwner, false)
 
             if n.Disposed || n.Sources.cursor < n.Sources.count then
                 this.FinishTopSources prevOwner
@@ -8756,14 +8944,14 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
             this.RecordFailure ex
 #else
         if Platform.isNull graph.Journal then
-            if graph.CanEnterHostedTop () then
+            if not graph.OwnerPending && graph.CanEnterHostedTop () then
                 let prevOwner = graph.EnterHostedTop n
                 let ex = this.TryInvokeBody ()
 
                 if not (Platform.isNull ex) then
                     this.BodyFailedTop (prevOwner, ex)
                 else
-                    graph.LeaveHostedTop prevOwner
+                    graph.LeaveHostedTop (prevOwner, false)
 
                     if n.Disposed || n.Sources.Cursor < n.Sources.Count then
                         this.FinishSources ()
@@ -8828,7 +9016,7 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.BodyFailedTop(prevOwner: Owner, ex: exn) =
-        graph.LeaveHostedTopFailed prevOwner
+        graph.LeaveHostedTopFailed (prevOwner, false)
         this.FinishSources ()
         this.RecordFailure ex
 
@@ -9029,7 +9217,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
             && Platform.isNull (box actionOwner)
             && Platform.isNull graph.Journal
             && not graph.HasUntrackedHost
-            && graph.CanEnterHostedTop ()
+            && not graph.OwnerPending && graph.CanEnterHostedTop ()
         then
             this.RunTopCore ()
         else
@@ -9050,13 +9238,13 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
         if not (Platform.isNull ex) then
             this.ComputeFailedTop (previousOwner, ex)
         elif n.Disposed || n.Sources.cursor < n.Sources.count || not (Platform.isNull (box actionOwner)) then
-            graph.LeaveHostedTop previousOwner
+            graph.LeaveHostedTop (previousOwner, false)
             this.FinishSources ()
 
             if not n.Disposed && not (ComparerSentinel.equals equal last result) then
                 this.Act result
         elif ComparerSentinel.equals equal last result then
-            graph.LeaveHostedTop previousOwner
+            graph.LeaveHostedTop (previousOwner, false)
         else
             last <- result
             acting <- true
@@ -9098,7 +9286,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
         with ex ->
             this.RecordComputeFailure ex
 #else
-        if graph.CanEnterHostedTop () then
+        if not graph.OwnerPending && graph.CanEnterHostedTop () then
             let prevOwner = graph.EnterHostedTop n
 
             let ex = this.TryCompute &v
@@ -9107,7 +9295,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
                 this.ComputeFailedTop (prevOwner, ex)
             else
                 settled <- true
-                graph.LeaveHostedTop prevOwner
+                graph.LeaveHostedTop (prevOwner, false)
 
                 if n.Disposed || n.Sources.Cursor < n.Sources.Count then
                     this.FinishSources ()
@@ -9209,7 +9397,7 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ComputeFailedTop(prevOwner: Owner, ex: exn) =
-        graph.LeaveHostedTopFailed prevOwner
+        graph.LeaveHostedTopFailed (prevOwner, false)
         this.FinishSources ()
         this.RecordComputeFailure ex
 #endif
