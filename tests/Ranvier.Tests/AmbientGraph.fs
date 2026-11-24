@@ -501,4 +501,69 @@ let tests =
                 Expect.equal directSeen.Count 2 "direct effect ran on idle write"
                 Expect.equal keysSeen[keysSeen.Count - 1] [| 1; 2; 3 |] "projection pass observer also ran on idle write"
             }
+
+            test "nested activations, flushes, stale pulls, and out-of-order disposal restore every ambient graph" {
+                use a = new Graph ()
+                use b = new Graph ()
+                use c = new Graph ()
+                let sa = Signal (a, 0)
+                let sb = Signal (b, 10)
+                let sc = Signal (c, 0)
+                let ma = a.Run (fun () -> createMemo (fun _ -> sa.Value * 2))
+                let mb = b.Run (fun () -> createMemo (fun _ -> sb.Value + 1))
+                let log = ResizeArray<string>()
+
+                a.Run (fun () ->
+                    createEffect (fun () ->
+                        let v = ma.Value
+
+                        if v > 0 then
+                            let isA = if obj.ReferenceEquals (Graph.Current, a) then 1 else 0
+                            log.Add $"a:{v}:{isA}"))
+
+                c.Run (fun () ->
+                    createEffect (fun () ->
+                        let v = sc.Value
+
+                        if v > 0 then
+                            let beforeC = if obj.ReferenceEquals (Graph.Current, c) then 1 else 0
+                            // Activate a inside c's flush, pull stale b memo, flush a, then dispose a's activation.
+                            let innerA = a.Activate ()
+                            let duringInnerA = if obj.ReferenceEquals (Graph.Current, a) then 1 else 0
+                            let bv = mb.Value
+                            sa.Value <- v
+                            let afterNestedA = if obj.ReferenceEquals (Graph.Current, a) then 1 else 0
+                            innerA.Dispose ()
+                            let restoredC = if obj.ReferenceEquals (Graph.Current, c) then 1 else 0
+                            log.Add $"c:{v}:{beforeC}:{duringInnerA}:{bv}:{afterNestedA}:{restoredC}"))
+
+                let actA = a.Activate ()
+                Expect.isTrue (obj.ReferenceEquals (Graph.Current, a)) "a active"
+                // Repeated flushes under the same epoch stay on the lazy-epoch fast path.
+                sa.Value <- 1
+                sa.Value <- 2
+                Expect.isTrue (obj.ReferenceEquals (Graph.Current, a)) "a still active after repeated flushes"
+
+                let actB = b.Activate ()
+                Expect.isTrue (obj.ReferenceEquals (Graph.Current, b)) "b shadows a"
+
+                sb.Value <- 20
+                sc.Value <- 3
+                Expect.isTrue (obj.ReferenceEquals (Graph.Current, b)) "b restored after nested cross-graph flush"
+
+                // Disposing b restores shadowed a; a subsequent flush on a runs cleanly under the updated lazy epoch.
+                actB.Dispose ()
+                Expect.isTrue (obj.ReferenceEquals (Graph.Current, a)) "a restored when inner b activation is disposed"
+
+                sa.Value <- 4
+                Expect.isTrue (obj.ReferenceEquals (Graph.Current, a)) "a stays ambient after post-restore flush"
+
+                actA.Dispose ()
+                Expect.isTrue Graph.TryCurrent.IsNone "no ambient graph after all activations disposed"
+
+                Expect.sequenceEqual
+                    log
+                    [ "a:2:1"; "a:4:1"; "a:6:1"; "c:3:1:1:21:1:1"; "a:8:1" ]
+                    "every nested host switch saw its own graph and restored the outer host"
+            }
         ]

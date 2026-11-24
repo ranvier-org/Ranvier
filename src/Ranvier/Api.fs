@@ -75,6 +75,8 @@ type internal Stamp<'T>(version: int, value: 'T) =
     member _.Version = version
     member _.Value = value
 
+    interface INonThrowingEquality
+
     interface IEquatable<Stamp<'T>> with
         member _.Equals(other: Stamp<'T>) =
             version = other.Version
@@ -184,23 +186,57 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
 
     /// <summary>True when an edit made against seed version <c>version</c> is still in force. A tracked read of the seed.</summary>
     let inForce (version: int) =
-        draft
-        || match stamped.TryValue with
-           | Ready stamp -> stamp.Version = version
-           | Pending -> version = settled
-           | Failed _ -> false
+#if FABLE_COMPILER
+        if draft then
+            true
+        elif stamped.TryTrackReady () then
+            stamped.Peek.Version = version
+        else
+            match stamped.TryValue with
+            | Ready stamp -> stamp.Version = version
+            | Pending -> version = settled
+            | Failed _ -> false
+#else
+        if draft then
+            true
+        else
+            match stamped.TryValue with
+            | Ready stamp -> stamp.Version = version
+            | Pending -> version = settled
+            | Failed _ -> false
+#endif
+
+    let readEditedOrSeed (version: int) (edited: 'T) =
+#if FABLE_COMPILER
+        if draft then
+            edited
+        elif stamped.TryTrackReady () then
+            let stamp = stamped.Peek
+
+            if stamp.Version = version then edited else stamp.Value
+        else
+            match stamped.TryValue with
+            | Ready stamp -> if stamp.Version = version then edited else stamp.Value
+            | Pending -> if version = settled then edited else stamped.Value.Value
+            | Failed _ -> stamped.Value.Value
+#else
+        if draft then
+            edited
+        else
+            match stamped.TryValue with
+            | Ready stamp -> if stamp.Version = version then edited else stamp.Value
+            | Pending -> if version = settled then edited else stamped.Value.Value
+            | Failed _ -> stamped.Value.Value
+#endif
 
     let value =
-        Memo.Create (
+        Memo.CreateUnit (
             graph,
-            (fun _ ->
+            (fun () ->
                 let currentEdit = edit.Value
 
-                if
-                    currentEdit.Version >= 0
-                    && inForce currentEdit.Version
-                then
-                    currentEdit.Value
+                if currentEdit.Version >= 0 then
+                    readEditedOrSeed currentEdit.Version currentEdit.Value
                 else
                     stamped.Value.Value),
             ScopeMode.Pure

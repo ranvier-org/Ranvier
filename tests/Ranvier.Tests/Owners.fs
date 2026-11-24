@@ -368,4 +368,117 @@ let tests =
                 Expect.equal owner.ErrorCount 0 "no errors"
                 Expect.isEmpty (owner.ErrorsFrom 0) "and no slice"
             }
+
+            test "interleaved memos, effects, split effects, attached disposables, and cleanups tear down in strict LIFO order" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let log = ResizeArray<string>()
+                let mutable wrappedEffect: Effect = Unchecked.defaultof<_>
+                let mutable earlyMemo: Memo<int> = Unchecked.defaultof<_>
+
+                let root =
+                    createRoot (fun owner ->
+                        onCleanup (fun () -> log.Add "c1")
+
+                        owner.Attach
+                            { new IDisposable with
+                                member _.Dispose() =
+                                    log.Add "d1"
+                            }
+
+                        createEffect (fun () ->
+                            ignore s.Value
+                            onCleanup (fun () -> log.Add "e1"))
+
+                        wrappedEffect <-
+                            new Effect (
+                                g,
+                                fun () ->
+                                    ignore s.Value
+                                    onCleanup (fun () -> log.Add "e2")
+                            )
+
+                        createEffectOn (fun () -> s.Value) (fun _ -> onCleanup (fun () -> log.Add "eo1"))
+
+                        owner.Attach
+                            { new IDisposable with
+                                member _.Dispose() =
+                                    log.Add "d2"
+                            }
+
+                        earlyMemo <-
+                            createMemoWith (fun _ ->
+                                onCleanup (fun () -> log.Add "m1")
+                                s.Value * 2)
+
+                        ignore earlyMemo.Value
+                        onCleanup (fun () -> log.Add "c2")
+                        owner)
+
+                // Disposing an interior node early unlinks it cleanly without disrupting the remaining LIFO order.
+                wrappedEffect.Dispose ()
+                Expect.sequenceEqual log [ "e2" ] "early disposal ran only e2"
+                log.Clear ()
+
+                root.Dispose ()
+
+                Expect.sequenceEqual
+                    log
+                    [ "c2"; "m1"; "d2"; "eo1"; "e1"; "d1"; "c1" ]
+                    "embedded Node links, ForeignOwnerLinks, and cleanups share one strict LIFO order"
+            }
+
+            test "idle first-run effect fusion runs synchronously while creation inside batch or flush defers cleanly" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let order = ResizeArray<string>()
+
+                // Idle creation fuses first run synchronously before returning.
+                let effNode = createEffectNode (fun () -> order.Add $"idle-e:{s.Value}")
+                createEffectOn (fun () -> s.Value) (fun v -> order.Add $"idle-eo:{v}")
+                Expect.equal effNode.Status Status.None "createEffectNode settled synchronously"
+                Expect.sequenceEqual order [ "idle-e:1"; "idle-eo:1" ] "idle effects ran before return"
+
+                // Creation inside batch must NOT fuse synchronously; must flush in creation order on batch exit.
+                order.Clear ()
+                let mutable insideBatchCount = -1
+
+                batch (fun () ->
+                    createEffect (fun () -> order.Add "batch-e1")
+                    createEffectOn (fun () -> s.Value) (fun v -> order.Add $"batch-eo:{v}")
+                    createEffect (fun () -> order.Add "batch-e2")
+                    insideBatchCount <- order.Count)
+
+                Expect.equal insideBatchCount 0 "effects created inside batch stay deferred until batch exit"
+                Expect.sequenceEqual order [ "batch-e1"; "batch-eo:1"; "batch-e2" ] "batch exit flushes deferred effects in FIFO order"
+
+                // Creation inside an active flush must NOT fuse ahead of the enclosing body or sibling queued effects.
+                // Observers are notified from newest to oldest, so register outer-2 before outer-1 so outer-1 runs first.
+                order.Clear ()
+                let trigger = createSignal 0
+
+                createEffect (fun () ->
+                    let t = trigger.Value
+
+                    if t = 1 then
+                        order.Add "outer-2")
+
+                createEffect (fun () ->
+                    let t = trigger.Value
+
+                    if t = 1 then
+                        order.Add "outer-1-start"
+                        createEffect (fun () -> order.Add "inner-e")
+                        createEffectOn (fun () -> t) (fun v -> order.Add $"inner-eo:{v}")
+                        order.Add "outer-1-end")
+
+                trigger.Value <- 1
+
+                Expect.sequenceEqual
+                    order
+                    [ "outer-1-start"; "outer-1-end"; "outer-2"; "inner-e"; "inner-eo:1" ]
+                    "effects created during an active flush queue behind already-scheduled siblings"
+            }
         ]

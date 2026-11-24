@@ -57,42 +57,9 @@ type internal IStreamRun<'S> =
     /// <summary>Starts the producer against this run's sink and token.</summary>
     abstract RunSource: unit -> Task
 
-/// <summary>The mutual exclusion guarding a stream run's state; a no-op under Fable.</summary>
-#if NET9_0_OR_GREATER && !FABLE_COMPILER
-type internal StreamGate = Lock
-#else
-type internal StreamGate = obj
-#endif
-
-[<RequireQualifiedAccess>]
-module internal StreamGate =
-#if FABLE_COMPILER
-    let inline create () : StreamGate = null
-#else
-#if NET9_0_OR_GREATER
-    let inline create () : StreamGate = Lock ()
-#else
-    let inline create () : StreamGate = obj ()
-#endif
-#endif
-
-    /// <summary>Runs <c>body</c> while holding <c>gate</c>.</summary>
-    let inline hold (gate: StreamGate) ([<InlineIfLambda>] body: unit -> 'R) : 'R =
-#if FABLE_COMPILER
-        ignore gate
-        body ()
-#else
-#if NET9_0_OR_GREATER
-        gate.Enter ()
-
-        try
-            body ()
-        finally
-            gate.Exit ()
-#else
-        lock gate body
-#endif
-#endif
+/// <summary>Creates a started <c>IStreamRun&lt;'S&gt;</c> without a curried multi-argument closure.</summary>
+type internal IStreamStarter<'S> =
+    abstract Start: requester: IStreamRequester * gen: int * token: CancellationToken -> IStreamRun<'S>
 
 #if FABLE_COMPILER
 type internal FoldDelegate<'S, 'T> = 'S -> 'T -> 'S
@@ -115,24 +82,27 @@ module internal FoldFn =
 #endif
 
 /// <summary>
-/// A started stream's accumulator. Items fold on the delivering thread: without a lock on the graph thread, under the
-/// lock elsewhere.
+/// A started stream's accumulator. Items fold lock-free on the graph thread; off-thread producers lazily enable
+/// locking on the <c>StreamRun</c> instance itself (zero separate gate object allocation).
 /// </summary>
 [<Sealed>]
 type internal StreamRun<'S, 'T>
     (graph: Graph, seed: 'S, fold: FoldDelegate<'S, 'T>, requester: IStreamRequester, gen: int, source: StreamSource<'T>, token: CancellationToken) =
     inherit StreamInlet<'T>()
-    let gate = StreamGate.create ()
     let mutable state = seed
     let mutable captured = seed
     let mutable folded = 0
     let mutable received = false
     let mutable closed = false
-    let mutable foldError: exn = null
+    let mutable foldError: exn = Platform.nil ()
+#if !FABLE_COMPILER
+    let mutable offThread = 0
+#endif
 
-    /// <summary>Folds <c>item</c>: 1 when folded, 0 when closed, 2 when the fold threw and closed the run.</summary>
-    member private _.Fold(item: 'T) =
-        if closed then
+#if !FABLE_COMPILER
+    /// <summary>Folds <c>item</c> under instance lock: 1 when folded, 0 when closed, 2 when the fold threw and closed the run.</summary>
+    member private _.FoldLocked(item: 'T) =
+        if Volatile.Read &closed then
             0
         else
             try
@@ -141,15 +111,16 @@ type internal StreamRun<'S, 'T>
                 received <- true
                 1
             with error ->
-                closed <- true
+                Volatile.Write (&closed, true)
                 foldError <- error
                 2
+#endif
 
     /// <summary>Folds <c>item</c> and requests a publication; a throwing fold closes the run and reports the exception.</summary>
     override this.Deliver(item: 'T) =
 #if FABLE_COMPILER
         if not closed then
-            let mutable raised: exn = null
+            let mutable raised: exn = Platform.nil ()
 
             try
                 state <- FoldFn.invoke fold state item
@@ -182,7 +153,10 @@ type internal StreamRun<'S, 'T>
                 else
                     requester.ReportFoldFailure (gen, raised)
         else
-            let outcome = StreamGate.hold gate (fun () -> this.Fold item)
+            if Volatile.Read &offThread = 0 then
+                Interlocked.Exchange (&offThread, 1) |> ignore
+
+            let outcome = lock this (fun () -> this.FoldLocked item)
 
             if outcome = 1 then
                 requester.RequestOffGraph ()
@@ -191,12 +165,25 @@ type internal StreamRun<'S, 'T>
 #endif
 
     interface IStreamRun<'S> with
-        member _.Snapshot() =
-            StreamGate.hold gate (fun () ->
+        member this.Snapshot() =
+#if FABLE_COMPILER
+            let count = folded
+            folded <- 0
+            captured <- state
+            count
+#else
+            if Volatile.Read &offThread = 0 then
                 let count = folded
                 folded <- 0
                 captured <- state
-                count)
+                count
+            else
+                lock this (fun () ->
+                    let count = folded
+                    folded <- 0
+                    captured <- state
+                    count)
+#endif
 
         member _.Captured = captured
 
@@ -207,11 +194,29 @@ type internal StreamRun<'S, 'T>
             Volatile.Read &received
 #endif
 
-        member _.Close() =
-            StreamGate.hold gate (fun () -> closed <- true)
+        member this.Close() =
+#if FABLE_COMPILER
+            closed <- true
+#else
+            Volatile.Write (&closed, true)
+
+            if Volatile.Read &offThread <> 0 then
+                lock this (fun () -> closed <- true)
+#endif
 
         member this.RunSource() =
             source.Run (StreamSink<'T> this, token)
+
+[<Sealed>]
+type internal StreamStarter<'S, 'T>(graph: Graph, seed: 'S, fold: FoldDelegate<'S, 'T>, start: CancellationToken -> StreamSource<'T>) =
+    interface IStreamStarter<'S> with
+        member _.Start(requester, gen, token) =
+            let source = start token
+
+            if Platform.isNull (box source) then
+                raise (InvalidOperationException "The stream's start function returned null.")
+
+            StreamRun<'S, 'T>(graph, seed, fold, requester, gen, source, token) :> IStreamRun<'S>
 
 /// <summary>How a publication reaches the stream memo's readers when its state moved.</summary>
 type internal StreamNotice =
@@ -238,10 +243,18 @@ type internal StreamEnd =
 /// pending node becomes failed with <c>ObjectDisposedException</c>.
 /// </remarks>
 [<Sealed>]
-type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: IStreamRequester -> int -> CancellationToken -> IStreamRun<'S>) =
+type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter: IStreamStarter<'S>) =
     let id = graph.NextId ()
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    let mutable observers = ObserverList.Create ()
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+    let mutable observers: ObserverList = Platform.nil ()
+#else
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
+#endif
+#endif
     let mutable sources = SourceList.Create ()
     do Tracer.Bind (sources, graph, id)
     let equal = graph.EncodedComparer<'S>()
@@ -251,17 +264,17 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     let mutable freshness = Freshness.Dirty
     let mutable status = Status.Pending ||| Status.Uninitialized
     let mutable value = Unchecked.defaultof<'S>
-    let mutable failure: Failure = null
+    let mutable failure: Failure = Platform.nil ()
     let mutable runs = 0
     let mutable disposed = false
 
     /// <summary>Set when a run ends stale, as on <c>Memo</c>. The next mark notifies the observers and clears it.</summary>
     let mutable unannounced = false
     let mutable violated = false
-    let mutable link: OwnerLink = null
+    let mutable link: OwnerLink = Platform.nil ()
     let mutable generation = 0
-    let mutable run: IStreamRun<'S> = Unchecked.defaultof<_>
-    let mutable cts: CancellationTokenSource = null
+    let mutable run: IStreamRun<'S> = Platform.nil ()
+    let mutable cts: CancellationTokenSource = Platform.nil ()
     let mutable running = false
     let mutable active = 0
     let mutable launching = false
@@ -271,11 +284,11 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     let mutable wakeAction: unit -> unit = Unchecked.defaultof<_>
 
     member private this.Wake() =
-        Interlocked.Exchange (&wakePosted, 0) |> ignore
+        Volatile.Write (&wakePosted, 0)
 
         if not disposed then
             this.Enqueue ()
-            graph.RequestFlush ()
+            graph.RequestFlushFromEntered ()
 #endif
 
     member private this.Attach() =
@@ -301,7 +314,14 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
             if Platform.isNull (box wakeAction) then
                 wakeAction <- this.Wake
 
-            graph.Post wakeAction
+            graph.PostQueued wakeAction
+
+    interface Platform.IDoneWaiter with
+        member this.OnDone(outcome, gen) =
+            if graph.IsOnGraphThread then
+                this.Ended (gen, outcome)
+            else
+                graph.PostQueued (fun () -> this.Ended (gen, outcome))
 #endif
 
     member private this.ReportFoldFailure(gen, error) =
@@ -314,13 +334,45 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
             graph.PostQueued (fun () -> this.FoldFailed (gen, error))
 #endif
 
+    member private _.NotifyObserversDirty() =
+#if FABLE_COMPILER && !RANVIER_TRACE
+        if not (Platform.isNull observers) then
+            observers.NotifyDirty ()
+#else
+        observers.NotifyDirty ()
+#endif
+
+    member private _.NotifyObserversCheck() =
+#if FABLE_COMPILER && !RANVIER_TRACE
+        if not (Platform.isNull observers) then
+            observers.NotifyCheck ()
+#else
+        observers.NotifyCheck ()
+#endif
+
     member private _.Notify() =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList &observers
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList observers
+#else
         graph.NotifyMoved observers
+#endif
+#endif
         Tracer.Notified graph
         graph.RequestFlush ()
 
     member private _.NotifyInFlush() =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList &observers
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList observers
+#else
         graph.NotifyMoved observers
+#endif
+#endif
         Tracer.Notified graph
 
     /// <summary>Closes the open stream and cancels its token.</summary>
@@ -334,7 +386,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 
         if not (Platform.isNull cts) then
             let source = cts
-            cts <- null
+            cts <- Platform.nil ()
             source.Cancel ()
             source.Dispose ()
 
@@ -361,7 +413,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 
             value <- state
             status <- Status.None
-            failure <- null
+            failure <- Platform.nil ()
             Tracer.StreamPublished (graph, id, int (byte status), count, box state)
 
             if moved then
@@ -404,7 +456,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         let gen = generation
         runs <- runs + 1
         Tracer.RunStart (graph, id, runs)
-        failure <- null
+        failure <- Platform.nil ()
 
         status <-
             Status.Pending
@@ -419,12 +471,12 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
             try
                 let started =
 #if FABLE_COMPILER
-                    graph.RunHosted (this :> IComputation, fun () -> launch (this :> IStreamRequester) gen source.Token)
+                    graph.RunHosted (this :> IComputation, fun () -> starter.Start (this :> IStreamRequester, gen, source.Token))
 #else
                     let saved = graph.EnterHosted (this :> IComputation)
 
                     try
-                        let s = launch (this :> IStreamRequester) gen source.Token
+                        let s = starter.Start (this :> IStreamRequester, gen, source.Token)
                         graph.CheckRaised ()
                         s
                     finally
@@ -468,11 +520,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
                     if work.IsCompleted && graph.IsOnGraphThread then
                         this.Ended (gen, Platform.settledUnitOutcome work)
                     else
-                        Platform.whenDone work (fun outcome ->
-                            if graph.IsOnGraphThread then
-                                this.Ended (gen, outcome)
-                            else
-                                graph.PostQueued (fun () -> this.Ended (gen, outcome)))
+                        Platform.attachDone work (this :> Platform.IDoneWaiter) gen
 #endif
 
                     if gen = generation && running && started.Received then
@@ -499,7 +547,11 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 
     member private this.EnsureCurrent() =
         if freshness <> Freshness.Clean && not disposed then
-            this.Pull ()
+            if graph.Deferring then
+                this.Refresh ()
+                graph.ClearLastRaisedIfTop ()
+            else
+                this.Pull ()
 
     /// <summary>
     /// <c>EnsureCurrent</c>, then links this stream into the running reader, as on <c>Memo</c>. <c>Dirty</c>, as
@@ -507,7 +559,12 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
     /// </summary>
     member private this.TrackCurrent() =
         if freshness <> Freshness.Clean && not disposed then
-            this.Pull ()
+            if graph.Deferring then
+                this.Refresh ()
+                graph.ClearLastRaisedIfTop ()
+            else
+                this.Pull ()
+
             graph.Track (this :> ISource)
 
             if freshness <> Freshness.Clean && not disposed then
@@ -551,44 +608,72 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         if active = 2 then
             (this :> IComputation).MarkDirty()
 
+    member private this.ResolveCheckOnly() =
+        if active = 0 then
+            Tracer.CheckStart (graph, id)
+            active <- 2
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.RefreshSourceAt i
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
+                i <- i + 1
+
+            if
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+            then
+                this.ResolveCheckAgain ()
+
+            active <- 0
+            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+            if freshness = Freshness.Check then
+                freshness <- Freshness.Clean
+                unannounced <- false
+        else
+            this.RefreshActive ()
+
+    member private this.Refresh() =
+        if active = 0 then
+            if freshness = Freshness.Check then
+                this.ResolveCheckOnly ()
+
+            if freshness = Freshness.Dirty then
+                this.Launch ()
+        else
+            this.RefreshActive ()
+
     member private this.Pull() =
+#if !FABLE_COMPILER || !RANVIER_TRACE
+        if graph.TryEnterPullFast () then
+            try
+                this.Refresh ()
+            with _ ->
+                graph.ExitPullFastOnException ()
+                reraise ()
+
+            if graph.ExitPullFast () then
+                graph.FinishPullSettle ()
+        else
+            graph.EnterPull ()
+
+            try
+                this.Refresh ()
+            finally
+                graph.ExitPull ()
+#else
         graph.EnterPull ()
 
         try
-            if active = 0 then
-                if freshness = Freshness.Check then
-                    Tracer.CheckStart (graph, id)
-                    active <- 2
-                    let before = graph.StaleTransitions
-                    let mutable i = 0
-
-                    while freshness = Freshness.Check && i < sources.Count do
-                        sources.RefreshSourceAt i
-
-                        if graph.ActiveSkips <> 0 then
-                            this.CheckActiveSource i
-
-                        i <- i + 1
-
-                    if
-                        freshness = Freshness.Check
-                        && graph.StaleTransitions <> before
-                    then
-                        this.ResolveCheckAgain ()
-
-                    active <- 0
-                    Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-
-                    if freshness = Freshness.Check then
-                        freshness <- Freshness.Clean
-                        unannounced <- false
-
-                if freshness = Freshness.Dirty then
-                    this.Launch ()
-            else
-                this.RefreshActive ()
+            this.Refresh ()
         finally
             graph.ExitPull ()
+#endif
 
     static member internal Create<'T>(graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, start: CancellationToken -> StreamSource<'T>, emptyFails: bool) =
         if Platform.isNull (box fold) then
@@ -599,15 +684,10 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 
         let adapted = FoldFn.adapt fold
 
-        let launch requester (gen: int) (token: CancellationToken) =
-            let source = start token
+        let starter =
+            StreamStarter<'S, 'T>(graph, seed, adapted, start) :> IStreamStarter<'S>
 
-            if Platform.isNull (box source) then
-                raise (InvalidOperationException "The stream's start function returned null.")
-
-            StreamRun<'S, 'T>(graph, seed, adapted, requester, gen, source, token) :> IStreamRun<'S>
-
-        let memo = new StreamMemo<'S> (graph, seed, emptyFails, launch)
+        let memo = new StreamMemo<'S> (graph, seed, emptyFails, starter)
         memo.Attach ()
         memo
 
@@ -622,13 +702,26 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 
     interface ISource with
         member _.AddObserver(observer, slot) =
+#if FABLE_COMPILER && !RANVIER_TRACE
+            if Platform.isNull observers then
+                observers <- ObserverList ()
+#endif
             observers.Add (observer, slot)
 
         member _.TryAddObserver(observer, slot) =
+#if FABLE_COMPILER && !RANVIER_TRACE
+            if Platform.isNull observers then
+                observers <- ObserverList ()
+#endif
             observers.TryAdd (observer, slot)
 
         member _.RemoveObserverAt(observer, handle) =
+#if FABLE_COMPILER && !RANVIER_TRACE
+            if not (Platform.isNull observers) then
+                observers.RemoveAt (observer, handle)
+#else
             observers.RemoveAt (observer, handle)
+#endif
 
         member this.UpdateIfNecessary() =
             this.EnsureCurrent ()
@@ -647,24 +740,24 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
         member _.HasReadSlot slot =
             slot < sources.Cursor
 
-        member _.MarkDirty() =
+        member this.MarkDirty() =
             if freshness <> Freshness.Dirty || unannounced then
                 if freshness = Freshness.Clean || unannounced then
                     graph.NoteStaleTransition ()
 
                 freshness <- Freshness.Dirty
                 unannounced <- false
-                observers.NotifyDirty ()
+                this.NotifyObserversDirty ()
 
-        member _.MarkCheck() =
+        member this.MarkCheck() =
             if freshness = Freshness.Clean then
                 freshness <- Freshness.Check
                 unannounced <- false
-                observers.NotifyCheck ()
+                this.NotifyObserversCheck ()
             elif unannounced then
                 unannounced <- false
                 graph.NoteStaleTransition ()
-                observers.NotifyCheck ()
+                this.NotifyObserversCheck ()
 
     interface IScheduled with
         member this.Execute() =
@@ -672,39 +765,16 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, launch: 
 
             if not disposed && running then
                 if freshness = Freshness.Check then
-                    graph.EnterPull ()
+                    if graph.Deferring then
+                        this.ResolveCheckOnly ()
+                        graph.ClearLastRaisedIfTop ()
+                    else
+                        graph.EnterPull ()
 
-                    try
-                        if active = 0 then
-                            Tracer.CheckStart (graph, id)
-                            active <- 2
-                            let before = graph.StaleTransitions
-                            let mutable i = 0
-
-                            while freshness = Freshness.Check && i < sources.Count do
-                                sources.RefreshSourceAt i
-
-                                if graph.ActiveSkips <> 0 then
-                                    this.CheckActiveSource i
-
-                                i <- i + 1
-
-                            if
-                                freshness = Freshness.Check
-                                && graph.StaleTransitions <> before
-                            then
-                                this.ResolveCheckAgain ()
-
-                            active <- 0
-                            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
-
-                            if freshness = Freshness.Check then
-                                freshness <- Freshness.Clean
-                                unannounced <- false
-                        else
-                            this.RefreshActive ()
-                    finally
-                        graph.ExitPull ()
+                        try
+                            this.ResolveCheckOnly ()
+                        finally
+                            graph.ExitPull ()
 
                 if
                     freshness = Freshness.Clean

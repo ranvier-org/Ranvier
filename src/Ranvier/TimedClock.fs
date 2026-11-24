@@ -33,13 +33,15 @@ module private DeadlineTimerHelpers =
 
 type private DeadlineTimer private (now: unit -> float, callback: Action) =
     inherit TimedTimer()
+#if !FABLE_COMPILER
     let gate = obj ()
+#endif
     let mutable active = false
     let mutable disposed = false
     let mutable deadline = 0.
-    let mutable arm = Unchecked.defaultof<float -> unit>
-    let mutable disarm = Unchecked.defaultof<unit -> unit>
-    let mutable dispose = Unchecked.defaultof<unit -> unit>
+    let mutable arm: float -> unit = Platform.nil ()
+    let mutable disarm: unit -> unit = Platform.nil ()
+    let mutable dispose: unit -> unit = Platform.nil ()
 
     member private this.Init(create: Action -> (float -> unit) * (unit -> unit) * (unit -> unit)) =
         let a, d, disp = create (Action this.Fire)
@@ -53,6 +55,20 @@ type private DeadlineTimer private (now: unit -> float, callback: Action) =
         timer :> TimedTimer
 
     member private _.Fire() =
+#if FABLE_COMPILER
+        let deliver =
+            if disposed || not active then
+                false
+            else
+                let remaining = deadline - now ()
+
+                if remaining > 0. then
+                    arm (DeadlineTimerHelpers.nativeDue remaining)
+                    false
+                else
+                    active <- false
+                    true
+#else
         let deliver =
             lock gate (fun () ->
                 if disposed || not active then
@@ -66,6 +82,7 @@ type private DeadlineTimer private (now: unit -> float, callback: Action) =
                     else
                         active <- false
                         true)
+#endif
 
         if deliver then
             callback.Invoke ()
@@ -74,6 +91,14 @@ type private DeadlineTimer private (now: unit -> float, callback: Action) =
         if delay < TimeSpan.Zero then
             raise (ArgumentOutOfRangeException (nameof delay))
 
+#if FABLE_COMPILER
+        if disposed then
+            raise (ObjectDisposedException (nameof TimedTimer))
+
+        deadline <- now () + delay.TotalMilliseconds
+        active <- true
+        arm (DeadlineTimerHelpers.nativeDue delay.TotalMilliseconds)
+#else
         lock gate (fun () ->
             if disposed then
                 raise (ObjectDisposedException (nameof TimedTimer))
@@ -81,19 +106,33 @@ type private DeadlineTimer private (now: unit -> float, callback: Action) =
             deadline <- now () + delay.TotalMilliseconds
             active <- true
             arm (DeadlineTimerHelpers.nativeDue delay.TotalMilliseconds))
+#endif
 
     override _.Disarm() =
+#if FABLE_COMPILER
+        if not disposed then
+            active <- false
+            disarm ()
+#else
         lock gate (fun () ->
             if not disposed then
                 active <- false
                 disarm ())
+#endif
 
     override _.Dispose() =
+#if FABLE_COMPILER
+        if not disposed then
+            disposed <- true
+            active <- false
+            dispose ()
+#else
         lock gate (fun () ->
             if not disposed then
                 disposed <- true
                 active <- false
                 dispose ())
+#endif
 
 #if !FABLE_COMPILER
 module private SystemClockHelpers =
