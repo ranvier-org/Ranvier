@@ -49,7 +49,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | SuspensionEdges.fs | 21 | 20 | 20 | 21 | 20 | 20 | 0 | 0 |
 | Scopes.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
 | Propagation.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
-| Reads.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
+| Reads.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
 | Projections.fs | 122 | 122 | 122 | 122 | 122 | 122 | 10 | 0 |
@@ -69,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Journal.fs | 86 | 85 | 85 | 89 | 88 | 88 | 3 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Editables.fs | 17 | 17 | 17 | 17 | 17 | 17 | 1 | 0 |
+| Editables.fs | 43 | 43 | 43 | 43 | 43 | 43 | 3 | 0 |
 | MvuBridge.fs | 14 | 14 | 14 | 14 | 14 | 14 | 3 | 0 |
 | QueryComposition.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | Queries.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1733 | 1719 | 1716 | 1955 | 1937 | 1934 | 148 | 1 |
+| **Total** | 1766 | 1752 | 1749 | 1988 | 1970 | 1967 | 150 | 1 |
 
 ## Tests.fs
 
@@ -1069,7 +1069,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Reads.fs
 
-<details><summary>14 passed in every build and delivery that runs them</summary>
+<details><summary>21 passed in every build and delivery that runs them</summary>
 
 - Peek on a never-read memo does not run the body
 - Peek does not recompute a stale memo
@@ -1085,6 +1085,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - TrackStatus tracks a pending source for a reader of any value type
 - TrackStatus brings a stale memo up to date before reporting its status
 - TrackStatus of an effect is untracked
+- cutoff signal writes still record journal entries without waking memos
+- Memo.Value and TryValue preserve fast and slow path semantics across freshness and status
+- default, custom, NaN, and faulty null-policy comparers preserve signal and memo cutoff semantics
+- a memo's check walk reaches the memos it reads past the second
+- disposing the readers of a memo in any order keeps the remaining readers woken
+- a memo that changes what it reads past its second source keeps one edge per source read
+- a signal row follows its signal, cuts off an equal value and stops with its owner
 
 </details>
 
@@ -2255,9 +2262,11 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 | Excluded | Reason |
 | --- | --- |
+| an existing-key upsert of a keyed collection allocates nothing | JavaScript exposes no allocation counter. |
+| an existing-key upsert read by a fold, the fold's effect and a row effect allocates nothing | JavaScript exposes no allocation counter. |
 | an edit of an int allocates no more than a write through a chain of two memos | JavaScript exposes no allocation counter. |
 
-<details><summary>17 passed in every build and delivery that runs them</summary>
+<details><summary>43 passed in every build and delivery that runs them</summary>
 
 - an editable reads the seed until edited, then the edit
 - an upstream change drops the edit of an editable
@@ -2276,6 +2285,32 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pending seed that settles to a new value drops the edit
 - an edit before the seed first settles is dropped by an editable and kept by a draft
 - disposing the owner detaches the editable from its seed
+- a keyed collection whose selector disposes it raises and stays empty
+- a selector that upserts the same key leaves one row holding the outer value
+- a selector that writes and then throws inside an outer batch keeps the write and the batch
+- an upsert of a removed key adds a new row at the end
+- an upsert after Clear adds its key again
+- a selector that removes its own key leaves the upsert a new row at the end
+- upserts alternating between two keys reach each key's row
+- a keyed collection upserts a None key as any other key
+- the snapshot of a keyed collection holds each key's last value
+- a fold over a keyed collection follows value edits between key changes
+- a fold read after key changes and value edits it did not observe holds the current total
+- a fold whose add reads a signal folds again when the signal changes after a value edit
+- a fold whose subtract throws on a value edit folds the row values again
+- a fold whose add reads a pending source on a value edit is pending until an edit avoids the read
+- a fold over a view that keeps its key array follows a key replaced beside a value edit
+- a fold over a mapped view folds the rows that replaced its own when a signal its add reads changes
+- a fold whose add swallows a pending read on a value edit is pending
+- disposing a keyed collection returns its fold to zero
+- a keyed collection created under a disposed owner is disposed at once
+- a projection and its views created under a disposed owner read as empty
+- an Edit inside an Edit applies its removals and upserts in order, in one flush
+- a Clear and an upsert inside an Edit reach the key reader once
+- an Edit whose callback throws keeps the edits before the throw and the collection usable
+- a fold over a projection raises a failed row's exception and recovers with the row
+- a fold over a projection keeps a pending row's last value and follows its settle
+- a fold without a subtract folds the row values once for each value edit
 
 </details>
 

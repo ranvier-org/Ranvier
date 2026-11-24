@@ -34,16 +34,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     // The batch bodies, built once by Init and bound to this collection, so an edit allocates no closure. A let-bound
     // lambda would compile to a method and a fresh closure at each use; a mutable field assigned once holds one object.
     let mutable clearFn: unit -> unit = Unchecked.defaultof<_>
-#if FABLE_COMPILER
-    // Under Fable, RunBatchWith wraps its argument in a closure. An edit parks its body and argument in these fields
-    // and runs a thunk built once.
-    let mutable parkedBody: obj -> unit = Unchecked.defaultof<_>
-    let mutable parkedArg: obj = null
-    let mutable runParked: unit -> unit = Unchecked.defaultof<_>
-    let mutable removeParked: unit -> bool = Unchecked.defaultof<_>
-#else
     let mutable removeFn: 'K -> bool = Unchecked.defaultof<_>
-#endif
 
     let toArray () =
         if count = 0 then
@@ -63,14 +54,13 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     /// <summary>Wires the delta readers and the cleanup. Called once by <c>Create</c>, before the projection is shared.</summary>
     member private this.Init() =
         // A key's item signal is immutable: a replaced or removed key retires its row, and a re-added key gets a new row.
-        this.DirectBody <- Func<_, _, _>(fun entry signal -> this.RowBody (entry, signal))
-        clearFn <- fun () -> this.ClearInBatch ()
-#if FABLE_COMPILER
-        runParked <- fun () -> this.RunParked ()
-        removeParked <- fun () -> this.RemoveParked ()
+#if FABLE_COMPILER && !RANVIER_TRACE
+        this.DirectSignalRow <- true
 #else
-        removeFn <- fun key -> this.RemoveInBatch key
+        this.DirectBody <- Func<_, _, _>(fun entry signal -> this.RowBody (entry, signal))
 #endif
+        clearFn <- fun () -> this.ClearInBatch ()
+        removeFn <- fun key -> this.RemoveInBatch key
 
         this.ReadDelta <-
             fun () ->
@@ -114,12 +104,14 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
                     previous <- Array.empty)
         )
 
+#if !FABLE_COMPILER || RANVIER_TRACE
     /// <summary>The memo body of the row of <c>signal</c>: a tracked read of the signal, which settles the row.</summary>
     member private _.RowBody(entry: RowEntry<'K, 'V>, signal: Signal<'V>) : 'V voption -> 'V =
         fun _ ->
             let value = signal.Value
             entry.Settled <- true
             value
+#endif
 
     /// <summary>Creates the projection and wires it. A collection is always made here, never by the constructor.</summary>
     static member Create(graph: Graph) : CollectionProjection<'K, 'V> =
@@ -235,52 +227,19 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
             count <- 0
             revision.Value <- revision.Peek + 1
 
-#if FABLE_COMPILER
-    /// <summary>
-    /// Runs the parked edit body on the parked argument. Takes the argument before the body runs, so the body may park
-    /// an edit of its own.
-    /// </summary>
-    member private _.RunParked() =
-        // Called through the field: binding the body to a local makes Fable wrap it in a closure.
-        let arg = parkedArg
-        parkedArg <- null
-        parkedBody arg
-
-    /// <summary><c>RemoveInBatch</c> of the parked key.</summary>
-    member private this.RemoveParked() : bool =
-        let key = unbox<'K> parkedArg
-        parkedArg <- null
-        this.RemoveInBatch key
-#endif
-
     /// <summary>The upsert of a value under <c>keyOf value</c>, as a batch body for <c>EditWith</c>.</summary>
     member this.UpsertBody(keyOf: 'V -> 'K) : 'V -> unit =
         fun value -> this.AddOrUpdateByInBatch (keyOf, value)
 
     member this.Remove(key: 'K) : bool =
-#if FABLE_COMPILER
-        parkedArg <- box key
-        graph.RunBatch removeParked
-#else
         graph.RunBatchWith (removeFn, key)
-#endif
 
     member this.Clear() =
-#if FABLE_COMPILER
-        graph.RunBatch clearFn
-#else
         graph.RunBatchUnitWith (clearFn, ())
-#endif
 
     /// <summary>Runs <c>body arg</c> in one batch. The body checks liveness itself, through <c>CheckLive</c>.</summary>
     member this.EditWith(body: 'A -> unit, arg: 'A) =
-#if FABLE_COMPILER
-        parkedBody <- unbox<obj -> unit>(box body)
-        parkedArg <- box arg
-        graph.RunBatch runParked
-#else
         graph.RunBatchUnitWith (body, arg)
-#endif
 
     override this.Enumerate() =
         revision.Value |> ignore

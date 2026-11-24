@@ -825,4 +825,159 @@ let tests =
                     Expect.equal listRuns 1 "list memo skipped on structurally equal distinct list"
 #endif
             }
+
+            test "a memo's check walk reaches the memos it reads past the second" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let inputs = Array.init 4 (fun i -> createSignal (10 * (i + 1)))
+                let partRuns = Array.zeroCreate<int> 4
+
+                let parts =
+                    inputs
+                    |> Array.mapi (fun i input ->
+                        createMemo (fun _ ->
+                            partRuns[i] <- partRuns[i] + 1
+                            input.Value / 10))
+
+                let sumRuns = ref 0
+
+                let sum =
+                    createMemo (fun _ ->
+                        sumRuns.Value <- sumRuns.Value + 1
+
+                        parts[0].Value
+                        + parts[1].Value
+                        + parts[2].Value
+                        + parts[3].Value)
+
+                let seen = ResizeArray<int> ()
+                createEffect (fun () -> seen.Add sum.Value)
+
+                Expect.equal sum.SourceCount 4 "one edge per memo read"
+                Expect.sequenceEqual seen [ 10 ] "1 + 2 + 3 + 4"
+
+                // Each write moves its signal and leaves the memo over it equal.
+                for i in 0..3 do
+                    inputs[i].Value <- inputs[i].Peek + 1
+
+                Expect.sequenceEqual partRuns [| 2; 2; 2; 2 |] "the walk re-ran the memo over each written signal"
+                Expect.equal sumRuns.Value 1 "no memo moved, so the sum did not re-run"
+                Expect.sequenceEqual seen [ 10 ] "and neither did its effect"
+
+                inputs[2].Value <- 90
+                inputs[3].Value <- 100
+
+                Expect.equal sumRuns.Value 3 "a memo that moved re-runs the sum"
+                Expect.sequenceEqual seen [ 10; 16; 22 ] "and its effect"
+            }
+
+            test "disposing the readers of a memo in any order keeps the remaining readers woken" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal 0
+                let doubled = createMemo (fun _ -> source.Value * 2)
+                let seen = Array.init 4 (fun _ -> ResizeArray<int> ())
+
+                let readers =
+                    Array.init 4 (fun i ->
+                        g.CreateRoot (fun owner ->
+                            createEffect (fun () -> seen[i].Add doubled.Value)
+                            owner))
+
+                Expect.equal doubled.ObserverCount 4 "four readers"
+
+                // The first, the last and a middle reader: each removal moves a different reader's edge.
+                readers[0].Dispose ()
+                source.Value <- 1
+                readers[3].Dispose ()
+                source.Value <- 2
+                readers[1].Dispose ()
+                source.Value <- 3
+
+                Expect.equal doubled.ObserverCount 1 "one reader is left"
+                Expect.sequenceEqual seen[0] [ 0 ] "the first reader stopped at its disposal"
+                Expect.sequenceEqual seen[1] [ 0; 2; 4 ] "the second ran until its disposal"
+                Expect.sequenceEqual seen[2] [ 0; 2; 4; 6 ] "the third ran for every write"
+                Expect.sequenceEqual seen[3] [ 0; 2 ] "the fourth ran until its disposal"
+
+                readers[2].Dispose ()
+                Expect.equal doubled.ObserverCount 0 "no reader is left"
+            }
+
+            test "a memo that changes what it reads past its second source keeps one edge per source read" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let a = createSignal 1
+                let b = createSignal 2
+                let narrow = createSignal false
+                let c = createSignal 3
+                let d = createSignal 4
+                let runs = ref 0
+
+                let m =
+                    createMemo (fun _ ->
+                        runs.Value <- runs.Value + 1
+                        let head = a.Value + b.Value
+
+                        if narrow.Value then
+                            head + d.Value
+                        else
+                            head + c.Value + d.Value)
+
+                Expect.equal m.Value 10 "1 + 2 + 3 + 4"
+                Expect.equal m.SourceCount 5 "a, b, narrow, c and d"
+
+                narrow.Value <- true
+                Expect.equal m.Value 7 "1 + 2 + 4"
+                Expect.equal m.SourceCount 4 "c is no longer read"
+                Expect.equal c.ObserverCount 0 "and its edge is gone"
+                Expect.equal d.ObserverCount 1 "d moved up a position and kept one edge"
+
+                let before = runs.Value
+                c.Value <- 30
+                Expect.equal m.Value 7 "a write to the dropped source changes nothing"
+                Expect.equal runs.Value before "and wakes nothing"
+
+                d.Value <- 40
+                Expect.equal m.Value 43 "the source that moved up still wakes the memo"
+
+                narrow.Value <- false
+                Expect.equal m.Value 73 "1 + 2 + 30 + 40"
+                Expect.equal m.SourceCount 5 "c is read again"
+                Expect.equal c.ObserverCount 1 "through one edge"
+                Expect.equal d.ObserverCount 1 "and d still has one"
+            }
+
+            test "a signal row follows its signal, cuts off an equal value and stops with its owner" {
+                use g = new Graph (GraphOptions.Default.WithEquality (StructuralPolicy ()))
+                use _ = g.Activate ()
+                let source = createSignal [ 1; 2 ]
+                let mutable row = Unchecked.defaultof<Memo<int list>>
+
+                let owner =
+                    g.CreateRoot (fun owner ->
+                        row <- Memo<int list>.CreateSignalRow (g, source)
+                        owner)
+
+                let seen = ResizeArray<int list> ()
+                createEffect (fun () -> seen.Add row.Value)
+
+                Expect.equal row.Value [ 1; 2 ] "the row reads its signal"
+                Expect.equal row.Runs 1 "in one run"
+                Expect.equal row.SourceCount 1 "through one edge"
+                Expect.equal source.ObserverCount 1 "held once by the signal"
+
+                source.Value <- List.ofArray [| 1; 2 |]
+                Expect.equal row.Runs 1 "an equal value leaves the row alone"
+
+                source.Value <- [ 3 ]
+                Expect.equal row.Value [ 3 ] "a new value reaches the row"
+                Expect.equal row.Runs 2 "in one more run"
+                Expect.sequenceEqual seen [ [ 1; 2 ]; [ 3 ] ] "and its reader, once for each value"
+
+                owner.Dispose ()
+                Expect.equal source.ObserverCount 0 "disposing the owner drops the row's edge"
+                source.Value <- [ 4 ]
+                Expect.equal row.Peek [ 3 ] "and the row keeps its last value"
+            }
         ]

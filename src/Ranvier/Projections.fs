@@ -2518,6 +2518,14 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     /// </summary>
     member val internal DirectBody: Func<RowEntry<'K, 'V>, 'T, 'V voption -> 'V> = null with get, set
 
+#if FABLE_COMPILER && !RANVIER_TRACE
+    /// <summary>
+    /// True for a projection whose item is the <c>Signal</c> of the row's value, kept for the row's lifetime: the row
+    /// is then a memo whose body is a read of the signal, created settled, with no body function.
+    /// </summary>
+    member val internal DirectSignalRow = false with get, set
+#endif
+
     member internal this.HasRow(key: 'K) =
         not (Platform.isNull (this.Entries.Find key))
 
@@ -2565,6 +2573,13 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             let struct (key, item) = Platform.entryAt i adds
             let entry = this.NewRow (key, item)
 
+#if FABLE_COMPILER && !RANVIER_TRACE
+            if this.DirectSignalRow then
+                // A signal row is settled from creation: its body is a signal read.
+                entry.Settled <- true
+                entry.Row <- Memo<'V>.CreateSignalRowEncoded(graph, Platform.fastCast<Signal<'V>> (box item), encodedValueEqual)
+            else
+#endif
             let body =
                 if Platform.isNull direct then
                     fun _ -> this.RunMappedItem entry
