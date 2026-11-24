@@ -404,6 +404,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// <summary>The live key readers, and null while none exists.</summary>
     let mutable log: KeyLog<'K> = null
 
+    /// <summary>The count of key changes sent to the key readers.</summary>
+    let mutable membershipVersion = 0
+
     let mutable values: ProjectionValues<'K, 'V> = Unchecked.defaultof<_>
 
     let beacon = ProjectionBeacon (graph, this)
@@ -619,8 +622,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         && observed
         && not (Platform.isNull entry)
         && not (Platform.isNull (box entry.Row))
-        && entry.Row.Status = Status.None
-        && not (entry.Row :> ISource).IsStale
+        && entry.Row.IsCleanAndReady
+
     member internal _.Entries = entries
     member internal _.Scope = scope
 
@@ -654,6 +657,32 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member val internal CreateFirst = false with get, set
 
     member internal _.PublishedVersion = keysVersion
+
+    /// <summary>
+    /// A version of the changes pending in the key readers of a live projection. While it holds its value, each key
+    /// reader holds the pending changes it held before.
+    /// </summary>
+    member internal _.MembershipVersion = membershipVersion
+
+    /// <summary>
+    /// Makes the tracked reads of <c>Keys</c>, the beacon then the keys cell, and returns true when the projection is live,
+    /// clean and observed, its published keys are <c>expected</c> and its <c>MembershipVersion</c> is <c>version</c>.
+    /// Returns false before any tracked read otherwise.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.TrackKeysAt(expected: 'K[], version: int) : bool =
+        if
+            freshness = Freshness.Clean
+            && observed
+            && not disposed
+            && membershipVersion = version
+            && obj.ReferenceEquals (keys.Peek, expected)
+        then
+            graph.Track (beacon :> ISource)
+            graph.Track (keys :> ISource)
+            true
+        else
+            false
 
     member internal this.RecordKeyRange(fromVersion: int, start: int, prevEnd: int, nextEnd: int) =
         if Platform.isNull this.Range then
@@ -737,6 +766,8 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         hidden.Add key |> ignore
 
     member private _.RecordVisible(key: 'K, change: KeyChange) =
+        membershipVersion <- membershipVersion + 1
+
         if not (Platform.isNull log) then
             log.Record (key, change)
 
@@ -1503,34 +1534,57 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     interface IBeaconHost with
         member this.Refresh() =
-            if status = Status.None && not disposed then
-                try
-                    // A projection stays `Clean` until an upstream projection
-                    // republishes, so the upstream passes run first. Every other
-                    // source marks the projection when it goes stale.
-                    if beaconsStale then
-                        beaconsStale <- false
-                        upstreamBeacons.Clear ()
+            if this.HasRefreshWork () then
+                this.RefreshStale ()
 
-                        for i in 0 .. sources.Count - 1 do
-                            match sources.SourceAt i with
-                            | :? ProjectionBeacon as source -> upstreamBeacons.Add source
-                            | _ -> ()
+    /// <summary>
+    /// Whether <c>RefreshStale</c> changes anything: a stale, failed or disposed projection, an upstream beacon to bring
+    /// current, a pending row, or a summary to publish. Always true in the traced build, which logs every walk.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.HasRefreshWork() =
+#if !RANVIER_TRACE
+        freshness <> Freshness.Clean
+        || status <> Status.None
+        || disposed
+        || beaconsStale
+        || upstreamBeacons.Count > 0
+        || inFlight.Count > 0
+        || anyMoved
+        || versionMoved
+#else
+        true
+#endif
 
-                    Tracer.Walk (graph, id)
-                    let mutable i = 0
+    member private this.RefreshStale() =
+        if status = Status.None && not disposed then
+            try
+                // A projection stays `Clean` until an upstream projection
+                // republishes, so the upstream passes run first. Every other
+                // source marks the projection when it goes stale.
+                if beaconsStale then
+                    beaconsStale <- false
+                    upstreamBeacons.Clear ()
 
-                    while freshness = Freshness.Clean
-                          && i < upstreamBeacons.Count do
-                        (Platform.entryAt i upstreamBeacons).UpdateIfNecessary()
-                        i <- i + 1
+                    for i in 0 .. sources.Count - 1 do
+                        match sources.SourceAt i with
+                        | :? ProjectionBeacon as source -> upstreamBeacons.Add source
+                        | _ -> ()
 
-                    Tracer.Walked (graph, id)
-                    this.EnsureCurrent ()
-                with _ ->
-                    ()
+                Tracer.Walk (graph, id)
+                let mutable i = 0
 
-            this.RefreshSummary ()
+                while freshness = Freshness.Clean
+                      && i < upstreamBeacons.Count do
+                    (Platform.entryAt i upstreamBeacons).UpdateIfNecessary()
+                    i <- i + 1
+
+                Tracer.Walked (graph, id)
+                this.EnsureCurrent ()
+            with _ ->
+                ()
+
+        this.RefreshSummary ()
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -1745,8 +1799,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         // A clean, observed projection whose row is clean and ready: the same two tracked reads as the general path,
         // without the pass check or the handlers that only a stale, pending or failed read needs.
         if this.IsCleanHit entry then
+            let row = entry.Row
             graph.Track (beacon :> ISource)
-            entry.Row.Value
+            graph.Track (row :> ISource)
+            row.Peek
         else
             this.GetRow (key, false)
 
@@ -2365,8 +2421,6 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #endif
 #endif
 
-    let mutable directItem = false
-
     /// <summary>The memo-free factory, or null.</summary>
     let mutable once: (unit -> 'T) -> 'V = Unchecked.defaultof<_>
 
@@ -2409,12 +2463,11 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #endif
 
     /// <summary>
-    /// Set by a projection whose live rows keep one item for their lifetime. A mapped row then reads the item untracked
-    /// and observes only the sources <c>map</c> reads.
+    /// The memo body of a mapped row from the row and its item, or null. Set by a projection whose live rows keep one
+    /// item for their lifetime and whose row value is a read of the item that always succeeds. The body returns that
+    /// value and sets the row's <c>Settled</c>; the row observes only the sources the body reads.
     /// </summary>
-    member internal _.DirectItem
-        with get () = directItem
-        and set v = directItem <- v
+    member val internal DirectBody: Func<RowEntry<'K, 'V>, 'T, 'V voption -> 'V> = null with get, set
 
     member internal this.HasRow(key: 'K) =
         not (Platform.isNull (this.Entries.Find key))
@@ -2445,11 +2498,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 
     member private this.RunMappedItem(entry: ItemRow<'T, 'K, 'V>) : 'V =
         try
-            let value =
-                if directItem then
-                    map entry.Item.Peek
-                else
-                    map entry.Item.Value
+            let value = map entry.Item.Value
 
             if not entry.Row.Violated then
                 entry.Settled <- true
@@ -2461,10 +2510,19 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             reraise ()
 
     member private this.CreateMapped() =
+        let direct = this.DirectBody
+
         for i in 0 .. adds.Count - 1 do
             let struct (key, item) = Platform.entryAt i adds
             let entry = this.NewRow (key, item)
-            entry.Row <- Memo<'V>.CreateEncoded(graph, (fun _ -> this.RunMappedItem entry), rowMode, encodedValueEqual)
+
+            let body =
+                if Platform.isNull direct then
+                    fun _ -> this.RunMappedItem entry
+                else
+                    direct.Invoke (entry, item)
+
+            entry.Row <- Memo<'V>.CreateEncoded(graph, body, rowMode, encodedValueEqual)
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
     member private this.FactoryFailure(key: 'K, error: exn, advice: string, before: int) : unit -> 'V =

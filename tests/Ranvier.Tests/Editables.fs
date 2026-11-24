@@ -404,6 +404,367 @@ let tests =
                 Expect.equal runs.Value 2 "the outer batch flushes once"
             }
 
+            test "an upsert of a removed key adds a new row at the end" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 1)
+                col.AddOrUpdate (2, 2)
+                col.AddOrUpdate (1, 10)
+
+                Expect.isTrue (col.Remove 1) "the key was present"
+                col.AddOrUpdate (1, 11)
+
+                Expect.sequenceEqual col.Rows.Keys [| 2; 1 |] "the key returns at the end"
+                Expect.equal (col.Rows.Get 1) (1, 11) "the new row holds the upserted value"
+            }
+
+            test "an upsert after Clear adds its key again" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 1)
+                col.AddOrUpdate (1, 2)
+                let runs = countRuns (fun () -> col.Rows.Keys)
+
+                col.Clear ()
+                col.AddOrUpdate (1, 3)
+
+                Expect.sequenceEqual col.Rows.Keys [| 1 |] "the key is live again"
+                Expect.equal (col.Rows.Get 1) (1, 3) "the new row holds the upserted value"
+                Expect.equal runs.Value 3 "the clear and the upsert each reach the key reader"
+            }
+
+            test "a selector that removes its own key leaves the upsert a new row at the end" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let armed = ref false
+                let cell = ref Unchecked.defaultof<KeyedCollection<int, int * int>>
+
+                let col =
+                    createKeyedCollection (fun (k, _) ->
+                        if armed.Value then
+                            cell.Value.Remove k |> ignore
+
+                        k)
+
+                cell.Value <- col
+                col.AddOrUpdate (1, 1)
+                col.AddOrUpdate (2, 2)
+                col.AddOrUpdate (1, 10)
+                armed.Value <- true
+
+                col.AddOrUpdate (1, 11)
+
+                Expect.sequenceEqual col.Rows.Keys [| 2; 1 |] "the removal inside the selector is applied before the upsert"
+                Expect.equal (col.Rows.Get 1) (1, 11) "the new row holds the upserted value"
+            }
+
+            test "upserts alternating between two keys reach each key's row" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 0)
+                col.AddOrUpdate (2, 0)
+                let first = ResizeArray<int>()
+                let second = ResizeArray<int>()
+                createEffectOn (fun () -> snd (col.Rows.Get 1)) first.Add
+                createEffectOn (fun () -> snd (col.Rows.Get 2)) second.Add
+
+                for i in 1..3 do
+                    col.AddOrUpdate (1, i)
+                    col.AddOrUpdate (2, i * 10)
+
+                Expect.sequenceEqual first [ 0; 1; 2; 3 ] "every upsert of the first key reaches its row"
+                Expect.sequenceEqual second [ 0; 10; 20; 30 ] "every upsert of the second key reaches its row"
+            }
+
+            test "a keyed collection upserts a None key as any other key" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int option, _: int) -> k)
+                col.AddOrUpdate (None, 1)
+                col.AddOrUpdate (None, 2)
+                col.AddOrUpdate (Some 1, 3)
+                col.AddOrUpdate (None, 4)
+
+                Expect.sequenceEqual col.Rows.Keys [| None; Some 1 |] "one row per key, in insertion order"
+                Expect.equal (col.Rows.Get None) (None, 4) "the None key holds its last value"
+                Expect.equal (col.Rows.Get (Some 1)) (Some 1, 3) "the other key is untouched by the later upsert"
+            }
+
+            test "the snapshot of a keyed collection holds each key's last value" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 1)
+                col.AddOrUpdate (2, 2)
+                col.AddOrUpdate (1, 3)
+
+                let snapshot = col.Rows.Snapshot
+
+                Expect.equal snapshot.Count 2 "every row is settled"
+                Expect.equal snapshot[1] (1, 3) "the edited key"
+                Expect.equal snapshot[2] (2, 2) "the unedited key"
+            }
+
+            test "a fold over a keyed collection follows value edits between key changes" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+
+                let total =
+                    col.Rows
+                    |> Projection.foldGroup (fun n (_, p) -> n + p) (fun n (_, p) -> n - p) 0
+
+                let seen = ResizeArray<int>()
+                createEffectOn (fun () -> total.Value) seen.Add
+
+                col.AddOrUpdate (1, 5)
+                col.AddOrUpdate (2, 7)
+                col.AddOrUpdate (1, 6)
+                col.AddOrUpdate (1, 8)
+                col.AddOrUpdate (3, 1)
+                col.AddOrUpdate (3, 2)
+                col.Remove 2 |> ignore
+                col.AddOrUpdate (1, 1)
+
+                col.Edit (fun c ->
+                    c.Remove 1 |> ignore
+                    c.AddOrUpdate (1, 4))
+
+                col.AddOrUpdate (1, 5)
+                col.Clear ()
+                col.AddOrUpdate (9, 9)
+
+                Expect.sequenceEqual
+                    seen
+                    [ 0; 5; 12; 13; 15; 16; 17; 10; 3; 6; 7; 0; 9 ]
+                    "each addition, edit, removal, replacement and clear moves the total once"
+            }
+
+            test "a fold read after key changes and value edits it did not observe holds the current total" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 1)
+
+                let fold () =
+                    col.Rows
+                    |> Projection.foldGroup (fun n (_, p) -> n + p) (fun n (_, p) -> n - p) 0
+
+                let watched = fold ()
+                let pulled = fold ()
+                countRuns (fun () -> watched.Value) |> ignore
+                Expect.equal pulled.Value 1 "the first read"
+
+                col.AddOrUpdate (1, 2)
+                col.AddOrUpdate (2, 10)
+                col.AddOrUpdate (2, 20)
+                col.Remove 1 |> ignore
+                Expect.equal pulled.Value 20 "an addition, two edits and a removal since the last read"
+
+                col.AddOrUpdate (2, 30)
+                Expect.equal pulled.Value 30 "a value edit alone"
+
+                col.AddOrUpdate (3, 1)
+                Expect.equal pulled.Value 31 "an addition after a read that saw no key change"
+                Expect.equal watched.Value 31 "the observed fold agrees"
+            }
+
+            test "a fold whose add reads a signal folds again when the signal changes after a value edit" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                let weight = createSignal 1
+
+                let total =
+                    col.Rows
+                    |> Projection.foldGroup (fun n (_, p) -> n + p * weight.Value) (fun n (_, p) -> n - p * weight.Value) 0
+
+                let seen = ResizeArray<int>()
+                createEffectOn (fun () -> total.Value) seen.Add
+
+                col.AddOrUpdate (1, 2)
+                col.AddOrUpdate (2, 3)
+                col.AddOrUpdate (1, 4)
+                weight.Value <- 10
+                col.AddOrUpdate (2, 1)
+
+                Expect.sequenceEqual seen [ 0; 2; 5; 7; 70; 50 ] "the edits step the total and the weight folds every row again"
+            }
+
+            test "a fold whose subtract throws on a value edit folds the row values again" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                let armed = ref false
+
+                let total =
+                    col.Rows
+                    |> Projection.foldGroup
+                        (fun n (_, p) -> n + p)
+                        (fun n (_, p) ->
+                            if armed.Value then
+                                failwith "subtract failed"
+
+                            n - p)
+                        0
+
+                let seen = ResizeArray<int>()
+                createEffectOn (fun () -> total.Value) seen.Add
+
+                col.AddOrUpdate (1, 2)
+                col.AddOrUpdate (2, 3)
+                armed.Value <- true
+                col.AddOrUpdate (1, 10)
+                armed.Value <- false
+                col.AddOrUpdate (2, 4)
+
+                Expect.sequenceEqual seen [ 0; 2; 5; 13; 14 ] "the failed step leaves the total to a fold of the row values"
+            }
+
+            test "a fold whose add reads a pending source on a value edit is pending until an edit avoids the read" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                let later = createAsyncSource<int>()
+
+                let total =
+                    col.Rows
+                    |> Projection.foldGroup (fun n (_, p) -> if p > 100 then n + later.Value else n + p) (fun n (_, p) -> n - p) 0
+
+                countRuns (fun () -> total.TryValue) |> ignore
+                col.AddOrUpdate (1, 2)
+                col.AddOrUpdate (2, 3)
+                Expect.equal total.Value 5 "both rows are folded"
+
+                col.AddOrUpdate (1, 200)
+                Expect.equal total.TryValue Pending "the step's pending read suspends the fold"
+
+                col.AddOrUpdate (1, 5)
+                Expect.equal total.Value 8 "the total is a fold of the row values, without the suspended step"
+            }
+
+            test "a fold over a view that keeps its key array follows a key replaced beside a value edit" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 2)
+                col.AddOrUpdate (2, 4)
+                col.AddOrUpdate (3, 6)
+                let sorted = col.Rows |> Projection.sortBy fst
+
+                let total =
+                    sorted
+                    |> Projection.foldGroup (fun n (_, p) -> n + p) (fun n (_, p) -> n - p) 0
+
+                let seen = ResizeArray<int>()
+                createEffectOn (fun () -> total.Value) seen.Add
+                let keys = sorted.Keys
+
+                // The edit of key 1 makes the fold read again after the view's pass replaced the row of key 3.
+                col.Edit (fun c ->
+                    c.Remove 3 |> ignore
+                    c.AddOrUpdate (3, 100)
+                    c.AddOrUpdate (1, 20))
+
+                Expect.isTrue (LanguagePrimitives.PhysicalEquality keys sorted.Keys) "the replacement leaves the view its key array"
+                Expect.sequenceEqual seen [ 12; 124 ] "the replaced row's value and the edit enter the total together"
+
+                col.Edit (fun c ->
+                    c.Remove 3 |> ignore
+                    c.AddOrUpdate (3, 1000))
+
+                Expect.sequenceEqual seen [ 12; 124; 1024 ] "a replacement alone enters the total"
+            }
+
+            test "a fold over a mapped view folds the rows that replaced its own when a signal its add reads changes" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+
+                col.Edit (fun c ->
+                    for k in 1..70 do
+                        c.AddOrUpdate (k, 1))
+
+                let mapped = col.Rows |> Projection.map id
+                let weight = createSignal 1
+
+                let total =
+                    mapped
+                    |> Projection.foldGroup (fun n (_, p) -> n + p * weight.Value) (fun n (_, p) -> n - p * weight.Value) 0
+
+                countRuns (fun () -> total.Value) |> ignore
+                Expect.equal total.Value 70 "every row is folded"
+                let keys = mapped.Keys
+
+                // More key changes than a key reader holds, so the view rebuilds each row over an unchanged key sequence.
+                col.Edit (fun c ->
+                    for k in 1..70 do
+                        c.Remove k |> ignore
+
+                    for k in 1..70 do
+                        c.AddOrUpdate (k, 2))
+
+                Expect.isTrue (LanguagePrimitives.PhysicalEquality keys mapped.Keys) "the rebuild leaves the view its key array"
+                weight.Value <- 10
+                Expect.equal total.Value 1400 "the fold reads the rows that replaced its own"
+
+                col.AddOrUpdate (1, 3)
+                Expect.equal total.Value 1410 "an edit steps the total from the replacement rows"
+            }
+
+            test "a fold whose add swallows a pending read on a value edit is pending" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                let later = createAsyncSource<int>()
+
+                let add n (_: int, p) =
+                    if p > 100 then
+                        try
+                            n + later.Value
+                        with _ ->
+                            n
+                    else
+                        n + p
+
+                let total =
+                    col.Rows
+                    |> Projection.foldGroup add (fun n (_, p) -> n - p) 0
+
+                countRuns (fun () -> total.TryValue) |> ignore
+                col.AddOrUpdate (1, 2)
+                col.AddOrUpdate (2, 3)
+                Expect.equal total.Value 5 "both rows are folded"
+
+                col.AddOrUpdate (1, 200)
+                Expect.equal total.TryValue Pending "a pending read suspends the fold whatever add returns"
+
+                col.AddOrUpdate (1, 5)
+                Expect.equal total.Value 8 "the total is a fold of the row values"
+            }
+
+            test "disposing a keyed collection returns its fold to zero" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+
+                let total =
+                    col.Rows
+                    |> Projection.foldGroup (fun n (_, p) -> n + p) (fun n (_, p) -> n - p) 0
+
+                let seen = ResizeArray<int>()
+                createEffectOn (fun () -> total.Value) seen.Add
+                col.AddOrUpdate (1, 5)
+                col.AddOrUpdate (1, 6)
+
+                col.Dispose ()
+
+                Expect.sequenceEqual seen [ 0; 5; 6; 0 ] "the disposal empties the fold after a value edit"
+            }
+
 #if !FABLE_COMPILER
             // .NET only: JavaScript exposes no allocation counter.
             untracedOnly
@@ -424,6 +785,49 @@ let tests =
                     col.AddOrUpdate (struct (1, i + 100))
 
                 let perEdit = (GC.GetAllocatedBytesForCurrentThread () - before) / 10_000L
+                Expect.equal perEdit 0L $"an upsert allocated %d{perEdit} bytes"
+            }
+
+            untracedOnly
+            <| test "an existing-key upsert read by a fold, the fold's effect and a row effect allocates nothing" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (struct (k: int, _: int)) -> k)
+
+                col.Edit (fun c ->
+                    for k in 0..63 do
+                        c.AddOrUpdate (struct (k, 5)))
+
+                let total =
+                    col.Rows
+                    |> Projection.foldGroup (fun n (struct (_, p)) -> n + p) (fun n (struct (_, p)) -> n - p) 0
+
+                let row k =
+                    let struct (_, p) = col.Rows.Get k
+                    p
+
+                let sum = ref 0
+                createEffectOn (fun () -> total.Value) (fun n -> sum.Value <- sum.Value + n + row 7)
+
+                for k in 0..63 do
+                    createEffectOn (fun () -> row k) (fun p -> sum.Value <- sum.Value + p + total.Value)
+
+                // Each key is written twice in a row, away from its value and back, as the keys rotate.
+                let edit i =
+                    col.AddOrUpdate (struct ((i / 2 * 37) % 64, (if i % 2 = 0 then 7 else 5)))
+
+                for i in 0..999 do
+                    edit i
+
+                let before = GC.GetAllocatedBytesForCurrentThread ()
+
+                for i in 1000..10_999 do
+                    edit i
+
+                let perEdit =
+                    (GC.GetAllocatedBytesForCurrentThread () - before)
+                    / 10_000L
+
                 Expect.equal perEdit 0L $"an upsert allocated %d{perEdit} bytes"
             }
 

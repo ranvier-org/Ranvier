@@ -21,6 +21,10 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     let mutable head: CollectionItem<'K, 'V> = Unchecked.defaultof<_>
     let mutable tail: CollectionItem<'K, 'V> = Unchecked.defaultof<_>
     let mutable count = 0
+
+    /// <summary>The item of the last key upserted, or null. Cleared by every removal.</summary>
+    let mutable lastItem: CollectionItem<'K, 'V> = Unchecked.defaultof<_>
+
     let revision = Signal<int>.OfEncoded(graph, 0, Unchecked.defaultof<_>)
     let mutable changes = KeyChanges<'K>()
     let mutable previous: 'K[] = Array.empty
@@ -31,7 +35,6 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     // edit allocates no closure. A let-bound lambda would compile to a method and a fresh closure at each use; a mutable
     // field assigned once holds one object.
     let mutable addOrUpdateFn: struct ('K * 'V) -> unit = Unchecked.defaultof<_>
-    let mutable addOrUpdateByFn: struct (('V -> 'K) * 'V) -> unit = Unchecked.defaultof<_>
     let mutable removeFn: 'K -> bool = Unchecked.defaultof<_>
     let mutable clearFn: unit -> unit = Unchecked.defaultof<_>
 
@@ -53,9 +56,8 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     /// <summary>Wires the delta readers and the cleanup. Called once by <c>Create</c>, before the projection is shared.</summary>
     member private this.Init() =
         // A key's item signal is immutable: a replaced or removed key retires its row, and a re-added key gets a new row.
-        this.DirectItem <- true
+        this.DirectBody <- Func<_, _, _>(fun entry signal -> this.RowBody (entry, signal))
         addOrUpdateFn <- fun (struct (key, value)) -> this.AddOrUpdateInBatch (key, value)
-        addOrUpdateByFn <- fun (struct (keyOf, value)) -> this.AddOrUpdateByInBatch (keyOf, value)
         removeFn <- fun key -> this.RemoveInBatch key
         clearFn <- fun () -> this.ClearInBatch ()
 
@@ -93,6 +95,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
                 this.Scope.OnCleanup (fun () ->
                     stopped <- true
                     items.Clear ()
+                    lastItem <- Unchecked.defaultof<_>
                     head <- Unchecked.defaultof<_>
                     tail <- Unchecked.defaultof<_>
                     count <- 0
@@ -100,20 +103,46 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
                     previous <- Array.empty)
         )
 
+    /// <summary>The memo body of the row of <c>signal</c>: a tracked read of the signal, which settles the row.</summary>
+    member private _.RowBody(entry: RowEntry<'K, 'V>, signal: Signal<'V>) : 'V voption -> 'V =
+        fun _ ->
+            let value = signal.Value
+            entry.Settled <- true
+            value
+
     /// <summary>Creates the projection and wires it. A collection is always made here, never by the constructor.</summary>
     static member Create(graph: Graph) : CollectionProjection<'K, 'V> =
         let created = new CollectionProjection<'K, 'V>(graph)
         created.Init ()
         created
 
-    member private _.EnsureLive() =
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.RaiseDisposed() =
+        raise (ObjectDisposedException "The keyed collection was disposed.")
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.EnsureLive() =
         if stopped then
-            raise (ObjectDisposedException "The keyed collection was disposed.")
+            this.RaiseDisposed ()
 
     /// <summary>Raises when the collection is disposed. Run by an edit body inside its batch.</summary>
     member internal this.CheckLive() = this.EnsureLive ()
 
-    member private _.AddOrUpdateCore(key: 'K, value: 'V) =
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.AddOrUpdateCore(key: 'K, value: 'V) =
+        let last = lastItem
+
+        if
+            not (Platform.isNull (box last))
+            && Platform.keyEquals last.Key key
+        then
+            // The batch is entered, so the write skips the token and flush checks of a public write.
+            last.Signal.SetFromEnteredBatch value
+        else
+            this.AddOrUpdateFound (key, value)
+
+    /// <summary>The upsert of a key other than the last one upserted.</summary>
+    member private _.AddOrUpdateFound(key: 'K, value: 'V) =
         let item = items.Find key
 
         if Platform.isNull (box item) then
@@ -136,7 +165,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
             changes.Record (key, KeyChange.Added)
             revision.Value <- revision.Peek + 1
         else
-            // The batch is entered, so the write skips the token and flush checks of a public write.
+            lastItem <- item
             item.Signal.SetFromEnteredBatch value
 
     member internal this.AddOrUpdateInBatch(key: 'K, value: 'V) =
@@ -158,6 +187,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
             false
         else
             items.Remove key
+            lastItem <- Unchecked.defaultof<_>
             let prev = item.Prev
             let next = item.Next
 
@@ -192,6 +222,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
                 node <- next
 
             items.Clear ()
+            lastItem <- Unchecked.defaultof<_>
             head <- Unchecked.defaultof<_>
             tail <- Unchecked.defaultof<_>
             count <- 0
@@ -200,8 +231,9 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     member this.AddOrUpdate(key: 'K, value: 'V) =
         graph.RunBatchUnitWith (addOrUpdateFn, struct (key, value))
 
-    member this.AddOrUpdateBy(keyOf: 'V -> 'K, value: 'V) =
-        graph.RunBatchUnitWith (addOrUpdateByFn, struct (keyOf, value))
+    /// <summary>The upsert of a value under <c>keyOf value</c>, as a batch body for <c>EditWith</c>.</summary>
+    member this.UpsertBody(keyOf: 'V -> 'K) : 'V -> unit =
+        fun value -> this.AddOrUpdateByInBatch (keyOf, value)
 
     member this.Remove(key: 'K) : bool =
         graph.RunBatchWith (removeFn, key)
@@ -249,6 +281,9 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
 type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V -> 'K) =
     let rows = CollectionProjection<'K, 'V>.Create graph
 
+    // One function object for every upsert.
+    let upsert = rows.UpsertBody keyOf
+
     /// <summary>Runs the edit callback inside the batch, after the liveness check. One object per instantiation.</summary>
     static member val private EditBody: struct (KeyedCollection<'K, 'V> * Action<KeyedCollection<'K, 'V>>) -> unit =
         (fun (struct (self, edit)) ->
@@ -262,7 +297,7 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
 
     /// <summary>Adds a new key at the end, or updates its existing row without changing its position.</summary>
     member _.AddOrUpdate(value: 'V) =
-        rows.AddOrUpdateBy (keyOf, value)
+        rows.EditWith (upsert, value)
 
     /// <summary>Removes the key. Returns false when it is absent.</summary>
     member _.Remove(key: 'K) =
