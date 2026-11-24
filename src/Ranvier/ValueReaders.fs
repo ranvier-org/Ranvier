@@ -34,7 +34,7 @@ type internal RowEntry<'K, 'V> =
     /// <summary>Whether the row memo has committed a value.</summary>
     member this.Settled
         with get () =
-#if FABLE_COMPILER && !RANVIER_TRACE
+#if !RANVIER_TRACE
             this.settled
             || (not (Platform.isNull (box this.Row))
                 && this.Row.Published

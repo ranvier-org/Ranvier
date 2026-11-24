@@ -15,20 +15,8 @@ let private invalidOp (f: unit -> unit) (message: string) : InvalidOperationExce
     with :? InvalidOperationException as ex ->
         ex
 
-#if FABLE_COMPILER
-[<Fable.Core.Emit("$0.node.Unannounced")>]
-let private isUnannounced (_memo: obj) : bool =
-    Fable.Core.Util.jsNative
-#else
-let private isUnannounced (memo: obj) : bool =
-    // The flag lives on the memo's node record, an internal type.
-    let flags =
-        Reflection.BindingFlags.Instance
-        ||| Reflection.BindingFlags.NonPublic
-
-    let node = memo.GetType().GetField("node", flags).GetValue memo
-    node.GetType().GetProperty("Unannounced", flags).GetValue node :?> bool
-#endif
+let private isUnannounced (memo: Memo<'T>) : bool =
+    memo.IsUnannouncedForTest
 
 /// <summary>
 /// A cleanup that writes a source of its computation and then reads the

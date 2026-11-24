@@ -57,7 +57,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     /// <summary>Wires the delta readers and the cleanup. Called once by <c>Create</c>, before the projection is shared.</summary>
     member private this.Init() =
         // A key's item signal is immutable: a replaced or removed key retires its row, and a re-added key gets a new row.
-#if FABLE_COMPILER && !RANVIER_TRACE
+#if !RANVIER_TRACE
         this.DirectSignalRow <- true
 #else
         this.DirectBody <- Func<_, _, _>(fun entry signal -> this.RowBody (entry, signal))
@@ -107,7 +107,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
                     previous <- Array.empty)
         )
 
-#if !FABLE_COMPILER || RANVIER_TRACE
+#if RANVIER_TRACE
     /// <summary>The memo body of the row of <c>signal</c>: a tracked read of the signal, which settles the row.</summary>
     member private _.RowBody(entry: RowEntry<'K, 'V>, signal: Signal<'V>) : 'V voption -> 'V =
         fun _ ->

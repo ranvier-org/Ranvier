@@ -14,10 +14,10 @@ module internal Awaited =
     /// </remarks>
     let source (node: INode) : ISource voption =
 #if FABLE_COMPILER
-        ValueSome (unbox<ISource> node)
+        ValueSome (MemoHandles.unwrap (unbox<ISource> node))
 #else
         match node with
-        | :? ISource as source -> ValueSome source
+        | :? ISource as source -> ValueSome (MemoHandles.unwrap source)
         | _ -> ValueNone
 #endif
 
@@ -1710,7 +1710,7 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
             if Platform.isNull (box existing.Row) then
                 graph.Track (keys :> ISource)
             else
-                graph.Track (existing.Row :> ISource)
+                graph.Track (existing.Row.Node :> ISource)
 
     /// <summary>Marks the projection observed, and schedules a pass when it is dirty.</summary>
     member private this.MarkObserved() =
@@ -1858,7 +1858,7 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
             if this.IsCleanHit entry then
                 let row = entry.Row
                 graph.Track (beacon :> ISource)
-                graph.Track (row :> ISource)
+                graph.Track (row.Node :> ISource)
                 row.Peek
             else
                 this.GetRow (key, false)
@@ -2550,7 +2550,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     /// </summary>
     member val internal DirectBody: Func<RowEntry<'K, 'V>, 'T, 'V voption -> 'V> = null with get, set
 
-#if FABLE_COMPILER && !RANVIER_TRACE
+#if !RANVIER_TRACE
     /// <summary>
     /// True for a projection whose item is the <c>Signal</c> of the row's value, kept for the row's lifetime: the row
     /// is then a memo whose body is a read of the signal, created settled, with no body function.
@@ -2605,11 +2605,18 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             let struct (key, item) = Platform.entryAt i adds
             let entry = this.NewRow (key, item)
 
-#if FABLE_COMPILER && !RANVIER_TRACE
+#if !RANVIER_TRACE
             if this.DirectSignalRow then
                 entry.Row <- Memo<'V>.CreateSignalRowEncoded(graph, Platform.fastCast<Signal<'V>>(box item), encodedValueEqual)
             else
-#endif
+                let body =
+                    if Platform.isNull direct then
+                        fun _ -> this.RunMappedItem entry
+                    else
+                        direct.Invoke (entry, item)
+
+                entry.Row <- Memo<'V>.CreateEncoded(graph, body, rowMode, encodedValueEqual)
+#else
             let body =
                 if Platform.isNull direct then
                     fun _ -> this.RunMappedItem entry
@@ -2617,6 +2624,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
                     direct.Invoke (entry, item)
 
             entry.Row <- Memo<'V>.CreateEncoded(graph, body, rowMode, encodedValueEqual)
+#endif
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
     member private this.FactoryFailure(key: 'K, error: exn, advice: string, before: int) : unit -> 'V =
@@ -4485,7 +4493,7 @@ type internal LookupOf<'S, 'K, 'V when 'K: equality>(graph: Graph, f: 'S -> 'K -
                     Effect.Create (
                         graph,
                         fun () ->
-                            graph.Track (state :> ISource)
+                            graph.Track (state.Node :> ISource)
                             this.Refresh ()
                     )
             )
@@ -4638,7 +4646,7 @@ type internal SelectorLookup<'K when 'K: equality>(graph: Graph, source: unit ->
                     Effect.Create (
                         graph,
                         fun () ->
-                            graph.Track (state :> ISource)
+                            graph.Track (state.Node :> ISource)
                             this.Refresh ()
                     )
             )

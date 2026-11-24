@@ -303,7 +303,9 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
     member private this.RequestOnGraph() =
         if not launching && not disposed then
             this.Enqueue ()
-            graph.RequestFlush ()
+
+            if graph.BatchDepth = 0 then
+                graph.RequestFlushFromEntered ()
 
 #if !FABLE_COMPILER
     member private this.RequestOffGraph() =
