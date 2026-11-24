@@ -50,8 +50,9 @@ type internal Binding<'Target, 'T>
         binding
 
     member private this.Start() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.BindingNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        link <- owner.AttachLinked this
+        Tracer.BindingNew (graph, id, owner)
 
         if not disposed then
             Tracer.Bind (this, graph, id)

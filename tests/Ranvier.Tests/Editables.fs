@@ -355,6 +355,53 @@ let tests =
                 Expect.equal source.ObserverCount 0 "the source holds no edge to the seed"
             }
 
+            test "a reentrant editable seed runs the same number of times and returns the refreshed value across targets" {
+                // 1. Seed writes stage and suspends on a pending source during IsEdited read.
+                use g1 = new Graph ()
+                use _ = g1.Activate ()
+                let stage1 = createSignal 0
+                let pending = AsyncSource<int> g1
+                let mutable runs1 = 0
+
+                let ed1 =
+                    createEditable (fun _ ->
+                        runs1 <- runs1 + 1
+                        let st = stage1.Value
+
+                        if st = 1 then
+                            stage1.Value <- 2
+                            pending.Value
+                        else
+                            st * 10)
+
+                Expect.equal ed1.Value 0 "initial seed ready"
+                ed1.Value <- 9
+                stage1.Value <- 1
+                let editedMemo = createMemo (fun _ -> ed1.IsEdited)
+                Expect.isTrue editedMemo.Value "edit made against settled seed remains in force while reentrant seed is pending"
+                Expect.equal runs1 2 "seed ran once on startup and once on the single IsEdited read"
+
+                // 2. Ready seed writes stage during its body so stamped remains stale after version mismatch.
+                use g2 = new Graph ()
+                use _ = g2.Activate ()
+                let stage2 = createSignal 0
+
+                let ed2 =
+                    createEditable (fun _ ->
+                        let st = stage2.Value
+
+                        if st = 1 then
+                            stage2.Value <- 2
+                            1
+                        else
+                            st)
+
+                Expect.equal ed2.Value 0 "initial seed 0"
+                ed2.Value <- 9
+                stage2.Value <- 1
+                Expect.equal ed2.Value 2 "version-mismatch fallback re-pulls a seed that dirtied itself during TryValue"
+            }
+
             test "a keyed collection whose selector disposes it raises and stays empty" {
                 use g = new Graph ()
                 use _ = g.Activate ()

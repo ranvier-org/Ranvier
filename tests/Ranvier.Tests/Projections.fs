@@ -3035,4 +3035,37 @@ let rowOptionTests =
             }
 
             test "ensureUniqueKeys keeps boxed keys of different types apart, as = does" { Projection.ensureUniqueKeys id [ box 1; box 1L; box "1" ] }
+
+            test "disposing a projection from keyOf during a reversed array pass stops invoking remaining selectors" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let a = box "a"
+                let b = box "b"
+                let c = box "c"
+                let d = box "d"
+                let items = createSignal [| a; b; c; d |]
+                let armed = ref false
+                let calls = ref 0
+                let holder = ref Unchecked.defaultof<Projection<string, obj>>
+
+                let proj =
+                    createProjection
+                        (fun x ->
+                            calls.Value <- calls.Value + 1
+
+                            if armed.Value then
+                                holder.Value.Dispose ()
+
+                            unbox<string> x)
+                        id
+                        (fun () -> items.Value :> seq<obj>)
+
+                holder.Value <- proj
+                Expect.equal proj.Keys.Length 4 "initial pass"
+                calls.Value <- 0
+                armed.Value <- true
+                items.Value <- [| d; c; b; a |]
+                Expect.isEmpty proj.Keys "disposed projection reports no keys"
+                Expect.equal calls.Value 1 "selector ran only once before reentrant disposal"
+            }
         ]

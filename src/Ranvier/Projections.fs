@@ -1142,6 +1142,12 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
 #else
                 graph.RunUntrackedBatchWith (Projection<'K, 'V>.ApplyPassFn, struct (this, delta, mine))
 #endif
+            elif runs = mine && disposed then
+                this.Pass.ClearStaged ()
+                removed.Clear ()
+                passKeys.Clear ()
+                seen.Clear ()
+                stagedKeys <- null
 
             if runs = mine then
                 // Readers parked on a pending or failed pass wake when it
@@ -2634,7 +2640,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         let entry = this.NewRow (key, item)
         let source = entry.Item
         let keyScope = new Owner (graph.Root)
-        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        keyScope.AttachToParent this.Scope
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -2678,7 +2684,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         Tracer.Part (graph, (entry.Item :> INode).Id, (this :> INode).Id, box key)
         this.AddEntry (key, entry)
         let keyScope = new Owner (graph.Root)
-        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        keyScope.AttachToParent this.Scope
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -2888,7 +2894,7 @@ type internal RowsByKey<'K, 'V when 'K: equality>
 
         this.AddEntry (key, entry)
         let keyScope = new Owner (graph.Root)
-        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        keyScope.AttachToParent this.Scope
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -3155,11 +3161,13 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
         let mutable reverse = true
         let mutable i = 0
 
-        while i < count && this.Runs = mine do
+        while i < count
+              && this.Runs = mine
+              && not this.IsDisposedInternal do
             let item = Platform.itemAt i items
             let key = this.KeyOf item
 
-            if this.Runs = mine then
+            if this.Runs = mine && not this.IsDisposedInternal then
                 if reverse then
                     let j = count - 1 - i
                     let oldKey = Platform.itemAt j previousKeys
@@ -3516,10 +3524,15 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             let items = lastItems
             let mutable i = 0
 
-            while this.Runs = mine && i < count do
+            while this.Runs = mine
+                  && not this.IsDisposedInternal
+                  && i < count do
                 let item = Platform.itemAt i items
                 i <- i + 1
-                this.Visit (this.KeyOf item, item)
+                let key = this.KeyOf item
+
+                if this.Runs = mine && not this.IsDisposedInternal then
+                    this.Visit (key, item)
 
     override this.Applied() =
         if this.Runs = passRun && keyPure then

@@ -259,4 +259,84 @@ let tests =
 
                 Expect.equal runs.Value 3 "and the close flushed what was written after it"
             }
+
+            test "leaf memos, cutoff chains, and unobserved sources settle work left queued by a throwing batch" {
+                // 1. Trimmed unobserved leaf memo (`FinishTop`).
+                use g1 = new Graph ()
+                let gate = Signal (g1, true)
+                let extra = Signal (g1, 10)
+                let effSig1 = Signal (g1, 0)
+                let leafTrim = Make.Memo (g1, fun _ -> if gate.Value then extra.Value else 1)
+                Expect.equal leafTrim.Value 10 "warm leafTrim"
+                let log1 = ResizeArray<int>()
+                use _e1 = new Effect (g1, fun () -> log1.Add effSig1.Value)
+
+                try
+                    g1.Batch (fun () ->
+                        gate.Value <- false
+                        effSig1.Value <- 1
+                        failwith "abort")
+                with _ ->
+                    ()
+
+                Expect.equal leafTrim.Value 1 "trimmed leaf memo updated"
+                Expect.sequenceEqual log1 [ 0; 1 ] "trimmed leaf memo settled queued effect"
+
+                // 2. B11 cutoff chain (`p -> q` where `p` changes and `q` cuts off).
+                use g2 = new Graph ()
+                let s2 = Signal (g2, 0)
+                let effSig2 = Signal (g2, 0)
+                let p = Make.Memo (g2, fun _ -> s2.Value + 1)
+
+                let q =
+                    Make.Memo (
+                        g2,
+                        fun _ ->
+                            ignore p.Value
+                            42
+                    )
+
+                Expect.equal q.Value 42 "warm chain"
+                let log2 = ResizeArray<int>()
+                use _e2 = new Effect (g2, fun () -> log2.Add effSig2.Value)
+
+                try
+                    g2.Batch (fun () ->
+                        s2.Value <- 1
+                        effSig2.Value <- 1
+                        failwith "abort")
+                with _ ->
+                    ()
+
+                Expect.equal q.Value 42 "cutoff chain read"
+                Expect.sequenceEqual log2 [ 0; 1 ] "cutoff chain settled queued effect"
+
+                // 3. Unobserved Signal write and unobserved AsyncSource.Settle.
+                use g3 = new Graph ()
+                let effSig3 = Signal (g3, 0)
+                let loneSig = Signal (g3, 0)
+                let loneAsync = AsyncSource<int> g3
+                let log3 = ResizeArray<int>()
+                use _e3 = new Effect (g3, fun () -> log3.Add effSig3.Value)
+
+                try
+                    g3.Batch (fun () ->
+                        effSig3.Value <- 1
+                        failwith "abort")
+                with _ ->
+                    ()
+
+                loneSig.Value <- 99
+                Expect.sequenceEqual log3 [ 0; 1 ] "unobserved signal write drained pending queue"
+
+                try
+                    g3.Batch (fun () ->
+                        effSig3.Value <- 2
+                        failwith "abort")
+                with _ ->
+                    ()
+
+                loneAsync.Settle 7
+                Expect.sequenceEqual log3 [ 0; 1; 2 ] "unobserved AsyncSource.Settle drained pending queue"
+            }
         ]

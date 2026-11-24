@@ -857,6 +857,85 @@ let tests =
                     )
 
                 Expect.equal (reading memo) (Ready expected) "every item folded once"
+
+            testCase "concurrent first off-thread struct delivery and snapshot never publish a torn state"
+            <| fun _ ->
+                for _ in 1..64 do
+                    use graph = manualGraph ()
+                    let feed = ManualStream<struct (int64 * int64 * int64 * int64)>()
+
+                    let memo =
+                        graph.Run (fun () -> Api.createStreamFold struct (0L, 0L, 0L, 0L) (fun _ next -> next) (fun _ -> feed.Source))
+
+                    reading memo |> ignore
+                    let sink = feed.Latest.Sink
+                    use go = new ManualResetEventSlim (false)
+                    let mutable torn = false
+
+                    let worker =
+                        Thread (
+                            (fun () ->
+                                go.Wait ()
+
+                                for k in 1L .. 512L do
+                                    sink.Next (struct (k, k, k, k))),
+                            IsBackground = true
+                        )
+
+                    worker.Start ()
+                    go.Set ()
+
+                    while worker.IsAlive do
+                        graph.Pump () |> ignore
+
+                        match reading memo with
+                        | Ready (struct (a, b, c, d)) ->
+                            if a <> b || b <> c || c <> d then
+                                torn <- true
+                        | _ -> ()
+
+                    worker.Join ()
+                    graph.Pump () |> ignore
+                    Expect.isFalse torn "multi-word struct state was never torn across Snapshot and off-thread Next"
+
+            testCase "a throwing stream cancellation callback and custom SynchronizationContext settle cleanly"
+            <| fun _ ->
+                use graph = new Graph ()
+                let runGate = TaskCompletionSource<unit>()
+
+                let throwingCancelSource =
+                    { new StreamSource<int>() with
+                        member _.Run(sink, ct) =
+                            let _reg = ct.Register (Action (fun () -> invalidOp "cancel boom"))
+                            sink.Next 10
+                            runGate.Task :> Task
+                    }
+
+                let memo = graph.Run (fun () -> Api.createStream (fun _ -> throwingCancelSource))
+                Expect.equal memo.TryValue (Ready 10) "stream delivered initial item"
+                runGate.SetResult ()
+                Expect.equal memo.TryValue (Ready 10) "throwing cancellation callback on Stop did not fault process"
+
+                let prevCtx = SynchronizationContext.Current
+
+                let deferringCtx =
+                    { new SynchronizationContext() with
+                        override _.Post(cb, state) =
+                            ThreadPool.QueueUserWorkItem (fun _ -> cb.Invoke state)
+                            |> ignore
+                    }
+
+                SynchronizationContext.SetSynchronizationContext deferringCtx
+
+                try
+                    use gSync = new Graph ()
+                    let tcs = TaskCompletionSource<int>()
+                    let am = Make.AsyncMemo (gSync, fun _ _ -> tcs.Task)
+                    Expect.equal am.TryValue Pending "initial pending"
+                    tcs.SetResult 42
+                    Expect.equal am.TryValue (Ready 42) "SetResult on graph thread settled inline despite custom SynchronizationContext"
+                finally
+                    SynchronizationContext.SetSynchronizationContext prevCtx
 #endif
         ]
 

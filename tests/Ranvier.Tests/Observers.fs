@@ -1150,4 +1150,27 @@ let directEdgeTests =
                 m.Dispose ()
                 Expect.equal observers.Count 0 "disposal detached all edges from foreign ISource"
             }
+
+            test "swap-removing a foreign observer from a memo preserves a surviving memo reader's handle" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let up = createMemo (fun _ -> s.Value * 10)
+
+                let foreignScope =
+                    createRoot (fun o ->
+                        createProjection id id (fun () -> [ up.Value ])
+                        |> fun p ->
+                            ignore p.Keys
+                            o)
+
+                let down = createMemo (fun _ -> up.Value + 1)
+                Expect.equal down.Value 11 "initial read"
+                foreignScope.Dispose ()
+                s.Value <- 2
+                Expect.equal down.Value 21 "surviving memo reader refreshes cleanly after swap-remove"
+                down.Dispose ()
+                s.Value <- 3
+                Expect.equal up.Runs 2 "disposed survivor unlinked cleanly from upstream memo"
+            }
         ]

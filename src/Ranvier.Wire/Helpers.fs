@@ -418,9 +418,9 @@ type private ObjectMembers(element: JsonElement) =
     // The distinct keys: in first-position order once indexed, in own-property order once Keys has been read.
     let mutable keys: string array = null
     let mutable ordered = false
-    let mutable lastKey: string = null
-    let mutable lastValue = Unchecked.defaultof<JsonElement>
-    let mutable lastFound = false
+    let mutable seenKeys: string array = null
+    let mutable seenValues: JsonElement array = null
+    let mutable seenPresent: bool array = null
     let mutable scans = 0
 
     member private _.Index() =
@@ -456,22 +456,42 @@ type private ObjectMembers(element: JsonElement) =
     member this.TryFind(key: string) : JsonElement voption =
         if not (isNull found) then
             this.Indexed key
-        elif
-            not (isNull lastKey)
-            && String.Equals (lastKey, key)
-        then
-            if lastFound then ValueSome lastValue else ValueNone
-        elif scans < MaxMemberScans then
-            scans <- scans + 1
-            let mutable value = Unchecked.defaultof<JsonElement>
-            let present = element.TryGetProperty (key, &value)
-            lastKey <- key
-            lastValue <- value
-            lastFound <- present
-            if present then ValueSome value else ValueNone
+        elif loneSurrogate key >= 0 then
+            ValueNone
         else
-            this.Index ()
-            this.Indexed key
+            let mutable hit = -1
+
+            if scans > 0 then
+                let mutable i = 0
+
+                while hit < 0 && i < scans do
+                    if String.Equals (seenKeys[i], key, StringComparison.Ordinal) then
+                        hit <- i
+
+                    i <- i + 1
+
+            if hit >= 0 then
+                if seenPresent[hit] then
+                    ValueSome seenValues[hit]
+                else
+                    ValueNone
+            elif scans < MaxMemberScans then
+                if isNull seenKeys then
+                    seenKeys <- Array.zeroCreate MaxMemberScans
+                    seenValues <- Array.zeroCreate MaxMemberScans
+                    seenPresent <- Array.zeroCreate MaxMemberScans
+
+                let mutable value = Unchecked.defaultof<JsonElement>
+                let present = element.TryGetProperty (key, &value)
+                let idx = scans
+                seenKeys[idx] <- key
+                seenValues[idx] <- value
+                seenPresent[idx] <- present
+                scans <- idx + 1
+                if present then ValueSome value else ValueNone
+            else
+                this.Index ()
+                this.Indexed key
 
 /// <summary>The byte offset of the element's text from the root's, which identifies the element within its document.</summary>
 let private offsetIn (root: JsonElement) (element: JsonElement) : int64 =

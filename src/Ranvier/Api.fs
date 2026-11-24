@@ -189,7 +189,7 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
 #if FABLE_COMPILER
         if draft then
             true
-        elif stamped.TryTrackReady () then
+        elif stamped.TrackIfCleanAndReady () then
             stamped.Peek.Version = version
         else
             match stamped.TryValue with
@@ -210,13 +210,16 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
 #if FABLE_COMPILER
         if draft then
             edited
-        elif stamped.TryTrackReady () then
+        elif stamped.TrackIfCleanAndReady () then
             let stamp = stamped.Peek
 
             if stamp.Version = version then edited else stamp.Value
         else
             match stamped.TryValue with
-            | Ready stamp -> if stamp.Version = version then edited else stamp.Value
+            | Ready stamp ->
+                if stamp.Version = version then edited
+                elif stamped.IsStaleNode then stamped.Value.Value
+                else stamp.Value
             | Pending -> if version = settled then edited else stamped.Value.Value
             | Failed _ -> stamped.Value.Value
 #else
@@ -224,7 +227,10 @@ type Editable<'T> internal (graph: Graph, seed: 'T voption -> 'T, draft: bool) =
             edited
         else
             match stamped.TryValue with
-            | Ready stamp -> if stamp.Version = version then edited else stamp.Value
+            | Ready stamp ->
+                if stamp.Version = version then edited
+                elif stamped.IsStaleNode then stamped.Value.Value
+                else stamp.Value
             | Pending -> if version = settled then edited else stamped.Value.Value
             | Failed _ -> stamped.Value.Value
 #endif

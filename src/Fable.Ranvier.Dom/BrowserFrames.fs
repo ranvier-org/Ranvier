@@ -28,22 +28,30 @@ module BrowserFrames =
     let private queueMicrotask (window: obj) (callback: unit -> unit) : unit = jsNative
 
     /// <summary>A pending animation frame request; disposal cancels it.</summary>
-    /// <remarks><c>frames</c> holds the handle from the request until the frame starts or the request is cancelled.</remarks>
+    /// <remarks>Each ticket guards its own active state so browser handle reuse cannot cancel a later frame.</remarks>
     [<Sealed>]
     type private FrameRequest(window: obj, frames: HashSet<int>, callback: float -> unit) =
         let mutable handle = 0
+        let mutable active = false
 
         member _.Start() =
+            active <- true
+
             handle <-
                 requestFrame window (fun time ->
-                    if frames.Remove handle then
+                    if active then
+                        active <- false
+                        frames.Remove handle |> ignore
                         callback time)
 
-            frames.Add handle |> ignore
+            if active then
+                frames.Add handle |> ignore
 
         interface IDisposable with
             member _.Dispose() =
-                if frames.Remove handle then
+                if active then
+                    active <- false
+                    frames.Remove handle |> ignore
                     cancelFrame window handle
 
     /// <summary>A scheduler over <c>document</c>'s Window; <c>Now</c> is <c>performance.now()</c>.</summary>

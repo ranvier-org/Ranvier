@@ -566,4 +566,42 @@ let tests =
                     [ "a:2:1"; "a:4:1"; "a:6:1"; "c:3:1:1:21:1:1"; "a:8:1" ]
                     "every nested host switch saw its own graph and restored the outer host"
             }
+
+            test "out-of-order activation disposal and shadowed nested pulls preserve the live ambient graph" {
+                use a = new Graph ()
+                use b = new Graph ()
+                let actA = a.Activate ()
+                let actB = b.Activate ()
+                actA.Dispose ()
+                Expect.isTrue (obj.ReferenceEquals (Graph.Current, b)) "disposing outer activation keeps inner activation live"
+                actB.Dispose ()
+                Expect.isTrue Graph.TryCurrent.IsNone "disposing inner activation clears retired outer activation"
+
+                let sa = Signal (a, 1)
+
+                let inner =
+                    Make.Memo (
+                        a,
+                        fun _ ->
+                            if obj.ReferenceEquals (Graph.Current, a) then
+                                sa.Value * 10
+                            else
+                                -1
+                    )
+
+                let outer =
+                    Make.Memo (
+                        a,
+                        fun _ ->
+                            use _ = b.Activate ()
+                            let duringB = obj.ReferenceEquals (Graph.Current, b)
+                            let pulled = inner.Value
+                            let restoredB = obj.ReferenceEquals (Graph.Current, b)
+                            if duringB && restoredB then pulled else -999
+                    )
+
+                Expect.equal outer.Value 10 "initial shadowed pull"
+                sa.Value <- 2
+                Expect.equal outer.Value 20 "shadowed nested stale pull hosted graph a and restored shadow b"
+            }
         ]

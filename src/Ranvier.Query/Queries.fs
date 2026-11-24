@@ -28,7 +28,9 @@ type QueryLease<'T> internal (session: QuerySession, entry: QueryEntry<'T>) =
     let mutable link: OwnerLink = null
 
     let awaitCurrent () =
-        if held.IsFetching then
+        if disposed || session.Disposed then
+            QueryTask.cancelled<'T>()
+        elif held.IsFetching then
             if isNull waiters then
                 waiters <- QueryAwaiter<'T>.LeaseAnchor()
 

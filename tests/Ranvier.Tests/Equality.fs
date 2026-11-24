@@ -28,6 +28,16 @@ type CaseInsensitivePolicy() =
                     (string (box a)).ToLowerInvariant().GetHashCode()
             }
 
+type private AlwaysEqualStructuralPolicy() =
+    inherit StructuralPolicy()
+
+    interface IEqualityPolicy with
+        member _.Comparer<'T>() =
+            { new IEqualityComparer<'T> with
+                member _.Equals(_, _) = true
+                member _.GetHashCode _ = 0
+            }
+
 let private structural =
     { GraphOptions.Default with
         Equality = StructuralPolicy ()
@@ -275,6 +285,19 @@ let tests =
                 s.Value <- Opaque "a"
                 c.TryValue |> ignore
                 Expect.equal c.Runs 2 "a different object must not"
+            }
+
+            test "a subclass of StructuralPolicy uses its overridden IEqualityPolicy.Comparer on every target" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Equality = AlwaysEqualStructuralPolicy ()
+                        }
+                    )
+
+                let s = Signal (g, 1)
+                s.Value <- 2
+                Expect.equal s.Value 1 "derived StructuralPolicy comparer cuts off distinct ints"
             }
 
 #if !FABLE_COMPILER

@@ -65,6 +65,11 @@ module internal Platform =
     [<Emit("($0 == null ? 'null' : (typeof $0 === 'object' ? (($0.constructor && $0.constructor.name) || 'object') : typeof $0))")>]
     let typeName (value: obj) : string =
         nativeOnly
+
+    /// <summary>True when <c>value</c> is a non-null instance of the exact JavaScript class of <c>exemplar</c> (excluding subclasses).</summary>
+    [<Emit("($0 != null && Object.getPrototypeOf($0) === Object.getPrototypeOf($1))")>]
+    let sameExactClass (value: obj) (exemplar: obj) : bool =
+        nativeOnly
 #else
     let typeName (value: obj) : string =
         match value with
@@ -197,59 +202,66 @@ module internal Platform =
         else
             FlightOutcome.Completed ()
 
+    let private invokeUnitSettled =
+        Action<Task, obj>(fun t s -> (s :?> (FlightOutcome<unit> -> unit)) (settledUnitOutcome t))
+
     let private invokeAfter =
         Func<Task, obj, Task>(fun _ s -> (s :?> (unit -> Task)) ())
 
-    /// <summary>Typed receiver notified when an async flight task completes, without allocating a child <c>Task</c>.</summary>
+    /// <summary>Typed receiver notified when an async flight task completes, without allocating a closure.</summary>
     type internal ISettledWaiter<'T> =
         abstract OnSettled: outcome: FlightOutcome<'T> * gen: int * seqNum: int -> unit
 
-    /// <summary>Typed receiver notified when a unit stream task completes, without allocating a child <c>Task</c>.</summary>
+    /// <summary>Typed receiver notified when a unit stream task completes, without allocating a closure.</summary>
     type internal IDoneWaiter =
         abstract OnDone: outcome: FlightOutcome<unit> * gen: int -> unit
 
     [<Sealed>]
-    type private FlightSettledWaiter<'T>(task: Task<'T>, waiter: ISettledWaiter<'T>, gen: int, seqNum: int) =
-        member _.Run() =
+    type private FlightSettledWaiter<'T>(waiter: ISettledWaiter<'T>, gen: int, seqNum: int) =
+        member _.Run(task: Task<'T>) =
             waiter.OnSettled (settledOutcome task, gen, seqNum)
 
     [<Sealed>]
-    type private StreamDoneWaiter(task: Task, waiter: IDoneWaiter, gen: int) =
-        member _.Run() =
+    type private StreamDoneWaiter(waiter: IDoneWaiter, gen: int) =
+        member _.Run(task: Task) =
             waiter.OnDone (settledUnitOutcome task, gen)
 
-    [<Sealed>]
-    type private DoneActionWaiter(task: Task, settle: FlightOutcome<unit> -> unit) =
-        member _.Run() =
-            settle (settledUnitOutcome task)
+    let private invokeDoneWaiter =
+        Action<Task, obj>(fun t s -> (s :?> StreamDoneWaiter).Run t)
 
     [<Sealed>]
     type private SettledContinuation<'T>() =
         static member val InvokeSettled = Action<Task<'T>, obj>(fun t s -> (s :?> (FlightOutcome<'T> -> unit)) (settledOutcome t))
+
+        static member val InvokeWaiter = Action<Task<'T>, obj>(fun t s -> (s :?> FlightSettledWaiter<'T>).Run t)
 
         static member val Outcome = Func<Task<'T>, FlightOutcome<'T>>(settledOutcome)
 
         static member val Apply = Func<Task<FlightOutcome<'T>>, obj, Task>(fun t s -> (s :?> (FlightOutcome<'T> -> Task)) t.Result)
 
     /// <summary>
-    /// Attaches <c>waiter</c> directly to <c>flight</c>'s awaiter without allocating a child <c>Task</c>.
+    /// Attaches <c>waiter</c> to <c>flight</c> via a fault-containing, scheduler-neutral synchronous continuation.
     /// </summary>
     let attachSettled (flight: Task<'T>) (waiter: ISettledWaiter<'T>) (gen: int) (seqNum: int) : unit =
-        if flight.IsCompleted then
-            waiter.OnSettled (settledOutcome flight, gen, seqNum)
-        else
-            let w = FlightSettledWaiter<'T>(flight, waiter, gen, seqNum)
-            flight.ConfigureAwait(false).GetAwaiter().UnsafeOnCompleted(Action w.Run)
+        let w = FlightSettledWaiter<'T>(waiter, gen, seqNum)
+
+        flight.ContinueWith (
+            SettledContinuation<'T>.InvokeWaiter,
+            box w,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default
+        )
+        |> ignore
 
     /// <summary>
-    /// Attaches <c>waiter</c> directly to <c>work</c>'s awaiter without allocating a child <c>Task</c>.
+    /// Attaches <c>waiter</c> to <c>work</c> via a fault-containing, scheduler-neutral synchronous continuation.
     /// </summary>
     let attachDone (work: Task) (waiter: IDoneWaiter) (gen: int) : unit =
-        if work.IsCompleted then
-            waiter.OnDone (settledUnitOutcome work, gen)
-        else
-            let w = StreamDoneWaiter (work, waiter, gen)
-            work.ConfigureAwait(false).GetAwaiter().UnsafeOnCompleted(Action w.Run)
+        let w = StreamDoneWaiter (waiter, gen)
+
+        work.ContinueWith (invokeDoneWaiter, box w, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default)
+        |> ignore
 #endif
 
     /// <summary>
@@ -265,7 +277,13 @@ module internal Platform =
             settle (settledOutcome flight)
             completedTask
         else
-            flight.ContinueWith (SettledContinuation<'T>.InvokeSettled, box settle, TaskContinuationOptions.ExecuteSynchronously)
+            flight.ContinueWith (
+                SettledContinuation<'T>.InvokeSettled,
+                box settle,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            )
 #endif
 
     /// <summary>
@@ -280,8 +298,14 @@ module internal Platform =
         if work.IsCompleted then
             settle (settledUnitOutcome work)
         else
-            let w = DoneActionWaiter (work, settle)
-            work.ConfigureAwait(false).GetAwaiter().UnsafeOnCompleted(Action w.Run)
+            work.ContinueWith (
+                invokeUnitSettled,
+                box settle,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            )
+            |> ignore
 #endif
 
     /// <summary>

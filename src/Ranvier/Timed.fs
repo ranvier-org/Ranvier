@@ -67,7 +67,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
     let mutable everReady = false
     let mutable candidate = Unchecked.defaultof<'T>
     let mutable hasCandidate = false
-    let mutable deadline = Double.NegativeInfinity
+    let mutable windowStart = Double.NegativeInfinity
     let mutable timer: TimedTimer = Platform.nil ()
 #if !FABLE_COMPILER
     let mutable wakePost: unit -> unit = Platform.nil ()
@@ -157,8 +157,9 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
     /// <summary>Attaches the node to its owner and captures its initial state.</summary>
     member internal this.Start() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.TimedNew (graph, id, link.Owner, clock)
+        let owner = graph.CurrentOwner
+        link <- owner.AttachLinked this
+        Tracer.TimedNew (graph, id, owner, clock)
 
         if graph.Deferring then
             this.Capture () |> ignore
@@ -194,7 +195,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             this.CreateTimer ()
 
         armed <- true
-        let remaining = deadline - now
+        let remaining = milliseconds - (now - windowStart)
 #if FABLE_COMPILER
         timer.Arm (
             unbox<TimeSpan>(
@@ -314,14 +315,14 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
 
                             match mode with
                             | TimedMode.First ->
-                                if now >= deadline then
-                                    deadline <- now + milliseconds
+                                if (now - windowStart) >= milliseconds then
+                                    windowStart <- now
                                     this.Admit next
                                 else
                                     Tracer.TimedEvent (graph, id, 52, 3, 0, null)
-                            | TimedMode.Both when now >= deadline ->
+                            | TimedMode.Both when (now - windowStart) >= milliseconds ->
                                 this.Cancel ()
-                                deadline <- now + milliseconds
+                                windowStart <- now
                                 this.Admit next
                             | _ ->
                                 Tracer.TimedEvent (graph, id, 51, int mode, (if hasCandidate then 1 else 0), box milliseconds)
@@ -330,13 +331,17 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                                     mode = TimedMode.Debounce
                                     || not hasCandidate && mode = TimedMode.Last
                                 then
-                                    deadline <- now + milliseconds
+                                    windowStart <- now
 
                                 candidate <- next
                                 hasCandidate <- true
 
                                 if not armed then
-                                    this.Arm now
+                                    if Platform.isNull (box timer) then
+                                        this.CreateTimer ()
+                                        capturedNow <- Double.NaN
+                                    else
+                                        this.Arm now
                     else
                         Tracer.TimedEvent (graph, id, 52, 1, 0, null)
             finally
@@ -518,12 +523,12 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                         else
                             capturedNow
 
-                    if now >= deadline then
+                    if (now - windowStart) >= milliseconds then
                         let next = candidate
                         this.ClearCandidate false
 
                         if mode = TimedMode.Both then
-                            deadline <- now + milliseconds
+                            windowStart <- now
 
                         this.Admit next
                         Tracer.TimedState (graph, id, clock, this)
@@ -632,11 +637,13 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
             let log = ((box graph) :?> ITraced).TraceLog
             let struct (capture, _) = log.TimedCapture id
 
+            let now = clock.NowMilliseconds
+
             let windowOpen =
                 not disposed
                 && (hasCandidate
                     || (mode = TimedMode.First || mode = TimedMode.Both)
-                       && clock.NowMilliseconds < deadline)
+                       && (now - windowStart) < milliseconds)
 
             {
                 Mode =
@@ -650,7 +657,7 @@ type Timed<'T> internal (graph: Graph, options: TimedOptions<'T>, duration: Time
                 WindowOpen = windowOpen
                 RemainingMilliseconds =
                     if windowOpen then
-                        max 0. (deadline - clock.NowMilliseconds)
+                        max 0. (milliseconds - (now - windowStart))
                     else
                         0.
                 WinningCapture = if hasCandidate then capture else log.TimedWinner id

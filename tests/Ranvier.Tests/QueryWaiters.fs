@@ -262,4 +262,23 @@ let tests =
                 Expect.isTrue token.IsCancellationRequested "invalidation retires the request"
                 let late = page.EnsureAsync ()
                 Expect.isFalse late.IsCompleted "a later wait joins a new request"
+
+            testCase "RefreshAsync returns a cancelled task when a cancelled waiter continuation disposes the lease"
+            <| fun () ->
+                use graph = newGraph ()
+                use client = new QueryClient (graph)
+                let family = client.Define (fun () _ -> TaskCompletionSource<int>().Task)
+                let lease = family.Acquire ()
+                let first = lease.EnsureAsync ()
+
+                let _cont =
+                    first.ContinueWith (
+                        (fun (_: Task<int>) -> lease.Dispose ()),
+                        CancellationToken.None,
+                        TaskContinuationOptions.ExecuteSynchronously,
+                        TaskScheduler.Default
+                    )
+
+                let refreshed = lease.RefreshAsync ()
+                Expect.isTrue refreshed.IsCanceled "reentrant lease disposal returns a cancelled task"
         ]

@@ -476,7 +476,52 @@ let tests =
                     |> expectOk "nested objects"
 
                 Expect.equal decoded ((1, 3, 2), (4, 1, 3)) "each object keeps its own members"
+
+            testCase "an absent optional field whose name contains a lone surrogate decodes to None before and after keys"
+            <| fun () ->
+                let badName = string (char 0xD800)
+
+                let beforeKeys =
+                    (reading (Decode.optional badName Decode.int)).Decode """{"a":2}"""
+                    |> expectOk "scan path"
+
+                Expect.equal beforeKeys None "absent before keys"
+
+                let afterKeysDecoder =
+                    Decode.map2 (fun ks opt -> ks, opt) Decode.keys (Decode.optional badName Decode.int)
+
+                let ks, afterKeys =
+                    (reading afterKeysDecoder).Decode """{"a":2}"""
+                    |> expectOk "indexed path"
+
+                Expect.equal ks [ "a" ] "keys"
+                Expect.equal afterKeys None "absent after keys"
 #if !FABLE_COMPILER
+            // .NET only: GC.GetAllocatedBytesForCurrentThread has no Fable counterpart.
+            testCase "repeated lookups of two distinct field names on a large object do not build the full member index"
+            <| fun () ->
+                let extra = String.concat "," [ for i in 1..2000 -> $"\"k{i}\":{i}" ]
+
+                let large = "{\"a\":1,\"b\":2," + extra + "}"
+
+                let repeatTen =
+                    Decode.object (fun get ->
+                        let mutable sum = 0
+
+                        for i in 1..10 do
+                            sum <-
+                                sum
+                                + get.Required.Field (if i % 2 = 0 then "b" else "a") Decode.int
+
+                        sum)
+
+                let codec = reading repeatTen
+                Expect.equal (codec.Decode large |> expectOk "warm") 15 "sum"
+                let before = GC.GetAllocatedBytesForCurrentThread ()
+                Expect.equal (codec.Decode large |> expectOk "measured") 15 "sum"
+                let allocated = GC.GetAllocatedBytesForCurrentThread () - before
+                Expect.isLessThan allocated 16384L $"10 alternating lookups of 2 names allocated {allocated} B"
+
             // .NET only: GC.GetAllocatedBytesForCurrentThread has no Fable counterpart.
             testCase "a shape error on a large value allocates less than 16 MB"
             <| fun () ->

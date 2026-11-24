@@ -3543,30 +3543,8 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             placedCount <- lastIdx
             recordRangeOp oldPos oldPos (oldPos - 1)
 
-    let mutable moveFrom = 0
-
     let stageSpliceKeys () =
-        if
-            rangeOps = 1
-            && pendingRangeEnd = pendingRangePrevEnd
-        then
-            let first = pendingRangeStart
-            let last = pendingRangeEnd
-            let prev = this.PublishedKeys
-            let next = Array.zeroCreate<'K> placedCount
-            System.Array.Copy (prev, 0, next, 0, first)
-            System.Array.Copy (prev, last + 1, next, last + 1, placedCount - last - 1)
-
-            if moveFrom = first then
-                System.Array.Copy (prev, first + 1, next, first, last - first)
-                Platform.setItemAt last next (Platform.itemAt first prev)
-            else
-                System.Array.Copy (prev, first, next, first + 1, last - first)
-                Platform.setItemAt first next (Platform.itemAt last prev)
-
-            this.StageKeys next
-        else
-            this.StageKeys (buildKeysArray ())
+        this.StageKeys (buildKeysArray ())
 
     let reinsertPlacedSlot (slot: SortSlot<'K, 'S>) =
         if placedCount <= 1 then
@@ -3606,7 +3584,6 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
 
                 Platform.setItemAt newPos order pIdx
                 Platform.setItemAt pIdx orderPos newPos
-                moveFrom <- oldPos
                 recordRangeOp newPos oldPos oldPos
                 true
             elif newPos > oldPos then
@@ -3620,7 +3597,6 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
 
                 Platform.setItemAt newPos order pIdx
                 Platform.setItemAt pIdx orderPos newPos
-                moveFrom <- oldPos
                 recordRangeOp oldPos newPos newPos
                 true
             else
@@ -7421,7 +7397,7 @@ module Projection =
     let private ownedScope (graph: Graph) =
         let parent = graph.CurrentOwner
         let owner = new Owner (graph.Root)
-        owner.SetParent (parent.AttachLinked owner)
+        owner.AttachToParent parent
         owner
 
     /// <summary>A projection over the keys of <c>upstream</c>, each row holding <c>f</c> of the upstream value.</summary>

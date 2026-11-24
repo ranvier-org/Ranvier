@@ -84,8 +84,8 @@ module internal FoldFn =
 #endif
 
 /// <summary>
-/// A started stream's accumulator. Items fold lock-free on the graph thread; off-thread producers lazily enable
-/// locking on the <c>StreamRun</c> instance itself (zero separate gate object allocation).
+/// A started stream's accumulator. Items fold lock-free on the graph thread; off-thread producers, <c>Snapshot</c>,
+/// and <c>Close</c> synchronize on the <c>StreamRun</c> instance itself (zero separate gate object allocation).
 /// </summary>
 [<Sealed>]
 type internal StreamRun<'S, 'T>
@@ -98,9 +98,6 @@ type internal StreamRun<'S, 'T>
     let mutable closed = false
     let mutable onGraphQueued = false
     let mutable foldError: exn = Platform.nil ()
-#if !FABLE_COMPILER
-    let mutable offThread = 0
-#endif
 
 #if !FABLE_COMPILER
     /// <summary>Folds <c>item</c> under instance lock: 1 when folded, 0 when closed, 2 when the fold threw and closed the run.</summary>
@@ -120,9 +117,6 @@ type internal StreamRun<'S, 'T>
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.DeliverOffGraph(item: 'T) =
-        if Volatile.Read &offThread = 0 then
-            Interlocked.Exchange (&offThread, 1) |> ignore
-
         System.Threading.Monitor.Enter this
 
         let outcome =
@@ -198,21 +192,15 @@ type internal StreamRun<'S, 'T>
             captured <- state
             count
 #else
-            if Volatile.Read &offThread = 0 then
+            System.Threading.Monitor.Enter this
+
+            try
                 let count = folded
                 folded <- 0
                 captured <- state
                 count
-            else
-                System.Threading.Monitor.Enter this
-
-                try
-                    let count = folded
-                    folded <- 0
-                    captured <- state
-                    count
-                finally
-                    System.Threading.Monitor.Exit this
+            finally
+                System.Threading.Monitor.Exit this
 #endif
 
         member _.OnDequeued() =
@@ -231,15 +219,12 @@ type internal StreamRun<'S, 'T>
 #if FABLE_COMPILER
             closed <- true
 #else
-            Volatile.Write (&closed, true)
+            System.Threading.Monitor.Enter this
 
-            if Volatile.Read &offThread <> 0 then
-                System.Threading.Monitor.Enter this
-
-                try
-                    closed <- true
-                finally
-                    System.Threading.Monitor.Exit this
+            try
+                Volatile.Write (&closed, true)
+            finally
+                System.Threading.Monitor.Exit this
 #endif
 
         member this.RunSource() =
@@ -330,8 +315,9 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
 #endif
 
     member private this.Attach() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.StreamNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        link <- owner.AttachLinked this
+        Tracer.StreamNew (graph, id, owner)
 
     member private this.Enqueue() =
         if not queued then

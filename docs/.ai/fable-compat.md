@@ -24,9 +24,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Effects.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Bindings.fs | 17 | 17 | 17 | 17 | 17 | 17 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 26 | 26 | 26 | 26 | 0 | 0 |
-| AmbientGraph.fs | 11 | 11 | 11 | 11 | 11 | 11 | 6 | 0 |
+| AmbientGraph.fs | 12 | 12 | 12 | 12 | 12 | 12 | 6 | 0 |
 | Owners.fs | 23 | 23 | 23 | 23 | 23 | 23 | 0 | 0 |
-| Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
+| Equality.fs | 26 | 25 | 25 | 26 | 25 | 25 | 8 | 0 |
 | ValueReaders.fs | 22 | 22 | 22 | 22 | 22 | 22 | 0 | 0 |
 | Async.fs | 56 | 50 | 50 | 56 | 50 | 50 | 4 | 0 |
 | Boundaries.fs | 27 | 27 | 27 | 27 | 27 | 27 | 1 | 0 |
@@ -34,14 +34,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Edges.fs | 5 | 5 | 5 | 5 | 5 | 5 | 0 | 0 |
 | Invalidation.fs | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 18 | 0 |
+| Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 19 | 0 |
 | Tracing.fs | 2 | 2 | 2 | 108 | 104 | 104 | 3 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | TraceContractTests.fs | 0 | 0 | 0 | 34 | 34 | 34 | 0 | 0 |
 | TraceJsonTests.fs | 0 | 0 | 0 | 8 | 8 | 8 | 9 | 0 |
 | TraceDumpTests.fs | 0 | 0 | 0 | 4 | 4 | 4 | 10 | 0 |
 | TraceExportStreams.fs | 0 | 0 | 0 | 6 | 6 | 6 | 0 | 0 |
-| Observers.fs | 105 | 105 | 105 | 105 | 105 | 105 | 0 | 0 |
+| Observers.fs | 106 | 106 | 106 | 106 | 106 | 106 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
 | FanOut.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
 | Reentrancy.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
@@ -50,9 +50,9 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Scopes.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
 | Propagation.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
 | Reads.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
-| Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
+| Batching.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
 | AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
-| Projections.fs | 125 | 125 | 125 | 125 | 125 | 125 | 10 | 0 |
+| Projections.fs | 126 | 126 | 126 | 126 | 126 | 126 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 32 | 32 | 32 | 32 | 32 | 32 | 0 | 0 |
 | MemoScopes.fs | 28 | 28 | 28 | 28 | 28 | 28 | 0 | 0 |
@@ -61,15 +61,15 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | DischargeReentry.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | MapSemantics.fs | 42 | 42 | 42 | 42 | 42 | 42 | 0 | 1 |
 | Lenses.fs | 23 | 20 | 20 | 23 | 20 | 20 | 0 | 0 |
-| Combinators.fs | 272 | 272 | 272 | 272 | 272 | 272 | 3 | 0 |
-| Timed.fs | 31 | 31 | 31 | 40 | 40 | 40 | 0 | 0 |
+| Combinators.fs | 273 | 273 | 273 | 273 | 273 | 273 | 3 | 0 |
+| Timed.fs | 33 | 33 | 33 | 42 | 42 | 42 | 0 | 0 |
 | Streams.fs | 26 | 26 | 26 | 26 | 26 | 26 | 1 | 0 |
 | PreviousValues.fs | 12 | 12 | 12 | 12 | 12 | 12 | 15 | 0 |
 | Texts.fs | 5 | 5 | 5 | 43 | 43 | 43 | 1 | 0 |
 | Journal.fs | 86 | 85 | 85 | 89 | 88 | 88 | 3 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Editables.fs | 47 | 47 | 47 | 47 | 47 | 47 | 5 | 0 |
+| Editables.fs | 48 | 48 | 48 | 48 | 48 | 48 | 5 | 0 |
 | MvuBridge.fs | 14 | 14 | 14 | 14 | 14 | 14 | 3 | 0 |
 | QueryComposition.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | Queries.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
@@ -79,14 +79,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | VendoredThoth.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| WireDecoding.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
+| WireDecoding.fs | 31 | 31 | 31 | 31 | 31 | 31 | 2 | 0 |
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
 | DateTimeOffsetCodec.fs | 54 | 54 | 54 | 54 | 54 | 54 | 2 | 0 |
 | NumberText.fs | 36 | 36 | 36 | 36 | 36 | 36 | 2 | 0 |
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1788 | 1774 | 1771 | 2011 | 1993 | 1990 | 159 | 1 |
+| **Total** | 1798 | 1784 | 1781 | 2021 | 2003 | 2000 | 161 | 1 |
 
 ## Tests.fs
 
@@ -191,7 +191,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | an inline async continuation inside an effect or memo body leaves subsequent flushes and top-level reads clean | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
 | an unguarded graph constructed on a dead thread remains ambient when a later thread reuses its managed thread id | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
 
-<details><summary>11 passed in every build and delivery that runs them</summary>
+<details><summary>12 passed in every build and delivery that runs them</summary>
 
 - an effect woken by a write outside the graph registers its cleanups
 - an effect woken by a settle outside the graph creates nodes
@@ -204,6 +204,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - check-chain unwinding during a flush clears a caught upstream failure before recomputing a downstream memo
 - an idle signal write marks both node and projection observers without throwing
 - nested activations, flushes, stale pulls, and out-of-order disposal restore every ambient graph
+- out-of-order activation disposal and shadowed nested pulls preserve the live ambient graph
 
 </details>
 
@@ -255,7 +256,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a throwing lookup comparer fails the key's cell | a custom comparer goes through GraphOptions. |
 | a throwing row comparer fails the projection row and a fold over it | a custom comparer goes through GraphOptions. |
 
-<details><summary>24 passed in every build and delivery that runs them</summary>
+<details><summary>25 passed in every build and delivery that runs them</summary>
 
 - the default policy compares primitives by value
 - the default policy compares strings by value
@@ -264,6 +265,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a custom equality policy decides the cutoff for signals and memos
 - a custom equality policy cuts off a memo that recomputes to an equal value
 - a reference type with no structural equality is compared by identity
+- a subclass of StructuralPolicy uses its overridden IEqualityPolicy.Comparer on every target
 - an equal write, by type / int
 - an equal write, by type / float
 - an equal write, by type / float nan
@@ -552,6 +554,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a tryFind memo disposed with its root is not retained | JavaScript exposes no forced collection. |
 | partition halves disposed with their root are not retained | JavaScript exposes no forced collection. |
 | an emptied group's aggregate is not retained | JavaScript exposes no forced collection. |
+| retaining disposed memo and effect handles does not retain their retired owners | JavaScript exposes no forced collection. |
 
 <details><summary>2 passed in every build and delivery that runs them</summary>
 
@@ -815,7 +818,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Observers.fs
 
-<details><summary>105 passed in every build and delivery that runs them</summary>
+<details><summary>106 passed in every build and delivery that runs them</summary>
 
 - every one of 3 observers is woken
 - a body reading its source twice does not grow the list of 3
@@ -922,6 +925,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pending row's edge to the summary watch survives a swap
 - a foreign IComputation links, receives dirty and check marks, tracks swap-remove moves, and unlinks alongside built-in nodes
 - a foreign ISource links, propagates changes, trims on branch switch, and detaches on disposal
+- swap-removing a foreign observer from a memo preserves a surviving memo reader's handle
 
 </details>
 
@@ -1116,7 +1120,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Batching.fs
 
-<details><summary>11 passed in every build and delivery that runs them</summary>
+<details><summary>12 passed in every build and delivery that runs them</summary>
 
 - a batch returns what its body returned
 - a memo read inside a batch is recomputed there and then
@@ -1129,6 +1133,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an Untrack inside a batch is still untracked
 - a batch that throws is not left open
 - an explicit flush inside a batch drains it, defeating the window
+- leaf memos, cutoff chains, and unobserved sources settle work left queued by a throwing batch
 
 </details>
 
@@ -1238,7 +1243,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>125 passed in every build and delivery that runs them</summary>
+<details><summary>126 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
 - a reverse with a changed key evaluates each selector once and retains earlier snapshots
@@ -1365,6 +1370,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - size and position memos read a projection from createProjectionOnce
 - ensureUniqueKeys raises the pass's message for int, string, record and tuple keys
 - ensureUniqueKeys keeps boxed keys of different types apart, as = does
+- disposing a projection from keyOf during a reversed array pass stops invoking remaining selectors
 
 </details>
 
@@ -1684,7 +1690,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | foldGroup rejects a null subtract | Fable wraps a null function argument in a closure, so it is never null. |
 | a read through a memo of another graph publishes the current mean under a custom policy | the policy is an object expression over a generic interface member. |
 
-<details><summary>272 passed in every build and delivery that runs them</summary>
+<details><summary>273 passed in every build and delivery that runs them</summary>
 
 - 200 single edits at N=1000 make 200 predicate calls
 - a Keys reader wakes only when membership flips
@@ -1764,6 +1770,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - DateTime
 - custom IComparable
 - string list
+- mutating a returned Keys array cannot corrupt a subsequent single-row rank move
 - take, skip and sub select positions and clamp counts as List.truncate and a clamped skip do
 - the window follows signals read by offset and count, and a reader runs once per change
 - a key that stays in a shifted window keeps its row
@@ -1963,12 +1970,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Timed.fs
 
-<details><summary>40 passed in every build and delivery that runs them</summary>
+<details><summary>42 passed in every build and delivery that runs them</summary>
 
 - system timer rejects a negative wait
 - system timer can disarm and dispose an unarmed long wait
 - computed input extends the quiet deadline on every change
 - zero delay uses normal graph propagation without a timer
+- a timer factory that advances the clock past the window admits in the same flush
+- positive delay holds publication at clock origin 2^53
 - leading throttle never replays suppressed input and creates no timers
 - trailing throttle admits latest at the first input deadline
 - leading plus trailing sustains windows without catch-up bursts
@@ -2290,7 +2299,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | concurrent clean Get calls on distinct keys never return another row's value | JavaScript is single-threaded. |
 | disposing a projection releases lookup alias keys from its MRU cache | JavaScript exposes no forced garbage collection for WeakReference assertions. |
 
-<details><summary>47 passed in every build and delivery that runs them</summary>
+<details><summary>48 passed in every build and delivery that runs them</summary>
 
 - an editable reads the seed until edited, then the edit
 - an upstream change drops the edit of an editable
@@ -2309,6 +2318,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a pending seed that settles to a new value drops the edit
 - an edit before the seed first settles is dropped by an editable and kept by a draft
 - disposing the owner detaches the editable from its seed
+- a reentrant editable seed runs the same number of times and returns the refreshed value across targets
 - a keyed collection whose selector disposes it raises and stays empty
 - a selector that upserts the same key leaves one row holding the outer value
 - a selector that writes and then throws inside an outer batch keeps the write and the batch
@@ -2477,9 +2487,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 | Excluded | Reason |
 | --- | --- |
+| repeated lookups of two distinct field names on a large object do not build the full member index | GC.GetAllocatedBytesForCurrentThread has no Fable counterpart. |
 | a shape error on a large value allocates less than 16 MB | GC.GetAllocatedBytesForCurrentThread has no Fable counterpart. |
 
-<details><summary>30 passed in every build and delivery that runs them</summary>
+<details><summary>31 passed in every build and delivery that runs them</summary>
 
 - a record encodes to its text and decodes back
 - text that is not JSON is a syntax error
@@ -2511,6 +2522,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - fields read before and after an object's keys see the same members
 - keys read after twelve fields keep own-property order
 - fields of nested and sibling objects read in any order
+- an absent optional field whose name contains a lone surrogate decodes to None before and after keys
 
 </details>
 
