@@ -33,6 +33,21 @@ module internal Platform =
 #endif
 
     /// <summary>
+    /// Reinterprets <c>value</c> as <c>'T</c> without a type check. The caller guarantees the runtime type: a tag stored
+    /// beside the reference says what it is. <c>Unsafe.As</c> on .NET 8 and later, a checked <c>unbox</c> elsewhere.
+    /// </summary>
+#if FABLE_COMPILER
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T = unbox<'T> value
+#else
+#if NET8_0_OR_GREATER
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T =
+        System.Runtime.CompilerServices.Unsafe.As<'T> value
+#else
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T = unbox<'T> value
+#endif
+#endif
+
+    /// <summary>
     /// The runtime type name of <c>value</c>: <c>"null"</c> for null, the CLR full name on .NET, and under Fable the
     /// constructor name of an object or the <c>typeof</c> of a primitive.
     /// </summary>
