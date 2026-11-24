@@ -21,6 +21,7 @@
         <Compile Include="TraceFixtures.fs" />
         <Compile Include="TraceCheckpoints.fs" />
         <Compile Include="TraceExportTests.fs" />
+        <Compile Include="QueryWaiters.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
 

@@ -27,6 +27,25 @@ module BrowserFrames =
     [<Emit("$0.queueMicrotask($1)")>]
     let private queueMicrotask (window: obj) (callback: unit -> unit) : unit = jsNative
 
+    /// <summary>A pending animation frame request; disposal cancels it.</summary>
+    /// <remarks><c>frames</c> holds the handle from the request until the frame starts or the request is cancelled.</remarks>
+    [<Sealed>]
+    type private FrameRequest(window: obj, frames: HashSet<int>, callback: float -> unit) =
+        let mutable handle = 0
+
+        member _.Start() =
+            handle <-
+                requestFrame window (fun time ->
+                    if frames.Remove handle then
+                        callback time)
+
+            frames.Add handle |> ignore
+
+        interface IDisposable with
+            member _.Dispose() =
+                if frames.Remove handle then
+                    cancelFrame window handle
+
     /// <summary>A scheduler over <c>document</c>'s Window; <c>Now</c> is <c>performance.now()</c>.</summary>
     let forDocument (document: Document) : FrameScheduler =
         if isNull (box document) then
@@ -40,6 +59,7 @@ module BrowserFrames =
         let mutable disposed = false
         let mutable next = 0
         let pending = Dictionary<int, unit -> unit>()
+        let frames = HashSet<int>()
 
         let schedule (start: (unit -> unit) -> (unit -> unit)) (run: unit -> unit) =
             if disposed then
@@ -68,17 +88,12 @@ module BrowserFrames =
                 now window
 
             member _.Frame callback =
-                let time = ref 0.0
+                if disposed then
+                    raise (ObjectDisposedException (nameof FrameScheduler))
 
-                schedule
-                    (fun invoke ->
-                        let id =
-                            requestFrame window (fun t ->
-                                time.Value <- t
-                                invoke ())
-
-                        fun () -> cancelFrame window id)
-                    (fun () -> callback time.Value)
+                let request = new FrameRequest (window, frames, callback)
+                request.Start ()
+                request :> IDisposable
 
             member _.Timeout(milliseconds, callback) =
                 schedule
@@ -102,4 +117,9 @@ module BrowserFrames =
                         cancel ()
 
                     pending.Clear ()
+
+                    for handle in frames do
+                        cancelFrame window handle
+
+                    frames.Clear ()
         }

@@ -23,43 +23,80 @@ module BrowserResizeObservation =
     [<Emit("$0.disconnect()")>]
     let private disconnect (observer: obj) : unit = jsNative
 
-    // [x, y, width, height, then inline and block of each content, border and device-pixel size], with the counts of
-    // the three size lists at indices 4, 5 and 6.
-    [<Emit("""(() => { const e = $0, r = e.contentRect, l = s => s ? Array.from(s) : [];
-        const c = l(e.contentBoxSize), b = l(e.borderBoxSize), d = l(e.devicePixelContentBoxSize);
-        return [r.x, r.y, r.width, r.height, c.length, b.length, d.length].concat(
-            ...[c, b, d].map(s => s.flatMap(z => [z.inlineSize, z.blockSize]))); })()""")>]
-    let private values (entry: obj) : float array = jsNative
-
     [<Emit("$0.target")>]
     let private targetOf (entry: obj) : Element = jsNative
 
-    let private copy (entry: obj) : ResizeObserverEntry =
-        let v = values entry
-        let counts = [| int v[4]; int v[5]; int v[6] |]
-        let starts = [| 7; 7 + 2 * counts[0]; 7 + 2 * (counts[0] + counts[1]) |]
+    [<Emit("$0.contentRect")>]
+    let private contentRectOf (entry: obj) : obj = jsNative
 
-        let sizes index =
-            let start = starts[index]
+    [<Emit("$0.contentBoxSize")>]
+    let private contentBoxOf (entry: obj) : obj = jsNative
 
-            Array.init counts[index] (fun item ->
+    [<Emit("$0.borderBoxSize")>]
+    let private borderBoxOf (entry: obj) : obj = jsNative
+
+    [<Emit("$0.devicePixelContentBoxSize")>]
+    let private devicePixelBoxOf (entry: obj) : obj = jsNative
+
+    [<Emit("$0.x")>]
+    let private xOf (rect: obj) : float = jsNative
+
+    [<Emit("$0.y")>]
+    let private yOf (rect: obj) : float = jsNative
+
+    [<Emit("$0.width")>]
+    let private widthOf (rect: obj) : float = jsNative
+
+    [<Emit("$0.height")>]
+    let private heightOf (rect: obj) : float = jsNative
+
+    // The length Array.from gives the list: 0 for a missing list and for a value without a length.
+    [<Emit("($0 ? $0.length >>> 0 : 0)")>]
+    let private countOf (sizes: obj) : int = jsNative
+
+    [<Emit("$0[$1].inlineSize")>]
+    let private inlineSizeAt (sizes: obj, index: int) : float = jsNative
+
+    [<Emit("$0[$1].blockSize")>]
+    let private blockSizeAt (sizes: obj, index: int) : float = jsNative
+
+    [<Emit("new Array($0)")>]
+    let private newSizes (count: int) : ResizeObserverSize array = jsNative
+
+    [<Emit("$0[$1] = $2")>]
+    let private setSize (sizes: ResizeObserverSize array, index: int, size: ResizeObserverSize) : unit = jsNative
+
+    let private sizes (list: obj) : ResizeObserverSize array =
+        let count = countOf list
+        let result = newSizes count
+
+        for index = 0 to count - 1 do
+            setSize (
+                result,
+                index,
                 {
-                    InlineSize = v[start + 2 * item]
-                    BlockSize = v[start + 2 * item + 1]
-                })
+                    InlineSize = inlineSizeAt (list, index)
+                    BlockSize = blockSizeAt (list, index)
+                }
+            )
+
+        result
+
+    let private copy (entry: obj) : ResizeObserverEntry =
+        let rect = contentRectOf entry
 
         {
             Target = targetOf entry
             ContentRect =
                 {
-                    X = v[0]
-                    Y = v[1]
-                    Width = v[2]
-                    Height = v[3]
+                    X = xOf rect
+                    Y = yOf rect
+                    Width = widthOf rect
+                    Height = heightOf rect
                 }
-            ContentBoxSize = sizes 0
-            BorderBoxSize = sizes 1
-            DevicePixelContentBoxSize = sizes 2
+            ContentBoxSize = sizes (contentBoxOf entry)
+            BorderBoxSize = sizes (borderBoxOf entry)
+            DevicePixelContentBoxSize = sizes (devicePixelBoxOf entry)
         }
 
     let private boxName (observed: ResizeObserverBox) =

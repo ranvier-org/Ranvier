@@ -362,10 +362,23 @@ module MutationObservation =
                     let engine =
                         provider.Create
                             (fun entries ->
-                                let admitted = lock gate (fun () -> if released || disposed then None else callback)
+#if FABLE_COMPILER
+                                let admitted = if released || disposed then None else callback
+#else
+                                let mutable admitted = None
+                                let mutable taken = false
 
-                                admitted
-                                |> Option.iter (fun deliver -> deliver entries self))
+                                try
+                                    System.Threading.Monitor.Enter (gate, &taken)
+                                    admitted <- if released || disposed then None else callback
+                                finally
+                                    if taken then
+                                        System.Threading.Monitor.Exit gate
+#endif
+
+                                match admitted with
+                                | Some deliver -> deliver entries self
+                                | None -> ())
                             self.Dispose
 
                     let attached =

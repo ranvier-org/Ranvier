@@ -29,15 +29,38 @@ module BrowserIntersectionObservation =
     [<Emit("$0.takeRecords()")>]
     let private takeRecords (observer: obj) : obj array = jsNative
 
-    // [time, hasRoot, root x, y, width, height, bounds x, y, width, height, intersection x, y, width, height,
-    //  isIntersecting, ratio].
-    [<Emit("""(() => { const e = $0, r = e.rootBounds, b = e.boundingClientRect, i = e.intersectionRect;
-        return [e.time, r ? 1 : 0, r ? r.x : 0, r ? r.y : 0, r ? r.width : 0, r ? r.height : 0, b.x, b.y, b.width, b.height,
-            i.x, i.y, i.width, i.height, e.isIntersecting ? 1 : 0, e.intersectionRatio]; })()""")>]
-    let private values (entry: obj) : float array = jsNative
-
     [<Emit("$0.target")>]
     let private targetOf (entry: obj) : Element = jsNative
+
+    [<Emit("$0.time")>]
+    let private timeOf (entry: obj) : float = jsNative
+
+    [<Emit("$0.rootBounds")>]
+    let private rootBoundsOf (entry: obj) : obj = jsNative
+
+    [<Emit("$0.boundingClientRect")>]
+    let private boundingClientRectOf (entry: obj) : obj = jsNative
+
+    [<Emit("$0.intersectionRect")>]
+    let private intersectionRectOf (entry: obj) : obj = jsNative
+
+    [<Emit("!!$0.isIntersecting")>]
+    let private isIntersectingOf (entry: obj) : bool = jsNative
+
+    [<Emit("$0.intersectionRatio")>]
+    let private intersectionRatioOf (entry: obj) : float = jsNative
+
+    [<Emit("$0.x")>]
+    let private xOf (rect: obj) : float = jsNative
+
+    [<Emit("$0.y")>]
+    let private yOf (rect: obj) : float = jsNative
+
+    [<Emit("$0.width")>]
+    let private widthOf (rect: obj) : float = jsNative
+
+    [<Emit("$0.height")>]
+    let private heightOf (rect: obj) : float = jsNative
 
     // The DOMException name, or null for another error.
     [<Emit("($0 && typeof $0.name === 'string' && ($0.name === 'SyntaxError' || $0 instanceof RangeError)) ? $0.name : null")>]
@@ -46,25 +69,25 @@ module BrowserIntersectionObservation =
     [<Emit("$0.message")>]
     let private messageOf (error: obj) : string = jsNative
 
-    let private rect (v: float array) start : IntersectionObserverRect =
+    let private rect (source: obj) : IntersectionObserverRect =
         {
-            X = v[start]
-            Y = v[start + 1]
-            Width = v[start + 2]
-            Height = v[start + 3]
+            X = xOf source
+            Y = yOf source
+            Width = widthOf source
+            Height = heightOf source
         }
 
     let private copy (entry: obj) : IntersectionObserverEntry =
-        let v = values entry
+        let root = rootBoundsOf entry
 
         {
             Target = targetOf entry
-            Time = v[0]
-            RootBounds = if v[1] = 1.0 then Some (rect v 2) else None
-            BoundingClientRect = rect v 6
-            IntersectionRect = rect v 10
-            IsIntersecting = v[14] = 1.0
-            IntersectionRatio = v[15]
+            Time = timeOf entry
+            RootBounds = if isNull root then None else Some (rect root)
+            BoundingClientRect = rect (boundingClientRectOf entry)
+            IntersectionRect = rect (intersectionRectOf entry)
+            IsIntersecting = isIntersectingOf entry
+            IntersectionRatio = intersectionRatioOf entry
         }
 
     /// <summary>The provider over <c>document</c>'s Window.</summary>

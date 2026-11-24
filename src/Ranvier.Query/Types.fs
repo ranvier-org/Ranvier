@@ -89,83 +89,139 @@ module internal QueryTask =
 
 /// <summary>Shared thread, disposal, and reentrancy guard state for one <c>QueryClient</c>.</summary>
 [<Sealed; AllowNullLiteral>]
-type internal QuerySession(graph: Graph) =
+type internal QuerySession =
+    val Graph: Graph
+    val mutable Disposed: bool
+    val mutable Staging: bool
+
+    new(graph: Graph) =
+        {
+            Graph = graph
+            Disposed = false
+            Staging = false
+        }
+
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    static member private RaiseDisposed() : unit =
+    static member RaiseDisposed() : unit =
         raise (ObjectDisposedException "QueryClient")
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    static member private RaiseReentry() : unit =
+    static member RaiseReentry() : unit =
         invalidOp "Query callbacks cannot reenter the client during reconciliation."
 
-    member _.Graph = graph
-    member val Disposed = false with get, set
-    member val Staging = false with get, set
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member this.DescribeGuard() =
-        graph.AssertOnGraphThread "QueryClient"
+    member inline this.DescribeGuard() =
+        this.Graph.AssertOnGraphThread "QueryClient"
 
         if this.Disposed then
             QuerySession.RaiseDisposed ()
 
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member this.Guard() =
-        this.DescribeGuard ()
+    member inline this.Guard() =
+        this.Graph.AssertOnGraphThread "QueryClient"
+
+        if this.Disposed then
+            QuerySession.RaiseDisposed ()
 
         if this.Staging then
             QuerySession.RaiseReentry ()
 
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member this.DisposeGuard() =
-        graph.AssertOnGraphThread "QueryClient.Dispose"
+    member inline this.DisposeGuard() =
+        this.Graph.AssertOnGraphThread "QueryClient.Dispose"
 
         if this.Staging then
             QuerySession.RaiseReentry ()
 
-/// <summary>A detachable load waiter that settles once and unregisters itself from entry and lease lists.</summary>
-[<Sealed>]
-type internal QueryAwaiter<'T>(entryWaiters: ResizeArray<QueryAwaiter<'T>>, leaseWaiters: ResizeArray<QueryAwaiter<'T>>) =
-    let source = TaskCompletionSource<'T>()
-    let mutable detached = false
+/// <summary>
+/// A load waiter linked into the waiter ring of its entry's request and the waiter ring of its lease. It completes
+/// once, leaving both rings before its task completes.
+/// </summary>
+/// <remarks>
+/// A ring is circular through an anchor, a node with a null <c>Source</c> that completes nothing. The entry links run
+/// through an entry's anchor and the lease links through a lease's; each ring holds its waiters in registration
+/// order. A waiter's links are null once it has completed.
+/// </remarks>
+[<Sealed; AllowNullLiteral>]
+type internal QueryAwaiter<'T> =
+    val Source: TaskCompletionSource<'T>
+    val mutable EntryPrev: QueryAwaiter<'T>
+    val mutable EntryNext: QueryAwaiter<'T>
+    val mutable LeasePrev: QueryAwaiter<'T>
+    val mutable LeaseNext: QueryAwaiter<'T>
 
+    new(source: TaskCompletionSource<'T>) =
+        {
+            Source = source
+            EntryPrev = null
+            EntryNext = null
+            LeasePrev = null
+            LeaseNext = null
+        }
+
+    /// <summary>The anchor of an empty entry ring.</summary>
+    static member EntryAnchor() : QueryAwaiter<'T> =
+        let anchor = QueryAwaiter<'T>(null)
+        anchor.EntryPrev <- anchor
+        anchor.EntryNext <- anchor
+        anchor
+
+    /// <summary>The anchor of an empty lease ring.</summary>
+    static member LeaseAnchor() : QueryAwaiter<'T> =
+        let anchor = QueryAwaiter<'T>(null)
+        anchor.LeasePrev <- anchor
+        anchor.LeaseNext <- anchor
+        anchor
+
+    /// <summary>A waiter appended to the entry ring of <c>entryAnchor</c> and the lease ring of <c>leaseAnchor</c>.</summary>
+    static member Attach(entryAnchor: QueryAwaiter<'T>, leaseAnchor: QueryAwaiter<'T>) : QueryAwaiter<'T> =
+        let waiter = QueryAwaiter<'T>(TaskCompletionSource<'T>())
+        let entryLast = entryAnchor.EntryPrev
+        waiter.EntryPrev <- entryLast
+        waiter.EntryNext <- entryAnchor
+        entryLast.EntryNext <- waiter
+        entryAnchor.EntryPrev <- waiter
+        let leaseLast = leaseAnchor.LeasePrev
+        waiter.LeasePrev <- leaseLast
+        waiter.LeaseNext <- leaseAnchor
+        leaseLast.LeaseNext <- waiter
+        leaseAnchor.LeasePrev <- waiter
+        waiter
+
+    /// <summary>Unlinks this waiter from both rings; false when it has already completed.</summary>
     member private this.TryClaim() : bool =
-        if detached then
+        let entryNext = this.EntryNext
+
+        if isNull entryNext then
             false
         else
-            detached <- true
-
-            if
-                not (isNull entryWaiters)
-                && entryWaiters.Count > 0
-            then
-                entryWaiters.Remove this |> ignore
-
-            if
-                not (isNull leaseWaiters)
-                && leaseWaiters.Count > 0
-            then
-                leaseWaiters.Remove this |> ignore
-
+            let entryPrev = this.EntryPrev
+            entryPrev.EntryNext <- entryNext
+            entryNext.EntryPrev <- entryPrev
+            this.EntryPrev <- null
+            this.EntryNext <- null
+            let leasePrev = this.LeasePrev
+            let leaseNext = this.LeaseNext
+            leasePrev.LeaseNext <- leaseNext
+            leaseNext.LeasePrev <- leasePrev
+            this.LeasePrev <- null
+            this.LeaseNext <- null
             true
 
     /// <summary>The load result, delivered after graph publication.</summary>
-    member _.Task = source.Task
+    member this.Task = this.Source.Task
 
     /// <summary>Publishes an accepted result to this waiter.</summary>
     member this.Settle(value: 'T) =
         if this.TryClaim () then
-            source.SetResult value
+            this.Source.SetResult value
 
     /// <summary>Faults this waiter with a request failure.</summary>
     member this.Fail(error: exn) =
         if this.TryClaim () then
-            source.SetException error
+            this.Source.SetException error
 
     /// <summary>Cancels this waiter without cancelling the shared request.</summary>
     member this.Cancel() =
         if this.TryClaim () then
-            QueryTask.cancel source
+            QueryTask.cancel this.Source
 
 /// <summary>Retired request handles captured during draft publication for post-batch teardown.</summary>
 [<Struct; NoEquality; NoComparison>]

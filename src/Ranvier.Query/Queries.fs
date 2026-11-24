@@ -6,25 +6,31 @@ open System.Threading
 open System.Threading.Tasks
 open Ranvier
 
+module internal QueryLeaseGuard =
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    let raiseDisposed () : unit =
+        raise (ObjectDisposedException "QueryLease")
+
+    /// <summary>The session guard, then the lease's own disposal check.</summary>
+    let inline check (session: QuerySession) (disposed: bool) =
+        session.Guard ()
+
+        if disposed then
+            raiseDisposed ()
+
 /// <summary>A page-owned reference to a query. Dispose it when the page is removed.</summary>
 [<Sealed>]
 type QueryLease<'T> internal (session: QuerySession, entry: QueryEntry<'T>) =
     let mutable disposed = false
     let mutable held: QueryEntry<'T> = entry
-    let mutable waiters: ResizeArray<QueryAwaiter<'T>> = null
+    // The anchor of the ring of this lease's waiters; null before the first waiter and after disposal.
+    let mutable waiters: QueryAwaiter<'T> = null
     let mutable link: OwnerLink = null
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    let check () =
-        session.Guard ()
-
-        if disposed then
-            raise (ObjectDisposedException "QueryLease")
 
     let awaitCurrent () =
         if held.IsFetching then
             if isNull waiters then
-                waiters <- ResizeArray<QueryAwaiter<'T>>()
+                waiters <- QueryAwaiter<'T>.LeaseAnchor()
 
             held.AttachWaiter waiters
         else
@@ -40,35 +46,35 @@ type QueryLease<'T> internal (session: QuerySession, entry: QueryEntry<'T>) =
 
     /// <summary>A tracked cached value; initial loading suspends and an initial failure throws.</summary>
     member _.Value =
-        check ()
+        QueryLeaseGuard.check session disposed
         held.ValueUnchecked
 
     /// <summary>A tracked snapshot, including retained data during refresh or refresh failure.</summary>
     member _.State =
-        check ()
+        QueryLeaseGuard.check session disposed
         held.StateUnchecked
 
     /// <summary>Fetches missing or stale data, joining an existing request.</summary>
     member _.Ensure() =
-        check ()
+        QueryLeaseGuard.check session disposed
         held.EnsureUnchecked ()
 
     /// <summary>Starts a new request, superseding any existing one.</summary>
     member _.Refresh() =
-        check ()
+        QueryLeaseGuard.check session disposed
         held.RefreshUnchecked ()
 
     /// <summary>Loads missing or stale data and awaits graph publication, joining an existing request.</summary>
     /// <remarks>The task faults on fetch failure and cancels on supersession, reconciliation, or lease/client disposal.</remarks>
     member _.EnsureAsync() =
-        check ()
+        QueryLeaseGuard.check session disposed
         held.EnsureUnchecked ()
         awaitCurrent ()
 
     /// <summary>Supersedes the current request and awaits the replacement's graph publication.</summary>
     /// <remarks>Failure faults the task while retaining cached data. Retirement or disposal cancels the task.</remarks>
     member _.RefreshAsync() =
-        check ()
+        QueryLeaseGuard.check session disposed
         held.RefreshUnchecked ()
         awaitCurrent ()
 
@@ -86,16 +92,15 @@ type QueryLease<'T> internal (session: QuerySession, entry: QueryEntry<'T>) =
                 attached.Detach ()
 
             target.ReleaseLease ()
+            let pending = waiters
 
-            if not (isNull waiters) then
-                if waiters.Count > 0 then
-                    let pending = waiters.ToArray ()
-                    waiters.Clear ()
-
-                    for i = 0 to pending.Length - 1 do
-                        pending[i].Cancel()
-
+            if not (isNull pending) then
                 waiters <- null
+                let mutable waiter = pending.LeaseNext
+
+                while not (obj.ReferenceEquals (waiter, pending)) do
+                    waiter.Cancel ()
+                    waiter <- pending.LeaseNext
 
     interface IOwned with
         member this.Release() =

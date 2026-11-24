@@ -9,8 +9,11 @@ module BrowserViewportScroll =
     [<Emit("$0.defaultView")>]
     let private windowOf (document: Document) : obj = jsNative
 
-    [<Emit("$0.defaultView ? $0.defaultView[$1] : 0")>]
-    let private offset (document: Document, name: string) : float = jsNative
+    [<Emit("$0.scrollX")>]
+    let private scrollXOf (window: obj) : float = jsNative
+
+    [<Emit("$0.scrollY")>]
+    let private scrollYOf (window: obj) : float = jsNative
 
     [<Emit("$0.defaultView && $0.defaultView[$1]($2)")>]
     let private call (document: Document, name: string, options: obj) : unit = jsNative
@@ -45,10 +48,15 @@ module BrowserViewportScroll =
 
         { new ViewportScrollService with
             member _.Position() =
-                {
-                    X = offset (document, "scrollX")
-                    Y = offset (document, "scrollY")
-                }
+                let window = windowOf document
+
+                if isNull window then
+                    { X = 0.0; Y = 0.0 }
+                else
+                    {
+                        X = scrollXOf window
+                        Y = scrollYOf window
+                    }
 
             member _.ScrollTo request =
                 call (document, "scrollTo", options request)

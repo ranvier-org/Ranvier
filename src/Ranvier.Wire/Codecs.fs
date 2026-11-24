@@ -106,31 +106,34 @@ module Codecs =
         + ":"
         + padded 2 (size % 60L)
 
-    /// <summary>
-    /// The value's clock time in its own offset as <c>yyyy-MM-ddTHH:mm:ss.fff±HH:mm</c>, truncated to the
-    /// millisecond at or before the instant.
-    /// </summary>
-    let private formatDateTimeOffset (value: DateTimeOffset) =
-        let offset = int64 value.Offset.TotalMinutes
-        let local = value.ToUnixTimeMilliseconds () + offset * 60000L
-        let days = floorDiv local millisecondsPerDay
-        let ofDay = local - days * millisecondsPerDay
-        let year, month, day = civilFromDays days
-        let size = abs offset
-#if FABLE_COMPILER
-        formatDateTimeOffsetPadded year month day ofDay offset size
-#else
-        if year >= 0L && year <= 9999L && size < 6000L then
-            let chars: char array = Array.zeroCreate 29
-            let y = int year
-            let m = int month
-            let d = int day
-            let hour = int (ofDay / 3600000L)
-            let minute = int (ofDay / 60000L % 60L)
-            let second = int (ofDay / 1000L % 60L)
-            let ms = int (ofDay % 1000L)
-            let offHours = int (size / 60L)
-            let offMinutes = int (size % 60L)
+#if !FABLE_COMPILER
+    /// <summary>A clock time with a year from 0 to 9999 and an offset under 100 hours.</summary>
+    [<Struct; NoEquality; NoComparison>]
+    type private ClockTime =
+        {
+            Year: int
+            Month: int
+            Day: int
+            /// <summary>Milliseconds since the start of the day.</summary>
+            OfDay: int
+            /// <summary>The signed offset in minutes.</summary>
+            Offset: int
+        }
+
+    /// <summary>Writes a <c>ClockTime</c> as the 29 characters <c>yyyy-MM-ddTHH:mm:ss.fff±HH:mm</c>.</summary>
+    let private writeClockTime =
+        Buffers.SpanAction<char, ClockTime>(fun chars time ->
+            let y = time.Year
+            let m = time.Month
+            let d = time.Day
+            let ofDay = time.OfDay
+            let hour = ofDay / 3600000
+            let minute = ofDay / 60000 % 60
+            let second = ofDay / 1000 % 60
+            let ms = ofDay % 1000
+            let size = abs time.Offset
+            let offHours = size / 60
+            let offMinutes = size % 60
             let zero = int '0'
             chars[0] <- char (zero + y / 1000)
             chars[1] <- char (zero + y / 100 % 10)
@@ -155,13 +158,40 @@ module Codecs =
             chars[20] <- char (zero + ms / 100)
             chars[21] <- char (zero + ms / 10 % 10)
             chars[22] <- char (zero + ms % 10)
-            chars[23] <- if offset < 0L then '-' else '+'
+            chars[23] <- if time.Offset < 0 then '-' else '+'
             chars[24] <- char (zero + offHours / 10)
             chars[25] <- char (zero + offHours % 10)
             chars[26] <- ':'
             chars[27] <- char (zero + offMinutes / 10)
-            chars[28] <- char (zero + offMinutes % 10)
-            String chars
+            chars[28] <- char (zero + offMinutes % 10))
+#endif
+
+    /// <summary>
+    /// The value's clock time in its own offset as <c>yyyy-MM-ddTHH:mm:ss.fff±HH:mm</c>, truncated to the
+    /// millisecond at or before the instant.
+    /// </summary>
+    let private formatDateTimeOffset (value: DateTimeOffset) =
+        let offset = int64 value.Offset.TotalMinutes
+        let local = value.ToUnixTimeMilliseconds () + offset * 60000L
+        let days = floorDiv local millisecondsPerDay
+        let ofDay = local - days * millisecondsPerDay
+        let year, month, day = civilFromDays days
+        let size = abs offset
+#if FABLE_COMPILER
+        formatDateTimeOffsetPadded year month day ofDay offset size
+#else
+        if year >= 0L && year <= 9999L && size < 6000L then
+            String.Create (
+                29,
+                {
+                    Year = int year
+                    Month = int month
+                    Day = int day
+                    OfDay = int ofDay
+                    Offset = int offset
+                },
+                writeClockTime
+            )
         else
             formatDateTimeOffsetPadded year month day ofDay offset size
 #endif

@@ -129,4 +129,22 @@ let tests =
                 Expect.equal (codec.Encode ((instant 1709599028789L 330.0).AddTicks 9999L)) "\"2024-03-05T06:07:08.789+05:30\"" "after the epoch"
                 Expect.equal (codec.Encode ((instant -1L 0.0).AddTicks 9999L)) "\"1969-12-31T23:59:59.999+00:00\"" "before the epoch"
 #endif
+#if !FABLE_COMPILER
+            // .NET only: the expected text is DateTimeOffset.ToString's custom format, which Fable formats differently.
+            testCase "instants across the whole range write the text of the custom format, at each offset"
+            <| fun () ->
+                let margin = 840L * 60000L
+                let first = -62135596800000L + margin
+                let last = 253402300799999L - margin
+                let step = (last - first) / 4001L
+
+                for sample in 0L .. 4001L do
+                    for minutes in [ -840.0; -210.0; -30.0; 0.0; 1.0; 330.0; 840.0 ] do
+                        let value = instant (first + sample * step) minutes
+
+                        let expected =
+                            value.ToString ("yyyy-MM-dd'T'HH:mm:ss.fffzzz", Globalization.CultureInfo.InvariantCulture)
+
+                        Expect.equal (codec.Encode value) (quote + expected + quote) expected
+#endif
         ]

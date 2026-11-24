@@ -172,6 +172,73 @@ public class ReactiveTests
     }
 
     [Fact]
+    public void SignalUpdateReadsUntrackedThenWritesOnce()
+    {
+        using var active = new Graph().Activate();
+        var count = Signal(1);
+        var seen = new List<int>();
+        var runs = 0;
+        Effect(() => seen.Add(count.Value));
+        Effect(() =>
+        {
+            runs++;
+            count.Update(n => n + 10);
+        });
+        Flush();
+
+        Assert.Equal(1, runs);
+        Assert.Equal(11, count.Value);
+        Assert.Equal(11, seen[^1]);
+    }
+
+    [Fact]
+    public void SignalUpdateLeavesTheValueWhenTheUpdateThrows()
+    {
+        using var active = new Graph().Activate();
+        var count = Signal(3);
+        var failure = new InvalidOperationException("no update");
+
+        Assert.Same(failure, Assert.Throws<InvalidOperationException>(() => count.Update(_ => throw failure)));
+        Assert.Equal(3, count.Value);
+    }
+
+    [Fact]
+    public void SignalUpdateRejectsNullArguments()
+    {
+        using var active = new Graph().Activate();
+        var count = Signal(3);
+        Signal<int> missing = null!;
+
+        Assert.Equal("signal", Assert.Throws<ArgumentNullException>(() => missing.Update(n => n + 1)).ParamName);
+        Assert.Equal("update", Assert.Throws<ArgumentNullException>(() => count.Update(null!)).ParamName);
+        Assert.Equal(3, count.Value);
+    }
+
+#if !RANVIER_TRACE
+    // Untraced only: the traced build records each write in its log.
+    [Fact]
+    public void SignalUpdateWithACachedDelegateAllocatesNothing()
+    {
+        using var active = new Graph().Activate();
+        var count = Signal(0);
+        Func<int, int> increment = static n => n + 1;
+
+        for (var i = 0; i < 2_000; i++)
+            count.Update(increment);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var i = 0; i < 1_000; i++)
+            count.Update(increment);
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(3_000, count.Value);
+        Assert.Equal(0, allocated);
+    }
+#endif
+
+    [Fact]
     public void EffectOnActsOnlyOnAChangedValue()
     {
         using var active = new Graph().Activate();

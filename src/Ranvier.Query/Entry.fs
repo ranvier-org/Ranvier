@@ -33,7 +33,8 @@ type internal QueryEntry<'T>(session: QuerySession) =
     let mutable disposed = false
     let mutable leaseCount = 0
     let mutable cancellation: CancellationTokenSource = null
-    let mutable waiters: ResizeArray<QueryAwaiter<'T>> = null
+    // The anchor of the ring of waiters on the current request; null before the first waiter and after a take.
+    let mutable waiters: QueryAwaiter<'T> = null
 
     let mutable invokeFetchDelegate: CancellationToken -> Task<'T> =
         Unchecked.defaultof<_>
@@ -52,18 +53,58 @@ type internal QueryEntry<'T>(session: QuerySession) =
     let mutable draftUpdated = false
     let mutable draftChanged = false
 
-    let takeWaiters () : QueryAwaiter<'T>[] =
-        if isNull waiters || waiters.Count = 0 then
+    /// <summary>
+    /// Detaches the ring of waiters on the current request and returns its anchor, or null when the request has no
+    /// waiter. A waiter registered afterwards joins a new ring.
+    /// </summary>
+    let takeWaiters () : QueryAwaiter<'T> =
+        let current = waiters
+
+        if
+            isNull current
+            || obj.ReferenceEquals (current.EntryNext, current)
+        then
             null
         else
-            let current = waiters.ToArray ()
-            waiters.Clear ()
+            waiters <- null
             current
 
-    let cancelWaiters (pending: QueryAwaiter<'T>[]) =
+    /// <summary>Keeps the anchor of a drained ring for the next request's waiters.</summary>
+    let recycle (drained: QueryAwaiter<'T>) =
+        if isNull waiters then
+            waiters <- drained
+
+    // Each drain completes the first waiter of the ring until the ring is empty. Completing a waiter unlinks it, and
+    // a continuation that completes later waiters of the ring unlinks those.
+    let cancelWaiters (pending: QueryAwaiter<'T>) =
         if not (isNull pending) then
-            for i = 0 to pending.Length - 1 do
-                pending[i].Cancel()
+            let mutable waiter = pending.EntryNext
+
+            while not (obj.ReferenceEquals (waiter, pending)) do
+                waiter.Cancel ()
+                waiter <- pending.EntryNext
+
+            recycle pending
+
+    let failWaiters (pending: QueryAwaiter<'T>) (error: exn) =
+        if not (isNull pending) then
+            let mutable waiter = pending.EntryNext
+
+            while not (obj.ReferenceEquals (waiter, pending)) do
+                waiter.Fail error
+                waiter <- pending.EntryNext
+
+            recycle pending
+
+    let settleWaiters (pending: QueryAwaiter<'T>) (value: 'T) =
+        if not (isNull pending) then
+            let mutable waiter = pending.EntryNext
+
+            while not (obj.ReferenceEquals (waiter, pending)) do
+                waiter.Settle value
+                waiter <- pending.EntryNext
+
+            recycle pending
 
     let cancelCancellation (cts: CancellationTokenSource) =
         if not (isNull cts) then
@@ -186,9 +227,8 @@ type internal QueryEntry<'T>(session: QuerySession) =
 
             if disposed || generation <> current then
                 cancelWaiters pending
-            elif not (isNull pending) then
-                for i = 0 to pending.Length - 1 do
-                    pending[i].Fail error
+            else
+                failWaiters pending error
 
     member internal this.PublishOk(current: int64, value: 'T) =
         if not disposed && generation = current then
@@ -233,9 +273,8 @@ type internal QueryEntry<'T>(session: QuerySession) =
 
                     if disposed || generation <> current then
                         cancelWaiters pending
-                    elif not (isNull pending) then
-                        for i = 0 to pending.Length - 1 do
-                            pending[i].Settle value
+                    else
+                        settleWaiters pending value
             with error ->
                 this.PublishError (current, error)
 
@@ -405,15 +444,12 @@ type internal QueryEntry<'T>(session: QuerySession) =
             else
                 QueryTask.cancelled ()
 
-    /// <summary>Attaches a detachable waiter to the active fetch without per-waiter closures.</summary>
-    member _.AttachWaiter(leaseWaiters: ResizeArray<QueryAwaiter<'T>>) : Task<'T> =
+    /// <summary>Attaches a waiter on the active fetch to this entry and to the lease ring of <c>leaseAnchor</c>.</summary>
+    member _.AttachWaiter(leaseAnchor: QueryAwaiter<'T>) : Task<'T> =
         if isNull waiters then
-            waiters <- ResizeArray<QueryAwaiter<'T>>()
+            waiters <- QueryAwaiter<'T>.EntryAnchor()
 
-        let waiter = QueryAwaiter<'T>(waiters, leaseWaiters)
-        waiters.Add waiter
-        leaseWaiters.Add waiter
-        waiter.Task
+        QueryAwaiter<'T>.Attach(waiters, leaseAnchor).Task
 
     /// <summary>Stages an updater edit directly on this entry inside a commit staging pass.</summary>
     member this.StageUpdate(context: QueryStaging, updater: 'T -> 'T) =
@@ -486,7 +522,7 @@ type internal QueryEntry<'T>(session: QuerySession) =
                     gate.Value <- AsyncSource<'T>(graph)
 
         member _.CancelRetired(retiredWaiters, retiredCts) =
-            cancelWaiters (unbox<QueryAwaiter<'T>[]> retiredWaiters)
+            cancelWaiters (unbox<QueryAwaiter<'T>> retiredWaiters)
             cancelCancellation retiredCts
 
         member _.ResetDraft() =
