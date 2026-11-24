@@ -5802,6 +5802,9 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
         dirty <- false
         moved
 
+    /// <summary>Whether a read source has signalled a check or a change since the last <c>Moved</c>.</summary>
+    member _.IsPendingCheckOrDirty = check || dirty
+
     /// <summary>Drops every read edge.</summary>
     member this.Clear() =
         for i in 0 .. order.Count - 1 do
@@ -6309,7 +6312,22 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         else
             let delta = keyReader.Read ()
             graph.Track (this :> ISource)
-            this.Sync delta
+
+            // An unchanged membership with no queued row, pending read or recompute leaves Sync only the key array to keep,
+            // as after the Sync of UpdateIfNecessary.
+            if
+                queue.Count = 0
+                && not full
+                && not reads.IsPendingCheckOrDirty
+                && not (Platform.isNull (box delta))
+                && not delta.IsReset
+                && delta.ChangeCount = 0
+                && not delta.OrderChanged
+            then
+                lastKeys <- delta.Keys
+            else
+                this.Sync delta
+
             moved <- false
 
             if failed > 0 then

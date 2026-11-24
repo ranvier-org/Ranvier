@@ -2365,6 +2365,8 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #endif
 #endif
 
+    let mutable directItem = false
+
     /// <summary>The memo-free factory, or null.</summary>
     let mutable once: (unit -> 'T) -> 'V = Unchecked.defaultof<_>
 
@@ -2406,6 +2408,14 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             writes.Add (struct (itemSignal, item))
 #endif
 
+    /// <summary>
+    /// Set by a projection whose live rows keep one item for their lifetime. A mapped row then reads the item untracked
+    /// and observes only the sources <c>map</c> reads.
+    /// </summary>
+    member internal _.DirectItem
+        with get () = directItem
+        and set v = directItem <- v
+
     member internal this.HasRow(key: 'K) =
         not (Platform.isNull (this.Entries.Find key))
 
@@ -2435,7 +2445,11 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 
     member private this.RunMappedItem(entry: ItemRow<'T, 'K, 'V>) : 'V =
         try
-            let value = map entry.Item.Value
+            let value =
+                if directItem then
+                    map entry.Item.Peek
+                else
+                    map entry.Item.Value
 
             if not entry.Row.Violated then
                 entry.Settled <- true

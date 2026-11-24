@@ -52,6 +52,8 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
 
     /// <summary>Wires the delta readers and the cleanup. Called once by <c>Create</c>, before the projection is shared.</summary>
     member private this.Init() =
+        // A key's item signal is immutable: a replaced or removed key retires its row, and a re-added key gets a new row.
+        this.DirectItem <- true
         addOrUpdateFn <- fun (struct (key, value)) -> this.AddOrUpdateInBatch (key, value)
         addOrUpdateByFn <- fun (struct (keyOf, value)) -> this.AddOrUpdateByInBatch (keyOf, value)
         removeFn <- fun key -> this.RemoveInBatch key
