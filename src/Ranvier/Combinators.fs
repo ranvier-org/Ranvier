@@ -5969,14 +5969,11 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             queue.Add row
             touch ()
 
-    let applyAdd (struct (s: 'S, v: 'V)) =
-        invokeAdd s v
-
-    let applyReplace (struct (s: 'S, old: 'V, v: 'V)) =
-        invokeAdd (invokeSub s old) v
-
-    let applySubtract (struct (s: 'S, old: 'V)) =
-        invokeSub s old
+    // Function objects built once by Attach. A let-bound lambda compiles to a method, and passing it as a value
+    // allocates a closure at every use; a mutable field assigned once holds one object.
+    let mutable applyAddFn: struct ('S * 'V) -> 'S = Unchecked.defaultof<_>
+    let mutable applyReplaceFn: struct ('S * 'V * 'V) -> 'S = Unchecked.defaultof<_>
+    let mutable applySubtractFn: struct ('S * 'V) -> 'S = Unchecked.defaultof<_>
 
     let foldAll () =
         let keys = lastKeys
@@ -6015,6 +6012,9 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         s
 
     member private this.Attach() =
+        applyAddFn <- fun (struct (s, v)) -> invokeAdd s v
+        applyReplaceFn <- fun (struct (s, old, v)) -> invokeAdd (invokeSub s old) v
+        applySubtractFn <- fun (struct (s, old)) -> invokeSub s old
         link <- graph.CurrentOwner.AttachLinked this
         keyReader <- upstream.NewInternalKeyReader ()
 
@@ -6060,46 +6060,61 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             if obj.ReferenceEquals (failure, row) then
                 failure <- Unchecked.defaultof<_>
 
+    /// <summary>Moves the contribution of a row to its newly settled value <c>v</c>.</summary>
+    member private this.ReadReady(row: FoldRow<'K, 'V>, v: 'V) =
+        this.Unfail row
+
+        if not row.HasValue then
+            row.HasValue <- true
+            row.Value <- v
+            valued <- valued + 1
+
+            if invertible then
+                this.StepWith (applyAddFn, struct (state, v))
+            else
+                full <- true
+        else
+            // A throwing comparer fails the row as a throwing row does.
+            let mutable changed = false
+            let mutable comparerError: exn = null
+
+            try
+                changed <- not (ComparerSentinel.equals equal row.Value v)
+            with ex ->
+                comparerError <- ex
+
+            if not (Platform.isNull comparerError) then
+                this.Fail (row, comparerError)
+            elif changed then
+                let old = row.Value
+                row.Value <- v
+
+                if invertible then
+                    this.StepWith (applyReplaceFn, struct (state, old, v))
+                else
+                    full <- true
+
     /// <summary>Reads the row untracked and moves its contribution to the row's value.</summary>
     member private this.Read(row: FoldRow<'K, 'V>) =
+#if FABLE_COMPILER
         let reading = row.Entry.Row.TryValueUntracked ()
         row.Queued <- false
 
         match reading with
-        | Ready v ->
-            this.Unfail row
-
-            if not row.HasValue then
-                row.HasValue <- true
-                row.Value <- v
-                valued <- valued + 1
-
-                if invertible then
-                    this.StepWith (applyAdd, struct (state, v))
-                else
-                    full <- true
-            else
-                // A throwing comparer fails the row as a throwing row does.
-                let mutable changed = false
-                let mutable comparerError: exn = null
-
-                try
-                    changed <- not (ComparerSentinel.equals equal row.Value v)
-                with ex ->
-                    comparerError <- ex
-
-                if not (Platform.isNull comparerError) then
-                    this.Fail (row, comparerError)
-                elif changed then
-                    let old = row.Value
-                    row.Value <- v
-
-                    if invertible then
-                        this.StepWith (applyReplace, struct (state, old, v))
-                    else
-                        full <- true
+        | Ready v -> this.ReadReady (row, v)
         | Pending -> this.Unfail row
         | Failed ex -> this.Fail (row, ex)
+#else
+        let struct (status, v, error) = row.Entry.Row.TryReadUntrackedStruct ()
+        row.Queued <- false
+
+        if status = Status.None then
+            this.ReadReady (row, v)
+        elif status = Status.Pending then
+            this.Unfail row
+        else
+            this.Fail (row, error)
+#endif
 
     /// <summary>Stops observing the row and removes its contribution.</summary>
     member private this.Detach(row: FoldRow<'K, 'V>) =
@@ -6120,7 +6135,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 state <- zero
                 moved <- true
             else
-                this.StepWith (applySubtract, struct (state, old))
+                this.StepWith (applySubtractFn, struct (state, old))
 
     /// <summary>Attaches a row to every added key and detaches the row of every removed key. O(N) in <c>keys</c>.</summary>
     member private this.Diff(keys: 'K[]) =

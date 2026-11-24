@@ -323,8 +323,102 @@ let tests =
                 Expect.equal source.ObserverCount 0 "the source holds no edge to the seed"
             }
 
+            test "a keyed collection whose selector disposes it raises and stays empty" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let armed = ref false
+                let cell = ref Unchecked.defaultof<KeyedCollection<int, int * int>>
+
+                let col =
+                    createKeyedCollection (fun (k, _) ->
+                        if armed.Value then
+                            cell.Value.Dispose ()
+
+                        k)
+
+                cell.Value <- col
+                col.AddOrUpdate (1, 1)
+                armed.Value <- true
+
+                Expect.throwsT<ObjectDisposedException> (fun () -> col.AddOrUpdate (2, 2)) "the disposal during the selector is seen after it"
+                Expect.isEmpty col.Rows.Keys "no zombie key survives the disposal"
+                Expect.isNone (col.Rows.TryGet 2) "the key of the failed upsert has no row"
+                Expect.throwsT<ObjectDisposedException> (fun () -> col.AddOrUpdate (3, 3)) "the next upsert raises before its selector"
+            }
+
+            test "a selector that upserts the same key leaves one row holding the outer value" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let armed = ref true
+                let cell = ref Unchecked.defaultof<KeyedCollection<int, int * int>>
+
+                let col =
+                    createKeyedCollection (fun (k, _) ->
+                        if armed.Value then
+                            armed.Value <- false
+                            cell.Value.AddOrUpdate (k, 99)
+
+                        k)
+
+                cell.Value <- col
+                let runs = countRuns (fun () -> col.Rows.Keys)
+
+                col.AddOrUpdate (1, 1)
+
+                Expect.sequenceEqual col.Rows.Keys [| 1 |] "one row for the key"
+                Expect.equal (col.Rows.Get 1) (1, 1) "the outer upsert is applied last"
+                Expect.equal runs.Value 2 "the nested and outer upserts reach the key reader as one change"
+            }
+
+            test "a selector that writes and then throws inside an outer batch keeps the write and the batch" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let cell = ref Unchecked.defaultof<KeyedCollection<int, int * int>>
+
+                let col =
+                    createKeyedCollection (fun (k, v) ->
+                        if v = 20 then
+                            cell.Value.AddOrUpdate (3, 30)
+                            failwith "selector failed"
+
+                        k)
+
+                cell.Value <- col
+                let runs = countRuns (fun () -> col.Rows.Keys)
+
+                col.Edit (fun c ->
+                    c.AddOrUpdate (1, 10)
+                    Expect.throwsT<Exception> (fun () -> c.AddOrUpdate (2, 20)) "the selector's failure reaches the edit"
+                    Expect.equal runs.Value 1 "the reader waits for the outer batch"
+                    c.AddOrUpdate (4, 40))
+
+                Expect.sequenceEqual col.Rows.Keys [| 1; 3; 4 |] "the writes before the failure and the nested write survive; the failed key is absent"
+                Expect.equal runs.Value 2 "the outer batch flushes once"
+            }
+
 #if !FABLE_COMPILER
             // .NET only: JavaScript exposes no allocation counter.
+            untracedOnly
+            <| test "an existing-key upsert of a keyed collection allocates nothing" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (struct (k: int, _: int)) -> k)
+                col.AddOrUpdate (struct (1, 0))
+                let sum = ref 0
+                createEffect (fun () -> sum.Value <- sum.Value + (let struct (_, v) = col.Rows.Get 1 in v))
+
+                for i in 1..100 do
+                    col.AddOrUpdate (struct (1, i))
+
+                let before = GC.GetAllocatedBytesForCurrentThread ()
+
+                for i in 1..10_000 do
+                    col.AddOrUpdate (struct (1, i + 100))
+
+                let perEdit = (GC.GetAllocatedBytesForCurrentThread () - before) / 10_000L
+                Expect.equal perEdit 0L $"an upsert allocated %d{perEdit} bytes"
+            }
+
             untracedOnly
             <| test "an edit of an int allocates no more than a write through a chain of two memos" {
                 let perWrite (setup: unit -> int -> unit) =
