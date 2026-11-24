@@ -11,13 +11,20 @@ type PositionalChange<'K> =
     | Move of OldIndex: int * NewIndex: int
 
 module internal Positional =
+    let inline private lowBit (i: int) =
+#if FABLE_COMPILER
+        i &&& (~~~i + 1)
+#else
+        i &&& -i
+#endif
+
     /// <summary>Adds <c>delta</c> at zero-based <c>index</c> of a Fenwick tree.</summary>
     let private addAt (tree: int[]) (index: int) (delta: int) =
         let mutable i = index + 1
 
         while i < tree.Length do
             Platform.setItemAt i tree (Platform.itemAt i tree + delta)
-            i <- i + (i &&& -i)
+            i <- i + (lowBit i)
 
     /// <summary>The sum of a Fenwick tree's entries at zero-based indices below <c>index</c>.</summary>
     let private sumBelow (tree: int[]) (index: int) =
@@ -26,7 +33,7 @@ module internal Positional =
 
         while i > 0 do
             sum <- sum + Platform.itemAt i tree
-            i <- i - (i &&& -i)
+            i <- i - (lowBit i)
 
         sum
 
@@ -219,57 +226,75 @@ module internal Positional =
                     else
                         let positions = Platform.positions survivors
                         let mutable s = 0
+                        let mutable increasing = true
+                        let mutable previousTarget = 0
 
                         for i in 0 .. prevLen - 1 do
                             let t = Platform.itemAt i rawTargets
 
                             if t > 0 then
+                                if t <= previousTarget then
+                                    increasing <- false
+
+                                previousTarget <- t
                                 Platform.setItemAt s positions (t - 1)
                                 s <- s + 1
 
-                        let staying = longestIncreasing positions
-                        // The survivor index of each middle-slice key of `next`, or -1 for an inserted key.
-                        let survivorAt = Array.create nextLen -1
+                        if increasing then
+                            let mutable survivor = 0
 
-                        for idx in 0 .. survivors - 1 do
-                            Platform.setItemAt (Platform.itemAt idx positions) survivorAt idx
+                            for j in 0 .. nextLen - 1 do
+                                if
+                                    survivor < survivors
+                                    && j = Platform.itemAt survivor positions
+                                then
+                                    survivor <- survivor + 1
+                                else
+                                    edits.Add (PositionalChange.InsertAt (pref + j, Platform.itemAt (pref + j) next))
+                        else
+                            let staying = longestIncreasing positions
+                            // The survivor index of each middle-slice key of `next`, or -1 for an inserted key.
+                            let survivorAt = Array.create nextLen -1
 
-                        // The target of the first staying survivor after each survivor, or the middle slice length when none follows.
-                        let stayingAfter = Platform.positions survivors
-                        let mutable upcoming = nextLen
+                            for idx in 0 .. survivors - 1 do
+                                Platform.setItemAt (Platform.itemAt idx positions) survivorAt idx
 
-                        for idx = survivors - 1 downto 0 do
-                            Platform.setItemAt idx stayingAfter upcoming
+                            // The target of the first staying survivor after each survivor, or the middle slice length when none follows.
+                            let stayingAfter = Platform.positions survivors
+                            let mutable upcoming = nextLen
 
-                            if Platform.itemAt idx staying then
-                                upcoming <- Platform.itemAt idx positions
+                            for idx = survivors - 1 downto 0 do
+                                Platform.setItemAt idx stayingAfter upcoming
 
-                        // Survivors not yet placed, by survivor index. Starts all ones: each node holds its range's length.
-                        let unplaced = Array.zeroCreate<int>(survivors + 1)
+                                if Platform.itemAt idx staying then
+                                    upcoming <- Platform.itemAt idx positions
 
-                        for i in 1..survivors do
-                            Platform.setItemAt i unplaced (i &&& -i)
+                            // Survivors not yet placed, by survivor index. Starts all ones: each node holds its range's length.
+                            let unplaced = Array.zeroCreate<int>(survivors + 1)
 
-                        // The survivor index of the last staying key placed; the keys placed since it follow it contiguously.
-                        let mutable anchor = 0
+                            for i in 1..survivors do
+                                Platform.setItemAt i unplaced (lowBit i)
 
-                        for j in 0 .. nextLen - 1 do
-                            let sidx = Platform.itemAt j survivorAt
+                            // The survivor index of the last staying key placed; the keys placed since it follow it contiguously.
+                            let mutable anchor = 0
 
-                            if sidx < 0 then
-                                edits.Add (PositionalChange.InsertAt (pref + j + sumBelow unplaced anchor, Platform.itemAt (pref + j) next))
-                            elif Platform.itemAt sidx staying then
-                                addAt unplaced sidx -1
-                                anchor <- sidx
-                            else
-                                let from =
-                                    min j (Platform.itemAt sidx stayingAfter)
-                                    + sumBelow unplaced sidx
+                            for j in 0 .. nextLen - 1 do
+                                let sidx = Platform.itemAt j survivorAt
 
-                                addAt unplaced sidx -1
-                                let into = j + sumBelow unplaced anchor
+                                if sidx < 0 then
+                                    edits.Add (PositionalChange.InsertAt (pref + j + sumBelow unplaced anchor, Platform.itemAt (pref + j) next))
+                                elif Platform.itemAt sidx staying then
+                                    addAt unplaced sidx -1
+                                    anchor <- sidx
+                                else
+                                    let from =
+                                        min j (Platform.itemAt sidx stayingAfter)
+                                        + sumBelow unplaced sidx
 
-                                if from <> into then
-                                    edits.Add (PositionalChange.Move (pref + from, pref + into))
+                                    addAt unplaced sidx -1
+                                    let into = j + sumBelow unplaced anchor
+
+                                    if from <> into then
+                                        edits.Add (PositionalChange.Move (pref + from, pref + into))
 
         edits

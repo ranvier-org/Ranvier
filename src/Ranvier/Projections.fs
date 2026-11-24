@@ -144,20 +144,30 @@ type internal ProjectionBeacon(graph: Graph) =
 /// A row with its item source.
 /// </summary>
 [<AllowNullLiteral>]
-type internal ItemRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
-    inherit RowEntry<'K, 'V>(key)
+type internal ItemRow<'T, 'K, 'V> =
+    inherit RowEntry<'K, 'V>
+    val Item: Signal<'T>
 
-    member _.Item = item
+    new(key: 'K, item: Signal<'T>) =
+        {
+            inherit RowEntry<'K, 'V>(key)
+            Item = item
+        }
 
 /// <summary>
 /// A row whose value is its factory's result, held without a row memo. <c>Row</c> is null. <c>Reader</c> is null,
 /// <c>Constructing</c> while the factory runs, or raises the factory's failure.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
-type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
-    inherit ItemRow<'T, 'K, 'V>(key, item)
+type internal OnceRow<'T, 'K, 'V> =
+    inherit ItemRow<'T, 'K, 'V>
+    val mutable Value: 'V
 
-    member val Value: 'V = Unchecked.defaultof<'V> with get, set
+    new(key: 'K, item: Signal<'T>) =
+        {
+            inherit ItemRow<'T, 'K, 'V>(key, item)
+            Value = Unchecked.defaultof<'V>
+        }
 
     /// <summary>The <c>Reader</c> of a row whose factory is running.</summary>
     static member val Constructing: unit -> 'V = fun () -> Unchecked.defaultof<'V>
@@ -166,22 +176,36 @@ type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
 /// A row keyed directly without a per-row item signal, optionally tagged with an upstream identity for reset detection.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
-type internal KeyRow<'K, 'V>(key: 'K, tag: obj) =
-    inherit RowEntry<'K, 'V>(key)
+type internal KeyRow<'K, 'V> =
+    inherit RowEntry<'K, 'V>
+    val mutable Tag: obj
 
-    member val Tag = tag with get, set
+    new(key: 'K, tag: obj) =
+        {
+            inherit RowEntry<'K, 'V>(key)
+            Tag = tag
+        }
 
 /// <summary>
 /// The window of the key array at version <c>To</c> that can differ from the key array at version <c>From</c>: the
 /// arrays agree before <c>Start</c>, and after <c>End</c> and <c>PreviousEnd</c>.
 /// </summary>
 [<AllowNullLiteral>]
-type internal KeyRange() =
-    member val From = -1 with get, set
-    member val To = -1 with get, set
-    member val Start = 0 with get, set
-    member val PreviousEnd = -1 with get, set
-    member val End = -1 with get, set
+type internal KeyRange =
+    val mutable From: int
+    val mutable To: int
+    val mutable Start: int
+    val mutable PreviousEnd: int
+    val mutable End: int
+
+    new() =
+        {
+            From = -1
+            To = -1
+            Start = 0
+            PreviousEnd = -1
+            End = -1
+        }
 
 /// <summary>
 /// A read-only dictionary that enumerates in insertion order. Holds every key
@@ -2479,6 +2503,13 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     let mutable construct: struct (OnceRow<'T, 'K, 'V> * int) -> unit =
         Unchecked.defaultof<_>
 
+    member inline internal _.CanSkipIdenticalWrites =
+#if !RANVIER_TRACE
+        skipRefSame && Platform.isNull graph.Journal
+#else
+        false
+#endif
+
     /// <summary>
     /// Stages one item of the pass: a write to a survivor's item source, or a
     /// row to create.
@@ -2503,8 +2534,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #if !RANVIER_TRACE
             if
                 not (
-                    skipRefSame
-                    && Platform.isNull graph.Journal
+                    this.CanSkipIdenticalWrites
                     && obj.ReferenceEquals (box itemSignal.Peek, box item)
                 )
             then
@@ -3012,6 +3042,23 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             Array.blit buffer 0 next 0 count
             next
 
+    let identityItems =
+#if FABLE_COMPILER
+        Platform.isNull (box same)
+#else
+        not typeof<'T>.IsValueType
+        && obj.ReferenceEquals (same, null)
+#endif
+
+    let safeKey (key: 'K) =
+#if FABLE_COMPILER
+        Platform.primitiveKey key
+#else
+        typeof<'K>.IsPrimitive
+        || typeof<'K>.IsEnum
+        || typeof<'K> = typeof<string>
+#endif
+
     /// <summary>A buffer of at least <c>size</c> items: <c>spare</c> when it fits, else a new array.</summary>
     let take (size: int) =
         let buffer = spare
@@ -3083,13 +3130,64 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             then
                 keyPure <- false
 
+    member private this.EnumerateReverse(cur: 'T[], count: int, owned: bool) =
+        let mine = this.Runs
+        let previous = lastItems
+        let previousKeys = lastKeys
+        let keys = Array.zeroCreate<'K> count
+        // A selector can mutate its input array. Validate the same snapshot as a full pass.
+        let items =
+            if owned then
+                cur
+            else
+                let buffer = take count
+                Array.Copy (cur, buffer, count)
+                buffer
+
+        let mutable reverse = true
+        let mutable i = 0
+
+        while i < count && this.Runs = mine do
+            let item = Platform.itemAt i items
+            let key = this.KeyOf item
+
+            if this.Runs = mine then
+                if reverse then
+                    let j = count - 1 - i
+                    let oldKey = Platform.itemAt j previousKeys
+
+                    if
+                        obj.ReferenceEquals (box item, box (Platform.itemAt j previous))
+                        && safeKey key
+                        && safeKey oldKey
+                        && Platform.keyEquals key oldKey
+                        && this.HasRow key
+                    then
+                        Platform.setItemAt i keys key
+                    else
+                        reverse <- false
+                        this.Reserve count
+
+                        for k in 0 .. i - 1 do
+                            this.Visit (Platform.itemAt k keys, Platform.itemAt k items)
+
+                if not reverse then
+                    this.Visit (key, item)
+
+            i <- i + 1
+
+        if this.Runs = mine && not this.IsDisposedInternal then
+            install items count true
+
+            if reverse then
+                this.StageRemovals ()
+                this.StageKeys keys
+
     /// <summary>
     /// Reconciles the positions whose item differs from the last pass, after trimming the common prefix and suffix, and
     /// stages the removed keys and the key array. Installs <c>cur[0 .. n1 - 1]</c> as the items of the pass by writing the
     /// changed positions and every position after them. Stops after a <c>keyOf</c> call that runs a nested pass. Returns
-    /// false before any install or staging when every position is changed: at equal lengths, every item differs from the
-    /// previous item at its position; at unequal lengths, the first and last items differ from the previous pass's first
-    /// and last items.
+    /// false when the caller must enumerate the full snapshot.
     /// </summary>
     member private this.Trim(cur: 'T[], n1: int, owned: bool) : bool =
         let mine = this.Runs
@@ -3099,18 +3197,29 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
         let limit = min n0 n1
         let mutable start = 0
 
-        while start < limit
-              && ComparerSentinel.equals same (Platform.itemAt start prev) (Platform.itemAt start cur) do
-            start <- start + 1
-
         let mutable end0 = n0 - 1
         let mutable end1 = n1 - 1
 
-        while end0 >= start
-              && end1 >= start
-              && ComparerSentinel.equals same (Platform.itemAt end0 prev) (Platform.itemAt end1 cur) do
-            end0 <- end0 - 1
-            end1 <- end1 - 1
+        if identityItems then
+            while start < limit
+                  && obj.ReferenceEquals (box (Platform.itemAt start prev), box (Platform.itemAt start cur)) do
+                start <- start + 1
+
+            while end0 >= start
+                  && end1 >= start
+                  && obj.ReferenceEquals (box (Platform.itemAt end0 prev), box (Platform.itemAt end1 cur)) do
+                end0 <- end0 - 1
+                end1 <- end1 - 1
+        else
+            while start < limit
+                  && ComparerSentinel.equals same (Platform.itemAt start prev) (Platform.itemAt start cur) do
+                start <- start + 1
+
+            while end0 >= start
+                  && end1 >= start
+                  && ComparerSentinel.equals same (Platform.itemAt end0 prev) (Platform.itemAt end1 cur) do
+                end0 <- end0 - 1
+                end1 <- end1 - 1
 
         // Equal-length middles compare index by index.
         let aligned = n0 = n1
@@ -3125,11 +3234,27 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
             untrimmable <- n0 > 0 && changedAt.Count = n0
 
-        if untrimmable then
+        let singleSplice =
+            (end0 < start && end1 = start)
+            || (end1 < start && end0 = start)
+
+        if untrimmable && not singleSplice then
             changedAt.Clear ()
-            false
+
+            if
+                aligned
+                && n0 >= 4
+                && identityItems
+                && this.CanSkipIdenticalWrites
+                && safeKey (Platform.itemAt (n0 - 1) prevKeys)
+                && obj.ReferenceEquals (box (Platform.itemAt 0 cur), box (Platform.itemAt (n0 - 1) prev))
+            then
+                this.EnumerateReverse (cur, n1, owned)
+                true
+            else
+                false
         else
-            if not aligned then
+            if not aligned && not singleSplice then
                 for i in start..end0 do
                     changedAt.Add i
 
@@ -3150,7 +3275,37 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
             let items = lastItems
 
-            if aligned && changedAt.Count = 1 then
+            if singleSplice then
+                let inserting = n1 > n0
+
+                let key =
+                    if inserting then
+                        this.KeyOf (Platform.itemAt start items)
+                    else
+                        Platform.itemAt start prevKeys
+
+                if this.Runs = mine then
+                    let next = Array.zeroCreate<'K> n1
+                    Array.Copy (prevKeys, 0, next, 0, start)
+                    Array.Copy (prevKeys, end0 + 1, next, end1 + 1, n0 - end0 - 1)
+
+                    if inserting then
+                        if this.HasRow key then
+                            raise (ProjectionFailures.duplicateKey key)
+
+                        this.Stage (key, Platform.itemAt start items)
+                        Platform.setItemAt start next key
+                    else
+                        this.Removed.Add key
+
+                    this.StageRemovals ()
+                    this.StageKeys next
+                    trimmedKeys <- next
+                    trimmedFrom <- start
+                    trimmedStart <- start
+                    trimmedEnd0 <- end0
+                    trimmedEnd1 <- end1
+            elif aligned && changedAt.Count = 1 then
                 let i0 = Platform.entryAt 0 changedAt
                 let item0 = Platform.itemAt i0 items
                 let pk0 = Platform.itemAt i0 prevKeys

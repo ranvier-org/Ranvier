@@ -127,7 +127,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
         raise (ObjectDisposedException "The keyed collection was disposed.")
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member private this.EnsureLive() =
+    member inline private this.EnsureLive() =
         if stopped then
             this.RaiseDisposed ()
 
@@ -135,8 +135,47 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     member internal this.CheckLive() =
         this.EnsureLive ()
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.Insert(key: 'K, value: 'V) =
+        let fresh =
+            {
+                Key = key
+                Signal = Signal<'V>(graph, value)
+                Prev = Unchecked.defaultof<_>
+                Next = Unchecked.defaultof<_>
+                Live = true
+            }
+
+        if Platform.isNull (box tail) then
+            head <- fresh
+            tail <- fresh
+        else
+            fresh.Prev <- tail
+            tail.Next <- fresh
+            tail <- fresh
+
+        items.Set (key, fresh)
+        lastItem <- fresh
+        count <- count + 1
+        changes.Record (key, KeyChange.Added)
+        revision.Value <- revision.Peek + 1
+
+    /// <summary>The upsert of a key other than the last one upserted.</summary>
+    member private this.AddOrUpdateFound(key: 'K, value: 'V) =
+        this.EnsureLive ()
+        let item = items.Find key
+        this.EnsureLive ()
+
+        if Platform.isNull (box item) then
+            this.Insert (key, value)
+        elif item.Live then
+            lastItem <- item
+            item.Signal.SetFromEnteredBatch value
+        else
+            this.AddOrUpdateFound (key, value)
+
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member private this.AddOrUpdateCore(key: 'K, value: 'V) =
+    member inline private this.AddOrUpdateCore(key: 'K, value: 'V) =
         let last = lastItem
 
         if
@@ -151,42 +190,8 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
         else
             this.AddOrUpdateFound (key, value)
 
-    /// <summary>The upsert of a key other than the last one upserted.</summary>
-    member private this.AddOrUpdateFound(key: 'K, value: 'V) =
-        this.EnsureLive ()
-        let item = items.Find key
-        this.EnsureLive ()
-
-        if Platform.isNull (box item) then
-            let fresh =
-                {
-                    Key = key
-                    Signal = Signal<'V>(graph, value)
-                    Prev = Unchecked.defaultof<_>
-                    Next = Unchecked.defaultof<_>
-                    Live = true
-                }
-
-            if Platform.isNull (box tail) then
-                head <- fresh
-                tail <- fresh
-            else
-                fresh.Prev <- tail
-                tail.Next <- fresh
-                tail <- fresh
-
-            items.Set (key, fresh)
-            lastItem <- fresh
-            count <- count + 1
-            changes.Record (key, KeyChange.Added)
-            revision.Value <- revision.Peek + 1
-        elif item.Live then
-            lastItem <- item
-            item.Signal.SetFromEnteredBatch value
-        else
-            this.AddOrUpdateFound (key, value)
-
-    member internal this.AddOrUpdateByInBatch(keyOf: 'V -> 'K, value: 'V) =
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member inline private this.AddOrUpdateByInBatch(keyOf: 'V -> 'K, value: 'V) =
         this.EnsureLive ()
         let key = keyOf value
         // The selector may have disposed the collection, which cleared the items; an upsert now would insert a zombie.
@@ -300,6 +305,8 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
     let upsert = rows.UpsertBody keyOf
 
 #if FABLE_COMPILER
+    let mutable editing = false
+
     /// <summary>
     /// Runs an edit callback inside the batch, after the liveness check. One object per collection, built by the first
     /// <c>Edit</c>: under Fable a struct tuple of the collection and the callback is an array.
@@ -322,7 +329,26 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
 
     /// <summary>Adds a new key at the end, or updates its existing row without changing its position.</summary>
     member _.AddOrUpdate(value: 'V) =
+#if RANVIER_TRACE
         rows.EditWith (upsert, value)
+#else
+#if FABLE_COMPILER
+        if editing then
+            upsert value
+        else
+            rows.EditWith (upsert, value)
+#else
+        let token = graph.FastWriteToken
+
+        if
+            graph.BatchDepth > 0
+            && (token = 0L || token = OwnerThreadToken.Current)
+        then
+            upsert value
+        else
+            rows.EditWith (upsert, value)
+#endif
+#endif
 
     /// <summary>Removes the key. Returns false when it is absent.</summary>
     member _.Remove(key: 'K) =
@@ -343,7 +369,13 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
             editBody <-
                 fun edit ->
                     rows.CheckLive ()
-                    edit.Invoke this
+                    let nested = editing
+                    editing <- true
+
+                    try
+                        edit.Invoke this
+                    finally
+                        editing <- nested
 
         rows.EditWith (editBody, edit)
 #else
