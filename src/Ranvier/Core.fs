@@ -3755,7 +3755,11 @@ type Graph(options: GraphOptions) =
 #endif
     let guarded = options.ThreadAffinity = Guarded
 
+#if FABLE_COMPILER
+    let ownerAmbient = AmbientSlot.Cell
+#else
     let ownerAmbient = if guarded then AmbientSlot.Cell else null
+#endif
 #if !FABLE_COMPILER
     let serialised = options.ThreadAffinity = Serialised
 
@@ -4104,17 +4108,11 @@ type Graph(options: GraphOptions) =
     /// Makes this graph ambient and returns the graph it replaced in <c>Hosting</c>.
     /// </summary>
     member inline private this.EnterAmbient() : obj =
-        let cell =
-            if Platform.isNull ownerAmbient then
-                AmbientSlot.Cell
-            else
-                ownerAmbient
-
-        cell.EnterFrame ()
-        let previous = cell.Hosting
+        ownerAmbient.EnterFrame ()
+        let previous = ownerAmbient.Hosting
 
         if not (obj.ReferenceEquals (previous, this)) then
-            cell.Hosting <- this
+            ownerAmbient.Hosting <- this
 
         previous
 
@@ -4122,19 +4120,16 @@ type Graph(options: GraphOptions) =
     /// Restores the enclosing host. A guarded graph can stay cached on its owner thread between runs.
     /// </summary>
     member inline private this.LeaveAmbient(previous: obj) =
-        let cell =
-            if Platform.isNull ownerAmbient then
-                AmbientSlot.Cell
-            else
-                ownerAmbient
-
-        let depth = cell.LeaveFrame ()
+        let depth = ownerAmbient.LeaveFrame ()
 
         if depth > 0 then
             if not (obj.ReferenceEquals (previous, this)) then
-                cell.Hosting <- previous
-        elif not guarded && not (Platform.isNull cell.Hosting) then
-            cell.Hosting <- null
+                ownerAmbient.Hosting <- previous
+        elif
+            not guarded
+            && not (Platform.isNull ownerAmbient.Hosting)
+        then
+            ownerAmbient.Hosting <- null
 
 #else
     member inline private _.AmbientCell() =
@@ -4389,8 +4384,7 @@ type Graph(options: GraphOptions) =
 
 #if FABLE_COMPILER
                 if
-                    not (Platform.isNull ownerAmbient)
-                    && obj.ReferenceEquals (ownerAmbient.Hosting, this)
+                    obj.ReferenceEquals (ownerAmbient.Hosting, this)
                     && ownerAmbient.HostDepth = 0
                 then
                     ownerAmbient.Hosting <- null
@@ -5301,16 +5295,9 @@ type Graph(options: GraphOptions) =
 
 #if FABLE_COMPILER
     member inline internal this.IsHostedUnshadowed() : bool =
-        let cell =
-            if Platform.isNull ownerAmbient then
-                AmbientSlot.Existing
-            else
-                ownerAmbient
-
-        not (Platform.isNull cell)
-        && cell.HostDepth > 0
-        && obj.ReferenceEquals (cell.Hosting, this)
-        && cell.ShadowCount = 0
+        ownerAmbient.HostDepth > 0
+        && obj.ReferenceEquals (ownerAmbient.Hosting, this)
+        && ownerAmbient.ShadowCount = 0
 
     /// <summary>
     /// True inside a flush, a stale read, or while a computation's body runs outside <c>untrack</c> when this graph is
@@ -5398,15 +5385,8 @@ type Graph(options: GraphOptions) =
 #if !RANVIER_TRACE
     /// <summary>True when the ambient cell already holds this graph unshadowed, so entering and leaving it writes no reference.</summary>
     member inline private this.IsHosted =
-        let cell =
-            if Platform.isNull ownerAmbient then
-                AmbientSlot.Existing
-            else
-                ownerAmbient
-
-        not (Platform.isNull cell)
-        && obj.ReferenceEquals (cell.Hosting, this)
-        && cell.ShadowCount = 0
+        obj.ReferenceEquals (ownerAmbient.Hosting, this)
+        && ownerAmbient.ShadowCount = 0
 
     /// <summary>
     /// Opens the outermost stale read when <c>EnterPull</c> would change nothing but the depth: no read is open and
@@ -5414,13 +5394,7 @@ type Graph(options: GraphOptions) =
     /// </summary>
     member internal this.TryEnterPullFast() : bool =
         if pullDepth = 0 && this.IsHosted then
-            let cell =
-                if Platform.isNull ownerAmbient then
-                    AmbientSlot.Cell
-                else
-                    ownerAmbient
-
-            cell.EnterFrame ()
+            ownerAmbient.EnterFrame ()
             pullDepth <- 1
             true
         else
@@ -5441,17 +5415,7 @@ type Graph(options: GraphOptions) =
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal this.ExitPullFast() : bool =
         pullDepth <- 0
-#if FABLE_COMPILER
-        let cell =
-            if Platform.isNull ownerAmbient then
-                AmbientSlot.Cell
-            else
-                ownerAmbient
-
-        cell.LeaveFrame () |> ignore
-#else
         ownerAmbient.LeaveFrame () |> ignore
-#endif
 
         if
             Platform.isNull lastRaised
@@ -5731,6 +5695,9 @@ type Graph(options: GraphOptions) =
 
     /// <summary>The open batch depth. A write that sees it above zero leaves the flush to the batch's exit.</summary>
     member inline internal _.BatchDepth = batchDepth
+
+    /// <summary>True while <c>RunFlush</c> is draining the schedule queue.</summary>
+    member inline internal _.IsFlushing = flushingThread <> 0
 
     /// <summary>
     /// Discharges <c>owner</c> with effects deferred. A computation discharges its
@@ -6206,13 +6173,7 @@ type Graph(options: GraphOptions) =
         && this.IsHosted
 
     member internal _.EnterPullDirect() =
-        let cell =
-            if Platform.isNull ownerAmbient then
-                AmbientSlot.Cell
-            else
-                ownerAmbient
-
-        cell.EnterFrame ()
+        ownerAmbient.EnterFrame ()
         pullDepth <- 1
 
     member internal this.CanPullUncached() =
@@ -10970,7 +10931,9 @@ type AsyncSource<'T>(graph: Graph) =
     let mutable observers = ObserverList.Create ()
 #else
 #if FABLE_COMPILER && !RANVIER_TRACE
-    /// <summary>The source's readers; null until the first reader arrives.</summary>
+    /// <summary>Slot 0 held inline so single-reader async sources allocate zero <c>ObserverList</c> objects; <c>observers</c> stays null until a second reader arrives.</summary>
+    let mutable firstRef: obj = Platform.nil ()
+    let mutable firstSlot = EdgeHandle.Unlinked
     let mutable observers: ObserverList = Platform.nil ()
 #else
     let observers = ObserverSet ()
@@ -10996,22 +10959,81 @@ type AsyncSource<'T>(graph: Graph) =
     interface ISource with
         member _.AddObserver(c, slot) =
 #if FABLE_COMPILER && !RANVIER_TRACE
-            if Platform.isNull observers then
-                observers <- ObserverList ()
+            if not (Platform.isNull observers) then
+                observers.Add (c, slot)
+            elif Platform.isNull firstRef then
+                firstRef <- box c
+                firstSlot <- slot
+#if RANVIER_COUNTERS
+                Counters.ObserverInserted ()
 #endif
+                0
+            else
+                let list = ObserverList ()
+                list.FirstRef <- firstRef
+                list.FirstSlot <- firstSlot
+                list.Count <- 1
+                list.Latest <- 0
+                firstRef <- Platform.nil ()
+                firstSlot <- EdgeHandle.Unlinked
+                observers <- list
+                list.Add (c, slot)
+#else
             observers.Add (c, slot)
+#endif
 
         member _.TryAddObserver(c, slot) =
 #if FABLE_COMPILER && !RANVIER_TRACE
-            if Platform.isNull observers then
-                observers <- ObserverList ()
+            if not (Platform.isNull observers) then
+                observers.TryAdd (c, slot)
+            elif Platform.isNull firstRef then
+                firstRef <- box c
+                firstSlot <- slot
+#if RANVIER_COUNTERS
+                Counters.ObserverInserted ()
 #endif
+                0
+            elif obj.ReferenceEquals (firstRef, box c) then
+                EdgeHandle.Unlinked
+            else
+                let list = ObserverList ()
+                list.FirstRef <- firstRef
+                list.FirstSlot <- firstSlot
+                list.Count <- 1
+                list.Latest <- 0
+                firstRef <- Platform.nil ()
+                firstSlot <- EdgeHandle.Unlinked
+                observers <- list
+                list.Add (c, slot)
+#else
             observers.TryAdd (c, slot)
+#endif
 
         member _.RemoveObserverAt(c, handle) =
 #if FABLE_COMPILER && !RANVIER_TRACE
             if not (Platform.isNull observers) then
                 observers.RemoveAt (c, handle)
+            elif handle >= 0 then
+                let idx = handle &&& EdgeHandle.IndexMask
+
+                if
+                    idx <> 0
+                    || not (obj.ReferenceEquals (firstRef, box c))
+                then
+                    raise (
+                        InvalidOperationException (
+                            "Edge handle "
+                            + string idx
+                            + " of "
+                            + (if Platform.isNull firstRef then "0" else "1")
+                            + " does not hold the observer removed."
+                        )
+                    )
+#if RANVIER_COUNTERS
+                Counters.ObserverRemoved ()
+#endif
+                firstRef <- Platform.nil ()
+                firstSlot <- EdgeHandle.Unlinked
 #else
             observers.RemoveAt (c, handle)
 #endif
@@ -11027,7 +11049,44 @@ type AsyncSource<'T>(graph: Graph) =
 
     member _.Status = status
 
-    member private _.NotifyAndFlush() =
+#if FABLE_COMPILER && !RANVIER_TRACE
+    member inline private _.NotifyOne(refObj: obj, slot: int) =
+        if EdgeHandle.isNodeSlot slot then
+            let n = Platform.fastCast<Node> refObj
+            let nf = n.Flags
+
+            if
+                (nf &&& NodeFlags.DirtyAnnouncedMask) = NodeFlags.FreshDirty
+                && ((nf &&& NodeFlags.KindMask) = NodeFlags.KindMemo
+                    || (nf &&& NodeFlags.Queued) <> 0)
+            then
+                if graph.BatchDepth = 0 && graph.QueuePending then
+                    graph.RequestFlushFromEntered ()
+            elif
+                (nf &&& NodeFlags.KindMask) <> NodeFlags.KindMemo
+                && (nf
+                    &&& (NodeFlags.Disposed
+                         ||| NodeFlags.InCleanup
+                         ||| NodeFlags.Publishes
+                         ||| NodeFlags.Queued))
+                    =
+                    0
+                && graph.CanFuseIdleFlush ()
+            then
+                NodeOps.RunFusedEffect (graph, n)
+            else
+                NodeOps.MarkDirty n
+
+                if graph.QueuePending then
+                    graph.RequestFlushFromEntered ()
+        else
+            (Platform.fastCast<IComputation> refObj).MarkDirty()
+
+            if graph.QueuePending then
+                graph.RequestFlushFromEntered ()
+#endif
+
+    member private this.NotifyAndFlush() =
 #if !FABLE_COMPILER && !RANVIER_TRACE
         let count = observers.Count
 
@@ -11072,43 +11131,13 @@ type AsyncSource<'T>(graph: Graph) =
                 graph.RequestFlushFromEntered ()
 #else
 #if FABLE_COMPILER && !RANVIER_TRACE
-        if not (Platform.isNull observers) then
+        if not (Platform.isNull firstRef) then
+            this.NotifyOne (firstRef, firstSlot)
+        elif not (Platform.isNull observers) then
             let count = observers.Count
 
             if count = 1 then
-                if EdgeHandle.isNodeSlot observers.FirstSlot then
-                    let n = Platform.fastCast<Node> observers.FirstRef
-                    let nf = n.Flags
-
-                    if
-                        (nf &&& NodeFlags.DirtyAnnouncedMask) = NodeFlags.FreshDirty
-                        && ((nf &&& NodeFlags.KindMask) = NodeFlags.KindMemo
-                            || (nf &&& NodeFlags.Queued) <> 0)
-                    then
-                        if graph.BatchDepth = 0 && graph.QueuePending then
-                            graph.RequestFlushFromEntered ()
-                    elif
-                        (nf &&& NodeFlags.KindMask) <> NodeFlags.KindMemo
-                        && (nf
-                            &&& (NodeFlags.Disposed
-                                 ||| NodeFlags.InCleanup
-                                 ||| NodeFlags.Publishes
-                                 ||| NodeFlags.Queued))
-                            =
-                            0
-                        && graph.CanFuseIdleFlush ()
-                    then
-                        NodeOps.RunFusedEffect (graph, n)
-                    else
-                        NodeOps.MarkDirty n
-
-                        if graph.QueuePending then
-                            graph.RequestFlushFromEntered ()
-                else
-                    (Platform.fastCast<IComputation> observers.FirstRef).MarkDirty()
-
-                    if graph.QueuePending then
-                        graph.RequestFlushFromEntered ()
+                this.NotifyOne (observers.FirstRef, observers.FirstSlot)
             elif count > 1 then
                 observers.NotifyDirty ()
 
@@ -13700,10 +13729,16 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         observers.NotifyDirty ()
 #endif
 
-    member private _.NotifyObserversCheck() =
+    member inline private _.NotifyObserversCheck() =
 #if FABLE_COMPILER && !RANVIER_TRACE
         if not (Platform.isNull observers) then
-            observers.NotifyCheck ()
+            if
+                observers.Count = 1
+                && EdgeHandle.isNodeSlot observers.FirstSlot
+            then
+                NodeOps.MarkCheck (Platform.fastCast<Node> observers.FirstRef)
+            else
+                observers.NotifyCheck ()
 #else
         observers.NotifyCheck ()
 #endif
@@ -14793,9 +14828,9 @@ type Boundary<'T>
         | ValueNone -> Platform.nil ()
 
 #if FABLE_COMPILER
-    let recoverFn: Func<exn, 'T voption, 'T> =
+    let recoverFn: exn -> 'T voption -> 'T =
         match onError with
-        | ValueSome f -> Func<exn, 'T voption, 'T>(fun ex prev -> f ex prev)
+        | ValueSome f -> f
         | ValueNone -> Platform.nil ()
 #else
     let recoverFn: OptimizedClosures.FSharpFunc<exn, 'T voption, 'T> =
@@ -14841,10 +14876,16 @@ type Boundary<'T>
     /// </summary>
     let mutable scope: Owner = Platform.nil ()
 
-    member private _.NotifyObserversCheck() =
+    member inline private _.NotifyObserversCheck() =
 #if FABLE_COMPILER && !RANVIER_TRACE
         if not (Platform.isNull observers) then
-            observers.NotifyCheck ()
+            if
+                observers.Count = 1
+                && EdgeHandle.isNodeSlot observers.FirstSlot
+            then
+                NodeOps.MarkCheck (Platform.fastCast<Node> observers.FirstRef)
+            else
+                observers.NotifyCheck ()
 #else
         observers.NotifyCheck ()
 #endif
@@ -14915,7 +14956,11 @@ type Boundary<'T>
             let from = graph.FailureOf (ex, this, previousCaught)
 
             try
+#if FABLE_COMPILER
+                let recovered = recoverFn ex last
+#else
                 let recovered = recoverFn.Invoke (ex, last)
+#endif
                 graph.CheckRaised ()
                 caught <- from
                 recovered
@@ -14961,8 +15006,6 @@ type Boundary<'T>
         runs <- runs + 1
         Tracer.RunStart (graph, id, runs)
 
-        let last = if shown then ValueSome previous else ValueNone
-
         active <- 1
 
 #if FABLE_COMPILER
@@ -14987,6 +15030,8 @@ type Boundary<'T>
                 this.RecordPending source
 
                 if not (Platform.isNull (box fallbackFn)) then
+                    let last = if shown then ValueSome previous else ValueNone
+
                     try
                         let substitute = fallbackFn last
                         graph.CheckRaised ()
@@ -14998,7 +15043,9 @@ type Boundary<'T>
                 else
                     value <- this.Suspend source
 
-            | ex -> value <- this.RecoverOrFail (ex, last, previousFailure, previousCaught)
+            | ex ->
+                let last = if shown then ValueSome previous else ValueNone
+                value <- this.RecoverOrFail (ex, last, previousFailure, previousCaught)
         finally
 #if FABLE_COMPILER
             graph.EndHosted (prevCurrent, prevNode, prevOwner, prevPending, prevRaised)

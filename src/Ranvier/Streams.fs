@@ -35,8 +35,8 @@ type StreamSource<'T>() =
 
 /// <summary>The node a stream run schedules a publication on.</summary>
 type internal IStreamRequester =
-    /// <summary>Queues the node for the current or next flush. Called on the graph thread.</summary>
-    abstract RequestOnGraph: unit -> unit
+    /// <summary>Queues the node for the current or next flush; returns true while the node remains queued.</summary>
+    abstract RequestOnGraph: unit -> bool
 #if !FABLE_COMPILER
     /// <summary>Posts one wake to the graph while none is outstanding. Called off the graph thread.</summary>
     abstract RequestOffGraph: unit -> unit
@@ -48,6 +48,8 @@ type internal IStreamRequester =
 type internal IStreamRun<'S> =
     /// <summary>Captures the state as <c>Captured</c>; returns the number of items folded since the previous snapshot.</summary>
     abstract Snapshot: unit -> int
+    /// <summary>Clears the cached graph-thread queue flag when the owning <c>StreamMemo</c> dequeues.</summary>
+    abstract OnDequeued: unit -> unit
     /// <summary>The state captured by the latest <c>Snapshot</c>.</summary>
     abstract Captured: 'S
     /// <summary>True once an item has been folded.</summary>
@@ -94,6 +96,7 @@ type internal StreamRun<'S, 'T>
     let mutable folded = 0
     let mutable received = false
     let mutable closed = false
+    let mutable onGraphQueued = false
     let mutable foldError: exn = Platform.nil ()
 #if !FABLE_COMPILER
     let mutable offThread = 0
@@ -114,6 +117,24 @@ type internal StreamRun<'S, 'T>
                 Volatile.Write (&closed, true)
                 foldError <- error
                 2
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.DeliverOffGraph(item: 'T) =
+        if Volatile.Read &offThread = 0 then
+            Interlocked.Exchange (&offThread, 1) |> ignore
+
+        System.Threading.Monitor.Enter this
+
+        let outcome =
+            try
+                this.FoldLocked item
+            finally
+                System.Threading.Monitor.Exit this
+
+        if outcome = 1 then
+            requester.RequestOffGraph ()
+        elif outcome = 2 then
+            requester.ReportFoldFailure (gen, foldError)
 #endif
 
     /// <summary>Folds <c>item</c> and requests a publication; a throwing fold closes the run and reports the exception.</summary>
@@ -131,7 +152,13 @@ type internal StreamRun<'S, 'T>
                 raised <- error
 
             if Platform.isNull raised then
-                requester.RequestOnGraph ()
+                if
+                    not (
+                        onGraphQueued
+                        && (graph.BatchDepth > 0 || graph.IsFlushing)
+                    )
+                then
+                    onGraphQueued <- requester.RequestOnGraph ()
             else
                 requester.ReportFoldFailure (gen, raised)
 #else
@@ -149,23 +176,22 @@ type internal StreamRun<'S, 'T>
                     raised <- error
 
                 if isNull raised then
-                    requester.RequestOnGraph ()
+                    if
+                        not (
+                            onGraphQueued
+                            && (graph.BatchDepth > 0 || graph.IsFlushing)
+                        )
+                    then
+                        onGraphQueued <- requester.RequestOnGraph ()
                 else
                     requester.ReportFoldFailure (gen, raised)
         else
-            if Volatile.Read &offThread = 0 then
-                Interlocked.Exchange (&offThread, 1) |> ignore
-
-            let outcome = lock this (fun () -> this.FoldLocked item)
-
-            if outcome = 1 then
-                requester.RequestOffGraph ()
-            elif outcome = 2 then
-                requester.ReportFoldFailure (gen, foldError)
+            this.DeliverOffGraph item
 #endif
 
     interface IStreamRun<'S> with
         member this.Snapshot() =
+            onGraphQueued <- false
 #if FABLE_COMPILER
             let count = folded
             folded <- 0
@@ -178,12 +204,19 @@ type internal StreamRun<'S, 'T>
                 captured <- state
                 count
             else
-                lock this (fun () ->
+                System.Threading.Monitor.Enter this
+
+                try
                     let count = folded
                     folded <- 0
                     captured <- state
-                    count)
+                    count
+                finally
+                    System.Threading.Monitor.Exit this
 #endif
+
+        member _.OnDequeued() =
+            onGraphQueued <- false
 
         member _.Captured = captured
 
@@ -201,7 +234,12 @@ type internal StreamRun<'S, 'T>
             Volatile.Write (&closed, true)
 
             if Volatile.Read &offThread <> 0 then
-                lock this (fun () -> closed <- true)
+                System.Threading.Monitor.Enter this
+
+                try
+                    closed <- true
+                finally
+                    System.Threading.Monitor.Exit this
 #endif
 
         member this.RunSource() =
@@ -300,12 +338,16 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
             queued <- true
             graph.Schedule (this :> IScheduled)
 
-    member private this.RequestOnGraph() =
+    member private this.RequestOnGraph() : bool =
         if not launching && not disposed then
             this.Enqueue ()
 
             if graph.BatchDepth = 0 then
                 graph.RequestFlushFromEntered ()
+
+            queued
+        else
+            false
 
 #if !FABLE_COMPILER
     member private this.RequestOffGraph() =
@@ -764,6 +806,9 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
     interface IScheduled with
         member this.Execute() =
             queued <- false
+
+            if not (Platform.isNull (box run)) then
+                run.OnDequeued ()
 
             if not disposed && running then
                 if freshness = Freshness.Check then

@@ -24,8 +24,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Effects.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Bindings.fs | 17 | 17 | 17 | 17 | 17 | 17 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 26 | 26 | 26 | 26 | 0 | 0 |
-| AmbientGraph.fs | 10 | 10 | 10 | 10 | 10 | 10 | 6 | 0 |
-| Owners.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
+| AmbientGraph.fs | 11 | 11 | 11 | 11 | 11 | 11 | 6 | 0 |
+| Owners.fs | 23 | 23 | 23 | 23 | 23 | 23 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
 | ValueReaders.fs | 22 | 22 | 22 | 22 | 22 | 22 | 0 | 0 |
 | Async.fs | 56 | 50 | 50 | 56 | 50 | 50 | 4 | 0 |
@@ -41,7 +41,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | TraceJsonTests.fs | 0 | 0 | 0 | 8 | 8 | 8 | 9 | 0 |
 | TraceDumpTests.fs | 0 | 0 | 0 | 4 | 4 | 4 | 10 | 0 |
 | TraceExportStreams.fs | 0 | 0 | 0 | 6 | 6 | 6 | 0 | 0 |
-| Observers.fs | 103 | 103 | 103 | 103 | 103 | 103 | 0 | 0 |
+| Observers.fs | 105 | 105 | 105 | 105 | 105 | 105 | 0 | 0 |
 | Api.fs | 7 | 7 | 7 | 7 | 7 | 7 | 2 | 0 |
 | FanOut.fs | 8 | 8 | 8 | 8 | 8 | 8 | 0 | 0 |
 | Reentrancy.fs | 19 | 19 | 19 | 19 | 19 | 19 | 0 | 0 |
@@ -52,7 +52,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Reads.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Batching.fs | 11 | 11 | 11 | 11 | 11 | 11 | 0 | 0 |
 | AsyncEdges.fs | 71 | 71 | 68 | 71 | 71 | 68 | 4 | 0 |
-| Projections.fs | 122 | 122 | 122 | 122 | 122 | 122 | 10 | 0 |
+| Projections.fs | 125 | 125 | 125 | 125 | 125 | 125 | 10 | 0 |
 | TrimmedPass.fs | 59 | 59 | 59 | 59 | 59 | 59 | 0 | 0 |
 | Lookups.fs | 32 | 32 | 32 | 32 | 32 | 32 | 0 | 0 |
 | MemoScopes.fs | 28 | 28 | 28 | 28 | 28 | 28 | 0 | 0 |
@@ -79,14 +79,14 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | QueryErgonomics.fs | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | QueryNavigationTests.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
 | VendoredThoth.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
-| WireDecoding.fs | 24 | 24 | 24 | 24 | 24 | 24 | 1 | 0 |
+| WireDecoding.fs | 30 | 30 | 30 | 30 | 30 | 30 | 1 | 0 |
 | NumericDecoding.fs | 66 | 66 | 66 | 66 | 66 | 66 | 1 | 0 |
-| DateTimeOffsetCodec.fs | 54 | 54 | 54 | 54 | 54 | 54 | 1 | 0 |
+| DateTimeOffsetCodec.fs | 54 | 54 | 54 | 54 | 54 | 54 | 2 | 0 |
 | NumberText.fs | 36 | 36 | 36 | 36 | 36 | 36 | 2 | 0 |
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1774 | 1760 | 1757 | 1997 | 1979 | 1976 | 158 | 1 |
+| **Total** | 1788 | 1774 | 1771 | 2011 | 1993 | 1990 | 159 | 1 |
 
 ## Tests.fs
 
@@ -191,7 +191,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | an inline async continuation inside an effect or memo body leaves subsequent flushes and top-level reads clean | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
 | an unguarded graph constructed on a dead thread remains ambient when a later thread reuses its managed thread id | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
 
-<details><summary>10 passed in every build and delivery that runs them</summary>
+<details><summary>11 passed in every build and delivery that runs them</summary>
 
 - an effect woken by a write outside the graph registers its cleanups
 - an effect woken by a settle outside the graph creates nodes
@@ -203,12 +203,13 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a stale memo pulled under another graph's activation during a flush sees its own graph
 - check-chain unwinding during a flush clears a caught upstream failure before recomputing a downstream memo
 - an idle signal write marks both node and projection observers without throwing
+- nested activations, flushes, stale pulls, and out-of-order disposal restore every ambient graph
 
 </details>
 
 ## Owners.fs
 
-<details><summary>21 passed in every build and delivery that runs them</summary>
+<details><summary>23 passed in every build and delivery that runs them</summary>
 
 - disposing a root disposes the effects created inside it
 - a cleanup runs before the next run of the same effect
@@ -231,6 +232,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - an effect body may create nodes conditionally and in a loop of varying length
 - ErrorsFrom returns the errors recorded at or after an index, in order
 - ErrorCount of a scope that recorded nothing is zero
+- interleaved memos, effects, split effects, attached disposables, and cleanups tear down in strict LIFO order
+- idle first-run effect fusion runs synchronously while creation inside batch or flush defers cleanly
 
 </details>
 
@@ -812,7 +815,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## Observers.fs
 
-<details><summary>103 passed in every build and delivery that runs them</summary>
+<details><summary>105 passed in every build and delivery that runs them</summary>
 
 - every one of 3 observers is woken
 - a body reading its source twice does not grow the list of 3
@@ -917,6 +920,8 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - 12 folds of one projection disposed in creation order
 - pending rows settled and 12 folds disposed in creation order
 - a pending row's edge to the summary watch survives a swap
+- a foreign IComputation links, receives dirty and check marks, tracks swap-remove moves, and unlinks alongside built-in nodes
+- a foreign ISource links, propagates changes, trims on branch switch, and detaches on disposal
 
 </details>
 
@@ -1233,9 +1238,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a view stops following when the scope that created it re-runs | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 | AsObservableCollection over a pending pass resets once when the pass settles | AsObservableCollection returns an ObservableCollection, which the library omits under Fable. |
 
-<details><summary>122 passed in every build and delivery that runs them</summary>
+<details><summary>125 passed in every build and delivery that runs them</summary>
 
 - the key order follows the source
+- a reverse with a changed key evaluates each selector once and retains earlier snapshots
+- a reverse selector can dispose the projection during validation
+- a sparse sort batch publishes the one move when another rank changes in place
 - a projection nothing reads is never recomputed
 - reading Keys twice without a write costs one pass
 - Get returns the mapped value and TryGet reports absence
@@ -2471,7 +2479,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | --- | --- |
 | a shape error on a large value allocates less than 16 MB | GC.GetAllocatedBytesForCurrentThread has no Fable counterpart. |
 
-<details><summary>24 passed in every build and delivery that runs them</summary>
+<details><summary>30 passed in every build and delivery that runs them</summary>
 
 - a record encodes to its text and decodes back
 - text that is not JSON is a syntax error
@@ -2497,6 +2505,12 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - limits outside their range are rejected
 - an object of 100,000 members decodes through Codec.dict in under three seconds
 - a shape error echoes at most 256 characters of a large value
+- a field reads the last value of a repeated key, written plainly or escaped
+- a field name matches by ordinal case
+- twelve fields of one object read whatever the member order, with repeated keys
+- fields read before and after an object's keys see the same members
+- keys read after twelve fields keep own-property order
+- fields of nested and sibling objects read in any order
 
 </details>
 
@@ -2582,6 +2596,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Excluded | Reason |
 | --- | --- |
 | sub-millisecond ticks truncate to the millisecond at or before the instant | a Fable DateTimeOffset holds whole milliseconds. |
+| instants across the whole range write the text of the custom format, at each offset | the expected text is DateTimeOffset.ToString's custom format, which Fable formats differently. |
 
 <details><summary>54 passed in every build and delivery that runs them</summary>
 
