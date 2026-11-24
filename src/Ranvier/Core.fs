@@ -11232,7 +11232,13 @@ type Memo<'T> private (graph: Graph, computeObj: obj, computeKind: byte, seed: '
 
                     false
             else
-                // Theorem B9: leaf memo (Observers.Count = 0 && not trim) skips equality check entirely.
+                // Theorem B9: leaf memo (Observers.Count = 0 && not trim) skips equality check unless QueuePending needs OweFlush.
+                if
+                    graph.QueuePending
+                    && not (ComparerSentinel.equals null previous value)
+                then
+                    graph.OweFlush ()
+
                 if (n.Flags &&& NodeFlags.FreshMask) <> 0u then
                     this.NoteStale n
 
@@ -11286,13 +11292,14 @@ type Memo<'T> private (graph: Graph, computeObj: obj, computeKind: byte, seed: '
 
         if
             failed
-            || (n.Observers.Count <> 0
+            || ((n.Observers.Count <> 0 || graph.QueuePending)
                 && not (ComparerSentinel.equals null previous value))
         then
             if
-                n.Observers.Count <> 1
-                || not (obj.ReferenceEquals (n.Observers.FirstRef, box parent))
-                || graph.StaleTransitions <> 0
+                n.Observers.Count <> 0
+                && (n.Observers.Count <> 1
+                    || not (obj.ReferenceEquals (n.Observers.FirstRef, box parent))
+                    || graph.StaleTransitions <> 0)
             then
                 NodeOps.NotifyMoved n
 
@@ -11561,8 +11568,15 @@ type Memo<'T> private (graph: Graph, computeObj: obj, computeKind: byte, seed: '
                         this.FinishTop (n, prevOwner, previousPending, previous, false)
                 elif n.Freshness <> Freshness.Clean then
                     this.NoteStale n
-            elif n.Freshness <> Freshness.Clean then
-                this.NoteStale n
+            else
+                if
+                    graph.QueuePending
+                    && not (obj.ReferenceEquals (box previous, box value))
+                then
+                    graph.OweFlush ()
+
+                if n.Freshness <> Freshness.Clean then
+                    this.NoteStale n
 
     member private this.RunTopPending(n: MemoNode) =
         this.RunTopCore (n, true)
@@ -11597,15 +11611,17 @@ type Memo<'T> private (graph: Graph, computeObj: obj, computeKind: byte, seed: '
 
         if
             failed
-            || (not (Platform.isNull n.Observers)
-                && n.Observers.Count <> 0
+            || (((not (Platform.isNull n.Observers)
+                  && n.Observers.Count <> 0)
+                 || graph.QueuePending)
                 && not (obj.ReferenceEquals (box previous, box value)))
         then
             if
-                Platform.isNull n.Observers
-                || n.Observers.Count <> 1
-                || not (obj.ReferenceEquals (n.Observers.FirstRef, box parent))
-                || graph.StaleTransitions <> 0
+                not (Platform.isNull n.Observers)
+                && n.Observers.Count <> 0
+                && (n.Observers.Count <> 1
+                    || not (obj.ReferenceEquals (n.Observers.FirstRef, box parent))
+                    || graph.StaleTransitions <> 0)
             then
                 NodeOps.NotifyMoved n
 
