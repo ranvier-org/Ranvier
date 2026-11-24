@@ -6,13 +6,26 @@ open System.Collections.Generic
 /// <remarks>The scope is null in the value form, where the row is the key's only node.</remarks>
 [<AllowNullLiteral>]
 type internal RowEntry<'K, 'V>(key: 'K) =
+    let mutable settled = false
     member _.Key = key
     member val Row: Memo<'V> = Unchecked.defaultof<_> with get, set
     member val Scope: Owner = Unchecked.defaultof<_> with get, set
     /// <summary>The mapper over the item in the value form, or the factory's returned reader.</summary>
     member val Reader: unit -> 'V = Unchecked.defaultof<_> with get, set
+
     /// <summary>Whether the row memo has committed a value.</summary>
-    member val Settled = false with get, set
+    member this.Settled
+        with get () =
+#if FABLE_COMPILER && !RANVIER_TRACE
+            settled
+            || (not (Platform.isNull (box this.Row))
+                && this.Row.Published
+                && this.Row.HasDirectSignal)
+#else
+            settled
+#endif
+        and set v = settled <- v
+
     /// <summary>Whether the pending row is observed by the projection's row watcher.</summary>
     member val Watched = false with get, set
     /// <summary>The row's edge to the projection's row watcher, created by the row's first pending report.</summary>

@@ -413,13 +413,8 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
     /// <summary>The row of the last key <c>Get</c> found, or null. Valid only while <c>Live</c>: every removal retires the row.</summary>
     let mutable lastEntry: RowEntry<'K, 'V> = null
 
-    let mutable lastKey = Unchecked.defaultof<'K>
-
     /// <summary>The live key readers, and null while none exists.</summary>
     let mutable log: KeyLog<'K> = null
-
-    /// <summary>The count of key changes sent to the key readers.</summary>
-    let mutable membershipVersion = 0
 
     let mutable values: ProjectionValues<'K, 'V> = Unchecked.defaultof<_>
 
@@ -604,15 +599,16 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
     member private this.Attach() =
         beacon.Bind this
         watch.Bind this.RefreshSummary
-        link <- graph.CurrentOwner.AttachLinked this
-        attached <- true
-        Tracer.ProjectionNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        Tracer.ProjectionNew (graph, id, owner)
         Tracer.ScopeNew (scope, graph, id)
         Tracer.Part (graph, (keys :> INode).Id, id, null)
         Tracer.Part (graph, (beacon :> INode).Id, id, null)
         Tracer.Part (graph, (watch :> INode).Id, id, null)
         Tracer.Part (graph, (anyPending :> INode).Id, id, null)
         Tracer.Part (graph, (inFlightVersion :> INode).Id, id, null)
+        link <- owner.AttachLinked this
+        attached <- true
 
 #if FABLE_COMPILER
     member inline private this.Pass = box this :?> IProjectionPass
@@ -631,22 +627,29 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
     member private _.FindEntry(key: 'K) : RowEntry<'K, 'V> =
         let last = lastEntry
 
-        if not (Platform.isNull last)
-           && last.Live
-           && Platform.keyEquals lastKey key then
+        if
+            not (Platform.isNull last)
+            && last.Live
+            && Platform.keyEquals last.Key key
+            && last.Live
+            && not disposed
+        then
             last
         else
             let found = entries.Find key
 
-            if not (Platform.isNull found) then
-                lastKey <- key
+            if
+                not (Platform.isNull found)
+                && found.Live
+                && not disposed
+            then
                 lastEntry <- found
 
             found
 
     /// <summary>
     /// Whether a read of <c>entry</c> needs nothing but its two tracked reads: the projection is live, clean and observed,
-    /// and the row is clean and ready. False for a null entry.
+    /// and the row is live, clean and ready. False for a null entry.
     /// </summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private _.IsCleanHit(entry: RowEntry<'K, 'V>) : bool =
@@ -654,6 +657,7 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
         && freshness = Freshness.Clean
         && observed
         && not (Platform.isNull entry)
+        && entry.Live
         && not (Platform.isNull (box entry.Row))
         && entry.Row.IsCleanAndReady
 
@@ -692,24 +696,17 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
     member internal _.PublishedVersion = keysVersion
 
     /// <summary>
-    /// A version of the changes pending in the key readers of a live projection. While it holds its value, each key
-    /// reader holds the pending changes it held before.
-    /// </summary>
-    member internal _.MembershipVersion = membershipVersion
-
-    /// <summary>
     /// Makes the tracked reads of <c>Keys</c>, the beacon then the keys cell, and returns true when the projection is live,
-    /// clean and observed, its published keys are <c>expected</c> and its <c>MembershipVersion</c> is <c>version</c>.
-    /// Returns false before any tracked read otherwise.
+    /// clean and observed and <c>reader</c> holds no reset, pending changes or cursor change. Returns false before any
+    /// tracked read otherwise.
     /// </summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal _.TrackKeysAt(expected: 'K[], version: int) : bool =
+    member internal _.TrackCleanKeysIfIdle(reader: ProjectionReader<'K>) : bool =
         if
             freshness = Freshness.Clean
             && observed
             && not disposed
-            && membershipVersion = version
-            && obj.ReferenceEquals (keys.Peek, expected)
+            && reader.IsIdleAt keys.Peek
         then
             graph.Track (beacon :> ISource)
             graph.Track (keys :> ISource)
@@ -799,8 +796,6 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
         hidden.Add key |> ignore
 
     member private _.RecordVisible(key: 'K, change: KeyChange) =
-        membershipVersion <- membershipVersion + 1
-
         if not (Platform.isNull log) then
             log.Record (key, change)
 
@@ -1827,15 +1822,22 @@ type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
     /// reader's exception. Raises <c>KeyNotFoundException</c> for an absent key.
     /// </remarks>
     member this.Get(key: 'K) : 'V =
-        let entry = this.FindEntry key
+        if
+            not disposed
+            && freshness = Freshness.Clean
+            && observed
+        then
+            let entry = this.FindEntry key
 
-        // A clean, observed projection whose row is clean and ready: the same two tracked reads as the general path,
-        // without the pass check or the handlers that only a stale, pending or failed read needs.
-        if this.IsCleanHit entry then
-            let row = entry.Row
-            graph.Track (beacon :> ISource)
-            graph.Track (row :> ISource)
-            row.Peek
+            // A clean, observed projection whose row is live, clean and ready: the same two tracked reads as the general
+            // path, without the pass check or the handlers that only a stale, pending or failed read needs.
+            if this.IsCleanHit entry then
+                let row = entry.Row
+                graph.Track (beacon :> ISource)
+                graph.Track (row :> ISource)
+                row.Peek
+            else
+                this.GetRow (key, false)
         else
             this.GetRow (key, false)
 
@@ -2575,9 +2577,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 
 #if FABLE_COMPILER && !RANVIER_TRACE
             if this.DirectSignalRow then
-                // A signal row is settled from creation: its body is a signal read.
-                entry.Settled <- true
-                entry.Row <- Memo<'V>.CreateSignalRowEncoded(graph, Platform.fastCast<Signal<'V>> (box item), encodedValueEqual)
+                entry.Row <- Memo<'V>.CreateSignalRowEncoded(graph, Platform.fastCast<Signal<'V>>(box item), encodedValueEqual)
             else
 #endif
             let body =
@@ -3840,8 +3840,9 @@ type Lookup<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
 #if FABLE_COMPILER
         computeKey <- fun key -> this.Source.Compute key
 #endif
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.OwnerAdopt (link.Owner, scope, false)
+        let owner = graph.CurrentOwner
+        Tracer.OwnerAdopt (owner, scope, false)
+        link <- owner.AttachLinked this
 
     member internal _.Graph = graph
 

@@ -489,14 +489,8 @@ type internal SlotQueue<'Slot> =
     val IsCheckQueued: unit -> bool
     val Dirty: ResizeArray<'Slot>
     val Check: ResizeArray<'Slot>
-
-    [<DefaultValue>]
     val mutable ActiveSlot: obj
-
-    [<DefaultValue>]
     val mutable CheckNotified: bool
-
-    [<DefaultValue>]
     val mutable DirtyNotified: bool
 
     new(viewNode: IComputation, isInvalidated: unit -> bool, isCheckQueued: unit -> bool) =
@@ -506,6 +500,9 @@ type internal SlotQueue<'Slot> =
             IsCheckQueued = isCheckQueued
             Dirty = ResizeArray<'Slot>()
             Check = ResizeArray<'Slot>()
+            ActiveSlot = null
+            CheckNotified = false
+            DirtyNotified = false
         }
 
     static member Create<'K, 'V when 'K: equality>(view: Projection<'K, 'V>) =
@@ -5969,12 +5966,6 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     let mutable link: OwnerLink = null
     let mutable keyReader: ProjectionReader<'K> = Unchecked.defaultof<_>
 
-    /// <summary>The cursor of <c>keyReader</c>: the <c>Keys</c> of the last delta read from it, or null before the first read.</summary>
-    let mutable readKeys: 'K[] = null
-
-    /// <summary>The upstream <c>MembershipVersion</c> at the last read of <c>keyReader</c>.</summary>
-    let mutable readVersion = 0
-
     let mutable memo: Memo<'S> = Unchecked.defaultof<Memo<'S>>
 
     let touch () =
@@ -6017,7 +6008,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     let mutable applyAddFn: unit -> 'S = Unchecked.defaultof<_>
     let mutable applyReplaceFn: unit -> 'S = Unchecked.defaultof<_>
     let mutable applySubtractFn: unit -> 'S = Unchecked.defaultof<_>
-    let mutable ensureRowFn: Memo<'V> -> Status = Unchecked.defaultof<_>
+    let mutable refreshRowFn: Memo<'V> -> bool = Unchecked.defaultof<_>
 #endif
 
     let foldAll () =
@@ -6068,10 +6059,12 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 invokeAdd (invokeSub state stepOld) v
 
         applySubtractFn <- fun () -> invokeSub state stepOld
-        ensureRowFn <- fun row -> row.EnsureCurrentUntracked ()
+        refreshRowFn <- fun row -> row.RefreshUntrackedNoSettle ()
 #endif
         link <- graph.CurrentOwner.AttachLinked this
-        keyReader <- upstream.NewInternalKeyReader ()
+
+        if not disposed then
+            keyReader <- upstream.NewInternalKeyReader ()
 
     static member internal Create
         (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool)
@@ -6230,30 +6223,34 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 #if FABLE_COMPILER
         let source = row.Entry.Row
 
-        let status =
+        let settle =
             if graph.IsTracking () then
-                graph.RunUntrackedWith (ensureRowFn, source)
+                graph.RunUntrackedWith (refreshRowFn, source)
             else
-                source.EnsureCurrentUntracked ()
+                source.RefreshUntrackedNoSettle ()
+
+        let currentStatus = source.Node.Status
+        let currentValue = source.Peek
+        let currentFailure = source.Failure
+
+        if settle then
+            graph.FinishPullSettle ()
 
         row.Queued <- false
 
-        if not (StatusBits.isUnready status) then
-            this.ReadReady (row, source.Peek)
-        elif StatusBits.isPending status then
+        if not (StatusBits.isUnready currentStatus) then
+            this.ReadReady (row, currentValue)
+        elif StatusBits.isPending currentStatus then
             this.Unfail row
         else
-            this.Fail (row, source.Failure.Error)
+            this.Fail (row, currentFailure.Error)
 #else
         let struct (status, v, error) = row.Entry.Row.TryReadUntrackedStruct ()
         row.Queued <- false
 
-        if status = Status.None then
-            this.ReadReady (row, v)
-        elif status = Status.Pending then
-            this.Unfail row
-        else
-            this.Fail (row, error)
+        if status = Status.None then this.ReadReady (row, v)
+        elif status = Status.Pending then this.Unfail row
+        else this.Fail (row, error)
 #endif
 
     /// <summary>Stops observing the row and removes its contribution.</summary>
@@ -6453,20 +6450,19 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         if disposed then
             state
         else
-            // At the keys and membership version of the previous key read, a read of the key reader makes the tracked reads
-            // of Keys and returns an empty delta.
-            if upstream.TrackKeysAt (readKeys, readVersion) then
+            // When the reader is live, un-reset, holds no pending changes and its cursor matches the clean published keys,
+            // a read of the key reader makes only the tracked reads of Keys and returns an empty delta.
+            if upstream.TrackCleanKeysIfIdle keyReader then
+                let published = upstream.PublishedKeys
                 graph.Track (this :> ISource)
 
-                if not (obj.ReferenceEquals (lastKeys, readKeys)) then
-                    lastKeys <- readKeys
+                if not (obj.ReferenceEquals (lastKeys, published)) then
+                    lastKeys <- published
 
                 if queued <> 0 || full || reads.IsPendingCheckOrDirty then
                     this.Sync Unchecked.defaultof<_>
             else
                 let delta = keyReader.Read ()
-                readKeys <- delta.Keys
-                readVersion <- upstream.MembershipVersion
                 graph.Track (this :> ISource)
 
                 // An unchanged membership with no queued row, pending read or recompute leaves Sync only the key array to
@@ -6686,7 +6682,9 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
 
     member private this.Attach() =
         link <- graph.CurrentOwner.AttachLinked this
-        keyReader <- upstream.NewInternalKeyReader ()
+
+        if not disposed then
+            keyReader <- upstream.NewInternalKeyReader ()
 
     static member internal Create
         (

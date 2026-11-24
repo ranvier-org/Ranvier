@@ -6,6 +6,30 @@ open Ranvier
 
 type private Line = { Sku: string; Quantity: int }
 
+[<CustomEquality; NoComparison>]
+type private ReentrantKey =
+    {
+        Id: int
+        Payload: byte[]
+        OnEquals: unit -> unit
+    }
+
+    override this.GetHashCode() = this.Id
+
+    override this.Equals(rhs) =
+        this.OnEquals ()
+
+        match rhs with
+        | :? ReentrantKey as other -> this.Id = other.Id
+        | _ -> false
+
+    interface IEquatable<ReentrantKey> with
+        member this.Equals(other) =
+            this.OnEquals ()
+
+            not (obj.ReferenceEquals (box other, null))
+            && this.Id = other.Id
+
 /// <summary>Counts the runs of an effect that reads <c>read</c>.</summary>
 let private countRuns (read: unit -> 'a) =
     let runs = ref 0
@@ -400,7 +424,11 @@ let tests =
                     Expect.equal runs.Value 1 "the reader waits for the outer batch"
                     c.AddOrUpdate (4, 40))
 
-                Expect.sequenceEqual col.Rows.Keys [| 1; 3; 4 |] "the writes before the failure and the nested write survive; the failed key is absent"
+                Expect.sequenceEqual
+                    col.Rows.Keys
+                    [| 1; 3; 4 |]
+                    "the writes before the failure and the nested write survive; the failed key is absent"
+
                 Expect.equal runs.Value 2 "the outer batch flushes once"
             }
 
@@ -950,18 +978,22 @@ let tests =
                 let col = createKeyedCollection (fun (struct (k: int, _: int)) -> k)
                 col.AddOrUpdate (struct (1, 0))
                 let sum = ref 0
-                createEffect (fun () -> sum.Value <- sum.Value + (let struct (_, v) = col.Rows.Get 1 in v))
 
-                for i in 1..100 do
+                createEffect (fun () ->
+                    sum.Value <-
+                        sum.Value
+                        + (let struct (_, v) = col.Rows.Get 1 in v))
+
+                for i in 1..2_000 do
                     col.AddOrUpdate (struct (1, i))
 
                 let before = GC.GetAllocatedBytesForCurrentThread ()
 
                 for i in 1..10_000 do
-                    col.AddOrUpdate (struct (1, i + 100))
+                    col.AddOrUpdate (struct (1, i + 2_000))
 
-                let perEdit = (GC.GetAllocatedBytesForCurrentThread () - before) / 10_000L
-                Expect.equal perEdit 0L $"an upsert allocated %d{perEdit} bytes"
+                let totalAllocated = GC.GetAllocatedBytesForCurrentThread () - before
+                Expect.isLessThan totalAllocated 512L $"10,000 upserts allocated %d{totalAllocated} bytes"
             }
 
             untracedOnly
@@ -992,19 +1024,16 @@ let tests =
                 let edit i =
                     col.AddOrUpdate (struct ((i / 2 * 37) % 64, (if i % 2 = 0 then 7 else 5)))
 
-                for i in 0..999 do
+                for i in 0..2_000 do
                     edit i
 
                 let before = GC.GetAllocatedBytesForCurrentThread ()
 
-                for i in 1000..10_999 do
+                for i in 2_001..12_000 do
                     edit i
 
-                let perEdit =
-                    (GC.GetAllocatedBytesForCurrentThread () - before)
-                    / 10_000L
-
-                Expect.equal perEdit 0L $"an upsert allocated %d{perEdit} bytes"
+                let totalAllocated = GC.GetAllocatedBytesForCurrentThread () - before
+                Expect.isLessThan totalAllocated 512L $"10,000 upserts allocated %d{totalAllocated} bytes"
             }
 
             untracedOnly
@@ -1043,6 +1072,195 @@ let tests =
                         fun i -> e.Value <- i)
 
                 Expect.isLessThanOrEqual edit chain $"an edit allocated %d{edit} bytes, a two-memo chain write %d{chain}"
+            }
+#endif
+
+            test "reentrant key equality removing or disposing during Get or AddOrUpdate rechecks liveness" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let mutable hook: unit -> unit = ignore
+
+                let mkKey id =
+                    {
+                        Id = id
+                        Payload = null
+                        OnEquals =
+                            fun () ->
+                                let f = hook
+                                hook <- ignore
+                                f ()
+                    }
+
+                let col = createKeyedCollection (fun (k: ReentrantKey, _: int) -> k)
+                let k1 = mkKey 1
+                col.AddOrUpdate (k1, 10)
+                createEffect (fun () -> ignore col.Rows.Keys)
+                Expect.equal (snd (col.Rows.Get k1)) 10 "primed MRU entry"
+
+                hook <-
+                    fun () ->
+                        ignore (col.Remove k1)
+                        ignore col.Rows.Keys
+
+#if FABLE_COMPILER
+                Expect.throws
+#else
+                Expect.throwsT<Collections.Generic.KeyNotFoundException>
+#endif
+                    (fun () -> col.Rows.Get (mkKey 1) |> ignore)
+                    "Get rechecks row liveness after key equality retires the MRU row"
+
+                Expect.equal col.Rows.Count 0 "the removed row stays absent"
+
+                col.AddOrUpdate (k1, 1)
+                col.AddOrUpdate (k1, 2)
+                hook <- fun () -> ignore (col.Remove k1)
+                col.AddOrUpdate (mkKey 1, 3)
+                Expect.equal (col.Rows.Keys |> Array.map _.Id) [| 1 |] "AddOrUpdate reinserts when key equality removes the MRU item"
+                Expect.equal (snd (col.Rows.Get k1)) 3 "the reinserted item carries the outer value"
+
+                hook <- col.Dispose
+                throwsDisposed (fun () -> col.AddOrUpdate (mkKey 2, 4)) "AddOrUpdate raises when key equality disposes the collection"
+                Expect.equal col.Rows.Keys.Length 0 "a disposed collection stays empty"
+            }
+
+            test "a fold over a projection whose row pull settles a recovery flush raises the pre-settle failure" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection id
+                col.AddOrUpdate 1
+                let failGate = createSignal true
+                let kick = createSignal 0
+
+                // Reading row 1 when failGate is true writes kick (queuing the recovery effect for FinishPullSettle)
+                // and fails; when FinishPullSettle drains that effect, it clears failGate and refreshes row 1 to Ready.
+                let mapped =
+                    col.Rows
+                    |> Projection.map (fun x ->
+                        if failGate.Value then
+                            kick.Value <- kick.Peek + 1
+                            failwith "boom"
+                        else
+                            x * 10)
+
+                createEffect (fun () ->
+                    if kick.Value > 0 && failGate.Peek then
+                        failGate.Value <- false
+                        ignore (mapped.Get 1))
+
+                let folded = mapped |> Projection.fold (+) 0
+                Expect.throws (fun () -> folded.Value |> ignore) "fold surfaces pre-settle row failure without crashing after settle clears it"
+                Expect.equal folded.Value 10 "subsequent read sees the settled recovery"
+            }
+
+            test "creating folds under a disposed owner records no owner errors and leaves the projection clean" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection id
+                col.AddOrUpdate 1
+                let o = createRoot id
+                o.Dispose ()
+
+                for _ in 1..5 do
+                    let m = runWithOwner o (fun () -> col.Rows |> Projection.foldGroup (+) (-) 0)
+                    m.Dispose ()
+                    let lo = runWithOwner o (fun () -> col.Rows |> Projection.tryMinBy id)
+                    lo.Dispose ()
+
+                col.AddOrUpdate 2
+                Expect.equal o.ErrorCount 0 "disposed owner recorded no errors"
+                Expect.equal col.Rows.Keys [| 1; 2 |] "upstream projection remains usable"
+            }
+
+            test "a value reader attached before a keyed collection's rows run reports no spurious initial change" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: int, _: int) -> k)
+                col.AddOrUpdate (1, 0)
+                ignore col.Rows.Keys
+                use reader = col.Rows.NewValueReader ()
+                let first = reader.Read ()
+                Expect.isTrue first.IsReset "initial value reader read is a reset"
+                Expect.equal first.Keys [| 1 |] "reset sees key 1"
+                let second = reader.Read ()
+                Expect.isFalse second.IsReset "second read is not a reset"
+                Expect.equal second.ChangeCount 0 "unchanged unpulled row reports zero value changes"
+                col.AddOrUpdate (1, 5)
+                let third = reader.Read ()
+                Expect.equal third.ChangeCount 1 "subsequent value edit reports one Changed entry"
+            }
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript is single-threaded.
+            test "concurrent clean Get calls on distinct keys never return another row's value" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection id
+                col.AddOrUpdate 1
+                col.AddOrUpdate 2
+
+                use _ =
+                    new Effect (
+                        g,
+                        fun () ->
+                            ignore (col.Rows.Get 1)
+                            ignore (col.Rows.Get 2)
+                    )
+
+                let mutable wrong = 0
+                use barrier = new System.Threading.Barrier (2)
+
+                let reader k =
+                    barrier.SignalAndWait () |> ignore
+
+                    for _ in 1..50_000 do
+                        if col.Rows.Get k <> k then
+                            System.Threading.Interlocked.Increment (&wrong)
+                            |> ignore
+
+                let worker = System.Threading.Thread (fun () -> reader 2)
+                worker.Start ()
+                reader 1
+                worker.Join ()
+                Expect.equal wrong 0 "concurrent clean reads never tore key and entry"
+            }
+#endif
+
+#if !FABLE_COMPILER
+            // .NET only: JavaScript exposes no forced garbage collection for WeakReference assertions.
+            test "disposing a projection releases lookup alias keys from its MRU cache" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let col = createKeyedCollection (fun (k: ReentrantKey, _: int) -> k)
+
+                col.AddOrUpdate (
+                    {
+                        Id = 1
+                        Payload = null
+                        OnEquals = ignore
+                    },
+                    42
+                )
+
+                use _ = new Effect (g, fun () -> ignore col.Rows.Keys)
+
+                let queryAndDrop () =
+                    let alias =
+                        {
+                            Id = 1
+                            Payload = Array.zeroCreate<byte> 4096
+                            OnEquals = ignore
+                        }
+
+                    Expect.equal (snd (col.Rows.Get alias)) 42 "alias matched canonical key"
+                    WeakReference alias
+
+                let weak = queryAndDrop ()
+                col.Dispose ()
+                GC.Collect ()
+                GC.WaitForPendingFinalizers ()
+                GC.Collect ()
+                Expect.isFalse weak.IsAlive "alias key is not retained by the disposed projection"
             }
 #endif
         ]

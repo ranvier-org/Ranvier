@@ -22,7 +22,10 @@ let private isUnannounced (_memo: obj) : bool =
 #else
 let private isUnannounced (memo: obj) : bool =
     // The flag lives on the memo's node record, an internal type.
-    let flags = Reflection.BindingFlags.Instance ||| Reflection.BindingFlags.NonPublic
+    let flags =
+        Reflection.BindingFlags.Instance
+        ||| Reflection.BindingFlags.NonPublic
+
     let node = memo.GetType().GetField("node", flags).GetValue memo
     node.GetType().GetProperty("Unannounced", flags).GetValue node :?> bool
 #endif

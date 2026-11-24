@@ -7,16 +7,19 @@ open System.Collections.Generic
 /// <remarks>A mutable reference record. A missing neighbour is the null reference, tested through <c>Platform.isNull (box _)</c>.</remarks>
 [<NoEquality; NoComparison>]
 type internal CollectionItem<'K, 'V> =
-    { Key: 'K
-      Signal: Signal<'V>
-      mutable Prev: CollectionItem<'K, 'V>
-      mutable Next: CollectionItem<'K, 'V> }
+    {
+        Key: 'K
+        Signal: Signal<'V>
+        mutable Prev: CollectionItem<'K, 'V>
+        mutable Next: CollectionItem<'K, 'V>
+        mutable Live: bool
+    }
 
 /// <summary>The rows and membership journal of an editable collection.</summary>
 type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Graph) =
     inherit RowsOf<Signal<'V>, 'K, 'V>(graph, (fun item -> item.Value), Unchecked.defaultof<_>)
 
-    let empty = KeyChanges.empty<'K> ()
+    let empty = KeyChanges.empty<'K>()
     let items = Platform.KeyMap<'K, CollectionItem<'K, 'V>>()
     let mutable head: CollectionItem<'K, 'V> = Unchecked.defaultof<_>
     let mutable tail: CollectionItem<'K, 'V> = Unchecked.defaultof<_>
@@ -115,7 +118,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
 
     /// <summary>Creates the projection and wires it. A collection is always made here, never by the constructor.</summary>
     static member Create(graph: Graph) : CollectionProjection<'K, 'V> =
-        let created = new CollectionProjection<'K, 'V>(graph)
+        let created = new CollectionProjection<'K, 'V> (graph)
         created.Init ()
         created
 
@@ -129,7 +132,8 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
             this.RaiseDisposed ()
 
     /// <summary>Raises when the collection is disposed. Run by an edit body inside its batch.</summary>
-    member internal this.CheckLive() = this.EnsureLive ()
+    member internal this.CheckLive() =
+        this.EnsureLive ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.AddOrUpdateCore(key: 'K, value: 'V) =
@@ -137,7 +141,10 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
 
         if
             not (Platform.isNull (box last))
+            && last.Live
             && Platform.keyEquals last.Key key
+            && not stopped
+            && last.Live
         then
             // The batch is entered, so the write skips the token and flush checks of a public write.
             last.Signal.SetFromEnteredBatch value
@@ -145,15 +152,20 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
             this.AddOrUpdateFound (key, value)
 
     /// <summary>The upsert of a key other than the last one upserted.</summary>
-    member private _.AddOrUpdateFound(key: 'K, value: 'V) =
+    member private this.AddOrUpdateFound(key: 'K, value: 'V) =
+        this.EnsureLive ()
         let item = items.Find key
+        this.EnsureLive ()
 
         if Platform.isNull (box item) then
             let fresh =
-                { Key = key
-                  Signal = Signal<'V>(graph, value)
-                  Prev = Unchecked.defaultof<_>
-                  Next = Unchecked.defaultof<_> }
+                {
+                    Key = key
+                    Signal = Signal<'V>(graph, value)
+                    Prev = Unchecked.defaultof<_>
+                    Next = Unchecked.defaultof<_>
+                    Live = true
+                }
 
             if Platform.isNull (box tail) then
                 head <- fresh
@@ -164,12 +176,15 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
                 tail <- fresh
 
             items.Set (key, fresh)
+            lastItem <- fresh
             count <- count + 1
             changes.Record (key, KeyChange.Added)
             revision.Value <- revision.Peek + 1
-        else
+        elif item.Live then
             lastItem <- item
             item.Signal.SetFromEnteredBatch value
+        else
+            this.AddOrUpdateFound (key, value)
 
     member internal this.AddOrUpdateByInBatch(keyOf: 'V -> 'K, value: 'V) =
         this.EnsureLive ()
@@ -181,10 +196,12 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
     member internal this.RemoveInBatch(key: 'K) : bool =
         this.EnsureLive ()
         let item = items.Find key
+        this.EnsureLive ()
 
-        if Platform.isNull (box item) then
+        if Platform.isNull (box item) || not item.Live then
             false
         else
+            item.Live <- false
             items.Remove key
             lastItem <- Unchecked.defaultof<_>
             let prev = item.Prev
@@ -215,6 +232,7 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
 
             while not (Platform.isNull (box node)) do
                 let next = node.Next
+                node.Live <- false
                 node.Prev <- Unchecked.defaultof<_>
                 node.Next <- Unchecked.defaultof<_>
                 changes.Record (node.Key, KeyChange.Removed)
@@ -248,7 +266,8 @@ type internal CollectionProjection<'K, 'V when 'K: equality> private (graph: Gra
         if this.Entries.Count = 0 then
             let mutable node = head
 
-            while this.Runs = mine && not (Platform.isNull (box node)) do
+            while this.Runs = mine
+                  && not (Platform.isNull (box node)) do
                 this.Visit (node.Key, node.Signal)
                 node <- node.Next
         else
@@ -298,7 +317,8 @@ type KeyedCollection<'K, 'V when 'K: equality> internal (graph: Graph, keyOf: 'V
     /// <summary>The reactive view used by collection operators and readers.</summary>
     member _.Rows = rows :> Projection<'K, 'V>
 
-    member internal _.CheckLive() = rows.CheckLive ()
+    member internal _.CheckLive() =
+        rows.CheckLive ()
 
     /// <summary>Adds a new key at the end, or updates its existing row without changing its position.</summary>
     member _.AddOrUpdate(value: 'V) =

@@ -37,13 +37,15 @@ module internal Platform =
     /// beside the reference says what it is. <c>Unsafe.As</c> on .NET 8 and later, a checked <c>unbox</c> elsewhere.
     /// </summary>
 #if FABLE_COMPILER
-    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T = unbox<'T> value
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T =
+        unbox<'T> value
 #else
 #if NET8_0_OR_GREATER
     let inline fastCast<'T when 'T: not struct> (value: obj) : 'T =
         System.Runtime.CompilerServices.Unsafe.As<'T> value
 #else
-    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T = unbox<'T> value
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T =
+        unbox<'T> value
 #endif
 #endif
 

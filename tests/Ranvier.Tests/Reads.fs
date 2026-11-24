@@ -850,7 +850,7 @@ let tests =
                         + parts[2].Value
                         + parts[3].Value)
 
-                let seen = ResizeArray<int> ()
+                let seen = ResizeArray<int>()
                 createEffect (fun () -> seen.Add sum.Value)
 
                 Expect.equal sum.SourceCount 4 "one edge per memo read"
@@ -876,7 +876,7 @@ let tests =
                 use _ = g.Activate ()
                 let source = createSignal 0
                 let doubled = createMemo (fun _ -> source.Value * 2)
-                let seen = Array.init 4 (fun _ -> ResizeArray<int> ())
+                let seen = Array.init 4 (fun _ -> ResizeArray<int>())
 
                 let readers =
                     Array.init 4 (fun i ->
@@ -887,11 +887,11 @@ let tests =
                 Expect.equal doubled.ObserverCount 4 "four readers"
 
                 // The first, the last and a middle reader: each removal moves a different reader's edge.
-                readers[0].Dispose ()
+                readers[0].Dispose()
                 source.Value <- 1
-                readers[3].Dispose ()
+                readers[3].Dispose()
                 source.Value <- 2
-                readers[1].Dispose ()
+                readers[1].Dispose()
                 source.Value <- 3
 
                 Expect.equal doubled.ObserverCount 1 "one reader is left"
@@ -900,7 +900,7 @@ let tests =
                 Expect.sequenceEqual seen[2] [ 0; 2; 4; 6 ] "the third ran for every write"
                 Expect.sequenceEqual seen[3] [ 0; 2 ] "the fourth ran until its disposal"
 
-                readers[2].Dispose ()
+                readers[2].Dispose()
                 Expect.equal doubled.ObserverCount 0 "no reader is left"
             }
 
@@ -956,10 +956,10 @@ let tests =
 
                 let owner =
                     g.CreateRoot (fun owner ->
-                        row <- Memo<int list>.CreateSignalRow (g, source)
+                        row <- Memo<int list>.CreateSignalRow(g, source)
                         owner)
 
-                let seen = ResizeArray<int list> ()
+                let seen = ResizeArray<int list>()
                 createEffect (fun () -> seen.Add row.Value)
 
                 Expect.equal row.Value [ 1; 2 ] "the row reads its signal"

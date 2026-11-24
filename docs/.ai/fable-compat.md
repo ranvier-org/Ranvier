@@ -24,7 +24,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Effects.fs | 14 | 14 | 14 | 14 | 14 | 14 | 0 | 0 |
 | Bindings.fs | 17 | 17 | 17 | 17 | 17 | 17 | 0 | 0 |
 | EffectSplit.fs | 26 | 26 | 26 | 26 | 26 | 26 | 0 | 0 |
-| AmbientGraph.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
+| AmbientGraph.fs | 10 | 10 | 10 | 10 | 10 | 10 | 6 | 0 |
 | Owners.fs | 21 | 21 | 21 | 21 | 21 | 21 | 0 | 0 |
 | Equality.fs | 25 | 24 | 24 | 25 | 24 | 24 | 8 | 0 |
 | ValueReaders.fs | 22 | 22 | 22 | 22 | 22 | 22 | 0 | 0 |
@@ -35,7 +35,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Invalidation.fs | 7 | 7 | 7 | 7 | 7 | 7 | 0 | 0 |
 | Lifetime.fs | 6 | 6 | 6 | 6 | 6 | 6 | 0 | 0 |
 | Retention.fs | 2 | 2 | 2 | 2 | 2 | 2 | 18 | 0 |
-| Tracing.fs | 2 | 2 | 2 | 107 | 103 | 103 | 3 | 0 |
+| Tracing.fs | 2 | 2 | 2 | 108 | 104 | 104 | 3 | 0 |
 | TraceModelTests.fs | 0 | 0 | 0 | 12 | 12 | 12 | 2 | 0 |
 | TraceContractTests.fs | 0 | 0 | 0 | 34 | 34 | 34 | 0 | 0 |
 | TraceJsonTests.fs | 0 | 0 | 0 | 8 | 8 | 8 | 9 | 0 |
@@ -69,7 +69,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Journal.fs | 86 | 85 | 85 | 89 | 88 | 88 | 3 | 0 |
 | FailureOrigins.fs | 16 | 16 | 16 | 16 | 16 | 16 | 2 | 0 |
 | NullChecks.fs | 3 | 3 | 3 | 3 | 3 | 3 | 0 | 0 |
-| Editables.fs | 43 | 43 | 43 | 43 | 43 | 43 | 3 | 0 |
+| Editables.fs | 47 | 47 | 47 | 47 | 47 | 47 | 5 | 0 |
 | MvuBridge.fs | 14 | 14 | 14 | 14 | 14 | 14 | 3 | 0 |
 | QueryComposition.fs | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 |
 | Queries.fs | 12 | 12 | 12 | 12 | 12 | 12 | 0 | 0 |
@@ -86,7 +86,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | Conformance.fs | 104 | 104 | 104 | 104 | 104 | 104 | 0 | 0 |
 | Streams.fs (sources) | 10 | 10 | 10 | 10 | 10 | 10 | 0 | 0 |
 | Streams.fs (traces) | 0 | 0 | 0 | 3 | 3 | 3 | 0 | 0 |
-| **Total** | 1766 | 1752 | 1749 | 1988 | 1970 | 1967 | 150 | 1 |
+| **Total** | 1774 | 1760 | 1757 | 1997 | 1979 | 1976 | 158 | 1 |
 
 ## Tests.fs
 
@@ -182,7 +182,16 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 
 ## AmbientGraph.fs
 
-<details><summary>6 passed in every build and delivery that runs them</summary>
+| Excluded | Reason |
+| --- | --- |
+| an off-thread stale read during a guarded flush raises before recomputing | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
+| a child task activating another graph and suspending leaves the outer host ambient | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
+| an outlived activation handle does not expose a worker graph to an idle starter thread | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
+| a completed activation does not retain an unreachable unguarded graph on its thread | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
+| an inline async continuation inside an effect or memo body leaves subsequent flushes and top-level reads clean | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
+| an unguarded graph constructed on a dead thread remains ambient when a later thread reuses its managed thread id | JavaScript is single-threaded and has no AsyncLocal, ThreadId recycling, or WeakReference GC. |
+
+<details><summary>10 passed in every build and delivery that runs them</summary>
 
 - an effect woken by a write outside the graph registers its cleanups
 - an effect woken by a settle outside the graph creates nodes
@@ -190,6 +199,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a cleanup run outside the graph reaches its graph
 - a body sees its own graph while another is ambient
 - a body that pulls another graph's memo keeps its own graph
+- a fused memo-effect flush clears a caught upstream failure before running the effect
+- a stale memo pulled under another graph's activation during a flush sees its own graph
+- check-chain unwinding during a flush clears a caught upstream failure before recomputing a downstream memo
+- an idle signal write marks both node and projection observers without throwing
 
 </details>
 
@@ -559,7 +572,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | a checkpoint releases the collected signals and async sources of disposed roots | Fable holds every signal for the log's lifetime. |
 | a checkpointed dump parses back to the live snapshot | TraceModel.parseDump is .NET only. |
 
-<details><summary>103 passed in every build and delivery that runs them</summary>
+<details><summary>104 passed in every build and delivery that runs them</summary>
 
 - the assembly is traced exactly when RANVIER_TRACE is defined
 - named returns the thunk's result
@@ -664,6 +677,7 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - Cursors and checkpoints / a signal created in a run stays live when the run's computation runs again (traced only)
 - Cursors and checkpoints / a checkpoint keeps the incarnations of a live host's children (traced only)
 - Cursors and checkpoints / createEffectOn records 1-based monotonic RunStart numbers (traced only)
+- Cursors and checkpoints / nodes and projections constructed under a disposed owner emit NodeNew before Dispose (traced only)
 
 </details>
 
@@ -2265,8 +2279,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 | an existing-key upsert of a keyed collection allocates nothing | JavaScript exposes no allocation counter. |
 | an existing-key upsert read by a fold, the fold's effect and a row effect allocates nothing | JavaScript exposes no allocation counter. |
 | an edit of an int allocates no more than a write through a chain of two memos | JavaScript exposes no allocation counter. |
+| concurrent clean Get calls on distinct keys never return another row's value | JavaScript is single-threaded. |
+| disposing a projection releases lookup alias keys from its MRU cache | JavaScript exposes no forced garbage collection for WeakReference assertions. |
 
-<details><summary>43 passed in every build and delivery that runs them</summary>
+<details><summary>47 passed in every build and delivery that runs them</summary>
 
 - an editable reads the seed until edited, then the edit
 - an upstream change drops the edit of an editable
@@ -2311,6 +2327,10 @@ Excluded tests exercise a .NET-only facility and are compiled out with `#if !FAB
 - a fold over a projection raises a failed row's exception and recovers with the row
 - a fold over a projection keeps a pending row's last value and follows its settle
 - a fold without a subtract folds the row values once for each value edit
+- reentrant key equality removing or disposing during Get or AddOrUpdate rechecks liveness
+- a fold over a projection whose row pull settles a recovery flush raises the pre-settle failure
+- creating folds under a disposed owner records no owner errors and leaves the projection clean
+- a value reader attached before a keyed collection's rows run reports no spurious initial change
 
 </details>
 

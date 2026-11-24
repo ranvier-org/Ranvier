@@ -219,6 +219,17 @@ and
         reset <- true
 
     /// <summary>
+    /// True when the reader is live, has consumed its initial/overflow reset, holds no recorded key changes, and its
+    /// cursor already points at <c>current</c>.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.IsIdleAt(current: 'K[]) : bool =
+        not disposed
+        && not reset
+        && changes.Size = 0
+        && obj.ReferenceEquals (current, cursor)
+
+    /// <summary>
     /// The changes since this reader's previous read, as a tracked read of the projection's <c>Keys</c>. Advances the cursor.
     /// </summary>
     /// <remarks>
