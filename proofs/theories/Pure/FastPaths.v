@@ -1,5 +1,5 @@
 From stdpp Require Import prelude gmap.
-From Stdlib Require Import ZArith.
+From Stdlib Require Import ZArith NArith.
 From Ranvier.Base Require Import Prelude Syntax.
 From Ranvier.Pure Require Import ObserverSet SourceList State Edges Marking Engine Check Runs Scheduler Ownership Concurrency.
 
@@ -7418,4 +7418,3249 @@ Proof.
   rewrite decide_False by (intros [H|H]; exact (H eq_refl)).
   split; [reflexivity|].
   intros ->. reflexivity.
+Qed.
+
+(** ** B7. Bit-tagged edge handles and observer slots *)
+
+Lemma N_lt_pow2_of_bits (x n : N) :
+  (forall k, (n <= k)%N -> N.testbit x k = false) -> (x < 2 ^ n)%N.
+Proof.
+  intros Hbits.
+  assert (Heq : N.land x (N.ones n) = x).
+  { apply N.bits_inj. intros k. rewrite N.land_spec.
+    destruct (N.ltb_spec0 k n) as [Hk|Hk].
+    - rewrite N.ones_spec_low; [apply andb_true_r|exact Hk].
+    - rewrite N.ones_spec_high by lia. rewrite Hbits; [apply andb_false_l|lia]. }
+  rewrite <- Heq, N.land_ones.
+  apply N.mod_upper_bound, N.pow_nonzero. discriminate.
+Qed.
+
+Lemma N_testbit_lt_pow2 (x n k : N) :
+  (x < 2 ^ n)%N -> (n <= k)%N -> N.testbit x k = false.
+Proof.
+  intros Hlt Hk.
+  rewrite <- (N.mod_small x (2 ^ n)%N Hlt).
+  apply N.mod_pow2_bits_high. exact Hk.
+Qed.
+
+Definition edge_signal_bit : N := (2 ^ 29)%N.
+Definition edge_memo_bit : N := (2 ^ 28)%N.
+Definition edge_idx_mask : N := N.ones 28.
+Definition edge_tag_mask : N := N.lor edge_signal_bit edge_memo_bit.
+
+Definition encode_edge_handle (tag_sig tag_memo : bool) (idx : N) : N :=
+  N.lor (if tag_sig then edge_signal_bit else 0%N)
+        (N.lor (if tag_memo then edge_memo_bit else 0%N) idx).
+
+Definition decode_edge_sig (w : N) : bool := N.testbit w 29.
+Definition decode_edge_memo (w : N) : bool := N.testbit w 28.
+Definition decode_edge_idx (w : N) : N := N.land w edge_idx_mask.
+
+Definition retag_edge_idx (w new_idx : N) : N :=
+  N.lor new_idx (N.land w edge_tag_mask).
+
+(**md
+**Bit-tagging edge handles with `SignalBit = 2^29` and `MemoBit = 2^28` leaves all `idx < 2^28` lossless, stays within 31-bit Smi bounds (`< 2^30`), preserves mutual exclusion of signal/memo tags, and makes index-only swap updates preserve tag bits.**
+
+- [tag_sig:] signal tag bit placed at bit 29.
+- [tag_memo:] memo tag bit placed at bit 28.
+- [idx:] edge index below `2^28`.
+- [new_idx:] replacement edge index below `2^28`.
+*)
+Theorem edge_handle_tag_lossless
+    (tag_sig tag_memo : bool) (idx new_idx : N) :
+  (idx < 2 ^ 28)%N ->
+  (new_idx < 2 ^ 28)%N ->
+  ~ (tag_sig = true /\ tag_memo = true) ->
+  let w := encode_edge_handle tag_sig tag_memo idx in
+  decode_edge_sig w = tag_sig /\
+  decode_edge_memo w = tag_memo /\
+  decode_edge_idx w = idx /\
+  (w < 2 ^ 30)%N /\
+  ~ (decode_edge_sig w = true /\ decode_edge_memo w = true) /\
+  retag_edge_idx w new_idx = encode_edge_handle tag_sig tag_memo new_idx.
+Proof.
+  intros Hidx Hnew Hmut.
+  cbv zeta.
+  assert (Hsig : decode_edge_sig (encode_edge_handle tag_sig tag_memo idx) = tag_sig).
+  { unfold decode_edge_sig, encode_edge_handle, edge_signal_bit, edge_memo_bit.
+    repeat rewrite N.lor_spec.
+    rewrite (N_testbit_lt_pow2 idx 28 29 Hidx) by lia.
+    destruct tag_sig, tag_memo;
+      try rewrite N.bits_0;
+      try rewrite N.pow2_bits_true;
+      try rewrite N.pow2_bits_false by lia;
+      reflexivity. }
+  assert (Hmemo : decode_edge_memo (encode_edge_handle tag_sig tag_memo idx) = tag_memo).
+  { unfold decode_edge_memo, encode_edge_handle, edge_signal_bit, edge_memo_bit.
+    repeat rewrite N.lor_spec.
+    rewrite (N_testbit_lt_pow2 idx 28 28 Hidx) by lia.
+    destruct tag_sig, tag_memo;
+      try rewrite N.bits_0;
+      try rewrite N.pow2_bits_true;
+      try rewrite N.pow2_bits_false by lia;
+      reflexivity. }
+  assert (Hdidx : decode_edge_idx (encode_edge_handle tag_sig tag_memo idx) = idx).
+  { unfold decode_edge_idx, encode_edge_handle, edge_signal_bit, edge_memo_bit, edge_idx_mask.
+    apply N.bits_inj. intros k.
+    rewrite N.land_spec. repeat rewrite N.lor_spec.
+    destruct (N.ltb_spec0 k 28) as [Hk|Hk].
+    - rewrite N.ones_spec_low by exact Hk.
+      destruct tag_sig, tag_memo;
+        try rewrite N.bits_0;
+        try rewrite (N.pow2_bits_false 29 k) by lia;
+        try rewrite (N.pow2_bits_false 28 k) by lia;
+        simpl; apply andb_true_r.
+    - rewrite N.ones_spec_high by lia.
+      rewrite andb_false_r. symmetry.
+      exact (N_testbit_lt_pow2 idx 28 k Hidx ltac:(lia)). }
+  assert (Hlt : (encode_edge_handle tag_sig tag_memo idx < 2 ^ 30)%N).
+  { apply N_lt_pow2_of_bits. intros k Hk.
+    unfold encode_edge_handle, edge_signal_bit, edge_memo_bit.
+    repeat rewrite N.lor_spec.
+    rewrite (N_testbit_lt_pow2 idx 28 k Hidx) by lia.
+    destruct tag_sig, tag_memo;
+      repeat rewrite N.bits_0;
+      repeat rewrite N.pow2_bits_false by lia;
+      reflexivity. }
+  assert (Hmut' : ~ (decode_edge_sig (encode_edge_handle tag_sig tag_memo idx) = true /\
+                     decode_edge_memo (encode_edge_handle tag_sig tag_memo idx) = true)).
+  { rewrite Hsig, Hmemo. exact Hmut. }
+  assert (Hretag : retag_edge_idx (encode_edge_handle tag_sig tag_memo idx) new_idx =
+                   encode_edge_handle tag_sig tag_memo new_idx).
+  { unfold retag_edge_idx, encode_edge_handle, edge_tag_mask, edge_signal_bit, edge_memo_bit.
+    apply N.bits_inj. intros k.
+    repeat rewrite N.lor_spec, ?N.land_spec, ?N.lor_spec.
+    destruct (N.ltb_spec0 k 28) as [Hk|Hk].
+    - destruct tag_sig, tag_memo;
+        repeat rewrite (N.pow2_bits_false 29 k) by lia;
+        repeat rewrite (N.pow2_bits_false 28 k) by lia;
+        repeat rewrite N.bits_0;
+        destruct (N.testbit new_idx k), (N.testbit idx k); reflexivity.
+    - destruct tag_sig, tag_memo;
+        rewrite (N_testbit_lt_pow2 idx 28 k Hidx ltac:(lia));
+        rewrite (N_testbit_lt_pow2 new_idx 28 k Hnew ltac:(lia));
+        destruct (N.eqb_spec k 29), (N.eqb_spec k 28); subst; try lia;
+        repeat rewrite (N.pow2_bits_false 28 29) by lia;
+        repeat rewrite (N.pow2_bits_false 29 28) by lia;
+        repeat rewrite (N.pow2_bits_false 29 k) by lia;
+        repeat rewrite (N.pow2_bits_false 28 k) by lia;
+        try rewrite N.pow2_bits_true;
+        repeat rewrite N.bits_0;
+        reflexivity. }
+  repeat split; assumption.
+Qed.
+
+Definition obs_node_slot_bit : N := (2 ^ 30)%N.
+Definition obs_slot_mask : N := N.ones 30.
+
+Definition encode_observer_slot (is_node : bool) (slot : N) : N :=
+  N.lor (if is_node then obs_node_slot_bit else 0%N) slot.
+
+Definition decode_obs_is_node (w : N) : bool := N.testbit w 30.
+Definition decode_obs_slot (w : N) : N := N.land w obs_slot_mask.
+
+(**md
+**Tagging an observer slot index `< 2^30` with `NodeSlotBit = 2^30` encodes both the `is_node` bit and `slot` losslessly within 31 bits (`< 2^31`).**
+
+- [is_node:] `true` when observer slot holds an `INode`, `false` for non-node observer handles.
+- [slot:] observer slot index below `2^30`.
+*)
+Theorem observer_slot_tag_lossless (is_node : bool) (slot : N) :
+  (slot < 2 ^ 30)%N ->
+  let w := encode_observer_slot is_node slot in
+  decode_obs_is_node w = is_node /\
+  decode_obs_slot w = slot /\
+  (w < 2 ^ 31)%N.
+Proof.
+  intros Hslot. cbv zeta.
+  split.
+  - unfold decode_obs_is_node, encode_observer_slot, obs_node_slot_bit.
+    rewrite N.lor_spec, (N_testbit_lt_pow2 slot 30 30 Hslot) by lia.
+    destruct is_node; [rewrite N.pow2_bits_true|rewrite N.bits_0]; reflexivity.
+  - split.
+    + unfold decode_obs_slot, encode_observer_slot, obs_node_slot_bit, obs_slot_mask.
+      apply N.bits_inj. intros k.
+      rewrite N.land_spec, N.lor_spec.
+      destruct (N.ltb_spec0 k 30) as [Hk|Hk].
+      * rewrite N.ones_spec_low by exact Hk.
+        destruct is_node; [rewrite (N.pow2_bits_false 30 k) by lia|rewrite N.bits_0];
+        simpl; apply andb_true_r.
+      * rewrite N.ones_spec_high by lia.
+        rewrite andb_false_r. symmetry.
+        exact (N_testbit_lt_pow2 slot 30 k Hslot ltac:(lia)).
+    + apply N_lt_pow2_of_bits. intros k Hk.
+      unfold encode_observer_slot, obs_node_slot_bit.
+      rewrite N.lor_spec, (N_testbit_lt_pow2 slot 30 k Hslot) by lia.
+      destruct is_node; [repeat rewrite N.pow2_bits_false by lia|repeat rewrite N.bits_0]; reflexivity.
+Qed.
+
+Record tagged_observer_set := {
+  tobserver_items : list (node_id * N);
+  tobserver_latest : nat
+}.
+
+Definition empty_tagged_observer_set : tagged_observer_set :=
+  {| tobserver_items := []; tobserver_latest := 0 |}.
+
+Definition untag_observer_set (o : tagged_observer_set) : observer_set :=
+  {| observer_items := (fun '(c, s) => (c, N.to_nat (decode_obs_slot s))) <$> tobserver_items o;
+     observer_latest := tobserver_latest o |}.
+
+Definition tagged_observers_remove_at (c : node_id) (th : N) (o : tagged_observer_set)
+    : option (tagged_observer_set * option (node_id * N * nat)) :=
+  let items := tobserver_items o in
+  let last := pred (length items) in
+  let h := N.to_nat (decode_edge_idx th) in
+  match items !! h with
+  | Some (c', _) =>
+    if decide (c' = c) then
+      if decide (h = last) then
+        Some ({| tobserver_items := take last items; tobserver_latest := tobserver_latest o |}, None)
+      else
+        match items !! last with
+        | Some (m, ms) =>
+          Some ({| tobserver_items := <[h := (m, ms)]> (take last items);
+                   tobserver_latest := if decide (tobserver_latest o = last) then h else tobserver_latest o |},
+                Some (m, ms, h))
+        | None => None
+        end
+    else None
+  | None => None
+  end.
+
+Record TaggedEdgeWorld := {
+  tw_observers : gmap node_id tagged_observer_set;
+  tw_sources : gmap node_id (list (node_id * option N) * nat)
+}.
+
+Definition untag_source_list (p : list (node_id * option N) * nat) : source_list :=
+  {| source_slots :=
+       (fun '(s, mh) => (s, (fun th => N.to_nat (decode_edge_idx th)) <$> (mh : option N)))
+         <$> (p.1 : list (node_id * option N));
+     source_cursor := p.2 |}.
+
+Definition untag_world (tw : TaggedEdgeWorld) : EdgeWorld :=
+  {| world_observers := untag_observer_set <$> tw_observers tw;
+     world_sources := untag_source_list <$> tw_sources tw |}.
+
+Definition tobservers_of (tw : TaggedEdgeWorld) (s : node_id) : tagged_observer_set :=
+  default empty_tagged_observer_set (tw_observers tw !! s).
+
+Definition tsources_of (tw : TaggedEdgeWorld) (c : node_id) : list (node_id * option N) * nat :=
+  default ([], 0) (tw_sources tw !! c).
+
+Definition tslot_at (tw : TaggedEdgeWorld) (c : node_id) (i : nat) : option (node_id * option N) :=
+  (tsources_of tw c).1 !! i.
+
+Definition tset_observers (s : node_id) (o : tagged_observer_set) (tw : TaggedEdgeWorld) : TaggedEdgeWorld :=
+  {| tw_observers := <[s := o]> (tw_observers tw); tw_sources := tw_sources tw |}.
+
+Definition tset_sources (c : node_id) (l : list (node_id * option N) * nat) (tw : TaggedEdgeWorld) : TaggedEdgeWorld :=
+  {| tw_observers := tw_observers tw; tw_sources := <[c := l]> (tw_sources tw) |}.
+
+Definition tset_handle (c : node_id) (i : nat) (mth : option N) (tw : TaggedEdgeWorld) : TaggedEdgeWorld :=
+  let '(slots, cur) := tsources_of tw c in
+  tset_sources c (alter (fun '(s, _) => (s, mth)) i slots, cur) tw.
+
+Definition tmoved_handle (c : node_id) (i : nat) (h : nat) (tw : TaggedEdgeWorld) : option TaggedEdgeWorld :=
+  match tslot_at tw c i with
+  | Some (_, Some th) =>
+    Some (tset_handle c i (Some (retag_edge_idx th (N.of_nat h))) tw)
+  | _ => None
+  end.
+
+Definition tagged_remove_edge (self s : node_id) (th : N) (tw : TaggedEdgeWorld) : option TaggedEdgeWorld :=
+  match tagged_observers_remove_at self th (tobservers_of tw s) with
+  | None => None
+  | Some (o', None) => Some (tset_observers s o' tw)
+  | Some (o', Some (m, ms, h)) =>
+    tmoved_handle m (N.to_nat (decode_obs_slot ms)) h (tset_observers s o' tw)
+  end.
+
+Definition tagged_sources_remove_slot (self : node_id) (i : nat) (tw : TaggedEdgeWorld) : option TaggedEdgeWorld :=
+  match tslot_at tw self i with
+  | Some (s, Some th) => tset_handle self i None <$> tagged_remove_edge self s th tw
+  | _ => None
+  end.
+
+Lemma untag_observers_of tw s :
+  observers_of (untag_world tw) s = untag_observer_set (tobservers_of tw s).
+Proof.
+  unfold observers_of, tobservers_of, untag_world. simpl.
+  rewrite lookup_fmap.
+  destruct (tw_observers tw !! s); reflexivity.
+Qed.
+
+Lemma untag_sources_of tw c :
+  sources_of (untag_world tw) c = untag_source_list (tsources_of tw c).
+Proof.
+  unfold sources_of, tsources_of, untag_world. simpl.
+  rewrite lookup_fmap.
+  destruct (tw_sources tw !! c); reflexivity.
+Qed.
+
+Lemma untag_set_observers s o tw :
+  untag_world (tset_observers s o tw) = set_observers s (untag_observer_set o) (untag_world tw).
+Proof.
+  unfold untag_world, tset_observers, set_observers. simpl.
+  f_equal. rewrite fmap_insert. reflexivity.
+Qed.
+
+Lemma list_fmap_alter {A B} (f : A -> B) (g1 : A -> A) (g2 : B -> B) (i : nat) (l : list A) :
+  (forall a, f (g1 a) = g2 (f a)) ->
+  f <$> alter g1 i l = alter g2 i (f <$> l).
+Proof.
+  intros Hfg. revert i.
+  induction l as [|a l IH]; intros [|i]; simpl; [reflexivity|reflexivity| |].
+  - rewrite Hfg. reflexivity.
+  - f_equal. apply IH.
+Qed.
+
+Lemma untag_set_handle c i mth tw :
+  untag_world (tset_handle c i mth tw) =
+  set_handle c i ((fun th => N.to_nat (decode_edge_idx th)) <$> mth) (untag_world tw).
+Proof.
+  unfold tset_handle, set_handle.
+  pose proof (untag_sources_of tw c) as Hsrc.
+  destruct (tsources_of tw c) as [slots cur] eqn:Ec.
+  unfold untag_world at 1, tset_sources, set_sources. simpl.
+  rewrite Hsrc. unfold untag_source_list at 2. simpl.
+  f_equal. rewrite fmap_insert. f_equal. f_equal.
+  unfold untag_source_list. simpl. f_equal.
+  apply list_fmap_alter. intros [s' ?]. destruct mth; reflexivity.
+Qed.
+
+Lemma take_fmap {A B} (f : A -> B) n (l : list A) :
+  take n (f <$> l) = f <$> take n l.
+Proof. apply firstn_map. Qed.
+
+Lemma untag_observers_remove_at c th o o' mres :
+  tagged_observers_remove_at c th o = Some (o', mres) ->
+  observers_remove_at c (N.to_nat (decode_edge_idx th)) (untag_observer_set o) =
+  Some (untag_observer_set o', (fun '(m, ms, h) => (m, N.to_nat (decode_obs_slot ms), h)) <$> mres).
+Proof.
+  intros Hrem.
+  unfold tagged_observers_remove_at in Hrem.
+  unfold observers_remove_at, untag_observer_set in *. simpl.
+  rewrite length_fmap, !list_lookup_fmap.
+  set (h := N.to_nat (decode_edge_idx th)) in *.
+  destruct (tobserver_items o !! h) as [[c' cs]|] eqn:Eh; [|discriminate].
+  simpl. destruct (decide (c' = c)); [|discriminate].
+  destruct (decide (h = pred (length (tobserver_items o)))) as [Hlast|Hnlast].
+  - simplify_eq. simpl. rewrite take_fmap. reflexivity.
+  - destruct (tobserver_items o !! pred (length (tobserver_items o))) as [[m ms]|] eqn:Elast; [|discriminate].
+    simplify_eq. simpl.
+    rewrite take_fmap, list_fmap_insert. reflexivity.
+Qed.
+
+Lemma decode_edge_idx_retag (th : N) (h : nat) :
+  (N.of_nat h < 2 ^ 28)%N ->
+  decode_edge_idx (retag_edge_idx th (N.of_nat h)) = N.of_nat h /\
+  decode_edge_sig (retag_edge_idx th (N.of_nat h)) = decode_edge_sig th /\
+  decode_edge_memo (retag_edge_idx th (N.of_nat h)) = decode_edge_memo th.
+Proof.
+  intros Hh.
+  repeat split.
+  - unfold decode_edge_idx, retag_edge_idx, edge_idx_mask, edge_tag_mask, edge_signal_bit, edge_memo_bit.
+    apply N.bits_inj. intros k.
+    rewrite !N.land_spec, !N.lor_spec, N.land_spec.
+    destruct (N.ltb_spec0 k 28) as [Hk|Hk].
+    + rewrite N.ones_spec_low by exact Hk.
+      rewrite N.lor_spec, (N.pow2_bits_false 29 k) by lia.
+      rewrite (N.pow2_bits_false 28 k) by lia.
+      simpl. rewrite !andb_false_r, orb_false_r, andb_true_r. reflexivity.
+    + rewrite N.ones_spec_high by lia.
+      rewrite andb_false_r. symmetry.
+      exact (N_testbit_lt_pow2 (N.of_nat h) 28 k Hh ltac:(lia)).
+  - unfold decode_edge_sig, retag_edge_idx, edge_tag_mask, edge_signal_bit, edge_memo_bit.
+    rewrite N.lor_spec, N.land_spec, N.lor_spec.
+    rewrite (N_testbit_lt_pow2 (N.of_nat h) 28 29 Hh) by lia.
+    rewrite N.pow2_bits_true, (N.pow2_bits_false 28 29) by lia.
+    simpl. rewrite andb_true_r. reflexivity.
+  - unfold decode_edge_memo, retag_edge_idx, edge_tag_mask, edge_signal_bit, edge_memo_bit.
+    rewrite N.lor_spec, N.land_spec, N.lor_spec.
+    rewrite (N_testbit_lt_pow2 (N.of_nat h) 28 28 Hh) by lia.
+    rewrite N.pow2_bits_true, (N.pow2_bits_false 29 28) by lia.
+    simpl. rewrite andb_true_r. reflexivity.
+Qed.
+
+(**md
+**Tag-preserving `ObserverList` swap-remove refines untagged `sources_remove_slot`, preserves `edge_match` on `untag_world`, and preserves the swapped peer's `is_node` and source-handle tag bits.**
+
+- [self:] computation node removing its source slot `i`.
+- [i:] slot index removed on `self`.
+- [s:] observed source node referenced by slot `i`.
+- [th:] tagged handle stored at `self`'s slot `i`.
+- [tw:] well-matched starting `TaggedEdgeWorld`.
+*)
+Theorem tagged_swap_remove_preserves_edge_match
+    (self : node_id) (i : nat) (s : node_id) (th : N) (tw : TaggedEdgeWorld) :
+  edge_match (untag_world tw) ->
+  tslot_at tw self i = Some (s, Some th) ->
+  (exists tw',
+    tagged_sources_remove_slot self i tw = Some tw' /\
+    sources_remove_slot self i (untag_world tw) = Some (untag_world tw') /\
+    edge_match (untag_world tw') /\
+    (forall o' m ms_tagged h_sw th_sw,
+      (N.of_nat h_sw < 2 ^ 28)%N ->
+      tagged_observers_remove_at self th (tobservers_of tw s) =
+        Some (o', Some (m, ms_tagged, h_sw)) ->
+      tslot_at tw m (N.to_nat (decode_obs_slot ms_tagged)) = Some (s, Some th_sw) ->
+      tobserver_items (tobservers_of tw' s) !! h_sw = Some (m, ms_tagged) /\
+      (exists th', tslot_at tw' m (N.to_nat (decode_obs_slot ms_tagged)) = Some (s, Some th') /\
+        decode_edge_idx th' = N.of_nat h_sw /\
+        decode_edge_sig th' = decode_edge_sig th_sw /\
+        decode_edge_memo th' = decode_edge_memo th_sw))).
+Proof.
+  intros Hm Hslot.
+  assert (Huslot : slot_at (untag_world tw) self i = Some (s, Some (N.to_nat (decode_edge_idx th)))).
+  { unfold slot_at. rewrite untag_sources_of. unfold tslot_at in Hslot.
+    unfold untag_source_list. simpl. rewrite list_lookup_fmap, Hslot. reflexivity. }
+  destruct (remove_step self i s (N.to_nat (decode_edge_idx th)) (untag_world tw) Hm Huslot)
+    as (w' & Hrem & Hm' & _).
+  unfold tagged_sources_remove_slot. rewrite Hslot.
+  unfold sources_remove_slot in Hrem. rewrite Huslot in Hrem.
+  unfold tagged_remove_edge.
+  unfold remove_edge in Hrem.
+  assert (Hh : observer_items (observers_of (untag_world tw) s) !! N.to_nat (decode_edge_idx th) = Some (self, i))
+    by (apply Hm; exact Huslot).
+  rewrite untag_observers_of in Hh.
+  unfold untag_observer_set in Hh. simpl in Hh.
+  rewrite list_lookup_fmap in Hh.
+  destruct (tobserver_items (tobservers_of tw s) !! N.to_nat (decode_edge_idx th)) as [[c' cs]|] eqn:Eth;
+    [|discriminate].
+  simpl in Hh. injection Hh as Hc' _. subst c'.
+  destruct (decide (N.to_nat (decode_edge_idx th) = pred (length (tobserver_items (tobservers_of tw s)))))
+    as [Hlast|Hnlast].
+  - pose (o' := {| tobserver_items := take (pred (length (tobserver_items (tobservers_of tw s)))) (tobserver_items (tobservers_of tw s));
+                   tobserver_latest := tobserver_latest (tobservers_of tw s) |}).
+    assert (Ho' : tagged_observers_remove_at self th (tobservers_of tw s) = Some (o', None)).
+    { unfold tagged_observers_remove_at. rewrite Eth, decide_True by reflexivity.
+      rewrite decide_True by exact Hlast. reflexivity. }
+    pose proof (untag_observers_remove_at _ _ _ _ _ Ho') as Huo'.
+    rewrite <- untag_observers_of in Huo'. rewrite Huo' in Hrem. simpl in Hrem.
+    injection Hrem as <-.
+    exists (tset_handle self i None (tset_observers s o' tw)).
+    split; [|split; [|split]].
+    + unfold tagged_remove_edge. rewrite Ho'. reflexivity.
+    + rewrite untag_set_handle, untag_set_observers.
+      unfold sources_remove_slot, remove_edge. rewrite Huslot, Huo'. reflexivity.
+    + rewrite untag_set_handle, untag_set_observers. exact Hm'.
+    + intros o'' m ms_tagged h_sw th_sw _ Hsw _.
+      rewrite Ho' in Hsw. discriminate.
+  - set (last := pred (length (tobserver_items (tobservers_of tw s)))) in *.
+    assert (Hlast_lt : N.to_nat (decode_edge_idx th) < last).
+    { pose proof (lookup_lt_Some _ _ _ Eth). lia. }
+    assert (Hlen_last : last < length (tobserver_items (tobservers_of tw s))).
+    { pose proof (lookup_lt_Some _ _ _ Eth). lia. }
+    destruct (lookup_lt_is_Some_2 _ _ Hlen_last) as [[m ms] Elast].
+    set (h := N.to_nat (decode_edge_idx th)) in *.
+    pose (o' := {| tobserver_items := <[h := (m, ms)]> (take last (tobserver_items (tobservers_of tw s)));
+                   tobserver_latest := if decide (tobserver_latest (tobservers_of tw s) = last) then h else tobserver_latest (tobservers_of tw s) |}).
+    assert (Ho' : tagged_observers_remove_at self th (tobservers_of tw s) = Some (o', Some (m, ms, h))).
+    { unfold tagged_observers_remove_at. fold h last. rewrite Eth, decide_True by reflexivity.
+      rewrite decide_False by exact Hnlast. rewrite Elast. reflexivity. }
+    pose proof (untag_observers_remove_at _ _ _ _ _ Ho') as Huo'.
+    fold h in Huo'.
+    rewrite <- untag_observers_of in Huo'. rewrite Huo' in Hrem. simpl in Hrem.
+    assert (Hm_obs : observer_items (observers_of (untag_world tw) s) !! last = Some (m, N.to_nat (decode_obs_slot ms))).
+    { rewrite untag_observers_of. unfold untag_observer_set. simpl.
+      rewrite list_lookup_fmap, Elast. reflexivity. }
+    assert (Hm_src : slot_at (untag_world tw) m (N.to_nat (decode_obs_slot ms)) = Some (s, Some last))
+      by (apply Hm; exact Hm_obs).
+    assert (Hmslot : exists th_m, tslot_at tw m (N.to_nat (decode_obs_slot ms)) = Some (s, Some th_m)).
+    { unfold slot_at in Hm_src. rewrite untag_sources_of in Hm_src.
+      unfold untag_source_list in Hm_src. simpl in Hm_src. rewrite list_lookup_fmap in Hm_src.
+      unfold tslot_at. destruct ((tsources_of tw m).1 !! N.to_nat (decode_obs_slot ms)) as [[sm mthm]|]; [|discriminate].
+      destruct mthm as [thm|]; simpl in Hm_src; simplify_eq. eexists. reflexivity. }
+    destruct Hmslot as [th_m Htslot_m].
+    assert (Hne_pair : ~ (self = m /\ i = N.to_nat (decode_obs_slot ms))).
+    { intros [-> Heqi]. rewrite <- Heqi in Hm_src. rewrite Huslot in Hm_src. simplify_eq. }
+    assert (Htslot_m' : tslot_at (tset_observers s o' tw) m (N.to_nat (decode_obs_slot ms)) = Some (s, Some th_m))
+      by (unfold tslot_at, tsources_of, tset_observers; simpl; exact Htslot_m).
+    set (tw1 := tset_handle m (N.to_nat (decode_obs_slot ms)) (Some (retag_edge_idx th_m (N.of_nat h))) (tset_observers s o' tw)).
+    pose (tw' := tset_handle self i None tw1).
+    exists tw'.
+    assert (Hh_lt28 : (N.of_nat h < 2 ^ 28)%N).
+    { unfold h. rewrite N2Nat.id. unfold decode_edge_idx, edge_idx_mask.
+      rewrite N.land_ones. apply N.mod_upper_bound, N.pow_nonzero. discriminate. }
+    assert (Hunwrap : untag_world tw' = set_handle self i None (set_handle m (N.to_nat (decode_obs_slot ms)) (Some h) (set_observers s (untag_observer_set o') (untag_world tw)))).
+    { unfold tw', tw1. rewrite !untag_set_handle, untag_set_observers.
+      simpl. destruct (decode_edge_idx_retag th_m h Hh_lt28) as [Hd _].
+      rewrite Hd, Nat2N.id. reflexivity. }
+    split; [|split; [|split]].
+    + unfold tagged_remove_edge. rewrite Ho'. unfold tmoved_handle. rewrite Htslot_m'. reflexivity.
+    + rewrite Hunwrap. unfold sources_remove_slot, remove_edge. rewrite Huslot, Huo'. reflexivity.
+    + rewrite Hunwrap. injection Hrem as Hrem'. unfold sources_moved_in in Hrem'.
+      rewrite <- Hrem' in Hm'. exact Hm'.
+    + intros o'' m0 ms0 h_sw th_sw Hh_bound Hsw Hslot0.
+      rewrite Ho' in Hsw. injection Hsw as <- Hm0 Hms0 <-. subst m0 ms0.
+      assert (Hobs_tw' : tw_observers tw' = <[s := o']> (tw_observers tw)).
+      { assert (Hobs_th : forall k idx v w, tw_observers (tset_handle k idx v w) = tw_observers w).
+        { intros k0 i0 v0 w0. unfold tset_handle, tsources_of, tset_sources.
+          destruct (default ([], 0) (tw_sources w0 !! k0)) as [? ?]. reflexivity. }
+        unfold tw', tw1. rewrite !Hobs_th. reflexivity. }
+      split.
+      * unfold tobservers_of. rewrite Hobs_tw', lookup_insert_eq. unfold o'; simpl.
+        rewrite list_lookup_insert_eq by (rewrite length_take; lia). reflexivity.
+      * rewrite Hslot0 in Htslot_m. injection Htslot_m as Hth_eq. subst th_m.
+        destruct (decode_edge_idx_retag th_sw h Hh_lt28) as (Hdi & Hds & Hdm).
+        assert (Hsrc_th : forall k idx v w,
+          tw_sources (tset_handle k idx v w) =
+          <[k := (alter (fun '(s', _) => (s', v)) idx (tsources_of w k).1, (tsources_of w k).2)]> (tw_sources w)).
+        { intros k0 i0 v0 w0. unfold tset_handle, tsources_of, tset_sources.
+          destruct (default ([], 0) (tw_sources w0 !! k0)) as [? ?]. reflexivity. }
+        assert (Hsrc1 : tw_sources tw1 =
+          <[m := (alter (fun '(s', _) => (s', Some (retag_edge_idx th_sw (N.of_nat h)))) (N.to_nat (decode_obs_slot ms)) (tsources_of tw m).1, (tsources_of tw m).2)]> (tw_sources tw))
+          by (unfold tw1; rewrite Hsrc_th; reflexivity).
+        assert (Hsrc' : tw_sources tw' =
+          <[self := (alter (fun '(s', _) => (s', None)) i (tsources_of tw1 self).1, (tsources_of tw1 self).2)]> (tw_sources tw1))
+          by (unfold tw'; rewrite Hsrc_th; reflexivity).
+        unfold tslot_at, tsources_of. rewrite Hsrc'.
+        unfold tslot_at in Hslot0.
+        destruct (decide (self = m)) as [<-|Hnem].
+        -- assert (Hnei : i <> N.to_nat (decode_obs_slot ms))
+             by (intro Htmp; apply Hne_pair; split; [reflexivity|exact Htmp]).
+           rewrite lookup_insert_eq. simpl.
+           unfold tsources_of at 1. rewrite Hsrc1, lookup_insert_eq. simpl.
+           rewrite list_lookup_alter_ne by exact Hnei.
+           rewrite list_lookup_alter_eq, Hslot0. simpl.
+           eexists; split; [reflexivity|split; [exact Hdi|split; [exact Hds|exact Hdm]]].
+        -- rewrite lookup_insert_ne by exact Hnem.
+           rewrite Hsrc1, lookup_insert_eq. simpl.
+           rewrite list_lookup_alter_eq, Hslot0. simpl.
+           eexists; split; [reflexivity|split; [exact Hdi|split; [exact Hds|exact Hdm]]].
+Qed.
+
+(** ** B8. Packed Node.Flags bijection and single-word guard refinement *)
+
+Record node_flags_unpacked := {
+  nf_kind : N;
+  nf_freshness : N;
+  nf_status : N;
+  nf_active : N;
+  nf_disposed : bool;
+  nf_unannounced : bool;
+  nf_queued : bool;
+  nf_in_cleanup : bool;
+  nf_publishes : bool;
+  nf_violated : bool;
+  nf_published : bool;
+  nf_safe_eq : bool
+}.
+
+Definition nf_wf (nf : node_flags_unpacked) : Prop :=
+  (nf_kind nf < 4)%N /\
+  (nf_freshness nf < 4)%N /\
+  (nf_status nf < 16)%N /\
+  (nf_active nf < 4)%N.
+
+Definition nf_bool_bit (b : bool) (pos : N) : N :=
+  if b then N.shiftl 1%N pos else 0%N.
+
+Definition pack_node_flags (nf : node_flags_unpacked) : N :=
+  N.lor (nf_kind nf)
+    (N.lor (N.shiftl (nf_freshness nf) 2)
+      (N.lor (N.shiftl (nf_status nf) 4)
+        (N.lor (N.shiftl (nf_active nf) 8)
+          (N.lor (nf_bool_bit (nf_disposed nf) 10)
+            (N.lor (nf_bool_bit (nf_unannounced nf) 11)
+              (N.lor (nf_bool_bit (nf_queued nf) 12)
+                (N.lor (nf_bool_bit (nf_in_cleanup nf) 13)
+                  (N.lor (nf_bool_bit (nf_publishes nf) 14)
+                    (N.lor (nf_bool_bit (nf_violated nf) 15)
+                      (N.lor (nf_bool_bit (nf_published nf) 16)
+                             (nf_bool_bit (nf_safe_eq nf) 17))))))))))).
+
+Definition unpack_node_flags (w : N) : node_flags_unpacked := {|
+  nf_kind := N.land w (N.ones 2);
+  nf_freshness := N.land (N.shiftr w 2) (N.ones 2);
+  nf_status := N.land (N.shiftr w 4) (N.ones 4);
+  nf_active := N.land (N.shiftr w 8) (N.ones 2);
+  nf_disposed := N.testbit w 10;
+  nf_unannounced := N.testbit w 11;
+  nf_queued := N.testbit w 12;
+  nf_in_cleanup := N.testbit w 13;
+  nf_publishes := N.testbit w 14;
+  nf_violated := N.testbit w 15;
+  nf_published := N.testbit w 16;
+  nf_safe_eq := N.testbit w 17
+|}.
+
+Lemma N_testbit_bool_bit b pos k :
+  N.testbit (nf_bool_bit b pos) k = if b then N.testbit (N.shiftl 1%N pos) k else false.
+Proof. destruct b; simpl; reflexivity. Qed.
+
+Lemma N_testbit_shiftl_exact a pos k :
+  (pos <= k)%N -> N.testbit (N.shiftl a pos) k = N.testbit a (k - pos).
+Proof. intros H. apply N.shiftl_spec_high; lia. Qed.
+
+Lemma N_testbit_shiftl_lt a pos k :
+  (k < pos)%N -> N.testbit (N.shiftl a pos) k = false.
+Proof. intros H. apply N.shiftl_spec_low; exact H. Qed.
+
+Lemma N_testbit_1 k : N.testbit 1%N k = (k =? 0)%N.
+Proof. replace 1%N with (2 ^ 0)%N by reflexivity. destruct (N.eqb_spec k 0) as [->|H].
+  - apply N.pow2_bits_true.
+  - apply N.pow2_bits_false. lia.
+Qed.
+
+Local Ltac kill_pack_bits Hk0 Hf0 Hs0 Ha0 Hif_false :=
+  repeat match goal with
+  | |- context [N.testbit (N.shiftl ?a ?p) ?kk] =>
+    first
+      [ rewrite (N_testbit_shiftl_lt a p kk) by lia
+      | rewrite (N_testbit_shiftl_exact a p kk) by lia ]
+  end;
+  rewrite ?N_testbit_1;
+  repeat match goal with
+  | |- context [N.testbit (nf_kind _) ?kk] =>
+    first [rewrite (Hk0 kk) by lia | idtac]
+  | |- context [N.testbit (nf_freshness _) ?kk] =>
+    first [rewrite (Hf0 kk) by lia | idtac]
+  | |- context [N.testbit (nf_status _) ?kk] =>
+    first [rewrite (Hs0 kk) by lia | idtac]
+  | |- context [N.testbit (nf_active _) ?kk] =>
+    first [rewrite (Ha0 kk) by lia | idtac]
+  end;
+  repeat match goal with
+  | |- context [(?x =? ?y)%N] =>
+    destruct (N.eqb_spec x y); try lia
+  end;
+  rewrite ?Hif_false;
+  repeat match goal with
+  | |- context [if ?b then _ else _] => destruct b
+  end;
+  rewrite ?Bool.orb_false_l, ?Bool.orb_false_r;
+  reflexivity.
+
+Lemma N_testbit_pack_bit_exact nf k :
+  nf_wf nf ->
+  ((k < 2)%N -> N.testbit (pack_node_flags nf) k = N.testbit (nf_kind nf) k) /\
+  ((2 <= k)%N -> (k < 4)%N -> N.testbit (pack_node_flags nf) k = N.testbit (nf_freshness nf) (k - 2)) /\
+  ((4 <= k)%N -> (k < 8)%N -> N.testbit (pack_node_flags nf) k = N.testbit (nf_status nf) (k - 4)) /\
+  ((8 <= k)%N -> (k < 10)%N -> N.testbit (pack_node_flags nf) k = N.testbit (nf_active nf) (k - 8)) /\
+  (k = 10%N -> N.testbit (pack_node_flags nf) k = nf_disposed nf) /\
+  (k = 11%N -> N.testbit (pack_node_flags nf) k = nf_unannounced nf) /\
+  (k = 12%N -> N.testbit (pack_node_flags nf) k = nf_queued nf) /\
+  (k = 13%N -> N.testbit (pack_node_flags nf) k = nf_in_cleanup nf) /\
+  (k = 14%N -> N.testbit (pack_node_flags nf) k = nf_publishes nf) /\
+  (k = 15%N -> N.testbit (pack_node_flags nf) k = nf_violated nf) /\
+  (k = 16%N -> N.testbit (pack_node_flags nf) k = nf_published nf) /\
+  (k = 17%N -> N.testbit (pack_node_flags nf) k = nf_safe_eq nf) /\
+  ((18 <= k)%N -> N.testbit (pack_node_flags nf) k = false).
+Proof.
+  intros (Hk & Hf & Hs & Ha).
+  change 4%N with (2 ^ 2)%N in Hk, Hf, Ha.
+  change 16%N with (2 ^ 4)%N in Hs.
+  assert (Hk0 : forall m, (2 <= m)%N -> N.testbit (nf_kind nf) m = false) by (intros; eapply N_testbit_lt_pow2; eassumption).
+  assert (Hf0 : forall m, (2 <= m)%N -> N.testbit (nf_freshness nf) m = false) by (intros; eapply N_testbit_lt_pow2; eassumption).
+  assert (Hs0 : forall m, (4 <= m)%N -> N.testbit (nf_status nf) m = false) by (intros; eapply N_testbit_lt_pow2; eassumption).
+  assert (Ha0 : forall m, (2 <= m)%N -> N.testbit (nf_active nf) m = false) by (intros; eapply N_testbit_lt_pow2; eassumption).
+  unfold pack_node_flags.
+  repeat rewrite N.lor_spec.
+  repeat rewrite N_testbit_bool_bit.
+  assert (Hif_false : forall b : bool, (if b then false else false) = false) by (intros []; reflexivity).
+  repeat split; intros;
+    try subst k;
+    kill_pack_bits Hk0 Hf0 Hs0 Ha0 Hif_false.
+Qed.
+
+(**md
+**Packing `Kind` (2b), `Freshness` (2b), `Status` (4b), `Active` (2b), and all 8 boolean node flags into a 32-bit word (`< 2^32`) is a lossless exact bijection on well-formed unpacked flag records.**
+
+- [nf:] well-formed unpacked `node_flags_unpacked` record whose multi-bit fields fit their bit widths (`Kind < 4`, `Freshness < 4`, `Status < 16`, `Active < 4`).
+*)
+Theorem packed_node_flags_bijection (nf : node_flags_unpacked) :
+  nf_wf nf ->
+  let w := pack_node_flags nf in
+  (w < 2 ^ 32)%N /\ unpack_node_flags w = nf.
+Proof.
+  intros Hwf. pose proof Hwf as (Hk & Hf & Hs & Ha).
+  change 4%N with (2 ^ 2)%N in Hk, Hf, Ha.
+  change 16%N with (2 ^ 4)%N in Hs.
+  cbv zeta. split.
+  - apply N_lt_pow2_of_bits. intros k Hk32.
+    destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+    apply Hhi. lia.
+  - unfold unpack_node_flags.
+    destruct nf as [k0 f0 s0 a0 b10 b11 b12 b13 b14 b15 b16 b17].
+    simpl in *.
+    assert (Ek : N.land (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) (N.ones 2) = k0).
+    { apply N.bits_inj. intros j. rewrite N.land_spec.
+      destruct (N.ltb_spec0 j 2) as [Hj|Hj].
+      - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
+        destruct (N_testbit_pack_bit_exact _ j Hwf) as [H0 _]. rewrite H0 by exact Hj. reflexivity.
+      - rewrite N.ones_spec_high by lia. rewrite andb_false_r. symmetry.
+        eapply N_testbit_lt_pow2; [exact Hk|lia]. }
+    assert (Ef : N.land (N.shiftr (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) 2) (N.ones 2) = f0).
+    { apply N.bits_inj. intros j. rewrite N.land_spec, N.shiftr_spec by lia.
+      destruct (N.ltb_spec0 j 2) as [Hj|Hj].
+      - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
+        destruct (N_testbit_pack_bit_exact _ (j + 2) Hwf) as (_ & H2 & _).
+        rewrite H2 by lia. simpl. f_equal. lia.
+      - rewrite N.ones_spec_high by lia. rewrite andb_false_r. symmetry.
+        eapply N_testbit_lt_pow2; [exact Hf|lia]. }
+    assert (Es : N.land (N.shiftr (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) 4) (N.ones 4) = s0).
+    { apply N.bits_inj. intros j. rewrite N.land_spec, N.shiftr_spec by lia.
+      destruct (N.ltb_spec0 j 4) as [Hj|Hj].
+      - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
+        destruct (N_testbit_pack_bit_exact _ (j + 4) Hwf) as (_ & _ & H4 & _).
+        rewrite H4 by lia. simpl. f_equal. lia.
+      - rewrite N.ones_spec_high by lia. rewrite andb_false_r. symmetry.
+        eapply N_testbit_lt_pow2; [exact Hs|lia]. }
+    assert (Ea : N.land (N.shiftr (pack_node_flags {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |}) 8) (N.ones 2) = a0).
+    { apply N.bits_inj. intros j. rewrite N.land_spec, N.shiftr_spec by lia.
+      destruct (N.ltb_spec0 j 2) as [Hj|Hj].
+      - rewrite N.ones_spec_low by exact Hj. rewrite andb_true_r.
+        destruct (N_testbit_pack_bit_exact _ (j + 8) Hwf) as (_ & _ & _ & H8 & _).
+        rewrite H8 by lia. simpl. f_equal. lia.
+      - rewrite N.ones_spec_high by lia. rewrite andb_false_r. symmetry.
+        eapply N_testbit_lt_pow2; [exact Ha|lia]. }
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 10 Hwf) as (_&_&_&_&H10&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 11 Hwf) as (_&_&_&_&_&H11&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 12 Hwf) as (_&_&_&_&_&_&H12&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 13 Hwf) as (_&_&_&_&_&_&_&H13&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 14 Hwf) as (_&_&_&_&_&_&_&_&H14&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 15 Hwf) as (_&_&_&_&_&_&_&_&_&H15&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 16 Hwf) as (_&_&_&_&_&_&_&_&_&_&H16&_).
+    destruct (N_testbit_pack_bit_exact {| nf_kind := k0; nf_freshness := f0; nf_status := s0; nf_active := a0;
+      nf_disposed := b10; nf_unannounced := b11; nf_queued := b12; nf_in_cleanup := b13;
+      nf_publishes := b14; nf_violated := b15; nf_published := b16; nf_safe_eq := b17 |} 17 Hwf) as (_&_&_&_&_&_&_&_&_&_&_&H17&_).
+    rewrite Ek, Ef, Es, Ea.
+    rewrite H10, H11, H12, H13, H14, H15, H16, H17 by reflexivity.
+    reflexivity.
+Qed.
+
+Definition packed_idle_effect_mask : N :=
+  N.lor (N.ones 4) (N.lor (N.shiftl 1%N 10) (N.lor (N.shiftl 1%N 12) (N.shiftl 1%N 13))).
+Definition packed_idle_effect_val : N := 1%N.
+
+Definition packed_clean_leaf_memo_mask : N :=
+  N.lor (N.ones 4) (N.shiftl 1%N 10).
+Definition packed_clean_leaf_memo_val : N := 0%N.
+
+Definition packed_ready_published_memo_mask : N :=
+  N.lor (N.ones 2) (N.lor (N.shiftl (N.ones 4) 4) (N.lor (N.shiftl 1%N 10) (N.shiftl 1%N 16))).
+Definition packed_ready_published_memo_val : N := N.shiftl 1%N 16.
+
+(**md
+**Single-word mask-and-compare guards on packed 32-bit `Node.Flags` are logically equivalent to the unpacked multi-field conjunctions for idle effects, clean leaf memos, and ready published memos.**
+
+- [nf:] well-formed unpacked `node_flags_unpacked` record whose bit-packed representation is tested.
+*)
+Theorem packed_guard_refines_unpacked (nf : node_flags_unpacked) :
+  nf_wf nf ->
+  let w := pack_node_flags nf in
+  ((N.land w packed_idle_effect_mask =? packed_idle_effect_val)%N = true <->
+    nf_kind nf = 1%N /\ nf_freshness nf = 0%N /\
+    nf_disposed nf = false /\ nf_queued nf = false /\ nf_in_cleanup nf = false) /\
+  ((N.land w packed_clean_leaf_memo_mask =? packed_clean_leaf_memo_val)%N = true <->
+    nf_kind nf = 0%N /\ nf_freshness nf = 0%N /\ nf_disposed nf = false) /\
+  ((N.land w packed_ready_published_memo_mask =? packed_ready_published_memo_val)%N = true <->
+    nf_kind nf = 0%N /\ nf_status nf = 0%N /\
+    nf_disposed nf = false /\ nf_published nf = true).
+Proof.
+  intros Hwf. cbv zeta.
+  pose proof (packed_node_flags_bijection nf Hwf) as [_ Hunp].
+  rewrite !N.eqb_eq.
+  assert (Hbit_eq : forall a b : N, a = b <-> forall k, N.testbit a k = N.testbit b k).
+  { intros a b; split; [intros ->; reflexivity|apply N.bits_inj]. }
+  assert (Hm1_0 : N.land packed_idle_effect_mask (N.ones 2) = N.ones 2) by reflexivity.
+  assert (Hm1_2 : N.land (N.shiftr packed_idle_effect_mask 2) (N.ones 2) = N.ones 2) by reflexivity.
+  assert (Hm2_0 : N.land packed_clean_leaf_memo_mask (N.ones 2) = N.ones 2) by reflexivity.
+  assert (Hm2_2 : N.land (N.shiftr packed_clean_leaf_memo_mask 2) (N.ones 2) = N.ones 2) by reflexivity.
+  assert (Hm3_0 : N.land packed_ready_published_memo_mask (N.ones 2) = N.ones 2) by reflexivity.
+  assert (Hm3_4 : N.land (N.shiftr packed_ready_published_memo_mask 4) (N.ones 4) = N.ones 4) by reflexivity.
+  assert (Hunp_shiftr : forall m n pos width,
+    N.land (N.shiftr (N.land n m) pos) (N.ones width) =
+    N.land (N.land (N.shiftr n pos) (N.ones width)) (N.land (N.shiftr m pos) (N.ones width))).
+  { intros m n pos width. apply N.bits_inj. intros j.
+    rewrite !N.land_spec, !N.shiftr_spec by lia. rewrite !N.land_spec.
+    destruct (N.testbit n (j + pos)), (N.testbit m (j + pos)), (N.testbit (N.ones width) j); reflexivity. }
+  split; [split | split; [split | split]].
+  - intros Heq. repeat split.
+    + pose proof (f_equal (fun u => N.land u (N.ones 2)) Heq) as Hk.
+      cbv beta in Hk. rewrite <- N.land_assoc, Hm1_0 in Hk.
+      assert (Hk' : nf_kind (unpack_node_flags (pack_node_flags nf)) = 1%N)
+        by (unfold unpack_node_flags; simpl; rewrite Hk; reflexivity).
+      rewrite Hunp in Hk'. exact Hk'.
+    + pose proof (f_equal (fun u => N.land (N.shiftr u 2) (N.ones 2)) Heq) as Hf.
+      cbv beta in Hf. rewrite Hunp_shiftr, Hm1_2 in Hf.
+      assert (Hf' : nf_freshness (unpack_node_flags (pack_node_flags nf)) = 0%N).
+      { unfold unpack_node_flags; simpl.
+        rewrite <- N.land_assoc in Hf.
+        replace (N.land (N.ones 2) (N.ones 2)) with (N.ones 2) in Hf by reflexivity.
+        rewrite Hf. reflexivity. }
+      rewrite Hunp in Hf'. exact Hf'.
+    + pose proof (proj1 (Hbit_eq _ _) Heq 10%N) as B10.
+      rewrite N.land_spec in B10.
+      change (N.testbit packed_idle_effect_mask 10) with true in B10.
+      change (N.testbit packed_idle_effect_val 10) with false in B10.
+      rewrite andb_true_r in B10.
+      assert (Hd : nf_disposed (unpack_node_flags (pack_node_flags nf)) = false) by (exact B10).
+      rewrite Hunp in Hd. exact Hd.
+    + pose proof (proj1 (Hbit_eq _ _) Heq 12%N) as B12.
+      rewrite N.land_spec in B12.
+      change (N.testbit packed_idle_effect_mask 12) with true in B12.
+      change (N.testbit packed_idle_effect_val 12) with false in B12.
+      rewrite andb_true_r in B12.
+      assert (Hq : nf_queued (unpack_node_flags (pack_node_flags nf)) = false) by (exact B12).
+      rewrite Hunp in Hq. exact Hq.
+    + pose proof (proj1 (Hbit_eq _ _) Heq 13%N) as B13.
+      rewrite N.land_spec in B13.
+      change (N.testbit packed_idle_effect_mask 13) with true in B13.
+      change (N.testbit packed_idle_effect_val 13) with false in B13.
+      rewrite andb_true_r in B13.
+      assert (Hc : nf_in_cleanup (unpack_node_flags (pack_node_flags nf)) = false) by (exact B13).
+      rewrite Hunp in Hc. exact Hc.
+  - intros (Hk & Hf & Hd & Hq & Hc).
+    apply N.bits_inj. intros k. rewrite N.land_spec.
+    destruct (N.ltb_spec0 k 18) as [Hk18|Hk18].
+    + destruct (N_testbit_pack_bit_exact nf k Hwf)
+        as (P0 & P2 & P4 & P8 & P10 & P11 & P12 & P13 & P14 & P15 & P16 & P17 & _).
+      assert (Hkcases : k = 0%N \/ k = 1%N \/ k = 2%N \/ k = 3%N \/
+                        k = 4%N \/ k = 5%N \/ k = 6%N \/ k = 7%N \/
+                        k = 8%N \/ k = 9%N \/ k = 10%N \/ k = 11%N \/
+                        k = 12%N \/ k = 13%N \/ k = 14%N \/ k = 15%N \/
+                        k = 16%N \/ k = 17%N) by lia.
+      repeat destruct Hkcases as [->|Hkcases];
+        try (rewrite P0 by lia; rewrite Hk; reflexivity);
+        try (rewrite P2 by lia; rewrite Hf; reflexivity);
+        try (rewrite P10 by reflexivity; rewrite Hd; reflexivity);
+        try (rewrite P12 by reflexivity; rewrite Hq; reflexivity);
+        try (rewrite P13 by reflexivity; rewrite Hc; reflexivity);
+        try (change (N.testbit packed_idle_effect_mask _) with false; rewrite andb_false_r; reflexivity).
+      subst k. rewrite P17 by reflexivity. change (N.testbit packed_idle_effect_mask 17) with false.
+      rewrite andb_false_r. reflexivity.
+    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+      rewrite Hhi by lia. rewrite andb_false_l.
+      symmetry. eapply N_testbit_lt_pow2; [instantiate (1 := 18%N); vm_compute; reflexivity|lia].
+  - intros Heq. repeat split.
+    + pose proof (f_equal (fun u => N.land u (N.ones 2)) Heq) as Hk.
+      cbv beta in Hk. rewrite <- N.land_assoc, Hm2_0 in Hk.
+      assert (Hk' : nf_kind (unpack_node_flags (pack_node_flags nf)) = 0%N)
+        by (unfold unpack_node_flags; simpl; rewrite Hk; reflexivity).
+      rewrite Hunp in Hk'. exact Hk'.
+    + pose proof (f_equal (fun u => N.land (N.shiftr u 2) (N.ones 2)) Heq) as Hf.
+      cbv beta in Hf. rewrite Hunp_shiftr, Hm2_2 in Hf.
+      assert (Hf' : nf_freshness (unpack_node_flags (pack_node_flags nf)) = 0%N).
+      { unfold unpack_node_flags; simpl.
+        rewrite <- N.land_assoc in Hf.
+        replace (N.land (N.ones 2) (N.ones 2)) with (N.ones 2) in Hf by reflexivity.
+        rewrite Hf. reflexivity. }
+      rewrite Hunp in Hf'. exact Hf'.
+    + pose proof (proj1 (Hbit_eq _ _) Heq 10%N) as B10.
+      rewrite N.land_spec in B10.
+      change (N.testbit packed_clean_leaf_memo_mask 10) with true in B10.
+      change (N.testbit packed_clean_leaf_memo_val 10) with false in B10.
+      rewrite andb_true_r in B10.
+      assert (Hd : nf_disposed (unpack_node_flags (pack_node_flags nf)) = false) by (exact B10).
+      rewrite Hunp in Hd. exact Hd.
+  - intros (Hk & Hf & Hd).
+    apply N.bits_inj. intros k. rewrite N.land_spec.
+    destruct (N.ltb_spec0 k 18) as [Hk18|Hk18].
+    + destruct (N_testbit_pack_bit_exact nf k Hwf)
+        as (P0 & P2 & _ & _ & P10 & _).
+      assert (Hkcases : k = 0%N \/ k = 1%N \/ k = 2%N \/ k = 3%N \/
+                        k = 4%N \/ k = 5%N \/ k = 6%N \/ k = 7%N \/
+                        k = 8%N \/ k = 9%N \/ k = 10%N \/ k = 11%N \/
+                        k = 12%N \/ k = 13%N \/ k = 14%N \/ k = 15%N \/
+                        k = 16%N \/ k = 17%N) by lia.
+      repeat destruct Hkcases as [->|Hkcases];
+        try (rewrite P0 by lia; rewrite Hk; reflexivity);
+        try (rewrite P2 by lia; rewrite Hf; reflexivity);
+        try (rewrite P10 by reflexivity; rewrite Hd; reflexivity);
+        try (change (N.testbit packed_clean_leaf_memo_mask _) with false; rewrite andb_false_r; reflexivity).
+      subst k. change (N.testbit packed_clean_leaf_memo_mask 17) with false. rewrite andb_false_r. reflexivity.
+    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+      rewrite Hhi by lia. rewrite andb_false_l.
+      symmetry. apply N.bits_0.
+  - intros Heq. repeat split.
+    + pose proof (f_equal (fun u => N.land u (N.ones 2)) Heq) as Hk.
+      cbv beta in Hk. rewrite <- N.land_assoc, Hm3_0 in Hk.
+      assert (Hk' : nf_kind (unpack_node_flags (pack_node_flags nf)) = 0%N)
+        by (unfold unpack_node_flags; simpl; rewrite Hk; reflexivity).
+      rewrite Hunp in Hk'. exact Hk'.
+    + pose proof (f_equal (fun u => N.land (N.shiftr u 4) (N.ones 4)) Heq) as Hs.
+      cbv beta in Hs. rewrite Hunp_shiftr, Hm3_4 in Hs.
+      assert (Hs' : nf_status (unpack_node_flags (pack_node_flags nf)) = 0%N).
+      { unfold unpack_node_flags; simpl.
+        rewrite <- N.land_assoc in Hs.
+        replace (N.land (N.ones 4) (N.ones 4)) with (N.ones 4) in Hs by reflexivity.
+        rewrite Hs. reflexivity. }
+      rewrite Hunp in Hs'. exact Hs'.
+    + pose proof (proj1 (Hbit_eq _ _) Heq 10%N) as B10.
+      rewrite N.land_spec in B10.
+      change (N.testbit packed_ready_published_memo_mask 10) with true in B10.
+      change (N.testbit packed_ready_published_memo_val 10) with false in B10.
+      rewrite andb_true_r in B10.
+      assert (Hd : nf_disposed (unpack_node_flags (pack_node_flags nf)) = false) by (exact B10).
+      rewrite Hunp in Hd. exact Hd.
+    + pose proof (proj1 (Hbit_eq _ _) Heq 16%N) as B16.
+      rewrite N.land_spec in B16.
+      change (N.testbit packed_ready_published_memo_mask 16) with true in B16.
+      change (N.testbit packed_ready_published_memo_val 16) with true in B16.
+      rewrite andb_true_r in B16.
+      assert (Hp : nf_published (unpack_node_flags (pack_node_flags nf)) = true) by (exact B16).
+      rewrite Hunp in Hp. exact Hp.
+  - intros (Hk & Hs & Hd & Hp).
+    apply N.bits_inj. intros k. rewrite N.land_spec.
+    destruct (N.ltb_spec0 k 18) as [Hk18|Hk18].
+    + destruct (N_testbit_pack_bit_exact nf k Hwf)
+        as (P0 & _ & P4 & _ & P10 & _ & _ & _ & _ & _ & P16 & _).
+      assert (Hkcases : k = 0%N \/ k = 1%N \/ k = 2%N \/ k = 3%N \/
+                        k = 4%N \/ k = 5%N \/ k = 6%N \/ k = 7%N \/
+                        k = 8%N \/ k = 9%N \/ k = 10%N \/ k = 11%N \/
+                        k = 12%N \/ k = 13%N \/ k = 14%N \/ k = 15%N \/
+                        k = 16%N \/ k = 17%N) by lia.
+      repeat destruct Hkcases as [->|Hkcases];
+        try (rewrite P0 by lia; rewrite Hk; reflexivity);
+        try (rewrite P4 by lia; rewrite Hs; reflexivity);
+        try (rewrite P10 by reflexivity; rewrite Hd; reflexivity);
+        try (rewrite P16 by reflexivity; rewrite Hp; reflexivity);
+        try (change (N.testbit packed_ready_published_memo_mask _) with false; rewrite andb_false_r; reflexivity).
+      subst k. change (N.testbit packed_ready_published_memo_mask 17) with false. rewrite andb_false_r. reflexivity.
+    + destruct (N_testbit_pack_bit_exact nf k Hwf) as (_&_&_&_&_&_&_&_&_&_&_&_&Hhi).
+      rewrite Hhi by lia. rewrite andb_false_l.
+      symmetry. eapply N_testbit_lt_pow2; [instantiate (1 := 18%N); vm_compute; reflexivity|lia].
+Qed.
+
+(** ** B9. Leaf-memo cutoff skip and custom-comparer fused flush *)
+
+Definition ref_ready_cutoff_step
+    (f : nat) (prev_val next_val : val) (cmp : comparer) (n : node_id) : M unit :=
+  let* moved := ready_value_moved prev_val next_val cmp n in
+  let* s0 := m_get in
+  let* _ := m_modify (ghost_run_end n (g_current s0) moved) in
+  if moved then
+    let* _ := m_step (notify_dirty_except f n (g_current s0)) in
+    let* s' := m_get in
+    if bool_decide (g_batch_depth s' = 0%nat) && negb (g_flushing s') && live_queue s'
+    then m_modify (with_flush_owed true) else m_return tt
+  else m_return tt.
+
+Definition leaf_no_cutoff_step (n : node_id) : M unit :=
+  let* s0 := m_get in
+  m_modify (ghost_run_end n (g_current s0) false).
+
+(**md
+**For a ready-published memo `n` with zero observers (`observer_items = []`) and a non-throwing comparer (`cmp <> CmpThrows _`), skipping equality evaluation (`moved := false`, omitting `notify_dirty_except`) yields the exact same engine state `s'` as `ready_value_moved` plus conditional `notify_dirty_except` whenever no un-owed queued flush transition triggers.**
+
+- [f:] marking fuel bound.
+- [prev_val:] previously published memo value.
+- [next_val:] newly produced memo value.
+- [cmp:] memo cutoff comparer (non-throwing).
+- [n:] leaf memo node id.
+- [r:] optional current computation passed to `notify_dirty_except`.
+- [s:] starting engine state with empty observers on `n`.
+*)
+Theorem leaf_memo_no_cutoff_eq
+    (f : nat) (prev_val next_val : val) (cmp : comparer) (n : node_id)
+    (r : option node_id) (s : state) :
+  observer_items (observers_of (g_edges s) n) = [] ->
+  (forall y, cmp <> CmpThrows y) ->
+  notify_dirty_except f n r s = Some s /\
+  ((bool_decide (g_batch_depth s = 0%nat) && negb (g_flushing s) && live_queue s && negb (g_flush_owed s) = false) ->
+   ref_ready_cutoff_step f prev_val next_val cmp n s = leaf_no_cutoff_step n s).
+Proof.
+  intros Hobs Hnt.
+  assert (Hnde : forall cur st,
+    observer_items (observers_of (g_edges st) n) = [] ->
+    notify_dirty_except f n cur st = Some st).
+  { intros cur st Hst. unfold notify_dirty_except. apply notify_with_nil. exact Hst. }
+  split; [exact (Hnde r s Hobs)|].
+  intros Hno_owe.
+  unfold ref_ready_cutoff_step, leaf_no_cutoff_step, ready_value_moved.
+  assert (Hcmp : exists b : bool,
+    match cmp with
+    | CmpEq => m_return (bool_decide (next_val <> prev_val))
+    | CmpNever => m_return true
+    | CmpThrows y =>
+      let* _ := modify_node n (fun x => node_with_status StError (node_with_failure (Some y) (node_with_value prev_val x))) in
+      m_return true
+    end s = Some (s, b)).
+  { destruct cmp as [| |y]; eauto. exfalso. exact (Hnt y eq_refl). }
+  destruct Hcmp as [moved Hmoved].
+  unfold m_bind at 1. rewrite Hmoved.
+  rewrite !m_bind_get, !m_bind_modify.
+  assert (Hgh : ghost_run_end n (g_current s) moved s = ghost_run_end n (g_current s) false s).
+  { unfold ghost_run_end. destruct (g_nodes s !! n) as [dn|]; [|reflexivity].
+    f_equal. f_equal. unfold run_end_unnoticed.
+    assert (Hempty_view : observer_view (observers_of (g_edges s) n) = []).
+    { unfold observer_view. rewrite Hobs. reflexivity. }
+    rewrite Hempty_view. simpl.
+    destruct moved, (decide (gh_published (g_ghost s) !! n = Some (read_view_of dn))); reflexivity. }
+  destruct moved; [|reflexivity].
+  set (sg := ghost_run_end n (g_current s) true s).
+  assert (Hsg_obs : observer_items (observers_of (g_edges sg) n) = []).
+  { unfold sg, ghost_run_end. destruct (g_nodes s !! n); exact Hobs. }
+  rewrite m_bind_step with (s' := sg) by (exact (Hnde (g_current s) sg Hsg_obs)).
+  rewrite m_bind_get.
+  assert (Hsg_fields : g_batch_depth sg = g_batch_depth s /\ g_flushing sg = g_flushing s /\
+                       live_queue sg = live_queue s /\ g_flush_owed sg = g_flush_owed s).
+  { unfold sg, ghost_run_end, live_queue. destruct (g_nodes s !! n); repeat split; reflexivity. }
+  destruct Hsg_fields as (Hbd & Hfl & Hlq & Hfo).
+  rewrite Hbd, Hfl, Hlq.
+  destruct (bool_decide (g_batch_depth s = 0%nat) && negb (g_flushing s) && live_queue s) eqn:Hcond.
+  - simpl in Hno_owe. unfold m_modify, sg. rewrite Hgh.
+    destruct (g_flush_owed s) eqn:Efo; [|discriminate].
+    unfold ghost_run_end, with_flush_owed.
+    destruct (g_nodes s !! n), s; simpl in *; rewrite Efo; reflexivity.
+  - unfold m_return, sg. rewrite Hgh. reflexivity.
+Qed.
+
+Definition write_signal_cmp (cmp_eq : val -> val -> bool) (fuel : nat) (n : node_id) (v : val) : M unit :=
+  match fuel with
+  | 0 => stuck
+  | S f =>
+    let* d := get_node n in
+    match n_kind d with
+    | KSignal =>
+      if cmp_eq (n_value d) v then m_return tt
+      else
+        let* _ := modify_node n (node_with_value v) in
+        let* _ := m_modify (ghost_publish n) in
+        let* _ := m_step (notify_dirty f n) in
+        request_flush f
+    | _ => stuck
+    end
+  end.
+
+Definition fused_single_signal_effect_cmp
+    (cmp_eq : val -> val -> bool) (f : nat) (src eff : node_id) (v : val) : M unit :=
+  let* d := get_node src in
+  match n_kind d with
+  | KSignal =>
+    if cmp_eq (n_value d) v then m_return tt
+    else
+      let* _ := modify_node src (node_with_value v) in
+      let* _ := m_modify (ghost_publish src) in
+      let* _ := m_modify (fun s => with_flush_owed false (with_flushing true s)) in
+      let* _ := modify_node eff (fun x => node_with_freshness Clean (node_with_queued false x)) in
+      let* _ := run_effect f eff in
+      let* _ := drain f in
+      m_modify (with_flushing false)
+  | _ => stuck
+  end.
+
+(**md
+**When writing `v` to an idle-graph signal with a single observer effect `eff` using a non-throwing custom comparer `cmp_eq` evaluating unequal (`cmp_eq (n_value d_src) v = false`), fused `S -> E` execution equals `write_signal_cmp` (and matches `write_signal` when `cmp_eq` is reflexive).**
+
+- [cmp_eq:] pure boolean custom cutoff comparer.
+- [src:] signal node id.
+- [d_src:] signal node snapshot in `s`.
+- [eff:] sole observer effect node id.
+- [slot:] edge slot of `eff` on `src`.
+- [de:] effect node snapshot in `s`.
+- [v:] new value written to `src`.
+- [s:] idle starting engine state.
+- [s':] final engine state after flush completes.
+*)
+Theorem custom_comparer_fused_flush_eq
+    (cmp_eq : val -> val -> bool) src d_src eff slot de v s s' :
+  g_nodes s !! src = Some d_src ->
+  n_kind d_src = KSignal ->
+  cmp_eq (n_value d_src) v = false ->
+  observer_items (observers_of (g_edges s) src) = [(eff, slot)] ->
+  g_nodes s !! eff = Some de ->
+  n_kind de = KEffect ->
+  n_disposed de = false ->
+  n_in_cleanup de = false ->
+  n_queued de = false ->
+  g_batch_depth s = 0 ->
+  g_pull_depth s = 0 ->
+  g_flushing s = false ->
+  g_current s = None ->
+  g_untracked s = false ->
+  g_flush_owed s = false ->
+  pending s = [] ->
+  g_queue_head s <= length (g_queue s) ->
+  ((exists f, fused_single_signal_effect_cmp cmp_eq f src eff v s = Some (s', tt)) <->
+   (exists f, write_signal_cmp cmp_eq f src v s = Some (s', tt))) /\
+  ((forall x, cmp_eq x x = true) ->
+   ((exists f, write_signal_cmp cmp_eq f src v s = Some (s', tt)) <->
+    (exists f, write_signal f src v s = Some (s', tt)))).
+Proof.
+  intros Hsrc Hks Hneq Hobs Heff Hke Hde Hclean Hnq Hbd Hpd Hfl Hcur Hunt Hfo Hpend Hqle.
+  assert (Hne : src <> eff) by (intros ->; rewrite Hsrc in Heff; simplify_eq; congruence).
+  set (d_diff := node_with_value (v + 1)%Z d_src).
+  set (s_diff := set_node src d_diff s).
+  assert (Hsdiff_src : g_nodes s_diff !! src = Some d_diff) by (unfold s_diff, set_node; simpl; apply lookup_insert_eq).
+  assert (Hsdiff_eff : g_nodes s_diff !! eff = Some de) by (unfold s_diff, set_node; simpl; rewrite lookup_insert_ne by exact Hne; exact Heff).
+  assert (Hstep_ws : forall f, write_signal_cmp cmp_eq (S f) src v s = write_signal (S f) src v s_diff).
+  { intros f. cbn [write_signal_cmp write_signal].
+    rewrite (m_bind_get_node _ _ _ _ Hsrc), (m_bind_get_node _ _ _ _ Hsdiff_src).
+    unfold d_diff; simpl. rewrite Hks, Hneq.
+    rewrite decide_False by lia.
+    rewrite (m_bind_modify_node _ _ _ _ _ Hsrc), (m_bind_modify_node _ _ _ _ _ Hsdiff_src).
+    rewrite !m_bind_modify.
+    assert (Hpub_eq :
+      ghost_publish src (set_node src (node_with_value v d_src) s) =
+      ghost_publish src (set_node src (node_with_value v (node_with_value (v + 1)%Z d_src)) s_diff)).
+    { unfold ghost_publish, s_diff, set_node. simpl.
+      replace (node_with_value v (node_with_value (v + 1)%Z d_src)) with (node_with_value v d_src)
+        by (unfold node_with_value; destruct d_src; reflexivity).
+      rewrite insert_insert_eq, !lookup_insert_eq. reflexivity. }
+    rewrite Hpub_eq. reflexivity. }
+  assert (Hstep_fused : forall f, fused_single_signal_effect_cmp cmp_eq f src eff v s = fused_single_signal_effect f src eff v s_diff).
+  { intros f. unfold fused_single_signal_effect_cmp, fused_single_signal_effect.
+    rewrite (m_bind_get_node _ _ _ _ Hsrc), (m_bind_get_node _ _ _ _ Hsdiff_src).
+    unfold d_diff; simpl. rewrite Hks, Hneq.
+    rewrite decide_False by lia.
+    rewrite (m_bind_modify_node _ _ _ _ _ Hsrc), (m_bind_modify_node _ _ _ _ _ Hsdiff_src).
+    rewrite !m_bind_modify.
+    assert (Hpub_eq :
+      ghost_publish src (set_node src (node_with_value v d_src) s) =
+      ghost_publish src (set_node src (node_with_value v (node_with_value (v + 1)%Z d_src)) s_diff)).
+    { unfold ghost_publish, s_diff, set_node. simpl.
+      replace (node_with_value v (node_with_value (v + 1)%Z d_src)) with (node_with_value v d_src)
+        by (unfold node_with_value; destruct d_src; reflexivity).
+      rewrite insert_insert_eq, !lookup_insert_eq. reflexivity. }
+    rewrite Hpub_eq. reflexivity. }
+  pose proof (fused_single_signal_effect_eq src d_diff eff slot de v s_diff s'
+    Hsdiff_src Hks Hobs Hsdiff_eff Hke Hde Hclean Hnq Hbd Hpd Hfl Hcur Hunt Hfo Hpend Hqle) as Heq_diff.
+  split.
+  - split; intros [f Hf].
+    + rewrite Hstep_fused in Hf.
+      destruct Heq_diff as [Hfwd _]. destruct (Hfwd (ex_intro _ f Hf)) as [fw Hfw].
+      destruct fw as [|fw']; [discriminate|]. exists (S fw'). rewrite Hstep_ws. exact Hfw.
+    + destruct f as [|f']; [discriminate|]. rewrite Hstep_ws in Hf.
+      destruct Heq_diff as [_ Hbwd]. destruct (Hbwd (ex_intro _ (S f') Hf)) as [ff Hff].
+      exists ff. rewrite Hstep_fused. exact Hff.
+  - intros Hrefl.
+    assert (Hne_val : n_value d_src <> v).
+    { intro Heqv. rewrite Heqv, Hrefl in Hneq. discriminate. }
+    assert (Hws_same : forall f, write_signal_cmp cmp_eq (S f) src v s = write_signal (S f) src v s).
+    { intros f. cbn [write_signal_cmp write_signal].
+      rewrite (m_bind_get_node _ _ _ _ Hsrc), (m_bind_get_node _ _ _ _ Hsrc).
+      rewrite Hks, Hneq, decide_False by exact Hne_val. reflexivity. }
+    split; intros [f Hf]; destruct f as [|f']; try discriminate.
+    + exists (S f'). rewrite <- Hws_same. exact Hf.
+    + exists (S f'). rewrite Hws_same. exact Hf.
+Qed.
+
+(** ** B10. Lazy-epoch AmbientCell trace soundness *)
+
+Inductive ambient_op :=
+  | AEnter (g : nat)
+  | ALeave
+  | AActivate (g : nat)
+  | ADeactivate (id : nat).
+
+Record act_entry := {
+  ae_id : nat;
+  ae_graph : nat;
+  ae_clock : nat
+}.
+
+Record eager_ambient := {
+  ea_clock_ctr : nat;
+  ea_host_depth : nat;
+  ea_host_epoch : nat;
+  ea_epoch_stack : list nat;
+  ea_hosting : option nat;
+  ea_host_stack : list (option nat);
+  ea_acts : list act_entry;
+  ea_next_id : nat
+}.
+
+Definition init_eager_ambient : eager_ambient := {|
+  ea_clock_ctr := 0;
+  ea_host_depth := 0;
+  ea_host_epoch := 0;
+  ea_epoch_stack := [];
+  ea_hosting := None;
+  ea_host_stack := [];
+  ea_acts := [];
+  ea_next_id := 0
+|}.
+
+Definition step_eager (op : ambient_op) (st : eager_ambient) : eager_ambient :=
+  match op with
+  | AEnter g =>
+    let c := S (ea_clock_ctr st) in
+    if decide (ea_host_depth st = 0) then
+      {| ea_clock_ctr := c; ea_host_depth := 1; ea_host_epoch := c;
+         ea_epoch_stack := ea_epoch_stack st; ea_hosting := Some g;
+         ea_host_stack := ea_hosting st :: ea_host_stack st;
+         ea_acts := ea_acts st; ea_next_id := ea_next_id st |}
+    else
+      {| ea_clock_ctr := c; ea_host_depth := S (ea_host_depth st); ea_host_epoch := c;
+         ea_epoch_stack := ea_host_epoch st :: ea_epoch_stack st; ea_hosting := Some g;
+         ea_host_stack := ea_hosting st :: ea_host_stack st;
+         ea_acts := ea_acts st; ea_next_id := ea_next_id st |}
+  | ALeave =>
+    match ea_host_depth st with
+    | 0 => st
+    | 1 =>
+      {| ea_clock_ctr := ea_clock_ctr st; ea_host_depth := 0; ea_host_epoch := 0;
+         ea_epoch_stack := ea_epoch_stack st; ea_hosting := hd None (ea_host_stack st);
+         ea_host_stack := tl (ea_host_stack st);
+         ea_acts := ea_acts st; ea_next_id := ea_next_id st |}
+    | S (S _ as next_d) =>
+      {| ea_clock_ctr := ea_clock_ctr st; ea_host_depth := next_d;
+         ea_host_epoch := hd 0 (ea_epoch_stack st);
+         ea_epoch_stack := tl (ea_epoch_stack st);
+         ea_hosting := hd None (ea_host_stack st);
+         ea_host_stack := tl (ea_host_stack st);
+         ea_acts := ea_acts st; ea_next_id := ea_next_id st |}
+    end
+  | AActivate g =>
+    let c := S (ea_clock_ctr st) in
+    {| ea_clock_ctr := c; ea_host_depth := ea_host_depth st;
+       ea_host_epoch := ea_host_epoch st; ea_epoch_stack := ea_epoch_stack st;
+       ea_hosting := ea_hosting st; ea_host_stack := ea_host_stack st;
+       ea_acts := {| ae_id := ea_next_id st; ae_graph := g; ae_clock := c |} :: ea_acts st;
+       ea_next_id := S (ea_next_id st) |}
+  | ADeactivate id =>
+    {| ea_clock_ctr := ea_clock_ctr st; ea_host_depth := ea_host_depth st;
+       ea_host_epoch := ea_host_epoch st; ea_epoch_stack := ea_epoch_stack st;
+       ea_hosting := ea_hosting st; ea_host_stack := ea_host_stack st;
+       ea_acts := List.filter (fun a => negb (Nat.eqb (ae_id a) id)) (ea_acts st);
+       ea_next_id := ea_next_id st |}
+  end.
+
+Definition resolve_eager (st : eager_ambient) : option nat :=
+  let act_top := match ea_acts st with a :: _ => Some (ae_graph a) | [] => None end in
+  if Nat.ltb 0 (ea_host_depth st) then
+    if existsb (fun a => Nat.ltb (ea_host_epoch st) (ae_clock a)) (ea_acts st)
+    then act_top else ea_hosting st
+  else act_top.
+
+Record lazy_ambient := {
+  la_clock : nat;
+  la_host_depth : nat;
+  la_host_epoch : nat;
+  la_epoch_depth : nat;
+  la_epoch_stack : list (nat * nat);
+  la_hosting : option nat;
+  la_host_stack : list (option nat);
+  la_acts : list act_entry;
+  la_next_id : nat
+}.
+
+Definition init_lazy_ambient : lazy_ambient := {|
+  la_clock := 0;
+  la_host_depth := 0;
+  la_host_epoch := 0;
+  la_epoch_depth := 0;
+  la_epoch_stack := [];
+  la_hosting := None;
+  la_host_stack := [];
+  la_acts := [];
+  la_next_id := 0
+|}.
+
+Definition step_lazy (op : ambient_op) (st : lazy_ambient) : lazy_ambient :=
+  match op with
+  | AEnter g =>
+    if decide (la_host_depth st = 0) then
+      {| la_clock := la_clock st; la_host_depth := 1;
+         la_host_epoch := la_clock st; la_epoch_depth := 0;
+         la_epoch_stack := la_epoch_stack st; la_hosting := Some g;
+         la_host_stack := la_hosting st :: la_host_stack st;
+         la_acts := la_acts st; la_next_id := la_next_id st |}
+    else if decide (la_host_epoch st = la_clock st) then
+      {| la_clock := la_clock st; la_host_depth := S (la_host_depth st);
+         la_host_epoch := la_host_epoch st; la_epoch_depth := la_epoch_depth st;
+         la_epoch_stack := la_epoch_stack st; la_hosting := Some g;
+         la_host_stack := la_hosting st :: la_host_stack st;
+         la_acts := la_acts st; la_next_id := la_next_id st |}
+    else
+      {| la_clock := la_clock st; la_host_depth := S (la_host_depth st);
+         la_host_epoch := la_clock st; la_epoch_depth := S (la_host_depth st);
+         la_epoch_stack := (la_host_epoch st, la_epoch_depth st) :: la_epoch_stack st;
+         la_hosting := Some g;
+         la_host_stack := la_hosting st :: la_host_stack st;
+         la_acts := la_acts st; la_next_id := la_next_id st |}
+  | ALeave =>
+    match la_host_depth st with
+    | 0 => st
+    | 1 =>
+      {| la_clock := la_clock st; la_host_depth := 0;
+         la_host_epoch := 0; la_epoch_depth := 0;
+         la_epoch_stack := la_epoch_stack st;
+         la_hosting := hd None (la_host_stack st);
+         la_host_stack := tl (la_host_stack st);
+         la_acts := la_acts st; la_next_id := la_next_id st |}
+    | S (S _ as next_d) =>
+      if decide (la_host_depth st = la_epoch_depth st) then
+        let '(pe, pd) := hd (0, 0) (la_epoch_stack st) in
+        {| la_clock := la_clock st; la_host_depth := next_d;
+           la_host_epoch := pe; la_epoch_depth := pd;
+           la_epoch_stack := tl (la_epoch_stack st);
+           la_hosting := hd None (la_host_stack st);
+           la_host_stack := tl (la_host_stack st);
+           la_acts := la_acts st; la_next_id := la_next_id st |}
+      else
+        {| la_clock := la_clock st; la_host_depth := next_d;
+           la_host_epoch := la_host_epoch st; la_epoch_depth := la_epoch_depth st;
+           la_epoch_stack := la_epoch_stack st;
+           la_hosting := hd None (la_host_stack st);
+           la_host_stack := tl (la_host_stack st);
+           la_acts := la_acts st; la_next_id := la_next_id st |}
+    end
+  | AActivate g =>
+    let c := S (la_clock st) in
+    {| la_clock := c; la_host_depth := la_host_depth st;
+       la_host_epoch := la_host_epoch st; la_epoch_depth := la_epoch_depth st;
+       la_epoch_stack := la_epoch_stack st;
+       la_hosting := la_hosting st; la_host_stack := la_host_stack st;
+       la_acts := {| ae_id := la_next_id st; ae_graph := g; ae_clock := c |} :: la_acts st;
+       la_next_id := S (la_next_id st) |}
+  | ADeactivate id =>
+    {| la_clock := la_clock st; la_host_depth := la_host_depth st;
+       la_host_epoch := la_host_epoch st; la_epoch_depth := la_epoch_depth st;
+       la_epoch_stack := la_epoch_stack st;
+       la_hosting := la_hosting st; la_host_stack := la_host_stack st;
+       la_acts := List.filter (fun a => negb (Nat.eqb (ae_id a) id)) (la_acts st);
+       la_next_id := la_next_id st |}
+  end.
+
+Definition resolve_ambient (st : lazy_ambient) : option nat :=
+  let act_top := match la_acts st with a :: _ => Some (ae_graph a) | [] => None end in
+  if Nat.ltb 0 (la_host_depth st) then
+    if existsb (fun a => Nat.ltb (la_host_epoch st) (ae_clock a)) (la_acts st)
+    then act_top else la_hosting st
+  else act_top.
+
+Fixpoint ambient_wf (d : nat) (tr : list ambient_op) : Prop :=
+  match tr with
+  | [] => True
+  | op :: rest =>
+    match op with
+    | AEnter _ => ambient_wf (S d) rest
+    | ALeave => 0 < d /\ ambient_wf (pred d) rest
+    | AActivate _ => ambient_wf d rest
+    | ADeactivate _ => ambient_wf d rest
+    end
+  end.
+
+Fixpoint run_eager_trace (st : eager_ambient) (tr : list ambient_op) : eager_ambient :=
+  match tr with
+  | [] => st
+  | op :: rest => run_eager_trace (step_eager op st) rest
+  end.
+
+Fixpoint run_lazy_trace (st : lazy_ambient) (tr : list ambient_op) : lazy_ambient :=
+  match tr with
+  | [] => st
+  | op :: rest => run_lazy_trace (step_lazy op st) rest
+  end.
+
+Fixpoint lazy_stack_inv
+    (cs : list nat) (depth epoch edepth : nat) (stk : list (nat * nat)) : Prop :=
+  match cs with
+  | [] => depth = 0 /\ epoch = 0 /\ edepth = 0 /\ stk = []
+  | [c] => depth = 1 /\ epoch = c /\ edepth = 0 /\ stk = []
+  | c1 :: ((c2 :: _) as tail) =>
+    depth = S (length tail) /\
+    epoch = c1 /\
+    if decide (c1 = c2) then
+      lazy_stack_inv tail (length tail) epoch edepth stk
+    else
+      edepth = S (length tail) /\
+      exists ed' stk', stk = (c2, ed') :: stk' /\ lazy_stack_inv tail (length tail) c2 ed' stk'
+  end.
+
+Lemma lazy_stack_inv_bounds cs depth epoch edepth stk :
+  lazy_stack_inv cs depth epoch edepth stk ->
+  depth = length cs /\ edepth <= depth.
+Proof.
+  revert depth epoch edepth stk.
+  induction cs as [|c1 [|c2 tail] IH]; intros depth epoch edepth stk H.
+  - destruct H as (-> & -> & -> & ->). simpl. lia.
+  - destruct H as (-> & -> & -> & ->). simpl. lia.
+  - destruct H as (Hdep & Hep & Hbr).
+    destruct (decide (c1 = c2)) as [Heq|Hne].
+    + destruct (IH _ _ _ _ Hbr) as [Hlen Hle]. simpl in *. lia.
+    + destruct Hbr as (-> & ed' & stk' & -> & Htail). simpl in *. lia.
+Qed.
+
+Definition ambient_sim_rel (epochs : list (nat * nat)) (es : eager_ambient) (ls : lazy_ambient) : Prop :=
+  ea_host_depth es = length epochs /\
+  la_host_depth ls = length epochs /\
+  ea_hosting es = la_hosting ls /\
+  ea_host_stack es = la_host_stack ls /\
+  ea_next_id es = la_next_id ls /\
+  (match epochs with
+   | [] => ea_host_epoch es = 0 /\ ea_epoch_stack es = []
+   | (ee, _) :: rest => ea_host_epoch es = ee /\ ea_epoch_stack es = map fst rest
+   end) /\
+  lazy_stack_inv (map snd epochs) (la_host_depth ls) (la_host_epoch ls) (la_epoch_depth ls) (la_epoch_stack ls) /\
+  Forall (fun '(ee, le) => ee <= ea_clock_ctr es /\ le <= la_clock ls) epochs /\
+  Forall2 (fun ea la =>
+    ae_id ea = ae_id la /\
+    ae_graph ea = ae_graph la /\
+    ae_clock ea <= ea_clock_ctr es /\
+    ae_clock la <= la_clock ls /\
+    Forall (fun '(ee, le) => ee < ae_clock ea <-> le < ae_clock la) epochs)
+    (ea_acts es) (la_acts ls).
+
+Lemma Forall2_filter_acts epochs ec lc (eas las : list act_entry) id :
+  Forall2 (fun ea la =>
+    ae_id ea = ae_id la /\ ae_graph ea = ae_graph la /\
+    ae_clock ea <= ec /\ ae_clock la <= lc /\
+    Forall (fun '(ee, le) => ee < ae_clock ea <-> le < ae_clock la) epochs)
+    eas las ->
+  Forall2 (fun ea la =>
+    ae_id ea = ae_id la /\ ae_graph ea = ae_graph la /\
+    ae_clock ea <= ec /\ ae_clock la <= lc /\
+    Forall (fun '(ee, le) => ee < ae_clock ea <-> le < ae_clock la) epochs)
+    (List.filter (fun a => negb (Nat.eqb (ae_id a) id)) eas)
+    (List.filter (fun a => negb (Nat.eqb (ae_id a) id)) las).
+Proof.
+  intros H. induction H as [|ea la eas' las' (Hid & Hrem) _ IH]; simpl; [constructor|].
+  rewrite Hid. destruct (negb (Nat.eqb (ae_id la) id)); [constructor; [|exact IH]; split; assumption|exact IH].
+Qed.
+
+Lemma step_ambient_sim epochs es ls op :
+  ambient_sim_rel epochs es ls ->
+  (op = ALeave -> 0 < length epochs) ->
+  exists epochs',
+    ambient_sim_rel epochs' (step_eager op es) (step_lazy op ls) /\
+    (match op with
+     | AEnter _ => length epochs' = S (length epochs)
+     | ALeave => length epochs' = pred (length epochs)
+     | _ => length epochs' = length epochs
+     end).
+Proof.
+  intros (Hed & Hld & Hhost & Hstk & Hnid & Hea & Hlz & Hep & Hacts) Hwf.
+  destruct op as [g| |g|id].
+  - exists ((S (ea_clock_ctr es), la_clock ls) :: epochs).
+    split; [|reflexivity].
+    unfold step_eager, step_lazy.
+    destruct epochs as [|[ee0 le0] rest].
+    + simpl in Hed, Hld. rewrite decide_True by exact Hed. rewrite decide_True by exact Hld.
+      destruct Hea as [_ ->]. unfold lazy_stack_inv in Hlz. destruct Hlz as (_ & _ & _ & ->).
+      repeat split; simpl; try assumption; try reflexivity.
+      * rewrite Hhost, Hstk. reflexivity.
+      * constructor; [lia|constructor].
+      * eapply Forall2_impl; [exact Hacts|].
+        intros ea la (Hid & Hgr & Hec & Hlc & Hfa).
+        repeat split; try assumption; try lia.
+        constructor; [split; intro; lia|exact Hfa].
+    + simpl in Hed, Hld. rewrite decide_False by (intro; lia). rewrite decide_False by (intro; lia).
+      destruct Hea as [Hee Hestk].
+      assert (Hlz_head : la_host_epoch ls = le0).
+      { change (map snd ((ee0, le0) :: rest)) with (le0 :: map snd rest) in Hlz.
+        destruct rest as [|[ee1 le1] rest']; simpl in Hlz; [exact (proj1 (proj2 Hlz))|exact (proj1 (proj2 Hlz))]. }
+      rewrite Hlz_head.
+      destruct (decide (le0 = la_clock ls)) as [Hsame|Hdiff]; repeat split; simpl; rewrite ?length_map; try assumption; try lia.
+      * rewrite Hhost, Hstk. reflexivity.
+      * rewrite Hee, Hestk. reflexivity.
+      * fold (map snd rest). rewrite decide_True by (symmetry; exact Hsame).
+        destruct rest as [|[ee1 le1] rest']; simpl in *.
+        -- rewrite Hlz_head in Hlz. destruct Hlz as (H1 & H2 & H3 & H4).
+           repeat split; assumption || reflexivity.
+        -- rewrite ?length_map in Hlz |- *.
+           destruct Hlz as (Hdep' & Hep' & Hbr').
+           repeat split; try assumption; try reflexivity.
+           rewrite Hlz_head in Hbr'. exact Hbr'.
+      * constructor; [lia|]. eapply Forall_impl; [exact Hep|]. intros [ee le] [? ?]; lia.
+      * eapply Forall2_impl; [exact Hacts|].
+        intros ea la (Hid & Hgr & Hec & Hlc & Hfa).
+        repeat split; try assumption; try lia.
+        constructor; [split; intro; lia|exact Hfa].
+      * rewrite Hhost, Hstk. reflexivity.
+      * rewrite Hee, Hestk. reflexivity.
+      * fold (map snd rest). rewrite decide_False by (intro Heqc; apply Hdiff; symmetry; exact Heqc).
+        split; [lia|].
+        exists (la_epoch_depth ls), (la_epoch_stack ls).
+        split; [reflexivity|].
+        destruct rest as [|[ee1 le1] rest']; simpl in *.
+        -- rewrite Hlz_head in Hlz. destruct Hlz as (H1 & H2 & H3 & H4).
+           repeat split; assumption || reflexivity.
+        -- rewrite ?length_map in Hlz |- *.
+           destruct Hlz as (Hdep' & Hep' & Hbr').
+           repeat split; try assumption; try reflexivity.
+           rewrite Hlz_head in Hbr'. exact Hbr'.
+      * constructor; [lia|]. eapply Forall_impl; [exact Hep|]. intros [ee le] [? ?]; lia.
+      * eapply Forall2_impl; [exact Hacts|].
+        intros ea la (Hid & Hgr & Hec & Hlc & Hfa).
+        repeat split; try assumption; try lia.
+        constructor; [split; intro; lia|exact Hfa].
+  - specialize (Hwf eq_refl).
+    destruct epochs as [|[ee0 le0] [|[ee1 le1] rest]]; simpl in *; [lia| |].
+    + exists []. split; [|reflexivity].
+      rewrite Hed, Hld. destruct Hea as [_ ->].
+      destruct Hlz as (_ & _ & _ & ->).
+      repeat split; simpl; try assumption; try reflexivity; try constructor.
+      * rewrite Hstk. reflexivity.
+      * rewrite Hstk. reflexivity.
+      * eapply Forall2_impl; [exact Hacts|].
+        intros ea la (Hid & Hgr & Hec & Hlc & Hfa).
+        inversion Hfa; subst. repeat split; assumption.
+    + exists ((ee1, le1) :: rest). split; [|reflexivity].
+      rewrite Hed, Hld. destruct Hea as [_ ->].
+      change (map snd ((ee0, le0) :: (ee1, le1) :: rest)) with (le0 :: le1 :: map snd rest) in Hlz.
+      destruct Hlz as (Hdep & Hep0 & Hbr).
+      assert (Hdep_val : la_host_depth ls = S (S (length rest))) by lia.
+      destruct (decide (le0 = le1)) as [Hsame|Hdiff].
+      * assert (Hbr_fold : lazy_stack_inv (le1 :: map snd rest) (S (length (map snd rest))) (la_host_epoch ls) (la_epoch_depth ls) (la_epoch_stack ls))
+          by exact Hbr.
+        destruct (lazy_stack_inv_bounds _ _ _ _ _ Hbr_fold) as [Hlen Hle].
+        rewrite length_map in Hlen.
+        rewrite decide_False by lia.
+        repeat split; simpl; try assumption; try reflexivity.
+        -- rewrite Hstk. reflexivity.
+        -- rewrite Hstk. reflexivity.
+        -- rewrite ?length_map in Hbr |- *. exact Hbr.
+        -- inversion Hep; assumption.
+        -- eapply Forall2_impl; [exact Hacts|].
+           intros ea la (Hid & Hgr & Hec & Hlc & Hfa).
+           inversion Hfa; subst. repeat split; assumption.
+      * destruct Hbr as (Hedp & ed' & stk' & -> & Htail).
+        rewrite decide_True by (simpl in Hedp; rewrite ?length_map in Hedp; lia).
+        repeat split; simpl; try assumption; try reflexivity.
+        -- rewrite Hstk. reflexivity.
+        -- rewrite Hstk. reflexivity.
+        -- rewrite ?length_map in Htail |- *. exact Htail.
+        -- inversion Hep; assumption.
+        -- eapply Forall2_impl; [exact Hacts|].
+           intros ea la (Hid & Hgr & Hec & Hlc & Hfa).
+           inversion Hfa; subst. repeat split; assumption.
+  - exists epochs. split; [|reflexivity].
+    repeat split; simpl; try assumption; try reflexivity; try lia.
+    + eapply Forall_impl; [exact Hep|]. intros [ee le] [? ?]; lia.
+    + constructor.
+      * repeat split; simpl; try assumption; try lia.
+        eapply Forall_impl; [exact Hep|]. intros [ee le] [? ?]; split; intro; lia.
+      * eapply Forall2_impl; [exact Hacts|].
+        intros ea la (Hid & Hgr & Hec & Hlc & Hfa).
+        repeat split; try assumption; try lia.
+  - exists epochs. split; [|reflexivity].
+    repeat split; simpl; try assumption; try reflexivity.
+    apply Forall2_filter_acts. exact Hacts.
+Qed.
+
+Lemma ambient_sim_resolve epochs es ls :
+  ambient_sim_rel epochs es ls ->
+  resolve_ambient ls = resolve_eager es.
+Proof.
+  intros (Hed & Hld & Hhost & _ & _ & Hea & Hlz & _ & Hacts).
+  unfold resolve_ambient, resolve_eager.
+  rewrite Hed, Hld.
+  assert (Htop : (match la_acts ls with a :: _ => Some (ae_graph a) | [] => None end) =
+                 (match ea_acts es with a :: _ => Some (ae_graph a) | [] => None end)).
+  { destruct Hacts as [|ea la eas las (Hid & Hgr & _)]; [reflexivity|rewrite Hgr; reflexivity]. }
+  destruct epochs as [|[ee0 le0] rest]; simpl; [exact Htop|].
+  destruct Hea as [-> _].
+  assert (Hle0 : la_host_epoch ls = le0).
+  { change (map snd ((ee0, le0) :: rest)) with (le0 :: map snd rest) in Hlz.
+    destruct rest as [|[ee1 le1] rest']; simpl in Hlz; exact (proj1 (proj2 Hlz)). }
+  rewrite Hle0.
+  assert (Hex : existsb (fun a => (le0 <? ae_clock a)) (la_acts ls) =
+                existsb (fun a => (ee0 <? ae_clock a)) (ea_acts es)).
+  { clear Htop. induction Hacts as [|ea la eas las (_ & _ & _ & _ & Hfa) _ IH]; simpl; [reflexivity|].
+    apply Forall_inv in Hfa as H0. simpl in H0.
+    assert (Hcmp : (le0 <? ae_clock la) = (ee0 <? ae_clock ea)).
+    { destruct (Nat.ltb_spec0 le0 (ae_clock la)) as [Hl|Hl], (Nat.ltb_spec0 ee0 (ae_clock ea)) as [He|He];
+        try reflexivity; exfalso;
+        [apply He; apply H0; exact Hl|apply Hl; apply H0; exact He]. }
+    rewrite Hcmp, IH. reflexivity. }
+  rewrite Hex, Htop, Hhost. reflexivity.
+Qed.
+
+(**md
+**Across every well-bracketed `ambient_op` trace, the lazy-epoch `AmbientCell` state machine (`Clock` incremented only on `AActivate`, in-place epoch update at `HostDepth = 0` with `EpochDepth = 0` sentinel, sparse push at `HostDepth > 0` iff `HostEpoch <> Clock`, pop iff `HostDepth = EpochDepth`) resolves the exact same active ambient graph as the eager per-frame reference model.**
+
+- [tr:] well-bracketed sequence of `AEnter`, `ALeave`, `AActivate`, and `ADeactivate` operations starting at depth `0`.
+*)
+Theorem ambient_lazy_epoch_trace_eq (tr : list ambient_op) :
+  ambient_wf 0 tr ->
+  resolve_ambient (run_lazy_trace init_lazy_ambient tr) =
+  resolve_eager (run_eager_trace init_eager_ambient tr).
+Proof.
+  assert (Hgen : forall t epochs es ls,
+    ambient_wf (length epochs) t ->
+    ambient_sim_rel epochs es ls ->
+    resolve_ambient (run_lazy_trace ls t) = resolve_eager (run_eager_trace es t)).
+  { induction t as [|op rest IH]; intros epochs es ls Hwf Hsim; simpl.
+    - exact (ambient_sim_resolve epochs es ls Hsim).
+    - assert (Hleave_pos : op = ALeave -> 0 < length epochs).
+      { intros ->. exact (proj1 Hwf). }
+      destruct (step_ambient_sim epochs es ls op Hsim Hleave_pos) as (epochs' & Hsim' & Hlen').
+      eapply IH; [|exact Hsim'].
+      destruct op; simpl in Hwf; rewrite Hlen'; try exact Hwf; exact (proj2 Hwf). }
+  intros Hwf. eapply Hgen with (epochs := []).
+  - exact Hwf.
+  - repeat split; constructor.
+Qed.
+
+(** ** B11. Sole-observer TryPromoteTop & direct-return chain step *)
+
+(**md
+**When memo `m` has a sole observer `e` (`KEffect`, `Check`, already `n_queued = true`, not disposed or in cleanup) and `r <> Some e`, `notify_dirty_except` equals directly setting `e`'s freshness to `Dirty` (`TryPromoteTop`).**
+
+- [f:] fuel bound.
+- [m:] parent memo node id.
+- [e:] sole observer effect node id.
+- [slot:] edge slot of `e` on `m`.
+- [de:] effect node record in `s`.
+- [r:] optional current computation (`r <> Some e`).
+- [s:] starting engine state.
+*)
+Theorem try_promote_top_effect_eq f m e slot de r s :
+  observer_items (observers_of (g_edges s) m) = [(e, slot)] ->
+  g_nodes s !! e = Some de ->
+  n_kind de = KEffect ->
+  n_freshness de = Check ->
+  n_queued de = true ->
+  n_disposed de = false ->
+  n_in_cleanup de = false ->
+  r <> Some e ->
+  notify_dirty_except (S f) m r s = Some (set_node e (node_with_freshness Dirty de) s).
+Proof.
+  intros Hobs He Hke Hfr Hq Hdisp Hcln Hne.
+  unfold notify_dirty_except.
+  erewrite notify_with_singleton; [|exact Hobs].
+  unfold mark_except.
+  rewrite decide_False by (intros [Heq _]; contradiction).
+  cbn [mark_dirty]. rewrite He, Hke.
+  unfold effect_marked. rewrite Hdisp, Hcln, Hq. simpl.
+  f_equal. f_equal. unfold node_marked, node_with_freshness.
+  destruct de; simpl in *; subst; reflexivity.
+Qed.
+
+Definition chain_moved_direct_step (moved : bool) (c : node_id) : M unit :=
+  if moved then
+    let* dc := get_node c in
+    modify_node c (fun _ => node_with_freshness Dirty dc)
+  else m_return tt.
+
+Definition chain_moved_ref_step (f : nat) (moved : bool) (m : node_id) (s : state) : option state :=
+  if moved then notify_dirty_except (S (S f)) m None s else Some s.
+
+(**md
+**On a single-memo chain link where child `c` is the sole observer of parent `m` (`KMemo`, `Check`, `n_unannounced = false`), branching directly on `moved : bool` returned from `m`'s recomputation matches `notify_dirty_except` followed by checking `c`'s `Freshness = Dirty`.**
+
+- [f:] marking fuel bound beyond the two outer `mark_dirty`/`mark_check` frames.
+- [moved:] whether parent memo `m` moved.
+- [m:] parent memo node id.
+- [c:] sole observer child memo node id.
+- [slot:] edge slot of `c` on `m`.
+- [dc:] child memo snapshot in `s`.
+- [s:] starting engine state.
+- [s':] resulting engine state.
+*)
+Theorem chain_direct_moved_step_eq f moved m c slot dc s s' :
+  observer_items (observers_of (g_edges s) m) = [(c, slot)] ->
+  g_nodes s !! c = Some dc ->
+  n_kind dc = KMemo ->
+  n_freshness dc = Check ->
+  n_unannounced dc = false ->
+  m_step (chain_moved_ref_step f moved m) s = Some (s', tt) <->
+  chain_moved_direct_step moved c s = Some (s', tt) /\
+  (exists dc', g_nodes s' !! c = Some dc' /\ bool_decide (n_freshness dc' = Dirty) = moved).
+Proof.
+  intros Hobs Hc Hkm Hfr Huna.
+  destruct moved.
+  - unfold m_step, chain_moved_ref_step, chain_moved_direct_step.
+    erewrite notify_moved_single_check_memo_eq by eassumption.
+    assert (Hnode_eq : node_marked Dirty false (n_queued dc) dc = node_with_freshness Dirty dc)
+      by (unfold node_marked, node_with_freshness; destruct dc; simpl in *; subst; reflexivity).
+    rewrite Hnode_eq.
+    rewrite (m_bind_get_node _ _ _ _ Hc).
+    unfold modify_node. rewrite Hc.
+    split.
+    + intros H; simplify_eq. split; [reflexivity|].
+      eexists; split; [unfold set_node; simpl; apply lookup_insert_eq|].
+      unfold node_with_freshness; simpl; first [reflexivity|apply bool_decide_eq_true_2; reflexivity].
+    + intros [H _]. simplify_eq. reflexivity.
+  - unfold m_step, chain_moved_ref_step, chain_moved_direct_step, m_return.
+    split.
+    + intros H; simplify_eq. split; [reflexivity|].
+      exists dc; split; [exact Hc|rewrite Hfr; first [reflexivity|apply bool_decide_eq_false_2; discriminate]].
+    + intros [H _]. simplify_eq. reflexivity.
+Qed.
+
+(** ** B12. Deferring pull entry refinement (AsyncMemo / Boundary / StreamMemo) *)
+
+Definition b1_deferring (s : state) : bool :=
+  g_flushing s || bool_decide (0 < g_pull_depth s) || bool_decide (0 < g_batch_depth s).
+
+Record b1_batch_kept_at (f : nat) : Prop := {
+  B1BKexec : forall e c s s' r, b1_exec f e c s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKread : forall n b s s' r, b1_read f n b s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKread_node : forall n s s' r, b1_read_node f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKupdate : forall n s s' r, b1_update_if_necessary f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKrop : forall n s s' r, b1_refresh_or_pull f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKpull : forall n s s' r, b1_pull f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKrefresh : forall n s s' r, b1_refresh f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKwalk : forall n i s s' r, b1_resolve_walk f n i s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKrecompute : forall n s s' r, b1_recompute f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKrun_memo : forall n s s' r, b1_run_memo f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKexecute : forall n s s' r, b1_execute_effect f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKrun_effect : forall n s s' r, b1_run_effect f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKbody : forall n s s' r, b1_run_effect_body f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKdischarge : forall o s s' r, b1_discharge f o s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKretire : forall o s s' r, b1_retire f o s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKdispose_scope : forall o s s' r, b1_dispose_scope f o s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKteardown : forall o ls cs s s' r, b1_teardown f o ls cs s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKcleanup : forall o b e s s' r, b1_run_cleanup f o b e s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKrelease : forall n s s' r, b1_release f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKdispose : forall n s s' r, b1_dispose_node f n s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKattach : forall n o s s' r, b1_attach f n o s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKwrite : forall n v s s' r, b1_write_signal f n v s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKrequest : forall s s' r, b1_request_flush f s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKsettle : forall s s' r, b1_settle_flush f s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKflush : forall s s' r, b1_run_flush f s = Some (s', r) -> g_batch_depth s' = g_batch_depth s;
+  B1BKdrain : forall s s' r, b1_drain f s = Some (s', r) -> g_batch_depth s' = g_batch_depth s
+}.
+
+Lemma bind_bd {A B} (m : M A) (k : A -> M B) s s' b :
+  (forall s1 a, m s = Some (s1, a) -> g_batch_depth s1 = g_batch_depth s) ->
+  (forall a s1, m s = Some (s1, a) -> k a s1 = Some (s', b) -> g_batch_depth s' = g_batch_depth s1) ->
+  m_bind m k s = Some (s', b) -> g_batch_depth s' = g_batch_depth s.
+Proof.
+  intros Hm Hk H. unfold m_bind in H. destruct (m s) as [[s1 a]|] eqn:E; [|discriminate].
+  rewrite (Hk a s1 eq_refl H). exact (Hm s1 a eq_refl).
+Qed.
+
+Lemma marks_bd s s' : rtc mark_prim s s' -> g_batch_depth s' = g_batch_depth s.
+Proof.
+  intros H. induction H; [reflexivity|]. rewrite IHrtc.
+  destruct H; unfold set_node, enqueue; reflexivity.
+Qed.
+
+Lemma bind_bd_hosted {A} n (b : M A) s s' r :
+  (forall s0 s1 r0, b s0 = Some (s1, r0) -> g_batch_depth s1 = g_batch_depth s0) ->
+  hosted n b s = Some (s', r) -> g_batch_depth s' = g_batch_depth s.
+Proof.
+  intros Hb H. unfold hosted in H.
+  eapply bind_inv in H as (s1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+  eapply bind_inv in H as (s2 & r2 & E2 & H).
+  unfold m_bind, m_modify, m_return in H; simplify_eq.
+  simpl. exact (Hb _ _ _ E2).
+Qed.
+
+Lemma bind_bd_untracked {A} (b : M A) s s' r :
+  (forall s0 s1 r0, b s0 = Some (s1, r0) -> g_batch_depth s1 = g_batch_depth s0) ->
+  untracked b s = Some (s', r) -> g_batch_depth s' = g_batch_depth s.
+Proof.
+  intros Hb H. unfold untracked in H.
+  eapply bind_inv in H as (s1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+  eapply bind_inv in H as (s2 & r2 & E2 & H).
+  unfold m_bind, m_modify, m_return in H; simplify_eq.
+  simpl. exact (Hb _ _ _ E2).
+Qed.
+
+Lemma bind_bd_detached o (b : M unit) s s' r :
+  (forall s0 s1 r0, b s0 = Some (s1, r0) -> g_batch_depth s1 = g_batch_depth s0) ->
+  detached o b s = Some (s', r) -> g_batch_depth s' = g_batch_depth s.
+Proof.
+  intros Hb H. unfold detached in H.
+  eapply bind_inv in H as (s1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+  eapply bind_inv in H as (s2 & [] & E2 & H).
+  unfold m_modify in H; simplify_eq.
+  simpl. rewrite (Hb _ _ _ E2). reflexivity.
+Qed.
+
+Local Ltac bd_state_eq :=
+  try reflexivity;
+  unfold with_pull_depth,
+    with_flush_owed, with_flushing, with_queue, with_queue_head,
+    with_owners, with_edges, with_trace, with_running, with_checking,
+    push_running, pop_running, push_checking, pop_checking, emit, edges, put_owner,
+    ghost_read, ghost_run_start, ghost_effect_start, ghost_publish,
+    ghost_run_end, ghost_dirty_cleared, ghost_resolved, ghost_registered,
+    run_end_unnoticed, add_if, set_node;
+  repeat match goal with |- context [match ?x with _ => _ end] => destruct x end;
+  reflexivity.
+
+Local Ltac bd_prim :=
+  match goal with
+  | H : m_return _ _ = Some _ |- _ => unfold m_return in H; simplify_eq; reflexivity
+  | H : stuck _ = Some _ |- _ => discriminate
+  | H : Some _ = Some _ |- _ => simplify_eq; reflexivity
+  | H : None = Some _ |- _ => discriminate
+  | H : m_get _ = Some _ |- _ => unfold m_get in H; simplify_eq; reflexivity
+  | H : get_node _ _ = Some _ |- _ => unfold get_node in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : modify_node _ _ _ = Some _ |- _ => unfold modify_node in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : get_owner _ _ = Some _ |- _ => unfold get_owner in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : put_owner _ _ _ = Some _ |- _ => unfold put_owner, m_modify in H; simplify_eq; reflexivity
+  | H : edges _ _ = Some _ |- _ => unfold edges, m_modify in H; simplify_eq; reflexivity
+  | H : edges_opt _ _ = Some _ |- _ => unfold edges_opt in H; match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : push_running _ _ = Some _ |- _ => unfold push_running, m_modify in H; simplify_eq; reflexivity
+  | H : pop_running _ = Some _ |- _ => unfold pop_running, m_modify in H; simplify_eq; reflexivity
+  | H : push_checking _ _ = Some _ |- _ => unfold push_checking, m_modify in H; simplify_eq; reflexivity
+  | H : pop_checking _ = Some _ |- _ => unfold pop_checking, m_modify in H; simplify_eq; reflexivity
+  | H : emit _ _ = Some _ |- _ => unfold emit, m_modify in H; simplify_eq; reflexivity
+  | H : announce _ _ = Some _ |- _ => unfold announce, modify_node in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : track _ _ = Some _ |- _ => unfold track in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; bd_state_eq
+  | H : mark_reader _ _ = Some _ |- _ =>
+    unfold mark_reader in H;
+    match type of H with context [g_current ?s0] => destruct (g_current s0) end;
+    [match type of H with context [f_reader_mark ?fl] => destruct (f_reader_mark fl) end;
+     [match type of H with context [mark_check ?ff ?nn ?ss] =>
+        destruct (mark_check ff nn ss) eqn:Em;
+        [simplify_eq; eapply marks_bd, mark_check_rtc; exact Em|discriminate]
+      end|simplify_eq; reflexivity]
+    |simplify_eq; reflexivity]
+  | H : log_label _ = Some _ |- _ => unfold log_label in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : note_host_read _ _ _ = Some _ |- _ => unfold note_host_read, emit, m_modify in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : current_owner _ = Some _ |- _ => unfold current_owner in H; repeat match type of H with context [match ?x with _ => _ end] => destruct x end; simplify_eq; reflexivity
+  | H : next_id _ = Some _ |- _ => unfold next_id in H; simplify_eq; reflexivity
+  | H : add_node _ _ _ = Some _ |- _ => unfold add_node, m_modify in H; simplify_eq; bd_state_eq
+  | H : m_step (mark_dirty _ _) _ = Some _ |- _ => unfold m_step in H; destruct (mark_dirty _ _ _) eqn:Em; simplify_eq; eapply marks_bd, mark_dirty_rtc; exact Em
+  | H : m_step (notify_dirty _ _) _ = Some _ |- _ => unfold m_step in H; destruct (notify_dirty _ _ _) eqn:Em; simplify_eq; eapply marks_bd, (any_mark_rtc _ _ None); do 3 right; left; exact Em
+  | H : m_step (notify_dirty_except _ _ _) _ = Some _ |- _ => unfold m_step in H; destruct (notify_dirty_except _ _ _ _) eqn:Em; simplify_eq; eapply marks_bd, (any_mark_rtc _ _ _); do 4 right; exact Em
+  | H : m_modify ?upd _ = Some _ |- _ => unfold m_modify in H; simplify_eq; bd_state_eq
+  end.
+
+Local Ltac bd_solve IH :=
+  repeat (
+    cbv beta in *;
+    try bd_prim;
+    match goal with
+    | H : on_node _ _ _ _ = Some _ |- _ => unfold on_node in H
+    | H : unlink _ _ = Some _ |- _ => unfold unlink in H
+    | H : record_error _ _ _ = Some _ |- _ => unfold record_error in H
+    | H : on_value _ _ _ _ = Some _ |- _ =>
+      let o := fresh "o" in
+      unfold on_value in H;
+      match type of H with context [eval_expr ?ee ?pp ?xx] => destruct (eval_expr ee pp xx) as [o|] end;
+      [destruct o; [|simplify_eq; reflexivity]|discriminate]
+    | H : m_bind _ _ _ = Some _ |- _ =>
+      eapply bind_bd in H; [exact H|intros ?? ?|intros ?? _ ?]
+    | H : hosted _ _ _ = Some _ |- _ =>
+      eapply bind_bd_hosted in H; [exact H|intros ??? ?]
+    | H : untracked _ _ = Some _ |- _ =>
+      eapply bind_bd_untracked in H; [exact H|intros ??? ?]
+    | H : detached _ _ _ = Some _ |- _ =>
+      eapply bind_bd_detached in H; [exact H|intros ??? ?]
+    | H : b1_exec _ _ _ _ = Some _ |- _ => exact (B1BKexec _ IH _ _ _ _ _ H)
+    | H : b1_read _ _ _ _ = Some _ |- _ => exact (B1BKread _ IH _ _ _ _ _ H)
+    | H : b1_read_node _ _ _ = Some _ |- _ => exact (B1BKread_node _ IH _ _ _ _ H)
+    | H : b1_update_if_necessary _ _ _ = Some _ |- _ => exact (B1BKupdate _ IH _ _ _ _ H)
+    | H : b1_refresh_or_pull _ _ _ = Some _ |- _ => exact (B1BKrop _ IH _ _ _ _ H)
+    | H : b1_pull _ _ _ = Some _ |- _ => exact (B1BKpull _ IH _ _ _ _ H)
+    | H : b1_refresh _ _ _ = Some _ |- _ => exact (B1BKrefresh _ IH _ _ _ _ H)
+    | H : b1_resolve_walk _ _ _ _ = Some _ |- _ => exact (B1BKwalk _ IH _ _ _ _ _ H)
+    | H : b1_recompute _ _ _ = Some _ |- _ => exact (B1BKrecompute _ IH _ _ _ _ H)
+    | H : b1_run_memo _ _ _ = Some _ |- _ => exact (B1BKrun_memo _ IH _ _ _ _ H)
+    | H : b1_execute_effect _ _ _ = Some _ |- _ => exact (B1BKexecute _ IH _ _ _ _ H)
+    | H : b1_run_effect _ _ _ = Some _ |- _ => exact (B1BKrun_effect _ IH _ _ _ _ H)
+    | H : b1_run_effect_body _ _ _ = Some _ |- _ => exact (B1BKbody _ IH _ _ _ _ H)
+    | H : b1_discharge _ _ _ = Some _ |- _ => exact (B1BKdischarge _ IH _ _ _ _ H)
+    | H : b1_retire _ _ _ = Some _ |- _ => exact (B1BKretire _ IH _ _ _ _ H)
+    | H : b1_dispose_scope _ _ _ = Some _ |- _ => exact (B1BKdispose_scope _ IH _ _ _ _ H)
+    | H : b1_teardown _ _ _ _ _ = Some _ |- _ => exact (B1BKteardown _ IH _ _ _ _ _ _ H)
+    | H : b1_run_cleanup _ _ _ _ _ = Some _ |- _ => exact (B1BKcleanup _ IH _ _ _ _ _ _ H)
+    | H : b1_release _ _ _ = Some _ |- _ => exact (B1BKrelease _ IH _ _ _ _ H)
+    | H : b1_dispose_node _ _ _ = Some _ |- _ => exact (B1BKdispose _ IH _ _ _ _ H)
+    | H : b1_attach _ _ _ _ = Some _ |- _ => exact (B1BKattach _ IH _ _ _ _ _ H)
+    | H : b1_write_signal _ _ _ _ = Some _ |- _ => exact (B1BKwrite _ IH _ _ _ _ _ H)
+    | H : b1_request_flush _ _ = Some _ |- _ => exact (B1BKrequest _ IH _ _ _ H)
+    | H : b1_settle_flush _ _ = Some _ |- _ => exact (B1BKsettle _ IH _ _ _ H)
+    | H : b1_run_flush _ _ = Some _ |- _ => exact (B1BKflush _ IH _ _ _ H)
+    | H : b1_drain _ _ = Some _ |- _ => exact (B1BKdrain _ IH _ _ _ H)
+    | H : (if ?b then _ else _) _ = Some _ |- _ => destruct b
+    | H : (if ?b then _ else _) = Some _ |- _ => destruct b
+    | H : (match ?x with _ => _ end) _ = Some _ |- _ => destruct x
+    | H : (match ?x with _ => _ end) = Some _ |- _ => destruct x
+    end).
+
+Lemma b1_batch_kept f : b1_batch_kept_at f.
+Proof.
+  induction f as [|f IH]; [split; intros; discriminate|].
+  split.
+  - intros e c s s' r H. cbn [b1_exec] in H.
+    destruct c; try solve [bd_solve IH].
+    eapply bind_inv in H as (sa1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+    eapply bind_inv in H as (sa2 & rb & E2 & H).
+    apply (B1BKexec _ IH) in E2. simpl in E2.
+    eapply bind_inv in H as (sa3 & [] & E3 & H). unfold m_modify in E3; simplify_eq.
+    assert (Hbd3 : g_batch_depth (with_batch_depth (pred (g_batch_depth sa2)) sa2) = g_batch_depth s)
+      by (simpl; rewrite E2; reflexivity).
+    destruct rb;
+      [transitivity (g_batch_depth (with_batch_depth (pred (g_batch_depth sa2)) sa2));
+       [bd_solve IH|exact Hbd3]
+      |unfold m_return in H; simplify_eq; exact Hbd3].
+  - intros n b s s' r H. cbn [b1_read] in H. destruct b; bd_solve IH.
+  - intros n s s' r H. cbn [b1_read_node] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_update_if_necessary] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_refresh_or_pull] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_pull] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_refresh] in H. bd_solve IH.
+  - intros n i s s' r H. cbn [b1_resolve_walk] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_recompute] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_run_memo] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_execute_effect] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_run_effect] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_run_effect_body] in H. bd_solve IH.
+  - intros o s s' r H. cbn [b1_discharge] in H. bd_solve IH.
+  - intros o s s' r H. cbn [b1_retire] in H. bd_solve IH.
+  - intros o s s' r H. cbn [b1_dispose_scope] in H. bd_solve IH.
+  - intros o ls cs s s' r H. cbn [b1_teardown] in H. destruct ls, cs; bd_solve IH.
+  - intros o b e s s' r H. cbn [b1_run_cleanup] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_release] in H. bd_solve IH.
+  - intros n s s' r H. cbn [b1_dispose_node] in H. bd_solve IH.
+  - intros n o s s' r H. cbn [b1_attach] in H. bd_solve IH.
+  - intros n v s s' r H. cbn [b1_write_signal] in H. bd_solve IH.
+  - intros s s' r H. cbn [b1_request_flush] in H. bd_solve IH.
+  - intros s s' r H. cbn [b1_settle_flush] in H. bd_solve IH.
+  - intros s s' r H. cbn [b1_run_flush] in H. bd_solve IH.
+  - intros s s' r H. cbn [b1_drain] in H. bd_solve IH.
+Qed.
+
+Definition b2_pull_rel (s1 s2 : state) : Prop :=
+  with_pull_depth (g_pull_depth s2) s1 = s2 /\
+  ((g_flushing s1 = false /\ g_batch_depth s1 = 0%nat) ->
+    (0 < g_pull_depth s1 <-> 0 < g_pull_depth s2)).
+
+Lemma b2_pull_rel_refl s : b2_pull_rel s s.
+Proof. split; [unfold with_pull_depth; destruct s; reflexivity|intros _; split; auto]. Qed.
+
+Lemma b2_pull_rel_sym s1 s2 : b2_pull_rel s1 s2 -> b2_pull_rel s2 s1.
+Proof.
+  intros [Hw Hiff].
+  assert (Hfl : g_flushing s2 = g_flushing s1 /\ g_batch_depth s2 = g_batch_depth s1).
+  { rewrite <- Hw. split; reflexivity. }
+  split.
+  - rewrite <- Hw. unfold with_pull_depth; destruct s1; reflexivity.
+  - intros [Hfl2 Hbd2]. rewrite (proj1 Hfl) in Hfl2. rewrite (proj2 Hfl) in Hbd2.
+    symmetry. exact (Hiff (conj Hfl2 Hbd2)).
+Qed.
+
+Lemma b2_pull_rel_with_pull_S s1 s2 :
+  b2_pull_rel s1 s2 -> b2_pull_rel (with_pull_depth (S (g_pull_depth s1)) s1) (with_pull_depth (S (g_pull_depth s2)) s2).
+Proof.
+  intros [Hw _]. split.
+  - rewrite <- Hw. unfold with_pull_depth. destruct s1; reflexivity.
+  - intros _. split; intros _; simpl; lia.
+Qed.
+
+Lemma b2_pull_rel_with_pull_S_right s1 s2 :
+  b2_pull_rel s1 s2 ->
+  (g_flushing s1 = true \/ 0 < g_batch_depth s1 \/ 0 < g_pull_depth s1) ->
+  b2_pull_rel s1 (with_pull_depth (S (g_pull_depth s2)) s2).
+Proof.
+  intros [Hw Hiff] Hdef. split.
+  - rewrite <- Hw. unfold with_pull_depth. destruct s1; reflexivity.
+  - intros [Hfl Hbd]. destruct Hdef as [H|[H|H]]; try congruence; [lia|].
+    split; intros _; simpl; [lia|exact H].
+Qed.
+
+Lemma b2_pull_rel_with_pull_pred s1 s2 :
+  b2_pull_rel s1 s2 ->
+  ((g_flushing s1 = false /\ g_batch_depth s1 = 0%nat) -> (1 < g_pull_depth s1 <-> 1 < g_pull_depth s2)) ->
+  b2_pull_rel (with_pull_depth (pred (g_pull_depth s1)) s1) (with_pull_depth (pred (g_pull_depth s2)) s2).
+Proof.
+  intros [Hw _] Hlt. split.
+  - rewrite <- Hw. unfold with_pull_depth. destruct s1; reflexivity.
+  - intros [Hfl Hbd]. simpl in *. specialize (Hlt (conj Hfl Hbd)). lia.
+Qed.
+
+Lemma b2_pure_step {A} (m : M A)
+    (Hwp : forall p s, m (with_pull_depth p s) = option_map (fun '(s', a) => (with_pull_depth p s', a)) (m s))
+    (Hdp : forall s s' a, m s = Some (s', a) -> g_flushing s' = g_flushing s /\ g_batch_depth s' = g_batch_depth s /\ g_pull_depth s' = g_pull_depth s)
+    s1 s2 s1' a :
+  b2_pull_rel s1 s2 -> m s1 = Some (s1', a) ->
+  exists s2', m s2 = Some (s2', a) /\ b2_pull_rel s1' s2'.
+Proof.
+  intros [Hw Hiff] Hm.
+  exists (with_pull_depth (g_pull_depth s2) s1').
+  rewrite <- Hw, Hwp, Hm. simpl.
+  destruct (Hdp _ _ _ Hm) as (Hfl & Hbd & Hpd).
+  split; [reflexivity|].
+  split; [unfold with_pull_depth; destruct s1'; reflexivity|].
+  intros [Hfl' Hbd']. rewrite Hfl, Hbd, Hpd in *. exact (Hiff (conj Hfl' Hbd')).
+Qed.
+
+Lemma b2_pure_modify upd
+    (Hwp : forall p s, upd (with_pull_depth p s) = with_pull_depth p (upd s))
+    (Hdp : forall s, g_flushing (upd s) = g_flushing s /\ g_batch_depth (upd s) = g_batch_depth s /\ g_pull_depth (upd s) = g_pull_depth s)
+    s1 s2 s1' r :
+  b2_pull_rel s1 s2 -> m_modify upd s1 = Some (s1', r) ->
+  exists s2', m_modify upd s2 = Some (s2', r) /\ b2_pull_rel s1' s2'.
+Proof.
+  intros Hrel Hm. unfold m_modify in Hm; simplify_eq.
+  eapply (b2_pure_step (m_modify upd)); [intros p s; unfold m_modify; rewrite Hwp; reflexivity|intros ??? H; unfold m_modify in H; simplify_eq; apply Hdp|exact Hrel|unfold m_modify; reflexivity].
+Qed.
+
+Existing Class b2_pull_rel.
+#[local] Hint Extern 0 (b2_pull_rel _ _) => eassumption : typeclass_instances.
+
+Lemma b2p_bind_of {A B} {m1 : M A} {k1 : A -> M B} {m2 : nat -> M A} {k2 : A -> nat -> M B}
+    {s1 s2 s1' : state} {b : B}
+    (Hb : m_bind m1 k1 s1 = Some (s1', b))
+    `{Hrel : b2_pull_rel s1 s2} :
+  (forall f0 f' s0 r0, f0 <= f' -> m2 f0 s0 = Some r0 -> m2 f' s0 = Some r0) ->
+  (forall a f0 f' s0 r0, f0 <= f' -> k2 a f0 s0 = Some r0 -> k2 a f' s0 = Some r0) ->
+  (forall sa0 sb0 sa1 a, b2_pull_rel sa0 sb0 -> m1 sa0 = Some (sa1, a) ->
+    exists f2 sb1, m2 f2 sb0 = Some (sb1, a) /\ b2_pull_rel sa1 sb1) ->
+  (forall a sa1 sb1, b2_pull_rel sa1 sb1 -> k1 a sa1 = Some (s1', b) ->
+    exists f2 s2', k2 a f2 sb1 = Some (s2', b) /\ b2_pull_rel s1' s2') ->
+  exists f2 s2', m_bind (m2 f2) (fun a => k2 a f2) s2 = Some (s2', b) /\ b2_pull_rel s1' s2'.
+Proof.
+  intros Hm_mono Hk_mono Hm Hk.
+  eapply bind_inv in Hb as (sa1 & a & E1 & E2).
+  destruct (Hm _ _ _ _ Hrel E1) as (fm & sb1 & Em & Hrel1).
+  destruct (Hk _ _ _ Hrel1 E2) as (fk & s2' & Ek & Hrel').
+  exists (Nat.max fm fk), s2'. split; [|exact Hrel'].
+  unfold m_bind. rewrite (Hm_mono _ _ _ _ (Nat.le_max_l fm fk) Em).
+  exact (Hk_mono _ _ _ _ _ (Nat.le_max_r fm fk) Ek).
+Qed.
+
+Lemma b2_bind_pure_l_of {A B} {m : M A} {k : A -> M B} {s1 s2 s1' : state} {b : B}
+    (Hrel : b2_pull_rel s1 s2) (Hb : m_bind m k s1 = Some (s1', b))
+    (k2 : A -> nat -> M B) :
+  (forall sa0 sb0 sa1 a, b2_pull_rel sa0 sb0 -> m sa0 = Some (sa1, a) ->
+    exists sb1, m sb0 = Some (sb1, a) /\ b2_pull_rel sa1 sb1) ->
+  (forall a sa1 sb1, b2_pull_rel sa1 sb1 -> k a sa1 = Some (s1', b) ->
+    exists f2 s2', k2 a f2 sb1 = Some (s2', b) /\ b2_pull_rel s1' s2') ->
+  exists f2 s2', m_bind m (fun a => k2 a f2) s2 = Some (s2', b) /\ b2_pull_rel s1' s2'.
+Proof.
+  intros Hm Hk.
+  unfold m_bind in Hb. destruct (m s1) as [[sa1 a]|] eqn:Em1; [|discriminate].
+  destruct (Hm _ _ _ _ Hrel Em1) as (sb1 & Em2 & Hrel1).
+  destruct (Hk _ _ _ Hrel1 Hb) as (f2 & s2' & Ek & Hrel').
+  exists f2, s2'. split; [|exact Hrel']. unfold m_bind. rewrite Em2. exact Ek.
+Qed.
+
+Lemma b2p_hosted {A} n (m1 : M A) (b2 : nat -> M A) s1 s2 s1' a :
+  b2_pull_rel s1 s2 ->
+  (forall sa sb sa' r, b2_pull_rel sa sb -> m1 sa = Some (sa', r) -> True) ->
+  (forall sa sb sa' r, b2_pull_rel sa sb -> m1 sa = Some (sa', r) ->
+    exists f2 sb', b2 f2 sb = Some (sb', r) /\ b2_pull_rel sa' sb') ->
+  hosted n m1 s1 = Some (s1', a) ->
+  exists f2 s2', hosted n (b2 f2) s2 = Some (s2', a) /\ b2_pull_rel s1' s2'.
+Proof.
+  intros Hrel _ Hb H. unfold hosted in H.
+  eapply bind_inv in H as (sa1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+  eapply bind_inv in H as (sa2 & a2 & E2 & H). unfold m_bind, m_modify, m_return in H; simplify_eq.
+  assert (Hrel1 : b2_pull_rel (with_current_owner None (with_current (Some n) s1))
+                              (with_current_owner None (with_current (Some n) s2))).
+  { destruct Hrel as [Hw Hiff]. split; [rewrite <- Hw; unfold with_pull_depth; destruct s1; reflexivity|].
+    simpl. exact Hiff. }
+  destruct (Hb _ _ _ _ Hrel1 E2) as (f2 & sb2 & Eb2 & [Hw2 Hiff2]).
+  exists f2, (with_current_owner (g_current_owner s2) (with_current (g_current s2) sb2)).
+  split.
+  - unfold hosted, m_bind, m_modify, m_return. rewrite Eb2. reflexivity.
+  - destruct Hrel as [Hw Hiff]. split.
+    + rewrite <- Hw2, <- Hw. unfold with_pull_depth. destruct s1, sa2; reflexivity.
+    + simpl. intros [Hfl Hbd].
+      assert (Hcur_s2 : g_current s2 = g_current s1 /\ g_current_owner s2 = g_current_owner s1)
+        by (rewrite <- Hw; split; reflexivity).
+      exact (Hiff2 (conj Hfl Hbd)).
+Qed.
+
+Lemma b2p_untracked {A} (m1 : M A) (b2 : nat -> M A) s1 s2 s1' a :
+  b2_pull_rel s1 s2 ->
+  (forall sa sb sa' r, b2_pull_rel sa sb -> m1 sa = Some (sa', r) ->
+    exists f2 sb', b2 f2 sb = Some (sb', r) /\ b2_pull_rel sa' sb') ->
+  untracked m1 s1 = Some (s1', a) ->
+  exists f2 s2', untracked (b2 f2) s2 = Some (s2', a) /\ b2_pull_rel s1' s2'.
+Proof.
+  intros Hrel Hb H. unfold untracked in H.
+  eapply bind_inv in H as (sa1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+  eapply bind_inv in H as (sa2 & a2 & E2 & H). unfold m_bind, m_modify, m_return in H; simplify_eq.
+  destruct Hrel as [Hw Hiff].
+  assert (Hflag : (match g_current s2 with Some _ => true | None => g_untracked s2 end) =
+                  (match g_current s1 with Some _ => true | None => g_untracked s1 end))
+    by (rewrite <- Hw; reflexivity).
+  assert (Hrel1 : b2_pull_rel (with_untracked (match g_current s1 with Some _ => true | None => g_untracked s1 end) (with_current None s1))
+                              (with_untracked (match g_current s2 with Some _ => true | None => g_untracked s2 end) (with_current None s2))).
+  { rewrite Hflag. split; [rewrite <- Hw; unfold with_pull_depth; destruct s1; reflexivity|].
+    simpl. exact Hiff. }
+  destruct (Hb _ _ _ _ Hrel1 E2) as (f2 & sb2 & Eb2 & [Hw2 Hiff2]).
+  exists f2, (with_untracked (g_untracked s2) (with_current (g_current s2) sb2)).
+  split.
+  - unfold untracked, m_bind, m_modify, m_return. rewrite Eb2. reflexivity.
+  - split.
+    + rewrite <- Hw2, <- Hw. unfold with_pull_depth. destruct s1, sa2; reflexivity.
+    + simpl. exact Hiff2.
+Qed.
+
+Lemma b2p_detached o (m1 : M unit) (b2 : nat -> M unit) s1 s2 s1' a :
+  b2_pull_rel s1 s2 ->
+  (forall sa sb sa' r, b2_pull_rel sa sb -> m1 sa = Some (sa', r) ->
+    exists f2 sb', b2 f2 sb = Some (sb', r) /\ b2_pull_rel sa' sb') ->
+  (forall sa sa' r, m1 sa = Some (sa', r) -> g_batch_depth sa' = g_batch_depth sa) ->
+  (forall sa sa' r, m1 sa = Some (sa', r) -> g_pull_depth sa' = g_pull_depth sa) ->
+  (forall f sa sa' r, b2 f sa = Some (sa', r) -> g_flushing sa' = g_flushing sa /\ g_pull_depth sa' = g_pull_depth sa) ->
+  detached o m1 s1 = Some (s1', a) ->
+  exists f2 s2', detached o (b2 f2) s2 = Some (s2', a) /\ b2_pull_rel s1' s2'.
+Proof.
+  intros Hrel Hb Hbd1 Hpd1 Hdp2 H. unfold detached in H. destruct a.
+  eapply bind_inv in H as (sa1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+  eapply bind_inv in H as (sa2 & [] & E2 & H). unfold m_modify in H; simplify_eq.
+  destruct Hrel as [Hw Hiff].
+  assert (Hrel1 : b2_pull_rel (with_batch_depth (S (g_batch_depth s1)) (with_current_owner (Some o) (with_current None s1)))
+                              (with_batch_depth (S (g_batch_depth s2)) (with_current_owner (Some o) (with_current None s2)))).
+  { split; [rewrite <- Hw; unfold with_pull_depth; destruct s1; reflexivity|simpl; lia]. }
+  destruct (Hb _ _ _ _ Hrel1 E2) as (f2 & sb2 & Eb2 & [Hw2 Hiff2]).
+  exists f2, (with_batch_depth (pred (g_batch_depth sb2)) (with_current_owner (g_current_owner s2) (with_current (g_current s2) sb2))).
+  split.
+  - unfold detached, m_bind, m_modify. rewrite Eb2. reflexivity.
+  - split.
+    + rewrite <- Hw2, <- Hw. unfold with_pull_depth. destruct s1, sa2; reflexivity.
+    + destruct (Hdp2 f2 _ _ _ Eb2) as [Hfl2 Hpd2]. simpl in Hfl2, Hpd2.
+      assert (Hfl1 : g_flushing sa2 = g_flushing s2) by (rewrite <- Hw2 in Hfl2; exact Hfl2).
+      assert (Hfl_s2 : g_flushing s2 = g_flushing s1) by (rewrite <- Hw; reflexivity).
+      assert (Hbd_s2 : g_batch_depth s2 = g_batch_depth s1) by (rewrite <- Hw; reflexivity).
+      assert (Hbd1' : g_batch_depth sa2 = S (g_batch_depth s1)) by (apply Hbd1 in E2; exact E2).
+      assert (Hpd1' : g_pull_depth sa2 = g_pull_depth s1) by (apply Hpd1 in E2; exact E2).
+      rewrite <- Hw2. simpl. rewrite Hbd1'. simpl.
+      intros [Hfl' Hbd']. rewrite Hfl1, Hfl_s2 in Hfl'.
+      rewrite Hpd1', Hpd2. exact (Hiff (conj Hfl' Hbd')).
+Qed.
+
+Local Ltac b2_pure_solve :=
+  let Hrel := fresh "Hrel" in let H := fresh "H" in
+  intros Hrel H; destruct Hrel as [Hw Hiff];
+  unfold with_pull_depth in Hw;
+  match type of Hw with _ = ?sb => destruct sb end;
+  match type of Hw with ?lhs = _ => match lhs with context [State.g_flags ?sa] => destruct sa end end;
+  unfold with_pull_depth in *;
+  simpl in *; injection Hw; intros; subst;
+  repeat match type of H with
+  | context [match ?x with _ => _ end] => destruct x eqn:?
+  end;
+  simplify_eq; try (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+
+Lemma b2_pure_m_return {A} (a : A) s0 sb0 s1 a1 :
+  b2_pull_rel s0 sb0 -> m_return a s0 = Some (s1, a1) ->
+  exists sb1, m_return a sb0 = Some (sb1, a1) /\ b2_pull_rel s1 sb1.
+Proof. unfold m_return. b2_pure_solve. Qed.
+
+Lemma b2_pure_fail {A} (s0 sb0 s1 : state) (r1 r2 : A) :
+  b2_pull_rel s0 sb0 -> Some (s0, r1) = Some (s1, r2) ->
+  exists sb1, Some (sb0, r1) = Some (sb1, r2) /\ b2_pull_rel s1 sb1.
+Proof. intros Hrel H. simplify_eq. exists sb0. split; [reflexivity|exact Hrel]. Qed.
+
+Lemma b2_pure_get_node n s0 sb0 s1 d :
+  b2_pull_rel s0 sb0 -> get_node n s0 = Some (s1, d) ->
+  exists sb1, get_node n sb0 = Some (sb1, d) /\ b2_pull_rel s1 sb1.
+Proof. unfold get_node. b2_pure_solve. Qed.
+
+Lemma b2_pure_modify_node n u s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> modify_node n u s0 = Some (s1, r) ->
+  exists sb1, modify_node n u sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof. unfold modify_node, set_node. b2_pure_solve. Qed.
+
+Lemma b2_pure_get_owner o s0 sb0 s1 x :
+  b2_pull_rel s0 sb0 -> get_owner o s0 = Some (s1, x) ->
+  exists sb1, get_owner o sb0 = Some (sb1, x) /\ b2_pull_rel s1 sb1.
+Proof. unfold get_owner. b2_pure_solve. Qed.
+
+Lemma b2_pure_edges_opt u s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> edges_opt u s0 = Some (s1, r) ->
+  exists sb1, edges_opt u sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof. unfold edges_opt. b2_pure_solve. Qed.
+
+Lemma b2_pure_current_owner s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> current_owner s0 = Some (s1, r) ->
+  exists sb1, current_owner sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  unfold current_owner, set_node.
+  intros [Hw Hiff] H. unfold with_pull_depth in Hw.
+  destruct s0, sb0; simpl in *; injection Hw; intros; subst.
+  destruct g_current_owner0, g_current0; simplify_eq;
+    try (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+  destruct (g_nodes0 !! n); [|discriminate].
+  destruct (n_scope n0); simplify_eq;
+    try (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+  destruct (n_kind n0), (n_mode n0); simplify_eq;
+    (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+Qed.
+
+Lemma b2_pure_note_host_read n o s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> note_host_read n o s0 = Some (s1, r) ->
+  exists sb1, note_host_read n o sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  unfold note_host_read, emit, m_modify.
+  intros [Hw Hiff] H. unfold with_pull_depth in Hw.
+  destruct s0, sb0; simpl in *; injection Hw; intros; subst.
+  destruct g_current0, g_current_owner0; simplify_eq;
+    try (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+  destruct (decide _); simplify_eq; (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+Qed.
+
+Lemma b2_pure_track n s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> track n s0 = Some (s1, r) ->
+  exists sb1, track n sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  unfold track, live_current, ghost_read, set_node.
+  intros [Hw Hiff] H. unfold with_pull_depth in Hw.
+  destruct s0, sb0; simpl in *; injection Hw; intros; subst.
+  destruct g_current0; simplify_eq; try (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+  destruct (g_nodes0 !! n0); simplify_eq; try (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+  destruct (n_disposed n1); simplify_eq; try (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+  destruct (sources_add n0 n g_edges0); simplify_eq.
+  destruct (g_nodes0 !! n);
+    (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+Qed.
+
+Lemma b2_pure_mark_reader f s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> mark_reader f s0 = Some (s1, r) ->
+  exists sb1, mark_reader f sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  intros [Hw Hiff] H.
+  eapply (b2_pure_step (mark_reader f)); [| |exact (conj Hw Hiff)|exact H].
+  - intros p s. unfold mark_reader. destruct (g_current s) eqn:Ec; simpl; [rewrite Ec|rewrite Ec; reflexivity].
+    destruct (f_reader_mark (g_flags s)); [|reflexivity].
+    rewrite mark_check_with_pull. destruct (mark_check f n s); reflexivity.
+  - intros s s' a Hm. unfold mark_reader in Hm.
+    destruct (g_current s); [|simplify_eq; repeat split].
+    destruct (f_reader_mark (g_flags s)); [|simplify_eq; repeat split].
+    destruct (mark_check f n s) eqn:Em; [|discriminate]. simplify_eq.
+    destruct (marks_same_depths _ _ (mark_check_rtc f n _ _ Em)) as [Hp Hf].
+    pose proof (marks_bd _ _ (mark_check_rtc f n _ _ Em)) as Hbd.
+    auto.
+Qed.
+
+Lemma b2_pure_announce n s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> announce n s0 = Some (s1, r) ->
+  exists sb1, announce n sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof. unfold announce, modify_node, set_node. b2_pure_solve. Qed.
+
+Lemma b2_pure_unlink l s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> unlink l s0 = Some (s1, r) ->
+  exists sb1, unlink l sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  unfold unlink, m_bind, get_owner, put_owner, m_modify, m_return.
+  intros [Hw Hiff] H. unfold with_pull_depth in Hw.
+  destruct s0, sb0; simpl in *; injection Hw; intros; subst.
+  destruct (g_owners0 !! l_owner l); [|discriminate].
+  destruct (decide (l_generation l = Some (o_generation o))); simplify_eq;
+    (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+Qed.
+
+Lemma b2_pure_record_error o y s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> record_error o y s0 = Some (s1, r) ->
+  exists sb1, record_error o y sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  unfold record_error, m_bind, get_owner, put_owner, m_modify.
+  intros [Hw Hiff] H. unfold with_pull_depth in Hw.
+  destruct s0, sb0; simpl in *; injection Hw; intros; subst.
+  destruct (g_owners0 !! o); [|discriminate]. simpl in *.
+  destruct (o_sink o0); [|simplify_eq; (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]])].
+  simpl in *. destruct (g_owners0 !! o1); simplify_eq.
+  eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]].
+Qed.
+
+Lemma b2_pure_log_label s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> log_label s0 = Some (s1, r) ->
+  exists sb1, log_label sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof. unfold log_label. b2_pure_solve. Qed.
+
+Lemma b2_pure_next_id s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> next_id s0 = Some (s1, r) ->
+  exists sb1, next_id sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof. unfold next_id. b2_pure_solve. Qed.
+
+Lemma b2_pure_mark_dirty f n s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> m_step (mark_dirty f n) s0 = Some (s1, r) ->
+  exists sb1, m_step (mark_dirty f n) sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  intros Hrel H.
+  eapply (b2_pure_step (m_step (mark_dirty f n))); [| |exact Hrel|exact H].
+  - intros p s. unfold m_step. rewrite mark_dirty_with_pull. destruct (mark_dirty f n s); reflexivity.
+  - intros s s' a Hm. unfold m_step in Hm. destruct (mark_dirty f n s) eqn:Em; [|discriminate].
+    simplify_eq. destruct (marks_same_depths _ _ (mark_dirty_rtc f n _ _ Em)) as [Hp Hf].
+    pose proof (marks_bd _ _ (mark_dirty_rtc f n _ _ Em)) as Hbd. auto.
+Qed.
+
+Lemma b2_pure_notify_dirty f src s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> m_step (notify_dirty f src) s0 = Some (s1, r) ->
+  exists sb1, m_step (notify_dirty f src) sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  intros Hrel H.
+  eapply (b2_pure_step (m_step (notify_dirty f src))); [| |exact Hrel|exact H].
+  - intros p s. unfold m_step. rewrite notify_dirty_with_pull. destruct (notify_dirty f src s); reflexivity.
+  - intros s s' a Hm. unfold m_step in Hm. destruct (notify_dirty f src s) eqn:Em; [|discriminate].
+    simplify_eq. destruct (marks_same_depths _ _ (any_mark_rtc f src None _ _ (or_intror (or_intror (or_intror (or_introl Em)))))) as [Hp Hf].
+    pose proof (marks_bd _ _ (any_mark_rtc f src None _ _ (or_intror (or_intror (or_intror (or_introl Em)))))) as Hbd. auto.
+Qed.
+
+Lemma b2_pure_notify_dirty_except f src cur s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> m_step (notify_dirty_except f src cur) s0 = Some (s1, r) ->
+  exists sb1, m_step (notify_dirty_except f src cur) sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  intros Hrel H.
+  eapply (b2_pure_step (m_step (notify_dirty_except f src cur))); [| |exact Hrel|exact H].
+  - intros p s. unfold m_step. rewrite notify_dirty_except_with_pull. destruct (notify_dirty_except f src cur s); reflexivity.
+  - intros s s' a Hm. unfold m_step in Hm. destruct (notify_dirty_except f src cur s) eqn:Em; [|discriminate].
+    simplify_eq. destruct (marks_same_depths _ _ (any_mark_rtc f src cur _ _ (or_intror (or_intror (or_intror (or_intror Em)))))) as [Hp Hf].
+    pose proof (marks_bd _ _ (any_mark_rtc f src cur _ _ (or_intror (or_intror (or_intror (or_intror Em)))))) as Hbd. auto.
+Qed.
+
+Lemma b2_pure_cmp_throws {A} n u (v : A) s0 sb0 s1 a :
+  b2_pull_rel s0 sb0 ->
+  (let* _ := modify_node n u in m_return v) s0 = Some (s1, a) ->
+  exists sb1, (let* _ := modify_node n u in m_return v) sb0 = Some (sb1, a) /\ b2_pull_rel s1 sb1.
+Proof.
+  unfold m_bind, modify_node, set_node, m_return.
+  intros [Hw Hiff] H. unfold with_pull_depth in Hw.
+  destruct s0, sb0; simpl in *; injection Hw; intros; subst.
+  destruct (g_nodes0 !! n); simplify_eq;
+    (eexists; split; [reflexivity|split; [reflexivity|simpl; exact Hiff]]).
+Qed.
+
+Local Ltac b2_upd_tac :=
+  unfold with_pull_depth,
+    with_flush_owed, with_flushing, with_queue, with_queue_head,
+    with_owners, with_edges, with_trace, with_running, with_checking,
+    with_registered, with_ghost, with_current, with_current_owner, with_untracked,
+    with_skip, with_epoch, with_stamps,
+    push_running, pop_running, push_checking, pop_checking, emit, edges, put_owner,
+    ghost_read, ghost_run_start, ghost_effect_start, ghost_publish,
+    ghost_run_end, ghost_dirty_cleared, ghost_resolved, ghost_registered,
+    run_end_unnoticed, slot_holds, add_if, set_node;
+  repeat match goal with |- forall s, _ => let s := fresh "s" in intro s; destruct s; simpl end;
+  repeat match goal with |- context [match ?m !! ?k with _ => _ end] => destruct (m !! k) end;
+  simpl; repeat split; reflexivity.
+
+Lemma b2_pure_add_node n d s0 sb0 s1 r :
+  b2_pull_rel s0 sb0 -> add_node n d s0 = Some (s1, r) ->
+  exists sb1, add_node n d sb0 = Some (sb1, r) /\ b2_pull_rel s1 sb1.
+Proof.
+  unfold add_node. intros Hrel H.
+  eapply b2_pure_modify;
+    [intros p s; unfold ghost_publish, set_node; destruct s; simpl; rewrite !lookup_insert_eq; reflexivity
+    |intro s; unfold ghost_publish, set_node; destruct s; simpl; rewrite lookup_insert_eq; repeat split; reflexivity
+    |exact Hrel|exact H].
+Qed.
+
+Local Ltac b2_pure_fwd :=
+  intros;
+  first
+    [ by eapply b2_pure_m_return
+    | by eapply b2_pure_fail
+    | by eapply b2_pure_cmp_throws
+    | by eapply b2_pure_get_node
+    | by eapply b2_pure_modify_node
+    | by eapply b2_pure_get_owner
+    | by eapply b2_pure_edges_opt
+    | by eapply b2_pure_current_owner
+    | by eapply b2_pure_note_host_read
+    | by eapply b2_pure_track
+    | by eapply b2_pure_mark_reader
+    | by eapply b2_pure_announce
+    | by eapply b2_pure_unlink
+    | by eapply b2_pure_record_error
+    | by eapply b2_pure_log_label
+    | by eapply b2_pure_mark_dirty
+    | by eapply b2_pure_notify_dirty
+    | by eapply b2_pure_notify_dirty_except
+    | by eapply b2_pure_next_id
+    | by eapply b2_pure_add_node
+    | by (eapply b2_pure_modify; [intros p; b2_upd_tac | b2_upd_tac | eassumption | eassumption]) ].
+
+Local Ltac b2_ret := intros; eexists 0%nat; b2_pure_fwd.
+
+Local Ltac b2_mono_tac :=
+  intros;
+  repeat (cbv beta in *; match goal with
+  | H0 : m_bind ?m1 ?k1 ?s = Some ?r |- m_bind _ _ ?s = Some ?r =>
+    eapply bind_mono; [..|exact H0]; [intros ?? ?|intros ???? ?]
+  | H0 : hosted ?n ?b1 ?s = Some ?r |- hosted ?n _ ?s = Some ?r =>
+    eapply hosted_mono; [..|exact H0]; intros ???
+  | H0 : untracked ?b1 ?s = Some ?r |- untracked _ ?s = Some ?r =>
+    eapply untracked_mono; [..|exact H0]; intros ???
+  | H0 : detached ?o ?b1 ?s = Some ?r |- detached ?o _ ?s = Some ?r =>
+    eapply detached_mono; [..|exact H0]; intros ???
+  | H : ?f1 <= ?f2 |- b1_exec ?f2 _ _ _ = Some _ => by eapply (B1Mexec _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_read ?f2 _ _ _ = Some _ => by eapply (B1Mread _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_read_node ?f2 _ _ = Some _ => by eapply (B1Mread_node _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_update_if_necessary ?f2 _ _ = Some _ => by eapply (B1Mupdate _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_refresh_or_pull ?f2 _ _ = Some _ => by eapply (B1Mrop _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_pull ?f2 _ _ = Some _ => by eapply (B1Mpull _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_refresh ?f2 _ _ = Some _ => by eapply (B1Mrefresh _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_resolve_walk ?f2 _ _ _ = Some _ => by eapply (B1Mwalk _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_recompute ?f2 _ _ = Some _ => by eapply (B1Mrecompute _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_run_memo ?f2 _ _ = Some _ => by eapply (B1Mrun_memo _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_execute_effect ?f2 _ _ = Some _ => by eapply (B1Mexecute _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_run_effect ?f2 _ _ = Some _ => by eapply (B1Mrun_effect _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_run_effect_body ?f2 _ _ = Some _ => by eapply (B1Mbody _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_discharge ?f2 _ _ = Some _ => by eapply (B1Mdischarge _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_retire ?f2 _ _ = Some _ => by eapply (B1Mretire _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_dispose_scope ?f2 _ _ = Some _ => by eapply (B1Mdispose_scope _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_teardown ?f2 _ _ _ _ = Some _ => by eapply (B1Mteardown _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_run_cleanup ?f2 _ _ _ _ = Some _ => by eapply (B1Mcleanup _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_release ?f2 _ _ = Some _ => by eapply (B1Mrelease _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_dispose_node ?f2 _ _ = Some _ => by eapply (B1Mdispose _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_attach ?f2 _ _ _ = Some _ => by eapply (B1Mattach _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_write_signal ?f2 _ _ _ = Some _ => by eapply (B1Mwrite _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_request_flush ?f2 _ = Some _ => by eapply (B1Mrequest _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_settle_flush ?f2 _ = Some _ => by eapply (B1Msettle _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_run_flush ?f2 _ = Some _ => by eapply (B1Mflush _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- b1_drain ?f2 _ = Some _ => by eapply (B1Mdrain _ (b1_mono_all f1))
+  | H : ?f1 <= ?f2 |- m_step (mark_dirty ?f2 _) _ = Some _ => by eapply m_step_mark_dirty_mono
+  | H : ?f1 <= ?f2 |- m_step (notify_dirty ?f2 _) _ = Some _ => by eapply m_step_notify_dirty_mono
+  | H : ?f1 <= ?f2 |- m_step (notify_dirty_except ?f2 _ _) _ = Some _ => by eapply m_step_notify_dirty_except_mono
+  | H : ?f1 <= ?f2 |- mark_reader ?f2 _ = Some _ => by eapply mark_reader_mono
+  | |- (if ?b then _ else _) _ = Some _ => destruct b
+  | |- (if ?b then _ else _) = Some _ => destruct b
+  | |- (match ?x with _ => _ end) _ = Some _ => destruct x
+  | |- (match ?x with _ => _ end) = Some _ => destruct x
+  | |- _ = Some _ => assumption
+  end);
+  match goal with
+  | |- _ = Some _ => eassumption
+  | _ => idtac
+  end.
+
+Local Ltac b2_wrap_ex_S :=
+  match goal with
+  | |- @ex nat ?P =>
+    cut (exists f' : nat, P (S f'));
+    [let f' := fresh "f'" in let H := fresh "H" in intros [f' H]; exists (S f'); exact H | cbv beta]
+  end.
+
+Lemma b2_pull_rel_fields s1 s2 :
+  b2_pull_rel s1 s2 ->
+  g_nodes s2 = g_nodes s1 /\
+  g_edges s2 = g_edges s1 /\
+  g_owners s2 = g_owners s1 /\
+  g_flags s2 = g_flags s1 /\
+  g_queue s2 = g_queue s1 /\
+  g_queue_head s2 = g_queue_head s1 /\
+  g_flushing s2 = g_flushing s1 /\
+  g_flush_owed s2 = g_flush_owed s1 /\
+  g_batch_depth s2 = g_batch_depth s1 /\
+  g_current s2 = g_current s1 /\
+  g_untracked s2 = g_untracked s1 /\
+  g_current_owner s2 = g_current_owner s1 /\
+  g_running s2 = g_running s1 /\
+  g_checking s2 = g_checking s1.
+Proof.
+  intros [Hw _]. unfold with_pull_depth in Hw.
+  destruct s1, s2; simpl in *; injection Hw; intros; subst; repeat split; reflexivity.
+Qed.
+
+Record b2_sim_at (f : nat) : Prop := {
+  B2Sexec : forall e c s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_exec f e c s1 = Some (s1', r) -> exists f2 s2', b1_exec f2 e c s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sread : forall n b s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_read f n b s1 = Some (s1', r) -> exists f2 s2', b1_read f2 n b s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sread_node : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_read_node f n s1 = Some (s1', r) -> exists f2 s2', b1_read_node f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Supdate : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_update_if_necessary f n s1 = Some (s1', r) -> exists f2 s2', b1_update_if_necessary f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Srop : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_refresh_or_pull f n s1 = Some (s1', r) -> exists f2 s2', b1_refresh_or_pull f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Spull : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_pull f n s1 = Some (s1', r) -> exists f2 s2', b1_pull f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Srefresh : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_refresh f n s1 = Some (s1', r) -> exists f2 s2', b1_refresh f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Swalk : forall n i s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_resolve_walk f n i s1 = Some (s1', r) -> exists f2 s2', b1_resolve_walk f2 n i s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Srecompute : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_recompute f n s1 = Some (s1', r) -> exists f2 s2', b1_recompute f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Srun_memo : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_run_memo f n s1 = Some (s1', r) -> exists f2 s2', b1_run_memo f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sexecute : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_execute_effect f n s1 = Some (s1', r) -> exists f2 s2', b1_execute_effect f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Srun_effect : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_run_effect f n s1 = Some (s1', r) -> exists f2 s2', b1_run_effect f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sbody : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_run_effect_body f n s1 = Some (s1', r) -> exists f2 s2', b1_run_effect_body f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sdischarge : forall o s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_discharge f o s1 = Some (s1', r) -> exists f2 s2', b1_discharge f2 o s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sretire : forall o s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_retire f o s1 = Some (s1', r) -> exists f2 s2', b1_retire f2 o s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sdispose_scope : forall o s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_dispose_scope f o s1 = Some (s1', r) -> exists f2 s2', b1_dispose_scope f2 o s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Steardown : forall o ls cs s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_teardown f o ls cs s1 = Some (s1', r) -> exists f2 s2', b1_teardown f2 o ls cs s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Scleanup : forall o b e s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_run_cleanup f o b e s1 = Some (s1', r) -> exists f2 s2', b1_run_cleanup f2 o b e s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Srelease : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_release f n s1 = Some (s1', r) -> exists f2 s2', b1_release f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sdispose : forall n s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_dispose_node f n s1 = Some (s1', r) -> exists f2 s2', b1_dispose_node f2 n s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sattach : forall n o s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_attach f n o s1 = Some (s1', r) -> exists f2 s2', b1_attach f2 n o s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Swrite : forall n v s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_write_signal f n v s1 = Some (s1', r) -> exists f2 s2', b1_write_signal f2 n v s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Srequest : forall s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_request_flush f s1 = Some (s1', r) -> exists f2 s2', b1_request_flush f2 s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Ssettle : forall s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_settle_flush f s1 = Some (s1', r) -> exists f2 s2', b1_settle_flush f2 s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sflush : forall s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_run_flush f s1 = Some (s1', r) -> exists f2 s2', b1_run_flush f2 s2 = Some (s2', r) /\ b2_pull_rel s1' s2';
+  B2Sdrain : forall s1 s2 s1' r, b2_pull_rel s1 s2 -> b1_drain f s1 = Some (s1', r) -> exists f2 s2', b1_drain f2 s2 = Some (s2', r) /\ b2_pull_rel s1' s2'
+}.
+
+Lemma b2_sim_all f : b2_sim_at f.
+Proof.
+  induction f as [|f IH]; [split; intros; discriminate|].
+  split.
+  - intros e c s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_exec] in H |- *.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (_&_&_&_&_&_&Hfl&_&Hbd&_).
+    destruct c.
+    + exists 0%nat. unfold on_value in H |- *.
+      destruct (eval_expr e (env_lookup e prev_var) e0) as [[|]|]; [| |discriminate]; b2_pure_fwd.
+    + b2_ret.
+    + unfold on_value in H |- *. destruct (eval_expr e (env_lookup e prev_var) e0) as [[|]|];
+        [by eapply (B2Sexec _ IH)|b2_ret|discriminate].
+    + unfold on_value in H |- *. destruct (eval_expr e (env_lookup e prev_var) e0) as [[|]|];
+        [destruct (decide _); by eapply (B2Sexec _ IH)|b2_ret|discriminate].
+    + unfold on_node, on_value in H |- *.
+      destruct (eval_expr e (env_lookup e prev_var) n) as [[|]|]; try discriminate; [destruct (decide _); [|discriminate]|b2_ret].
+      eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sread _ IH)|intros o ?? Hrel1 Hk].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      destruct o; [by eapply (B2Sexec _ IH)|b2_ret].
+    + unfold on_node, on_value in H |- *.
+      destruct (eval_expr e (env_lookup e prev_var) n) as [[|]|]; try discriminate; [destruct (decide _); [|discriminate]|b2_ret].
+      eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sread _ IH)|intros o ?? Hrel1 Hk].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      destruct o; by eapply (B2Sexec _ IH).
+    + unfold on_node, on_value in H |- *.
+      destruct (eval_expr e (env_lookup e prev_var) n) as [[|]|]; try discriminate; [destruct (decide _); [|discriminate]|b2_ret].
+      eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sread _ IH)|intros o ?? Hrel1 Hk].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      destruct o; [by eapply (B2Sexec _ IH)|b2_ret].
+    + unfold on_node, on_value in H |- *.
+      destruct (eval_expr e (env_lookup e prev_var) n) as [[|]|]; try discriminate; [destruct (decide _); [|discriminate]|b2_ret].
+      destruct (eval_expr e (env_lookup e prev_var) e0) as [[|]|]; try discriminate; [|b2_ret].
+      eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Swrite _ IH)|intros [] ?? Hrel1 Hk].
+      by eapply (B2Sexec _ IH).
+    + unfold on_value in H |- *. destruct (eval_expr e (env_lookup e prev_var) e0) as [[|]|]; try discriminate; [|b2_ret].
+      eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros n ?? Hrel1 Hk].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      by eapply (B2Sexec _ IH).
+    + eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros n ?? Hrel1 Hk].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros own ?? Hrel3 Hk3].
+      destruct own; [|b2_ret].
+      eapply (b2p_bind_of Hk3); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sattach _ IH)|intros [] ?? Hrel4 Hk4].
+      by eapply (B2Sexec _ IH).
+    + eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros n ?? Hrel1 Hk].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros own ?? Hrel3 Hk3].
+      destruct own; [|b2_ret].
+      eapply (b2p_bind_of Hk3); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sattach _ IH)|intros [] ?? Hrel4 Hk4].
+      eapply (b2p_bind_of Hk4); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; exists f; b2_pure_fwd|intros [] ?? Hrel5 Hk5].
+      eapply (b2p_bind_of Hk5); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srequest _ IH)|intros [] ?? Hrel6 Hk6].
+      by eapply (B2Sexec _ IH).
+    + eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros own ?? Hrel1 Hk].
+      destruct own; [|b2_ret].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros x ?? Hrel2 Hk2].
+      eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros [] ?? Hrel3 Hk3].
+      eapply (b2p_bind_of Hk3); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel4 Hk4; by eapply (B2Sexec _ IH)].
+      intros sa sb sa' r_ Hrel_a Hm. destruct (o_disposed x).
+      * eapply (b2p_bind_of Hm); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel_b Hkb; by eapply (B2Srequest _ IH)].
+        intros sa_d sb_d sa_d' r0_ Hrel_d Hm_d. eapply b2p_detached; [exact Hrel_d| | | | |exact Hm_d].
+        -- intros ????; by eapply (B2Scleanup _ IH).
+        -- intros ??? E; apply (B1BKcleanup f (b1_batch_kept f)) in E; exact E.
+        -- intros ??? E; apply (B1Dcleanup f (b1_depths_kept f)) in E; exact (proj1 E).
+        -- intros f0 ??? E; apply (B1Dcleanup f0 (b1_depths_kept f0)) in E as [Hpd Hfl_]; exact (conj Hfl_ Hpd).
+      * exists 0%nat; b2_pure_fwd.
+    + unfold on_node, on_value in H |- *.
+      destruct (eval_expr e (env_lookup e prev_var) n) as [[|]|]; try discriminate; [destruct (decide _); [|discriminate]|b2_ret].
+      eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+      destruct (n_kind d); [discriminate| |];
+      (eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sdispose _ IH)|intros [] ?? Hrel2 Hk2];
+       eapply (b2_bind_pure_l_of Hrel2 Hk2); [destruct (n_disposed d); b2_pure_fwd|intros [] ?? Hrel3 Hk3];
+       by eapply (B2Sexec _ IH)).
+    + eapply bind_inv in H as (sa1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+      eapply bind_inv in H as (sa2 & rb & E2 & H).
+      eapply bind_inv in H as (sa3 & [] & E3 & H). unfold m_modify in E3; simplify_eq.
+      assert (Hrel1 : b2_pull_rel (with_batch_depth (S (g_batch_depth s1)) s1) (with_batch_depth (S (g_batch_depth s2)) s2)).
+      { destruct Hrel as [Hw _]. split; [rewrite <- Hw; unfold with_pull_depth; destruct s1; reflexivity|simpl; lia]. }
+      destruct (B2Sexec _ IH _ _ _ _ _ _ Hrel1 E2) as (f2 & sb2 & Eb2 & [Hw2 _]).
+      assert (Hbd_sa2 : g_batch_depth sa2 = S (g_batch_depth s1)) by (apply (B1BKexec _ (b1_batch_kept f)) in E2; exact E2).
+      destruct (B1Dexec _ (b1_depths_kept f) _ _ _ _ _ E2) as [Hpd_sa2 Hfl_sa2]. simpl in Hpd_sa2, Hfl_sa2.
+      destruct (B1Dexec _ (b1_depths_kept f2) _ _ _ _ _ Eb2) as [Hpd_sb2 _]. simpl in Hpd_sb2.
+      assert (Hrel3 : b2_pull_rel (with_batch_depth (pred (g_batch_depth sa2)) sa2) (with_batch_depth (pred (g_batch_depth sb2)) sb2)).
+      { split; [rewrite <- Hw2; unfold with_pull_depth; destruct sa2; reflexivity|].
+        simpl. rewrite Hbd_sa2, Hpd_sa2, Hpd_sb2, Hfl_sa2. simpl.
+        destruct Hrel as [_ Hiff]. exact Hiff. }
+      destruct rb as [|].
+      * assert (Hk : (let* _ := b1_request_flush f in b1_exec f e c2) (with_batch_depth (pred (g_batch_depth sa2)) sa2) = Some (s1', r)) by exact H.
+        assert (Htmp : exists f3 s2',
+          (let* _ := b1_request_flush f3 in b1_exec f3 e c2) (with_batch_depth (pred (g_batch_depth sb2)) sb2) = Some (s2', r) /\
+          b2_pull_rel s1' s2').
+        { eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srequest _ IH)|intros [] ?? Hrel4 Hk4; by eapply (B2Sexec _ IH)]. }
+        destruct Htmp as (f3 & s2' & Ek3 & Hrel').
+        exists (Nat.max f2 f3), s2'. split; [|exact Hrel'].
+        unfold m_bind, m_modify. rewrite (B1Mexec _ (b1_mono_all f2) (Nat.max f2 f3) _ _ _ _ (Nat.le_max_l f2 f3) Eb2).
+        eapply bind_inv in Ek3 as (sb4 & [] & Eq1 & Eq2).
+        rewrite (B1Mrequest _ (b1_mono_all f3) (Nat.max f2 f3) _ _ (Nat.le_max_r f2 f3) Eq1).
+        exact (B1Mexec _ (b1_mono_all f3) (Nat.max f2 f3) _ _ _ _ (Nat.le_max_r f2 f3) Eq2).
+      * unfold m_return in H; simplify_eq.
+        exists f2, (with_batch_depth (pred (g_batch_depth sb2)) sb2). split; [|exact Hrel3].
+        unfold m_bind, m_modify. rewrite Eb2. reflexivity.
+    + unfold on_value in H |- *. destruct (eval_expr e (env_lookup e prev_var) e0) as [[|]|]; try discriminate; [|b2_ret].
+      eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros l ?? Hrel1 Hk].
+      eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      by eapply (B2Sexec _ IH).
+  - intros n b s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_read] in H |- *.
+    destruct b; [by eapply (B2Sread_node _ IH) | eapply b2p_untracked; [exact Hrel|intros ????; by eapply (B2Sread_node _ IH)|exact H]].
+  - (* B2Sread_node *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_read_node] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    destruct (n_kind d); [| |discriminate].
+    + eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2]. b2_ret.
+    + eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros d' ?? Hrel2 Hk2; destruct (n_status d'); b2_ret].
+      intros sa sb sa' r_ Hrel_a Hm. destruct (stale_live d).
+      * eapply (b2p_bind_of Hm); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srop _ IH)|intros d'0 ?? Hrel2a Hk2a].
+        eapply (b2p_bind_of Hk2a); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel3a Hk3a; b2_ret].
+        intros sa2 sb2 sa2' r2_ Hrel2a' Hm2. eapply (b2_bind_pure_l_of Hrel2a' Hm2); [b2_pure_fwd|intros [] ?? Hrel3b Hk3b].
+        eapply (b2_bind_pure_l_of Hrel3b Hk3b); [b2_pure_fwd|intros d'' ?? Hrel4b Hk4b].
+        destruct (stale_live d''); [exists f; by b2_pure_fwd|b2_ret].
+      * eapply (b2_bind_pure_l_of Hrel_a Hm); [b2_pure_fwd|intros [] ?? Hrel2b Hk2b].
+        exists 0%nat. by b2_pure_fwd.
+  - (* B2Supdate *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_update_if_necessary] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    destruct (n_kind d); [b2_ret| |b2_ret].
+    destruct (stale_live d); [|b2_ret].
+    eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srop _ IH)|intros ??? Hrel2 Hk2].
+    b2_ret.
+  - (* B2Srop *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_refresh_or_pull] in H |- *.
+    rewrite bind_get in H. setoid_rewrite bind_get.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (_&_&_&_&_&_&Hfl&_&Hbd&Hcur&_).
+    unfold deferring_b1, deferring in *. rewrite Hfl, Hcur in *.
+    destruct (g_flushing s1 || match g_current s1 with Some _ => true | None => false end) eqn:Hearly.
+    + (* Both take b1_refresh; get_node *)
+      destruct (g_flushing s1) eqn:Efl; [|destruct (g_current s1) eqn:Ec; [|discriminate]]; simpl in H |- *.
+      * eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srefresh _ IH)|intros [] ?? Hrel1 Hk].
+        exists 0%nat; by b2_pure_fwd.
+      * eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srefresh _ IH)|intros [] ?? Hrel1 Hk].
+        exists 0%nat; by b2_pure_fwd.
+    + destruct (g_flushing s1) eqn:Efl; [discriminate|].
+      destruct (g_current s1) eqn:Ec; [discriminate|].
+      simpl in H |- *.
+      destruct (bool_decide (0 < g_pull_depth s1)) eqn:Ep1, (bool_decide (0 < g_pull_depth s2)) eqn:Ep2.
+      * eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srefresh _ IH)|intros [] ?? Hrel1 Hk].
+        exists 0%nat; by b2_pure_fwd.
+      * (* Ep1 = true, Ep2 = false -> 0 < g_batch_depth s1 = g_batch_depth s2 *)
+        assert (Hbd_pos : 0 < g_batch_depth s1).
+        { destruct (Nat.eq_dec (g_batch_depth s1) 0) as [H0|]; [|lia].
+          destruct Hrel as [_ Hiff]. specialize (Hiff (conj Efl H0)).
+          rewrite bool_decide_eq_true in Ep1. rewrite bool_decide_eq_false in Ep2. lia. }
+        eapply bind_inv in H as (sa1 & [] & E1 & Eg). unfold get_node in Eg.
+        destruct (g_nodes sa1 !! n) as [dn|] eqn:En; [|discriminate]. simplify_eq.
+        set (s2_inc := with_pull_depth (S (g_pull_depth s2)) s2).
+        assert (Hrel_inc : b2_pull_rel s1 s2_inc).
+        { apply b2_pull_rel_with_pull_S_right; [exact Hrel|right; left; exact Hbd_pos]. }
+        destruct (B2Srefresh _ IH n _ _ _ _ Hrel_inc E1) as (f2 & sb1 & Eb1 & Hrel1).
+        pose proof (B1BKrefresh _ (b1_batch_kept f) _ _ _ _ E1) as Hbd_sa1.
+        pose proof (B1Drefresh _ (b1_depths_kept f) _ _ _ _ E1) as [Hpd_sa1 Hfl_sa1].
+        pose proof (B1BKrefresh _ (b1_batch_kept f2) _ _ _ _ Eb1) as Hbd_sb1.
+        pose proof (B1Drefresh _ (b1_depths_kept f2) _ _ _ _ Eb1) as [Hpd_sb1 Hfl_sb1].
+        assert (Hf2' := B1Mrefresh _ (b1_mono_all f2) (Nat.max f2 1) n s2_inc (sb1, tt) (Nat.le_max_l f2 1) Eb1).
+        set (sb2 := with_pull_depth (pred (g_pull_depth sb1)) sb1).
+        exists (S (Nat.max f2 1)), sb2.
+        split.
+        -- cbn [b1_pull]. unfold m_bind, m_modify, get_node.
+           fold s2_inc. rewrite Hf2'. simpl.
+           destruct (b2_pull_rel_fields _ _ Hrel1) as (Hns & _). rewrite Hns, En. simpl.
+           fold sb2.
+           destruct (_ && _); [|reflexivity].
+           replace (Nat.max f2 1) with (S (pred (Nat.max f2 1))) by lia.
+           cbn [b1_settle_flush]. rewrite bind_get.
+           assert (Hbd_sb2 : 0 < g_batch_depth sb2).
+           { unfold sb2. simpl. rewrite Hbd_sb1. simpl. rewrite Hbd. exact Hbd_pos. }
+           rewrite (bool_decide_eq_false_2 (g_batch_depth sb2 = 0%nat)) by lia.
+           rewrite andb_false_r, andb_false_l. reflexivity.
+        -- destruct Hrel1 as [Hw1 _]. split.
+           ++ unfold sb2, with_pull_depth in *. rewrite <- Hw1. destruct s1'; reflexivity.
+           ++ intros [Hfl1 Hbd1]. rewrite Hbd_sa1 in Hbd1. lia.
+      * (* Ep1 = false, Ep2 = true -> 0 < g_batch_depth s1 = g_batch_depth s2 *)
+        assert (Hbd_pos : 0 < g_batch_depth s1).
+        { destruct (Nat.eq_dec (g_batch_depth s1) 0) as [H0|]; [|lia].
+          destruct Hrel as [_ Hiff]. specialize (Hiff (conj Efl H0)).
+          rewrite bool_decide_eq_false in Ep1. rewrite bool_decide_eq_true in Ep2. lia. }
+        destruct f as [|f']; [discriminate|].
+        cbn [b1_pull] in H.
+        eapply bind_inv in H as (sa0 & [] & E0 & H). unfold m_modify in E0; simplify_eq.
+        eapply bind_inv in H as (sa1 & [] & E1 & H).
+        eapply bind_inv in H as (sa2 & d & E2 & H). unfold get_node in E2.
+        destruct (g_nodes sa1 !! n) eqn:En; [|discriminate]. simplify_eq. rename sa2 into sa1.
+        eapply bind_inv in H as (sa3 & [] & E3 & H). unfold m_modify in E3; simplify_eq.
+        rewrite bind_get in H.
+        eapply bind_inv in H as (sa4 & [] & E4 & H). unfold m_return in H; simplify_eq.
+        pose proof (B1BKrefresh _ (b1_batch_kept f') _ _ _ _ E1) as Hbd_sa1. simpl in Hbd_sa1.
+        assert (Hsa4 : s1' = with_pull_depth (pred (g_pull_depth sa1)) sa1).
+        { destruct (_ && _); [|unfold m_return in E4; by simplify_eq].
+          destruct f'; [discriminate|]. cbn [b1_settle_flush] in E4. rewrite bind_get in E4.
+          rewrite (bool_decide_eq_false_2 (g_batch_depth (with_pull_depth (pred (g_pull_depth sa1)) sa1) = 0%nat)) in E4 by (simpl; lia).
+          rewrite andb_false_r, andb_false_l in E4. unfold m_return in E4; by simplify_eq. }
+        subst s1'.
+        assert (Hrel_inc : b2_pull_rel (with_pull_depth (S (g_pull_depth s1)) s1) s2).
+        { apply b2_pull_rel_sym. apply b2_pull_rel_with_pull_S_right; [by apply b2_pull_rel_sym|].
+          rewrite <- Hfl, <- Hbd in *. right; left; exact Hbd_pos. }
+        pose proof (B1Mrefresh _ (b1_mono_all f') (S f') n _ _ (ltac:(lia)) E1) as E1'.
+        destruct (B2Srefresh _ IH n _ _ _ _ Hrel_inc E1') as (f2 & sb1 & Eb1 & Hrel1).
+        exists f2, sb1. split.
+        -- unfold m_bind. rewrite Eb1. simpl. unfold get_node.
+           destruct (b2_pull_rel_fields _ _ Hrel1) as (Hns & _). rewrite Hns, En. reflexivity.
+        -- destruct Hrel1 as [Hw1 _]. split; [rewrite <- Hw1; unfold with_pull_depth; destruct sa1; reflexivity|].
+           simpl. intros [_ Hbd1]. rewrite Hbd_sa1 in Hbd1. lia.
+      * by eapply (B2Spull _ IH).
+  - (* B2Spull *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_pull] in H |- *.
+    eapply bind_inv in H as (sa0 & [] & E0 & H). unfold m_modify in E0; simplify_eq.
+    eapply bind_inv in H as (sa1 & [] & E1 & H).
+    eapply bind_inv in H as (sa2 & d & E2 & H). unfold get_node in E2.
+    destruct (g_nodes sa1 !! n) eqn:En; [|discriminate]. simplify_eq. rename sa2 into sa1.
+    eapply bind_inv in H as (sa3 & [] & E3 & H). unfold m_modify in E3; simplify_eq.
+    rewrite bind_get in H.
+    eapply bind_inv in H as (sa4 & [] & E4 & H). unfold m_return in H; simplify_eq.
+    assert (Hrel_inc : b2_pull_rel (with_pull_depth (S (g_pull_depth s1)) s1) (with_pull_depth (S (g_pull_depth s2)) s2))
+      by (by apply b2_pull_rel_with_pull_S).
+    destruct (B2Srefresh _ IH n _ _ _ _ Hrel_inc E1) as (f2 & sb1 & Eb1 & Hrel1).
+    pose proof (B1Drefresh _ (b1_depths_kept f) _ _ _ _ E1) as [Hpd1 Hfl1]. simpl in Hpd1, Hfl1.
+    pose proof (B1BKrefresh _ (b1_batch_kept f) _ _ _ _ E1) as Hbd1. simpl in Hbd1.
+    pose proof (B1Drefresh _ (b1_depths_kept f2) _ _ _ _ Eb1) as [Hpd2 Hfl2]. simpl in Hpd2, Hfl2.
+    pose proof (B1BKrefresh _ (b1_batch_kept f2) _ _ _ _ Eb1) as Hbd2. simpl in Hbd2.
+    set (sa_dec := with_pull_depth (pred (g_pull_depth sa1)) sa1).
+    set (sb_dec := with_pull_depth (pred (g_pull_depth sb1)) sb1).
+    assert (Hrel_dec : b2_pull_rel sa_dec sb_dec).
+    { destruct Hrel1 as [Hw1 _]. split; [unfold sa_dec, sb_dec, with_pull_depth in *; rewrite <- Hw1; destruct sa1; reflexivity|].
+      unfold sa_dec, sb_dec. simpl. rewrite Hpd1, Hpd2, Hfl1, Hbd1.
+      simpl. destruct Hrel as [_ Hiff]. exact Hiff. }
+    destruct (b2_pull_rel_fields _ _ Hrel_dec) as (_&_&_&_&_&_&Hfl_dec&Hfo&Hbd_dec&_).
+    destruct (b2_pull_rel_fields _ _ Hrel1) as (Hns1&_).
+    destruct (g_flushing sa_dec) eqn:Efl; [|destruct (Nat.eq_dec (g_batch_depth sa_dec) 0) as [Hbd0|Hbdpos]].
+    + (* Flushing: settle_flush is no-op on both sides *)
+      assert (Hsa4 : s1' = sa_dec).
+      { fold sa_dec in E4. destruct (bool_decide (g_pull_depth sa_dec = 0) && g_flush_owed sa_dec); [|unfold m_return in E4; by simplify_eq].
+        destruct f; [discriminate|]. cbn [b1_settle_flush] in E4. rewrite bind_get in E4.
+        destruct (g_flush_owed sa_dec && bool_decide (g_batch_depth sa_dec = 0) && outside_bodies sa_dec);
+          [|unfold m_return in E4; by simplify_eq].
+        destruct f; [discriminate|]. cbn [b1_run_flush] in E4. rewrite bind_get, Efl in E4.
+        unfold m_return in E4; by simplify_eq. }
+      subst s1'.
+      exists (Nat.max f2 2), sb_dec.
+      assert (Ef2m := B1Mrefresh _ (b1_mono_all f2) (Nat.max f2 2) n _ _ (Nat.le_max_l f2 2) Eb1).
+      split; [|exact Hrel_dec].
+      unfold m_bind, m_modify, get_node. rewrite Ef2m. simpl. rewrite Hns1, En. simpl.
+      fold sb_dec.
+      match goal with |- context[if ?c then _ else _] => destruct c end; [|reflexivity].
+      replace (Nat.max f2 2) with (S (S (Nat.max f2 2 - 2))) by lia.
+      cbn [b1_settle_flush b1_run_flush]. rewrite bind_get.
+      destruct (g_flush_owed sb_dec && bool_decide (g_batch_depth sb_dec = 0) && outside_bodies sb_dec);
+        [rewrite bind_get, Hfl_dec; reflexivity|reflexivity].
+    + (* g_flushing = false /\ g_batch_depth = 0 -> pull_depth = 0 agrees *)
+      assert (Hp_eq : bool_decide (g_pull_depth sa_dec = 0) = bool_decide (g_pull_depth sb_dec = 0)).
+      { destruct Hrel_dec as [_ Hiff]. specialize (Hiff (conj Efl Hbd0)).
+        destruct (bool_decide_reflect (g_pull_depth sa_dec = 0)), (bool_decide_reflect (g_pull_depth sb_dec = 0)); try reflexivity; exfalso; lia. }
+      fold sa_dec in E4. rewrite Hp_eq, <- Hfo in E4.
+      destruct (bool_decide (g_pull_depth sb_dec = 0) && g_flush_owed sb_dec) eqn:Econd.
+      * destruct (B2Ssettle _ IH _ _ _ _ Hrel_dec E4) as (f3 & sb_fin & Eset & Hrel_fin).
+        exists (Nat.max f2 f3), sb_fin. split; [|exact Hrel_fin].
+        unfold m_bind, m_modify, get_node.
+        rewrite (B1Mrefresh _ (b1_mono_all f2) (Nat.max f2 f3) n _ _ (Nat.le_max_l f2 f3) Eb1). simpl.
+        rewrite Hns1, En. simpl. fold sb_dec. unfold sb_dec in Econd; simpl in Econd. rewrite Econd.
+        rewrite (B1Msettle _ (b1_mono_all f3) (Nat.max f2 f3) _ _ (Nat.le_max_r f2 f3) Eset). reflexivity.
+      * unfold m_return in E4; simplify_eq.
+        exists f2, sb_dec. split; [|exact Hrel_dec].
+        unfold m_bind, m_modify, get_node. rewrite Eb1. simpl. rewrite Hns1, En. simpl.
+        fold sb_dec. unfold sb_dec in Econd; simpl in Econd. rewrite Econd. reflexivity.
+    + (* g_batch_depth > 0 -> settle_flush is no-op on both sides *)
+      assert (Hsa4 : s1' = sa_dec).
+      { fold sa_dec in E4. destruct (bool_decide (g_pull_depth sa_dec = 0) && g_flush_owed sa_dec); [|unfold m_return in E4; by simplify_eq].
+        destruct f; [discriminate|]. cbn [b1_settle_flush] in E4. rewrite bind_get in E4.
+        rewrite (bool_decide_eq_false_2 (g_batch_depth sa_dec = 0%nat)) in E4 by lia.
+        rewrite andb_false_r, andb_false_l in E4. unfold m_return in E4; by simplify_eq. }
+      subst s1'.
+      exists (Nat.max f2 1), sb_dec. split; [|exact Hrel_dec].
+      unfold m_bind, m_modify, get_node.
+      rewrite (B1Mrefresh _ (b1_mono_all f2) (Nat.max f2 1) n _ _ (Nat.le_max_l f2 1) Eb1). simpl.
+      rewrite Hns1, En. simpl. fold sb_dec.
+      match goal with |- context[if ?c then _ else _] => destruct c end; [|reflexivity].
+      replace (Nat.max f2 1) with (S (Nat.max f2 1 - 1)) by lia.
+      cbn [b1_settle_flush]. rewrite bind_get, Hbd_dec.
+      rewrite (bool_decide_eq_false_2 (g_batch_depth sa_dec = 0%nat)) by lia.
+      rewrite andb_false_r, andb_false_l. reflexivity.
+  - (* B2Srefresh *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_refresh] in H |- *.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (_&_&_&_&_&_&_&_&_&_&_&_).
+    rewrite bind_get in H. setoid_rewrite bind_get.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (Hn&_).
+    (* checking & running fields agree via with_pull_depth *)
+    assert (Hcr : g_checking s2 = g_checking s1 /\ g_running s2 = g_running s1).
+    { destruct Hrel as [Hw _]. unfold with_pull_depth in Hw. destruct s1, s2; simpl in *; injection Hw; intros; subst; auto. }
+    rewrite (proj1 Hcr), (proj2 Hcr).
+    destruct (decide (n ∈ g_checking s1)); [exists f; b2_pure_fwd|].
+    destruct (decide (n ∈ g_running s1)); [b2_ret|].
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel2 Hk2].
+    + intros sa sb sa' r_ Hrel_a Hm. destruct (decide (n_freshness d = Check)); [|b2_ret].
+      eapply (b2_bind_pure_l_of Hrel_a Hm); [b2_pure_fwd|intros [] ?? Hrel2a Hk2a].
+      eapply (b2p_bind_of Hk2a); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Swalk _ IH)|intros [] ?? Hrel3a Hk3a].
+      eapply (b2_bind_pure_l_of Hrel3a Hk3a); [b2_pure_fwd|intros [] ?? Hrel4a Hk4a].
+      eapply (b2_bind_pure_l_of Hrel4a Hk4a); [b2_pure_fwd|intros d' ?? Hrel5a Hk5a].
+      destruct (decide (n_freshness d' = Check)).
+      * eapply (b2_bind_pure_l_of Hrel5a Hk5a); [b2_pure_fwd|intros [] ?? Hrel6a Hk6a].
+        exists 0%nat; b2_pure_fwd.
+      * b2_ret.
+    + eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros d' ?? Hrel3 Hk3].
+      destruct (decide (n_freshness d' = Dirty)); [by eapply (B2Srecompute _ IH)|b2_ret].
+  - (* B2Swalk *)
+    intros n i s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_resolve_walk] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    rewrite bind_get in Hk. setoid_rewrite bind_get.
+    destruct (decide (n_freshness d = Check)); [|b2_ret].
+    destruct (b2_pull_rel_fields _ _ Hrel1) as (_&He&_). rewrite He.
+    destruct (source_slots (sources_of (g_edges sa1) n) !! i) as [[src ?]|].
+    + eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Supdate _ IH)|intros [] ?? Hrel2 Hk2].
+      eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros d' ?? Hrel3 Hk3].
+      eapply (b2_bind_pure_l_of Hrel3 Hk3); [b2_pure_fwd|intros d_src ?? Hrel4 Hk4].
+      rewrite bind_get in Hk4. setoid_rewrite bind_get.
+      destruct (b2_pull_rel_fields _ _ Hrel4) as (_&_&_&_&_&_&_&_&_&_&_&_&Hrun4&Hchk4).
+      rewrite Hrun4, Hchk4.
+      eapply (b2p_bind_of Hk4); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel5 Hk5; by eapply (B2Swalk _ IH)].
+      intros sa sb sa' r_ Hrel_a Hm. destruct (decide _); [exists f; b2_pure_fwd|b2_ret].
+    + destruct (b2_pull_rel_fields _ _ Hrel1) as (Hn1&_).
+      assert (Hsh : slot_holds stale_live sb1 n = slot_holds stale_live sa1 n).
+      { unfold slot_holds. rewrite He, Hn1. reflexivity. }
+      rewrite Hsh.
+      destruct (slot_holds stale_live sa1 n); [by eapply (B2Swalk _ IH)|b2_ret].
+  - (* B2Srecompute *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_recompute] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    destruct (n_scope d) as [o|]; [|by eapply (B2Srun_memo _ IH)].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros [] ?? Hrel3 Hk3].
+    eapply (b2p_bind_of Hk3); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sdischarge _ IH)|intros [] ?? Hrel4 Hk4].
+    eapply (b2_bind_pure_l_of Hrel4 Hk4); [b2_pure_fwd|intros d' ?? Hrel5 Hk5].
+    destruct (n_disposed d').
+    + destruct (decide (n_freshness d' = Clean)); [exists 0%nat; b2_pure_fwd|b2_ret].
+    + destruct (decide (n_runs d' = n_runs d)); [by eapply (B2Srun_memo _ IH)|].
+      destruct (decide (n_freshness d' = Dirty)); [by eapply (B2Srecompute _ IH)|b2_ret].
+  - (* B2Srun_memo *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_run_memo] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros [] ?? Hrel3 Hk3].
+    eapply (b2_bind_pure_l_of Hrel3 Hk3); [b2_pure_fwd|intros [] ?? Hrel4 Hk4].
+    eapply (b2_bind_pure_l_of Hrel4 Hk4); [b2_pure_fwd|intros [] ?? Hrel5 Hk5].
+    eapply (b2p_bind_of Hk5); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros ro ?? Hrel6 Hk6].
+    + intros sa sb sa' r_ Hrel_a Hm. eapply b2p_hosted; [exact Hrel_a|intros; exact I|intros ????; by eapply (B2Sexec _ IH)|exact Hm].
+    + eapply (b2_bind_pure_l_of Hrel6 Hk6); [b2_pure_fwd|intros d1 ?? Hrel7 Hk7].
+      eapply (b2_bind_pure_l_of Hrel7 Hk7); [destruct (if n_violated d1 then Fail pure_scope_failure else ro); b2_pure_fwd|intros [] ?? Hrel8 Hk8].
+      eapply (b2_bind_pure_l_of Hrel8 Hk8); [b2_pure_fwd|intros [] ?? Hrel9 Hk9].
+      eapply (b2_bind_pure_l_of Hrel9 Hk9); [b2_pure_fwd|intros [] ?? Hrel10 Hk10].
+      eapply (b2_bind_pure_l_of Hrel10 Hk10); [destruct (if n_violated d1 then Fail pure_scope_failure else ro); b2_pure_fwd|intros [] ?? Hrel11 Hk11].
+      eapply (b2_bind_pure_l_of Hrel11 Hk11); [b2_pure_fwd|intros d2 ?? Hrel12 Hk12].
+      eapply (b2_bind_pure_l_of Hrel12 Hk12); [destruct (decide _); [b2_pure_fwd|destruct (n_comparer d2); b2_pure_fwd]|intros moved ?? Hrel13 Hk13].
+      rewrite bind_get in Hk13. setoid_rewrite bind_get.
+      destruct (b2_pull_rel_fields _ _ Hrel13) as (_&_&_&_&_&_&_&_&_&Hcur&_).
+      rewrite Hcur.
+      eapply (b2_bind_pure_l_of Hrel13 Hk13); [b2_pure_fwd|intros [] ?? Hrel14 Hk14].
+      eapply (b2p_bind_of Hk14); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel15 Hk15].
+      * intros sa sb sa' r_ Hrel_a Hm. destruct moved; [|b2_ret].
+        eapply (b2p_bind_of Hm); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ??????; exists f; b2_pure_fwd|intros [] sa_b sb_b Hrel_b Hkb].
+        rewrite bind_get in Hkb. setoid_rewrite bind_get.
+        destruct (b2_pull_rel_fields _ _ Hrel_b) as (_&_&_&_&Hq&Hqh&Hfl&_&Hbd&_).
+        assert (Hlq : live_queue sb_b = live_queue sa_b) by (unfold live_queue; rewrite Hq, Hqh; reflexivity).
+        rewrite Hbd, Hfl, Hlq.
+        destruct (bool_decide (g_batch_depth sa_b = 0) && negb (g_flushing sa_b) && live_queue sa_b); [exists 0%nat; b2_pure_fwd|b2_ret].
+      * eapply (b2_bind_pure_l_of Hrel15 Hk15); [b2_pure_fwd|intros d3 ?? Hrel16 Hk16].
+        destruct (decide (n_freshness d3 = Clean)); [b2_ret|exists 0%nat; b2_pure_fwd].
+  - (* B2Sexecute *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_execute_effect] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    destruct (n_disposed d); [exists 0%nat; b2_pure_fwd|].
+    eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel2 Hk2].
+    + intros sa sb sa' r_ Hrel_a Hm. destruct (decide (n_freshness d = Check)); [|b2_ret].
+      eapply (b2p_bind_of Hm); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Swalk _ IH)|intros [] ?? Hrel_b Hkb].
+      eapply (b2_bind_pure_l_of Hrel_b Hkb); [b2_pure_fwd|intros d' ?? Hrel_c Hkc].
+      destruct (decide (n_freshness d' = Check)); [|b2_ret].
+      eapply (b2_bind_pure_l_of Hrel_c Hkc); [b2_pure_fwd|intros [] ?? Hrel_d Hkd].
+      exists 0%nat; b2_pure_fwd.
+    + eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros d' ?? Hrel3 Hk3].
+      eapply (b2_bind_pure_l_of Hrel3 Hk3); [b2_pure_fwd|intros [] ?? Hrel4 Hk4].
+      destruct (decide (n_freshness d' = Dirty)); [by eapply (B2Srun_effect _ IH)|b2_ret].
+  - (* B2Srun_effect *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_run_effect] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros [] ?? Hrel1 Hk].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros [] ?? Hrel3 Hk3].
+    eapply (b2_bind_pure_l_of Hrel3 Hk3); [b2_pure_fwd|intros d ?? Hrel4 Hk4].
+    eapply (b2p_bind_of Hk4); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel5 Hk5].
+    + intros sa sb sa' r_ Hrel_a Hm. destruct (n_scope d) as [o|]; [|b2_ret].
+      eapply (b2_bind_pure_l_of Hrel_a Hm); [b2_pure_fwd|intros [] ?? Hrel_b Hkb].
+      eapply (b2p_bind_of Hkb); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sdischarge _ IH)|intros [] ?? Hrel_c Hkc].
+      exists 0%nat; b2_pure_fwd.
+    + eapply (b2_bind_pure_l_of Hrel5 Hk5); [b2_pure_fwd|intros d' ?? Hrel6 Hk6].
+      eapply (b2p_bind_of Hk6); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] ?? Hrel7 Hk7; exists 0%nat; b2_pure_fwd].
+      intros sa sb sa' r_ Hrel_a Hm. destruct (n_disposed d'); [b2_ret|by eapply (B2Sbody _ IH)].
+  - (* B2Sbody *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_run_effect_body] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros [] ?? Hrel3 Hk3].
+    eapply (b2p_bind_of Hk3); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros ro ?? Hrel4 Hk4].
+    + intros sa sb sa' r_ Hrel_a Hm. eapply b2p_hosted; [exact Hrel_a|intros; exact I|intros ????; by eapply (B2Sexec _ IH)|exact Hm].
+    + eapply (b2_bind_pure_l_of Hrel4 Hk4); [b2_pure_fwd|intros d' ?? Hrel5 Hk5].
+      eapply (b2_bind_pure_l_of Hrel5 Hk5); [b2_pure_fwd|intros [] ?? Hrel6 Hk6].
+      destruct ro; [b2_ret|].
+      eapply (b2_bind_pure_l_of Hrel6 Hk6); [b2_pure_fwd|intros [] ?? Hrel7 Hk7].
+      exists 0%nat; b2_pure_fwd.
+  - (* B2Sdischarge *)
+    intros o s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_discharge] in H |- *.
+    eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] sa_1 sb_1 Hrel1 Hk].
+    + intros sa sb sa' r_ Hrel_a Hm. eapply b2p_detached; [exact Hrel_a| | | | |exact Hm].
+      * intros ????; by eapply (B2Sdispose_scope _ IH).
+      * intros ??? E; exact (B1BKdispose_scope _ (b1_batch_kept f) _ _ _ _ E).
+      * intros ??? E; exact (proj1 (B1Ddispose_scope _ (b1_depths_kept f) _ _ _ _ E)).
+      * intros f0 ??? E; apply (B1Ddispose_scope f0 (b1_depths_kept f0)) in E as [Hpd Hfl_]; exact (conj Hfl_ Hpd).
+    + rewrite bind_get in Hk. setoid_rewrite bind_get.
+      destruct (b2_pull_rel_fields _ _ Hrel1) as (_&_&_&_&Hq&Hqh&Hfl&_&Hbd&_).
+      assert (Hlq : live_queue sb_1 = live_queue sa_1) by (unfold live_queue; rewrite Hq, Hqh; reflexivity).
+      rewrite Hbd, Hfl, Hlq.
+      destruct (bool_decide (g_batch_depth sa_1 = 0) && negb (g_flushing sa_1) && live_queue sa_1); [exists 0%nat; b2_pure_fwd|b2_ret].
+  - (* B2Sretire *)
+    intros o s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_retire] in H |- *.
+    eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac| |intros [] sa_1 sb_1 Hrel1 Hk].
+    + intros sa sb sa' r_ Hrel_a Hm. eapply b2p_detached; [exact Hrel_a| | | | |exact Hm].
+      * intros sa0 sb0 sa0' r0 Hrel0 Hm0.
+        eapply (b2_bind_pure_l_of Hrel0 Hm0); [b2_pure_fwd|intros x ?? Hrel_x Hkx].
+        destruct (o_disposed x); [b2_ret|].
+        eapply (b2_bind_pure_l_of Hrel_x Hkx); [b2_pure_fwd|intros [] ?? Hrel_y Hky].
+        by eapply (B2Sdispose_scope _ IH).
+      * intros sa0 sa0' r0 Hm0.
+        eapply bind_inv in Hm0 as (sa_x & x & E_x & Hm0).
+        assert (Hbd_x : g_batch_depth sa_x = g_batch_depth sa0) by (unfold get_owner in E_x; destruct (g_owners sa0 !! o); simplify_eq; reflexivity).
+        destruct (o_disposed x); [unfold m_return in Hm0; simplify_eq; exact Hbd_x|].
+        eapply bind_inv in Hm0 as (sa_y & [] & E_y & Hm0). unfold put_owner, m_modify in E_y; simplify_eq.
+        apply (B1BKdispose_scope _ (b1_batch_kept f)) in Hm0. simpl in Hm0. congruence.
+      * intros sa0 sa0' r0 Hm0.
+        eapply bind_inv in Hm0 as (sa_x & x & E_x & Hm0).
+        assert (Hpd_x : g_pull_depth sa_x = g_pull_depth sa0) by (unfold get_owner in E_x; destruct (g_owners sa0 !! o); simplify_eq; reflexivity).
+        destruct (o_disposed x); [unfold m_return in Hm0; simplify_eq; exact Hpd_x|].
+        eapply bind_inv in Hm0 as (sa_y & [] & E_y & Hm0). unfold put_owner, m_modify in E_y; simplify_eq.
+        destruct (B1Ddispose_scope _ (b1_depths_kept f) _ _ _ _ Hm0) as [Hpd_y _]. simpl in Hpd_y. congruence.
+      * intros f0 sa0 sa0' r0 Hm0.
+        eapply bind_inv in Hm0 as (sa_x & x & E_x & Hm0).
+        assert (Hdp_x : g_flushing sa_x = g_flushing sa0 /\ g_pull_depth sa_x = g_pull_depth sa0)
+          by (unfold get_owner in E_x; destruct (g_owners sa0 !! o); simplify_eq; auto).
+        destruct (o_disposed x); [unfold m_return in Hm0; simplify_eq; exact Hdp_x|].
+        eapply bind_inv in Hm0 as (sa_y & [] & E_y & Hm0). unfold put_owner, m_modify in E_y; simplify_eq.
+        destruct (B1Ddispose_scope _ (b1_depths_kept f0) _ _ _ _ Hm0) as [Hpd_y Hfl_y]. destruct Hdp_x as [Hfl_x Hpd_x]. simpl in Hpd_y, Hfl_y. split; congruence.
+    + rewrite bind_get in Hk. setoid_rewrite bind_get.
+      destruct (b2_pull_rel_fields _ _ Hrel1) as (_&_&_&_&Hq&Hqh&_).
+      assert (Hlq : live_queue sb_1 = live_queue sa_1) by (unfold live_queue; rewrite Hq, Hqh; reflexivity).
+      rewrite Hlq. destruct (live_queue sa_1); [by eapply (B2Srequest _ IH)|b2_ret].
+  - (* B2Sdispose_scope *)
+    intros o s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_dispose_scope] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros x ?? Hrel1 Hk].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    by eapply (B2Steardown _ IH).
+  - (* B2Steardown *)
+    intros o ls cs s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_teardown] in H |- *.
+    destruct ls as [|l ls'], cs as [|[[b e] a] cs'].
+    + b2_ret.
+    + eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Scleanup _ IH)|intros [] ?? Hrel1 Hk].
+      by eapply (B2Steardown _ IH).
+    + eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srelease _ IH)|intros [] ?? Hrel1 Hk].
+      by eapply (B2Steardown _ IH).
+    + destruct (decide (a < l_acquired l)%nat);
+      (eapply (b2p_bind_of H); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; first [by eapply (B2Srelease _ IH)|by eapply (B2Scleanup _ IH)]|intros [] ?? Hrel1 Hk];
+       by eapply (B2Steardown _ IH)).
+  - (* B2Scleanup *)
+    intros o b e s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_run_cleanup] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros x ?? Hrel1 Hk].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    eapply (b2p_bind_of Hk2); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sexec _ IH)|intros rc ?? Hrel3 Hk3].
+    destruct rc; [b2_ret|].
+    eapply (b2_bind_pure_l_of Hrel3 Hk3); [b2_pure_fwd|intros [] ?? Hrel4 Hk4].
+    exists 0%nat; b2_pure_fwd.
+  - (* B2Srelease *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_release] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros [] ?? Hrel1 Hk].
+    by eapply (B2Sdispose _ IH).
+  - (* B2Sdispose *)
+    intros n s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_dispose_node] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    destruct (n_disposed d); [b2_ret|].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    eapply (b2_bind_pure_l_of Hrel2 Hk2); [destruct (n_link d); b2_pure_fwd|intros [] ?? Hrel3 Hk3].
+    eapply (b2_bind_pure_l_of Hrel3 Hk3); [b2_pure_fwd|intros [] ?? Hrel4 Hk4].
+    destruct (n_scope d); [by eapply (B2Sretire _ IH)|b2_ret].
+  - (* B2Sattach *)
+    intros n o s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_attach] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros x ?? Hrel1 Hk].
+    destruct (o_disposed x).
+    + eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Srelease _ IH)|intros [] ?? Hrel2 Hk2].
+      exists 0%nat; b2_pure_fwd.
+    + eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+      exists 0%nat; b2_pure_fwd.
+  - (* B2Swrite *)
+    intros n v s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_write_signal] in H |- *.
+    eapply (b2_bind_pure_l_of Hrel H); [b2_pure_fwd|intros d ?? Hrel1 Hk].
+    destruct (n_kind d); [|discriminate|discriminate].
+    destruct (decide (n_value d = v)); [b2_ret|].
+    eapply (b2_bind_pure_l_of Hrel1 Hk); [b2_pure_fwd|intros [] ?? Hrel2 Hk2].
+    eapply (b2_bind_pure_l_of Hrel2 Hk2); [b2_pure_fwd|intros [] ?? Hrel3 Hk3].
+    eapply (b2p_bind_of Hk3); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ??????; exists f; b2_pure_fwd|intros [] ?? Hrel4 Hk4].
+    by eapply (B2Srequest _ IH).
+  - (* B2Srequest *)
+    intros s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_request_flush] in H |- *.
+    rewrite bind_get in H. setoid_rewrite bind_get.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (_&_&_&_&Hq&Hqh&Hfl&_&Hbd&Hcur&Hunt&_).
+    assert (Hlq : live_queue s2 = live_queue s1) by (unfold live_queue; rewrite Hq, Hqh; reflexivity).
+    rewrite Hlq, Hbd.
+    destruct (live_queue s1 && bool_decide (g_batch_depth s1 = 0%nat)) eqn:Econd; [|unfold m_return in H; simplify_eq; by exists 0%nat, s2].
+    apply andb_true_iff in Econd as [_ Hbd0]. apply bool_decide_eq_true in Hbd0.
+    destruct (g_flushing s1) eqn:Efl.
+    + assert (Hs1' : s1' = s1 /\ r = tt).
+      { destruct (outside_bodies s1).
+        - destruct f; [discriminate|]. cbn [b1_run_flush] in H. rewrite bind_get, Efl in H.
+          unfold m_return in H; simplify_eq; auto.
+        - unfold m_return in H; simplify_eq; auto. }
+      destruct Hs1' as [-> ->].
+      exists 2%nat, s2. split; [|exact Hrel].
+      cbn [b1_run_flush].
+      destruct (outside_bodies s2); [rewrite bind_get, Hfl; reflexivity|rewrite Hfl; reflexivity].
+    + assert (Hob : outside_bodies s2 = outside_bodies s1).
+      { unfold outside_bodies. rewrite Hcur, Hunt.
+        destruct Hrel as [_ Hiff]. specialize (Hiff (conj Efl Hbd0)).
+        destruct (bool_decide_reflect (g_pull_depth s1 = 0%nat)), (bool_decide_reflect (g_pull_depth s2 = 0%nat)); try reflexivity; exfalso; lia. }
+      rewrite Hob. destruct (outside_bodies s1); [by eapply (B2Sflush _ IH)|rewrite Hfl; b2_ret].
+  - (* B2Ssettle *)
+    intros s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_settle_flush] in H |- *.
+    rewrite bind_get in H. setoid_rewrite bind_get.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (_&_&_&_&_&_&Hfl&Hfo&Hbd&Hcur&Hunt&_).
+    destruct (g_flushing s1) eqn:Efl.
+    + assert (Hs1' : s1' = s1 /\ r = tt).
+      { destruct (g_flush_owed s1 && bool_decide (g_batch_depth s1 = 0%nat) && outside_bodies s1);
+          [|unfold m_return in H; simplify_eq; auto].
+        destruct f; [discriminate|]. cbn [b1_run_flush] in H. rewrite bind_get, Efl in H.
+        unfold m_return in H; simplify_eq; auto. }
+      destruct Hs1' as [-> ->].
+      exists 2%nat, s2. split; [|exact Hrel].
+      cbn [b1_run_flush]. rewrite Hfo, Hbd.
+      destruct (g_flush_owed s1 && bool_decide (g_batch_depth s1 = 0%nat) && outside_bodies s2);
+        [rewrite bind_get, Hfl; reflexivity|reflexivity].
+    + destruct (Nat.eq_dec (g_batch_depth s1) 0) as [Hbd0|Hbdpos].
+      * assert (Hob : outside_bodies s2 = outside_bodies s1).
+        { unfold outside_bodies. rewrite Hcur, Hunt.
+          destruct Hrel as [_ Hiff]. specialize (Hiff (conj Efl Hbd0)).
+          destruct (bool_decide_reflect (g_pull_depth s1 = 0%nat)), (bool_decide_reflect (g_pull_depth s2 = 0%nat)); try reflexivity; exfalso; lia. }
+        rewrite Hfo, Hbd, Hob.
+        destruct (g_flush_owed s1 && bool_decide (g_batch_depth s1 = 0%nat) && outside_bodies s1);
+          [by eapply (B2Sflush _ IH)|b2_ret].
+      * rewrite (bool_decide_eq_false_2 (g_batch_depth s1 = 0%nat)) in H by exact Hbdpos.
+        rewrite andb_false_r, andb_false_l in H. unfold m_return in H; inversion H; subst s1' r; clear H.
+        exists 1%nat, s2. split; [|exact Hrel].
+        rewrite Hbd.
+        rewrite (bool_decide_eq_false_2 (g_batch_depth s1 = 0%nat)) by exact Hbdpos.
+        rewrite andb_false_r, andb_false_l. reflexivity.
+  - (* B2Sflush *)
+    intros s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_run_flush] in H |- *.
+    rewrite bind_get in H. setoid_rewrite bind_get.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (_&_&_&_&_&_&Hfl&_&Hbd&_).
+    rewrite Hfl. destruct (g_flushing s1) eqn:Efl; [b2_ret|].
+    eapply bind_inv in H as (sa1 & [] & E1 & H). unfold m_modify in E1; simplify_eq.
+    eapply bind_inv in H as (sa2 & [] & E2 & H). unfold m_modify in H; simplify_eq.
+    assert (Hrel1 : b2_pull_rel (with_flush_owed false (with_flushing true s1)) (with_flush_owed false (with_flushing true s2))).
+    { destruct Hrel as [Hw _]. split; [rewrite <- Hw; unfold with_pull_depth; destruct s1; reflexivity|simpl; intro Hbad; destruct Hbad as [? _]; discriminate]. }
+    destruct (B2Sdrain _ IH _ _ _ _ Hrel1 E2) as (f2 & sb2 & Ed2 & [Hw2 _]).
+    pose proof (B1Ddrain _ (b1_depths_kept f) _ _ _ E2) as [Hpd1 Hfl1]. simpl in Hpd1, Hfl1.
+    pose proof (B1BKdrain _ (b1_batch_kept f) _ _ _ E2) as Hbd1. simpl in Hbd1.
+    pose proof (B1Ddrain _ (b1_depths_kept f2) _ _ _ Ed2) as [Hpd2 Hfl2]. simpl in Hpd2, Hfl2.
+    exists f2, (with_flushing false sb2).
+    split.
+    + unfold m_bind, m_modify. rewrite Ed2. reflexivity.
+    + split; [rewrite <- Hw2; unfold with_pull_depth; destruct sa2; reflexivity|].
+      simpl. rewrite Hpd1, Hpd2, Hbd1. intros [_ Hbd0].
+      destruct Hrel as [_ Hiff]. exact (Hiff (conj Efl Hbd0)).
+  - (* B2Sdrain *)
+    intros s1 s2 s1' r Hrel H. b2_wrap_ex_S. cbn [b1_drain] in H |- *.
+    rewrite bind_get in H. setoid_rewrite bind_get.
+    destruct (b2_pull_rel_fields _ _ Hrel) as (_&_&_&_&Hq&Hqh&_).
+    rewrite Hq, Hqh.
+    destruct (g_queue s1 !! g_queue_head s1) as [n|].
+    + eapply (b2_bind_pure_l_of Hrel H);
+        [intros sa0 sb0 sa1 [] [Hw0 Hiff0] Hm0; unfold m_modify in Hm0; simplify_eq;
+         exists (with_queue_head (S (g_queue_head s1)) sb0); split; [unfold m_modify; reflexivity|];
+         split; [rewrite <- Hw0; unfold with_pull_depth; destruct sa0; reflexivity|exact Hiff0]
+        |intros [] ?? Hrel1 Hk].
+      eapply (b2p_bind_of Hk); [intros ????; b2_mono_tac|intros ?????; b2_mono_tac|intros ????; by eapply (B2Sexecute _ IH)|intros [] ?? Hrel2 Hk2].
+      by eapply (B2Sdrain _ IH).
+    + exists 0%nat. b2_pure_fwd.
+Qed.
+
+(**md
+**Under `sched_inv`, whenever `b1_deferring s = true` (`g_pull_depth s > 0 \/ g_batch_depth s > 0 \/ g_flushing s = true`), skipping `EnterPull`/`ExitPullDeferSettle` (`b1_refresh`) refines `b1_pull` with identical final engine state `s'` and result (`d` or `tt`) for matching fuel.**
+
+- [x:] enclosing scheduled node identifier (if any) in `sched_inv`.
+- [n:] target memo or boundary node id being refreshed/pulled.
+- [s:] deferring starting engine state satisfying `sched_inv x s` and `b1_deferring s = true`.
+- [s':] resulting engine state after refresh or pull.
+- [d:] read node snapshot at `n` after completion.
+*)
+Theorem deferring_pull_refines_enter_pull x n s s' d :
+  sched_inv x s ->
+  b1_deferring s = true ->
+  ((exists fp, b1_pull fp n s = Some (s', d)) <->
+   (exists fr, (let* _ := b1_refresh fr n in get_node n) s = Some (s', d))) /\
+  ((exists fp, (let* _ := b1_pull fp n in m_return tt) s = Some (s', tt)) <->
+   (exists fr, (let* _ := b1_refresh fr n in let* _ := get_node n in m_return tt) s = Some (s', tt))) /\
+  (g_nodes s' !! n = Some d ->
+   ((exists fp, (let* _ := b1_pull fp n in m_return tt) s = Some (s', tt)) <->
+    (exists fr, b1_refresh fr n s = Some (s', tt)))).
+Proof.
+  intros _ Hdef.
+  assert (Hdisj : g_flushing s = true \/ 0 < g_batch_depth s \/ 0 < g_pull_depth s).
+  { unfold b1_deferring in Hdef.
+    repeat match type of Hdef with (_ || _ = true) => apply orb_true_iff in Hdef as [Hdef|Hdef] end;
+      try rewrite bool_decide_eq_true in *; auto. }
+  assert (Hrel_lr : b2_pull_rel s (with_pull_depth (S (g_pull_depth s)) s)).
+  { apply b2_pull_rel_with_pull_S_right; [apply b2_pull_rel_refl|exact Hdisj]. }
+  assert (Hrel_rl : b2_pull_rel (with_pull_depth (S (g_pull_depth s)) s) s)
+    by (apply b2_pull_rel_sym; exact Hrel_lr).
+  assert (Hpull_body : forall fp s_out d_out,
+    b1_pull fp n s = Some (s_out, d_out) ->
+    exists fp', b1_refresh fp' n (with_pull_depth (S (g_pull_depth s)) s) = Some (with_pull_depth (S (g_pull_depth s)) s_out, tt) /\
+                g_nodes s_out !! n = Some d_out).
+  { intros [|fp'] s_out d_out Hpull; [discriminate|].
+    cbn [b1_pull] in Hpull.
+    eapply bind_inv in Hpull as (s1 & [] & E1 & Hpull). unfold m_modify in E1; simplify_eq.
+    eapply bind_inv in Hpull as (s2 & [] & E2 & Hpull).
+    eapply bind_inv in Hpull as (s3 & d3 & E3 & Hpull). unfold get_node in E3.
+    destruct (g_nodes s2 !! n) eqn:En; [|discriminate]. simplify_eq. rename s3 into s2.
+    eapply bind_inv in Hpull as (s4 & [] & E4 & Hpull). unfold m_modify in E4; simplify_eq.
+    rewrite bind_get in Hpull.
+    eapply bind_inv in Hpull as (s5 & [] & E5 & Hpull). unfold m_return in Hpull; simplify_eq.
+    pose proof (B1Drefresh _ (b1_depths_kept fp') _ _ _ _ E2) as [Hpd2 Hfl2]. simpl in Hpd2, Hfl2.
+    pose proof (B1BKrefresh _ (b1_batch_kept fp') _ _ _ _ E2) as Hbd2. simpl in Hbd2.
+    set (s_dec := with_pull_depth (pred (g_pull_depth s2)) s2) in *.
+    assert (Hs5 : s_out = s_dec).
+    { fold s_dec in E5. destruct (bool_decide (g_pull_depth s_dec = 0) && g_flush_owed s_dec) eqn:Econd;
+        [|unfold m_return in E5; by simplify_eq].
+      destruct fp'; [discriminate|]. cbn [b1_settle_flush] in E5. rewrite bind_get in E5.
+      destruct Hdisj as [Hfl|[Hbd|Hpd]].
+      - assert (Hfl_dec : g_flushing s_dec = true) by (unfold s_dec; simpl; congruence).
+        destruct (g_flush_owed s_dec && bool_decide (g_batch_depth s_dec = 0) && outside_bodies s_dec);
+          [|unfold m_return in E5; by simplify_eq].
+        destruct fp'; [discriminate|]. cbn [b1_run_flush] in E5. rewrite bind_get, Hfl_dec in E5.
+        unfold m_return in E5; by simplify_eq.
+      - assert (Hbd_dec : 0 < g_batch_depth s_dec) by (unfold s_dec; simpl; lia).
+        rewrite (bool_decide_eq_false_2 (g_batch_depth s_dec = 0%nat)) in E5 by lia.
+        rewrite andb_false_r, andb_false_l in E5. unfold m_return in E5; by simplify_eq.
+      - exfalso. unfold s_dec in Econd. simpl in Econd. rewrite Hpd2 in Econd. simpl in Econd.
+        rewrite (bool_decide_eq_false_2 (g_pull_depth s = 0%nat)) in Econd by lia. discriminate. }
+    subst s_out. exists fp'. split.
+    - replace (with_pull_depth (S (g_pull_depth s)) s_dec) with s2; [exact E2|].
+      unfold s_dec, with_pull_depth. destruct s2; simpl in *; f_equal; lia.
+    - unfold s_dec; simpl. exact En. }
+  assert (Hfwd_unit : forall d_out,
+    (exists fp, b1_pull fp n s = Some (s', d_out)) ->
+    exists fr, b1_refresh fr n s = Some (s', tt) /\ g_nodes s' !! n = Some d_out).
+  { intros d_out [fp Ep].
+    destruct (Hpull_body fp s' d_out Ep) as (fp' & Eref & Hn).
+    destruct (B2Srefresh _ (b2_sim_all fp') n _ _ _ _ Hrel_rl Eref) as (fr & sr & Er & [Hw _]).
+    pose proof (B1Drefresh _ (b1_depths_kept fr) _ _ _ _ Er) as [Hpdr _].
+    pose proof (B1Dpull _ (b1_depths_kept fp) _ _ _ _ Ep) as [Hpdp _].
+    assert (Hs' : sr = s').
+    { rewrite <- Hw. unfold with_pull_depth. destruct s'; simpl in *; f_equal; lia. }
+    subst sr. exists fr. split; assumption. }
+  assert (Hbwd_unit :
+    (exists fr, b1_refresh fr n s = Some (s', tt)) ->
+    forall d0, g_nodes s' !! n = Some d0 ->
+    exists fp, b1_pull fp n s = Some (s', d0)).
+  { intros [fr Er] d0 Hd0.
+    destruct (B2Srefresh _ (b2_sim_all fr) n _ _ _ _ Hrel_lr Er) as (fp' & s2 & E2 & [Hw _]).
+    pose proof (B1Drefresh _ (b1_depths_kept fr) _ _ _ _ Er) as [Hpd1 Hfl1].
+    pose proof (B1BKrefresh _ (b1_batch_kept fr) _ _ _ _ Er) as Hbd1.
+    pose proof (B1Drefresh _ (b1_depths_kept fp') _ _ _ _ E2) as [Hpd2 Hfl2]. simpl in Hpd2, Hfl2.
+    pose proof (B1BKrefresh _ (b1_batch_kept fp') _ _ _ _ E2) as Hbd2. simpl in Hbd2.
+    assert (Hsdec : with_pull_depth (pred (g_pull_depth s2)) s2 = s').
+    { rewrite <- Hw. unfold with_pull_depth. destruct s'; simpl in *; f_equal; lia. }
+    exists (S (Nat.max fp' 2)). cbn [b1_pull]. unfold m_bind, m_modify.
+    rewrite (B1Mrefresh _ (b1_mono_all fp') (Nat.max fp' 2) n _ _ (Nat.le_max_l fp' 2) E2). simpl.
+    unfold get_node.
+    assert (Hs2n : g_nodes s2 !! n = Some d0) by (rewrite <- Hsdec in Hd0; exact Hd0).
+    rewrite Hs2n. simpl.
+    assert (pred (g_pull_depth s2) = g_pull_depth s' /\ g_flush_owed s2 = g_flush_owed s')
+      as [Hgp Hgf] by (rewrite <- Hsdec; split; reflexivity).
+    rewrite Hsdec, Hgp, Hgf.
+    destruct (bool_decide (g_pull_depth s' = 0) && g_flush_owed s') eqn:Econd; [|reflexivity].
+    replace (Nat.max fp' 2) with (S (S (Nat.max fp' 2 - 2))) by lia.
+    cbn [b1_settle_flush]. rewrite bind_get.
+    destruct Hdisj as [Hfl|[Hbd|Hpd]].
+    - cbn [b1_run_flush].
+      destruct (g_flush_owed s' && bool_decide (g_batch_depth s' = 0) && outside_bodies s');
+        [rewrite bind_get, Hfl1, Hfl; reflexivity|reflexivity].
+    - rewrite (bool_decide_eq_false_2 (g_batch_depth s' = 0%nat)) by lia.
+      rewrite andb_false_r, andb_false_l. reflexivity.
+    - exfalso. rewrite Hpd1 in Econd.
+      rewrite (bool_decide_eq_false_2 (g_pull_depth s = 0%nat)) in Econd by lia. discriminate. }
+  assert (Hnode_eq :
+    (exists fp, b1_pull fp n s = Some (s', d)) <->
+    (exists fr, (let* _ := b1_refresh fr n in get_node n) s = Some (s', d))).
+  { split.
+    - intros Hpull. destruct (Hfwd_unit d Hpull) as (fr & Er & Hn).
+      exists fr. unfold m_bind. rewrite Er. simpl. unfold get_node. rewrite Hn. reflexivity.
+    - intros [fr Href]. eapply bind_inv in Href as (s1 & [] & Er & Eg).
+      unfold get_node in Eg. destruct (g_nodes s1 !! n) eqn:En; [|discriminate]. simplify_eq.
+      exact (Hbwd_unit (ex_intro _ fr Er) d En). }
+  split; [exact Hnode_eq|split; [split|intro Hd; split]].
+  - intros [fp Hpull]. eapply bind_inv in Hpull as (s_out & d_out & Ep & Hm).
+    unfold m_return in Hm; simplify_eq.
+    destruct (Hfwd_unit d_out (ex_intro _ fp Ep)) as (fr & Er & Hn).
+    exists fr. unfold m_bind, get_node, m_return. rewrite Er. simpl. rewrite Hn. reflexivity.
+  - intros [fr Href]. eapply bind_inv in Href as (s1 & [] & Er & Hk).
+    eapply bind_inv in Hk as (s2 & d2 & Eg & Hm).
+    unfold get_node in Eg. destruct (g_nodes s1 !! n) eqn:En; [|discriminate]. simplify_eq.
+    unfold m_return in Hm; simplify_eq.
+    destruct (Hbwd_unit (ex_intro _ fr Er) d2 En) as [fp Ep].
+    exists fp. unfold m_bind, m_return. rewrite Ep. reflexivity.
+  - intros [fp Hpull]. eapply bind_inv in Hpull as (s_out & d_out & Ep & Hm).
+    unfold m_return in Hm; simplify_eq.
+    destruct (Hfwd_unit d_out (ex_intro _ fp Ep)) as (fr & Er & _).
+    exists fr. exact Er.
+  - intros Href. destruct (Hbwd_unit Href d Hd) as [fp Ep].
+    exists fp. unfold m_bind, m_return. rewrite Ep. reflexivity.
+Qed.
+
+(** ** B13. Timed now-reuse non-immediate fire & Stamp non-throwing version equality *)
+
+(**md
+**Reusing the captured `now` timestamp for a strictly positive delay `ms > 0` guarantees `deadline = now + ms` lies strictly in the future (`(now <? now + ms)%Z = true /\ ~ (now >= now + ms)%Z`) so the freshly armed timer cannot immediately fire on the same tick.**
+
+- [now:] current millisecond clock reading at arming.
+- [ms:] strictly positive delay duration in milliseconds.
+*)
+Theorem timed_capture_now_reuse_no_immediate_fire (now ms : Z) :
+  (ms > 0)%Z ->
+  (now <? now + ms)%Z = true /\ ~ (now >= now + ms)%Z.
+Proof.
+  intros Hms. split; [apply Z.ltb_lt|]; lia.
+Qed.
+
+Definition stamp_version_rel {A : Type} (x y : Z * A) : Prop := x.1 = y.1.
+Definition stamp_version_eq {A : Type} (x y : Z * A) : bool := Z.eqb x.1 y.1.
+Definition stamp_version_eq_dec {A : Type} (x y : Z * A) :
+  {stamp_version_rel x y} + {~ stamp_version_rel x y} := Z.eq_dec x.1 y.1.
+
+(**md
+**Version-only equality on `(ver, payload)` stamp pairs is an equivalence relation (`Equivalence`), decidable, reflected by `Z.eqb` on version numbers, and non-throwing (`CmpEq` on `ver` matches `ready_value_moved` with zero error transition).**
+
+- [A:] payload type ignored by the version-only stamp comparer.
+*)
+Theorem stamp_version_eq_equivalence (A : Type) :
+  Equivalence (@stamp_version_rel A) /\
+  (forall x y : Z * A, stamp_version_rel x y \/ ~ stamp_version_rel x y) /\
+  (forall x y : Z * A, stamp_version_eq x y = true <-> stamp_version_rel x y) /\
+  (forall (x y : Z * A) n s,
+    ready_value_moved x.1 y.1 CmpEq n s = Some (s, negb (stamp_version_eq x y)) /\
+    (forall err, CmpEq <> CmpThrows err)).
+Proof.
+  split; [|split; [|split]].
+  - split.
+    + intros x. reflexivity.
+    + intros x y H. symmetry. exact H.
+    + intros x y z Hxy Hyz. transitivity y.1; assumption.
+  - intros x y. destruct (Z.eq_dec x.1 y.1) as [H|H]; [left|right]; exact H.
+  - intros x y. unfold stamp_version_eq, stamp_version_rel. apply Z.eqb_eq.
+  - intros x y n s. split.
+    + unfold ready_value_moved, stamp_version_eq.
+      f_equal. f_equal.
+      destruct (Z.eqb_spec x.1 y.1) as [Heq|Hne].
+      * rewrite bool_decide_eq_false_2 by (intro H; apply H; symmetry; exact Heq). reflexivity.
+      * rewrite bool_decide_eq_true_2 by (intro H; apply Hne; symmetry; exact H). reflexivity.
+    + intros err H. discriminate.
 Qed.

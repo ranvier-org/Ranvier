@@ -4825,3 +4825,90 @@ Proof.
     destruct (sub_fn (fas_state fs) ext (fra_value r)) as [s'|]; simpl;
       [destruct (add_fn s' ext (rc_signal_val cell)); rewrite Herr; reflexivity | rewrite Herr; reflexivity].
 Qed.
+
+(** ** ProjectionFold clean-ready peek and SortView certified strict-order check (B15) *)
+
+(**md
+**An untracked read (`ProjectionFold.Read` `Peek`) on a clean, ready (`StNone`, `stale_live = false`) memo returns `Ok (n_value d)` in identical state `s` with zero edge mutations, trace emissions, or refresh allocations.**
+
+Models the `Clean /\ StNone` `Peek` fast path in `ProjectionFold.Read` (`Combinators.fs`): because `read (S (S f)) m false s` runs `read_node (S f) m` inside `untracked`, `g_current` is `None` during `track m` (so `live_current = None` and no dependency edge is added), `stale_live d = false` bypasses `refresh_or_pull`, and `n_status d = StNone` directly returns `Ok (n_value d)` while restoring `s` verbatim.
+
+- [f:] extra fuel beyond the outer `read`/`read_node` frame.
+- [m:] memo node id being peeked.
+- [d:] clean ready memo node snapshot at `m`.
+- [s:] starting engine state.
+*)
+Theorem clean_ready_row_peek_refines_untracked_read
+    (f : nat) (m : node_id) (d : node) (s : state) :
+  g_nodes s !! m = Some d ->
+  n_kind d = KMemo ->
+  stale_live d = false ->
+  n_status d = StNone ->
+  read (S (S f)) m false s = Some (s, Ok (n_value d)).
+Proof.
+  intros Hm Hk Hstale Hst.
+  cbn [read read_node].
+  unfold untracked, m_bind, m_modify, m_return, get_node, track, live_current.
+  simpl. rewrite Hm, Hk, Hstale. simpl. rewrite Hm, Hst. simpl.
+  destruct s; reflexivity.
+Qed.
+
+(** Computable pairwise `rank_up_le` adjacency check matching `SortView`'s linear strict-order scan. *)
+Fixpoint is_rank_up_sorted (xs : list (nat * Z * nat)) : bool :=
+  match xs with
+  | [] => true
+  | [_] => true
+  | x :: ((y :: _) as ys) => rank_up_le_b x y && is_rank_up_sorted ys
+  end.
+
+Lemma rank_up_le_b_true_iff x y :
+  rank_up_le_b x y = true <-> rank_up_le x y.
+Proof.
+  unfold rank_up_le_b, rank_up_le.
+  apply bool_decide_eq_true.
+Qed.
+
+Lemma is_rank_up_sorted_locally ys :
+  is_rank_up_sorted ys = true ->
+  LocallySorted rank_up_le ys.
+Proof.
+  induction ys as [|a l IH]; [constructor|].
+  destruct l as [|b l'].
+  - intros _. constructor.
+  - simpl. intros H. apply andb_true_iff in H as [Hab Hl'].
+    constructor.
+    + exact (IH Hl').
+    + apply rank_up_le_b_true_iff. exact Hab.
+Qed.
+
+(**md
+**When `SortView`'s linear order scan confirms every adjacent pair `(rank, up_idx)` is ordered under `rank_up_le` (`LocallySorted` / `Sorted`), `full_insertion_sort` is the identity.**
+
+Models the certified strict-order fast path for sorted reactive collections: if incoming `(rank, up_idx)` pairs already satisfy pairwise `rank_up_le` (whether witnessed by the computable scan `is_rank_up_sorted`, adjacent `LocallySorted rank_up_le`, or standard `Sorted rank_up_le`), `full_insertion_sort xs` leaves `xs` unchanged, justifying skipping insertion-sort allocations altogether.
+
+- [xs:] list of `(item_id, rank, up_idx)` rows ordered under `rank_up_le`.
+*)
+Theorem certified_strict_order_skips_sort
+    (xs : list (nat * Z * nat)) :
+  (LocallySorted rank_up_le xs -> full_insertion_sort xs = xs) /\
+  (Sorted rank_up_le xs -> full_insertion_sort xs = xs) /\
+  (is_rank_up_sorted xs = true -> full_insertion_sort xs = xs).
+Proof.
+  assert (Hloc : forall l, LocallySorted rank_up_le l -> full_insertion_sort l = l).
+  { induction l as [|x l IH]; intros Hls; [reflexivity|].
+    destruct l as [|y ys]; [reflexivity|].
+    inversion Hls; subst.
+    unfold full_insertion_sort in *. simpl in *.
+    rewrite IH by assumption.
+    unfold sorted_insert.
+    destruct (rank_up_le_b_true_iff x y) as [_ Htrue].
+    rewrite (Htrue ltac:(assumption)). reflexivity. }
+  repeat split.
+  - exact (Hloc xs).
+  - intros Hsort. apply Hloc. induction xs as [|x l IH].
+    + constructor.
+    + inversion Hsort; subst. destruct l as [|y ys]; [constructor|].
+      inversion H2; subst. constructor; [exact (IH H1)|assumption].
+  - intros Hbool. apply Hloc.
+    eapply is_rank_up_sorted_locally. exact Hbool.
+Qed.
