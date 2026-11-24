@@ -396,6 +396,11 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     let entries = Platform.KeyMap<'K, RowEntry<'K, 'V>>()
 
+    /// <summary>The row of the last key <c>Get</c> found, or null. Valid only while <c>Live</c>: every removal retires the row.</summary>
+    let mutable lastEntry: RowEntry<'K, 'V> = null
+
+    let mutable lastKey = Unchecked.defaultof<'K>
+
     /// <summary>The live key readers, and null while none exists.</summary>
     let mutable log: KeyLog<'K> = null
 
@@ -584,6 +589,38 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 #endif
 
     member internal _.Graph = graph
+
+    /// <summary>The row of <c>key</c>, or null. Answers from the last row found while that row is live.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.FindEntry(key: 'K) : RowEntry<'K, 'V> =
+        let last = lastEntry
+
+        if not (Platform.isNull last)
+           && last.Live
+           && Platform.keyEquals lastKey key then
+            last
+        else
+            let found = entries.Find key
+
+            if not (Platform.isNull found) then
+                lastKey <- key
+                lastEntry <- found
+
+            found
+
+    /// <summary>
+    /// Whether a read of <c>entry</c> needs nothing but its two tracked reads: the projection is live, clean and observed,
+    /// and the row is clean and ready. False for a null entry.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.IsCleanHit(entry: RowEntry<'K, 'V>) : bool =
+        not disposed
+        && freshness = Freshness.Clean
+        && observed
+        && not (Platform.isNull entry)
+        && not (Platform.isNull (box entry.Row))
+        && entry.Row.Status = Status.None
+        && not (entry.Row :> ISource).IsStale
     member internal _.Entries = entries
     member internal _.Scope = scope
 
@@ -852,6 +889,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// </summary>
     member private this.Retire(entry: RowEntry<'K, 'V>) =
         entry.Live <- false
+
+        if obj.ReferenceEquals (lastEntry, entry) then
+            lastEntry <- null
 
         if not (Platform.isNull (box values)) then
             values.Retire entry
@@ -1700,7 +1740,15 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// reader's exception. Raises <c>KeyNotFoundException</c> for an absent key.
     /// </remarks>
     member this.Get(key: 'K) : 'V =
-        this.GetRow (key, false)
+        let entry = this.FindEntry key
+
+        // A clean, observed projection whose row is clean and ready: the same two tracked reads as the general path,
+        // without the pass check or the handlers that only a stale, pending or failed read needs.
+        if this.IsCleanHit entry then
+            graph.Track (beacon :> ISource)
+            entry.Row.Value
+        else
+            this.GetRow (key, false)
 
     /// <summary>
     /// <c>Get</c>, returning the last settled value of a pending row that has settled before. A failed row raises as in
@@ -1744,7 +1792,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             linkAwaited ex
             reraise ()
 
-        let entry = entries.Find key
+        let entry = this.FindEntry key
 
         if Platform.isNull entry then
             this.TrackAbsent ()
@@ -1766,7 +1814,14 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// to <c>entries.Find key</c> when retired or null.
     /// </summary>
     member internal this.ReadEntry(key: 'K, entry: RowEntry<'K, 'V>) : 'V =
-        if not (Platform.isNull entry) && entry.Live then
+        if
+            not (Platform.isNull entry)
+            && entry.Live
+            && this.IsCleanHit entry
+        then
+            graph.Track (beacon :> ISource)
+            entry.Row.Value
+        elif not (Platform.isNull entry) && entry.Live then
             if disposed && this.GetRaisesDisposed then
                 raise (ObjectDisposedException "The projection was disposed.")
 
@@ -2147,6 +2202,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             entries.Iterate (fun _ entry -> entry.Live <- false)
 
+            lastEntry <- null
             entries.Clear ()
             inFlight.Clear ()
 
@@ -3637,6 +3693,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 #endif
 
     member internal _.Graph = graph
+
     member internal _.Scope = scope
     member internal _.IsDisposed = disposed
 

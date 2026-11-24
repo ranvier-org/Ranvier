@@ -16,6 +16,14 @@ let private countRuns (read: unit -> 'a) =
 
     runs
 
+/// <summary>Expects an <c>ObjectDisposedException</c>; Fable cannot type-test it, so any exception passes there.</summary>
+let private throwsDisposed (f: unit -> unit) (message: string) =
+#if FABLE_COMPILER
+    Expect.throws f message
+#else
+    Expect.throwsT<ObjectDisposedException> f message
+#endif
+
 [<Tests>]
 let tests =
     testList
@@ -340,10 +348,10 @@ let tests =
                 col.AddOrUpdate (1, 1)
                 armed.Value <- true
 
-                Expect.throwsT<ObjectDisposedException> (fun () -> col.AddOrUpdate (2, 2)) "the disposal during the selector is seen after it"
+                throwsDisposed (fun () -> col.AddOrUpdate (2, 2)) "the disposal during the selector is seen after it"
                 Expect.isEmpty col.Rows.Keys "no zombie key survives the disposal"
                 Expect.isNone (col.Rows.TryGet 2) "the key of the failed upsert has no row"
-                Expect.throwsT<ObjectDisposedException> (fun () -> col.AddOrUpdate (3, 3)) "the next upsert raises before its selector"
+                throwsDisposed (fun () -> col.AddOrUpdate (3, 3)) "the next upsert raises before its selector"
             }
 
             test "a selector that upserts the same key leaves one row holding the outer value" {
@@ -388,7 +396,7 @@ let tests =
 
                 col.Edit (fun c ->
                     c.AddOrUpdate (1, 10)
-                    Expect.throwsT<Exception> (fun () -> c.AddOrUpdate (2, 20)) "the selector's failure reaches the edit"
+                    Expect.throws (fun () -> c.AddOrUpdate (2, 20)) "the selector's failure reaches the edit"
                     Expect.equal runs.Value 1 "the reader waits for the outer batch"
                     c.AddOrUpdate (4, 40))
 
