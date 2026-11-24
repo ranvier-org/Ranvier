@@ -846,14 +846,20 @@ module internal SourceSlots =
 #if !FABLE_COMPILER && !RANVIER_TRACE
 [<Struct; NoEquality; NoComparison>]
 type internal SourceList =
-    // Internal rather than private: `NodeOps` walks the slots directly for the devirtualised check walk.
+    // Internal rather than private: `NodeOps` and `Graph.Track` match slots 0 and 1 inline without touching `rest`.
     /// <summary>The source at position 0.</summary>
     val mutable internal first: ISource
     /// <summary>The <c>Node</c> of the source at position 0 when it is a memo, otherwise null.</summary>
     val mutable internal firstNode: obj
     /// <summary>The handle of position 0.</summary>
     val mutable internal firstHandle: int
-    /// <summary>Sources after the first. <c>rest[i - 1]</c> is the source at position <c>i</c>.</summary>
+    /// <summary>The source at position 1.</summary>
+    val mutable internal second: ISource
+    /// <summary>The <c>Node</c> of the source at position 1 when it is a memo, otherwise null.</summary>
+    val mutable internal secondNode: obj
+    /// <summary>The handle of position 1.</summary>
+    val mutable internal secondHandle: int
+    /// <summary>Sources after the second. <c>rest[i - 2]</c> is the source at position <c>i</c>.</summary>
     val mutable internal rest: SourceSlot[]
     val mutable internal count: int
     /// <summary>How far into the list the current run has matched. Meaningless outside a run.</summary>
@@ -866,6 +872,9 @@ type internal SourceList =
             first = Unchecked.defaultof<ISource>
             firstNode = null
             firstHandle = unlinked
+            second = Unchecked.defaultof<ISource>
+            secondNode = null
+            secondHandle = unlinked
             rest = SourceSlots.none ()
             count = 0
             cursor = 0
@@ -878,20 +887,26 @@ type internal SourceList =
     member private this.SourceAtRaw(i: int) =
         if i = 0 then
             this.first
+        elif i = 1 then
+            this.second
         else
-            (Platform.itemAt (i - 1) this.rest).Source
+            (Platform.itemAt (i - 2) this.rest).Source
 
     member private this.HandleAtRaw(i: int) =
         if i = 0 then
             this.firstHandle
+        elif i = 1 then
+            this.secondHandle
         else
-            (Platform.itemAt (i - 1) this.rest).Handle
+            (Platform.itemAt (i - 2) this.rest).Handle
 
     member private this.SetHandle(i: int, handle: int) =
         if i = 0 then
             this.firstHandle <- handle
+        elif i = 1 then
+            this.secondHandle <- handle
         else
-            this.rest[i - 1].Handle <- handle
+            this.rest[i - 2].Handle <- handle
 
     member private this.Grow() =
         let size = max 4 (this.rest.Length * 2)
@@ -935,8 +950,15 @@ type internal SourceList =
                 this.first <- Unchecked.defaultof<ISource>
                 this.firstNode <- null
                 this.firstHandle <- EdgeHandle.Unlinked
+            elif i = 1 then
+                if this.secondHandle >= 0 then
+                    this.second.RemoveObserverAt (self, this.secondHandle)
+
+                this.second <- Unchecked.defaultof<ISource>
+                this.secondNode <- null
+                this.secondHandle <- EdgeHandle.Unlinked
             else
-                let k = i - 1
+                let k = i - 2
                 let slot = Platform.itemAt k this.rest
 
                 if slot.Handle >= 0 then
@@ -961,8 +983,15 @@ type internal SourceList =
             && this.first.IsStale
         then
             true
+        elif this.count = 1 then
+            false
+        elif
+            this.secondHandle < EdgeHandle.SignalBit
+            && this.second.IsStale
+        then
+            true
         else
-            let limit = this.count - 1
+            let limit = this.count - 2
             let mutable i = 0
 
             while i < limit
@@ -986,8 +1015,11 @@ type internal SourceList =
         if i = 0 then
             if this.firstHandle < EdgeHandle.SignalBit then
                 this.first.UpdateIfNecessary ()
+        elif i = 1 then
+            if this.secondHandle < EdgeHandle.SignalBit then
+                this.second.UpdateIfNecessary ()
         else
-            let s = Platform.itemAt (i - 1) this.rest
+            let s = Platform.itemAt (i - 2) this.rest
 
             if s.Handle < EdgeHandle.SignalBit then
                 s.Source.UpdateIfNecessary ()
@@ -1032,8 +1064,31 @@ type internal SourceList =
 
             if handle < EdgeHandle.SignalBit && not (Platform.isNull selfNode) then
                 this.firstNode <- EdgeContext.TakeSource source
+        elif slot = 1 then
+            this.second <- source
+            this.secondHandle <- EdgeHandle.Unlinked
+            this.secondNode <- null
+            this.count <- 2
+            this.cursor <- 2
+#if RANVIER_COUNTERS
+            Counters.EdgeAdded ()
+#endif
+            let tried = source.TryAddObserver (self, 1)
+
+            let handle =
+                if tried <> EdgeHandle.Unknown then tried
+                elif obj.ReferenceEquals (this.first, source) then EdgeHandle.Unlinked
+                else source.AddObserver (self, 1)
+
+            this.secondHandle <- handle
+
+            if handle < EdgeHandle.SignalBit && not (Platform.isNull selfNode) then
+                this.secondNode <- EdgeContext.TakeSource source
+
+            if not (Platform.isNull this.held) then
+                Platform.refIndexSet this.held source 1
         else
-            let k = slot - 1
+            let k = slot - 2
 
             if k = this.rest.Length then
                 this.Grow ()
@@ -1070,24 +1125,28 @@ type internal SourceList =
         let cur = this.cursor
 
         if cur = 0 then
-            if
-                this.count > 0
-                && obj.ReferenceEquals (this.first, source)
-            then
+            if obj.ReferenceEquals (this.first, source) then
                 this.cursor <- 1
+            else
+                this.Append (self, selfNode, source)
+        elif cur = 1 then
+            if obj.ReferenceEquals (this.second, source) then
+                this.cursor <- 2
+            elif obj.ReferenceEquals (this.first, source) then
+                ()
             else
                 this.Append (self, selfNode, source)
         elif
             cur < this.count
-            && obj.ReferenceEquals ((Platform.itemAt (cur - 1) this.rest).Source, source)
+            && obj.ReferenceEquals ((Platform.itemAt (cur - 2) this.rest).Source, source)
         then
             this.cursor <- cur + 1
         elif
             obj.ReferenceEquals (
-                (if cur = 1 then
-                     this.first
+                (if cur = 2 then
+                     this.second
                  else
-                     (Platform.itemAt (cur - 2) this.rest).Source),
+                     (Platform.itemAt (cur - 3) this.rest).Source),
                 source
             )
         then
@@ -2933,6 +2992,13 @@ type Graph(options: GraphOptions) =
     /// </remarks>
     let mutable currentNode: Node = Unchecked.defaultof<Node>
 
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    /// <summary>The iterative check walk's stack: see <c>NodeOps.RefreshChain</c>.</summary>
+    let mutable checkStack: CheckFrame[] = null
+
+    let mutable checkSp = 0
+#endif
+
     /// <summary>
     /// The node of the last pending read raised inside the running body, or
     /// null. Survives a <c>try/with</c> in the body that swallows the raise.
@@ -2969,7 +3035,11 @@ type Graph(options: GraphOptions) =
     /// for the price of one store.
     /// </para>
     /// </remarks>
+#if FABLE_COMPILER
     let queue = ResizeArray<IScheduled>()
+#else
+    let mutable queueSlots: QueueSlot[] = Array.Empty<QueueSlot>()
+#endif
 
     /// <summary>
     /// Entries written. Slots at or past this are spent and reusable.
@@ -3282,6 +3352,7 @@ type Graph(options: GraphOptions) =
     member internal _.Running =
         flushing
         || pullDepth > 0
+        || not (obj.ReferenceEquals (currentNode, null))
         || not (Platform.isNull (box current))
         || detachedDepth > 0
         || untrackedInBody
@@ -3429,7 +3500,9 @@ type Graph(options: GraphOptions) =
     member internal _.CurrentOwner =
         if ownerPending || Platform.isNull (box currentOwner) then
             let host =
-                if Platform.isNull (box current) then
+                if not (obj.ReferenceEquals (currentNode, null)) then
+                    currentNode.Self :?> IScopeHost
+                elif Platform.isNull (box current) then
                     untrackedHost
                 else
                     current :?> IScopeHost
@@ -3447,7 +3520,9 @@ type Graph(options: GraphOptions) =
             ValueSome currentOwner
         else
             let host =
-                if Platform.isNull (box current) then
+                if not (obj.ReferenceEquals (currentNode, null)) then
+                    currentNode.Self :?> IScopeHost
+                elif Platform.isNull (box current) then
                     untrackedHost
                 else
                     current :?> IScopeHost
@@ -3932,18 +4007,49 @@ type Graph(options: GraphOptions) =
 #endif
 
 
+#if !FABLE_COMPILER
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.GrowQueue() =
+        let size = if queueSlots.Length = 0 then 8 else queueSlots.Length * 2
+        let grown = Array.zeroCreate size
+
+        if queueSlots.Length > 0 then
+            Array.blit queueSlots 0 grown 0 queueSlots.Length
+
+        queueSlots <- grown
+#endif
+
+    /// <summary>Queues an effect or split effect node directly without <c>IScheduled</c> interface dispatch.</summary>
+#if FABLE_COMPILER
+    member internal this.ScheduleNode(n: Node) =
+        this.Schedule (NodeOps.Scheduled n)
+#else
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.ScheduleNode(n: Node) =
+        let selfObj: obj = box n.Self
+        Tracer.Schedule (this, selfObj, queueCount - queueHead + passCount - passHead)
+
+        if queueCount = queueSlots.Length then
+            this.GrowQueue ()
+
+        queueSlots[queueCount] <- QueueSlot (Unchecked.defaultof<IScheduled>, n)
+        queueCount <- queueCount + 1
+#endif
+
     member internal this.Schedule(item: IScheduled) =
         Tracer.Schedule (this, item, queueCount - queueHead + passCount - passHead)
 
-        if queueCount < queue.Count then
 #if FABLE_COMPILER
+        if queueCount < queue.Count then
             Platform.setEntryAt queueCount queue item
-#else
-            queue[queueCount] <- item
-#endif
         else
             queue.Add item
+#else
+        if queueCount = queueSlots.Length then
+            this.GrowQueue ()
 
+        queueSlots[queueCount] <- QueueSlot (item, Unchecked.defaultof<Node>)
+#endif
         queueCount <- queueCount + 1
 
     /// <summary>Queues a projection pass or a lookup refresh. A flush runs it before the next item <c>Schedule</c> queued.</summary>
@@ -3977,18 +4083,20 @@ type Graph(options: GraphOptions) =
 #if FABLE_COMPILER
             Platform.setEntryAt queueHead queue passDrain
 #else
-            queue[queueHead] <- passDrain
+            queueSlots[queueHead] <- QueueSlot (passDrain, Unchecked.defaultof<Node>)
 #endif
         else
-            if queueCount < queue.Count then
 #if FABLE_COMPILER
+            if queueCount < queue.Count then
                 Platform.setEntryAt queueCount queue passDrain
-#else
-                queue[queueCount] <- passDrain
-#endif
             else
                 queue.Add passDrain
+#else
+            if queueCount = queueSlots.Length then
+                this.GrowQueue ()
 
+            queueSlots[queueCount] <- QueueSlot (passDrain, Unchecked.defaultof<Node>)
+#endif
             queueCount <- queueCount + 1
 
     /// <summary>Runs the queued passes, including those queued by a pass, and empties the pass buffer.</summary>
@@ -4024,6 +4132,135 @@ type Graph(options: GraphOptions) =
     member this.Flush() =
         this.Entered ("A flush", (fun () -> this.RunFlush ()))
 
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    member private this.RunFlush() =
+        if not flushing then
+#if RANVIER_COUNTERS
+            Counters.Flushed ()
+#endif
+            flushing <- true
+            flushOwed <- false
+            let previousAmbient = this.EnterAmbient ()
+
+            if passCount = 0 && Platform.isNull journal then
+                this.DrainNodesFast previousAmbient
+            else
+                this.DrainSlow previousAmbient
+
+    /// <summary>
+    /// Drains effect and split-effect nodes without an exception frame (<c>drain_no_escape</c>): neither <c>NodeOps.Execute</c>
+    /// nor any <c>UpdateIfNecessary</c> lets an exception escape. Falls back to <c>DrainSlow</c> on the first non-node item.
+    /// </summary>
+    member private this.DrainNodesFast(previousAmbient: obj) =
+        let mutable fast = true
+
+        while fast && queueHead < queueCount do
+            let n = queueSlots[queueHead].Node
+
+            if not (obj.ReferenceEquals (n, null)) then
+                queueSlots[queueHead].Node <- Unchecked.defaultof<Node>
+                queueHead <- queueHead + 1
+                NodeOps.Execute n
+            else
+                fast <- false
+
+        if fast then
+            queueHead <- 0
+            queueCount <- 0
+            flushing <- false
+
+            if staleTransitions <> 0 && pullDepth = 0 then
+                staleTransitions <- 0
+                activeSkips <- 0
+
+            if not (Platform.isNull lastRaised) then
+                lastRaised <- null
+
+            this.LeaveAmbient previousAmbient
+        else
+            this.DrainSlow previousAmbient
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.DrainSlow(previousAmbient: obj) =
+        try
+            if passCount <> 0 then
+                this.RunPasses ()
+
+            while queueHead < queueCount do
+                let slot = queueSlots[queueHead]
+                queueSlots[queueHead] <- QueueSlot (Unchecked.defaultof<IScheduled>, Unchecked.defaultof<Node>)
+                queueHead <- queueHead + 1
+
+                if not (obj.ReferenceEquals (slot.Node, null)) then
+                    NodeOps.Execute slot.Node
+                else
+                    slot.Item.Execute ()
+
+            queueHead <- 0
+            queueCount <- 0
+        finally
+            flushing <- false
+
+            if staleTransitions <> 0 && pullDepth = 0 then
+                staleTransitions <- 0
+                activeSkips <- 0
+
+            if not (Platform.isNull lastRaised) then
+                lastRaised <- null
+
+            this.LeaveAmbient previousAmbient
+
+            if not (Platform.isNull journal) then
+                journal.Boundary ()
+
+    /// <summary>True when a signal write on an entered graph can fuse an immediate single-observer flush (Theorem B5).</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.CanFuseIdleFlush() : bool =
+        fastWriteToken >= 0L
+        && ((batchDepth ||| pullDepth ||| passCount) = 0)
+        && not flushing
+        && not untrackedInBody
+        && queueHead = queueCount
+        && obj.ReferenceEquals (currentNode, null)
+        && Platform.isNull (box current)
+
+    /// <summary>True when neither a stale read nor a flush is active, so <c>NoteStaleTransition</c> is a no-op.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.IsIdleForMarks() : bool =
+        pullDepth = 0 && not flushing
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.BeginFusedFlush() : obj =
+#if RANVIER_COUNTERS
+        Counters.Flushed ()
+#endif
+        if queueSlots.Length = 0 then
+            this.GrowQueue ()
+
+        queueHead <- 1
+        queueCount <- 1
+        flushing <- true
+        flushOwed <- false
+        this.EnterAmbient ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.EndFusedFlush(previousAmbient: obj) =
+        if queueHead < queueCount || passCount <> 0 then
+            this.DrainNodesFast previousAmbient
+        else
+            queueHead <- 0
+            queueCount <- 0
+            flushing <- false
+
+            if staleTransitions <> 0 then
+                staleTransitions <- 0
+                activeSkips <- 0
+
+            if not (Platform.isNull lastRaised) then
+                lastRaised <- null
+
+            this.LeaveAmbient previousAmbient
+#else
     member private this.RunFlush() =
         if not flushing then
 #if RANVIER_COUNTERS
@@ -4035,24 +4272,35 @@ type Graph(options: GraphOptions) =
             let previousAmbient = this.EnterAmbient ()
 
             try
-                // Passes queued before the flush run ahead of the effects queued with them. A pass queued during the
-                // flush puts `passDrain` at the head of the queue.
                 if passCount <> 0 then
                     this.RunPasses ()
 
                 while queueHead < queueCount do
+#if FABLE_COMPILER
                     let item = Platform.entryAt queueHead queue
                     Tracer.Dequeue (this, item)
-
-                    // Released as it is consumed, so a spent slot leaves a
-                    // disposed effect collectable.
                     Platform.releaseSlot queue queueHead
                     queueHead <- queueHead + 1
                     item.Execute ()
+#else
+                    let slot = queueSlots[queueHead]
 
-                // Reached only on a clean drain. An effect that throws leaves
-                // the cursor where it stopped and the rest still queued, for
-                // the next flush to pick up, which is what the `Queue` did.
+                    let tracedItem: obj =
+                        if not (obj.ReferenceEquals (slot.Node, null)) then
+                            box slot.Node.Self
+                        else
+                            box slot.Item
+
+                    Tracer.Dequeue (this, tracedItem)
+                    queueSlots[queueHead] <- QueueSlot (Unchecked.defaultof<IScheduled>, Unchecked.defaultof<Node>)
+                    queueHead <- queueHead + 1
+
+                    if not (obj.ReferenceEquals (slot.Node, null)) then
+                        NodeOps.Execute slot.Node
+                    else
+                        slot.Item.Execute ()
+#endif
+
                 queueHead <- 0
                 queueCount <- 0
             finally
@@ -4071,6 +4319,7 @@ type Graph(options: GraphOptions) =
 
                 if not (Platform.isNull journal) then
                     journal.Boundary ()
+#endif
 
     /// <summary>
     /// Runs the queued effects. Inside a batch they run when the batch returns;
@@ -4082,6 +4331,7 @@ type Graph(options: GraphOptions) =
         if queueHead < queueCount && batchDepth = 0 then
             if
                 pullDepth = 0
+                && obj.ReferenceEquals (currentNode, null)
                 && Platform.isNull (box current)
                 && not untrackedInBody
             then
@@ -4096,6 +4346,7 @@ type Graph(options: GraphOptions) =
         if queueHead < queueCount && batchDepth = 0 then
             if
                 pullDepth = 0
+                && obj.ReferenceEquals (currentNode, null)
                 && Platform.isNull (box current)
                 && not untrackedInBody
             then
@@ -4111,6 +4362,7 @@ type Graph(options: GraphOptions) =
             flushOwed
             && batchDepth = 0
             && pullDepth = 0
+            && obj.ReferenceEquals (currentNode, null)
             && Platform.isNull (box current)
             && not untrackedInBody
         then
@@ -4130,15 +4382,52 @@ type Graph(options: GraphOptions) =
     /// <summary>True while the queue holds work: the inline test in front of a flush request.</summary>
     member inline internal _.QueuePending = queueHead < queueCount
 
+    /// <summary>Clears a swallowed failed-read record after an untracked refresh inside a flush.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.ClearLastRaisedIfTop() =
+        if
+            not (Platform.isNull lastRaised)
+            && pullDepth = 0
+            && obj.ReferenceEquals (currentNode, null)
+            && Platform.isNull (box current)
+        then
+            lastRaised <- null
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.ClearLastRaised() =
+        lastRaised <- null
+
+    member inline internal _.HasLastRaised = not (Platform.isNull lastRaised)
+
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    member inline internal _.CheckSp
+        with get () = checkSp
+        and set v = checkSp <- v
+
+    member inline internal _.CheckStack = checkStack
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member internal _.EnsureOrGrowCheckStack() : CheckFrame[] =
+        if Platform.isNull checkStack then
+            checkStack <- Array.zeroCreate 32
+        else
+            let grown = Array.zeroCreate (checkStack.Length * 2)
+            Array.blit checkStack 0 grown 0 checkSp
+            checkStack <- grown
+
+        checkStack
+#endif
+
     /// <summary>
-    /// True inside a stale read, or while a computation's body runs outside
-    /// <c>untrack</c>. False inside <c>untrack</c> within a body, where the flush is
-    /// deferred as well. Under <c>Serialised</c>, false on every thread other than the holder, so a stale read from
-    /// such a thread enters the graph through <c>EnterPull</c>.
+    /// True inside a flush, a stale read, or while a computation's body runs outside <c>untrack</c> (Theorem B1:
+    /// <c>flushing_implies_no_flush_owed</c> &amp; <c>deferring_with_flushing_eq</c>). Under <c>Serialised</c>, false on
+    /// every thread other than the holder, so a stale read from such a thread enters the graph through <c>EnterPull</c>.
     /// </summary>
     member internal _.Deferring
         with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () =
-            (pullDepth > 0
+            (flushing
+             || pullDepth > 0
+             || not (obj.ReferenceEquals (currentNode, null))
              || not (Platform.isNull (box current)))
 #if !FABLE_COMPILER
             && (not serialised
@@ -4179,12 +4468,16 @@ type Graph(options: GraphOptions) =
             && (tok = 0L || tok = OwnerThreadToken.Current)
             && not (Platform.isNull ownerAmbient)
             && obj.ReferenceEquals (ownerAmbient.Hosting, this)
-            && obj.ReferenceEquals (pullAmbient, this)
         then
             pullDepth <- 1
             true
         else
             false
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member internal this.ExitPullFastOnException() =
+        pullAmbient <- this
+        this.ExitPull ()
 
     /// <summary>
     /// <c>ExitPullDeferSettle</c> for a read opened by <c>TryEnterPullFast</c>: one test of the fields the exit
@@ -4634,11 +4927,18 @@ type Graph(options: GraphOptions) =
         activeSkips <- activeSkips + 1
         staleTransitions <- staleTransitions + 1
 
-    member inline internal _.NotifyMoved(observers: ObserverSet) =
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.NotifyMoved(observers: ObserverSet) =
+        let c =
+            if not (obj.ReferenceEquals (currentNode, null)) then
+                currentNode.Self
+            else
+                current
+
         if staleTransitions = 0 then
-            observers.NotifyDirtyOther current
+            observers.NotifyDirtyOther c
         else
-            observers.NotifyDirtyExcept current
+            observers.NotifyDirtyExcept c
 
     /// <summary>
     /// Links <c>source</c> into the computation currently being evaluated, if any.
@@ -4667,47 +4967,72 @@ type Graph(options: GraphOptions) =
         not (obj.ReferenceEquals (current, null))
 #else
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal _.Track(source: ISource) =
+    member internal this.Track(source: ISource) =
         let n = currentNode
 
         if not (obj.ReferenceEquals (n, null)) then
-            // A memo, effect or split effect: matched against its own source list without dispatching.
-            NodeOps.AddSource (n, source)
-        else
-            let c = current
+#if !RANVIER_TRACE
+            // Theorem B2 (`track_slot0_fast_eq` & `track_slot1_fast_eq`): `source` is never null, and a disposed
+            // node clears `first` and `second` to null, so a reference match proves `n` live and advances cursor.
+            let cur = n.Sources.cursor
 
-            if not (obj.ReferenceEquals (c, null)) then
-                // The observer half is linked by the consumer's own source list,
-                // which is the only side that knows whether this edge is new.
-                c.AddSource source
+            if cur = 0 && obj.ReferenceEquals (n.Sources.first, source) then
+                n.Sources.cursor <- 1
+            else
+                this.TrackNodeRest (n, cur, source)
+#else
+            NodeOps.AddSource (n, source)
+#endif
+        elif not (obj.ReferenceEquals (current, null)) then
+            this.TrackOtherSlow source
+
+#if !RANVIER_TRACE
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private this.TrackNodeRest(n: Node, cur: int, source: ISource) =
+        if cur = 1 && obj.ReferenceEquals (n.Sources.second, source) then
+            n.Sources.cursor <- 2
+        else
+            this.TrackNodeSlow (n, source)
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.TrackNodeSlow(n: Node, source: ISource) =
+        NodeOps.AddSource (n, source)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.TrackOtherSlow(source: ISource) =
+        current.AddSource source
 
     /// <summary>
     /// The computation whose body is running, or null. Read by a source that
     /// has just recomputed, to avoid marking its own reader dirty — see
     /// <c>ObserverSet.NotifyDirtyExcept</c>.
     /// </summary>
-    member inline internal _.CurrentComputation = current
+    member internal _.CurrentComputation
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () =
+            if not (obj.ReferenceEquals (currentNode, null)) then
+                currentNode.Self
+            else
+                current
 
     /// <summary>The <c>Node</c> of the running computation when it entered through <c>EnterHostedNode</c>, or null.</summary>
     member inline internal _.CurrentNode = currentNode
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.IsTracking() =
-        not (Platform.isNull (box current))
+        not (obj.ReferenceEquals (currentNode, null))
+        || not (Platform.isNull (box current))
 #endif
 
     /// <summary>
     /// Marks the running computation dirty, if any. Called by a tracked read that has just linked a source still
     /// stale after its pull.
     /// </summary>
-    /// <remarks>
-    /// A source can be marked dirty during its own run, when a read in its body resolves a <c>Check</c> to
-    /// <c>Dirty</c>. That notice reaches only the observers linked at the time, and a reader pulling the source for
-    /// the first time links after the pull. Once dirty, the source's <c>MarkDirty</c> notifies no one, so without
-    /// this mark the reader is never told the value it read is stale, and waits forever on a settled flight.
-    /// </remarks>
     member internal this.MarkReaderDirty() =
-        if not (obj.ReferenceEquals (current, null)) then
+        if not (obj.ReferenceEquals (currentNode, null)) then
+            this.NoteStaleTransition ()
+            NodeOps.MarkDirty currentNode
+        elif not (obj.ReferenceEquals (current, null)) then
             this.NoteStaleTransition ()
             current.MarkDirty ()
 
@@ -4716,7 +5041,10 @@ type Graph(options: GraphOptions) =
     /// <c>Check</c> when it goes dirty, so a re-run to an equal value stops at the cutoff.
     /// </summary>
     member internal this.MarkReaderCheck() =
-        if not (obj.ReferenceEquals (current, null)) then
+        if not (obj.ReferenceEquals (currentNode, null)) then
+            this.NoteStaleTransition ()
+            NodeOps.MarkCheck currentNode
+        elif not (obj.ReferenceEquals (current, null)) then
             this.NoteStaleTransition ()
             current.MarkCheck ()
 
@@ -4733,10 +5061,49 @@ type Graph(options: GraphOptions) =
         saved
 
     /// <summary><c>EnterHosted</c> for a memo, effect or split effect, so <c>Track</c> reaches its node directly.</summary>
+    /// <summary>True when no hosted computation, pending owner or raised pending node is active.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.CanEnterHostedTop() : bool =
+        obj.ReferenceEquals (currentNode, null)
+        && Platform.isNull (box current)
+        && not ownerPending
+        && Platform.isNull (box raisedPending)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.EnterHostedTop(host: Node) : Owner =
+        let prevOwner = currentOwner
+        currentNode <- host
+        ownerPending <- true
+        prevOwner
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.LeaveHostedTop(prevOwner: Owner) =
+        currentNode <- Unchecked.defaultof<Node>
+
+        if not ownerPending then
+            currentOwner <- prevOwner
+
+        ownerPending <- false
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member internal _.LeaveHostedTopFailed(prevOwner: Owner) =
+        currentNode <- Unchecked.defaultof<Node>
+
+        if not ownerPending then
+            currentOwner <- prevOwner
+
+        ownerPending <- false
+
+        if not (Platform.isNull (box raisedPending)) then
+            raisedPending <- Unchecked.defaultof<INode>
+
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.EnterHostedNode(host: Node) : HostedFrame =
         let saved = HostedFrame (current, currentNode, currentOwner, ownerPending, raisedPending)
-        current <- host.Self
+
+        if not (Platform.isNull (box current)) then
+            current <- Unchecked.defaultof<IComputation>
+
         currentNode <- host
         ownerPending <- true
 
@@ -4747,13 +5114,19 @@ type Graph(options: GraphOptions) =
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.LeaveHosted(saved: HostedFrame) =
-        // A null store needs no write barrier, so the common outermost exit stores the constant.
-        if Platform.isNull (box saved.Previous) then
-            current <- Unchecked.defaultof<IComputation>
-            currentNode <- Unchecked.defaultof<Node>
-        else
-            current <- saved.Previous
+        if not (obj.ReferenceEquals (saved.PreviousNode, null)) then
             currentNode <- saved.PreviousNode
+
+            if not (Platform.isNull (box current)) then
+                current <- Unchecked.defaultof<IComputation>
+        elif Platform.isNull (box saved.Previous) then
+            currentNode <- Unchecked.defaultof<Node>
+
+            if not (Platform.isNull (box current)) then
+                current <- Unchecked.defaultof<IComputation>
+        else
+            currentNode <- Unchecked.defaultof<Node>
+            current <- saved.Previous
 
         // A body that never resolved its owner left currentOwner as it was.
         if not ownerPending then
@@ -4868,7 +5241,7 @@ type Graph(options: GraphOptions) =
             else
                 // A pending owner is saved as the null it stands for.
                 let owner = if ownerPending then Unchecked.defaultof<Owner> else currentOwner
-                continuations.Add (struct (frame, current, owner, raisedPending))
+                continuations.Add (struct (frame, this.CurrentComputation, owner, raisedPending))
                 current <- Unchecked.defaultof<IComputation>
                 currentNode <- Unchecked.defaultof<Node>
                 currentOwner <- root
@@ -4926,8 +5299,10 @@ type Graph(options: GraphOptions) =
     /// body, the read is recorded for <c>RunHosted</c>.
     /// </summary>
     member internal this.NotReady(node: INode) : exn =
-        if not (Platform.isNull (box current)) then
-            Tracer.Suspend (this, current, node)
+        let c = this.CurrentComputation
+
+        if not (Platform.isNull (box c)) then
+            Tracer.Suspend (this, c, node)
             raisedPending <- node
 
         NotReadyException node
@@ -4973,7 +5348,7 @@ type Graph(options: GraphOptions) =
             Failure (error, origin)
 
     /// <summary>True when the running body has raised a pending read.</summary>
-    member internal _.RaisedPending = not (Platform.isNull (box raisedPending))
+    member inline internal _.RaisedPending = not (Platform.isNull (box raisedPending))
 
     /// <summary>
     /// Forgets the pending reads raised so far in the running body. Called by
@@ -5002,11 +5377,13 @@ type Graph(options: GraphOptions) =
                 let previousHost = untrackedHost
                 let previousInBody = untrackedInBody
 
-                if not (Platform.isNull (box previous)) then
+                let prevComp = if not (obj.ReferenceEquals (previousNode, null)) then previousNode.Self else previous
+
+                if not (Platform.isNull (box prevComp)) then
                     untrackedInBody <- true
 
                     if ownerPending || Platform.isNull (box currentOwner) then
-                        untrackedHost <- previous :?> IScopeHost
+                        untrackedHost <- prevComp :?> IScopeHost
 
                 current <- Unchecked.defaultof<IComputation>
                 currentNode <- Unchecked.defaultof<Node>
@@ -5030,11 +5407,13 @@ type Graph(options: GraphOptions) =
                 let previousHost = untrackedHost
                 let previousInBody = untrackedInBody
 
-                if not (Platform.isNull (box previous)) then
+                let prevComp = if not (obj.ReferenceEquals (previousNode, null)) then previousNode.Self else previous
+
+                if not (Platform.isNull (box prevComp)) then
                     untrackedInBody <- true
 
                     if ownerPending || Platform.isNull (box currentOwner) then
-                        untrackedHost <- previous :?> IScopeHost
+                        untrackedHost <- prevComp :?> IScopeHost
 
                 current <- Unchecked.defaultof<IComputation>
                 currentNode <- Unchecked.defaultof<Node>
@@ -5058,11 +5437,13 @@ type Graph(options: GraphOptions) =
                 let previousHost = untrackedHost
                 let previousInBody = untrackedInBody
 
-                if not (Platform.isNull (box previous)) then
+                let prevComp = if not (obj.ReferenceEquals (previousNode, null)) then previousNode.Self else previous
+
+                if not (Platform.isNull (box prevComp)) then
                     untrackedInBody <- true
 
                     if ownerPending || Platform.isNull (box currentOwner) then
-                        untrackedHost <- previous :?> IScopeHost
+                        untrackedHost <- prevComp :?> IScopeHost
 
                 current <- Unchecked.defaultof<IComputation>
                 currentNode <- Unchecked.defaultof<Node>
@@ -5102,11 +5483,13 @@ type Graph(options: GraphOptions) =
         let previousHost = untrackedHost
         let previousInBody = untrackedInBody
 
-        if not (Platform.isNull (box previous)) then
+        let prevComp = if not (obj.ReferenceEquals (previousNode, null)) then previousNode.Self else previous
+
+        if not (Platform.isNull (box prevComp)) then
             untrackedInBody <- true
 
             if ownerPending || Platform.isNull (box currentOwner) then
-                untrackedHost <- previous :?> IScopeHost
+                untrackedHost <- prevComp :?> IScopeHost
 
         current <- Unchecked.defaultof<IComputation>
         currentNode <- Unchecked.defaultof<Node>
@@ -5140,7 +5523,7 @@ type Graph(options: GraphOptions) =
         let previousHost = untrackedHost
         let previousInBody = untrackedInBody
 
-        if not (Platform.isNull (box previous)) then
+        if not (obj.ReferenceEquals (previousNode, null)) || not (Platform.isNull (box previous)) then
             untrackedInBody <- true
 
         current <- Unchecked.defaultof<IComputation>
@@ -5177,7 +5560,7 @@ type Graph(options: GraphOptions) =
         let previousHost = untrackedHost
         let previousInBody = untrackedInBody
 
-        if not (Platform.isNull (box previous)) then
+        if not (obj.ReferenceEquals (previousNode, null)) || not (Platform.isNull (box previous)) then
             untrackedInBody <- true
 
         current <- Unchecked.defaultof<IComputation>
@@ -5218,7 +5601,7 @@ type Graph(options: GraphOptions) =
         let previousHost = untrackedHost
         let previousInBody = untrackedInBody
 
-        if not (Platform.isNull (box previous)) then
+        if not (obj.ReferenceEquals (previousNode, null)) || not (Platform.isNull (box previous)) then
             untrackedInBody <- true
 
         current <- Unchecked.defaultof<IComputation>
@@ -5239,22 +5622,33 @@ type Graph(options: GraphOptions) =
             untrackedInBody <- previousInBody
 
 #if !FABLE_COMPILER
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.EnterUntrackedHosted(host: IScopeHost) : UntrackedHostedFrame =
         let saved =
             UntrackedHostedFrame (current, currentNode, currentOwner, ownerPending, untrackedHost, untrackedInBody)
 
-        if not (Platform.isNull (box saved.Previous)) then
+        if not (obj.ReferenceEquals (saved.PreviousNode, null)) then
             untrackedInBody <- true
+            currentNode <- Unchecked.defaultof<Node>
+        elif not (Platform.isNull (box saved.Previous)) then
+            untrackedInBody <- true
+            current <- Unchecked.defaultof<IComputation>
 
-        current <- Unchecked.defaultof<IComputation>
-        currentNode <- Unchecked.defaultof<Node>
         ownerPending <- true
         untrackedHost <- host
         saved
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.LeaveUntrackedHosted(saved: UntrackedHostedFrame) =
-        current <- saved.Previous
-        currentNode <- saved.PreviousNode
+        if not (obj.ReferenceEquals (saved.PreviousNode, null)) then
+            currentNode <- saved.PreviousNode
+        elif not (Platform.isNull (box currentNode)) then
+            currentNode <- Unchecked.defaultof<Node>
+
+        if not (Platform.isNull (box saved.Previous)) then
+            current <- saved.Previous
+        elif not (Platform.isNull (box current)) then
+            current <- Unchecked.defaultof<IComputation>
 
         if not ownerPending then
             currentOwner <- saved.PreviousOwner
@@ -5265,6 +5659,22 @@ type Graph(options: GraphOptions) =
 #endif
 
 #if !FABLE_COMPILER
+/// <summary>One entry in <c>Graph.queueSlots</c>: holds <c>Node</c> directly for effects/split effects, or <c>Item</c> otherwise.</summary>
+and [<Struct; NoEquality; NoComparison>] internal QueueSlot =
+    val mutable Item: IScheduled
+    val mutable Node: Node
+
+    new(item: IScheduled, node: Node) = { Item = item; Node = node }
+
+#if !RANVIER_TRACE
+/// <summary>One frame on <c>Graph.checkStack</c> for iterative single-memo <c>Check</c>-chain refresh (Theorem B4).</summary>
+and [<Struct; NoEquality; NoComparison>] internal CheckFrame =
+    val mutable Node: Node
+    val mutable Before: int
+
+    new(node: Node, before: int) = { Node = node; Before = before }
+#endif
+
 /// <summary>Saved tracking, owner, and pending-read context around a hosted computation run.</summary>
 and [<Struct; NoEquality; NoComparison>] internal HostedFrame =
     val Previous: IComputation
@@ -5511,6 +5921,60 @@ and [<Struct; NoEquality; NoComparison>] internal ObserverList =
             if this.Count > 0 then
                 NodeOps.MarkDirtyOf (this.First, this.FirstNode)
 
+    /// <summary>
+    /// <c>NotifyDirty</c> when <c>pullDepth = 0 &amp;&amp; not flushing</c>: clean leaf memos (<c>fan100</c>) take one
+    /// byte store in-place without calling <c>MemoMarkDirty</c> or re-reading <c>Graph</c> per leaf (Theorem B3).
+    /// </summary>
+    member this.NotifyDirtyIdle() =
+        let count = this.Count
+
+        if count = 1 then
+            NodeOps.MarkDirtyOf (this.First, this.FirstNode)
+        elif count > 1 then
+            let rest = this.Rest
+            let mutable i = count - 1
+
+            while i > 0 do
+                if i >= this.Count then
+                    i <- this.Count - 1
+
+                if i > 0 then
+                    let entry = rest[i - 1]
+                    let nodeObj = entry.Node
+
+                    if not (Platform.isNull nodeObj) then
+                        let m = Platform.fastCast<Node> nodeObj
+
+                        if
+                            m.Kind = NodeKind.Memo
+                            && m.Freshness = Freshness.Clean
+                            && m.Observers.Count = 0
+                        then
+                            m.Freshness <- Freshness.Dirty
+                        else
+                            NodeOps.MarkDirty m
+                    else
+                        entry.Observer.MarkDirty ()
+
+                    i <- i - 1
+
+            if this.Count > 0 then
+                let nodeObj = this.FirstNode
+
+                if not (Platform.isNull nodeObj) then
+                    let m = Platform.fastCast<Node> nodeObj
+
+                    if
+                        m.Kind = NodeKind.Memo
+                        && m.Freshness = Freshness.Clean
+                        && m.Observers.Count = 0
+                    then
+                        m.Freshness <- Freshness.Dirty
+                    else
+                        NodeOps.MarkDirty m
+                else
+                    this.First.MarkDirty ()
+
     /// <summary><c>ObserverSet.NotifyDirtyExcept</c>.</summary>
     member this.NotifyDirtyExcept(running: IComputation) =
         let count = this.Count
@@ -5624,7 +6088,11 @@ and [<NoEquality; NoComparison>] internal Node =
         Graph: Graph
 
         /// <summary>Runs the public object's body: a memo's <c>Run</c>, an effect's or split effect's <c>Run</c>.</summary>
-        RunCallback: obj -> unit
+#if FABLE_COMPILER
+        RunCallback: Node -> unit
+#else
+        RunCallback: Action<Node>
+#endif
 
         /// <summary>The public object. Set by its attach, before anything can mark or run it.</summary>
         mutable Self: IComputation
@@ -5675,7 +6143,11 @@ and [<NoEquality; NoComparison>] internal Node =
 /// </remarks>
 and [<AbstractClass; Sealed>] internal NodeOps =
     /// <summary>A node of <c>kind</c> on <c>graph</c>, taking the graph's next id.</summary>
-    static member Create(graph: Graph, kind: byte, runCallback: obj -> unit, freshness: Freshness) : Node =
+#if FABLE_COMPILER
+    static member Create(graph: Graph, kind: byte, runCallback: Node -> unit, freshness: Freshness) : Node =
+#else
+    static member Create(graph: Graph, kind: byte, runCallback: Action<Node>, freshness: Freshness) : Node =
+#endif
         let id = graph.NextId ()
 
         {
@@ -5705,7 +6177,12 @@ and [<AbstractClass; Sealed>] internal NodeOps =
 
     /// <summary>Runs the public object's body.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    static member Run(n: Node) = n.RunCallback (box n.Self)
+    static member Run(n: Node) =
+#if FABLE_COMPILER
+        n.RunCallback n
+#else
+        n.RunCallback.Invoke n
+#endif
 
     /// <summary>The <c>IScheduled</c> face of an effect or split effect.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
@@ -5760,7 +6237,7 @@ and [<AbstractClass; Sealed>] internal NodeOps =
                 if n.Publishes then
                     n.Graph.SchedulePass (NodeOps.Scheduled n)
                 else
-                    n.Graph.Schedule (NodeOps.Scheduled n)
+                    n.Graph.ScheduleNode n
 
     /// <summary>An effect's or split effect's <c>MarkCheck</c>.</summary>
     static member EffectMarkCheck(n: Node) =
@@ -5774,18 +6251,60 @@ and [<AbstractClass; Sealed>] internal NodeOps =
                 if n.Publishes then
                     n.Graph.SchedulePass (NodeOps.Scheduled n)
                 else
-                    n.Graph.Schedule (NodeOps.Scheduled n)
+                    n.Graph.ScheduleNode n
 
     /// <summary>Tells a memo's observers <c>Check</c>; no call when it has none.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member NotifyCheck(n: Node) =
         if n.Observers.Count <> 0 then
+#if !FABLE_COMPILER && !RANVIER_TRACE
+            NodeOps.NotifyCheckSpine n
+#else
             n.Observers.NotifyCheck ()
+#endif
+
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    /// <summary>
+    /// Iterative single-memo <c>MarkCheck</c> spine walk (Theorem B3, <c>iterative_mark_check_chain_eq</c>).
+    /// </summary>
+    static member NotifyCheckSpine(n: Node) =
+        let mutable cur = n
+        let mutable walking = true
+
+        while walking do
+            if
+                cur.Observers.Count = 1
+                && not (Platform.isNull cur.Observers.FirstNode)
+            then
+                let m = Platform.fastCast<Node> cur.Observers.FirstNode
+
+                if m.Kind = NodeKind.Memo && m.Freshness = Freshness.Clean then
+                    m.Freshness <- Freshness.Check
+
+                    if m.Observers.Count = 0 then
+                        walking <- false
+                    else
+                        cur <- m
+                else
+                    NodeOps.MarkCheck m
+                    walking <- false
+            else
+                cur.Observers.NotifyCheck ()
+                walking <- false
+#endif
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member MarkDirty(n: Node) =
         if n.Kind = NodeKind.Memo then
+#if !FABLE_COMPILER && !RANVIER_TRACE
+            if n.Freshness = Freshness.Clean && n.Observers.Count = 0 then
+                n.Freshness <- Freshness.Dirty
+                n.Graph.NoteStaleTransition ()
+            else
+                NodeOps.MemoMarkDirty n
+#else
             NodeOps.MemoMarkDirty n
+#endif
         else
             NodeOps.EffectMarkDirty n
 
@@ -5830,15 +6349,63 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     /// <summary>
     /// Marks a moved memo's observers dirty, skipping the running computation as <c>Graph.NotifyMoved</c> does.
     /// </summary>
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    /// <summary><c>NotifyMoved</c> after <c>LeaveHostedTop</c>, where <c>CurrentComputation</c> is guaranteed null.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member NotifyMovedTop(n: Node) =
+        let count = n.Observers.Count
+
+        if count <> 0 then
+            let g = n.Graph
+
+            if count = 1 && g.StaleTransitions = 0 && not (Platform.isNull n.Observers.FirstNode) then
+                let m = Platform.fastCast<Node> n.Observers.FirstNode
+
+                if
+                    m.Kind = NodeKind.Memo
+                    && m.Freshness = Freshness.Check
+                    && not m.Unannounced
+                then
+                    m.Freshness <- Freshness.Dirty
+                else
+                    NodeOps.MarkDirty m
+            elif g.StaleTransitions = 0 then
+                n.Observers.NotifyDirty ()
+            else
+                n.Observers.NotifyDirtyExcept Unchecked.defaultof<IComputation>
+#endif
+
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member NotifyMoved(n: Node) =
         if n.Observers.Count <> 0 then
             let g = n.Graph
+#if !FABLE_COMPILER && !RANVIER_TRACE
+            if
+                n.Observers.Count = 1
+                && g.StaleTransitions = 0
+                && not (Platform.isNull n.Observers.FirstNode)
+            then
+                if not (obj.ReferenceEquals (n.Observers.First, g.CurrentComputation)) then
+                    let m = Platform.fastCast<Node> n.Observers.FirstNode
 
+                    if
+                        m.Kind = NodeKind.Memo
+                        && m.Freshness = Freshness.Check
+                        && not m.Unannounced
+                    then
+                        m.Freshness <- Freshness.Dirty
+                    else
+                        NodeOps.MarkDirty m
+            elif g.StaleTransitions = 0 then
+                n.Observers.NotifyDirtyOther g.CurrentComputation
+            else
+                n.Observers.NotifyDirtyExcept g.CurrentComputation
+#else
             if g.StaleTransitions = 0 then
                 n.Observers.NotifyDirtyOther g.CurrentComputation
             else
                 n.Observers.NotifyDirtyExcept g.CurrentComputation
+#endif
 
     // ---------------------------------------------------------------------------------------------------------
     // Edges
@@ -5870,8 +6437,16 @@ and [<AbstractClass; Sealed>] internal NodeOps =
                     n.Sources.first.UpdateIfNecessary ()
                 else
                     NodeOps.EnsureCurrent (Platform.fastCast<Node> sourceNode)
+        elif i = 1 then
+            if n.Sources.secondHandle < EdgeHandle.SignalBit then
+                let sourceNode = n.Sources.secondNode
+
+                if Platform.isNull sourceNode then
+                    n.Sources.second.UpdateIfNecessary ()
+                else
+                    NodeOps.EnsureCurrent (Platform.fastCast<Node> sourceNode)
         else
-            let s = Platform.itemAt (i - 1) n.Sources.rest
+            let s = Platform.itemAt (i - 2) n.Sources.rest
 
             if s.Handle < EdgeHandle.SignalBit then
                 if Platform.isNull s.Node then
@@ -5898,8 +6473,15 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             && NodeOps.SourceStale (n.Sources.first, n.Sources.firstNode)
         then
             true
+        elif count = 1 then
+            false
+        elif
+            n.Sources.secondHandle < EdgeHandle.SignalBit
+            && NodeOps.SourceStale (n.Sources.second, n.Sources.secondNode)
+        then
+            true
         else
-            let limit = count - 1
+            let limit = count - 2
             let rest = n.Sources.rest
             let mutable i = 0
 
@@ -5988,6 +6570,109 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             n.Freshness <- Freshness.Clean
             n.Unannounced <- false
 
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    /// <summary>Whether <c>n</c> reads one source, and that source is a memo's node.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member SingleMemoSource(n: Node) =
+        n.Sources.count = 1
+        && n.Sources.firstHandle < EdgeHandle.SignalBit
+        && not (Platform.isNull n.Sources.firstNode)
+
+    /// <summary>Whether resolving <c>n</c>'s <c>Check</c> starts by resolving its one source's <c>Check</c>.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    static member ChainHead(n: Node) =
+        NodeOps.SingleMemoSource n
+        && (let s = Platform.fastCast<Node> n.Sources.firstNode
+
+            s.Freshness = Freshness.Check
+            && s.Active = 0uy
+            && not s.Disposed)
+
+    /// <summary>
+    /// Iterative single-memo <c>Check</c>-chain refresh without an EH frame or recursive call stack (Theorem B4,
+    /// <c>iterative_chain_refresh_eq</c>).
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    static member RefreshChain(n: Node) =
+        let g = n.Graph
+
+        if not g.Deferring then
+            NodeOps.ResolveCheck n
+        else
+            let baseSp = g.CheckSp
+            let mutable sp = baseSp
+            let mutable stack = g.CheckStack
+
+            if Platform.isNull stack then
+                stack <- g.EnsureOrGrowCheckStack ()
+
+            let mutable cur = n
+            let mutable descending = true
+
+            while descending do
+                cur.Active <- 2uy
+
+                if sp = stack.Length then
+                    g.CheckSp <- sp
+                    stack <- g.EnsureOrGrowCheckStack ()
+
+                stack[sp] <- CheckFrame (cur, g.StaleTransitions)
+                sp <- sp + 1
+                let s = Platform.fastCast<Node> cur.Sources.firstNode
+
+                if
+                    s.Freshness = Freshness.Check
+                    && s.Active = 0uy
+                    && not s.Disposed
+                    && NodeOps.SingleMemoSource s
+                then
+                    cur <- s
+                else
+                    g.CheckSp <- sp
+                    NodeOps.EnsureCurrent s
+                    stack <- g.CheckStack
+                    descending <- false
+
+            while sp > baseSp do
+                let top = sp - 1
+                let frame = stack[top]
+                stack[top].Node <- Unchecked.defaultof<Node>
+                sp <- top
+                g.CheckSp <- sp
+                let x = frame.Node
+                let before = frame.Before
+                let below = top > baseSp
+
+                if g.ActiveSkips <> 0 && x.Sources.count > 0 then
+                    NodeOps.CheckActiveSource (x, 0)
+
+                if x.Freshness = Freshness.Check then
+                    let mutable i = 1
+
+                    while x.Freshness = Freshness.Check && i < x.Sources.count do
+                        NodeOps.RefreshSourceAt (x, i)
+
+                        if g.ActiveSkips <> 0 then
+                            NodeOps.CheckActiveSource (x, i)
+
+                        i <- i + 1
+
+                    if
+                        x.Freshness = Freshness.Check
+                        && g.StaleTransitions <> before
+                    then
+                        NodeOps.ResolveCheckAgain x
+
+                x.Active <- 0uy
+
+                if x.Freshness = Freshness.Check then
+                    x.Freshness <- Freshness.Clean
+                    x.Unannounced <- false
+                elif below && x.Freshness = Freshness.Dirty then
+                    NodeOps.Recompute x
+                    stack <- g.CheckStack
+#endif
+
     // ---------------------------------------------------------------------------------------------------------
     // Memo refresh
     // ---------------------------------------------------------------------------------------------------------
@@ -5995,12 +6680,14 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     /// <summary>
     /// Discharges the previous run's scope, then runs the body once, unless the memo was disposed meanwhile.
     /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member Recompute(n: Node) =
         if Platform.isNull (box n.Scope) then
             NodeOps.Run n
         else
             NodeOps.RecomputeScoped n
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     static member RecomputeScoped(n: Node) =
         let before = n.Runs
         n.Freshness <- Freshness.Clean
@@ -6026,7 +6713,14 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     static member Refresh(n: Node) =
         if n.Active = 0uy then
             if n.Freshness = Freshness.Check then
+#if !FABLE_COMPILER && !RANVIER_TRACE
+                if NodeOps.ChainHead n then
+                    NodeOps.RefreshChain n
+                else
+                    NodeOps.ResolveCheck n
+#else
                 NodeOps.ResolveCheck n
+#endif
 
             if n.Freshness = Freshness.Dirty then
                 NodeOps.Recompute n
@@ -6041,7 +6735,7 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             try
                 NodeOps.Refresh n
             with _ ->
-                g.ExitPull ()
+                g.ExitPullFastOnException ()
                 reraise ()
 
             if g.ExitPullFast () then
@@ -6066,7 +6760,7 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             try
                 NodeOps.Refresh n
             with _ ->
-                g.ExitPull ()
+                g.ExitPullFastOnException ()
                 reraise ()
 
             g.ExitPullFast ()
@@ -6087,10 +6781,12 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     /// <summary>A memo's <c>UpdateIfNecessary</c>.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member EnsureCurrent(n: Node) =
-        // One comparison on the path a cached read takes.
         if n.Freshness <> Freshness.Clean && not n.Disposed then
-            if n.Graph.Deferring then
+            let g = n.Graph
+
+            if g.Deferring then
                 NodeOps.Refresh n
+                g.ClearLastRaisedIfTop ()
             else
                 NodeOps.Pull n
 
@@ -6101,8 +6797,11 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     static member RefreshForRead(n: Node) : bool =
         n.Freshness <> Freshness.Clean
         && not n.Disposed
-        && (if n.Graph.Deferring then
+        && (let g = n.Graph
+
+            if g.Deferring then
                 NodeOps.Refresh n
+                g.ClearLastRaisedIfTop ()
                 n.Freshness <> Freshness.Clean
             else
                 NodeOps.PullWithoutSettle n)
@@ -6113,14 +6812,17 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     static member RefreshForUntrackedRead(n: Node) : bool =
         n.Freshness <> Freshness.Clean
         && not n.Disposed
-        && (if n.Graph.Deferring then
+        && (let g = n.Graph
+
+            if g.Deferring then
                 NodeOps.Refresh n
+                g.ClearLastRaisedIfTop ()
                 false
             else
                 NodeOps.PullWithoutSettle n)
 
     // ---------------------------------------------------------------------------------------------------------
-    // Effects
+    // Effects & Idle Fused Flush (Theorem B5)
     // ---------------------------------------------------------------------------------------------------------
 
     /// <summary>
@@ -6137,6 +6839,9 @@ and [<AbstractClass; Sealed>] internal NodeOps =
                 NodeOps.WalkSources n
                 Tracer.CheckResolved (g, n.Id, (n.Freshness = Freshness.Dirty))
 
+                if g.HasLastRaised then
+                    g.ClearLastRaised ()
+
                 if n.Freshness = Freshness.Check then
                     n.Freshness <- Freshness.Clean
 
@@ -6148,6 +6853,97 @@ and [<AbstractClass; Sealed>] internal NodeOps =
 
             if shouldRun then
                 NodeOps.Run n
+
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    /// <summary>
+    /// Theorem B5 (<c>fused_single_signal_effect_eq</c> &amp; <c>fused_single_memo_effect_flush_eq</c>): executes an
+    /// idle graph's single-observer signal notification directly for <c>S -&gt; leaf M</c>, <c>S -&gt; E/EffectOn</c>,
+    /// and <c>S -&gt; M -&gt; E/EffectOn</c>, falling back to standard mark + flush otherwise.
+    /// </summary>
+    static member NotifySingleFromIdleSignal(g: Graph, n: Node) =
+        if n.Kind = NodeKind.Memo then
+            if
+                n.Freshness = Freshness.Clean
+                && not n.Disposed
+                && n.Active = 0uy
+                && Platform.isNull (box n.Scope)
+            then
+                if n.Observers.Count = 0 then
+                    n.Freshness <- Freshness.Dirty
+                elif
+                    n.Observers.Count = 1
+                    && not (Platform.isNull n.Observers.FirstNode)
+                then
+                    let e = Platform.fastCast<Node> n.Observers.FirstNode
+
+                    if
+                        e.Kind <> NodeKind.Memo
+                        && e.Freshness = Freshness.Clean
+                        && not e.Disposed
+                        && not e.InCleanup
+                        && not e.Publishes
+                        && not e.Queued
+                        && e.Sources.count = 1
+                        && obj.ReferenceEquals (e.Sources.firstNode, n)
+                    then
+                        let prevAmbient = g.BeginFusedFlush ()
+                        e.Queued <- true
+                        e.Freshness <- Freshness.Check
+                        NodeOps.Run n
+
+                        if e.Disposed then
+                            e.Queued <- false
+                        else
+                            if e.Freshness = Freshness.Check then
+                                if g.ActiveSkips <> 0 && e.Sources.count > 0 then
+                                    NodeOps.CheckActiveSource (e, 0)
+
+                                if e.Freshness = Freshness.Check && g.StaleTransitions <> 0 then
+                                    NodeOps.ResolveCheckAgain e
+
+                                if g.HasLastRaised then
+                                    g.ClearLastRaised ()
+
+                            let shouldRun = e.Freshness = Freshness.Dirty
+                            e.Queued <- false
+                            e.Freshness <- Freshness.Clean
+
+                            if shouldRun then
+                                NodeOps.Run e
+
+                        g.EndFusedFlush prevAmbient
+                    else
+                        n.Freshness <- Freshness.Dirty
+                        NodeOps.NotifyCheckSpine n
+
+                        if g.QueuePending then
+                            g.RequestFlushFromEntered ()
+                else
+                    NodeOps.MemoMarkDirty n
+
+                    if g.QueuePending then
+                        g.RequestFlushFromEntered ()
+            else
+                NodeOps.MemoMarkDirty n
+
+                if g.QueuePending then
+                    g.RequestFlushFromEntered ()
+        elif
+            not n.Disposed
+            && not n.InCleanup
+            && not n.Publishes
+            && not n.Queued
+        then
+            let prevAmbient = g.BeginFusedFlush ()
+            n.Freshness <- Freshness.Clean
+            NodeOps.Run n
+            g.EndFusedFlush prevAmbient
+        else
+            NodeOps.EffectMarkDirty n
+
+            if g.QueuePending then
+                g.RequestFlushFromEntered ()
+#endif
 
 /// <summary>
 /// A settable source.
@@ -6313,12 +7109,25 @@ type Signal<'T> private (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private _.SetChanged(v: 'T) =
         value <- v
+#if !RANVIER_TRACE
+        if observers.Count = 1 && not (Platform.isNull observers.FirstNode) && graph.CanFuseIdleFlush () then
+            NodeOps.NotifySingleFromIdleSignal (graph, Platform.fastCast<Node> observers.FirstNode)
+        elif observers.Count > 0 then
+            if graph.IsIdleForMarks () then
+                observers.NotifyDirtyIdle ()
+            else
+                observers.NotifyDirty ()
+
+            if graph.QueuePending then
+                graph.RequestFlushFromEntered ()
+#else
         Tracer.Write (observers, true, box v)
         observers.NotifyDirty ()
         Tracer.Notified observers
 
         if graph.QueuePending then
             graph.RequestFlushFromEntered ()
+#endif
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.SetJournaled(v: 'T) =
@@ -6470,7 +7279,8 @@ type Signal<'T> private (graph: Graph, initial: 'T, equal: IEqualityComparer<'T>
         graph.Track (this :> ISource)
         Ready value
 #else
-    member this.TryValue: Reading<'T> = this.GetTryFast ()
+    member this.TryValue
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () : Reading<'T> = this.GetTryFast ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.GetTryFast() : Reading<'T> =
@@ -6648,7 +7458,8 @@ type AsyncSource<'T>(graph: Graph) =
 
         value
 #else
-    member this.Value: 'T = this.GetFast ()
+    member this.Value
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () : 'T = this.GetFast ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.GetFast() : 'T =
@@ -6746,7 +7557,14 @@ type Memo<'T>
 #endif
 
     /// <summary>Runs a memo's body for its node: the node's <c>RunCallback</c>, shared by every memo of <c>'T</c>.</summary>
-    static member val internal RunFn: obj -> unit = (fun (o: obj) -> (Platform.fastCast<Memo<'T>> o).Run ())
+#if FABLE_COMPILER
+    static member val internal RunFn: Node -> unit = (fun (n: Node) -> (Platform.fastCast<Memo<'T>> (box n.Self)).Run ())
+#else
+    static member private RunNode(n: Node) =
+        (Platform.fastCast<Memo<'T>> (box n.Self)).RunFromNode n
+
+    static member val internal RunFn: Action<Node> = Action<Node>(Memo<'T>.RunNode)
+#endif
 
     /// <summary>
     /// A memo over <c>compute</c>, owned by the current owner.
@@ -6806,14 +7624,115 @@ type Memo<'T>
         else
             seededFunc.Invoke (if node.Published then previous else seed)
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.Run() =
-        let n = node
-        // Marked clean *before* the body runs, not after. A body that
-        // invalidates one of its own sources — directly, or by reading a node
-        // that settles inline — marks this memo dirty while it is still
-        // running, and clearing the flag afterwards would discard that and
-        // serve a value the graph has already moved past. It also turns a memo
-        // that reads itself from a stack overflow into a default value.
+        this.RunFromNode node
+
+    member private this.RunFromNode(n: Node) =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        if
+            n.Published
+            && n.Status = Status.None
+            && SafeEquality.isSafe equal
+            && graph.CanEnterHostedTop ()
+        then
+            let prevOwner = graph.EnterHostedTop n
+
+            try
+                this.RunTopCore (n, prevOwner)
+            with ex ->
+                this.RunFailedTop (n, prevOwner, ex)
+        else
+            this.RunGeneral n
+#else
+        this.RunGeneral n
+#endif
+
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    /// <summary>
+    /// Zero-EH body of Theorem B6 (<c>memo_published_ready_cutoff_eq</c>): keeping the <c>try/with</c> in
+    /// <c>RunFromNode</c> lets RyuJIT enregister <c>this</c>, <c>n</c>, <c>graph</c> and <c>previous</c> with zero stack spills.
+    /// </summary>
+    member private this.RunTopCore(n: Node, prevOwner: Owner) =
+        n.Freshness <- Freshness.Clean
+        n.Unannounced <- false
+        n.Sources.BeginRun ()
+        let previous = value
+        n.Runs <- n.Runs + 1
+#if RANVIER_COUNTERS
+        Counters.MemoRecomputed ()
+#endif
+        n.Active <- 1uy
+
+        let result =
+            if not (Platform.isNull computeFunc) then
+                computeFunc.Invoke (ValueSome previous)
+            elif not (Platform.isNull (box computeFn)) then
+                computeFn (ValueSome previous)
+            else
+                seededFunc.Invoke previous
+
+        if graph.RaisedPending || n.Violated then
+            this.FailAfterBody ()
+
+        value <- result
+        graph.LeaveHostedTop prevOwner
+        n.Active <- 0uy
+
+        if n.Disposed || n.Sources.cursor < n.Sources.count then
+            this.FinishSources ()
+
+        let unchanged =
+            if typeof<'T>.IsValueType then
+                EqualityComparer<'T>.Default.Equals(previous, result)
+            else
+                obj.ReferenceEquals (box previous, box result)
+
+        if not unchanged then
+            NodeOps.NotifyMovedTop n
+
+            if graph.QueuePending then
+                graph.OweFlush ()
+
+        if n.Freshness <> Freshness.Clean then
+            n.Unannounced <- true
+            graph.NoteStaleTransition ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RunFailedTop(n: Node, prevOwner: Owner, ex: exn) =
+        graph.LeaveHostedTopFailed prevOwner
+        n.Active <- 0uy
+
+        if n.Disposed then
+            n.Sources.Clear (this :> IComputation)
+        else
+            n.Sources.EndRun (this :> IComputation)
+
+        if n.Violated then
+            n.Violated <- false
+            n.Failure <- graph.FailureOf (ScopeMessages.failure mode ex, this, null)
+            n.Status <- Status.Error
+        else
+            match ex with
+            | NotReadyException source ->
+                n.PendingSource <- source
+                n.Status <- Status.Pending
+            | _ ->
+                n.Failure <- graph.FailureOf (ex, this, null)
+                n.Status <- Status.Error
+
+        NodeOps.NotifyMoved n
+
+        if graph.QueuePending then
+            graph.OweFlush ()
+
+        if n.Freshness <> Freshness.Clean then
+            n.Unannounced <- true
+            graph.NoteStaleTransition ()
+#endif
+
+    member private this.RunGeneral(n: Node) =
+        // Marked clean *before* the body runs, not after.
         n.Freshness <- Freshness.Clean
         n.Unannounced <- false
         n.Sources.BeginRun ()
@@ -6821,9 +7740,6 @@ type Memo<'T>
         if not (Platform.isNull (box n.PendingSource)) then
             n.PendingSource <- Unchecked.defaultof<INode>
 
-        // Captured before the body overwrites them: whether the observers this
-        // memo told `Check` should now be told `Dirty` is exactly the question
-        // of whether any of these moved.
         let previous = value
         let previousStatus = n.Status
         let previousFailure = n.Failure
@@ -6867,8 +7783,6 @@ type Memo<'T>
             n.Failure <- graph.FailureOf (ex, this, previousFailure)
             n.Status <- Status.Error
 #else
-        // One exception handler and no finally: a normal return unwinds inline below, and a throw unwinds in
-        // `RunFailed` before it classifies the exception, the order the finally and the handler ran in.
         let saved = graph.EnterHostedNode n
         let mutable ok = false
 
@@ -6951,7 +7865,8 @@ type Memo<'T>
 
         let mutable moved =
             n.Status <> previousStatus
-            || Failure.Moved (n.Failure, previousFailure)
+            || (not (obj.ReferenceEquals (n.Failure, previousFailure))
+                && Failure.Moved (n.Failure, previousFailure))
 
         if not moved then
             moved <-
@@ -7204,7 +8119,8 @@ type Memo<'T>
         else
             this.ReadSlow ()
 #else
-    member this.Value: 'T = this.GetFast ()
+    member this.Value
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () : 'T = this.GetFast ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.GetFast() : 'T =
@@ -7219,16 +8135,52 @@ type Memo<'T>
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ReadSlow() : 'T =
-        if NodeOps.RefreshForRead node then
-            this.SettlePullAndRead ()
+        let n = node
+        let mutable mustSettle = false
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        if
+            n.Freshness = Freshness.Dirty
+            && n.Active = 0uy
+            && Platform.isNull (box n.Scope)
+            && not n.Disposed
+        then
+            if graph.Deferring then
+                this.Run ()
+                graph.ClearLastRaisedIfTop ()
+
+                if n.Freshness <> Freshness.Clean then
+                    mustSettle <- true
+                else
+                    graph.Track (this :> ISource)
+            elif graph.TryEnterPullFast () then
+                // Deferring was false, so currentNode = null and current = null: Track is a statically dead no-op.
+                this.Run ()
+
+                if graph.ExitPullFast () || n.Freshness <> Freshness.Clean then
+                    mustSettle <- true
+            elif NodeOps.RefreshForRead n then
+                mustSettle <- true
+            else
+                graph.Track (this :> ISource)
+        elif NodeOps.RefreshForRead n then
+            mustSettle <- true
         else
             graph.Track (this :> ISource)
+#else
+        if NodeOps.RefreshForRead n then
+            mustSettle <- true
+        else
+            graph.Track (this :> ISource)
+#endif
 
-            if StatusBits.isUnready node.Status then
-                if StatusBits.isPending node.Status then
+        if mustSettle then
+            this.SettlePullAndRead ()
+        else
+            if StatusBits.isUnready n.Status then
+                if StatusBits.isPending n.Status then
                     raise (graph.NotReady (this :> INode))
 
-                graph.Raise node.Failure
+                graph.Raise n.Failure
 
             value
 
@@ -7243,7 +8195,8 @@ type Memo<'T>
         else
             this.ReadTrySlow ()
 #else
-    member this.TryValue: Reading<'T> = this.GetTryFast ()
+    member this.TryValue
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () : Reading<'T> = this.GetTryFast ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.GetTryFast() : Reading<'T> =
@@ -7536,7 +8489,14 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
 #endif
 
     /// <summary>Runs an effect's body for its node: the node's <c>RunCallback</c>.</summary>
-    static member val internal RunFn: obj -> unit = (fun (o: obj) -> (Platform.fastCast<Effect> o).Run ())
+#if FABLE_COMPILER
+    static member val internal RunFn: Node -> unit = (fun (n: Node) -> (Platform.fastCast<Effect> (box n.Self)).Run ())
+#else
+    static member private RunNode(n: Node) =
+        (Platform.fastCast<Effect> (box n.Self)).RunFromNode n
+
+    static member val internal RunFn: Action<Node> = Action<Node>(Effect.RunNode)
+#endif
 
     /// <summary>
     /// An effect running <c>body</c>, owned by the current owner and queued for
@@ -7617,19 +8577,62 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
     interface IScheduled with
         member _.Execute() = NodeOps.Execute node
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.Run() =
-        node.Sources.BeginRun ()
+        this.RunFromNode node
+
+    member private this.RunFromNode(n: Node) =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        if
+            Platform.isNull (box n.Scope)
+            && not n.Disposed
+            && n.Status = Status.None
+            && Platform.isNull graph.Journal
+            && graph.CanEnterHostedTop ()
+        then
+            let prevOwner = graph.EnterHostedTop n
+
+            try
+                this.RunTopCore (n, prevOwner)
+            with ex ->
+                this.BodyFailedTop (prevOwner, ex)
+        else
+            this.RunGeneral n
+#else
+        this.RunGeneral n
+#endif
+
+#if !FABLE_COMPILER && !RANVIER_TRACE
+    member private this.RunTopCore(n: Node, prevOwner: Owner) =
+        n.Sources.BeginRun ()
+        n.Runs <- n.Runs + 1
+#if RANVIER_COUNTERS
+        Counters.EffectRan ()
+#endif
+        this.InvokeBody ()
+
+        if graph.RaisedPending then
+            graph.CheckRaised ()
+
+        graph.LeaveHostedTop prevOwner
+
+        if n.Disposed || n.Sources.cursor < n.Sources.count then
+            this.FinishSources ()
+#endif
+
+    member private this.RunGeneral(n: Node) =
+        n.Sources.BeginRun ()
 
         // Discharge the previous run's cleanups before the next run
         // registers its own. Guarded so a cleanup writing one of this effect's
         // own sources does not re-queue the run it is making way for; see
         // `Node.InCleanup`.
-        if not (Platform.isNull (box node.Scope)) then
+        if not (Platform.isNull (box n.Scope)) then
             this.DischargeScope ()
 
         // A cleanup that disposes the effect, directly or through its owner,
         // ends the run here.
-        if not node.Disposed then
+        if not n.Disposed then
             this.RunBody ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
@@ -7671,25 +8674,44 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
             this.RecordFailure ex
 #else
         if Platform.isNull graph.Journal then
-            // One exception handler and no finally: a normal return unwinds inline below, a throw in `BodyFailed`.
-            let saved = graph.EnterHostedNode n
-            let mutable ok = false
+            if graph.CanEnterHostedTop () then
+                let prevOwner = graph.EnterHostedTop n
+                let mutable ok = false
 
-            try
-                this.InvokeBody ()
+                try
+                    this.InvokeBody ()
 
-                if graph.RaisedPending then
-                    graph.CheckRaised ()
+                    if graph.RaisedPending then
+                        graph.CheckRaised ()
 
-                ok <- true
-            with ex ->
-                this.BodyFailed (saved, ex)
+                    ok <- true
+                with ex ->
+                    this.BodyFailedTop (prevOwner, ex)
 
-            if ok then
-                graph.LeaveHosted saved
+                if ok then
+                    graph.LeaveHostedTop prevOwner
 
-                if n.Disposed || n.Sources.Cursor < n.Sources.Count then
-                    this.FinishSources ()
+                    if n.Disposed || n.Sources.Cursor < n.Sources.Count then
+                        this.FinishSources ()
+            else
+                let saved = graph.EnterHostedNode n
+                let mutable ok = false
+
+                try
+                    this.InvokeBody ()
+
+                    if graph.RaisedPending then
+                        graph.CheckRaised ()
+
+                    ok <- true
+                with ex ->
+                    this.BodyFailed (saved, ex)
+
+                if ok then
+                    graph.LeaveHosted saved
+
+                    if n.Disposed || n.Sources.Cursor < n.Sources.Count then
+                        this.FinishSources ()
         else
             this.RunBodyJournaledGuarded ()
 #endif
@@ -7724,6 +8746,12 @@ type Effect private (graph: Graph, bodyFn: unit -> unit, bodyAction: Action) =
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.BodyFailed(saved: HostedFrame, ex: exn) =
         graph.LeaveHosted saved
+        this.FinishSources ()
+        this.RecordFailure ex
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.BodyFailedTop(prevOwner: Owner, ex: exn) =
+        graph.LeaveHostedTopFailed prevOwner
         this.FinishSources ()
         this.RecordFailure ex
 
@@ -7883,7 +8911,14 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
 #endif
 
     /// <summary>Runs a split effect for its node: the node's <c>RunCallback</c>.</summary>
-    static member val internal RunFn: obj -> unit = (fun (o: obj) -> (Platform.fastCast<EffectOn<'T>> o).Run ())
+#if FABLE_COMPILER
+    static member val internal RunFn: Node -> unit = (fun (n: Node) -> (Platform.fastCast<EffectOn<'T>> (box n.Self)).Run ())
+#else
+    static member private RunNode(n: Node) =
+        (Platform.fastCast<EffectOn<'T>> (box n.Self)).Run ()
+
+    static member val internal RunFn: Action<Node> = Action<Node>(EffectOn<'T>.RunNode)
+#endif
 
     /// <summary>An effect owned by the current owner, with its first run queued.</summary>
     static member internal Create(graph: Graph, compute: unit -> 'T, act: 'T -> unit) =
@@ -7938,24 +8973,42 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
         with ex ->
             this.RecordComputeFailure ex
 #else
-        // One exception handler and no finally: a normal return unwinds inline below, a throw in `ComputeFailed`.
-        let saved = graph.EnterHostedNode n
+        if graph.CanEnterHostedTop () then
+            let prevOwner = graph.EnterHostedTop n
 
-        try
-            v <- compute ()
+            try
+                v <- compute ()
 
-            if graph.RaisedPending || n.Violated then
-                this.FailAfterCompute ()
+                if graph.RaisedPending || n.Violated then
+                    this.FailAfterCompute ()
 
-            settled <- true
-        with ex ->
-            this.ComputeFailed (saved, ex)
+                settled <- true
+            with ex ->
+                this.ComputeFailedTop (prevOwner, ex)
 
-        if settled then
-            graph.LeaveHosted saved
+            if settled then
+                graph.LeaveHostedTop prevOwner
 
-            if n.Disposed || n.Sources.Cursor < n.Sources.Count then
-                this.FinishSources ()
+                if n.Disposed || n.Sources.Cursor < n.Sources.Count then
+                    this.FinishSources ()
+        else
+            let saved = graph.EnterHostedNode n
+
+            try
+                v <- compute ()
+
+                if graph.RaisedPending || n.Violated then
+                    this.FailAfterCompute ()
+
+                settled <- true
+            with ex ->
+                this.ComputeFailed (saved, ex)
+
+            if settled then
+                graph.LeaveHosted saved
+
+                if n.Disposed || n.Sources.Cursor < n.Sources.Count then
+                    this.FinishSources ()
 #endif
 
         // A throwing comparer fails the run as a throwing `compute` does.
@@ -8021,6 +9074,12 @@ type internal EffectOn<'T> private (graph: Graph, compute: unit -> 'T, act: 'T -
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ComputeFailed(saved: HostedFrame, ex: exn) =
         graph.LeaveHosted saved
+        this.FinishSources ()
+        this.RecordComputeFailure ex
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ComputeFailedTop(prevOwner: Owner, ex: exn) =
+        graph.LeaveHostedTopFailed prevOwner
         this.FinishSources ()
         this.RecordComputeFailure ex
 #endif
@@ -9286,7 +10345,8 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         else
             this.ReadTrySlow ()
 #else
-    member this.TryValue: Reading<'T> = this.GetTryFast ()
+    member this.TryValue
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () : Reading<'T> = this.GetTryFast ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.GetTryFast() : Reading<'T> =
@@ -10087,7 +11147,8 @@ type Boundary<'T>
         else
             this.ReadTrySlow ()
 #else
-    member this.TryValue: Reading<'T> = this.GetTryFast ()
+    member this.TryValue
+        with [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>] get () : Reading<'T> = this.GetTryFast ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.GetTryFast() : Reading<'T> =
