@@ -3852,6 +3852,7 @@ type Graph(options: GraphOptions) =
     /// </summary>
     let root = new Owner ()
     do Tracer.GraphNew (root, guarded)
+    let mutable disposed = false
 
     /// <summary>
     /// The owner a node created now attaches to. Null while a scope host's
@@ -4186,7 +4187,7 @@ type Graph(options: GraphOptions) =
             if not (obj.ReferenceEquals (previous, this)) then
                 ownerAmbient.Hosting <- previous
         elif
-            (not guarded || root.IsDisposed)
+            (not guarded || disposed)
             && not (Platform.isNull ownerAmbient.Hosting)
         then
             ownerAmbient.Hosting <- null
@@ -4214,7 +4215,7 @@ type Graph(options: GraphOptions) =
             if not (obj.ReferenceEquals (previous, this)) then
                 cell.Hosting <- previous
         elif
-            (not guarded || root.IsDisposed)
+            (not guarded || disposed)
             && not (Platform.isNull cell.Hosting)
         then
             cell.Hosting <- null
@@ -4432,6 +4433,7 @@ type Graph(options: GraphOptions) =
         this.Entered (
             "Disposing a graph",
             fun () ->
+                disposed <- true
                 root.Dispose ()
 #if !FABLE_COMPILER
                 let abandoned =
@@ -5324,7 +5326,11 @@ type Graph(options: GraphOptions) =
     /// <summary>
     /// Owes a flush for effects queued while a read or discharge is in progress.
     /// </summary>
+#if FABLE_COMPILER
+    member inline internal _.OweFlush() =
+#else
     member internal _.OweFlush() =
+#endif
         if
             queueHead < queueCount
             && batchDepth = 0
@@ -5336,13 +5342,17 @@ type Graph(options: GraphOptions) =
     member inline internal _.QueuePending = queueHead < queueCount
 
     /// <summary>Clears a swallowed failed-read record after an untracked refresh inside a flush.</summary>
+#if FABLE_COMPILER
+    member inline internal this.ClearLastRaisedIfTop() =
+#else
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal this.ClearLastRaisedIfTop() =
+#endif
         if not (Platform.isNull lastRaised) then
             this.ClearLastRaisedIfTopSlow ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.ClearLastRaisedIfTopSlow() =
+    member internal _.ClearLastRaisedIfTopSlow() =
         if
             pullDepth = 0
             && Platform.isNull (box currentNode)
@@ -5502,7 +5512,7 @@ type Graph(options: GraphOptions) =
             Platform.isNull lastRaised
             && not flushOwed
             && staleTransitions = 0
-            && (depth > 0 || not root.IsDisposed)
+            && (depth > 0 || not disposed)
         then
             false
         else
@@ -5512,7 +5522,7 @@ type Graph(options: GraphOptions) =
     member private this.ExitPullFastSlow(depth: int) : bool =
         if
             depth = 0
-            && root.IsDisposed
+            && disposed
             && obj.ReferenceEquals (ownerAmbient.Hosting, this)
         then
             ownerAmbient.Hosting <- null
@@ -5984,10 +5994,16 @@ type Graph(options: GraphOptions) =
             ownerPending <- previousPending
             this.LeaveAmbient previousAmbient
 
+#if FABLE_COMPILER && !RANVIER_TRACE
+    member inline internal _.NextId() =
+        nextId <- nextId + 1
+        nextId
+#else
     member internal this.NextId() =
         this.AssertOnGraphThread "Creating a node"
         nextId <- nextId + 1
         nextId
+#endif
 
     /// <summary>The last id <c>NextId</c> issued.</summary>
     member internal _.NodeCount = nextId
@@ -6650,6 +6666,15 @@ type Graph(options: GraphOptions) =
     /// Forgets the pending reads raised so far in the running body. Called by
     /// a boundary that handles them.
     /// </summary>
+#if FABLE_COMPILER
+    member inline internal _.ClearRaised() =
+        if not (Platform.isNull (box raisedPending)) then
+            raisedPending <- Platform.nil ()
+
+    member inline internal _.CheckRaised() =
+        if not (Platform.isNull (box raisedPending)) then
+            raise (NotReadyException raisedPending)
+#else
     member internal _.ClearRaised() =
         raisedPending <- Platform.nil ()
 
@@ -6660,6 +6685,7 @@ type Graph(options: GraphOptions) =
     member internal _.CheckRaised() =
         if not (Platform.isNull (box raisedPending)) then
             raise (NotReadyException raisedPending)
+#endif
 
     /// <summary>
     /// Evaluates <c>body</c> with tracking suppressed.
@@ -11054,7 +11080,7 @@ type AsyncSource<'T>(graph: Graph) =
     do Tracer.Bind (observers, graph, id)
 #endif
 #endif
-    let mutable value = Unchecked.defaultof<'T>
+    let mutable value = Platform.zero<'T>()
     let mutable failure: Failure = Platform.nil ()
 
     let mutable status = Status.Pending ||| Status.Uninitialized
@@ -11270,7 +11296,11 @@ type AsyncSource<'T>(graph: Graph) =
 #endif
 #endif
 
+#if FABLE_COMPILER
+    member inline private this.SettleOnGraph(v: 'T) =
+#else
     member private this.SettleOnGraph(v: 'T) =
+#endif
         if
             not (
                 not (Platform.isNull graph.Journal)
@@ -11282,7 +11312,11 @@ type AsyncSource<'T>(graph: Graph) =
             Tracer.SourceSettled (observers, false, box v)
             this.NotifyAndFlush ()
 
+#if FABLE_COMPILER
+    member inline private this.FailOnGraph(reason: exn) =
+#else
     member private this.FailOnGraph(reason: exn) =
+#endif
         if
             not (
                 not (Platform.isNull graph.Journal)
@@ -14959,6 +14993,8 @@ type Boundary<'T>
     (graph: Graph, body: unit -> 'T, onPending: ('T voption -> 'T) voption, onError: (exn -> 'T voption -> 'T) voption, equal: IEqualityComparer<'T>)
     =
     let id = graph.NextId ()
+    let hasFallback = onPending.IsSome
+    let hasRecover = onError.IsSome
 
     let fallbackFn: 'T voption -> 'T =
         match onPending with
@@ -15090,7 +15126,7 @@ type Boundary<'T>
     member private this.RecoverOrFail(ex: exn, last: 'T voption, previousFailure: Failure, previousCaught: Failure) : 'T =
         graph.ClearRaised ()
 
-        if not (Platform.isNull (box recoverFn)) then
+        if hasRecover then
             let from = graph.FailureOf (ex, this, previousCaught)
 
             try
@@ -15167,7 +15203,7 @@ type Boundary<'T>
                 graph.ClearRaised ()
                 this.RecordPending source
 
-                if not (Platform.isNull (box fallbackFn)) then
+                if hasFallback then
                     let last = if shown then ValueSome previous else ValueNone
 
                     try
@@ -15200,8 +15236,10 @@ type Boundary<'T>
         let mutable moved =
             status <> previousStatus
             || waiting <> previousWaiting
-            || Failure.Moved (failure, previousFailure)
-            || Failure.Moved (caught, previousCaught)
+            || (not (obj.ReferenceEquals (failure, previousFailure))
+                && Failure.Moved (failure, previousFailure))
+            || (not (obj.ReferenceEquals (caught, previousCaught))
+                && Failure.Moved (caught, previousCaught))
 
         if not moved then
             try
@@ -15223,14 +15261,30 @@ type Boundary<'T>
             graph.NotifyMovedList &observers
 #else
 #if FABLE_COMPILER && !RANVIER_TRACE
-            graph.NotifyMovedList observers
+            if
+                not (Platform.isNull observers)
+                && observers.Count <> 0
+            then
+                if
+                    observers.Count = 1
+                    && EdgeHandle.isNodeSlot observers.FirstSlot
+                    && graph.StaleTransitions = 0
+                then
+                    let obsNode = Platform.fastCast<Node> observers.FirstRef
+
+                    if not (obj.ReferenceEquals (obsNode, graph.CurrentNode)) then
+                        NodeOps.MarkDirty obsNode
+                else
+                    graph.NotifyMovedList observers
 #else
             graph.NotifyMoved observers
 #endif
 #endif
             Tracer.Notified graph
             Tracer.RunEnd (graph, id, status)
-            graph.OweFlush ()
+
+            if graph.QueuePending then
+                graph.OweFlush ()
         else
             Tracer.RunEnd (graph, id, status)
 
@@ -15542,7 +15596,17 @@ type Boundary<'T>
 #endif
 
         member this.UpdateIfNecessary() =
-            this.EnsureCurrent ()
+            if
+                freshness = Freshness.Dirty
+                && not disposed
+                && active = 0
+                && Platform.isNull (box scope)
+                && graph.Deferring
+            then
+                this.Run ()
+                graph.ClearLastRaisedIfTop ()
+            else
+                this.EnsureCurrent ()
 
         member _.IsStale = freshness <> Freshness.Clean && not disposed
 

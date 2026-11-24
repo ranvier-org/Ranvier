@@ -31,12 +31,20 @@ module internal Platform =
     /// <summary>Literal JavaScript <c>null</c>, avoiding fable-library's <c>defaultOf()</c> call on hot paths.</summary>
     [<Emit("null")>]
     let nil<'T when 'T: not struct> () : 'T = jsNative
+
+    /// <summary>Uninitialized slot placeholder (<c>null</c> under Fable, <c>Unchecked.defaultof</c> on .NET).</summary>
+    [<Emit("null")>]
+    let zero<'T> () : 'T = jsNative
 #else
     let inline isNull (value: 'T when 'T: null) =
         Operators.isNull value
 
     /// <summary>Null reference for <c>'T</c>; compiles to <c>ldnull</c> on .NET.</summary>
     let inline nil<'T when 'T: not struct> () : 'T =
+        Unchecked.defaultof<'T>
+
+    /// <summary>Default slot placeholder for <c>'T</c>.</summary>
+    let inline zero<'T> () : 'T =
         Unchecked.defaultof<'T>
 #endif
 
