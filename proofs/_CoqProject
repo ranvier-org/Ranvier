@@ -24,6 +24,7 @@ theories/Pure/Concurrency.v
 theories/Pure/Extensions.v
 theories/Pure/Deltas.v
 theories/Pure/FastPaths.v
+theories/Pure/Combinators.v
 theories/Heap/ObserverSet.v
 theories/Heap/SourceList.v
 theories/Heap/Ghost.v

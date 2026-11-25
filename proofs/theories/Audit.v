@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections Concurrency Extensions Deltas FastPaths.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections Concurrency Extensions Deltas FastPaths Combinators.
 From Ranvier.Conformance Require Check.
 From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy Collections Concurrency Extensions Deltas.
 From Ranvier Require Extract.
@@ -551,3 +551,8 @@ Print Assumptions clean_ready_row_peek_refines_untracked_read.
 Print Assumptions certified_strict_order_skips_sort.
 Print Assumptions idle_first_run_effect_fusion_eq.
 Print Assumptions certified_reverse_order_reverses_to_sorted.
+Print Assumptions memo_on_cutoff_eq.
+Print Assumptions async_on_flight_preservation_eq.
+Print Assumptions fused_map_chain_eq_unfused.
+Print Assumptions map2_zip_status_precedence_eq.
+Print Assumptions split_bind_inner_tick_eq.
