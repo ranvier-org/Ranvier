@@ -142,6 +142,9 @@ and internal IScheduled =
 /// <summary>Unwraps a public <c>Memo&lt;'T></c> handle to its underlying <c>MemoNode</c> <c>ISource</c>.</summary>
 type internal IMemoHandle =
     abstract UnwrapMemoNode: unit -> ISource
+#if !RANVIER_TRACE
+    abstract OnOwnerDispose: unit -> unit
+#endif
 
 module internal MemoHandles =
 #if FABLE_COMPILER
@@ -370,6 +373,14 @@ module internal NodeFlags =
     /// <summary>Fused check clear mask: Queued ||| FreshMask.</summary>
     [<Literal>]
     let FusedCheckClearMask = 0x100C
+
+    /// <summary>Fused Signal.map leaf-Dirty mask: FreshMask ||| StatusMask ||| ActiveMask ||| Disposed ||| Violated ||| Published.</summary>
+    [<Literal>]
+    let FusedLeafDirtyMask = 0x187FC
+
+    /// <summary>Expected value under <c>FusedLeafDirtyMask</c>: FreshDirty ||| Published (Status=None, Active=0, live, unviolated).</summary>
+    [<Literal>]
+    let FusedLeafDirtyValue = 0x10008
 #endif
 
 /// <summary>
@@ -1280,9 +1291,15 @@ type internal SourceList =
 #if FABLE_COMPILER
     member inline this.Count = this.count
     member inline this.Cursor = this.cursor
+
+    member inline this.SetCursor(pos: int) =
+        this.cursor <- pos
 #else
     member this.Count = this.count
     member this.Cursor = this.cursor
+
+    member inline this.SetCursor(pos: int) =
+        this.cursor <- pos
 #endif
 
     /// <summary>Whether any recorded source is currently stale.</summary>
@@ -1750,6 +1767,9 @@ type internal SourceList() =
     /// </summary>
     member _.BeginRun() =
         cursor <- 0
+
+    member inline _.SetCursor(pos: int) =
+        cursor <- pos
 
     /// <summary>
     /// Appends <c>source</c> after a read that missed its slot, trimming the unmatched slots first. Kept out of
@@ -7094,6 +7114,183 @@ type Graph(options: GraphOptions) =
         ownerPending <- saved.PreviousPending
         untrackedHost <- saved.PreviousHost
         untrackedInBody <- saved.PreviousInBody
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.EnterUntrackedPure(host: IScopeHost) : UntrackedPureFrame =
+        let saved =
+            UntrackedPureFrame (current, currentNode, ownerPending, untrackedHost, untrackedInBody)
+
+        if not (obj.ReferenceEquals (saved.PreviousNode, null)) then
+            currentNode <- Unchecked.defaultof<Node>
+
+        if not (Platform.isNull (box saved.Previous)) then
+            current <- Unchecked.defaultof<IComputation>
+
+        untrackedInBody <- true
+        ownerPending <- true
+        untrackedHost <- host
+        saved
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.LeaveUntrackedPure(saved: UntrackedPureFrame) =
+        currentNode <- saved.PreviousNode
+        current <- saved.Previous
+        ownerPending <- saved.PreviousPending
+        untrackedHost <- saved.PreviousHost
+        untrackedInBody <- saved.PreviousInBody
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.EnterStaticRefresh(host: Node) : StaticRefreshFrame =
+        let saved = StaticRefreshFrame (current, currentNode)
+
+        if not (Platform.isNull (box saved.Previous)) then
+            current <- Unchecked.defaultof<IComputation>
+
+        currentNode <- host
+        saved
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.LeaveStaticRefresh(saved: StaticRefreshFrame) =
+        currentNode <- saved.PreviousNode
+        current <- saved.Previous
+#else
+    member inline internal _.RunStaticRefresh(host: Node, [<InlineIfLambda>] body: unit -> unit) =
+        let previous = current
+        let previousNode = currentNode
+#if !RANVIER_TRACE
+        current <- Platform.nil ()
+        currentNode <- host
+#else
+        current <- host :> IComputation
+        currentNode <- Platform.nil ()
+#endif
+
+        try
+            body ()
+        finally
+            current <- previous
+            currentNode <- previousNode
+
+    member internal _.RunUntrackedPureArg(host: IScopeHost, f: 'A -> 'T, arg: 'A) : 'T =
+        let previous = current
+        let previousNode = currentNode
+        let previousPending = ownerPending
+        let previousHost = untrackedHost
+        let previousInBody = untrackedInBody
+        current <- Platform.nil ()
+        currentNode <- Platform.nil ()
+        ownerPending <- true
+        untrackedHost <- host
+        untrackedInBody <- true
+
+        if not (Platform.isNull journal) then
+            journal.EnterDerived ()
+
+        try
+            f arg
+        finally
+            current <- previous
+            currentNode <- previousNode
+            ownerPending <- previousPending
+            untrackedHost <- previousHost
+            untrackedInBody <- previousInBody
+
+            if not (Platform.isNull journal) then
+                journal.LeaveDerived ()
+
+    member internal _.RunUntrackedPure2(host: IScopeHost, f: 'A -> 'B -> 'T, a: 'A, b: 'B) : 'T =
+        let previous = current
+        let previousNode = currentNode
+        let previousPending = ownerPending
+        let previousHost = untrackedHost
+        let previousInBody = untrackedInBody
+        current <- Platform.nil ()
+        currentNode <- Platform.nil ()
+        ownerPending <- true
+        untrackedHost <- host
+        untrackedInBody <- true
+
+        if not (Platform.isNull journal) then
+            journal.EnterDerived ()
+
+        try
+            f a b
+        finally
+            current <- previous
+            currentNode <- previousNode
+            ownerPending <- previousPending
+            untrackedHost <- previousHost
+            untrackedInBody <- previousInBody
+
+            if not (Platform.isNull journal) then
+                journal.LeaveDerived ()
+#endif
+
+#if !RANVIER_TRACE
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.EnterUntrackedPureTop(host: IScopeHost) =
+        ownerAmbient.EnterFrame ()
+        ownerPending <- true
+        untrackedHost <- host
+        untrackedInBody <- true
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.LeaveUntrackedPureTop() =
+        ownerPending <- false
+        untrackedHost <- Platform.nil ()
+        untrackedInBody <- false
+        let depth = ownerAmbient.LeaveFrame ()
+
+        if
+            flushOwed
+            || disposed
+            || not (Platform.isNull lastRaised)
+            || staleTransitions <> 0
+        then
+            this.ExitLeafPureSlow depth
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member internal this.LeaveUntrackedPureTopFailed() =
+        ownerPending <- false
+        untrackedHost <- Platform.nil ()
+        untrackedInBody <- false
+        let depth = ownerAmbient.LeaveFrame ()
+
+        if
+            depth = 0
+            && disposed
+            && obj.ReferenceEquals (ownerAmbient.Hosting, this)
+        then
+            ownerAmbient.Hosting <- null
+
+        if not (Platform.isNull lastRaised) then
+            lastRaised <- null
+
+        if staleTransitions <> 0 && flushingThread = 0 then
+            staleTransitions <- 0
+            activeSkips <- 0
+
+        if flushOwed then
+            this.SettleFlush ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ExitLeafPureSlow(depth: int) =
+        if
+            depth = 0
+            && disposed
+            && obj.ReferenceEquals (ownerAmbient.Hosting, this)
+        then
+            ownerAmbient.Hosting <- null
+
+        if not (Platform.isNull lastRaised) then
+            lastRaised <- null
+
+        if staleTransitions <> 0 && flushingThread = 0 then
+            staleTransitions <- 0
+            activeSkips <- 0
+
+        if flushOwed then
+            this.SettleFlush ()
 #endif
 
 #if !FABLE_COMPILER
@@ -7138,6 +7335,34 @@ and [<Struct; NoEquality; NoComparison>] internal UntrackedHostedFrame =
             PreviousPending = previousPending
             PreviousHost = previousHost
             PreviousInBody = previousInBody
+        }
+
+/// <summary>Saved tracking and untracked-host state around an untracked pure callback run (no <c>currentOwner</c> mutation).</summary>
+and [<Struct; NoEquality; NoComparison>] internal UntrackedPureFrame =
+    val Previous: IComputation
+    val PreviousNode: Node
+    val PreviousPending: bool
+    val PreviousHost: IScopeHost
+    val PreviousInBody: bool
+
+    new(previous: IComputation, previousNode: Node, previousPending: bool, previousHost: IScopeHost, previousInBody: bool) =
+        {
+            Previous = previous
+            PreviousNode = previousNode
+            PreviousPending = previousPending
+            PreviousHost = previousHost
+            PreviousInBody = previousInBody
+        }
+
+/// <summary>Saved reader identity while a static combinator refreshes its already-linked upstream sources.</summary>
+and [<Struct; NoEquality; NoComparison>] internal StaticRefreshFrame =
+    val Previous: IComputation
+    val PreviousNode: Node
+
+    new(previous: IComputation, previousNode: Node) =
+        {
+            Previous = previous
+            PreviousNode = previousNode
         }
 #endif
 
@@ -8449,6 +8674,10 @@ and [<Sealed; NoEquality; NoComparison>] internal MemoNode =
                 if not this.IsDisposed then
                     this.SetDisposed ()
                     Tracer.NodeDispose (g, this.NodeId)
+#if !RANVIER_TRACE
+                    if not (Platform.isNull this.OwnerMemo) then
+                        (Platform.fastCast<IMemoHandle> this.OwnerMemo).OnOwnerDispose()
+#endif
                     this.SourcesField.Clear (this :> IComputation)
 
                     if not (Platform.isNull (box this.ScopeField)) then
@@ -11501,6 +11730,16 @@ type AsyncSource<'T>(graph: Graph) =
 
     member internal _.Graph = graph
 
+    member inline internal _.Peek = value
+
+    member inline internal _.Failure = failure
+
+#if FABLE_COMPILER
+type internal Map2Delegate<'A, 'B, 'C> = 'A -> 'B -> 'C
+#else
+type internal Map2Delegate<'A, 'B, 'C> = OptimizedClosures.FSharpFunc<'A, 'B, 'C>
+#endif
+
 /// <summary>Helpers shared by closed-window Phase 2 callbacks of <c>*On</c> computations and combinators.</summary>
 module internal UntrackedPhase =
     [<Literal>]
@@ -11514,6 +11753,34 @@ module internal UntrackedPhase =
     [<Literal>]
     let streamOnPending =
         "A split stream memo's start read a pending source. Read pending sources in read, which suspends the stream memo until they settle."
+
+    [<Literal>]
+    let mapPending =
+        "A map combinator's mapping read a pending source. Pass the pending source as the combinator's input, or combine multiple sources with map2, zip, or bind."
+
+    [<Literal>]
+    let bindPending =
+        "A bind combinator's binder read a pending source synchronously. Read pending sources upstream of bind, or return a Memo that reads the pending source."
+
+    [<Literal>]
+    let crossGraphNodes = "Cannot combine nodes belonging to different graphs."
+
+    [<Literal>]
+    let crossGraphBind = "The Memo returned by bind belongs to a different Graph."
+
+    [<Literal>]
+    let nullBindReturn = "The binder returned a null Memo."
+
+#if FABLE_COMPILER
+    let inline adaptMap2 (f: 'A -> 'B -> 'C) : Map2Delegate<'A, 'B, 'C> = f
+    let inline invokeMap2 (d: Map2Delegate<'A, 'B, 'C>) (a: 'A) (b: 'B) : 'C = d a b
+#else
+    let inline adaptMap2 (f: 'A -> 'B -> 'C) : Map2Delegate<'A, 'B, 'C> =
+        OptimizedClosures.FSharpFunc<'A, 'B, 'C>.Adapt f
+
+    let inline invokeMap2 (d: Map2Delegate<'A, 'B, 'C>) (a: 'A) (b: 'B) : 'C =
+        d.Invoke (a, b)
+#endif
 
 #if FABLE_COMPILER
     [<Fable.Core.Emit("$0 == null")>]
@@ -11721,6 +11988,7 @@ type internal MemoOnState<'T, 'U>(graph: Graph, read: unit -> 'T, compute: 'T ->
             previousPending: INode
         ) : 'U =
         let g = n.Graph
+        n.SourcesField.BeginRun ()
         let mutable nextKey = Unchecked.defaultof<'T>
         let mutable phase1Ok = false
 
@@ -11829,6 +12097,9 @@ type internal MemoOnState<'T, 'U>(graph: Graph, read: unit -> 'T, compute: 'T ->
                     this.Moved <- false
                     previous
                 else
+                    if g.HasLastRaised then
+                        g.ClearLastRaised ()
+
                     let mutable result = Unchecked.defaultof<'U>
                     computing <- true
 
@@ -11927,6 +12198,39 @@ type internal MemoOnState<'T, 'U>(graph: Graph, read: unit -> 'T, compute: 'T ->
 #endif
                 raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
 
+#if !RANVIER_TRACE
+/// <summary>Link in an unobserved <c>map</c> fusion chain allowing lazy de-fusion from any claimed intermediate.</summary>
+[<AllowNullLiteral>]
+type internal IFusedChainNode =
+    abstract FusedNext: IFusedChainNode
+    abstract MaterializeFromTail: unit -> unit
+
+/// <summary>Base runner for fusable 1..4+ stage <c>map</c> chains (Theorem B18).</summary>
+[<AbstractClass>]
+type internal FusedRunner<'U>() =
+    inherit MemoOnRunner<'U>()
+
+    let mutable fusedNext: IFusedChainNode = Platform.nil ()
+
+    member inline _.FusedNext
+        with get () = fusedNext
+        and set (v: IFusedChainNode) = fusedNext <- v
+
+    member inline _.IsClaimed = not (Platform.isNull fusedNext)
+
+    abstract EvalSignalLeaf: origin: INode * n: MemoNode * g: Graph * safeTailEq: bool * outputEqual: IEqualityComparer<'U> * previous: 'U -> 'U
+
+    abstract ExecuteFused:
+        origin: INode * n: MemoNode * outputEqual: IEqualityComparer<'U> * previous: 'U * previousStatus: Status * previousFailure: Failure -> 'U
+
+    abstract MaterializeTail: tailMemo: obj -> unit
+    abstract ClearIntermediates: unit -> unit
+    abstract ReleaseBeforeUserDispose: tailRuns: int -> unit
+
+    override this.Execute(origin, n, outputEqual, previous, previousStatus, previousFailure, _previousPending) =
+        this.ExecuteFused (origin, n, outputEqual, previous, previousStatus, previousFailure)
+#endif
+
 /// <summary>
 /// A derived, cached computation.
 /// </summary>
@@ -11952,17 +12256,28 @@ type internal MemoOnState<'T, 'U>(graph: Graph, read: unit -> 'T, compute: 'T ->
 /// argument keeps its dependents clean.
 /// </para>
 /// </remarks>
-type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqualityComparer<'T>, node: MemoNode) =
+type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: 'T, equal: IEqualityComparer<'T>, node: MemoNode) =
     do Tracer.Bind (node.Observers, node.Graph, node.NodeId)
     do Tracer.Bind (node.SourcesField, node.Graph, node.NodeId)
 
+#if !RANVIER_TRACE
+    let mutable computeObj = initialComputeObj
+    let mutable computeKind = initialComputeKind
+#else
+    let computeObj = initialComputeObj
+    let computeKind = initialComputeKind
+#endif
     let mutable value = Unchecked.defaultof<'T>
 
 #if RANVIER_COUNTERS
     do Counters.MemoCreated ()
 #endif
 
-    member inline private _.ComputeObj = computeObj
+    member inline internal _.ComputeObj = computeObj
+    member inline internal _.ComputeKind = computeKind
+    member inline internal _.EncodedEqual = equal
+    member inline internal _.Graph = node.Graph
+    member inline internal _.PeekRaw = value
 
 #if !FABLE_COMPILER && !RANVIER_TRACE
     member inline private this.RunTopCoreWith(n: MemoNode, child: Node, previousPending: bool, [<InlineIfLambda>] invoke: 'T -> 'T) : bool =
@@ -12169,6 +12484,12 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
 
     static member val private MemoOnCb: Func<MemoNode, Node, bool> = Func<MemoNode, Node, bool>(fun n child -> Memo<'T>.RunMemoOnNode(n, child))
 
+    static member private RunFusedMapNode(n: MemoNode, _child: Node) : bool =
+        (Platform.fastCast<Memo<'T>> n.OwnerMemo).RunFusedMap n
+        false
+
+    static member val private FusedMapCb: Func<MemoNode, Node, bool> = Func<MemoNode, Node, bool>(fun n child -> Memo<'T>.RunFusedMapNode(n, child))
+
     static member private MakeNode(graph: Graph, mode: ScopeMode, equal: IEqualityComparer<'T>, cb: Func<MemoNode, Node, bool>) =
         MemoNode (graph, mode, SafeEquality.isSafe equal, cb)
 #else
@@ -12324,6 +12645,70 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         memo.Attach ()
         memo
 
+    static member internal CreateCombinator(graph: Graph, runner: obj, kind: byte, eq: IEqualityComparer<'T>) : Memo<'T> =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        let cb =
+            if kind >= 6uy then
+                Memo<'T>.FusedMapCb
+            else
+                Memo<'T>.MemoOnCb
+
+        let n = MemoNode (graph, ScopeMode.Pure, false, cb)
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+        let n = MemoNode (graph, ScopeMode.Pure, false)
+#else
+        let n = MemoNode (graph, ScopeMode.Pure, Memo<'T>.MemoOnRunFn)
+#endif
+#endif
+        let memo = Memo<'T>(runner, kind, Unchecked.defaultof<'T>, eq, n)
+        memo.Attach ()
+        memo
+
+#if !RANVIER_TRACE
+    member internal _.RebindFused(newRunner: obj, newKind: byte) =
+        computeObj <- newRunner
+        computeKind <- newKind
+
+    member internal _.SetMaterializedValue(v: 'T) =
+        value <- v
+
+    member inline internal _.IsClaimedFused =
+        computeKind >= 6uy
+        && (Platform.fastCast<FusedRunner<'T>> computeObj).IsClaimed
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal this.EnsureMaterializedIfClaimed() =
+        if this.IsClaimedFused then
+            this.EnsureMaterializedSlow ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.EnsureMaterializedSlow() =
+        node.Graph.Entered (
+            "Reading a node",
+            fun () ->
+                if this.IsClaimedFused then
+                    let mutable cur = this :> IFusedChainNode
+
+                    while not (Platform.isNull cur.FusedNext) do
+                        cur <- cur.FusedNext
+
+                    cur.MaterializeFromTail ()
+        )
+
+    interface IFusedChainNode with
+        member _.FusedNext =
+            if computeKind >= 6uy then
+                (Platform.fastCast<FusedRunner<'T>> computeObj).FusedNext
+            else
+                Platform.nil ()
+
+        member this.MaterializeFromTail() =
+            if computeKind >= 6uy then
+                let runner = Platform.fastCast<FusedRunner<'T>> computeObj
+                runner.MaterializeTail (box this)
+#endif
+
     /// <summary>Attaches the memo to the current owner. Disposing that owner disposes the memo.</summary>
     member internal this.Attach() =
         node.OwnerMemo <- box this
@@ -12381,6 +12766,8 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
                 this.RunReadyNested n
             else
                 this.RunGeneral n
+        elif computeKind >= 6uy then
+            this.RunFusedMap n
         elif computeKind = 5uy then
             this.RunMemoOn n
         else
@@ -12880,7 +13267,6 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         n.UnannouncedField <- false
 #endif
 #endif
-        n.SourcesField.BeginRun ()
 
         let previousPending = n.PendingSourceField
 
@@ -12912,6 +13298,25 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         let runner = Platform.fastCast<MemoOnRunner<'T>> computeObj
         value <- runner.Execute (this :> INode, n, equal, previous, previousStatus, previousFailure, previousPending)
         this.FinishPublish (n, g, runner.Moved)
+
+#if !RANVIER_TRACE
+    member internal this.RunFusedMap(n: MemoNode) =
+        let g = n.Graph
+
+        n.Flags <-
+            (n.Flags
+             &&& ~~~(NodeFlags.FreshMask
+                     ||| NodeFlags.Unannounced
+                     ||| NodeFlags.ActiveMask))
+            ||| NodeFlags.ActiveBody
+
+        let previous = value
+        let previousStatus = n.Status
+        let previousFailure = n.FailureField
+        let runner = Platform.fastCast<FusedRunner<'T>> computeObj
+        value <- runner.ExecuteFused (this :> INode, n, equal, previous, previousStatus, previousFailure)
+        this.FinishPublish (n, g, runner.Moved)
+#endif
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.Publish(previous: 'T, previousStatus: Status, previousFailure: Failure) =
@@ -12983,7 +13388,10 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             node.SetStatusError ()
             true
 
-    member internal _.EnsureCurrent() =
+    member internal this.EnsureCurrent() =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         NodeOps.EnsureCurrent node
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
@@ -13068,7 +13476,21 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             Ready currentValue
 
     /// <summary>Detaches from every source. Idempotent, and usually called for you by the enclosing owner.</summary>
-    member _.Dispose() =
+    member this.Dispose() =
+#if !RANVIER_TRACE
+        if not node.IsDisposed && computeKind >= 6uy then
+            node.Graph.Entered (
+                "Disposing a node",
+                fun () ->
+                    if not node.IsDisposed && computeKind >= 6uy then
+                        let runner = Platform.fastCast<FusedRunner<'T>> computeObj
+
+                        if runner.IsClaimed then
+                            this.EnsureMaterializedSlow ()
+                        else
+                            runner.ReleaseBeforeUserDispose node.RunsField
+            )
+#endif
         node.DisposeMemoFromUser ()
 
     /// <summary>Marks every reader dirty. A reader of a row whose key was removed re-runs and reads the key as absent.</summary>
@@ -13124,8 +13546,20 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         member _.Scope = node.GetScopeNode ()
 
     interface IMemoHandle with
-        member _.UnwrapMemoNode() =
+        member this.UnwrapMemoNode() =
+#if !RANVIER_TRACE
+            this.EnsureMaterializedIfClaimed ()
+#endif
             node :> ISource
+
+#if !RANVIER_TRACE
+        member _.OnOwnerDispose() =
+            if computeKind >= 6uy then
+                let runner = Platform.fastCast<FusedRunner<'T>> computeObj
+
+                if not runner.IsClaimed then
+                    runner.ClearIntermediates ()
+#endif
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -13135,19 +13569,28 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
     interface INode with
         member _.Id = node.NodeId
 
-        member _.Status =
+        member this.Status =
+#if !RANVIER_TRACE
+            this.EnsureMaterializedIfClaimed ()
+#endif
             node.Status
             ||| Staleness.ofFreshness node.Freshness
 
     interface ISource with
-        member _.AddObserver(c, slot) =
+        member this.AddObserver(c, slot) =
+#if !RANVIER_TRACE
+            this.EnsureMaterializedIfClaimed ()
+#endif
 #if FABLE_COMPILER && !RANVIER_TRACE
             (node.EnsureObservers ()).Add(c, slot)
 #else
             node.Observers.Add (c, slot)
 #endif
 
-        member _.TryAddObserver(c, slot) =
+        member this.TryAddObserver(c, slot) =
+#if !RANVIER_TRACE
+            this.EnsureMaterializedIfClaimed ()
+#endif
 #if FABLE_COMPILER && !RANVIER_TRACE
             (node.EnsureObservers ()).TryAdd(c, slot)
 #else
@@ -13162,10 +13605,17 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             node.Observers.RemoveAt (c, handle)
 #endif
 
-        member _.UpdateIfNecessary() =
+        member this.UpdateIfNecessary() =
+#if !RANVIER_TRACE
+            this.EnsureMaterializedIfClaimed ()
+#endif
             NodeOps.EnsureCurrent node
 
-        member _.IsStale = (node :> ISource).IsStale
+        member this.IsStale =
+#if !RANVIER_TRACE
+            this.EnsureMaterializedIfClaimed ()
+#endif
+            (node :> ISource).IsStale
 
         member _.IsActive = (node :> ISource).IsActive
 
@@ -13185,17 +13635,32 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         member _.MarkCheck() =
             NodeOps.MemoMarkCheck node
 
-    member _.Status = node.Status
+    member this.Status =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        node.Status
 
-    member internal _.PendingSource = node.PendingSourceField
+    member internal this.PendingSource =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        node.PendingSourceField
 
-    member _.PendingSources =
+    member this.PendingSources =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         if Platform.isNull (box node.PendingSourceField) then
             Seq.empty
         else
             [| node.PendingSourceField |] :> seq<INode>
 
-    member _.Runs = node.RunsField
+    member this.Runs =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        node.RunsField
 
     /// <summary>Transparent, tracked read. Suspends the caller if this memo is itself suspended.</summary>
 #if FABLE_COMPILER
@@ -13284,6 +13749,27 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
                 && g.CanPullUncached ()
             then
                 this.ReadUncachedTop n
+            else
+                this.ReadSlowGeneral n
+        elif computeKind >= 6uy then
+            let runner = Platform.fastCast<FusedRunner<'T>> computeObj
+
+            if runner.IsClaimed then
+                this.EnsureMaterializedSlow ()
+                this.ReadSlowGeneral n
+            elif
+                computeKind = 6uy
+                && (n.Flags &&& NodeFlags.FusedLeafDirtyMask) = NodeFlags.FusedLeafDirtyValue
+                && n.ObserverCount = 0
+                && not g.QueuePending
+                && g.CanPullTopDirect ()
+            then
+                value <- runner.EvalSignalLeaf (this :> INode, n, g, SafeEquality.isSafe equal, equal, value)
+
+                if (n.Flags &&& NodeFlags.StatusUnreadyMask) <> 0 then
+                    this.RaiseUnready n
+                else
+                    value
             else
                 this.ReadSlowGeneral n
         else
@@ -13395,7 +13881,10 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         else
             false
 
-    member private _.TryTrackReadyDeferring() : bool =
+    member private this.TryTrackReadyDeferring() : bool =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         let g = node.Graph
 
         if NodeOps.RefreshForRead node then
@@ -13436,6 +13925,9 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     member private this.ReadTrySlow() : Reading<'T> =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         if NodeOps.RefreshForRead node then
             this.SettlePullAndReadTry ()
         else
@@ -13508,6 +14000,9 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             g.RunUntrackedWith (Memo<'T>.ReadUntrackedFn, this)
 
     member internal this.ReadUntracked() : Reading<'T> =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         if NodeOps.RefreshForUntrackedRead node then
             this.SettlePullAndReadUntracked ()
         else
@@ -13521,10 +14016,16 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             else
                 Ready value
 
-    member internal _.RefreshUntrackedNoSettle() : bool =
+    member internal this.RefreshUntrackedNoSettle() : bool =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         NodeOps.RefreshForUntrackedRead node
 
-    member internal _.EnsureCurrentUntracked() : Status =
+    member internal this.EnsureCurrentUntracked() : Status =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         if NodeOps.RefreshForUntrackedRead node then
             let currentStatus = node.Status
             node.Graph.FinishPullSettle ()
@@ -13541,11 +14042,23 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             else
                 st
 
-    member _.ErrorOrigin: INode = Failure.OriginOf node.FailureField
+    member this.ErrorOrigin: INode =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        Failure.OriginOf node.FailureField
 
-    member internal _.Failure = node.FailureField
+    member internal this.Failure =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        node.FailureField
 
-    member _.Peek = value
+    member this.Peek =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
+        value
 
     member internal _.Published =
 #if !RANVIER_TRACE
@@ -13574,7 +14087,10 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             this.TryReadStructSlow ()
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private _.TryReadStructSlow() : struct (Status * 'T * exn) =
+    member private this.TryReadStructSlow() : struct (Status * 'T * exn) =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         let g = node.Graph
 
         if NodeOps.RefreshForRead node then
@@ -13625,7 +14141,10 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         else
             g.RunUntrackedWith (Memo<'T>.ReadUntrackedStructFn, this)
 
-    member private _.ReadUntrackedStructCore() : struct (Status * 'T * exn) =
+    member private this.ReadUntrackedStructCore() : struct (Status * 'T * exn) =
+#if !RANVIER_TRACE
+        this.EnsureMaterializedIfClaimed ()
+#endif
         if NodeOps.RefreshForUntrackedRead node then
             let currentStatus = node.Status
             let currentFailure = node.FailureField
@@ -16368,6 +16887,10 @@ type AsyncMemo<'T>
 
     member _.Peek = value
 
+    member inline internal _.Graph = graph
+
+    member inline internal _.Failure = failure
+
 // Public constructors live in an intrinsic augmentation to avoid `init@` checks on every member.
 #if !FABLE_COMPILER
 type AsyncMemo<'T> with
@@ -17190,3 +17713,4541 @@ type Boundary<'T>
     member _.ErrorOrigin: INode = Failure.OriginOf failure
 
     member _.Peek = value
+
+    member inline internal _.Graph = graph
+
+    member inline internal _.Failure = failure
+
+// -----------------------------------------------------------------------------------------------------------------
+// Companion Combinator Runners & Unobserved MapFusion (Theorems B18, B19, B20)
+// -----------------------------------------------------------------------------------------------------------------
+
+/// <summary>Polymorphic zero-throw source adapter for <c>map</c>/<c>map2</c>/<c>zip</c> over non-signal sources.</summary>
+[<AbstractClass; AllowNullLiteral>]
+type internal CombinatorSource<'T>() =
+    abstract Graph: Graph
+    abstract Source: ISource
+    abstract Node: INode
+    abstract Refresh: unit -> unit
+    abstract Status: Status
+    abstract Peek: 'T
+    abstract Failure: Failure
+
+[<Sealed>]
+type internal MemoSource<'T>(memo: Memo<'T>) =
+    inherit CombinatorSource<'T>()
+
+    override _.Graph = memo.Graph
+
+    override _.Source =
+#if !RANVIER_TRACE
+        memo.EnsureMaterializedIfClaimed ()
+#endif
+        memo.Node :> ISource
+
+    override _.Node = memo :> INode
+
+    override _.Refresh() =
+#if !RANVIER_TRACE
+        memo.EnsureMaterializedIfClaimed ()
+#endif
+        NodeOps.EnsureCurrent memo.Node
+
+    override _.Status = memo.Node.Status
+    override _.Peek = memo.PeekRaw
+    override _.Failure = memo.Node.FailureField
+
+[<Sealed>]
+type internal AsyncSourceAdapter<'T>(src: AsyncSource<'T>) =
+    inherit CombinatorSource<'T>()
+
+    override _.Graph = src.Graph
+    override _.Source = src :> ISource
+    override _.Node = src :> INode
+    override _.Refresh() = ()
+    override _.Status = src.Status
+    override _.Peek = src.Peek
+    override _.Failure = src.Failure
+
+[<Sealed>]
+type internal AsyncMemoAdapter<'T>(src: AsyncMemo<'T>) =
+    inherit CombinatorSource<'T>()
+
+    override _.Graph = src.Graph
+    override _.Source = src :> ISource
+    override _.Node = src :> INode
+
+    override _.Refresh() =
+        (src :> ISource).UpdateIfNecessary()
+
+    override _.Status = src.Status
+    override _.Peek = src.Peek
+    override _.Failure = src.Failure
+
+module internal CombinatorHelpers =
+    let inline clearActive (n: MemoNode) =
+#if !RANVIER_TRACE
+        n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
+#else
+#if FABLE_COMPILER
+        n.Active <- 0uy
+#else
+        n.ActiveField <- 0uy
+#endif
+#endif
+
+    let inline isViolated (n: MemoNode) =
+#if !RANVIER_TRACE
+        (n.Flags &&& NodeFlags.Violated) <> 0
+#else
+#if FABLE_COMPILER
+        n.Violated
+#else
+        n.ViolatedField
+#endif
+#endif
+
+    let inline clearViolated (n: MemoNode) =
+#if !RANVIER_TRACE
+        n.Flags <- n.Flags &&& ~~~NodeFlags.Violated
+#else
+#if FABLE_COMPILER
+        n.Violated <- false
+#else
+        n.ViolatedField <- false
+#endif
+#endif
+
+    let inline setPublished (n: MemoNode) =
+#if !RANVIER_TRACE
+        n.Flags <- n.Flags ||| NodeFlags.Published
+#else
+#if FABLE_COMPILER
+        n.Published <- true
+#else
+        n.PublishedField <- true
+#endif
+#endif
+
+    let inline statusMoved (n: MemoNode, previousStatus: Status, previousFailure: Failure) =
+        n.Status <> previousStatus
+        || (not (obj.ReferenceEquals (n.FailureField, previousFailure))
+            && Failure.Moved (n.FailureField, previousFailure))
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    let restoreDisposedState (n: MemoNode, previousStatus: Status, previousFailure: Failure, previousPending: INode) =
+        clearActive n
+        n.SourcesField.Clear (n :> IComputation)
+
+        if StatusBits.isError previousStatus then
+            n.FailureField <- previousFailure
+            n.SetStatusError ()
+        elif StatusBits.isPending previousStatus then
+            n.PendingSourceField <- previousPending
+            n.SetStatusPending ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    let recordCallbackFailure (g: Graph, n: MemoNode, origin: INode, pendingMsg: string, ex: exn, previousFailure: Failure) : Failure =
+        clearActive n
+
+        let err =
+            if isViolated n then
+                clearViolated n
+                ScopeMessages.failure ScopeMode.Pure ex
+            else
+                UntrackedPhase.wrapPending pendingMsg ex
+
+        let f = g.FailureOf (err, origin, previousFailure)
+        n.PendingSourceField <- Platform.nil ()
+        n.FailureField <- f
+        n.SetStatusError ()
+        f
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    let compareOutputGuarded
+        (
+            runner: MemoOnRunner<'U>,
+            g: Graph,
+            n: MemoNode,
+            origin: INode,
+            outputEqual: IEqualityComparer<'U>,
+            previous: 'U,
+            result: 'U,
+            previousFailure: Failure
+        ) : 'U =
+        try
+            let changed = not (ComparerSentinel.equals outputEqual previous result)
+            setPublished n
+            runner.Moved <- changed
+            result
+        with ex ->
+            n.PendingSourceField <- Platform.nil ()
+            n.FailureField <- g.FailureOf (ex, origin, previousFailure)
+            n.SetStatusError ()
+            runner.Moved <- true
+            previous
+
+    let inline finishReady
+        (
+            runner: MemoOnRunner<'U>,
+            g: Graph,
+            n: MemoNode,
+            origin: INode,
+            outputEqual: IEqualityComparer<'U>,
+            previous: 'U,
+            result: 'U,
+            previousStatus: Status,
+            previousFailure: Failure
+        ) : 'U =
+        clearActive n
+        n.PendingSourceField <- Platform.nil ()
+        n.FailureField <- Platform.nil ()
+        n.SetStatusNone ()
+
+        if previousStatus <> Status.None then
+            setPublished n
+            runner.Moved <- true
+            result
+        elif SafeEquality.isSafe outputEqual then
+            setPublished n
+
+            runner.Moved <-
+#if !RANVIER_TRACE
+                (n.ObserverCount <> 0 || g.QueuePending)
+                && not (ComparerSentinel.equals outputEqual previous result)
+#else
+                not (ComparerSentinel.equals outputEqual previous result)
+#endif
+            result
+        else
+            compareOutputGuarded (runner, g, n, origin, outputEqual, previous, result, previousFailure)
+
+    let inline refreshStaticSlot (g: Graph, n: MemoNode, slotIdx: int, [<InlineIfLambda>] refresh: unit -> unit) =
+        n.SourcesField.SetCursor slotIdx
+#if FABLE_COMPILER
+        g.RunStaticRefresh (n, refresh)
+#else
+        let saved = g.EnterStaticRefresh n
+
+        try
+            refresh ()
+        finally
+            g.LeaveStaticRefresh saved
+#endif
+        if not n.IsDisposed then
+            n.SourcesField.SetCursor n.SourcesField.Count
+
+    let inline refreshStaticPair
+        (g: Graph, n: MemoNode, sameSource: bool, [<InlineIfLambda>] refresh1: unit -> unit, [<InlineIfLambda>] refresh2: unit -> unit)
+        =
+        n.SourcesField.SetCursor 0
+#if FABLE_COMPILER
+        g.RunStaticRefresh (
+            n,
+            fun () ->
+                refresh1 ()
+
+                if not sameSource && not n.IsDisposed then
+                    n.SourcesField.SetCursor 1
+                    refresh2 ()
+        )
+#else
+        let saved = g.EnterStaticRefresh n
+
+        try
+            refresh1 ()
+
+            if not sameSource && not n.IsDisposed then
+                n.SourcesField.SetCursor 1
+                refresh2 ()
+        finally
+            g.LeaveStaticRefresh saved
+#endif
+        if not n.IsDisposed then
+            n.SourcesField.SetCursor n.SourcesField.Count
+
+#if !FABLE_COMPILER
+/// <summary>Cached adapted pair constructor so <c>zip</c> allocates zero per-call mapping or adapter closures on .NET.</summary>
+type internal ZipPair<'A, 'B>() =
+    static member val Adapted: Map2Delegate<'A, 'B, 'A * 'B> = OptimizedClosures.FSharpFunc<'A, 'B, 'A * 'B>.Adapt(fun a b -> a, b)
+#endif
+
+/// <summary>Static 1-source <c>Signal.map</c> runner for traced or journaled graphs.</summary>
+[<Sealed>]
+type internal SignalMapState<'T, 'U>(signal: Signal<'T>, mapping: 'T -> 'U) =
+    inherit MemoOnRunner<'U>()
+
+    let mutable linked = false
+
+    override this.Execute(origin, n, outputEqual, previous, previousStatus, previousFailure, previousPending) =
+        let g = n.Graph
+
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, signal :> ISource)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+            this.Moved <- false
+            previous
+        else
+            if g.HasLastRaised then
+                g.ClearLastRaised ()
+
+            let input = signal.Peek
+            let mutable result = Unchecked.defaultof<'U>
+
+#if FABLE_COMPILER
+            let mutable callEx: exn = Platform.nil ()
+
+            try
+                result <- g.RunUntrackedPureArg (n :> IScopeHost, mapping, input)
+
+                if CombinatorHelpers.isViolated n then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+            with ex ->
+                callEx <- Thrown.hold ex
+
+            if not (Platform.isNull callEx) then
+                CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, Thrown.take callEx, previousFailure)
+                |> ignore
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+#else
+            let hasJournal = not (Platform.isNull g.Journal)
+
+            if hasJournal then
+                g.Journal.EnterDerived ()
+
+            let saved = g.EnterUntrackedPure (n :> IScopeHost)
+
+            let callEx =
+                try
+                    result <- mapping input
+
+                    if CombinatorHelpers.isViolated n then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                    null
+                with ex ->
+                    ex
+
+            g.LeaveUntrackedPure saved
+
+            if hasJournal then
+                g.Journal.LeaveDerived ()
+
+            if not (Platform.isNull callEx) then
+                CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, callEx, previousFailure)
+                |> ignore
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+#endif
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, result, previousStatus, previousFailure)
+
+/// <summary>Static 1-source <c>map</c> runner over <c>CombinatorSource</c> for traced or journaled graphs.</summary>
+[<Sealed>]
+type internal SourceMapState<'T, 'U>(src: CombinatorSource<'T>, mapping: 'T -> 'U) =
+    inherit MemoOnRunner<'U>()
+
+    let mutable linked = false
+
+    override this.Execute(origin, n, outputEqual, previous, previousStatus, previousFailure, previousPending) =
+        let g = n.Graph
+
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, src.Source)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticSlot (g, n, 0, fun () -> src.Refresh ())
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+            this.Moved <- false
+            previous
+        else
+            let st = src.Status
+
+            if StatusBits.isUnready st then
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st then
+                    let pendingNode = src.Node
+                    Tracer.Suspend (g, n, pendingNode)
+                    n.PendingSourceField <- pendingNode
+                    n.SetStatusPending ()
+                else
+                    n.FailureField <- src.Failure
+                    n.SetStatusError ()
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+            else
+                if g.HasLastRaised then
+                    g.ClearLastRaised ()
+
+                let input = src.Peek
+                let mutable result = Unchecked.defaultof<'U>
+
+#if FABLE_COMPILER
+                let mutable callEx: exn = Platform.nil ()
+
+                try
+                    result <- g.RunUntrackedPureArg (n :> IScopeHost, mapping, input)
+
+                    if CombinatorHelpers.isViolated n then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+                with ex ->
+                    callEx <- Thrown.hold ex
+
+                if not (Platform.isNull callEx) then
+                    CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, Thrown.take callEx, previousFailure)
+                    |> ignore
+
+                    this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                    previous
+#else
+                let hasJournal = not (Platform.isNull g.Journal)
+
+                if hasJournal then
+                    g.Journal.EnterDerived ()
+
+                let saved = g.EnterUntrackedPure (n :> IScopeHost)
+
+                let callEx =
+                    try
+                        result <- mapping input
+
+                        if CombinatorHelpers.isViolated n then
+                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                        null
+                    with ex ->
+                        ex
+
+                g.LeaveUntrackedPure saved
+
+                if hasJournal then
+                    g.Journal.LeaveDerived ()
+
+                if not (Platform.isNull callEx) then
+                    CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, callEx, previousFailure)
+                    |> ignore
+
+                    this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                    previous
+#endif
+                else
+                    CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, result, previousStatus, previousFailure)
+
+/// <summary>Static 2-source <c>Signal.map2</c> / <c>Signal.zip</c> runner (Theorem B19).</summary>
+[<Sealed>]
+type internal SignalMap2State<'A, 'B, 'C>(s1: Signal<'A>, s2: Signal<'B>, mapping: Map2Delegate<'A, 'B, 'C>) =
+    inherit MemoOnRunner<'C>()
+
+    let mutable linked = false
+
+    override this.Execute(origin, n, outputEqual, previous, previousStatus, previousFailure, previousPending) =
+        let g = n.Graph
+
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, s1 :> ISource)
+            NodeOps.AddSource (n, s2 :> ISource)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+            this.Moved <- false
+            previous
+        else
+            if g.HasLastRaised then
+                g.ClearLastRaised ()
+
+            let a = s1.Peek
+            let b = s2.Peek
+            let mutable result = Unchecked.defaultof<'C>
+
+#if FABLE_COMPILER
+            let mutable callEx: exn = Platform.nil ()
+
+            try
+                result <- g.RunUntrackedPure2 (n :> IScopeHost, mapping, a, b)
+
+                if CombinatorHelpers.isViolated n then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+            with ex ->
+                callEx <- Thrown.hold ex
+
+            if not (Platform.isNull callEx) then
+                CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, Thrown.take callEx, previousFailure)
+                |> ignore
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+#else
+            let hasJournal = not (Platform.isNull g.Journal)
+
+            if hasJournal then
+                g.Journal.EnterDerived ()
+
+            let saved = g.EnterUntrackedPure (n :> IScopeHost)
+
+            let callEx =
+                try
+                    result <- mapping.Invoke (a, b)
+
+                    if CombinatorHelpers.isViolated n then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                    null
+                with ex ->
+                    ex
+
+            g.LeaveUntrackedPure saved
+
+            if hasJournal then
+                g.Journal.LeaveDerived ()
+
+            if not (Platform.isNull callEx) then
+                CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, callEx, previousFailure)
+                |> ignore
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+#endif
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, result, previousStatus, previousFailure)
+
+/// <summary>Static 2-source <c>Memo.map2</c> / <c>Memo.zip</c> runner with zero adapter allocation (Theorem B19).</summary>
+[<Sealed>]
+type internal MemoMap2State<'A, 'B, 'C>(m1: Memo<'A>, m2: Memo<'B>, mapping: Map2Delegate<'A, 'B, 'C>) =
+    inherit MemoOnRunner<'C>()
+
+    let sameSource = obj.ReferenceEquals (box m1, box m2)
+    let mutable linked = false
+
+    override this.Execute(origin, n, outputEqual, previous, previousStatus, previousFailure, previousPending) =
+        let g = n.Graph
+#if !RANVIER_TRACE
+        m1.EnsureMaterializedIfClaimed ()
+
+        if not sameSource then
+            m2.EnsureMaterializedIfClaimed ()
+#endif
+
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, m1.Node :> ISource)
+
+            if not sameSource then
+                NodeOps.AddSource (n, m2.Node :> ISource)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticPair (
+                g,
+                n,
+                sameSource,
+                (fun () -> NodeOps.EnsureCurrent m1.Node),
+                (fun () -> NodeOps.EnsureCurrent m2.Node)
+            )
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+            this.Moved <- false
+            previous
+        else
+            let st1 = m1.Node.Status
+
+            if StatusBits.isUnready st1 then
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st1 then
+                    let pendingNode = m1 :> INode
+                    Tracer.Suspend (g, n, pendingNode)
+                    n.PendingSourceField <- pendingNode
+                    n.SetStatusPending ()
+                else
+                    n.FailureField <- m1.Node.FailureField
+                    n.SetStatusError ()
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+            else
+                let st2 = m2.Node.Status
+
+                if StatusBits.isUnready st2 then
+                    CombinatorHelpers.clearActive n
+
+                    if StatusBits.isPending st2 then
+                        let pendingNode = m2 :> INode
+                        Tracer.Suspend (g, n, pendingNode)
+                        n.PendingSourceField <- pendingNode
+                        n.SetStatusPending ()
+                    else
+                        n.FailureField <- m2.Node.FailureField
+                        n.SetStatusError ()
+
+                    this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                    previous
+                else
+                    if g.HasLastRaised then
+                        g.ClearLastRaised ()
+
+                    let a = m1.PeekRaw
+                    let b = m2.PeekRaw
+                    let mutable result = Unchecked.defaultof<'C>
+
+#if FABLE_COMPILER
+                    let mutable callEx: exn = Platform.nil ()
+
+                    try
+                        result <- g.RunUntrackedPure2 (n :> IScopeHost, mapping, a, b)
+
+                        if CombinatorHelpers.isViolated n then
+                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+                    with ex ->
+                        callEx <- Thrown.hold ex
+
+                    if not (Platform.isNull callEx) then
+                        CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, Thrown.take callEx, previousFailure)
+                        |> ignore
+
+                        this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                        previous
+#else
+                    let hasJournal = not (Platform.isNull g.Journal)
+
+                    if hasJournal then
+                        g.Journal.EnterDerived ()
+
+                    let saved = g.EnterUntrackedPure (n :> IScopeHost)
+
+                    let callEx =
+                        try
+                            result <- mapping.Invoke (a, b)
+
+                            if CombinatorHelpers.isViolated n then
+                                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                            null
+                        with ex ->
+                            ex
+
+                    g.LeaveUntrackedPure saved
+
+                    if hasJournal then
+                        g.Journal.LeaveDerived ()
+
+                    if not (Platform.isNull callEx) then
+                        CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, callEx, previousFailure)
+                        |> ignore
+
+                        this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                        previous
+#endif
+                    else
+                        CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, result, previousStatus, previousFailure)
+
+/// <summary>Static 2-source <c>map2</c> / <c>zip</c> runner over <c>CombinatorSource</c> (Theorem B19).</summary>
+[<Sealed>]
+type internal SourceMap2State<'A, 'B, 'C>(s1: CombinatorSource<'A>, s2: CombinatorSource<'B>, mapping: Map2Delegate<'A, 'B, 'C>) =
+    inherit MemoOnRunner<'C>()
+
+    let sameSource = obj.ReferenceEquals (box s1.Node, box s2.Node)
+    let mutable linked = false
+
+    override this.Execute(origin, n, outputEqual, previous, previousStatus, previousFailure, previousPending) =
+        let g = n.Graph
+
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, s1.Source)
+
+            if not sameSource then
+                NodeOps.AddSource (n, s2.Source)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticPair (g, n, sameSource, (fun () -> s1.Refresh ()), (fun () -> s2.Refresh ()))
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+            this.Moved <- false
+            previous
+        else
+            let st1 = s1.Status
+
+            if StatusBits.isUnready st1 then
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st1 then
+                    let pendingNode = s1.Node
+                    Tracer.Suspend (g, n, pendingNode)
+                    n.PendingSourceField <- pendingNode
+                    n.SetStatusPending ()
+                else
+                    n.FailureField <- s1.Failure
+                    n.SetStatusError ()
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+            else
+                let st2 = s2.Status
+
+                if StatusBits.isUnready st2 then
+                    CombinatorHelpers.clearActive n
+
+                    if StatusBits.isPending st2 then
+                        let pendingNode = s2.Node
+                        Tracer.Suspend (g, n, pendingNode)
+                        n.PendingSourceField <- pendingNode
+                        n.SetStatusPending ()
+                    else
+                        n.FailureField <- s2.Failure
+                        n.SetStatusError ()
+
+                    this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                    previous
+                else
+                    if g.HasLastRaised then
+                        g.ClearLastRaised ()
+
+                    let a = s1.Peek
+                    let b = s2.Peek
+                    let mutable result = Unchecked.defaultof<'C>
+
+#if FABLE_COMPILER
+                    let mutable callEx: exn = Platform.nil ()
+
+                    try
+                        result <- g.RunUntrackedPure2 (n :> IScopeHost, mapping, a, b)
+
+                        if CombinatorHelpers.isViolated n then
+                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+                    with ex ->
+                        callEx <- Thrown.hold ex
+
+                    if not (Platform.isNull callEx) then
+                        CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, Thrown.take callEx, previousFailure)
+                        |> ignore
+
+                        this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                        previous
+#else
+                    let hasJournal = not (Platform.isNull g.Journal)
+
+                    if hasJournal then
+                        g.Journal.EnterDerived ()
+
+                    let saved = g.EnterUntrackedPure (n :> IScopeHost)
+
+                    let callEx =
+                        try
+                            result <- mapping.Invoke (a, b)
+
+                            if CombinatorHelpers.isViolated n then
+                                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                            null
+                        with ex ->
+                            ex
+
+                    g.LeaveUntrackedPure saved
+
+                    if hasJournal then
+                        g.Journal.LeaveDerived ()
+
+                    if not (Platform.isNull callEx) then
+                        CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, callEx, previousFailure)
+                        |> ignore
+
+                        this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                        previous
+#endif
+                    else
+                        CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, result, previousStatus, previousFailure)
+
+/// <summary>Two-slot split <c>Signal.bind</c> / <c>Memo.bind</c> runner (Theorem B20).</summary>
+[<Sealed>]
+type internal SplitBindState<'T, 'U>(graph: Graph, outerSignal: Signal<'T>, outerMemo: Memo<'T>, binder: 'T -> Memo<'U>) =
+    inherit MemoOnRunner<'U>()
+
+    let keyEqual = graph.EncodedComparer<'T>()
+    let isSignalOuter = not (Platform.isNull (box outerSignal))
+    let mutable node: MemoNode = Platform.nil ()
+    let mutable outerLinked = false
+    let mutable hasKey = false
+    let mutable lastKey = Unchecked.defaultof<'T>
+    let mutable innerMemo: Memo<'U> = Platform.nil ()
+    let mutable binderFailure: Failure = Platform.nil ()
+    let mutable computing = false
+
+    member internal _.Bind(n: MemoNode) = node <- n
+
+    member inline private _.OuterSource: ISource =
+        if isSignalOuter then
+            outerSignal :> ISource
+        else
+            outerMemo.Node :> ISource
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.CompareKeyGuarded(origin: INode, n: MemoNode, nextKey: 'T, previousFailure: Failure) : byte =
+        try
+            if ComparerSentinel.equals keyEqual lastKey nextKey then
+                1uy
+            else
+                0uy
+        with ex ->
+            CombinatorHelpers.clearActive n
+            n.FailureField <- n.Graph.FailureOf (ex, origin, previousFailure)
+            n.SetStatusError ()
+            2uy
+
+    member private this.ReadInner
+        (
+            g: Graph,
+            n: MemoNode,
+            origin: INode,
+            inner: Memo<'U>,
+            outputEqual: IEqualityComparer<'U>,
+            previous: 'U,
+            previousStatus: Status,
+            previousFailure: Failure,
+            previousPending: INode
+        ) : 'U =
+        let innerSlot = if n.SourcesField.Count > 1 then 1 else 0
+        CombinatorHelpers.refreshStaticSlot (g, n, innerSlot, fun () -> NodeOps.EnsureCurrent inner.Node)
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+            this.Moved <- false
+            previous
+        else
+            let st = inner.Node.Status
+
+            if StatusBits.isUnready st then
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st then
+                    let pendingNode = inner :> INode
+                    Tracer.Suspend (g, n, pendingNode)
+                    n.PendingSourceField <- pendingNode
+                    n.SetStatusPending ()
+                else
+                    n.FailureField <- inner.Node.FailureField
+                    n.SetStatusError ()
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, inner.PeekRaw, previousStatus, previousFailure)
+
+    override this.Execute(origin, n, outputEqual, previous, previousStatus, previousFailure, previousPending) =
+        let g = n.Graph
+
+        if not isSignalOuter then
+#if !RANVIER_TRACE
+            outerMemo.EnsureMaterializedIfClaimed ()
+#endif
+            ()
+
+        let outerSrc = this.OuterSource
+
+        if not outerLinked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, outerSrc)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                outerLinked <- true
+
+        if not isSignalOuter && not n.IsDisposed then
+            CombinatorHelpers.refreshStaticSlot (g, n, 0, fun () -> NodeOps.EnsureCurrent outerMemo.Node)
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+            this.Moved <- false
+            previous
+        else
+            let outerStatus = if isSignalOuter then Status.None else outerMemo.Node.Status
+
+            if StatusBits.isUnready outerStatus then
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending outerStatus then
+                    let pendingNode = outerMemo :> INode
+                    Tracer.Suspend (g, n, pendingNode)
+                    n.PendingSourceField <- pendingNode
+                    n.SetStatusPending ()
+                else
+                    n.FailureField <- outerMemo.Node.FailureField
+                    n.SetStatusError ()
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+            else
+                let nextKey =
+                    if isSignalOuter then
+                        outerSignal.Peek
+                    else
+                        outerMemo.PeekRaw
+
+                let keyCmp =
+                    if not hasKey then
+                        0uy
+                    elif SafeEquality.isSafe keyEqual then
+                        if ComparerSentinel.equals keyEqual lastKey nextKey then
+                            1uy
+                        else
+                            0uy
+                    else
+                        this.CompareKeyGuarded (origin, n, nextKey, previousFailure)
+
+                if keyCmp = 2uy then
+                    this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                    previous
+                elif keyCmp = 1uy then
+                    if not (Platform.isNull binderFailure) then
+                        CombinatorHelpers.clearActive n
+                        n.FailureField <- binderFailure
+                        n.SetStatusError ()
+                        this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                        previous
+                    else
+                        this.ReadInner (g, n, origin, innerMemo, outputEqual, previous, previousStatus, previousFailure, previousPending)
+                else
+                    lastKey <- nextKey
+                    hasKey <- true
+                    innerMemo <- Platform.nil ()
+                    binderFailure <- Platform.nil ()
+
+                    if n.SourcesField.Count > 1 then
+                        n.SourcesField.BeginRun ()
+                        NodeOps.AddSource (n, outerSrc)
+                        n.SourcesField.EndRun (n :> IComputation)
+
+                    if not (Platform.isNull (box n.ScopeField)) then
+                        g.Discharge n.ScopeField
+
+                    if n.IsDisposed then
+                        CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+                        this.Moved <- false
+                        previous
+                    else
+                        if g.HasLastRaised then
+                            g.ClearLastRaised ()
+
+                        let mutable nextInner: Memo<'U> = Platform.nil ()
+                        computing <- true
+
+#if FABLE_COMPILER
+                        let mutable bindEx: exn = Platform.nil ()
+
+                        try
+                            try
+                                nextInner <- g.RunUntrackedHostedArg (this :> IScopeHost, binder, nextKey)
+                            finally
+                                computing <- false
+                        with ex ->
+                            bindEx <- Thrown.hold ex
+
+                        let unwrappedEx =
+                            if Platform.isNull bindEx then
+                                Platform.nil ()
+                            else
+                                Thrown.take bindEx
+#else
+                        let hasJournal = not (Platform.isNull g.Journal)
+
+                        if hasJournal then
+                            g.Journal.EnterDerived ()
+
+                        let saved = g.EnterUntrackedHosted (this :> IScopeHost)
+
+                        let unwrappedEx =
+                            try
+                                nextInner <- binder nextKey
+                                null
+                            with ex ->
+                                ex
+
+                        g.LeaveUntrackedHosted saved
+
+                        if hasJournal then
+                            g.Journal.LeaveDerived ()
+
+                        computing <- false
+#endif
+
+                        if not (Platform.isNull unwrappedEx) then
+                            let f =
+                                CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.bindPending, unwrappedEx, previousFailure)
+
+                            binderFailure <- f
+                            this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                            previous
+                        elif n.IsDisposed then
+                            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+                            this.Moved <- false
+                            previous
+                        elif Platform.isNull (box nextInner) then
+                            CombinatorHelpers.clearActive n
+
+                            let f =
+                                g.FailureOf (NullReferenceException UntrackedPhase.nullBindReturn, origin, previousFailure)
+
+                            binderFailure <- f
+                            n.FailureField <- f
+                            n.SetStatusError ()
+                            this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                            previous
+                        elif not (obj.ReferenceEquals (nextInner.Graph, g)) then
+                            CombinatorHelpers.clearActive n
+
+                            let f =
+                                g.FailureOf (InvalidOperationException UntrackedPhase.crossGraphBind, origin, previousFailure)
+
+                            binderFailure <- f
+                            n.FailureField <- f
+                            n.SetStatusError ()
+                            this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                            previous
+                        else
+#if !RANVIER_TRACE
+                            nextInner.EnsureMaterializedIfClaimed ()
+#endif
+                            innerMemo <- nextInner
+                            n.SourcesField.BeginRun ()
+                            NodeOps.AddSource (n, outerSrc)
+                            NodeOps.AddSource (n, nextInner.Node :> ISource)
+
+                            if n.IsDisposed then
+                                n.SourcesField.Clear (n :> IComputation)
+                                CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, previousPending)
+                                this.Moved <- false
+                                previous
+                            else
+                                n.SourcesField.EndRun (n :> IComputation)
+
+                                this.ReadInner (g, n, origin, nextInner, outputEqual, previous, previousStatus, previousFailure, previousPending)
+
+    interface IScopeHost with
+        member _.CanOwn = computing
+
+        member _.Scope =
+            if computing then
+                if Platform.isNull (box node.ScopeField) then
+                    let s = new Owner (node.Graph.Root)
+                    node.ScopeField <- s
+                    Tracer.ScopeNew (s, node.Graph, node.NodeId)
+
+                    if node.IsDisposed then
+                        s.Dispose ()
+
+                node.ScopeField
+            else
+                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+
+#if !RANVIER_TRACE
+/// <summary>Outcome of evaluating a prefix of depth &gt;= 4 inside <c>FusedChainMap</c>.</summary>
+[<Struct; NoEquality; NoComparison>]
+type internal FusedPrefixOutcome<'T> =
+    val Tag: byte // 0uy = Cutoff, 1uy = Ready, 2uy = Pending, 3uy = Error
+    val Value: 'T
+    val MovedToUnready: bool
+
+    new(tag: byte, value: 'T, movedToUnready: bool) =
+        {
+            Tag = tag
+            Value = value
+            MovedToUnready = movedToUnready
+        }
+
+[<AbstractClass>]
+type internal FusedExtendable<'U>() =
+    inherit FusedRunner<'U>()
+
+    abstract Fuse<'Next> : prevMemo: Memo<'U> * mapping: ('U -> 'Next) -> struct (FusedExtendable<'Next> * byte)
+
+    abstract LinkRoot: n: MemoNode -> unit
+
+    abstract EvalPrefix: g: Graph * n: MemoNode * selfOrigin: INode * previousStatus: Status * previousFailure: Failure -> FusedPrefixOutcome<'U>
+
+    abstract DetachUnwarmedPrefix: selfMemo: Memo<'U> -> unit
+
+    abstract MaterializeWarmPrefix:
+        selfMemo: Memo<'U> *
+        tailFresh: int *
+        tailStatus: Status *
+        tailFailure: Failure *
+        hasSelfReady: bool *
+        hasSelfPublished: bool *
+        selfVal: 'U *
+        selfRuns: int ->
+            unit
+
+and [<AbstractClass; Sealed>] internal FusedStageHelpers =
+    static member inline runPureStage(g: Graph, n: MemoNode, f: 'A -> 'B, arg: 'A) : 'B =
+#if FABLE_COMPILER
+        let res = g.RunUntrackedPureArg (n :> IScopeHost, f, arg)
+
+        if (n.Flags &&& NodeFlags.Violated) <> 0 then
+            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+        res
+#else
+        let res = f arg
+
+        if (n.Flags &&& NodeFlags.Violated) <> 0 then
+            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+        res
+#endif
+
+    static member populateMaterializedStage<'T>
+        (
+            m: Memo<'T>,
+            runner1: obj,
+            kind1: byte,
+            upSource: ISource,
+            upPendingNode: INode,
+            isFirst: bool,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasReady: bool,
+            hasPublished: bool,
+            cachedVal: 'T,
+            stageRuns: int
+        ) =
+        m.RebindFused (runner1, kind1)
+        let nj = m.Node
+
+        if not nj.IsDisposed then
+            NodeOps.AddSource (nj, upSource)
+
+        nj.RunsField <- stageRuns
+        m.SetMaterializedValue cachedVal
+
+        let stageFresh =
+            if tailFresh = NodeFlags.FreshDirty then
+                if isFirst then
+                    NodeFlags.FreshDirty
+                else
+                    NodeFlags.FreshCheck
+            else
+                tailFresh
+
+        nj.Flags <-
+            (nj.Flags
+             &&& ~~~(NodeFlags.FreshMask
+                     ||| NodeFlags.StatusMask
+                     ||| NodeFlags.Unannounced))
+            ||| stageFresh
+            ||| (if hasPublished then NodeFlags.Published else 0)
+
+        if hasReady then
+            nj.PendingSourceField <- Platform.nil ()
+            nj.FailureField <- Platform.nil ()
+            nj.SetStatusNone ()
+        elif StatusBits.isPending tailStatus then
+            nj.FailureField <- Platform.nil ()
+            nj.PendingSourceField <- upPendingNode
+            nj.SetStatusPending ()
+        else
+            nj.PendingSourceField <- Platform.nil ()
+            nj.FailureField <- tailFailure
+            nj.SetStatusError ()
+
+    static member finishTailMaterialization<'Prev, 'U>
+        (tailMemo: Memo<'U>, predMemo: Memo<'Prev>, fTail: 'Prev -> 'U, tailFresh: int, tailStatus: Status)
+        =
+        let tn = tailMemo.Node
+
+        if not tn.IsDisposed then
+            NodeOps.AddSource (tn, predMemo.Node :> ISource)
+
+        if StatusBits.isPending tailStatus then
+            tn.PendingSourceField <- predMemo :> INode
+
+        if tailFresh = NodeFlags.FreshDirty then
+            tn.Flags <-
+                (tn.Flags &&& ~~~NodeFlags.FreshMask)
+                ||| NodeFlags.FreshCheck
+
+        tailMemo.RebindFused (box (FusedSourceMap1<'Prev, 'U>(MemoSource<'Prev>(predMemo), fTail, not tn.IsDisposed)), 7uy)
+
+/// <summary>1-stage fusable <c>Signal.map</c> runner (<c>computeKind = 6uy</c>).</summary>
+and [<Sealed>] internal FusedSignalMap1<'R, 'A>(sig0: Signal<'R>, f1: 'R -> 'A, initialLinked: bool) =
+    inherit FusedExtendable<'A>()
+
+    let mutable linked = initialLinked
+
+    override _.Fuse<'Next>(prevMemo: Memo<'A>, mapping: 'A -> 'Next) =
+        struct (FusedSignalMap2<'R, 'A, 'Next>(sig0, f1, prevMemo, mapping) :> FusedExtendable<'Next>, 6uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, sig0 :> ISource)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(origin, n, g, safeTailEq, outputEqual, previous) =
+        if g.HasLastRaised then
+            g.ClearLastRaised ()
+
+        g.EnterUntrackedPureTop (n :> IScopeHost)
+
+        n.Flags <-
+            (n.Flags
+             &&& ~~~(NodeFlags.FreshMask
+                     ||| NodeFlags.Unannounced
+                     ||| NodeFlags.ActiveMask))
+            ||| NodeFlags.ActiveBody
+
+        n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+        Counters.MemoRecomputed ()
+#endif
+
+        let mutable nextVal = Unchecked.defaultof<'A>
+        let mutable thrownEx: exn = Platform.nil ()
+
+        try
+            nextVal <- f1 sig0.Peek
+
+            if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+            if not safeTailEq then
+                ComparerSentinel.equals outputEqual previous nextVal
+                |> ignore
+        with ex ->
+#if FABLE_COMPILER
+            thrownEx <- Thrown.hold ex
+#else
+            thrownEx <- ex
+#endif
+
+        if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+            let ex = Thrown.take thrownEx
+#else
+            let ex = thrownEx
+#endif
+            CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, ex, null)
+            |> ignore
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTopFailed ()
+            previous
+        else
+            n.Flags <-
+                (n.Flags &&& ~~~NodeFlags.ActiveMask)
+                ||| NodeFlags.Published
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTop ()
+            nextVal
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+            Counters.MemoRecomputed ()
+#endif
+
+            if g.HasLastRaised then
+                g.ClearLastRaised ()
+
+            let mutable nextVal = Unchecked.defaultof<'A>
+
+#if FABLE_COMPILER
+            let mutable callEx: exn = Platform.nil ()
+
+            try
+                nextVal <- FusedStageHelpers.runPureStage (g, n, f1, sig0.Peek)
+            with ex ->
+                callEx <- Thrown.hold ex
+
+            if not (Platform.isNull callEx) then
+                CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, Thrown.take callEx, previousFailure)
+                |> ignore
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+#else
+            let saved = g.EnterUntrackedPure (n :> IScopeHost)
+
+            let callEx =
+                try
+                    nextVal <- FusedStageHelpers.runPureStage (g, n, f1, sig0.Peek)
+                    null
+                with ex ->
+                    ex
+
+            g.LeaveUntrackedPure saved
+
+            if not (Platform.isNull callEx) then
+                CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, callEx, previousFailure)
+                |> ignore
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+#endif
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(_g, _n, _selfOrigin, _prevStatus, _prevFailure) =
+        FusedPrefixOutcome<'A>(0uy, Unchecked.defaultof<'A>, false)
+
+    override this.DetachUnwarmedPrefix(_selfMemo: Memo<'A>) =
+        this.FusedNext <- Platform.nil ()
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'A>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'A,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+        linked <- not selfMemo.Node.IsDisposed
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box this,
+            6uy,
+            sig0 :> ISource,
+            sig0 :> INode,
+            true,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override _.MaterializeTail(_tailMemo: obj) = ()
+    override _.ClearIntermediates() = ()
+    override _.ReleaseBeforeUserDispose(_tailRuns: int) = ()
+
+/// <summary>2-stage unboxed <c>Signal.map |&gt; Memo.map</c> runner (<c>computeKind = 6uy</c>, Theorem B18).</summary>
+and [<Sealed>] internal FusedSignalMap2<'R, 'A, 'B>(sig0: Signal<'R>, f1: 'R -> 'A, m1: Memo<'A>, f2: 'A -> 'B) =
+    inherit FusedExtendable<'B>()
+
+    let eq1 = m1.EncodedEqual
+    let mutable val1 = Unchecked.defaultof<'A>
+    let mutable readyMask = 0uy
+    let mutable publishedMask = 0uy
+    let mutable runs1 = 0
+    let mutable linked = false
+
+    override _.Fuse<'Next>(prevMemo: Memo<'B>, mapping: 'B -> 'Next) =
+        struct (FusedSignalMap3<'R, 'A, 'B, 'Next>(sig0, f1, m1, f2, prevMemo, mapping) :> FusedExtendable<'Next>, 6uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, sig0 :> ISource)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(origin, n, g, safeTailEq, outputEqual, previous) =
+        if g.HasLastRaised then
+            g.ClearLastRaised ()
+
+        g.EnterUntrackedPureTop (n :> IScopeHost)
+
+        n.Flags <-
+            (n.Flags
+             &&& ~~~(NodeFlags.FreshMask
+                     ||| NodeFlags.Unannounced
+                     ||| NodeFlags.ActiveMask))
+            ||| NodeFlags.ActiveBody
+
+        let mutable stepIdx = 1
+        let mutable cutoff = false
+        let mutable nextVal = previous
+        let mutable thrownEx: exn = Platform.nil ()
+
+        try
+            runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+            Counters.MemoRecomputed ()
+#endif
+            let v1 = f1 sig0.Peek
+
+            if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+            if
+                (readyMask &&& 1uy) <> 0uy
+                && ComparerSentinel.equals eq1 val1 v1
+            then
+                cutoff <- true
+            else
+                val1 <- v1
+                readyMask <- 1uy
+                publishedMask <- 1uy
+                stepIdx <- 2
+                n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                let v2 = f2 v1
+
+                if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                if not safeTailEq then
+                    ComparerSentinel.equals outputEqual previous v2
+                    |> ignore
+
+                nextVal <- v2
+        with ex ->
+#if FABLE_COMPILER
+            thrownEx <- Thrown.hold ex
+#else
+            thrownEx <- ex
+#endif
+
+        if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+            let ex = Thrown.take thrownEx
+#else
+            let ex = thrownEx
+#endif
+            if stepIdx = 1 then
+                readyMask <- 0uy
+                n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+
+            let errOrigin = if stepIdx = 1 then m1 :> INode else origin
+
+            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, null)
+            |> ignore
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTopFailed ()
+            previous
+        else
+            n.Flags <-
+                if cutoff then
+                    n.Flags &&& ~~~NodeFlags.ActiveMask
+                else
+                    (n.Flags &&& ~~~NodeFlags.ActiveMask)
+                    ||| NodeFlags.Published
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTop ()
+            nextVal
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            if g.HasLastRaised then
+                g.ClearLastRaised ()
+
+            let prevRuns1 = runs1
+            let prevReady1 = (readyMask &&& 1uy) <> 0uy
+            let mutable stepIdx = 1
+            let mutable cutoff = false
+            let mutable nextVal = previous
+
+#if !FABLE_COMPILER
+            let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+            let mutable thrownEx: exn = Platform.nil ()
+
+            try
+                runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                let v1 = FusedStageHelpers.runPureStage (g, n, f1, sig0.Peek)
+
+                if prevReady1 && ComparerSentinel.equals eq1 val1 v1 then
+                    cutoff <- true
+                else
+                    val1 <- v1
+                    readyMask <- 1uy
+                    publishedMask <- 1uy
+                    stepIdx <- 2
+                    n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    nextVal <- FusedStageHelpers.runPureStage (g, n, f2, v1)
+            with ex ->
+#if FABLE_COMPILER
+                thrownEx <- Thrown.hold ex
+#else
+                thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+            g.LeaveUntrackedPure saved
+#endif
+
+            if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                let ex = Thrown.take thrownEx
+#else
+                let ex = thrownEx
+#endif
+                let errOrigin = if stepIdx = 1 then m1 :> INode else origin
+
+                if stepIdx = 1 then
+                    readyMask <- 0uy
+
+                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                |> ignore
+
+                let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                if
+                    stepIdx = 1
+                    && (prevRuns1 = 0 || prevReady1 || moved)
+                then
+                    n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+
+                this.Moved <- moved
+                previous
+            elif cutoff then
+                CombinatorHelpers.clearActive n
+                this.Moved <- false
+                previous
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(_g, _n, _selfOrigin, _prevStatus, _prevFailure) =
+        FusedPrefixOutcome<'B>(0uy, Unchecked.defaultof<'B>, false)
+
+    override this.DetachUnwarmedPrefix(selfMemo: Memo<'B>) =
+        this.FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        selfMemo.RebindFused (box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, false)), 7uy)
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'B>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'B,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+
+        (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+            .MaterializeWarmPrefix(m1, tailFresh, tailStatus, tailFailure, (readyMask &&& 1uy) <> 0uy, (publishedMask &&& 1uy) <> 0uy, val1, runs1)
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not selfMemo.Node.IsDisposed)),
+            7uy,
+            m1.Node :> ISource,
+            m1 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override this.MaterializeTail(tailObj: obj) =
+        let tailMemo = Platform.fastCast<Memo<'B>> tailObj
+        let tn = tailMemo.Node
+
+        if tn.RunsField = 0 then
+            this.DetachUnwarmedPrefix tailMemo
+        else
+            let tailFresh = tn.Flags &&& NodeFlags.FreshMask
+            let tailStatus = tn.Status
+            let tailFailure = tn.FailureField
+            tn.SourcesField.Clear (tn :> IComputation)
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    tailFresh,
+                    tailStatus,
+                    tailFailure,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            FusedStageHelpers.finishTailMaterialization (tailMemo, m1, f2, tailFresh, tailStatus)
+
+    override _.ClearIntermediates() =
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+
+    override _.ReleaseBeforeUserDispose(tailRuns: int) =
+        if tailRuns = 0 then
+            (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        else
+            let m1Node = m1.Node
+
+            let dummyFresh =
+                if (m1Node.Flags &&& NodeFlags.Disposed) = 0 then
+                    NodeFlags.FreshClean
+                else
+                    0
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    dummyFresh,
+                    (if (readyMask &&& 1uy) <> 0uy then
+                         Status.None
+                     else
+                         Status.Error),
+                    m1Node.FailureField,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+/// <summary>3-stage unboxed <c>Signal.map |&gt; Memo.map |&gt; Memo.map</c> runner (<c>computeKind = 6uy</c>, Theorem B18).</summary>
+and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R -> 'A, m1: Memo<'A>, f2: 'A -> 'B, m2: Memo<'B>, f3: 'B -> 'C) =
+    inherit FusedExtendable<'C>()
+
+    let eq1 = m1.EncodedEqual
+    let eq2 = m2.EncodedEqual
+    let mutable val1 = Unchecked.defaultof<'A>
+    let mutable val2 = Unchecked.defaultof<'B>
+    let mutable readyMask = 0uy
+    let mutable publishedMask = 0uy
+    let mutable runs1 = 0
+    let mutable runs2 = 0
+    let mutable linked = false
+
+    override _.Fuse<'Next>(prevMemo: Memo<'C>, mapping: 'C -> 'Next) =
+        struct (FusedSignalMap4<'R, 'A, 'B, 'C, 'Next>(sig0, f1, m1, f2, m2, f3, prevMemo, mapping) :> FusedExtendable<'Next>, 6uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, sig0 :> ISource)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(origin, n, g, safeTailEq, outputEqual, previous) =
+        if g.HasLastRaised then
+            g.ClearLastRaised ()
+
+        g.EnterUntrackedPureTop (n :> IScopeHost)
+
+        n.Flags <-
+            (n.Flags
+             &&& ~~~(NodeFlags.FreshMask
+                     ||| NodeFlags.Unannounced
+                     ||| NodeFlags.ActiveMask))
+            ||| NodeFlags.ActiveBody
+
+        let mutable stepIdx = 1
+        let mutable cutoff = false
+        let mutable nextVal = previous
+        let mutable thrownEx: exn = Platform.nil ()
+
+        try
+            runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+            Counters.MemoRecomputed ()
+#endif
+            let v1 = f1 sig0.Peek
+
+            if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+            if
+                (readyMask &&& 1uy) <> 0uy
+                && ComparerSentinel.equals eq1 val1 v1
+            then
+                cutoff <- true
+            else
+                val1 <- v1
+                readyMask <- readyMask ||| 1uy
+                publishedMask <- publishedMask ||| 1uy
+                stepIdx <- 2
+                runs2 <- runs2 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                let v2 = f2 v1
+
+                if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                if
+                    (readyMask &&& 2uy) <> 0uy
+                    && ComparerSentinel.equals eq2 val2 v2
+                then
+                    cutoff <- true
+                else
+                    val2 <- v2
+                    readyMask <- readyMask ||| 2uy
+                    publishedMask <- publishedMask ||| 2uy
+                    stepIdx <- 3
+                    n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    let v3 = f3 v2
+
+                    if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                    if not safeTailEq then
+                        ComparerSentinel.equals outputEqual previous v3
+                        |> ignore
+
+                    nextVal <- v3
+        with ex ->
+#if FABLE_COMPILER
+            thrownEx <- Thrown.hold ex
+#else
+            thrownEx <- ex
+#endif
+
+        if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+            let ex = Thrown.take thrownEx
+#else
+            let ex = thrownEx
+#endif
+            if stepIdx = 1 then
+                readyMask <- 0uy
+                runs2 <- runs2 + 1
+                n.RunsField <- n.RunsField + 1
+            elif stepIdx = 2 then
+                readyMask <- readyMask &&& 1uy
+                n.RunsField <- n.RunsField + 1
+
+            let errOrigin =
+                if stepIdx = 1 then m1 :> INode
+                elif stepIdx = 2 then m2 :> INode
+                else origin
+
+            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, null)
+            |> ignore
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTopFailed ()
+            previous
+        else
+            n.Flags <-
+                if cutoff then
+                    n.Flags &&& ~~~NodeFlags.ActiveMask
+                else
+                    (n.Flags &&& ~~~NodeFlags.ActiveMask)
+                    ||| NodeFlags.Published
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTop ()
+            nextVal
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            if g.HasLastRaised then
+                g.ClearLastRaised ()
+
+            let prevMask = readyMask
+            let prevRuns1 = runs1
+            let prevRuns2 = runs2
+            let mutable stepIdx = 1
+            let mutable cutoff = false
+            let mutable nextVal = previous
+
+#if !FABLE_COMPILER
+            let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+            let mutable thrownEx: exn = Platform.nil ()
+
+            try
+                runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                let v1 = FusedStageHelpers.runPureStage (g, n, f1, sig0.Peek)
+
+                if
+                    (prevMask &&& 1uy) <> 0uy
+                    && ComparerSentinel.equals eq1 val1 v1
+                then
+                    cutoff <- true
+                else
+                    val1 <- v1
+                    readyMask <- readyMask ||| 1uy
+                    publishedMask <- publishedMask ||| 1uy
+                    stepIdx <- 2
+                    runs2 <- runs2 + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    let v2 = FusedStageHelpers.runPureStage (g, n, f2, v1)
+
+                    if
+                        (prevMask &&& 2uy) <> 0uy
+                        && ComparerSentinel.equals eq2 val2 v2
+                    then
+                        cutoff <- true
+                    else
+                        val2 <- v2
+                        readyMask <- readyMask ||| 2uy
+                        publishedMask <- publishedMask ||| 2uy
+                        stepIdx <- 3
+                        n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        nextVal <- FusedStageHelpers.runPureStage (g, n, f3, v2)
+            with ex ->
+#if FABLE_COMPILER
+                thrownEx <- Thrown.hold ex
+#else
+                thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+            g.LeaveUntrackedPure saved
+#endif
+
+            if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                let ex = Thrown.take thrownEx
+#else
+                let ex = thrownEx
+#endif
+                if stepIdx = 1 then
+                    readyMask <- 0uy
+                elif stepIdx = 2 then
+                    readyMask <- readyMask &&& 1uy
+
+                let errOrigin =
+                    if stepIdx = 1 then m1 :> INode
+                    elif stepIdx = 2 then m2 :> INode
+                    else origin
+
+                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                |> ignore
+
+                let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                if
+                    stepIdx = 1
+                    && (prevRuns1 = 0
+                        || (prevMask &&& 1uy) <> 0uy
+                        || moved)
+                then
+                    runs2 <- runs2 + 1
+                    n.RunsField <- n.RunsField + 1
+                elif
+                    stepIdx = 2
+                    && (prevRuns2 = 0
+                        || (prevMask &&& 2uy) <> 0uy
+                        || moved)
+                then
+                    n.RunsField <- n.RunsField + 1
+
+                this.Moved <- moved
+                previous
+            elif cutoff then
+                CombinatorHelpers.clearActive n
+                this.Moved <- false
+                previous
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(_g, _n, _selfOrigin, _prevStatus, _prevFailure) =
+        FusedPrefixOutcome<'C>(0uy, Unchecked.defaultof<'C>, false)
+
+    override this.DetachUnwarmedPrefix(selfMemo: Memo<'C>) =
+        this.FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedExtendable<'B>> m2.ComputeObj).DetachUnwarmedPrefix m2
+        selfMemo.RebindFused (box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, false)), 7uy)
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'C>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'C,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+
+        (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+            .MaterializeWarmPrefix(m1, tailFresh, tailStatus, tailFailure, (readyMask &&& 1uy) <> 0uy, (publishedMask &&& 1uy) <> 0uy, val1, runs1)
+
+        FusedStageHelpers.populateMaterializedStage (
+            m2,
+            box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+            7uy,
+            m1.Node :> ISource,
+            m1 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            (readyMask &&& 2uy) <> 0uy,
+            (publishedMask &&& 2uy) <> 0uy,
+            val2,
+            runs2
+        )
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not selfMemo.Node.IsDisposed)),
+            7uy,
+            m2.Node :> ISource,
+            m2 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override this.MaterializeTail(tailObj: obj) =
+        let tailMemo = Platform.fastCast<Memo<'C>> tailObj
+        let tn = tailMemo.Node
+
+        if tn.RunsField = 0 then
+            this.DetachUnwarmedPrefix tailMemo
+        else
+            let tailFresh = tn.Flags &&& NodeFlags.FreshMask
+            let tailStatus = tn.Status
+            let tailFailure = tn.FailureField
+            tn.SourcesField.Clear (tn :> IComputation)
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    tailFresh,
+                    tailStatus,
+                    tailFailure,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                tailFresh,
+                tailStatus,
+                tailFailure,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+            FusedStageHelpers.finishTailMaterialization (tailMemo, m2, f3, tailFresh, tailStatus)
+
+    override _.ClearIntermediates() =
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+    override this.ReleaseBeforeUserDispose(tailRuns: int) =
+        if tailRuns = 0 then
+            (Platform.fastCast<FusedExtendable<'B>> m2.ComputeObj).DetachUnwarmedPrefix m2
+        else
+            let st =
+                if (readyMask &&& 2uy) <> 0uy then
+                    Status.None
+                else
+                    Status.Error
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    NodeFlags.FreshClean,
+                    st,
+                    m2.Node.FailureField,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                NodeFlags.FreshClean,
+                st,
+                m2.Node.FailureField,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+/// <summary>4-stage unboxed <c>Signal.map |&gt; Memo.map |&gt; Memo.map |&gt; Memo.map</c> runner (<c>computeKind = 6uy</c>, Theorem B18).</summary>
+and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
+    (sig0: Signal<'R>, f1: 'R -> 'A, m1: Memo<'A>, f2: 'A -> 'B, m2: Memo<'B>, f3: 'B -> 'C, m3: Memo<'C>, f4: 'C -> 'D) =
+    inherit FusedExtendable<'D>()
+
+    let eq1 = m1.EncodedEqual
+    let eq2 = m2.EncodedEqual
+    let eq3 = m3.EncodedEqual
+    let mutable val1 = Unchecked.defaultof<'A>
+    let mutable val2 = Unchecked.defaultof<'B>
+    let mutable val3 = Unchecked.defaultof<'C>
+    let mutable readyMask = 0uy
+    let mutable publishedMask = 0uy
+    let mutable runs1 = 0
+    let mutable runs2 = 0
+    let mutable runs3 = 0
+    let mutable linked = false
+
+    override this.Fuse<'Next>(prevMemo: Memo<'D>, mapping: 'D -> 'Next) =
+        struct (FusedChainMap<'D, 'Next>(this, prevMemo, mapping) :> FusedExtendable<'Next>, 7uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, sig0 :> ISource)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(origin, n, g, safeTailEq, outputEqual, previous) =
+        if g.HasLastRaised then
+            g.ClearLastRaised ()
+
+        g.EnterUntrackedPureTop (n :> IScopeHost)
+
+        n.Flags <-
+            (n.Flags
+             &&& ~~~(NodeFlags.FreshMask
+                     ||| NodeFlags.Unannounced
+                     ||| NodeFlags.ActiveMask))
+            ||| NodeFlags.ActiveBody
+
+        let mutable stepIdx = 1
+        let mutable cutoff = false
+        let mutable nextVal = previous
+        let mutable thrownEx: exn = Platform.nil ()
+
+        try
+            runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+            Counters.MemoRecomputed ()
+#endif
+            let v1 = f1 sig0.Peek
+
+            if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+            if
+                (readyMask &&& 1uy) <> 0uy
+                && ComparerSentinel.equals eq1 val1 v1
+            then
+                cutoff <- true
+            else
+                val1 <- v1
+                readyMask <- readyMask ||| 1uy
+                publishedMask <- publishedMask ||| 1uy
+                stepIdx <- 2
+                runs2 <- runs2 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                let v2 = f2 v1
+
+                if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                if
+                    (readyMask &&& 2uy) <> 0uy
+                    && ComparerSentinel.equals eq2 val2 v2
+                then
+                    cutoff <- true
+                else
+                    val2 <- v2
+                    readyMask <- readyMask ||| 2uy
+                    publishedMask <- publishedMask ||| 2uy
+                    stepIdx <- 3
+                    runs3 <- runs3 + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    let v3 = f3 v2
+
+                    if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                    if
+                        (readyMask &&& 4uy) <> 0uy
+                        && ComparerSentinel.equals eq3 val3 v3
+                    then
+                        cutoff <- true
+                    else
+                        val3 <- v3
+                        readyMask <- readyMask ||| 4uy
+                        publishedMask <- publishedMask ||| 4uy
+                        stepIdx <- 4
+                        n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        let v4 = f4 v3
+
+                        if (n.Flags &&& NodeFlags.Violated) <> 0 then
+                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                        if not safeTailEq then
+                            ComparerSentinel.equals outputEqual previous v4
+                            |> ignore
+
+                        nextVal <- v4
+        with ex ->
+#if FABLE_COMPILER
+            thrownEx <- Thrown.hold ex
+#else
+            thrownEx <- ex
+#endif
+
+        if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+            let ex = Thrown.take thrownEx
+#else
+            let ex = thrownEx
+#endif
+            if stepIdx = 1 then
+                readyMask <- 0uy
+                runs2 <- runs2 + 1
+                runs3 <- runs3 + 1
+                n.RunsField <- n.RunsField + 1
+            elif stepIdx = 2 then
+                readyMask <- readyMask &&& 1uy
+                runs3 <- runs3 + 1
+                n.RunsField <- n.RunsField + 1
+            elif stepIdx = 3 then
+                readyMask <- readyMask &&& 3uy
+                n.RunsField <- n.RunsField + 1
+
+            let errOrigin =
+                if stepIdx = 1 then m1 :> INode
+                elif stepIdx = 2 then m2 :> INode
+                elif stepIdx = 3 then m3 :> INode
+                else origin
+
+            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, null)
+            |> ignore
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTopFailed ()
+            previous
+        else
+            n.Flags <-
+                if cutoff then
+                    n.Flags &&& ~~~NodeFlags.ActiveMask
+                else
+                    (n.Flags &&& ~~~NodeFlags.ActiveMask)
+                    ||| NodeFlags.Published
+
+            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+                n.Flags <- n.Flags ||| NodeFlags.Unannounced
+                g.NoteStaleTransition ()
+
+            g.LeaveUntrackedPureTop ()
+            nextVal
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            if g.HasLastRaised then
+                g.ClearLastRaised ()
+
+            let prevMask = readyMask
+            let prevRuns1 = runs1
+            let prevRuns2 = runs2
+            let prevRuns3 = runs3
+            let mutable stepIdx = 1
+            let mutable cutoff = false
+            let mutable nextVal = previous
+
+#if !FABLE_COMPILER
+            let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+            let mutable thrownEx: exn = Platform.nil ()
+
+            try
+                runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                let v1 = FusedStageHelpers.runPureStage (g, n, f1, sig0.Peek)
+
+                if
+                    (prevMask &&& 1uy) <> 0uy
+                    && ComparerSentinel.equals eq1 val1 v1
+                then
+                    cutoff <- true
+                else
+                    val1 <- v1
+                    readyMask <- readyMask ||| 1uy
+                    publishedMask <- publishedMask ||| 1uy
+                    stepIdx <- 2
+                    runs2 <- runs2 + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    let v2 = FusedStageHelpers.runPureStage (g, n, f2, v1)
+
+                    if
+                        (prevMask &&& 2uy) <> 0uy
+                        && ComparerSentinel.equals eq2 val2 v2
+                    then
+                        cutoff <- true
+                    else
+                        val2 <- v2
+                        readyMask <- readyMask ||| 2uy
+                        publishedMask <- publishedMask ||| 2uy
+                        stepIdx <- 3
+                        runs3 <- runs3 + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        let v3 = FusedStageHelpers.runPureStage (g, n, f3, v2)
+
+                        if
+                            (prevMask &&& 4uy) <> 0uy
+                            && ComparerSentinel.equals eq3 val3 v3
+                        then
+                            cutoff <- true
+                        else
+                            val3 <- v3
+                            readyMask <- readyMask ||| 4uy
+                            publishedMask <- publishedMask ||| 4uy
+                            stepIdx <- 4
+                            n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                            Counters.MemoRecomputed ()
+#endif
+                            nextVal <- FusedStageHelpers.runPureStage (g, n, f4, v3)
+            with ex ->
+#if FABLE_COMPILER
+                thrownEx <- Thrown.hold ex
+#else
+                thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+            g.LeaveUntrackedPure saved
+#endif
+
+            if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                let ex = Thrown.take thrownEx
+#else
+                let ex = thrownEx
+#endif
+                if stepIdx = 1 then
+                    readyMask <- 0uy
+                elif stepIdx = 2 then
+                    readyMask <- readyMask &&& 1uy
+                elif stepIdx = 3 then
+                    readyMask <- readyMask &&& 3uy
+
+                let errOrigin =
+                    if stepIdx = 1 then m1 :> INode
+                    elif stepIdx = 2 then m2 :> INode
+                    elif stepIdx = 3 then m3 :> INode
+                    else origin
+
+                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                |> ignore
+
+                let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                if
+                    stepIdx = 1
+                    && (prevRuns1 = 0
+                        || (prevMask &&& 1uy) <> 0uy
+                        || moved)
+                then
+                    runs2 <- runs2 + 1
+                    runs3 <- runs3 + 1
+                    n.RunsField <- n.RunsField + 1
+                elif
+                    stepIdx = 2
+                    && (prevRuns2 = 0
+                        || (prevMask &&& 2uy) <> 0uy
+                        || moved)
+                then
+                    runs3 <- runs3 + 1
+                    n.RunsField <- n.RunsField + 1
+                elif
+                    stepIdx = 3
+                    && (prevRuns3 = 0
+                        || (prevMask &&& 4uy) <> 0uy
+                        || moved)
+                then
+                    n.RunsField <- n.RunsField + 1
+
+                this.Moved <- moved
+                previous
+            elif cutoff then
+                CombinatorHelpers.clearActive n
+                this.Moved <- false
+                previous
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(g, n, selfOrigin, previousStatus, previousFailure) =
+        let prevMask = readyMask
+        let prevRuns1 = runs1
+        let prevRuns2 = runs2
+        let prevRuns3 = runs3
+        let mutable stepIdx = 1
+        let mutable cutoff = false
+        let mutable nextVal = Unchecked.defaultof<'D>
+        let mutable thrownEx: exn = Platform.nil ()
+
+        try
+            runs1 <- runs1 + 1
+            let v1 = FusedStageHelpers.runPureStage (g, n, f1, sig0.Peek)
+
+            if
+                (prevMask &&& 1uy) <> 0uy
+                && ComparerSentinel.equals eq1 val1 v1
+            then
+                cutoff <- true
+            else
+                val1 <- v1
+                readyMask <- readyMask ||| 1uy
+                publishedMask <- publishedMask ||| 1uy
+                stepIdx <- 2
+                runs2 <- runs2 + 1
+                let v2 = FusedStageHelpers.runPureStage (g, n, f2, v1)
+
+                if
+                    (prevMask &&& 2uy) <> 0uy
+                    && ComparerSentinel.equals eq2 val2 v2
+                then
+                    cutoff <- true
+                else
+                    val2 <- v2
+                    readyMask <- readyMask ||| 2uy
+                    publishedMask <- publishedMask ||| 2uy
+                    stepIdx <- 3
+                    runs3 <- runs3 + 1
+                    let v3 = FusedStageHelpers.runPureStage (g, n, f3, v2)
+
+                    if
+                        (prevMask &&& 4uy) <> 0uy
+                        && ComparerSentinel.equals eq3 val3 v3
+                    then
+                        cutoff <- true
+                    else
+                        val3 <- v3
+                        readyMask <- readyMask ||| 4uy
+                        publishedMask <- publishedMask ||| 4uy
+                        stepIdx <- 4
+                        nextVal <- FusedStageHelpers.runPureStage (g, n, f4, v3)
+        with ex ->
+#if FABLE_COMPILER
+            thrownEx <- Thrown.hold ex
+#else
+            thrownEx <- ex
+#endif
+
+        if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+            let ex = Thrown.take thrownEx
+#else
+            let ex = thrownEx
+#endif
+            if stepIdx = 1 then
+                readyMask <- 0uy
+            elif stepIdx = 2 then
+                readyMask <- readyMask &&& 1uy
+            elif stepIdx = 3 then
+                readyMask <- readyMask &&& 3uy
+
+            let errOrigin =
+                if stepIdx = 1 then m1 :> INode
+                elif stepIdx = 2 then m2 :> INode
+                elif stepIdx = 3 then m3 :> INode
+                else selfOrigin
+
+            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+            |> ignore
+
+            let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+            if
+                stepIdx = 1
+                && (prevRuns1 = 0
+                    || (prevMask &&& 1uy) <> 0uy
+                    || moved)
+            then
+                runs2 <- runs2 + 1
+                runs3 <- runs3 + 1
+            elif
+                stepIdx = 2
+                && (prevRuns2 = 0
+                    || (prevMask &&& 2uy) <> 0uy
+                    || moved)
+            then
+                runs3 <- runs3 + 1
+
+            FusedPrefixOutcome<'D>(3uy, Unchecked.defaultof<'D>, moved)
+        elif cutoff then
+            FusedPrefixOutcome<'D>(0uy, Unchecked.defaultof<'D>, false)
+        else
+            FusedPrefixOutcome<'D>(1uy, nextVal, false)
+
+    override this.DetachUnwarmedPrefix(selfMemo: Memo<'D>) =
+        this.FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedExtendable<'C>> m3.ComputeObj).DetachUnwarmedPrefix m3
+        selfMemo.RebindFused (box (FusedSourceMap1<'C, 'D>(MemoSource<'C>(m3), f4, false)), 7uy)
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'D>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'D,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+
+        (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+            .MaterializeWarmPrefix(m1, tailFresh, tailStatus, tailFailure, (readyMask &&& 1uy) <> 0uy, (publishedMask &&& 1uy) <> 0uy, val1, runs1)
+
+        (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+        FusedStageHelpers.populateMaterializedStage (
+            m2,
+            box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+            7uy,
+            m1.Node :> ISource,
+            m1 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            (readyMask &&& 2uy) <> 0uy,
+            (publishedMask &&& 2uy) <> 0uy,
+            val2,
+            runs2
+        )
+
+        (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+        FusedStageHelpers.populateMaterializedStage (
+            m3,
+            box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not m3.Node.IsDisposed)),
+            7uy,
+            m2.Node :> ISource,
+            m2 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            (readyMask &&& 4uy) <> 0uy,
+            (publishedMask &&& 4uy) <> 0uy,
+            val3,
+            runs3
+        )
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box (FusedSourceMap1<'C, 'D>(MemoSource<'C>(m3), f4, not selfMemo.Node.IsDisposed)),
+            7uy,
+            m3.Node :> ISource,
+            m3 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override this.MaterializeTail(tailObj: obj) =
+        let tailMemo = Platform.fastCast<Memo<'D>> tailObj
+        let tn = tailMemo.Node
+
+        if tn.RunsField = 0 then
+            this.DetachUnwarmedPrefix tailMemo
+        else
+            let tailFresh = tn.Flags &&& NodeFlags.FreshMask
+            let tailStatus = tn.Status
+            let tailFailure = tn.FailureField
+            tn.SourcesField.Clear (tn :> IComputation)
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    tailFresh,
+                    tailStatus,
+                    tailFailure,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                tailFresh,
+                tailStatus,
+                tailFailure,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+            (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m3,
+                box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not m3.Node.IsDisposed)),
+                7uy,
+                m2.Node :> ISource,
+                m2 :> INode,
+                false,
+                tailFresh,
+                tailStatus,
+                tailFailure,
+                (readyMask &&& 4uy) <> 0uy,
+                (publishedMask &&& 4uy) <> 0uy,
+                val3,
+                runs3
+            )
+
+            FusedStageHelpers.finishTailMaterialization (tailMemo, m3, f4, tailFresh, tailStatus)
+
+    override _.ClearIntermediates() =
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+    override _.ReleaseBeforeUserDispose(tailRuns: int) =
+        if tailRuns = 0 then
+            (Platform.fastCast<FusedExtendable<'C>> m3.ComputeObj).DetachUnwarmedPrefix m3
+        else
+            let st =
+                if (readyMask &&& 4uy) <> 0uy then
+                    Status.None
+                else
+                    Status.Error
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    NodeFlags.FreshClean,
+                    st,
+                    m3.Node.FailureField,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                NodeFlags.FreshClean,
+                st,
+                m3.Node.FailureField,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+            (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m3,
+                box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not m3.Node.IsDisposed)),
+                7uy,
+                m2.Node :> ISource,
+                m2 :> INode,
+                false,
+                NodeFlags.FreshClean,
+                st,
+                m3.Node.FailureField,
+                (readyMask &&& 4uy) <> 0uy,
+                (publishedMask &&& 4uy) <> 0uy,
+                val3,
+                runs3
+            )
+
+/// <summary>1-stage fusable <c>map</c> runner over <c>CombinatorSource</c> (<c>computeKind = 7uy</c>).</summary>
+and [<Sealed>] internal FusedSourceMap1<'R, 'A>(root: CombinatorSource<'R>, f1: 'R -> 'A, initialLinked: bool) =
+    inherit FusedExtendable<'A>()
+
+    let mutable linked = initialLinked
+
+    override _.Fuse<'Next>(prevMemo: Memo<'A>, mapping: 'A -> 'Next) =
+        struct (FusedSourceMap2<'R, 'A, 'Next>(root, f1, prevMemo, mapping) :> FusedExtendable<'Next>, 7uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, root.Source)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(_origin, _n, _g, _safeTailEq, _outputEqual, previous) = previous
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticSlot (g, n, 0, fun () -> root.Refresh ())
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+            Counters.MemoRecomputed ()
+#endif
+            let st = root.Status
+
+            if StatusBits.isUnready st then
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st then
+                    n.FailureField <- Platform.nil ()
+                    n.PendingSourceField <- root.Node
+                    n.SetStatusPending ()
+                else
+                    n.PendingSourceField <- Platform.nil ()
+                    n.FailureField <- root.Failure
+                    n.SetStatusError ()
+
+                this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                previous
+            else
+                if g.HasLastRaised then
+                    g.ClearLastRaised ()
+
+                let mutable nextVal = Unchecked.defaultof<'A>
+
+#if !FABLE_COMPILER
+                let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+                let mutable thrownEx: exn = Platform.nil ()
+
+                try
+                    nextVal <- FusedStageHelpers.runPureStage (g, n, f1, root.Peek)
+                with ex ->
+#if FABLE_COMPILER
+                    thrownEx <- Thrown.hold ex
+#else
+                    thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+                g.LeaveUntrackedPure saved
+#endif
+
+                if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                    let ex = Thrown.take thrownEx
+#else
+                    let ex = thrownEx
+#endif
+                    CombinatorHelpers.recordCallbackFailure (g, n, origin, UntrackedPhase.mapPending, ex, previousFailure)
+                    |> ignore
+
+                    this.Moved <- CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                    previous
+                else
+                    CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(_g, _n, _selfOrigin, _prevStatus, _prevFailure) =
+        FusedPrefixOutcome<'A>(0uy, Unchecked.defaultof<'A>, false)
+
+    override this.DetachUnwarmedPrefix(_selfMemo: Memo<'A>) =
+        this.FusedNext <- Platform.nil ()
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'A>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'A,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+        linked <- not selfMemo.Node.IsDisposed
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box this,
+            7uy,
+            root.Source,
+            root.Node,
+            true,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override _.MaterializeTail(_tailMemo: obj) = ()
+    override _.ClearIntermediates() = ()
+    override _.ReleaseBeforeUserDispose(_tailRuns: int) = ()
+
+/// <summary>2-stage unboxed <c>map</c> runner over <c>CombinatorSource</c> (<c>computeKind = 7uy</c>, Theorem B18).</summary>
+and [<Sealed>] internal FusedSourceMap2<'R, 'A, 'B>(root: CombinatorSource<'R>, f1: 'R -> 'A, m1: Memo<'A>, f2: 'A -> 'B) =
+    inherit FusedExtendable<'B>()
+
+    let eq1 = m1.EncodedEqual
+    let mutable val1 = Unchecked.defaultof<'A>
+    let mutable readyMask = 0uy
+    let mutable publishedMask = 0uy
+    let mutable runs1 = 0
+    let mutable linked = false
+
+    override _.Fuse<'Next>(prevMemo: Memo<'B>, mapping: 'B -> 'Next) =
+        struct (FusedSourceMap3<'R, 'A, 'B, 'Next>(root, f1, m1, f2, prevMemo, mapping) :> FusedExtendable<'Next>, 7uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, root.Source)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(_origin, _n, _g, _safeTailEq, _outputEqual, previous) = previous
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticSlot (g, n, 0, fun () -> root.Refresh ())
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            let st = root.Status
+
+            if StatusBits.isUnready st then
+                let wasStage1Unready = (readyMask &&& 1uy) = 0uy && runs1 > 0
+                readyMask <- 0uy
+                runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st then
+                    n.FailureField <- Platform.nil ()
+                    n.PendingSourceField <- m1 :> INode
+                    n.SetStatusPending ()
+                    let moved = not (StatusBits.isPending previousStatus)
+
+                    if not wasStage1Unready || moved then
+                        n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+
+                    this.Moved <- moved
+                else
+                    let rf = root.Failure
+                    n.PendingSourceField <- Platform.nil ()
+                    n.FailureField <- rf
+                    n.SetStatusError ()
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if not wasStage1Unready || moved then
+                        n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+
+                    this.Moved <- moved
+
+                previous
+            else
+                if g.HasLastRaised then
+                    g.ClearLastRaised ()
+
+                let prevMask = readyMask
+                let prevRuns1 = runs1
+                let mutable stepIdx = 1
+                let mutable cutoff = false
+                let mutable nextVal = previous
+
+#if !FABLE_COMPILER
+                let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+                let mutable thrownEx: exn = Platform.nil ()
+
+                try
+                    runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    let v1 = FusedStageHelpers.runPureStage (g, n, f1, root.Peek)
+
+                    if
+                        (prevMask &&& 1uy) <> 0uy
+                        && ComparerSentinel.equals eq1 val1 v1
+                    then
+                        cutoff <- true
+                    else
+                        val1 <- v1
+                        readyMask <- 1uy
+                        publishedMask <- 1uy
+                        stepIdx <- 2
+                        n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        nextVal <- FusedStageHelpers.runPureStage (g, n, f2, v1)
+                with ex ->
+#if FABLE_COMPILER
+                    thrownEx <- Thrown.hold ex
+#else
+                    thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+                g.LeaveUntrackedPure saved
+#endif
+
+                if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                    let ex = Thrown.take thrownEx
+#else
+                    let ex = thrownEx
+#endif
+                    if stepIdx = 1 then
+                        readyMask <- 0uy
+
+                    let errOrigin = if stepIdx = 1 then m1 :> INode else origin
+
+                    CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                    |> ignore
+
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if
+                        stepIdx = 1
+                        && (prevRuns1 = 0
+                            || (prevMask &&& 1uy) <> 0uy
+                            || moved)
+                    then
+                        n.RunsField <- n.RunsField + 1
+
+                    this.Moved <- moved
+                    previous
+                elif cutoff then
+                    CombinatorHelpers.clearActive n
+                    this.Moved <- false
+                    previous
+                else
+                    CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(_g, _n, _selfOrigin, _prevStatus, _prevFailure) =
+        FusedPrefixOutcome<'B>(0uy, Unchecked.defaultof<'B>, false)
+
+    override this.DetachUnwarmedPrefix(selfMemo: Memo<'B>) =
+        this.FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        selfMemo.RebindFused (box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, false)), 7uy)
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'B>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'B,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+
+        (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+            .MaterializeWarmPrefix(m1, tailFresh, tailStatus, tailFailure, (readyMask &&& 1uy) <> 0uy, (publishedMask &&& 1uy) <> 0uy, val1, runs1)
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not selfMemo.Node.IsDisposed)),
+            7uy,
+            m1.Node :> ISource,
+            m1 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override this.MaterializeTail(tailObj: obj) =
+        let tailMemo = Platform.fastCast<Memo<'B>> tailObj
+        let tn = tailMemo.Node
+
+        if tn.RunsField = 0 then
+            this.DetachUnwarmedPrefix tailMemo
+        else
+            let tailFresh = tn.Flags &&& NodeFlags.FreshMask
+            let tailStatus = tn.Status
+            let tailFailure = tn.FailureField
+            tn.SourcesField.Clear (tn :> IComputation)
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    tailFresh,
+                    tailStatus,
+                    tailFailure,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            FusedStageHelpers.finishTailMaterialization (tailMemo, m1, f2, tailFresh, tailStatus)
+
+    override _.ClearIntermediates() =
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+
+    override _.ReleaseBeforeUserDispose(tailRuns: int) =
+        if tailRuns = 0 then
+            (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        else
+            let st =
+                if (readyMask &&& 1uy) <> 0uy then
+                    Status.None
+                else
+                    Status.Error
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    NodeFlags.FreshClean,
+                    st,
+                    m1.Node.FailureField,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+/// <summary>3-stage unboxed <c>map</c> runner over <c>CombinatorSource</c> (<c>computeKind = 7uy</c>, Theorem B18).</summary>
+and [<Sealed>] internal FusedSourceMap3<'R, 'A, 'B, 'C>
+    (root: CombinatorSource<'R>, f1: 'R -> 'A, m1: Memo<'A>, f2: 'A -> 'B, m2: Memo<'B>, f3: 'B -> 'C) =
+    inherit FusedExtendable<'C>()
+
+    let eq1 = m1.EncodedEqual
+    let eq2 = m2.EncodedEqual
+    let mutable val1 = Unchecked.defaultof<'A>
+    let mutable val2 = Unchecked.defaultof<'B>
+    let mutable readyMask = 0uy
+    let mutable publishedMask = 0uy
+    let mutable runs1 = 0
+    let mutable runs2 = 0
+    let mutable linked = false
+
+    override _.Fuse<'Next>(prevMemo: Memo<'C>, mapping: 'C -> 'Next) =
+        struct (FusedSourceMap4<'R, 'A, 'B, 'C, 'Next>(root, f1, m1, f2, m2, f3, prevMemo, mapping) :> FusedExtendable<'Next>, 7uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, root.Source)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(_origin, _n, _g, _safeTailEq, _outputEqual, previous) = previous
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticSlot (g, n, 0, fun () -> root.Refresh ())
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            let st = root.Status
+
+            if StatusBits.isUnready st then
+                let wasStage1Unready = (readyMask &&& 1uy) = 0uy && runs1 > 0
+                readyMask <- 0uy
+                runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st then
+                    n.FailureField <- Platform.nil ()
+                    n.PendingSourceField <- m2 :> INode
+                    n.SetStatusPending ()
+                    let moved = not (StatusBits.isPending previousStatus)
+
+                    if not wasStage1Unready || moved then
+                        runs2 <- runs2 + 1
+                        n.RunsField <- n.RunsField + 1
+
+                    this.Moved <- moved
+                else
+                    let rf = root.Failure
+                    n.PendingSourceField <- Platform.nil ()
+                    n.FailureField <- rf
+                    n.SetStatusError ()
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if not wasStage1Unready || moved then
+                        runs2 <- runs2 + 1
+                        n.RunsField <- n.RunsField + 1
+
+                    this.Moved <- moved
+
+                previous
+            else
+                if g.HasLastRaised then
+                    g.ClearLastRaised ()
+
+                let prevMask = readyMask
+                let prevRuns1 = runs1
+                let prevRuns2 = runs2
+                let mutable stepIdx = 1
+                let mutable cutoff = false
+                let mutable nextVal = previous
+
+#if !FABLE_COMPILER
+                let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+                let mutable thrownEx: exn = Platform.nil ()
+
+                try
+                    runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    let v1 = FusedStageHelpers.runPureStage (g, n, f1, root.Peek)
+
+                    if
+                        (prevMask &&& 1uy) <> 0uy
+                        && ComparerSentinel.equals eq1 val1 v1
+                    then
+                        cutoff <- true
+                    else
+                        val1 <- v1
+                        readyMask <- readyMask ||| 1uy
+                        publishedMask <- publishedMask ||| 1uy
+                        stepIdx <- 2
+                        runs2 <- runs2 + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        let v2 = FusedStageHelpers.runPureStage (g, n, f2, v1)
+
+                        if
+                            (prevMask &&& 2uy) <> 0uy
+                            && ComparerSentinel.equals eq2 val2 v2
+                        then
+                            cutoff <- true
+                        else
+                            val2 <- v2
+                            readyMask <- readyMask ||| 2uy
+                            publishedMask <- publishedMask ||| 2uy
+                            stepIdx <- 3
+                            n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                            Counters.MemoRecomputed ()
+#endif
+                            nextVal <- FusedStageHelpers.runPureStage (g, n, f3, v2)
+                with ex ->
+#if FABLE_COMPILER
+                    thrownEx <- Thrown.hold ex
+#else
+                    thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+                g.LeaveUntrackedPure saved
+#endif
+
+                if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                    let ex = Thrown.take thrownEx
+#else
+                    let ex = thrownEx
+#endif
+                    if stepIdx = 1 then
+                        readyMask <- 0uy
+                    elif stepIdx = 2 then
+                        readyMask <- readyMask &&& 1uy
+
+                    let errOrigin =
+                        if stepIdx = 1 then m1 :> INode
+                        elif stepIdx = 2 then m2 :> INode
+                        else origin
+
+                    CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                    |> ignore
+
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if
+                        stepIdx = 1
+                        && (prevRuns1 = 0
+                            || (prevMask &&& 1uy) <> 0uy
+                            || moved)
+                    then
+                        runs2 <- runs2 + 1
+                        n.RunsField <- n.RunsField + 1
+                    elif
+                        stepIdx = 2
+                        && (prevRuns2 = 0
+                            || (prevMask &&& 2uy) <> 0uy
+                            || moved)
+                    then
+                        n.RunsField <- n.RunsField + 1
+
+                    this.Moved <- moved
+                    previous
+                elif cutoff then
+                    CombinatorHelpers.clearActive n
+                    this.Moved <- false
+                    previous
+                else
+                    CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(_g, _n, _selfOrigin, _prevStatus, _prevFailure) =
+        FusedPrefixOutcome<'C>(0uy, Unchecked.defaultof<'C>, false)
+
+    override this.DetachUnwarmedPrefix(selfMemo: Memo<'C>) =
+        this.FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedExtendable<'B>> m2.ComputeObj).DetachUnwarmedPrefix m2
+        selfMemo.RebindFused (box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, false)), 7uy)
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'C>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'C,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+
+        (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+            .MaterializeWarmPrefix(m1, tailFresh, tailStatus, tailFailure, (readyMask &&& 1uy) <> 0uy, (publishedMask &&& 1uy) <> 0uy, val1, runs1)
+
+        (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+        FusedStageHelpers.populateMaterializedStage (
+            m2,
+            box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+            7uy,
+            m1.Node :> ISource,
+            m1 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            (readyMask &&& 2uy) <> 0uy,
+            (publishedMask &&& 2uy) <> 0uy,
+            val2,
+            runs2
+        )
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not selfMemo.Node.IsDisposed)),
+            7uy,
+            m2.Node :> ISource,
+            m2 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override this.MaterializeTail(tailObj: obj) =
+        let tailMemo = Platform.fastCast<Memo<'C>> tailObj
+        let tn = tailMemo.Node
+
+        if tn.RunsField = 0 then
+            this.DetachUnwarmedPrefix tailMemo
+        else
+            let tailFresh = tn.Flags &&& NodeFlags.FreshMask
+            let tailStatus = tn.Status
+            let tailFailure = tn.FailureField
+            tn.SourcesField.Clear (tn :> IComputation)
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    tailFresh,
+                    tailStatus,
+                    tailFailure,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                tailFresh,
+                tailStatus,
+                tailFailure,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+            FusedStageHelpers.finishTailMaterialization (tailMemo, m2, f3, tailFresh, tailStatus)
+
+    override _.ClearIntermediates() =
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+    override _.ReleaseBeforeUserDispose(tailRuns: int) =
+        if tailRuns = 0 then
+            (Platform.fastCast<FusedExtendable<'B>> m2.ComputeObj).DetachUnwarmedPrefix m2
+        else
+            let st =
+                if (readyMask &&& 2uy) <> 0uy then
+                    Status.None
+                else
+                    Status.Error
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    NodeFlags.FreshClean,
+                    st,
+                    m2.Node.FailureField,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                NodeFlags.FreshClean,
+                st,
+                m2.Node.FailureField,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+/// <summary>4-stage unboxed <c>map</c> runner over <c>CombinatorSource</c> (<c>computeKind = 7uy</c>, Theorem B18).</summary>
+and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
+    (root: CombinatorSource<'R>, f1: 'R -> 'A, m1: Memo<'A>, f2: 'A -> 'B, m2: Memo<'B>, f3: 'B -> 'C, m3: Memo<'C>, f4: 'C -> 'D) =
+    inherit FusedExtendable<'D>()
+
+    let eq1 = m1.EncodedEqual
+    let eq2 = m2.EncodedEqual
+    let eq3 = m3.EncodedEqual
+    let mutable val1 = Unchecked.defaultof<'A>
+    let mutable val2 = Unchecked.defaultof<'B>
+    let mutable val3 = Unchecked.defaultof<'C>
+    let mutable readyMask = 0uy
+    let mutable publishedMask = 0uy
+    let mutable runs1 = 0
+    let mutable runs2 = 0
+    let mutable runs3 = 0
+    let mutable linked = false
+
+    override this.Fuse<'Next>(prevMemo: Memo<'D>, mapping: 'D -> 'Next) =
+        struct (FusedChainMap<'D, 'Next>(this, prevMemo, mapping) :> FusedExtendable<'Next>, 7uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        if not linked then
+            n.SourcesField.BeginRun ()
+            NodeOps.AddSource (n, root.Source)
+
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                linked <- true
+
+    override _.EvalSignalLeaf(_origin, _n, _g, _safeTailEq, _outputEqual, previous) = previous
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticSlot (g, n, 0, fun () -> root.Refresh ())
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        else
+            let st = root.Status
+
+            if StatusBits.isUnready st then
+                let wasStage1Unready = (readyMask &&& 1uy) = 0uy && runs1 > 0
+                readyMask <- 0uy
+                runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                Counters.MemoRecomputed ()
+#endif
+                CombinatorHelpers.clearActive n
+
+                if StatusBits.isPending st then
+                    n.FailureField <- Platform.nil ()
+                    n.PendingSourceField <- m3 :> INode
+                    n.SetStatusPending ()
+                    let moved = not (StatusBits.isPending previousStatus)
+
+                    if not wasStage1Unready || moved then
+                        runs2 <- runs2 + 1
+                        runs3 <- runs3 + 1
+                        n.RunsField <- n.RunsField + 1
+
+                    this.Moved <- moved
+                else
+                    let rf = root.Failure
+                    n.PendingSourceField <- Platform.nil ()
+                    n.FailureField <- rf
+                    n.SetStatusError ()
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if not wasStage1Unready || moved then
+                        runs2 <- runs2 + 1
+                        runs3 <- runs3 + 1
+                        n.RunsField <- n.RunsField + 1
+
+                    this.Moved <- moved
+
+                previous
+            else
+                if g.HasLastRaised then
+                    g.ClearLastRaised ()
+
+                let prevMask = readyMask
+                let prevRuns1 = runs1
+                let prevRuns2 = runs2
+                let prevRuns3 = runs3
+                let mutable stepIdx = 1
+                let mutable cutoff = false
+                let mutable nextVal = previous
+
+#if !FABLE_COMPILER
+                let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+                let mutable thrownEx: exn = Platform.nil ()
+
+                try
+                    runs1 <- runs1 + 1
+#if RANVIER_COUNTERS
+                    Counters.MemoRecomputed ()
+#endif
+                    let v1 = FusedStageHelpers.runPureStage (g, n, f1, root.Peek)
+
+                    if
+                        (prevMask &&& 1uy) <> 0uy
+                        && ComparerSentinel.equals eq1 val1 v1
+                    then
+                        cutoff <- true
+                    else
+                        val1 <- v1
+                        readyMask <- readyMask ||| 1uy
+                        publishedMask <- publishedMask ||| 1uy
+                        stepIdx <- 2
+                        runs2 <- runs2 + 1
+#if RANVIER_COUNTERS
+                        Counters.MemoRecomputed ()
+#endif
+                        let v2 = FusedStageHelpers.runPureStage (g, n, f2, v1)
+
+                        if
+                            (prevMask &&& 2uy) <> 0uy
+                            && ComparerSentinel.equals eq2 val2 v2
+                        then
+                            cutoff <- true
+                        else
+                            val2 <- v2
+                            readyMask <- readyMask ||| 2uy
+                            publishedMask <- publishedMask ||| 2uy
+                            stepIdx <- 3
+                            runs3 <- runs3 + 1
+#if RANVIER_COUNTERS
+                            Counters.MemoRecomputed ()
+#endif
+                            let v3 = FusedStageHelpers.runPureStage (g, n, f3, v2)
+
+                            if
+                                (prevMask &&& 4uy) <> 0uy
+                                && ComparerSentinel.equals eq3 val3 v3
+                            then
+                                cutoff <- true
+                            else
+                                val3 <- v3
+                                readyMask <- readyMask ||| 4uy
+                                publishedMask <- publishedMask ||| 4uy
+                                stepIdx <- 4
+                                n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+                                Counters.MemoRecomputed ()
+#endif
+                                nextVal <- FusedStageHelpers.runPureStage (g, n, f4, v3)
+                with ex ->
+#if FABLE_COMPILER
+                    thrownEx <- Thrown.hold ex
+#else
+                    thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+                g.LeaveUntrackedPure saved
+#endif
+
+                if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                    let ex = Thrown.take thrownEx
+#else
+                    let ex = thrownEx
+#endif
+                    if stepIdx = 1 then
+                        readyMask <- 0uy
+                    elif stepIdx = 2 then
+                        readyMask <- readyMask &&& 1uy
+                    elif stepIdx = 3 then
+                        readyMask <- readyMask &&& 3uy
+
+                    let errOrigin =
+                        if stepIdx = 1 then m1 :> INode
+                        elif stepIdx = 2 then m2 :> INode
+                        elif stepIdx = 3 then m3 :> INode
+                        else origin
+
+                    CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                    |> ignore
+
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if
+                        stepIdx = 1
+                        && (prevRuns1 = 0
+                            || (prevMask &&& 1uy) <> 0uy
+                            || moved)
+                    then
+                        runs2 <- runs2 + 1
+                        runs3 <- runs3 + 1
+                        n.RunsField <- n.RunsField + 1
+                    elif
+                        stepIdx = 2
+                        && (prevRuns2 = 0
+                            || (prevMask &&& 2uy) <> 0uy
+                            || moved)
+                    then
+                        runs3 <- runs3 + 1
+                        n.RunsField <- n.RunsField + 1
+                    elif
+                        stepIdx = 3
+                        && (prevRuns3 = 0
+                            || (prevMask &&& 4uy) <> 0uy
+                            || moved)
+                    then
+                        n.RunsField <- n.RunsField + 1
+
+                    this.Moved <- moved
+                    previous
+                elif cutoff then
+                    CombinatorHelpers.clearActive n
+                    this.Moved <- false
+                    previous
+                else
+                    CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override _.EvalPrefix(g, n, selfOrigin, previousStatus, previousFailure) =
+        if not n.IsDisposed then
+            CombinatorHelpers.refreshStaticSlot (g, n, 0, fun () -> root.Refresh ())
+
+        if n.IsDisposed then
+            FusedPrefixOutcome<'D>(0uy, Unchecked.defaultof<'D>, false)
+        else
+            let st = root.Status
+
+            if StatusBits.isUnready st then
+                let wasStage1Unready = (readyMask &&& 1uy) = 0uy && runs1 > 0
+                readyMask <- 0uy
+                runs1 <- runs1 + 1
+
+                if StatusBits.isPending st then
+                    n.FailureField <- Platform.nil ()
+                    n.SetStatusPending ()
+                    let moved = not (StatusBits.isPending previousStatus)
+
+                    if not wasStage1Unready || moved then
+                        runs2 <- runs2 + 1
+                        runs3 <- runs3 + 1
+
+                    FusedPrefixOutcome<'D>(2uy, Unchecked.defaultof<'D>, not wasStage1Unready || moved)
+                else
+                    n.PendingSourceField <- Platform.nil ()
+                    n.FailureField <- root.Failure
+                    n.SetStatusError ()
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if not wasStage1Unready || moved then
+                        runs2 <- runs2 + 1
+                        runs3 <- runs3 + 1
+
+                    FusedPrefixOutcome<'D>(3uy, Unchecked.defaultof<'D>, not wasStage1Unready || moved)
+            else
+                let prevMask = readyMask
+                let prevRuns1 = runs1
+                let prevRuns2 = runs2
+                let mutable stepIdx = 1
+                let mutable cutoff = false
+                let mutable nextVal = Unchecked.defaultof<'D>
+                let mutable thrownEx: exn = Platform.nil ()
+
+                try
+                    runs1 <- runs1 + 1
+                    let v1 = FusedStageHelpers.runPureStage (g, n, f1, root.Peek)
+
+                    if
+                        (prevMask &&& 1uy) <> 0uy
+                        && ComparerSentinel.equals eq1 val1 v1
+                    then
+                        cutoff <- true
+                    else
+                        val1 <- v1
+                        readyMask <- readyMask ||| 1uy
+                        publishedMask <- publishedMask ||| 1uy
+                        stepIdx <- 2
+                        runs2 <- runs2 + 1
+                        let v2 = FusedStageHelpers.runPureStage (g, n, f2, v1)
+
+                        if
+                            (prevMask &&& 2uy) <> 0uy
+                            && ComparerSentinel.equals eq2 val2 v2
+                        then
+                            cutoff <- true
+                        else
+                            val2 <- v2
+                            readyMask <- readyMask ||| 2uy
+                            publishedMask <- publishedMask ||| 2uy
+                            stepIdx <- 3
+                            runs3 <- runs3 + 1
+                            let v3 = FusedStageHelpers.runPureStage (g, n, f3, v2)
+
+                            if
+                                (prevMask &&& 4uy) <> 0uy
+                                && ComparerSentinel.equals eq3 val3 v3
+                            then
+                                cutoff <- true
+                            else
+                                val3 <- v3
+                                readyMask <- readyMask ||| 4uy
+                                publishedMask <- publishedMask ||| 4uy
+                                stepIdx <- 4
+                                nextVal <- FusedStageHelpers.runPureStage (g, n, f4, v3)
+                with ex ->
+#if FABLE_COMPILER
+                    thrownEx <- Thrown.hold ex
+#else
+                    thrownEx <- ex
+#endif
+
+                if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                    let ex = Thrown.take thrownEx
+#else
+                    let ex = thrownEx
+#endif
+                    if stepIdx = 1 then
+                        readyMask <- 0uy
+                    elif stepIdx = 2 then
+                        readyMask <- readyMask &&& 1uy
+                    elif stepIdx = 3 then
+                        readyMask <- readyMask &&& 3uy
+
+                    let errOrigin =
+                        if stepIdx = 1 then m1 :> INode
+                        elif stepIdx = 2 then m2 :> INode
+                        elif stepIdx = 3 then m3 :> INode
+                        else selfOrigin
+
+                    CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                    |> ignore
+
+                    let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                    if
+                        stepIdx = 1
+                        && (prevRuns1 = 0
+                            || (prevMask &&& 1uy) <> 0uy
+                            || moved)
+                    then
+                        runs2 <- runs2 + 1
+                        runs3 <- runs3 + 1
+                    elif
+                        stepIdx = 2
+                        && (prevRuns2 = 0
+                            || (prevMask &&& 2uy) <> 0uy
+                            || moved)
+                    then
+                        runs3 <- runs3 + 1
+
+                    FusedPrefixOutcome<'D>(3uy, Unchecked.defaultof<'D>, moved)
+                elif cutoff then
+                    FusedPrefixOutcome<'D>(0uy, Unchecked.defaultof<'D>, false)
+                else
+                    FusedPrefixOutcome<'D>(1uy, nextVal, false)
+
+    override this.DetachUnwarmedPrefix(selfMemo: Memo<'D>) =
+        this.FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedExtendable<'C>> m3.ComputeObj).DetachUnwarmedPrefix m3
+        selfMemo.RebindFused (box (FusedSourceMap1<'C, 'D>(MemoSource<'C>(m3), f4, false)), 7uy)
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'D>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'D,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+
+        (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+            .MaterializeWarmPrefix(m1, tailFresh, tailStatus, tailFailure, (readyMask &&& 1uy) <> 0uy, (publishedMask &&& 1uy) <> 0uy, val1, runs1)
+
+        (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+        FusedStageHelpers.populateMaterializedStage (
+            m2,
+            box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+            7uy,
+            m1.Node :> ISource,
+            m1 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            (readyMask &&& 2uy) <> 0uy,
+            (publishedMask &&& 2uy) <> 0uy,
+            val2,
+            runs2
+        )
+
+        (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+        FusedStageHelpers.populateMaterializedStage (
+            m3,
+            box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not m3.Node.IsDisposed)),
+            7uy,
+            m2.Node :> ISource,
+            m2 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            (readyMask &&& 4uy) <> 0uy,
+            (publishedMask &&& 4uy) <> 0uy,
+            val3,
+            runs3
+        )
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box (FusedSourceMap1<'C, 'D>(MemoSource<'C>(m3), f4, not selfMemo.Node.IsDisposed)),
+            7uy,
+            m3.Node :> ISource,
+            m3 :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override this.MaterializeTail(tailObj: obj) =
+        let tailMemo = Platform.fastCast<Memo<'D>> tailObj
+        let tn = tailMemo.Node
+
+        if tn.RunsField = 0 then
+            this.DetachUnwarmedPrefix tailMemo
+        else
+            let tailFresh = tn.Flags &&& NodeFlags.FreshMask
+            let tailStatus = tn.Status
+            let tailFailure = tn.FailureField
+            tn.SourcesField.Clear (tn :> IComputation)
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    tailFresh,
+                    tailStatus,
+                    tailFailure,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                tailFresh,
+                tailStatus,
+                tailFailure,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+            (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m3,
+                box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not m3.Node.IsDisposed)),
+                7uy,
+                m2.Node :> ISource,
+                m2 :> INode,
+                false,
+                tailFresh,
+                tailStatus,
+                tailFailure,
+                (readyMask &&& 4uy) <> 0uy,
+                (publishedMask &&& 4uy) <> 0uy,
+                val3,
+                runs3
+            )
+
+            FusedStageHelpers.finishTailMaterialization (tailMemo, m3, f4, tailFresh, tailStatus)
+
+    override _.ClearIntermediates() =
+        (Platform.fastCast<FusedRunner<'A>> m1.ComputeObj).FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+        (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+    override _.ReleaseBeforeUserDispose(tailRuns: int) =
+        if tailRuns = 0 then
+            (Platform.fastCast<FusedExtendable<'C>> m3.ComputeObj).DetachUnwarmedPrefix m3
+        else
+            let st =
+                if (readyMask &&& 4uy) <> 0uy then
+                    Status.None
+                else
+                    Status.Error
+
+            (Platform.fastCast<FusedExtendable<'A>> m1.ComputeObj)
+                .MaterializeWarmPrefix(
+                    m1,
+                    NodeFlags.FreshClean,
+                    st,
+                    m3.Node.FailureField,
+                    (readyMask &&& 1uy) <> 0uy,
+                    (publishedMask &&& 1uy) <> 0uy,
+                    val1,
+                    runs1
+                )
+
+            (Platform.fastCast<FusedRunner<'B>> m2.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m2,
+                box (FusedSourceMap1<'A, 'B>(MemoSource<'A>(m1), f2, not m2.Node.IsDisposed)),
+                7uy,
+                m1.Node :> ISource,
+                m1 :> INode,
+                false,
+                NodeFlags.FreshClean,
+                st,
+                m3.Node.FailureField,
+                (readyMask &&& 2uy) <> 0uy,
+                (publishedMask &&& 2uy) <> 0uy,
+                val2,
+                runs2
+            )
+
+            (Platform.fastCast<FusedRunner<'C>> m3.ComputeObj).FusedNext <- Platform.nil ()
+
+            FusedStageHelpers.populateMaterializedStage (
+                m3,
+                box (FusedSourceMap1<'B, 'C>(MemoSource<'B>(m2), f3, not m3.Node.IsDisposed)),
+                7uy,
+                m2.Node :> ISource,
+                m2 :> INode,
+                false,
+                NodeFlags.FreshClean,
+                st,
+                m3.Node.FailureField,
+                (readyMask &&& 4uy) <> 0uy,
+                (publishedMask &&& 4uy) <> 0uy,
+                val3,
+                runs3
+            )
+
+/// <summary>Typed stage-&gt;=5 extension over a 4-stage (or deeper) <c>FusedExtendable</c> prefix (zero boxing).</summary>
+and [<Sealed>] internal FusedChainMap<'Prev, 'U>(prefix: FusedExtendable<'Prev>, prevMemo: Memo<'Prev>, fTail: 'Prev -> 'U) =
+    inherit FusedExtendable<'U>()
+
+    let eqPrev = prevMemo.EncodedEqual
+    let mutable prevVal = Unchecked.defaultof<'Prev>
+    let mutable hasPrevReady = false
+    let mutable hasPrevPublished = false
+    let mutable prevRuns = 0
+
+    override this.Fuse<'Next>(curMemo: Memo<'U>, mapping: 'U -> 'Next) =
+        struct (FusedChainMap<'U, 'Next>(this, curMemo, mapping) :> FusedExtendable<'Next>, 7uy)
+
+    override _.LinkRoot(n: MemoNode) =
+        prefix.LinkRoot n
+
+    override _.EvalSignalLeaf(_origin, _n, _g, _safeTailEq, _outputEqual, previous) = previous
+
+    override this.EvalPrefix(g, n, selfOrigin, previousStatus, previousFailure) =
+        let outcome =
+            prefix.EvalPrefix (g, n, prevMemo :> INode, previousStatus, previousFailure)
+
+        if outcome.Tag = 0uy then
+            FusedPrefixOutcome<'U>(0uy, Unchecked.defaultof<'U>, false)
+        elif outcome.Tag = 2uy || outcome.Tag = 3uy then
+            let wasUnready = not hasPrevReady && prevRuns > 0
+            hasPrevReady <- false
+
+            if outcome.MovedToUnready || not wasUnready then
+                prevRuns <- prevRuns + 1
+
+            FusedPrefixOutcome<'U>(outcome.Tag, Unchecked.defaultof<'U>, outcome.MovedToUnready || not wasUnready)
+        else
+            let wasReady = hasPrevReady
+            let vPrev = outcome.Value
+            prevRuns <- prevRuns + 1
+
+            let mutable stepIdx = 0
+            let mutable cutoff = false
+            let mutable nextVal = Unchecked.defaultof<'U>
+            let mutable thrownEx: exn = Platform.nil ()
+
+            try
+                if
+                    wasReady
+                    && ComparerSentinel.equals eqPrev prevVal vPrev
+                then
+                    cutoff <- true
+                else
+                    prevVal <- vPrev
+                    hasPrevReady <- true
+                    hasPrevPublished <- true
+                    stepIdx <- 1
+                    nextVal <- FusedStageHelpers.runPureStage (g, n, fTail, vPrev)
+            with ex ->
+#if FABLE_COMPILER
+                thrownEx <- Thrown.hold ex
+#else
+                thrownEx <- ex
+#endif
+
+            if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                let ex = Thrown.take thrownEx
+#else
+                let ex = thrownEx
+#endif
+                if stepIdx = 0 then
+                    hasPrevReady <- false
+
+                let errOrigin = if stepIdx = 0 then prevMemo :> INode else selfOrigin
+
+                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                |> ignore
+
+                let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+                FusedPrefixOutcome<'U>(3uy, Unchecked.defaultof<'U>, moved)
+            elif cutoff then
+                FusedPrefixOutcome<'U>(0uy, Unchecked.defaultof<'U>, false)
+            else
+                FusedPrefixOutcome<'U>(1uy, nextVal, false)
+
+    override this.ExecuteFused(origin, n, outputEqual, previous, previousStatus, previousFailure) =
+        let g = n.Graph
+        this.LinkRoot n
+
+        if g.HasLastRaised then
+            g.ClearLastRaised ()
+
+#if !FABLE_COMPILER
+        let saved = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+        let outcome =
+            try
+                prefix.EvalPrefix (g, n, prevMemo :> INode, previousStatus, previousFailure)
+            finally
+#if !FABLE_COMPILER
+                g.LeaveUntrackedPure saved
+#else
+                ()
+#endif
+
+        if n.IsDisposed then
+            CombinatorHelpers.restoreDisposedState (n, previousStatus, previousFailure, n.PendingSourceField)
+            this.Moved <- false
+            previous
+        elif outcome.Tag = 0uy then
+            CombinatorHelpers.clearActive n
+            this.Moved <- false
+            previous
+        elif outcome.Tag = 2uy then
+            let wasUnready = not hasPrevReady && prevRuns > 0
+            hasPrevReady <- false
+
+            if outcome.MovedToUnready || not wasUnready then
+                prevRuns <- prevRuns + 1
+                n.RunsField <- n.RunsField + 1
+
+            n.PendingSourceField <- prevMemo :> INode
+            CombinatorHelpers.clearActive n
+            this.Moved <- not (StatusBits.isPending previousStatus)
+            previous
+        elif outcome.Tag = 3uy then
+            let wasUnready = not hasPrevReady && prevRuns > 0
+            hasPrevReady <- false
+            let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+            if outcome.MovedToUnready || not wasUnready || moved then
+                prevRuns <- prevRuns + 1
+                n.RunsField <- n.RunsField + 1
+
+            CombinatorHelpers.clearActive n
+            this.Moved <- moved
+            previous
+        else
+            let wasReady = hasPrevReady
+            let prevRunsBefore = prevRuns
+            let vPrev = outcome.Value
+            prevRuns <- prevRuns + 1
+            let mutable stepIdx = 0
+            let mutable cutoff = false
+            let mutable nextVal = previous
+
+#if !FABLE_COMPILER
+            let savedTail = g.EnterUntrackedPure (n :> IScopeHost)
+#endif
+            let mutable thrownEx: exn = Platform.nil ()
+
+            try
+                if
+                    wasReady
+                    && ComparerSentinel.equals eqPrev prevVal vPrev
+                then
+                    cutoff <- true
+                else
+                    prevVal <- vPrev
+                    hasPrevReady <- true
+                    hasPrevPublished <- true
+                    stepIdx <- 1
+                    n.RunsField <- n.RunsField + 1
+                    nextVal <- FusedStageHelpers.runPureStage (g, n, fTail, vPrev)
+            with ex ->
+#if FABLE_COMPILER
+                thrownEx <- Thrown.hold ex
+#else
+                thrownEx <- ex
+#endif
+
+#if !FABLE_COMPILER
+            g.LeaveUntrackedPure savedTail
+#endif
+
+            if not (Platform.isNull thrownEx) then
+#if FABLE_COMPILER
+                let ex = Thrown.take thrownEx
+#else
+                let ex = thrownEx
+#endif
+                if stepIdx = 0 then
+                    hasPrevReady <- false
+
+                let errOrigin = if stepIdx = 0 then prevMemo :> INode else origin
+
+                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
+                |> ignore
+
+                let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
+
+                if
+                    stepIdx = 0
+                    && (prevRunsBefore = 0 || wasReady || moved)
+                then
+                    n.RunsField <- n.RunsField + 1
+
+                this.Moved <- moved
+                previous
+            elif cutoff then
+                CombinatorHelpers.clearActive n
+                this.Moved <- false
+                previous
+            else
+                CombinatorHelpers.finishReady (this, g, n, origin, outputEqual, previous, nextVal, previousStatus, previousFailure)
+
+    override this.DetachUnwarmedPrefix(selfMemo: Memo<'U>) =
+        this.FusedNext <- Platform.nil ()
+        prefix.DetachUnwarmedPrefix prevMemo
+        selfMemo.RebindFused (box (FusedSourceMap1<'Prev, 'U>(MemoSource<'Prev>(prevMemo), fTail, false)), 7uy)
+
+    override this.MaterializeWarmPrefix
+        (
+            selfMemo: Memo<'U>,
+            tailFresh: int,
+            tailStatus: Status,
+            tailFailure: Failure,
+            hasSelfReady: bool,
+            hasSelfPublished: bool,
+            selfVal: 'U,
+            selfRuns: int
+        ) =
+        this.FusedNext <- Platform.nil ()
+
+        prefix.MaterializeWarmPrefix (prevMemo, tailFresh, tailStatus, tailFailure, hasPrevReady, hasPrevPublished, prevVal, prevRuns)
+
+        FusedStageHelpers.populateMaterializedStage (
+            selfMemo,
+            box (FusedSourceMap1<'Prev, 'U>(MemoSource<'Prev>(prevMemo), fTail, not selfMemo.Node.IsDisposed)),
+            7uy,
+            prevMemo.Node :> ISource,
+            prevMemo :> INode,
+            false,
+            tailFresh,
+            tailStatus,
+            tailFailure,
+            hasSelfReady,
+            hasSelfPublished,
+            selfVal,
+            selfRuns
+        )
+
+    override this.MaterializeTail(tailObj: obj) =
+        let tailMemo = Platform.fastCast<Memo<'U>> tailObj
+        let tn = tailMemo.Node
+
+        if tn.RunsField = 0 then
+            this.DetachUnwarmedPrefix tailMemo
+        else
+            let tailFresh = tn.Flags &&& NodeFlags.FreshMask
+            let tailStatus = tn.Status
+            let tailFailure = tn.FailureField
+            tn.SourcesField.Clear (tn :> IComputation)
+
+            prefix.MaterializeWarmPrefix (prevMemo, tailFresh, tailStatus, tailFailure, hasPrevReady, hasPrevPublished, prevVal, prevRuns)
+
+            FusedStageHelpers.finishTailMaterialization (tailMemo, prevMemo, fTail, tailFresh, tailStatus)
+
+    override _.ClearIntermediates() =
+        prefix.ClearIntermediates ()
+        prefix.FusedNext <- Platform.nil ()
+
+    override _.ReleaseBeforeUserDispose(tailRuns: int) =
+        if tailRuns = 0 then
+            prefix.DetachUnwarmedPrefix prevMemo
+        else
+            let st = if hasPrevReady then Status.None else Status.Error
+
+            prefix.MaterializeWarmPrefix (
+                prevMemo,
+                NodeFlags.FreshClean,
+                st,
+                prevMemo.Node.FailureField,
+                hasPrevReady,
+                hasPrevPublished,
+                prevVal,
+                prevRuns
+            )
+#endif
+
+/// <summary>
+/// Factory entry points backing the public <c>Signal</c>, <c>Memo</c>, <c>AsyncSource</c>, <c>AsyncMemo</c>, and
+/// <c>StreamMemo</c> modules.
+/// </summary>
+module internal CombinatorMemos =
+    let createSignalMap (mapping: 'T -> 'U) (source: Signal<'T>) : Memo<'U> =
+        if UntrackedPhase.isNullFn1 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'U>()
+#if !RANVIER_TRACE
+                if Platform.isNull g.Journal then
+                    let runner = FusedSignalMap1<'T, 'U>(source, mapping, false)
+                    Memo<'U>.CreateCombinator(g, box runner, 6uy, eq)
+                else
+                    let runner = SignalMapState<'T, 'U>(source, mapping)
+                    Memo<'U>.CreateCombinator(g, box runner, 5uy, eq)
+#else
+                let runner = SignalMapState<'T, 'U>(source, mapping)
+                Memo<'U>.CreateCombinator(g, box runner, 5uy, eq)
+#endif
+        )
+
+    let createMemoMap (mapping: 'T -> 'U) (source: Memo<'T>) : Memo<'U> =
+        if UntrackedPhase.isNullFn1 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'U>()
+#if !RANVIER_TRACE
+                if Platform.isNull g.Journal then
+                    let targetOwner = g.CurrentOwner
+
+                    if
+                        source.ComputeKind >= 6uy
+                        && not source.Node.IsDisposed
+                        && source.Node.RunsField = 0
+                        && source.Node.ObserverCount = 0
+                        && not targetOwner.IsDisposed
+                        && obj.ReferenceEquals (source.Node.Owner, targetOwner)
+                        && not (Platform.fastCast<FusedRunner<'T>> source.ComputeObj).IsClaimed
+                    then
+                        let prevRunner = Platform.fastCast<FusedExtendable<'T>> source.ComputeObj
+                        let struct (nextRunner, nextKind) = prevRunner.Fuse<'U>(source, mapping)
+                        let tail = Memo<'U>.CreateCombinator(g, box nextRunner, nextKind, eq)
+                        prevRunner.FusedNext <- tail :> IFusedChainNode
+                        tail
+                    else
+                        source.EnsureMaterializedIfClaimed ()
+                        let runner = FusedSourceMap1<'T, 'U>(MemoSource<'T>(source), mapping, false)
+                        Memo<'U>.CreateCombinator(g, box runner, 7uy, eq)
+                else
+                    source.EnsureMaterializedIfClaimed ()
+                    let runner = SourceMapState<'T, 'U>(MemoSource<'T>(source), mapping)
+                    Memo<'U>.CreateCombinator(g, box runner, 5uy, eq)
+#else
+                let runner = SourceMapState<'T, 'U>(MemoSource<'T>(source), mapping)
+                Memo<'U>.CreateCombinator(g, box runner, 5uy, eq)
+#endif
+        )
+
+    let createSourceMap (mapping: 'T -> 'U) (src: CombinatorSource<'T>) : Memo<'U> =
+        let g = src.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'U>()
+#if !RANVIER_TRACE
+                if Platform.isNull g.Journal then
+                    let runner = FusedSourceMap1<'T, 'U>(src, mapping, false)
+                    Memo<'U>.CreateCombinator(g, box runner, 7uy, eq)
+                else
+                    let runner = SourceMapState<'T, 'U>(src, mapping)
+                    Memo<'U>.CreateCombinator(g, box runner, 5uy, eq)
+#else
+                let runner = SourceMapState<'T, 'U>(src, mapping)
+                Memo<'U>.CreateCombinator(g, box runner, 5uy, eq)
+#endif
+        )
+
+    let createSignalMap2 (mapping: 'A -> 'B -> 'C) (source1: Signal<'A>) (source2: Signal<'B>) : Memo<'C> =
+        if UntrackedPhase.isNullFn2 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        let g = source1.Graph
+
+        if not (obj.ReferenceEquals (g, source2.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+        let adapted = UntrackedPhase.adaptMap2 mapping
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'C>()
+                let runner = SignalMap2State<'A, 'B, 'C>(source1, source2, adapted)
+                Memo<'C>.CreateCombinator(g, box runner, 5uy, eq)
+        )
+
+    let createMemoMap2 (mapping: 'A -> 'B -> 'C) (source1: Memo<'A>) (source2: Memo<'B>) : Memo<'C> =
+        if UntrackedPhase.isNullFn2 mapping then
+            nullArg (nameof mapping)
+
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        let g = source1.Graph
+
+        if not (obj.ReferenceEquals (g, source2.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+        let adapted = UntrackedPhase.adaptMap2 mapping
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'C>()
+                let runner = MemoMap2State<'A, 'B, 'C>(source1, source2, adapted)
+                Memo<'C>.CreateCombinator(g, box runner, 5uy, eq)
+        )
+
+    let createSourceMap2 (mapping: 'A -> 'B -> 'C) (s1: CombinatorSource<'A>) (s2: CombinatorSource<'B>) : Memo<'C> =
+        let g = s1.Graph
+
+        if not (obj.ReferenceEquals (g, s2.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+        let adapted = UntrackedPhase.adaptMap2 mapping
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'C>()
+                let runner = SourceMap2State<'A, 'B, 'C>(s1, s2, adapted)
+                Memo<'C>.CreateCombinator(g, box runner, 5uy, eq)
+        )
+
+    let createSignalZip (source1: Signal<'A>) (source2: Signal<'B>) : Memo<'A * 'B> =
+#if FABLE_COMPILER
+        createSignalMap2 (fun a b -> a, b) source1 source2
+#else
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        let g = source1.Graph
+
+        if not (obj.ReferenceEquals (g, source2.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'A * 'B>()
+
+                let runner =
+                    SignalMap2State<'A, 'B, 'A * 'B>(source1, source2, ZipPair<'A, 'B>.Adapted)
+
+                Memo<'A * 'B>.CreateCombinator(g, box runner, 5uy, eq)
+        )
+#endif
+
+    let createMemoZip (source1: Memo<'A>) (source2: Memo<'B>) : Memo<'A * 'B> =
+#if FABLE_COMPILER
+        createMemoMap2 (fun a b -> a, b) source1 source2
+#else
+        if Platform.isNull (box source1) then
+            nullArg (nameof source1)
+
+        if Platform.isNull (box source2) then
+            nullArg (nameof source2)
+
+        let g = source1.Graph
+
+        if not (obj.ReferenceEquals (g, source2.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'A * 'B>()
+
+                let runner =
+                    MemoMap2State<'A, 'B, 'A * 'B>(source1, source2, ZipPair<'A, 'B>.Adapted)
+
+                Memo<'A * 'B>.CreateCombinator(g, box runner, 5uy, eq)
+        )
+#endif
+
+    let createSourceZip (s1: CombinatorSource<'A>) (s2: CombinatorSource<'B>) : Memo<'A * 'B> =
+#if FABLE_COMPILER
+        createSourceMap2 (fun a b -> a, b) s1 s2
+#else
+        let g = s1.Graph
+
+        if not (obj.ReferenceEquals (g, s2.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphNodes)
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'A * 'B>()
+                let runner = SourceMap2State<'A, 'B, 'A * 'B>(s1, s2, ZipPair<'A, 'B>.Adapted)
+                Memo<'A * 'B>.CreateCombinator(g, box runner, 5uy, eq)
+        )
+#endif
+
+    let createSignalBind (binder: 'T -> Memo<'U>) (source: Signal<'T>) : Memo<'U> =
+        if UntrackedPhase.isNullFn1 binder then
+            nullArg (nameof binder)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'U>()
+                let state = SplitBindState<'T, 'U>(g, source, Platform.nil (), binder)
+                let memo = Memo<'U>.CreateCombinator(g, box state, 5uy, eq)
+                state.Bind memo.Node
+                memo
+        )
+
+    let createMemoBind (binder: 'T -> Memo<'U>) (source: Memo<'T>) : Memo<'U> =
+        if UntrackedPhase.isNullFn1 binder then
+            nullArg (nameof binder)
+
+        if Platform.isNull (box source) then
+            nullArg (nameof source)
+
+        let g = source.Graph
+
+        g.Entered (
+            "Creating a node",
+            fun () ->
+                let eq = g.EncodedComparer<'U>()
+                let state = SplitBindState<'T, 'U>(g, Platform.nil (), source, binder)
+                let memo = Memo<'U>.CreateCombinator(g, box state, 5uy, eq)
+                state.Bind memo.Node
+                memo
+        )

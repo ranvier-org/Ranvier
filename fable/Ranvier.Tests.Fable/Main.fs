@@ -116,6 +116,8 @@ let all =
             testList "Streams.fs (sources)" [ Ranvier.Tests.Streams.converterTests ]
             testList "Streams.fs (traces)" [ Ranvier.Tests.Streams.traceTests ]
             testList "StreamSplit.fs" [ Ranvier.Tests.StreamSplit.tests ]
+            testList "ValueCombinators.fs" [ Ranvier.Tests.ValueCombinators.tests ]
+            testList "MapFusion.fs" [ Ranvier.Tests.MapFusion.tests ]
             testList "Texts.fs" [ Ranvier.Tests.Texts.tests ]
             testList "Journal.fs" [ Ranvier.Tests.InputJournal.tests ]
             testList "FailureOrigins.fs" [ Ranvier.Tests.FailureOrigins.tests ]

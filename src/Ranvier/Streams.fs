@@ -1410,6 +1410,8 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
     /// <summary>The node the current failure originated in while <c>Status</c> has <c>Error</c>, otherwise null.</summary>
     member _.ErrorOrigin: INode = Failure.OriginOf failure
 
+    member inline internal _.Failure = failure
+
     /// <summary>Tracks and reads the published state; raises while it is pending or failed.</summary>
 #if FABLE_COMPILER
     member this.Value: 'S =
