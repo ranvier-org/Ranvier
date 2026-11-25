@@ -13717,14 +13717,15 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
                 && not g.QueuePending
                 && g.CanPullTopDirect ()
             then
-                let needsSettle =
-                    try
-                        runner.EvalSignalLeaf (box this, n, g, SafeEquality.isSafe equal, equal, value)
-                    with _ ->
-                        g.CloseLeafPureBody ()
-                        n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
-                        g.ExitPullFastOnException ()
-                        reraise ()
+                let mutable needsSettle = false
+
+                try
+                    needsSettle <- runner.EvalSignalLeaf (box this, n, g, SafeEquality.isSafe equal, equal, value)
+                with _ ->
+                    g.CloseLeafPureBody ()
+                    n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
+                    g.ExitPullFastOnException ()
+                    reraise ()
 
                 if needsSettle then
                     this.SettlePullAndRead ()
@@ -17864,6 +17865,35 @@ module internal CombinatorHelpers =
         f
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    let recordFusedFailure (g: Graph, n: MemoNode, origin: INode, isComparer: bool, ex: exn, previousFailure: Failure) : unit =
+        clearActive n
+
+        let err =
+            if isComparer then
+                if isViolated n then
+                    clearViolated n
+
+                ex
+            elif isViolated n then
+                clearViolated n
+                ScopeMessages.failure ScopeMode.Pure ex
+            else
+                UntrackedPhase.wrapPending UntrackedPhase.mapPending ex
+
+        let reusablePrev =
+            if
+                not (Platform.isNull previousFailure)
+                && obj.ReferenceEquals (previousFailure.Origin, origin)
+            then
+                previousFailure
+            else
+                Platform.nil ()
+
+        n.PendingSourceField <- Platform.nil ()
+        n.FailureField <- g.FailureOf (err, origin, reusablePrev)
+        n.SetStatusError ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
     let compareOutputGuarded
         (
             runner: MemoOnRunner<'U>,
@@ -19671,14 +19701,12 @@ and [<Sealed>] internal FusedSignalMap2<'R, 'A, 'B>(sig0: Signal<'R>, f1: 'R -> 
             if activeStep = 255uy then
                 deFusedVal1 <- v1
             else
-                let same1 =
-                    if prevReady1 then
-                        deFusedCmp1 <- 2y
-                        let eqRes = ComparerSentinel.equals eq1 val1 v1
-                        deFusedCmp1 <- -1y
-                        eqRes
-                    else
-                        false
+                let mutable same1 = false
+
+                if prevReady1 then
+                    deFusedCmp1 <- 2y
+                    same1 <- ComparerSentinel.equals eq1 val1 v1
+                    deFusedCmp1 <- -1y
 
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
@@ -19750,9 +19778,7 @@ and [<Sealed>] internal FusedSignalMap2<'R, 'A, 'B>(sig0: Signal<'R>, f1: 'R -> 
 #endif
 
             let errOrigin = if stepIdx = 1 then m1 :> INode else tailMemo :> INode
-
-            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, null)
-            |> ignore
+            CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp1 = 2y, ex, null)
 
             if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
                 n.Flags <- n.Flags ||| NodeFlags.Unannounced
@@ -19803,14 +19829,12 @@ and [<Sealed>] internal FusedSignalMap2<'R, 'A, 'B>(sig0: Signal<'R>, f1: 'R -> 
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
                 else
-                    let same1 =
-                        if prevReady1 then
-                            deFusedCmp1 <- 2y
-                            let eqRes = ComparerSentinel.equals eq1 val1 v1
-                            deFusedCmp1 <- -1y
-                            eqRes
-                        else
-                            false
+                    let mutable same1 = false
+
+                    if prevReady1 then
+                        deFusedCmp1 <- 2y
+                        same1 <- ComparerSentinel.equals eq1 val1 v1
+                        deFusedCmp1 <- -1y
 
                     if activeStep = 255uy then
                         deFusedVal1 <- v1
@@ -19867,8 +19891,7 @@ and [<Sealed>] internal FusedSignalMap2<'R, 'A, 'B>(sig0: Signal<'R>, f1: 'R -> 
                 if stepIdx = 1 then
                     readyMask <- 0uy
 
-                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                |> ignore
+                CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp1 = 2y, ex, previousFailure)
 
                 let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -20121,14 +20144,12 @@ and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R
             if activeStep = 255uy then
                 deFusedVal1 <- v1
             else
-                let same1 =
-                    if (prevMask &&& 1uy) <> 0uy then
-                        deFusedCmp <- 2y
-                        let eqRes = ComparerSentinel.equals eq1 val1 v1
-                        deFusedCmp <- -1y
-                        eqRes
-                    else
-                        false
+                let mutable same1 = false
+
+                if (prevMask &&& 1uy) <> 0uy then
+                    deFusedCmp <- 2y
+                    same1 <- ComparerSentinel.equals eq1 val1 v1
+                    deFusedCmp <- -1y
 
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
@@ -20153,14 +20174,12 @@ and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R
                     if activeStep = 255uy then
                         deFusedVal2 <- v2
                     else
-                        let same2 =
-                            if (prevMask &&& 2uy) <> 0uy then
-                                deFusedCmp <- 2y
-                                let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                deFusedCmp <- -1y
-                                eqRes
-                            else
-                                false
+                        let mutable same2 = false
+
+                        if (prevMask &&& 2uy) <> 0uy then
+                            deFusedCmp <- 2y
+                            same2 <- ComparerSentinel.equals eq2 val2 v2
+                            deFusedCmp <- -1y
 
                         if activeStep = 255uy then
                             deFusedVal2 <- v2
@@ -20247,8 +20266,7 @@ and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R
                 elif stepIdx = 2 then m2 :> INode
                 else tailMemo :> INode
 
-            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, null)
-            |> ignore
+            CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, null)
 
             if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
                 n.Flags <- n.Flags ||| NodeFlags.Unannounced
@@ -20301,14 +20319,12 @@ and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
                 else
-                    let same1 =
-                        if (prevMask &&& 1uy) <> 0uy then
-                            deFusedCmp <- 2y
-                            let eqRes = ComparerSentinel.equals eq1 val1 v1
-                            deFusedCmp <- -1y
-                            eqRes
-                        else
-                            false
+                    let mutable same1 = false
+
+                    if (prevMask &&& 1uy) <> 0uy then
+                        deFusedCmp <- 2y
+                        same1 <- ComparerSentinel.equals eq1 val1 v1
+                        deFusedCmp <- -1y
 
                     if activeStep = 255uy then
                         deFusedVal1 <- v1
@@ -20330,14 +20346,12 @@ and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R
                         if activeStep = 255uy then
                             deFusedVal2 <- v2
                         else
-                            let same2 =
-                                if (prevMask &&& 2uy) <> 0uy then
-                                    deFusedCmp <- 2y
-                                    let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                    deFusedCmp <- -1y
-                                    eqRes
-                                else
-                                    false
+                            let mutable same2 = false
+
+                            if (prevMask &&& 2uy) <> 0uy then
+                                deFusedCmp <- 2y
+                                same2 <- ComparerSentinel.equals eq2 val2 v2
+                                deFusedCmp <- -1y
 
                             if activeStep = 255uy then
                                 deFusedVal2 <- v2
@@ -20402,8 +20416,7 @@ and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R
                     elif stepIdx = 2 then m2 :> INode
                     else origin
 
-                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                |> ignore
+                CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, previousFailure)
 
                 let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -20862,14 +20875,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
             if activeStep = 255uy then
                 deFusedVal1 <- v1
             else
-                let same1 =
-                    if (prevMask &&& 1uy) <> 0uy then
-                        deFusedCmp <- 2y
-                        let eqRes = ComparerSentinel.equals eq1 val1 v1
-                        deFusedCmp <- -1y
-                        eqRes
-                    else
-                        false
+                let mutable same1 = false
+
+                if (prevMask &&& 1uy) <> 0uy then
+                    deFusedCmp <- 2y
+                    same1 <- ComparerSentinel.equals eq1 val1 v1
+                    deFusedCmp <- -1y
 
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
@@ -20894,14 +20905,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                     if activeStep = 255uy then
                         deFusedVal2 <- v2
                     else
-                        let same2 =
-                            if (prevMask &&& 2uy) <> 0uy then
-                                deFusedCmp <- 2y
-                                let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                deFusedCmp <- -1y
-                                eqRes
-                            else
-                                false
+                        let mutable same2 = false
+
+                        if (prevMask &&& 2uy) <> 0uy then
+                            deFusedCmp <- 2y
+                            same2 <- ComparerSentinel.equals eq2 val2 v2
+                            deFusedCmp <- -1y
 
                         if activeStep = 255uy then
                             deFusedVal2 <- v2
@@ -20926,14 +20935,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                             if activeStep = 255uy then
                                 deFusedVal3 <- v3
                             else
-                                let same3 =
-                                    if (prevMask &&& 4uy) <> 0uy then
-                                        deFusedCmp <- 2y
-                                        let eqRes = ComparerSentinel.equals eq3 val3 v3
-                                        deFusedCmp <- -1y
-                                        eqRes
-                                    else
-                                        false
+                                let mutable same3 = false
+
+                                if (prevMask &&& 4uy) <> 0uy then
+                                    deFusedCmp <- 2y
+                                    same3 <- ComparerSentinel.equals eq3 val3 v3
+                                    deFusedCmp <- -1y
 
                                 if activeStep = 255uy then
                                     deFusedVal3 <- v3
@@ -21033,8 +21040,7 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                 elif stepIdx = 3 then m3 :> INode
                 else tailMemo :> INode
 
-            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, null)
-            |> ignore
+            CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, null)
 
             if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
                 n.Flags <- n.Flags ||| NodeFlags.Unannounced
@@ -21089,14 +21095,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
                 else
-                    let same1 =
-                        if (prevMask &&& 1uy) <> 0uy then
-                            deFusedCmp <- 2y
-                            let eqRes = ComparerSentinel.equals eq1 val1 v1
-                            deFusedCmp <- -1y
-                            eqRes
-                        else
-                            false
+                    let mutable same1 = false
+
+                    if (prevMask &&& 1uy) <> 0uy then
+                        deFusedCmp <- 2y
+                        same1 <- ComparerSentinel.equals eq1 val1 v1
+                        deFusedCmp <- -1y
 
                     if activeStep = 255uy then
                         deFusedVal1 <- v1
@@ -21118,14 +21122,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                         if activeStep = 255uy then
                             deFusedVal2 <- v2
                         else
-                            let same2 =
-                                if (prevMask &&& 2uy) <> 0uy then
-                                    deFusedCmp <- 2y
-                                    let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                    deFusedCmp <- -1y
-                                    eqRes
-                                else
-                                    false
+                            let mutable same2 = false
+
+                            if (prevMask &&& 2uy) <> 0uy then
+                                deFusedCmp <- 2y
+                                same2 <- ComparerSentinel.equals eq2 val2 v2
+                                deFusedCmp <- -1y
 
                             if activeStep = 255uy then
                                 deFusedVal2 <- v2
@@ -21147,14 +21149,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                                 if activeStep = 255uy then
                                     deFusedVal3 <- v3
                                 else
-                                    let same3 =
-                                        if (prevMask &&& 4uy) <> 0uy then
-                                            deFusedCmp <- 2y
-                                            let eqRes = ComparerSentinel.equals eq3 val3 v3
-                                            deFusedCmp <- -1y
-                                            eqRes
-                                        else
-                                            false
+                                    let mutable same3 = false
+
+                                    if (prevMask &&& 4uy) <> 0uy then
+                                        deFusedCmp <- 2y
+                                        same3 <- ComparerSentinel.equals eq3 val3 v3
+                                        deFusedCmp <- -1y
 
                                     if activeStep = 255uy then
                                         deFusedVal3 <- v3
@@ -21224,8 +21224,7 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                     elif stepIdx = 3 then m3 :> INode
                     else origin
 
-                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                |> ignore
+                CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, previousFailure)
 
                 let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -21308,14 +21307,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
             if activeStep = 255uy then
                 deFusedVal1 <- v1
             else
-                let same1 =
-                    if (prevMask &&& 1uy) <> 0uy then
-                        deFusedCmp <- 2y
-                        let eqRes = ComparerSentinel.equals eq1 val1 v1
-                        deFusedCmp <- -1y
-                        eqRes
-                    else
-                        false
+                let mutable same1 = false
+
+                if (prevMask &&& 1uy) <> 0uy then
+                    deFusedCmp <- 2y
+                    same1 <- ComparerSentinel.equals eq1 val1 v1
+                    deFusedCmp <- -1y
 
                 if activeStep = 255uy then
                     deFusedVal1 <- v1
@@ -21337,14 +21334,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                     if activeStep = 255uy then
                         deFusedVal2 <- v2
                     else
-                        let same2 =
-                            if (prevMask &&& 2uy) <> 0uy then
-                                deFusedCmp <- 2y
-                                let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                deFusedCmp <- -1y
-                                eqRes
-                            else
-                                false
+                        let mutable same2 = false
+
+                        if (prevMask &&& 2uy) <> 0uy then
+                            deFusedCmp <- 2y
+                            same2 <- ComparerSentinel.equals eq2 val2 v2
+                            deFusedCmp <- -1y
 
                         if activeStep = 255uy then
                             deFusedVal2 <- v2
@@ -21366,14 +21361,12 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                             if activeStep = 255uy then
                                 deFusedVal3 <- v3
                             else
-                                let same3 =
-                                    if (prevMask &&& 4uy) <> 0uy then
-                                        deFusedCmp <- 2y
-                                        let eqRes = ComparerSentinel.equals eq3 val3 v3
-                                        deFusedCmp <- -1y
-                                        eqRes
-                                    else
-                                        false
+                                let mutable same3 = false
+
+                                if (prevMask &&& 4uy) <> 0uy then
+                                    deFusedCmp <- 2y
+                                    same3 <- ComparerSentinel.equals eq3 val3 v3
+                                    deFusedCmp <- -1y
 
                                 if activeStep = 255uy then
                                     deFusedVal3 <- v3
@@ -21456,8 +21449,7 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
                 elif stepIdx = 3 then m3 :> INode
                 else selfMemo :> INode
 
-            CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-            |> ignore
+            CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, previousFailure)
 
             let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -22408,14 +22400,12 @@ and [<Sealed>] internal FusedSourceMap2<'R, 'A, 'B>(root: CombinatorSource<'R>, 
                         if activeStep = 255uy then
                             deFusedVal1 <- v1
                         else
-                            let same1 =
-                                if (prevMask &&& 1uy) <> 0uy then
-                                    deFusedCmp1 <- 2y
-                                    let eqRes = ComparerSentinel.equals eq1 val1 v1
-                                    deFusedCmp1 <- -1y
-                                    eqRes
-                                else
-                                    false
+                            let mutable same1 = false
+
+                            if (prevMask &&& 1uy) <> 0uy then
+                                deFusedCmp1 <- 2y
+                                same1 <- ComparerSentinel.equals eq1 val1 v1
+                                deFusedCmp1 <- -1y
 
                             if activeStep = 255uy then
                                 deFusedVal1 <- v1
@@ -22472,8 +22462,7 @@ and [<Sealed>] internal FusedSourceMap2<'R, 'A, 'B>(root: CombinatorSource<'R>, 
 
                         let errOrigin = if stepIdx = 1 then m1 :> INode else origin
 
-                        CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                        |> ignore
+                        CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp1 = 2y, ex, previousFailure)
 
                         let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -22796,14 +22785,12 @@ and [<Sealed>] internal FusedSourceMap3<'R, 'A, 'B, 'C>
                         if activeStep = 255uy then
                             deFusedVal1 <- v1
                         else
-                            let same1 =
-                                if (prevMask &&& 1uy) <> 0uy then
-                                    deFusedCmp <- 2y
-                                    let eqRes = ComparerSentinel.equals eq1 val1 v1
-                                    deFusedCmp <- -1y
-                                    eqRes
-                                else
-                                    false
+                            let mutable same1 = false
+
+                            if (prevMask &&& 1uy) <> 0uy then
+                                deFusedCmp <- 2y
+                                same1 <- ComparerSentinel.equals eq1 val1 v1
+                                deFusedCmp <- -1y
 
                             if activeStep = 255uy then
                                 deFusedVal1 <- v1
@@ -22825,14 +22812,12 @@ and [<Sealed>] internal FusedSourceMap3<'R, 'A, 'B, 'C>
                                 if activeStep = 255uy then
                                     deFusedVal2 <- v2
                                 else
-                                    let same2 =
-                                        if (prevMask &&& 2uy) <> 0uy then
-                                            deFusedCmp <- 2y
-                                            let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                            deFusedCmp <- -1y
-                                            eqRes
-                                        else
-                                            false
+                                    let mutable same2 = false
+
+                                    if (prevMask &&& 2uy) <> 0uy then
+                                        deFusedCmp <- 2y
+                                        same2 <- ComparerSentinel.equals eq2 val2 v2
+                                        deFusedCmp <- -1y
 
                                     if activeStep = 255uy then
                                         deFusedVal2 <- v2
@@ -22897,8 +22882,7 @@ and [<Sealed>] internal FusedSourceMap3<'R, 'A, 'B, 'C>
                             elif stepIdx = 2 then m2 :> INode
                             else origin
 
-                        CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                        |> ignore
+                        CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, previousFailure)
 
                         let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -23447,14 +23431,12 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                         if activeStep = 255uy then
                             deFusedVal1 <- v1
                         else
-                            let same1 =
-                                if (prevMask &&& 1uy) <> 0uy then
-                                    deFusedCmp <- 2y
-                                    let eqRes = ComparerSentinel.equals eq1 val1 v1
-                                    deFusedCmp <- -1y
-                                    eqRes
-                                else
-                                    false
+                            let mutable same1 = false
+
+                            if (prevMask &&& 1uy) <> 0uy then
+                                deFusedCmp <- 2y
+                                same1 <- ComparerSentinel.equals eq1 val1 v1
+                                deFusedCmp <- -1y
 
                             if activeStep = 255uy then
                                 deFusedVal1 <- v1
@@ -23476,14 +23458,12 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                                 if activeStep = 255uy then
                                     deFusedVal2 <- v2
                                 else
-                                    let same2 =
-                                        if (prevMask &&& 2uy) <> 0uy then
-                                            deFusedCmp <- 2y
-                                            let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                            deFusedCmp <- -1y
-                                            eqRes
-                                        else
-                                            false
+                                    let mutable same2 = false
+
+                                    if (prevMask &&& 2uy) <> 0uy then
+                                        deFusedCmp <- 2y
+                                        same2 <- ComparerSentinel.equals eq2 val2 v2
+                                        deFusedCmp <- -1y
 
                                     if activeStep = 255uy then
                                         deFusedVal2 <- v2
@@ -23505,14 +23485,12 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                                         if activeStep = 255uy then
                                             deFusedVal3 <- v3
                                         else
-                                            let same3 =
-                                                if (prevMask &&& 4uy) <> 0uy then
-                                                    deFusedCmp <- 2y
-                                                    let eqRes = ComparerSentinel.equals eq3 val3 v3
-                                                    deFusedCmp <- -1y
-                                                    eqRes
-                                                else
-                                                    false
+                                            let mutable same3 = false
+
+                                            if (prevMask &&& 4uy) <> 0uy then
+                                                deFusedCmp <- 2y
+                                                same3 <- ComparerSentinel.equals eq3 val3 v3
+                                                deFusedCmp <- -1y
 
                                             if activeStep = 255uy then
                                                 deFusedVal3 <- v3
@@ -23582,8 +23560,7 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                             elif stepIdx = 3 then m3 :> INode
                             else origin
 
-                        CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                        |> ignore
+                        CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, previousFailure)
 
                         let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -23728,14 +23705,12 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                         if activeStep = 255uy then
                             deFusedVal1 <- v1
                         else
-                            let same1 =
-                                if (prevMask &&& 1uy) <> 0uy then
-                                    deFusedCmp <- 2y
-                                    let eqRes = ComparerSentinel.equals eq1 val1 v1
-                                    deFusedCmp <- -1y
-                                    eqRes
-                                else
-                                    false
+                            let mutable same1 = false
+
+                            if (prevMask &&& 1uy) <> 0uy then
+                                deFusedCmp <- 2y
+                                same1 <- ComparerSentinel.equals eq1 val1 v1
+                                deFusedCmp <- -1y
 
                             if activeStep = 255uy then
                                 deFusedVal1 <- v1
@@ -23757,14 +23732,12 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                                 if activeStep = 255uy then
                                     deFusedVal2 <- v2
                                 else
-                                    let same2 =
-                                        if (prevMask &&& 2uy) <> 0uy then
-                                            deFusedCmp <- 2y
-                                            let eqRes = ComparerSentinel.equals eq2 val2 v2
-                                            deFusedCmp <- -1y
-                                            eqRes
-                                        else
-                                            false
+                                    let mutable same2 = false
+
+                                    if (prevMask &&& 2uy) <> 0uy then
+                                        deFusedCmp <- 2y
+                                        same2 <- ComparerSentinel.equals eq2 val2 v2
+                                        deFusedCmp <- -1y
 
                                     if activeStep = 255uy then
                                         deFusedVal2 <- v2
@@ -23786,14 +23759,12 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                                         if activeStep = 255uy then
                                             deFusedVal3 <- v3
                                         else
-                                            let same3 =
-                                                if (prevMask &&& 4uy) <> 0uy then
-                                                    deFusedCmp <- 2y
-                                                    let eqRes = ComparerSentinel.equals eq3 val3 v3
-                                                    deFusedCmp <- -1y
-                                                    eqRes
-                                                else
-                                                    false
+                                            let mutable same3 = false
+
+                                            if (prevMask &&& 4uy) <> 0uy then
+                                                deFusedCmp <- 2y
+                                                same3 <- ComparerSentinel.equals eq3 val3 v3
+                                                deFusedCmp <- -1y
 
                                             if activeStep = 255uy then
                                                 deFusedVal3 <- v3
@@ -23876,8 +23847,7 @@ and [<Sealed>] internal FusedSourceMap4<'R, 'A, 'B, 'C, 'D>
                             elif stepIdx = 3 then m3 :> INode
                             else selfMemo :> INode
 
-                        CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                        |> ignore
+                        CombinatorHelpers.recordFusedFailure (g, n, errOrigin, deFusedCmp = 2y, ex, previousFailure)
 
                         let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -24596,11 +24566,8 @@ and [<Sealed>] internal FusedChainMap<'Prev, 'U>(prefix: FusedExtendable<'Prev>,
                 try
                     activeStep <- 3uy
 
-                    samePrev <-
-                        if wasReady then
-                            ComparerSentinel.equals eqPrev prevVal vPrev
-                        else
-                            false
+                    if wasReady then
+                        samePrev <- ComparerSentinel.equals eqPrev prevVal vPrev
 
                     if activeStep <> 255uy then
                         if samePrev then
@@ -24677,8 +24644,7 @@ and [<Sealed>] internal FusedChainMap<'Prev, 'U>(prefix: FusedExtendable<'Prev>,
 
                     let errOrigin = if stepIdx = 0 then prevMemo :> INode else selfMemo :> INode
 
-                    CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                    |> ignore
+                    CombinatorHelpers.recordFusedFailure (g, n, errOrigin, stepIdx = 0, ex, previousFailure)
 
                     let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -24786,11 +24752,8 @@ and [<Sealed>] internal FusedChainMap<'Prev, 'U>(prefix: FusedExtendable<'Prev>,
             try
                 activeStep <- 3uy
 
-                samePrev <-
-                    if wasReady then
-                        ComparerSentinel.equals eqPrev prevVal vPrev
-                    else
-                        false
+                if wasReady then
+                    samePrev <- ComparerSentinel.equals eqPrev prevVal vPrev
 
                 if activeStep <> 255uy then
                     if samePrev then
@@ -24850,8 +24813,7 @@ and [<Sealed>] internal FusedChainMap<'Prev, 'U>(prefix: FusedExtendable<'Prev>,
 
                 let errOrigin = if stepIdx = 0 then prevMemo :> INode else origin
 
-                CombinatorHelpers.recordCallbackFailure (g, n, errOrigin, UntrackedPhase.mapPending, ex, previousFailure)
-                |> ignore
+                CombinatorHelpers.recordFusedFailure (g, n, errOrigin, stepIdx = 0, ex, previousFailure)
 
                 let moved = CombinatorHelpers.statusMoved (n, previousStatus, previousFailure)
 
@@ -25067,6 +25029,7 @@ module internal CombinatorMemos =
                     if
                         source.ComputeKind >= 6uy
                         && not source.Node.IsDisposed
+                        && (source.Node.Flags &&& NodeFlags.ActiveMask) = 0
                         && source.Node.RunsField = 0
                         && source.Node.ObserverCount = 0
                         && not targetOwner.IsDisposed

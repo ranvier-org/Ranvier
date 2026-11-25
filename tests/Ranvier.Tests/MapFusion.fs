@@ -782,8 +782,70 @@ let tests =
                 sEq.Value <- 2
                 let compEx = failedWith leafEq.TryValue
                 Expect.equal leafEq.Status Status.Error "comparer throw puts leaf memo in Status.Error"
-                Expect.isFalse (compEx.Message.Contains "mapping attempted to read a pending source") "comparer throw is not wrapped as mapPending"
+
+                Expect.isTrue
+                    (match compEx with
+                     | NotReadyException src -> obj.ReferenceEquals (src, pend :> INode)
+                     | _ -> false)
+                    "leaf comparer throw records raw NotReadyException"
+
+                Expect.isFalse
+                    (compEx.Message.Contains "A map combinator's mapping read a pending source")
+                    "leaf comparer throw is not wrapped as mapPending"
+
                 Expect.isTrue (obj.ReferenceEquals (leafEq.ErrorOrigin, leafEq :> INode)) "ErrorOrigin is leafEq"
+
+                // Intermediate custom-comparer throws across leaf, observed Signal, Source, and >=5-stage chains also record raw NotReadyException.
+                let assertRawPending (ex: exn) (expectedOrigin: INode) (actualOrigin: INode) (label: string) =
+                    Expect.isTrue
+                        (match ex with
+                         | NotReadyException src -> obj.ReferenceEquals (src, pend :> INode)
+                         | _ -> false)
+                        (label + ": raw NotReadyException")
+
+                    Expect.isFalse (ex.Message.Contains "A map combinator's mapping read a pending source") (label + ": not wrapped as mapPending")
+
+                    Expect.isTrue (obj.ReferenceEquals (actualOrigin, expectedOrigin)) (label + ": ErrorOrigin matches throwing stage")
+
+                // 4-stage leaf Signal chain throwing at intermediate stage 2
+                let sMidLeaf = createSignal 1
+                let armMidLeaf = ref false
+                let m1MidLeaf = Signal.map ((+) 1) sMidLeaf
+
+                let m2MidLeaf =
+                    Memo.map (fun x -> PendingCompareVal (x, pend, armMidLeaf.Value)) m1MidLeaf
+
+                let m3MidLeaf = Memo.map (fun (PendingCompareVal (k, _, _)) -> k + 10) m2MidLeaf
+                let m4MidLeaf = Memo.map ((*) 2) m3MidLeaf
+                Expect.equal m4MidLeaf.Value 24 "4-stage leaf Run 1 succeeds"
+                armMidLeaf.Value <- true
+                sMidLeaf.Value <- 2
+                assertRawPending (failedWith m4MidLeaf.TryValue) (m2MidLeaf :> INode) m4MidLeaf.ErrorOrigin "4-stage leaf stage-2 comparer"
+
+                // 5-stage Memo-rooted FusedChainMap throwing at stage 3 (prefix EvalPrefix) and stage 4 (FusedChainMap prevMemo)
+                for throwStage in [ 3; 4 ] do
+                    let sChain = createSignal 1
+                    let rootMemo = createMemo (fun _ -> sChain.Value)
+                    let armChain = ref false
+                    let st1 = Memo.map ((+) 1) rootMemo
+                    let st2 = Memo.map ((+) 1) st1
+
+                    if throwStage = 3 then
+                        let st3 = Memo.map (fun x -> PendingCompareVal (x, pend, armChain.Value)) st2
+                        let st4 = Memo.map (fun (PendingCompareVal (k, _, _)) -> k + 1) st3
+                        let st5 = Memo.map ((+) 1) st4
+                        Expect.equal st5.Value 5 "5-stage Run 1 succeeds (stage 3)"
+                        armChain.Value <- true
+                        sChain.Value <- 2
+                        assertRawPending (failedWith st5.TryValue) (st3 :> INode) st5.ErrorOrigin "5-stage prefix stage-3 comparer"
+                    else
+                        let st3 = Memo.map ((+) 1) st2
+                        let st4 = Memo.map (fun x -> PendingCompareVal (x, pend, armChain.Value)) st3
+                        let st5 = Memo.map (fun (PendingCompareVal (k, _, _)) -> k + 1) st4
+                        Expect.equal st5.Value 5 "5-stage Run 1 succeeds (stage 4)"
+                        armChain.Value <- true
+                        sChain.Value <- 2
+                        assertRawPending (failedWith st5.TryValue) (st4 :> INode) st5.ErrorOrigin "5-stage FusedChainMap stage-4 comparer"
             }
 
             test "5-stage FusedChainMap refreshes root outside Pure, clears root lastRaised, and tracks stage-3 unready transitions" {
@@ -1346,6 +1408,59 @@ let tests =
                     let (DeFuseCompareVal (k3, p3, _)) = tail.Value
                     Expect.equal (k3, p3) (9, 99) "subsequent read observes post-flush (9, 99)"
                     eff.Dispose ()
+            }
+
+            test "runWithOwner Memo.map attachment onto actively executing Run 1 fused chain avoids duplicate edges and mismatched Runs" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                for stages in [ 1; 2; 5 ] do
+                    let s = createSignal 10
+                    let attachedRef = ref (Unchecked.defaultof<Memo<int>>)
+                    let targetRef = ref (Unchecked.defaultof<Memo<int>>)
+
+                    let scopeOwner, owningRoot, tail =
+                        g.CreateRoot (fun rootOwner ->
+                            use _ = g.Activate ()
+                            let armAttach = ref true
+
+                            let root =
+                                createMemoWith (fun _ ->
+                                    let v = s.Value
+
+                                    if armAttach.Value then
+                                        armAttach.Value <- false
+                                        attachedRef.Value <- runWithOwner rootOwner (fun () -> Memo.map ((+) 100) targetRef.Value)
+
+                                    v * 2)
+
+                            let mutable cur = Memo.map ((+) 1) root
+
+                            for _ in 2..stages do
+                                cur <- Memo.map ((+) 1) cur
+
+                            targetRef.Value <- cur
+                            rootOwner, root, cur)
+
+                    Expect.equal tail.Value (20 + stages) $"stages=%d{stages}: Run 1 tail value"
+                    Expect.equal owningRoot.Runs 1 $"stages=%d{stages}: owningRoot ran once on Run 1"
+                    Expect.equal tail.Runs 1 $"stages=%d{stages}: tail ran once on Run 1"
+                    Expect.equal attachedRef.Value.Runs 0 $"stages=%d{stages}: attached Memo not yet pulled"
+                    Expect.equal attachedRef.Value.Value (120 + stages) $"stages=%d{stages}: attached Run 1 value"
+                    Expect.equal tail.Runs 1 $"stages=%d{stages}: pulling attached reused clean tail"
+                    Expect.equal attachedRef.Value.Runs 1 $"stages=%d{stages}: attached ran once on Run 1"
+
+                    s.Value <- 15
+                    Expect.equal attachedRef.Value.Value (130 + stages) $"stages=%d{stages}: attached Run 2 value"
+                    Expect.equal tail.Value (30 + stages) $"stages=%d{stages}: tail Run 2 value"
+                    Expect.equal owningRoot.Runs 2 $"stages=%d{stages}: owningRoot Runs = 2"
+                    Expect.equal tail.Runs 2 $"stages=%d{stages}: tail Runs = 2"
+                    Expect.equal attachedRef.Value.Runs 2 $"stages=%d{stages}: attached Runs = 2"
+
+                    scopeOwner.Dispose ()
+#if RANVIER_TRACE
+                Expect.isEmpty (Trace.reconcile g) "live edges match folded trace log after active Run 1 attachment"
+#endif
             }
 
 #if RANVIER_TRACE

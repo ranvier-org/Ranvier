@@ -1112,7 +1112,7 @@ module Signal =
     /// <c>mapping</c>.
     /// </summary>
     /// <remarks>
-    /// Resolves <c>source.Graph</c> directly without requiring <c>graph.Activate ()</c>. Reading a pending source inside
+    /// Resolves <c>source</c>'s graph directly without requiring <c>graph.Activate ()</c>. Reading a pending source inside
     /// <c>mapping</c> fails the memo with <c>InvalidOperationException</c>.
     /// </remarks>
     /// <exception cref="T:System.ArgumentNullException"><c>mapping</c> or <c>source</c> is null.</exception>
@@ -1124,7 +1124,7 @@ module Signal =
     /// A pure <c>Memo&lt;'C&gt;</c> computing <c>mapping source1.Value source2.Value</c> with dependency tracking closed
     /// inside <c>mapping</c>.
     /// </summary>
-    /// <remarks>Resolves <c>source1.Graph</c> directly without requiring <c>graph.Activate ()</c>.</remarks>
+    /// <remarks>Resolves <c>source1</c>'s graph directly without requiring <c>graph.Activate ()</c>.</remarks>
     /// <exception cref="T:System.ArgumentNullException"><c>mapping</c>, <c>source1</c>, or <c>source2</c> is null.</exception>
     /// <exception cref="T:System.InvalidOperationException">
     /// <c>source1</c> and <c>source2</c> belong to different graphs, or called inside a pure body.

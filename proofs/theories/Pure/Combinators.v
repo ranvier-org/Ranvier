@@ -253,7 +253,7 @@ Inductive flight_policy : Type :=
 Global Instance flight_policy_eq_dec : EqDecision flight_policy.
 Proof. solve_decision. Defined.
 
-(**md Policies whose active flights defer or discard intervening changes via `queued = 2` (`Core.fs:14315`). *)
+(**md Policies whose active flights defer or discard intervening changes via `queued = 2` (`AsyncMemo.StartOnFrom` in `Core.fs`). *)
 Definition is_deferring_policy (p : flight_policy) : bool :=
   match p with
   | FinishCurrent | Drop | DropWhilePending => true
@@ -291,7 +291,7 @@ Arguments ao_fifo {K U} _.
 Arguments ao_owed_trailing {K U} _.
 
 (**md Externally visible reading of an `AsyncMemo` `*On` node: Phase 1 overlay when active,
-    `CPending ao_self_id` while an owed `FinishCurrent` trailing run is pending (`Core.fs:14182-14185`),
+    `CPending ao_self_id` while an owed `FinishCurrent` trailing run is pending (`AsyncMemo.SyncVisibleOn` in `Core.fs`),
     otherwise Phase 2's slot. *)
 Definition ao_visible {K U : Type} (st : async_on_state K U) : comb_reading U :=
   match ao_phase1_overlay st with
@@ -398,7 +398,7 @@ Fixpoint fifo_record {U : Type} (gen : nat) (out : result U)
       else (g, cur) :: fifo_record gen out rest
   end.
 
-(**md Drains consecutive settled head entries under `FlightPolicy.Queue` (`ApplyQueued` in `Core.fs:14247`). *)
+(**md Drains consecutive settled head entries under `FlightPolicy.Queue` (`AsyncMemo.ApplyQueued` in `Core.fs`). *)
 Fixpoint fifo_drain {U : Type} (self_id : nat) (queued : nat) (slot : comb_reading U)
     (q : list (nat * option (result U)))
     : nat * comb_reading U * list (nat * option (result U)) :=
@@ -408,7 +408,7 @@ Fixpoint fifo_drain {U : Type} (self_id : nat) (queued : nat) (slot : comb_readi
   | _ => (queued, slot, q)
   end.
 
-(**md Background Phase 2 flight completion (`ApplyResult` / `ApplyQueued` in `Core.fs:14113`), updating
+(**md Background Phase 2 flight completion (`AsyncMemo.ApplyResult` / `AsyncMemo.ApplyQueued` in `Core.fs`), updating
     `ao_phase2_slot` without clearing any active Phase 1 unready overlay, resetting `ao_has_key := false`
     when an `owed` (`ao_queued = 2`) faulted flight is dropped under `FinishCurrent` or `DropWhilePending`,
     and setting `ao_owed_trailing := true` when an `owed` `FinishCurrent` flight completes with `RVal`. *)
@@ -872,7 +872,7 @@ Definition eval_fused_chain {St A B : Type}
       (st', out, Build_fused_chain stages' (Some out))
   end.
 
-(**md Stage movement test matching `Memo.Publish` (`Core.fs:12392`): compares status, failure `(ex, origin)`, or ready values via `eq_V`. *)
+(**md Stage movement test matching `Memo.Publish` (`Core.fs`): compares status, failure `(ex, origin)`, or ready values via `eq_V`. *)
 Definition reading_moved {V : Type} (eq_V : V -> V -> bool)
     (prev : option (comb_reading V)) (next : comb_reading V) : bool :=
   match prev, next with
@@ -1283,7 +1283,7 @@ Qed.
 (**md
 **Fused `eval_fused_chain` produces the exact same `(St * comb_reading B)`, `origin`, and multi-step trace as sequential unfused `eval_unfused_chain` over arbitrary boolean stage cutoffs `eq_i` without Leibniz equality, early-exiting on intermediate stage cutoffs and attributing stage throws to the throwing stage's `node_id`.**
 
-Certifies `MapFusion` across `Signal.map`, `Memo.map`, `AsyncMemo.map`, `AsyncSource.map`, and `StreamMemo.map` (`Core.fs`, `Combinators.fs`):
+Certifies `MapFusion` (`FusedSignalMap1`--`4`, `FusedSourceMap1`--`4`, `FusedChainMap` in `Core.fs`) across `Signal.map`, `Memo.map`, `AsyncMemo.map`, `AsyncSource.map`, and `StreamMemo.map` (`Core.fs`, `Streams.fs`, `Api.fs`):
 1. From any synchronized state `chain_sync uc fc`, single-step `eval_fused_chain` and `eval_unfused_chain` return identical `(St, comb_reading B)` and preserve `chain_sync` across `CPending`, upstream `CFailed`, stage throws, intermediate cutoffs, and full `CReady` propagation.
 2. Over any input trace `inputs` starting from `init_fused_chain spec` and `init_unfused_chain spec`, `run_fused_chain` and `run_unfused_chain` yield identical final `St` (allocation/identity state) and output reading sequences.
 3. On an intermediate cutoff (`eq_m old_m v_mid = true`) or stage throw (`RThrow ex`), `eval_fused_chain` stops at that stage without invoking downstream `rest` steps, preserving `cached_tail` or attributing `CFailed ex id` to stage `id`.
@@ -1652,7 +1652,7 @@ Qed.
 (**md
 **Split `split_bind_step` invokes `binder` iff outer settles to an initial or `eq_K`-unequal key, discharges the prior outer scope iff `sb_has_key = true` and outer settles to an `eq_K`-unequal key, and performs zero `binder` calls or scope discharges across inner `U` transitions and transient outer `CPending`/`CFailed` excursions recovering to an `eq_K`-equal key.**
 
-Certifies `Signal.bind`, `Memo.bind`, and `RanvierExtensions.SelectMany` (`Core.fs`, `Combinators.fs`, `Ranvier.CSharp/Extensions.fs`):
+Certifies `Signal.bind`, `Memo.bind` (`SplitBindState` in `Core.fs`, `Api.fs`), and `RanvierExtensions.SelectMany` (`Ranvier.CSharp/Extensions.fs`):
 1. `sb_binder_runs` increments if and only if `r_outer = CReady k` with `sb_has_key = false` or `eq_K sb_last_key k = false`; otherwise `sb_binder_runs` is unchanged.
 2. `sb_discharges` increments if and only if `r_outer = CReady k` with `sb_has_key = true` and `eq_K sb_last_key k = false`; otherwise `sb_discharges` is unchanged.
 3. Across any sequence of inner `U` transitions `inners ++ [inner_last]` while outer settles to an `eq_K`-equal key `k`, `split_bind_inner_ticks` updates `sb_visible` to `inner_last inner_id` with zero `binder` runs and zero scope discharges.
