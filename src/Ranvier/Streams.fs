@@ -79,10 +79,25 @@ type internal IStreamRun<'S> =
 type internal IStreamStarter<'S> =
     abstract Start: requester: IStreamRequester * gen: int * token: CancellationToken -> IStreamRun<'S>
 
+/// <summary>Outcome of evaluating Phase 1 (<c>read</c>) on a two-phase <c>StreamMemo&lt;'S&gt;</c>.</summary>
+type internal StreamPhase1Result =
+    | EqualKey = 0uy
+    | UnequalKey = 1uy
+    | Phase1Failed = 2uy
+
+/// <summary>Type-erased Phase 1/Phase 2 starter stored on a two-phase <c>StreamMemo&lt;'S&gt;</c>.</summary>
+type internal IStreamKeyStarter<'S> =
+    abstract ReadAndCompare: unit -> StreamPhase1Result
+    abstract CommitNextKey: unit -> unit
+    abstract StartUntracked: requester: IStreamRequester * gen: int * token: CancellationToken -> IStreamRun<'S>
+    abstract Phase1Exception: exn
+
 #if FABLE_COMPILER
 type internal FoldDelegate<'S, 'T> = 'S -> 'T -> 'S
+type internal StreamStartDelegate<'K, 'T> = 'K -> CancellationToken -> StreamSource<'T>
 #else
 type internal FoldDelegate<'S, 'T> = OptimizedClosures.FSharpFunc<'S, 'T, 'S>
+type internal StreamStartDelegate<'K, 'T> = OptimizedClosures.FSharpFunc<'K, CancellationToken, StreamSource<'T>>
 #endif
 
 module internal FoldFn =
@@ -91,12 +106,23 @@ module internal FoldFn =
 
     let inline invoke (fold: FoldDelegate<'S, 'T>) (state: 'S) (item: 'T) : 'S =
         fold state item
+
+    let inline adaptStart (start: 'K -> CancellationToken -> StreamSource<'T>) : StreamStartDelegate<'K, 'T> = start
+
+    let inline invokeStart (start: StreamStartDelegate<'K, 'T>) (key: 'K) (token: CancellationToken) : StreamSource<'T> =
+        start key token
 #else
     let inline adapt (fold: 'S -> 'T -> 'S) : FoldDelegate<'S, 'T> =
         OptimizedClosures.FSharpFunc<'S, 'T, 'S>.Adapt fold
 
     let inline invoke (fold: FoldDelegate<'S, 'T>) (state: 'S) (item: 'T) : 'S =
         fold.Invoke (state, item)
+
+    let inline adaptStart (start: 'K -> CancellationToken -> StreamSource<'T>) : StreamStartDelegate<'K, 'T> =
+        OptimizedClosures.FSharpFunc<'K, CancellationToken, StreamSource<'T>>.Adapt start
+
+    let inline invokeStart (start: StreamStartDelegate<'K, 'T>) (key: 'K) (token: CancellationToken) : StreamSource<'T> =
+        start.Invoke (key, token)
 #endif
 
 /// <summary>
@@ -285,6 +311,55 @@ type internal StreamStarter<'S, 'T>(graph: Graph, seed: 'S, fold: FoldDelegate<'
 
             StreamRun<'S, 'T>(graph, seed, fold, requester, gen, source, token) :> IStreamRun<'S>
 
+[<Sealed>]
+type internal StreamKeyStarter<'K, 'S, 'T>(graph: Graph, seed: 'S, fold: FoldDelegate<'S, 'T>, read: unit -> 'K, start: StreamStartDelegate<'K, 'T>) =
+    let keyEqual = graph.EncodedComparer<'K>()
+    let mutable hasKey = false
+    let mutable lastKey = Platform.zero<'K>()
+    let mutable candidateKey = Platform.zero<'K>()
+    let mutable phase1Ex: exn = Platform.nil ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.CompareKeyGuarded(nextKey: 'K) : StreamPhase1Result =
+        try
+            if ComparerSentinel.equals keyEqual lastKey nextKey then
+                StreamPhase1Result.EqualKey
+            else
+                StreamPhase1Result.UnequalKey
+        with ex ->
+            phase1Ex <- ex
+            StreamPhase1Result.Phase1Failed
+
+    interface IStreamKeyStarter<'S> with
+        member this.ReadAndCompare() =
+            phase1Ex <- Platform.nil ()
+            let nextKey = read ()
+            candidateKey <- nextKey
+
+            if not hasKey then
+                StreamPhase1Result.UnequalKey
+            elif SafeEquality.isSafe keyEqual then
+                if ComparerSentinel.equals keyEqual lastKey nextKey then
+                    StreamPhase1Result.EqualKey
+                else
+                    StreamPhase1Result.UnequalKey
+            else
+                this.CompareKeyGuarded nextKey
+
+        member _.CommitNextKey() =
+            lastKey <- candidateKey
+            hasKey <- true
+
+        member _.StartUntracked(requester, gen, token) =
+            let source = FoldFn.invokeStart start lastKey token
+
+            if Platform.isNull (box source) then
+                raise (InvalidOperationException "The stream's start function returned null.")
+
+            StreamRun<'S, 'T>(graph, seed, fold, requester, gen, source, token) :> IStreamRun<'S>
+
+        member _.Phase1Exception = phase1Ex
+
 /// <summary>How a publication reaches the stream memo's readers when its state moved.</summary>
 type internal StreamNotice =
     /// <summary>Readers are not notified.</summary>
@@ -310,7 +385,8 @@ type internal StreamEnd =
 /// pending node becomes failed with <c>ObjectDisposedException</c>.
 /// </remarks>
 [<Sealed>]
-type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter: IStreamStarter<'S>) =
+type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter: IStreamStarter<'S>, keyStarter: IStreamKeyStarter<'S>) =
+    let isSplit = not (Platform.isNull (box keyStarter))
     let id = graph.NextId ()
 #if !FABLE_COMPILER && !RANVIER_TRACE
     let mutable observers = ObserverList.Create ()
@@ -332,6 +408,13 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
     let mutable status = Status.Pending ||| Status.Uninitialized
     let mutable value = Unchecked.defaultof<'S>
     let mutable failure: Failure = Platform.nil ()
+    let mutable phase2Status = Status.Pending ||| Status.Uninitialized
+    let mutable phase2Failure: Failure = Platform.nil ()
+    let mutable phase1Status = Status.None
+    let mutable phase1Failure: Failure = Platform.nil ()
+    let mutable maskedMove = false
+    let mutable inLaunchOn = false
+    let mutable notifiedInLaunch = false
     let mutable runs = 0
     let mutable disposed = false
 
@@ -349,6 +432,32 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
 #if !FABLE_COMPILER
     let mutable wakePosted = 0
     let mutable wakeAction: unit -> unit = Unchecked.defaultof<_>
+#endif
+
+    member inline private _.SyncVisibleOn() =
+        if not disposed then
+            if phase1Status = Status.Pending then
+                status <-
+                    Status.Pending
+                    ||| (phase2Status &&& Status.Uninitialized)
+
+                failure <- Platform.nil ()
+            elif phase1Status = Status.Error then
+                status <- Status.Error
+                failure <- phase1Failure
+            else
+                status <- phase2Status
+                failure <- phase2Failure
+
+    member inline private _.NotifyOtherObservers() =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList &observers
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList observers
+#else
+        graph.NotifyMoved observers
+#endif
 #endif
 
     member private this.Attach() =
@@ -427,6 +536,8 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
 #endif
 
     member inline private _.Notify() =
+        if inLaunchOn then
+            notifiedInLaunch <- true
 #if !FABLE_COMPILER && !RANVIER_TRACE
         graph.NotifyMovedList &observers
 #else
@@ -468,51 +579,113 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
 
     member private this.Fail(error: exn) =
         this.Stop StreamEnd.Failed
-        let next = graph.FailureOf (error, this, failure)
 
-        let moved =
-            status <> Status.Error
-            || Failure.Moved (next, failure)
+        if isSplit then
+            let next = graph.FailureOf (error, this, phase2Failure)
 
-        failure <- next
-        status <- Status.Error
-        Tracer.StreamPublished (graph, id, int (byte status), 0, box error)
+            let moved =
+                phase2Status <> Status.Error
+                || Failure.Moved (next, phase2Failure)
 
-        if moved then
-            this.Notify ()
+            phase2Failure <- next
+            phase2Status <- Status.Error
+            Tracer.StreamPublished (graph, id, int (byte Status.Error), 0, box error)
+            this.SyncVisibleOn ()
+
+            if phase1Status <> Status.None then
+                if moved then
+                    maskedMove <- true
+            elif moved then
+                this.Notify ()
+        else
+            let next = graph.FailureOf (error, this, failure)
+
+            let moved =
+                status <> Status.Error
+                || Failure.Moved (next, failure)
+
+            failure <- next
+            status <- Status.Error
+            Tracer.StreamPublished (graph, id, int (byte status), 0, box error)
+
+            if moved then
+                this.Notify ()
 
     member private this.Publish(state: 'S, count: int, notice: StreamNotice) =
         try
-            let moved =
-                status <> Status.None
-                || not (ComparerSentinel.equals equal value state)
+            if isSplit then
+                let moved =
+                    phase2Status <> Status.None
+                    || not (ComparerSentinel.equals equal value state)
 
-            value <- state
-            status <- Status.None
-            failure <- Platform.nil ()
-            Tracer.StreamPublished (graph, id, int (byte status), count, box state)
+                value <- state
+                phase2Status <- Status.None
+                phase2Failure <- Platform.nil ()
+                Tracer.StreamPublished (graph, id, int (byte Status.None), count, box state)
+                this.SyncVisibleOn ()
 
-            if moved then
-                if notice = StreamNotice.Flush then
-                    this.Notify ()
-                elif notice = StreamNotice.InFlush then
-                    this.NotifyInFlush ()
+                if phase1Status <> Status.None then
+                    if moved then
+                        maskedMove <- true
+                else
+                    maskedMove <- false
+
+                    if moved then
+                        if notice = StreamNotice.Flush then
+                            this.Notify ()
+                        elif notice = StreamNotice.InFlush then
+                            this.NotifyInFlush ()
+            else
+                let moved =
+                    status <> Status.None
+                    || not (ComparerSentinel.equals equal value state)
+
+                value <- state
+                status <- Status.None
+                failure <- Platform.nil ()
+                Tracer.StreamPublished (graph, id, int (byte status), count, box state)
+
+                if moved then
+                    if notice = StreamNotice.Flush then
+                        this.Notify ()
+                    elif notice = StreamNotice.InFlush then
+                        this.NotifyInFlush ()
         with error ->
             this.Fail error
 
     member inline private this.PublishInFlush(state: 'S, count: int) =
         try
-            let moved =
-                status <> Status.None
-                || not (ComparerSentinel.equals equal value state)
+            if isSplit then
+                let moved =
+                    phase2Status <> Status.None
+                    || not (ComparerSentinel.equals equal value state)
 
-            value <- state
-            status <- Status.None
-            failure <- Platform.nil ()
-            Tracer.StreamPublished (graph, id, int (byte status), count, box state)
+                value <- state
+                phase2Status <- Status.None
+                phase2Failure <- Platform.nil ()
+                Tracer.StreamPublished (graph, id, int (byte Status.None), count, box state)
+                this.SyncVisibleOn ()
 
-            if moved then
-                this.NotifyInFlush ()
+                if phase1Status <> Status.None then
+                    if moved then
+                        maskedMove <- true
+                else
+                    maskedMove <- false
+
+                    if moved then
+                        this.NotifyInFlush ()
+            else
+                let moved =
+                    status <> Status.None
+                    || not (ComparerSentinel.equals equal value state)
+
+                value <- state
+                status <- Status.None
+                failure <- Platform.nil ()
+                Tracer.StreamPublished (graph, id, int (byte status), count, box state)
+
+                if moved then
+                    this.NotifyInFlush ()
         with error ->
             this.Fail error
 
@@ -637,6 +810,258 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
             unannounced <- true
             graph.NoteStaleTransition ()
 
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.CompareMovedGuarded(prevValue: 'S) : bool =
+        try
+            not (ComparerSentinel.equals equal prevValue value)
+        with error ->
+            this.Fail error
+            false
+
+    member private this.LaunchOn() =
+        freshness <- Freshness.Clean
+        unannounced <- false
+        let prevStatus = status
+        let prevFailure = failure
+        let prevValue = value
+        inLaunchOn <- true
+        notifiedInLaunch <- false
+        let mutable syncPublished = false
+        runs <- runs + 1
+        Tracer.RunStart (graph, id, runs)
+        sources.BeginRun ()
+        active <- 1
+
+        let mutable p1Outcome = StreamPhase1Result.EqualKey
+        let mutable p1Pending = false
+        let mutable p1Error: exn = Platform.nil ()
+
+        try
+            try
+                try
+                    p1Outcome <-
+#if FABLE_COMPILER
+                        graph.RunHosted (this :> IComputation, fun () -> keyStarter.ReadAndCompare ())
+#else
+                        let saved = graph.EnterHosted (this :> IComputation)
+
+                        try
+                            let r = keyStarter.ReadAndCompare ()
+                            graph.CheckRaised ()
+                            r
+                        finally
+                            graph.LeaveHosted saved
+#endif
+
+                    if violated then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+                finally
+                    if disposed then
+                        sources.Clear (this :> IComputation)
+                    else
+                        sources.EndRun (this :> IComputation)
+            with
+            | error when violated ->
+                violated <- false
+                p1Outcome <- StreamPhase1Result.Phase1Failed
+                p1Error <- ScopeMessages.failure ScopeMode.Pure error
+            | NotReadyException _ -> p1Pending <- true
+            | error ->
+                p1Outcome <- StreamPhase1Result.Phase1Failed
+                p1Error <- error
+
+            if disposed then
+                active <- 0
+            elif p1Pending then
+                active <- 0
+                phase1Status <- Status.Pending
+                phase1Failure <- Platform.nil ()
+
+                if running && not (Platform.isNull (box run)) then
+                    let count = run.SnapshotIfReceived ()
+
+                    if count > 0 then
+                        this.Publish (run.Captured, count, StreamNotice.Silent)
+                    else
+                        this.SyncVisibleOn ()
+                else
+                    this.SyncVisibleOn ()
+            elif p1Outcome = StreamPhase1Result.Phase1Failed then
+                active <- 0
+
+                let err =
+                    if Platform.isNull p1Error then
+                        keyStarter.Phase1Exception
+                    else
+                        p1Error
+
+                phase1Status <- Status.Error
+                phase1Failure <- graph.FailureOf (err, this, prevFailure)
+
+                if running && not (Platform.isNull (box run)) then
+                    let count = run.SnapshotIfReceived ()
+
+                    if count > 0 then
+                        this.Publish (run.Captured, count, StreamNotice.Silent)
+                    else
+                        this.SyncVisibleOn ()
+                else
+                    this.SyncVisibleOn ()
+            elif p1Outcome = StreamPhase1Result.EqualKey then
+                active <- 0
+                let hadMaskedMove = maskedMove
+                phase1Status <- Status.None
+                phase1Failure <- Platform.nil ()
+
+                if running && not (Platform.isNull (box run)) then
+                    let count = run.SnapshotIfReceived ()
+
+                    if count > 0 then
+                        syncPublished <- true
+                        this.Publish (run.Captured, count, StreamNotice.Silent)
+
+                if hadMaskedMove then
+                    maskedMove <- true
+
+                this.SyncVisibleOn ()
+            else
+                phase1Status <- Status.None
+                phase1Failure <- Platform.nil ()
+                maskedMove <- false
+                keyStarter.CommitNextKey ()
+                this.Stop StreamEnd.Restarted
+                generation <- generation + 1
+                let gen = generation
+                phase2Failure <- Platform.nil ()
+
+                phase2Status <-
+                    Status.Pending
+                    ||| (phase2Status &&& Status.Uninitialized)
+
+                this.SyncVisibleOn ()
+                let source = new CancellationTokenSource ()
+                cts <- source
+
+                try
+                    try
+                        let started =
+#if FABLE_COMPILER
+                            graph.RunUntrackedHosted (
+                                this :> IScopeHost,
+                                fun () -> keyStarter.StartUntracked (this :> IStreamRequester, gen, source.Token)
+                            )
+#else
+                            let hasJournal = not (Platform.isNull graph.Journal)
+
+                            if hasJournal then
+                                graph.Journal.EnterDerived ()
+
+                            let saved = graph.EnterUntrackedHosted (this :> IScopeHost)
+
+                            try
+                                keyStarter.StartUntracked (this :> IStreamRequester, gen, source.Token)
+                            finally
+                                graph.LeaveUntrackedHosted saved
+
+                                if hasJournal then
+                                    graph.Journal.LeaveDerived ()
+#endif
+
+                        if violated then
+                            raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                        if not disposed then
+                            run <- started
+                            running <- true
+                            Tracer.StreamStarted (graph, id, gen)
+                            launching <- true
+
+                            let work =
+                                try
+                                    try
+#if FABLE_COMPILER
+                                        graph.RunUntracked (fun () -> started.RunSource ())
+#else
+                                        graph.RunUntrackedWith (runSource, started)
+#endif
+                                    with NotReadyException _ as pending ->
+                                        let failure = InvalidOperationException "StreamSource.Run read a pending source."
+#if FABLE_COMPILER
+                                        Platform.setInner failure pending
+                                        raise failure
+#else
+                                        raise (InvalidOperationException (failure.Message, pending))
+#endif
+                                finally
+                                    launching <- false
+
+                            if Platform.isNull work then
+                                raise (InvalidOperationException "StreamSource.Run returned null.")
+
+#if FABLE_COMPILER
+                            Platform.whenDone work (fun outcome -> this.Ended (gen, outcome))
+#else
+                            if work.IsCompleted && graph.IsOnGraphThread then
+                                this.Ended (gen, Platform.settledUnitOutcome work)
+                            else
+                                Platform.attachDone work (this :> Platform.IDoneWaiter) gen
+#endif
+
+                            if gen = generation && running && started.Received then
+                                syncPublished <- true
+                                this.PublishLatest StreamNotice.Silent
+                    finally
+                        active <- 0
+                with
+                | error when violated ->
+                    violated <- false
+                    this.Fail (ScopeMessages.failure ScopeMode.Pure error)
+                | error -> this.Fail (UntrackedPhase.wrapPending UntrackedPhase.streamOnPending error)
+        finally
+            inLaunchOn <- false
+
+        let unmaskedMove = maskedMove && phase1Status = Status.None
+
+        if phase1Status = Status.None then
+            maskedMove <- false
+
+        if not disposed && not notifiedInLaunch then
+            let curNorm = status &&& ~~~Status.Uninitialized
+            let prevNorm = prevStatus &&& ~~~Status.Uninitialized
+
+            let statusOrErrorMoved =
+                curNorm <> prevNorm
+                || (curNorm = Status.Error
+                    && not (obj.ReferenceEquals (failure, prevFailure))
+                    && Failure.Moved (failure, prevFailure))
+
+            let moved =
+                statusOrErrorMoved
+                || unmaskedMove
+                || (curNorm = Status.None
+                    && syncPublished
+                    && (if SafeEquality.isSafe equal then
+                            not (ComparerSentinel.equals equal prevValue value)
+                        else
+                            this.CompareMovedGuarded prevValue))
+
+            if moved && not notifiedInLaunch then
+                Tracer.Unattributed graph
+                this.NotifyOtherObservers ()
+                Tracer.Notified graph
+                Tracer.RunEnd (graph, id, status)
+
+                if graph.QueuePending then
+                    graph.OweFlush ()
+            else
+                Tracer.RunEnd (graph, id, status)
+        else
+            Tracer.RunEnd (graph, id, status)
+
+        if freshness <> Freshness.Clean then
+            unannounced <- true
+            graph.NoteStaleTransition ()
+
     member private this.EnsureCurrent() =
         if freshness <> Freshness.Clean && not disposed then
             if graph.Deferring then
@@ -660,7 +1085,10 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
             graph.Track (this :> ISource)
 
             if freshness <> Freshness.Clean && not disposed then
-                graph.MarkReaderDirty ()
+                if isSplit then
+                    graph.MarkReaderCheck ()
+                else
+                    graph.MarkReaderDirty ()
         else
             graph.Track (this :> ISource)
 
@@ -736,7 +1164,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
                 this.ResolveCheckOnly ()
 
             if freshness = Freshness.Dirty then
-                this.Launch ()
+                if isSplit then this.LaunchOn () else this.Launch ()
         else
             this.RefreshActive ()
 
@@ -779,7 +1207,48 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         let starter =
             StreamStarter<'S, 'T>(graph, seed, adapted, start) :> IStreamStarter<'S>
 
-        let memo = new StreamMemo<'S> (graph, seed, emptyFails, starter)
+        let memo = new StreamMemo<'S> (graph, seed, emptyFails, starter, Platform.nil ())
+        memo.Attach ()
+        memo
+
+    static member internal CreateOn(graph: Graph, read: unit -> 'K, start: 'K -> CancellationToken -> StreamSource<'S>) : StreamMemo<'S> =
+        if UntrackedPhase.isNullFn1 read then
+            nullArg (nameof read)
+
+        if UntrackedPhase.isNullFn2 start then
+            nullArg (nameof start)
+
+        let adaptedFold = FoldFn.adapt (fun (_: 'S) (item: 'S) -> item)
+        let adaptedStart = FoldFn.adaptStart start
+
+        let keyStarter =
+            StreamKeyStarter<'K, 'S, 'S>(graph, Platform.zero<'S>(), adaptedFold, read, adaptedStart) :> IStreamKeyStarter<'S>
+
+        let memo =
+            new StreamMemo<'S> (graph, Platform.zero<'S>(), true, Platform.nil (), keyStarter)
+
+        memo.Attach ()
+        memo
+
+    static member internal CreateFoldOn
+        (graph: Graph, seed: 'S, fold: 'S -> 'T -> 'S, read: unit -> 'K, start: 'K -> CancellationToken -> StreamSource<'T>)
+        : StreamMemo<'S> =
+        if UntrackedPhase.isNullFn2 fold then
+            nullArg (nameof fold)
+
+        if UntrackedPhase.isNullFn1 read then
+            nullArg (nameof read)
+
+        if UntrackedPhase.isNullFn2 start then
+            nullArg (nameof start)
+
+        let adaptedFold = FoldFn.adapt fold
+        let adaptedStart = FoldFn.adaptStart start
+
+        let keyStarter =
+            StreamKeyStarter<'K, 'S, 'T>(graph, seed, adaptedFold, read, adaptedStart) :> IStreamKeyStarter<'S>
+
+        let memo = new StreamMemo<'S> (graph, seed, false, Platform.nil (), keyStarter)
         memo.Attach ()
         memo
 
@@ -838,7 +1307,23 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
             slot < sources.Cursor
 
         member this.MarkDirty() =
-            if freshness <> Freshness.Dirty || unannounced then
+            if isSplit then
+                if freshness <> Freshness.Dirty then
+                    let wasClean = freshness = Freshness.Clean
+                    freshness <- Freshness.Dirty
+
+                    if wasClean then
+                        graph.NoteStaleTransition ()
+                        this.NotifyObserversCheck ()
+                    elif unannounced then
+                        unannounced <- false
+                        graph.NoteStaleTransition ()
+                        this.NotifyObserversCheck ()
+                elif unannounced then
+                    unannounced <- false
+                    graph.NoteStaleTransition ()
+                    this.NotifyObserversCheck ()
+            elif freshness <> Freshness.Dirty || unannounced then
                 if freshness = Freshness.Clean || unannounced then
                     graph.NoteStaleTransition ()
 
@@ -1001,6 +1486,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
                     this.Stop StreamEnd.Disposed
 
                     if StatusBits.isPending status then
+                        phase1Status <- Status.None
                         failure <- Failure (ObjectDisposedException (this.GetType().Name), (this :> INode))
                         status <- Status.Error
                         this.Notify ()

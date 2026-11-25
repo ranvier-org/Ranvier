@@ -575,11 +575,75 @@ module Api =
     let createOwningAsyncWithPolicy (policy: FlightPolicy) (compute: Previous<'T> -> CancellationToken -> Task<'T>) =
         AsyncMemo<'T>.Create(Graph.Current, compute, ScopeMode.Owning, policy)
 
+    let private requireAsyncCompute (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>) =
+        if UntrackedPhase.isNullFn3 compute then
+            nullArg "compute"
+
+    /// <summary>
+    /// An async value split into a tracked pure <c>read</c> and an untracked pure <c>compute</c> launched when
+    /// <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// A pending, failed, or equal <c>read</c> preserves any active flight and settled value for the last key;
+    /// reading a pending source synchronously inside <c>compute</c> fails the run with <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createAsyncOn (read: unit -> 'T) (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>) : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        let graph = Graph.Current
+        AsyncMemo.CreateOn (graph, read, compute, ScopeMode.PureAsync, graph.Options.FlightPolicy)
+
+    /// <summary>
+    /// A split async value whose <c>compute</c> owns the nodes and cleanups created synchronously before its first
+    /// suspending <c>await</c>, discharged before the next flight on an unequal settled key and at disposal.
+    /// </summary>
+    /// <remarks>
+    /// <c>read</c> remains pure and tracked. A pending, failed, or equal <c>read</c> preserves the active flight,
+    /// its owned scope, and its settled value.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createAsyncWithOn (read: unit -> 'T) (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>) : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        let graph = Graph.Current
+        AsyncMemo.CreateOn (graph, read, compute, ScopeMode.Owning, graph.Options.FlightPolicy)
+
+    /// <summary>
+    /// <c>createAsyncOn</c>, with flights under <c>policy</c> instead of the graph's <c>GraphOptions.FlightPolicy</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createAsyncOnWithPolicy
+        (policy: FlightPolicy)
+        (read: unit -> 'T)
+        (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>)
+        : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        AsyncMemo.CreateOn (Graph.Current, read, compute, ScopeMode.PureAsync, policy)
+
+    /// <summary>
+    /// <c>createAsyncWithOn</c>, with flights under <c>policy</c> instead of the graph's <c>GraphOptions.FlightPolicy</c>.
+    /// </summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createOwningAsyncOnWithPolicy
+        (policy: FlightPolicy)
+        (read: unit -> 'T)
+        (compute: 'T -> Previous<'U> -> CancellationToken -> Task<'U>)
+        : AsyncMemo<'U> =
+        requireRead read
+        requireAsyncCompute compute
+        AsyncMemo.CreateOn (Graph.Current, read, compute, ScopeMode.Owning, policy)
+
     /// <summary>
     /// A source whose value arrives later, settled by hand rather than computed.
     /// </summary>
     let createAsyncSource<'T> () =
         AsyncSource<'T>(Graph.Current)
+
+    let private requireStreamStart (start: 'K -> CancellationToken -> StreamSource<'T>) =
+        if UntrackedPhase.isNullFn2 start then
+            nullArg "start"
 
     /// <summary>
     /// The latest item of the stream <c>start</c> returns. Pending until the first item; a change to a value read by
@@ -600,6 +664,42 @@ module Api =
     /// </remarks>
     let createStreamFold (seed: 'S) (fold: 'S -> 'T -> 'S) (start: CancellationToken -> StreamSource<'T>) =
         StreamMemo<'S>.Create(Graph.Current, seed, fold, start, false)
+
+    /// <summary>
+    /// The latest item of a stream split into a tracked pure <c>read</c> and an untracked pure <c>start</c> invoked
+    /// when <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// A pending, failed, or equal <c>read</c> leaves the current stream running; reading a pending source inside
+    /// <c>start</c> fails the node with <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>start</c> is null.</exception>
+    let createStreamOn (read: unit -> 'K) (start: 'K -> CancellationToken -> StreamSource<'T>) : StreamMemo<'T> =
+        requireRead read
+        requireStreamStart start
+        StreamMemo.CreateOn (Graph.Current, read, start)
+
+    /// <summary>
+    /// The fold of a split stream's items into <c>seed</c>, restarting from <c>seed</c> when <c>read</c> settles on
+    /// an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// Items arriving while <c>read</c> is pending or failed continue folding into the current key's state and
+    /// surface once <c>read</c> recovers to an equal key.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>fold</c>, <c>read</c>, or <c>start</c> is null.</exception>
+    let createStreamFoldOn
+        (seed: 'S)
+        (fold: 'S -> 'T -> 'S)
+        (read: unit -> 'K)
+        (start: 'K -> CancellationToken -> StreamSource<'T>)
+        : StreamMemo<'S> =
+        if UntrackedPhase.isNullFn2 fold then
+            nullArg "fold"
+
+        requireRead read
+        requireStreamStart start
+        StreamMemo.CreateFoldOn (Graph.Current, seed, fold, read, start)
 
     /// <summary>
     /// Substitutes <c>fallback</c> for as long as <c>body</c> is suspended, so the suspension stops here instead of

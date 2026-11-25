@@ -101,4 +101,91 @@ let tests =
                         |> ignore)
                     "createOwningMemoOnWithComparer null compute"
             }
+
+            test "createAsyncOn and createStreamOn families reject null read, compute, fold, or start" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let nullRead = Unchecked.defaultof<unit -> int>
+
+                let nullAsyncCompute =
+                    Unchecked.defaultof<int -> Previous<int> -> Threading.CancellationToken -> Threading.Tasks.Task<int>>
+
+                let validAsyncCompute =
+                    fun (x: int) (_: Previous<int>) (_: Threading.CancellationToken) -> completed x
+
+                let nullFold = Unchecked.defaultof<int -> int -> int>
+
+                let nullStart =
+                    Unchecked.defaultof<int -> Threading.CancellationToken -> StreamSource<int>>
+
+                let validStart =
+                    fun (_: int) (_: Threading.CancellationToken) ->
+                        StreamSource.create (fun _ _ -> Threading.Tasks.TaskCompletionSource<unit>().Task :> Threading.Tasks.Task)
+
+                Expect.throwsT<ArgumentNullException> (fun () -> createAsyncOn nullRead validAsyncCompute |> ignore) "createAsyncOn null read"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createAsyncOn (fun () -> 1) nullAsyncCompute
+                        |> ignore)
+                    "createAsyncOn null compute"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createAsyncWithOn nullRead validAsyncCompute
+                        |> ignore)
+                    "createAsyncWithOn null read"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createAsyncWithOn (fun () -> 1) nullAsyncCompute
+                        |> ignore)
+                    "createAsyncWithOn null compute"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createAsyncOnWithPolicy CancelPrevious nullRead validAsyncCompute
+                        |> ignore)
+                    "createAsyncOnWithPolicy null read"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createAsyncOnWithPolicy CancelPrevious (fun () -> 1) nullAsyncCompute
+                        |> ignore)
+                    "createAsyncOnWithPolicy null compute"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createOwningAsyncOnWithPolicy CancelPrevious nullRead validAsyncCompute
+                        |> ignore)
+                    "createOwningAsyncOnWithPolicy null read"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createOwningAsyncOnWithPolicy CancelPrevious (fun () -> 1) nullAsyncCompute
+                        |> ignore)
+                    "createOwningAsyncOnWithPolicy null compute"
+
+                Expect.throwsT<ArgumentNullException> (fun () -> createStreamOn nullRead validStart |> ignore) "createStreamOn null read"
+
+                Expect.throwsT<ArgumentNullException> (fun () -> createStreamOn (fun () -> 1) nullStart |> ignore) "createStreamOn null start"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createStreamFoldOn 0 nullFold (fun () -> 1) validStart
+                        |> ignore)
+                    "createStreamFoldOn null fold"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createStreamFoldOn 0 (+) nullRead validStart
+                        |> ignore)
+                    "createStreamFoldOn null read"
+
+                Expect.throwsT<ArgumentNullException>
+                    (fun () ->
+                        createStreamFoldOn 0 (+) (fun () -> 1) nullStart
+                        |> ignore)
+                    "createStreamFoldOn null start"
+            }
         ]

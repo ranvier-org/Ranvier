@@ -11507,6 +11507,44 @@ module internal UntrackedPhase =
     let memoOnPending =
         "A split memo's compute read a pending source. Read pending sources in read, which suspends the memo until they settle."
 
+    [<Literal>]
+    let asyncOnPending =
+        "A split async memo's compute read a pending source. Read pending sources in read, which suspends the async memo until they settle."
+
+    [<Literal>]
+    let streamOnPending =
+        "A split stream memo's start read a pending source. Read pending sources in read, which suspends the stream memo until they settle."
+
+#if FABLE_COMPILER
+    [<Fable.Core.Emit("$0 == null")>]
+    let isNullFn1 (value: 'A -> 'R) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0 == null")>]
+    let isNullFn2 (value: 'A -> 'B -> 'R) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("$0 == null")>]
+    let isNullFn3 (value: 'A -> 'B -> 'C -> 'R) : bool =
+        Fable.Core.Util.jsNative
+
+    [<Fable.Core.Emit("null")>]
+    let nullFn2<'A, 'B, 'R> () : ('A -> 'B -> 'R) =
+        Fable.Core.Util.jsNative
+#else
+    let inline isNullFn1 (value: 'A -> 'R) : bool =
+        Operators.isNull (box value)
+
+    let inline isNullFn2 (value: 'A -> 'B -> 'R) : bool =
+        Operators.isNull (box value)
+
+    let inline isNullFn3 (value: 'A -> 'B -> 'C -> 'R) : bool =
+        Operators.isNull (box value)
+
+    let inline nullFn2<'A, 'B, 'R> () : ('A -> 'B -> 'R) =
+        Unchecked.defaultof<'A -> 'B -> 'R>
+#endif
+
     /// <summary>
     /// Wraps a <c>NotReadyException</c> raised inside an untracked Phase 2 callback into an
     /// <c>InvalidOperationException</c> carrying <c>ex</c> as its <c>InnerException</c>.
@@ -14344,6 +14382,89 @@ type Previous<'T> internal (source: IPreviousSource<'T>, position: int) =
         else
             source.Settled position
 
+/// <summary>Outcome of evaluating Phase 1 (<c>read</c>) on a two-phase <c>AsyncMemo&lt;'U&gt;</c>.</summary>
+type internal AsyncPhase1Result =
+    | EqualKey = 0uy
+    | UnequalKey = 1uy
+    | Phase1Failed = 2uy
+
+/// <summary>Type-erased Phase 1/Phase 2 driver stored on a two-phase <c>AsyncMemo&lt;'U&gt;</c> (Theorem B17).</summary>
+type internal IAsyncKeyPhase<'U> =
+    abstract ReadAndCompare: unit -> AsyncPhase1Result
+    abstract CommitNextKey: unit -> unit
+    abstract ResetKey: unit -> unit
+    abstract LaunchBody: host: Graph * previous: Previous<'U> * token: CancellationToken -> Task<'U>
+    abstract Phase1Exception: exn
+
+/// <summary>Typed state of a two-phase <c>AsyncMemo&lt;'U&gt;</c> created by <c>createAsyncOn*</c>.</summary>
+[<Sealed>]
+type internal AsyncOnState<'K, 'U>(graph: Graph, read: unit -> 'K, compute: 'K -> Previous<'U> -> CancellationToken -> Task<'U>) =
+    let keyEqual = graph.EncodedComparer<'K>()
+#if !FABLE_COMPILER
+    let adapted =
+        OptimizedClosures.FSharpFunc<'K, Previous<'U>, CancellationToken, Task<'U>>.Adapt compute
+#endif
+    let mutable hasKey = false
+    let mutable lastKey = Platform.zero<'K>()
+    let mutable candidateKey = Platform.zero<'K>()
+    let mutable phase1Ex: exn = Platform.nil ()
+#if !FABLE_COMPILER
+    let mutable activeKey = Unchecked.defaultof<'K>
+
+    let invokeFlight =
+        fun (previous: Previous<'U>) (token: CancellationToken) -> adapted.Invoke (activeKey, previous, token)
+#endif
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private _.CompareKeyGuarded(nextKey: 'K) : AsyncPhase1Result =
+        try
+            if ComparerSentinel.equals keyEqual lastKey nextKey then
+                AsyncPhase1Result.EqualKey
+            else
+                AsyncPhase1Result.UnequalKey
+        with ex ->
+            phase1Ex <- ex
+            AsyncPhase1Result.Phase1Failed
+
+    interface IAsyncKeyPhase<'U> with
+        member this.ReadAndCompare() =
+            phase1Ex <- Platform.nil ()
+            let nextKey = read ()
+            candidateKey <- nextKey
+
+            if not hasKey then
+                AsyncPhase1Result.UnequalKey
+            elif SafeEquality.isSafe keyEqual then
+                if ComparerSentinel.equals keyEqual lastKey nextKey then
+                    AsyncPhase1Result.EqualKey
+                else
+                    AsyncPhase1Result.UnequalKey
+            else
+                this.CompareKeyGuarded nextKey
+
+        member _.CommitNextKey() =
+            lastKey <- candidateKey
+            hasKey <- true
+
+        member _.ResetKey() =
+            hasKey <- false
+
+        member _.LaunchBody(host, previous, token) =
+#if FABLE_COMPILER
+            ignore host
+            compute lastKey previous token
+#else
+            let prevActive = activeKey
+            activeKey <- lastKey
+
+            try
+                Platform.runFlightBodyWith (host :> Platform.IContinuationHost) invokeFlight previous token
+            finally
+                activeKey <- prevActive
+#endif
+
+        member _.Phase1Exception = phase1Ex
+
 /// <summary>
 /// A derived computation whose value arrives later: the body runs synchronously and returns a <c>Task</c>. This library's
 /// <c>createAsync</c>.
@@ -14355,7 +14476,10 @@ type Previous<'T> internal (source: IPreviousSource<'T>, position: int) =
 /// The body receives the value last published as a <c>Previous</c>. Flights follow the <c>FlightPolicy</c> given at
 /// creation, or the graph's <c>GraphOptions.FlightPolicy</c> when none was given.
 /// </remarks>
-type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode, policy: FlightPolicy) =
+type AsyncMemo<'T>
+    private
+    (graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, keyPhase: IAsyncKeyPhase<'T>, mode: ScopeMode, policy: FlightPolicy) =
+    let isSplit = not (Platform.isNull (box keyPhase))
     let id = graph.NextId ()
 #if !FABLE_COMPILER && !RANVIER_TRACE
     let mutable observers = ObserverList.Create ()
@@ -14375,6 +14499,15 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     let mutable status = Status.Pending ||| Status.Uninitialized
     let mutable value = Unchecked.defaultof<'T>
     let mutable failure: Failure = Platform.nil ()
+    let mutable phase2Status = Status.Pending ||| Status.Uninitialized
+    let mutable phase2Failure: Failure = Platform.nil ()
+    let mutable phase1Status = Status.None
+    let mutable phase1Failure: Failure = Platform.nil ()
+    let mutable phase1PendingSource: INode = Platform.nil ()
+    let mutable owedTrailing = false
+    let mutable phase1Active = false
+    let mutable scopeDirty = false
+    let mutable unannouncedSettle = false
     let mutable runs = 0
     let mutable disposed = false
     let mutable link: OwnerLink = Platform.nil ()
@@ -14452,6 +14585,29 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     /// publishes inline, during the read that launched it.
     /// </summary>
     let mutable launching = false
+    let mutable wokeInLaunch = false
+
+    member inline private _.SyncVisibleOn() =
+        if not disposed then
+            if phase1Status = Status.Pending then
+                status <-
+                    Status.Pending
+                    ||| (phase2Status &&& Status.Uninitialized)
+
+                failure <- Platform.nil ()
+                pendingSource <- phase1PendingSource
+            elif phase1Status = Status.Error then
+                status <- Status.Error
+                failure <- phase1Failure
+                pendingSource <- Platform.nil ()
+            elif owedTrailing then
+                status <- Status.Pending
+                failure <- Platform.nil ()
+                pendingSource <- Platform.nil ()
+            else
+                status <- phase2Status
+                failure <- phase2Failure
+                pendingSource <- Platform.nil ()
 
     member private _.NotifyObserversDirty() =
 #if FABLE_COMPILER && !RANVIER_TRACE
@@ -14475,10 +14631,22 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         observers.NotifyCheck ()
 #endif
 
+    member inline private _.NotifyOtherObservers() =
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList &observers
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList observers
+#else
+        graph.NotifyMoved observers
+#endif
+#endif
+
     member private this.Wake() =
         Tracer.Moved (graph, id, Failure.Payload (failure, box value))
 
         if launching then
+            wokeInLaunch <- true
 #if !FABLE_COMPILER && !RANVIER_TRACE
             graph.NotifyMovedList &observers
 #else
@@ -14494,6 +14662,49 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         Tracer.Notified graph
         graph.RequestFlush ()
+
+    member private this.WakeDuringRun() =
+        Tracer.Moved (graph, id, Failure.Payload (failure, box value))
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList &observers
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+        graph.NotifyMovedList observers
+#else
+        graph.NotifyMoved observers
+#endif
+#endif
+        Tracer.Notified graph
+        graph.RequestFlush ()
+
+    member private this.NotifyIfMovedOn(prevStatus: Status, prevFailure: Failure, prevPending: INode) =
+        if not disposed && not wokeInLaunch then
+            if
+                unannouncedSettle
+                && phase1Status = Status.None
+                && not owedTrailing
+            then
+                unannouncedSettle <- false
+                this.WakeDuringRun ()
+            else
+                let curNorm = status &&& ~~~Status.Uninitialized
+                let prevNorm = prevStatus &&& ~~~Status.Uninitialized
+
+                let moved =
+                    curNorm <> prevNorm
+                    || (curNorm = Status.Error
+                        && not (obj.ReferenceEquals (failure, prevFailure))
+                        && Failure.Moved (failure, prevFailure))
+                    || (curNorm = Status.Pending
+                        && not (obj.ReferenceEquals (box pendingSource, box prevPending)))
+
+                if moved then
+                    Tracer.Unattributed graph
+                    this.NotifyOtherObservers ()
+                    Tracer.Notified graph
+
+                    if graph.QueuePending then
+                        graph.OweFlush ()
 
     member private _.LastSettled() =
         if published then ValueSome value else ValueNone
@@ -14605,6 +14816,171 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         freshness <- Freshness.Clean
 
+    member private this.InspectAtSettleCore(gen: int, dropUnequal: bool) : bool =
+        if
+            freshness = Freshness.Check
+            && not checking
+            && running = 0
+        then
+            Tracer.CheckStart (graph, id)
+            checking <- true
+            let before = graph.StaleTransitions
+            let mutable i = 0
+
+            while freshness = Freshness.Check && i < sources.Count do
+                sources.RefreshSourceAt i
+
+                if graph.ActiveSkips <> 0 then
+                    this.CheckActiveSource i
+
+                i <- i + 1
+
+            if
+                freshness = Freshness.Check
+                && graph.StaleTransitions <> before
+            then
+                this.ResolveCheckAgain ()
+
+            checking <- false
+            Tracer.CheckResolved (graph, id, (freshness = Freshness.Dirty))
+
+            if freshness = Freshness.Check then
+                freshness <- Freshness.Clean
+                unannounced <- false
+
+        if freshness <> Freshness.Dirty then
+            queued = 2 && not dropUnequal
+        else
+            freshness <- Freshness.Clean
+            unannounced <- false
+            let prevStatus = status
+            let prevFailure = failure
+            let prevPending = pendingSource
+            runs <- runs + 1
+            Tracer.RunStart (graph, id, runs)
+            sources.BeginRun ()
+            phase1Active <- true
+            running <- running + 1
+
+            let mutable p1Outcome = AsyncPhase1Result.EqualKey
+            let mutable p1Pending: INode = Platform.nil ()
+            let mutable p1Error: exn = Platform.nil ()
+
+            try
+                try
+                    p1Outcome <-
+#if FABLE_COMPILER
+                        graph.RunHosted (this :> IComputation, fun () -> keyPhase.ReadAndCompare ())
+#else
+                        let saved = graph.EnterHosted (this :> IComputation)
+
+                        try
+                            let r = keyPhase.ReadAndCompare ()
+                            graph.CheckRaised ()
+                            r
+                        finally
+                            graph.LeaveHosted saved
+#endif
+
+                    if violated then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+                finally
+                    phase1Active <- false
+                    running <- running - 1
+
+                    if disposed then
+                        sources.Clear (this :> IComputation)
+                    else
+                        sources.EndRun (this :> IComputation)
+            with
+            | ex when violated ->
+                violated <- false
+                p1Outcome <- AsyncPhase1Result.Phase1Failed
+                p1Error <- ScopeMessages.failure ScopeMode.Pure ex
+            | NotReadyException src -> p1Pending <- src
+            | ex ->
+                p1Outcome <- AsyncPhase1Result.Phase1Failed
+                p1Error <- ex
+
+            let mutable resultOwed = false
+
+            if disposed then
+                ()
+            elif not (Platform.isNull (box p1Pending)) then
+                phase1Status <- Status.Pending
+                phase1PendingSource <- p1Pending
+                phase1Failure <- Platform.nil ()
+                this.SyncVisibleOn ()
+                resultOwed <- queued = 2 && not dropUnequal
+            elif p1Outcome = AsyncPhase1Result.Phase1Failed then
+                let err =
+                    if Platform.isNull p1Error then
+                        keyPhase.Phase1Exception
+                    else
+                        p1Error
+
+                phase1Status <- Status.Error
+                phase1PendingSource <- Platform.nil ()
+                phase1Failure <- graph.FailureOf (err, this, prevFailure)
+                this.SyncVisibleOn ()
+                resultOwed <- queued = 2 && not dropUnequal
+            elif p1Outcome = AsyncPhase1Result.EqualKey then
+                phase1Status <- Status.None
+                phase1PendingSource <- Platform.nil ()
+                phase1Failure <- Platform.nil ()
+                this.SyncVisibleOn ()
+                resultOwed <- queued = 2 && not dropUnequal
+            else
+                phase1Status <- Status.None
+                phase1PendingSource <- Platform.nil ()
+                phase1Failure <- Platform.nil ()
+                this.SyncVisibleOn ()
+
+                if dropUnequal then
+                    Tracer.RunDropped (graph, id, gen)
+                else
+                    resultOwed <- true
+
+            if not disposed then
+                let curNorm = status &&& ~~~Status.Uninitialized
+                let prevNorm = prevStatus &&& ~~~Status.Uninitialized
+
+                if
+                    curNorm <> prevNorm
+                    || (curNorm = Status.Error
+                        && not (obj.ReferenceEquals (failure, prevFailure))
+                        && Failure.Moved (failure, prevFailure))
+                    || (curNorm = Status.Pending
+                        && not (obj.ReferenceEquals (box pendingSource, box prevPending)))
+                then
+                    Tracer.Unattributed graph
+                    this.NotifyOtherObservers ()
+                    Tracer.Notified graph
+
+                    if graph.QueuePending then
+                        graph.OweFlush ()
+
+            Tracer.RunEnd (graph, id, status)
+
+            if freshness <> Freshness.Clean then
+                unannounced <- true
+                graph.NoteStaleTransition ()
+
+            resultOwed
+
+    member private this.InspectAtSettleOn(gen: int, dropUnequal: bool) : bool =
+        if graph.Deferring then
+            let r = this.InspectAtSettleCore (gen, dropUnequal)
+            graph.ClearLastRaisedIfTop ()
+            r
+        else
+            graph.EnterPull ()
+
+            try
+                this.InspectAtSettleCore (gen, dropUnequal)
+            finally
+                graph.ExitPull ()
+
     /// <summary>Applies the result of the run numbered <c>gen</c>. Runs on the graph thread.</summary>
     member private this.ApplyResult(gen: int, outcome: Platform.FlightOutcome<'T>) =
         // True under `FinishCurrent` when a change arrived during the flight, and under `DropWhilePending` when a
@@ -14633,7 +15009,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     not disposed
                     && (queued = 2 || freshness <> Freshness.Clean)
                 then
-                    this.DiscardAtSettle gen
+                    if isSplit then
+                        this.InspectAtSettleOn (gen, true) |> ignore
+                    else
+                        this.DiscardAtSettle gen
 
                 queued <- 0
                 gen = generation
@@ -14642,11 +15021,14 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     not disposed
                     && (queued = 2 || freshness <> Freshness.Clean)
                 then
-                    if
-                        (match outcome with
-                         | Platform.FlightOutcome.Completed _ -> true
-                         | _ -> false)
-                    then
+                    let isCompleted =
+                        match outcome with
+                        | Platform.FlightOutcome.Completed _ -> true
+                        | _ -> false
+
+                    if isSplit then
+                        owed <- this.InspectAtSettleOn (gen, isCompleted)
+                    elif isCompleted then
                         this.DiscardAtSettle gen
                     else
                         // A Check is a discarded change only once a source resolves it to Dirty.
@@ -14667,55 +15049,131 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
         this.RetireIfQuiet ()
 
-        // An owed trailing run holds the node pending as a pending source does.
-        let suspended = owed || not (Platform.isNull (box pendingSource))
+        if isSplit then
+            if current && not disposed then
+                match outcome with
+                | Platform.FlightOutcome.Completed v when owed ->
+                    Tracer.FlightSettled (graph, id, gen, 0, 2, box v)
+                    this.Write v
+                    phase2Failure <- Platform.nil ()
+                    phase2Status <- Status.None
+                    owedTrailing <- true
+                    unannouncedSettle <- true
+                    this.SyncVisibleOn ()
+                | Platform.FlightOutcome.Faulted _
+                | Platform.FlightOutcome.Canceled _ when owed ->
+                    Tracer.FlightFailureDrop (
+                        graph,
+                        id,
+                        gen,
+                        true,
+                        (match policy with
+                         | FlightPolicy.FinishCurrent -> true
+                         | _ -> false)
+                    )
 
-        if current && not disposed then
-            match outcome with
-            // Under `Queue`, the newest run is waiting on a source: an
-            // older flight's value is the last settled one, and the node
-            // stays pending.
-            | Platform.FlightOutcome.Completed v when suspended ->
-                Tracer.FlightSettled (graph, id, gen, 0, (if owed then 2 else 1), box v)
-                this.Write v
-                status <- Status.Pending
-            | Platform.FlightOutcome.Faulted _
-            | Platform.FlightOutcome.Canceled _ when suspended ->
-                // An older flight's failure is dropped; the node stays pending on the source or the run owed.
-                Tracer.FlightFailureDrop (
-                    graph,
-                    id,
-                    gen,
-                    owed,
-                    (match policy with
-                     | FlightPolicy.FinishCurrent -> true
-                     | _ -> false)
-                )
-            | Platform.FlightOutcome.Completed v ->
-                Tracer.FlightSettled (graph, id, gen, 0, 0, box v)
-                this.Write v
-                failure <- Platform.nil ()
-                status <- Status.None
-                this.Wake ()
-            // A cancellation of the current flight is a failure.
-            | Platform.FlightOutcome.Faulted ex
-            | Platform.FlightOutcome.Canceled ex ->
-                Tracer.FlightSettled (
-                    graph,
-                    id,
-                    gen,
-                    (match outcome with
-                     | Platform.FlightOutcome.Canceled _ -> 2
-                     | _ -> 1),
-                    0,
-                    ex
-                )
+                    keyPhase.ResetKey ()
+                    owedTrailing <- false
+                    unannouncedSettle <- false
+                    phase2Failure <- Platform.nil ()
 
-                failure <- graph.FailureOf (ex, (this :> INode), null)
-                status <- Status.Error
-                this.Wake ()
+                    phase2Status <-
+                        Status.Pending
+                        ||| (phase2Status &&& Status.Uninitialized)
+
+                    this.SyncVisibleOn ()
+                | Platform.FlightOutcome.Completed v ->
+                    let masked = phase1Status <> Status.None
+                    let held = if phase1Status = Status.Pending then 1 else 0
+                    Tracer.FlightSettled (graph, id, gen, 0, held, box v)
+                    this.Write v
+                    phase2Failure <- Platform.nil ()
+                    phase2Status <- Status.None
+                    owedTrailing <- false
+                    this.SyncVisibleOn ()
+
+                    if masked then
+                        unannouncedSettle <- true
+                    else
+                        unannouncedSettle <- false
+                        this.Wake ()
+                | Platform.FlightOutcome.Faulted ex
+                | Platform.FlightOutcome.Canceled ex ->
+                    let masked = phase1Status <> Status.None
+
+                    Tracer.FlightSettled (
+                        graph,
+                        id,
+                        gen,
+                        (match outcome with
+                         | Platform.FlightOutcome.Canceled _ -> 2
+                         | _ -> 1),
+                        0,
+                        ex
+                    )
+
+                    phase2Failure <- graph.FailureOf (ex, (this :> INode), null)
+                    phase2Status <- Status.Error
+                    owedTrailing <- false
+                    this.SyncVisibleOn ()
+
+                    if masked then
+                        unannouncedSettle <- true
+                    else
+                        unannouncedSettle <- false
+                        this.Wake ()
+            else
+                Tracer.FlightDrop (graph, id, gen, (if disposed then 2 else 1))
         else
-            Tracer.FlightDrop (graph, id, gen, (if disposed then 2 else 1))
+            // An owed trailing run holds the node pending as a pending source does.
+            let suspended = owed || not (Platform.isNull (box pendingSource))
+
+            if current && not disposed then
+                match outcome with
+                // Under `Queue`, the newest run is waiting on a source: an
+                // older flight's value is the last settled one, and the node
+                // stays pending.
+                | Platform.FlightOutcome.Completed v when suspended ->
+                    Tracer.FlightSettled (graph, id, gen, 0, (if owed then 2 else 1), box v)
+                    this.Write v
+                    status <- Status.Pending
+                | Platform.FlightOutcome.Faulted _
+                | Platform.FlightOutcome.Canceled _ when suspended ->
+                    // An older flight's failure is dropped; the node stays pending on the source or the run owed.
+                    Tracer.FlightFailureDrop (
+                        graph,
+                        id,
+                        gen,
+                        owed,
+                        (match policy with
+                         | FlightPolicy.FinishCurrent -> true
+                         | _ -> false)
+                    )
+                | Platform.FlightOutcome.Completed v ->
+                    Tracer.FlightSettled (graph, id, gen, 0, 0, box v)
+                    this.Write v
+                    failure <- Platform.nil ()
+                    status <- Status.None
+                    this.Wake ()
+                // A cancellation of the current flight is a failure.
+                | Platform.FlightOutcome.Faulted ex
+                | Platform.FlightOutcome.Canceled ex ->
+                    Tracer.FlightSettled (
+                        graph,
+                        id,
+                        gen,
+                        (match outcome with
+                         | Platform.FlightOutcome.Canceled _ -> 2
+                         | _ -> 1),
+                        0,
+                        ex
+                    )
+
+                    failure <- graph.FailureOf (ex, (this :> INode), null)
+                    status <- Status.Error
+                    this.Wake ()
+            else
+                Tracer.FlightDrop (graph, id, gen, (if disposed then 2 else 1))
 
         match policy with
         // Every chained result, dropped or failed included, completes the waiter behind it with the last settled value.
@@ -14731,7 +15189,12 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             freshness <- Freshness.Dirty
             Tracer.TrailingRun (graph, id)
             graph.NoteStaleTransition ()
-            this.NotifyObserversDirty ()
+
+            if isSplit then
+                this.NotifyObserversCheck ()
+            else
+                this.NotifyObserversDirty ()
+
             Tracer.Notified graph
             graph.RequestFlush ()
         | CancelPrevious
@@ -14794,7 +15257,24 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
     /// An async memo over <c>compute</c> under <c>policy</c>, owned by the current owner.
     /// </summary>
     static member internal Create(graph: Graph, compute: Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode, policy: FlightPolicy) =
-        let memo = new AsyncMemo<'T> (graph, compute, mode, policy)
+        let memo = new AsyncMemo<'T> (graph, compute, Platform.nil (), mode, policy)
+        memo.Attach ()
+        memo
+
+    /// <summary>
+    /// A two-phase split async memo over pure <c>read</c> and untracked <c>compute</c>, owned by the current owner.
+    /// </summary>
+    static member internal CreateOn
+        (graph: Graph, read: unit -> 'K, compute: 'K -> Previous<'T> -> CancellationToken -> Task<'T>, mode: ScopeMode, policy: FlightPolicy)
+        : AsyncMemo<'T> =
+        if UntrackedPhase.isNullFn1 read then
+            nullArg (nameof read)
+
+        if UntrackedPhase.isNullFn3 compute then
+            nullArg (nameof compute)
+
+        let state = AsyncOnState<'K, 'T>(graph, read, compute) :> IAsyncKeyPhase<'T>
+        let memo = new AsyncMemo<'T> (graph, UntrackedPhase.nullFn2 (), state, mode, policy)
         memo.Attach ()
         memo
 
@@ -14807,7 +15287,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         sources.Clear (this :> IComputation)
 
     member private this.Start() =
-        if
+        if isSplit then
+            this.StartOn ()
+        elif
             queued <> 0
             && (match policy with
                 | FlightPolicy.Queue -> false
@@ -14838,6 +15320,358 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     this.Start ()
             elif freshness = Freshness.Clean then
                 unannounced <- false
+
+    member private this.FailLaunchOn(gen: int, ex: exn) =
+        match policy with
+        | FlightPolicy.Queue when queued > 0 ->
+            queued <- queued + 1
+            chained <- chained + 1
+            let seqNum = chained
+#if !FABLE_COMPILER
+            if graph.IsOnGraphThread then
+                this.ApplyQueued (seqNum, gen, Platform.FlightOutcome<'T>.Faulted ex)
+            else
+                this.PublishQueued (seqNum, gen, Platform.FlightOutcome<'T>.Faulted ex)
+#else
+            this.PublishQueued (seqNum, gen, Platform.FlightOutcome<'T>.Faulted ex)
+#endif
+        | _ ->
+            phase2Failure <- graph.FailureOf (ex, this, null)
+            phase2Status <- Status.Error
+            this.SyncVisibleOn ()
+
+    member private this.LaunchUntracked(prevStatus: Status, prevFailure: Failure, prevPending: INode) =
+        generation <- generation + 1
+        let gen = generation
+
+        match policy with
+        | CancelPrevious ->
+#if FABLE_COMPILER
+            if not (Platform.isNull cts) then
+                cts.Cancel ()
+                cts.Dispose ()
+
+            cts <- new CancellationTokenSource ()
+#else
+            if flying > 0 && not (Platform.isNull cts) then
+                let superseded = cts
+                cts <- null
+                superseded.Cancel ()
+                superseded.Dispose ()
+
+            if Platform.isNull cts then
+                cts <- new CancellationTokenSource ()
+#endif
+        | KeepLatest
+        | FlightPolicy.Queue
+        | FinishCurrent
+        | Drop
+        | DropWhilePending ->
+            if Platform.isNull cts then
+                cts <- new CancellationTokenSource ()
+
+        let token = cts.Token
+        let previous = Previous<'T>(this :> IPreviousSource<'T>, chained)
+        phase2Failure <- Platform.nil ()
+
+        phase2Status <-
+            Status.Pending
+            ||| (phase2Status &&& Status.Uninitialized)
+
+        this.SyncVisibleOn ()
+
+        let mutable flight = Platform.nil ()
+        running <- running + 1
+
+        try
+            try
+#if FABLE_COMPILER
+                let started =
+                    graph.RunUntrackedHosted (
+                        this :> IScopeHost,
+                        fun () ->
+                            let s = keyPhase.LaunchBody (graph, previous, token)
+
+                            if violated && not (Platform.isNull s) then
+                                Platform.outcomeOf s |> ignore
+
+                            s
+                    )
+#else
+                let hasJournal = not (Platform.isNull graph.Journal)
+
+                if hasJournal then
+                    graph.Journal.EnterDerived ()
+
+                let saved = graph.EnterUntrackedHosted (this :> IScopeHost)
+
+                let started =
+                    try
+                        let s = keyPhase.LaunchBody (graph, previous, token)
+
+                        if violated && not (Platform.isNull s) then
+                            Platform.outcomeOf s |> ignore
+
+                        s
+                    finally
+                        graph.LeaveUntrackedHosted saved
+
+                        if hasJournal then
+                            graph.Journal.LeaveDerived ()
+#endif
+
+                if violated then
+                    raise (InvalidOperationException (ScopeMessages.forMode mode))
+
+                flight <- started
+            finally
+                running <- running - 1
+        with
+        | ex when violated ->
+            violated <- false
+            this.FailLaunchOn (gen, ScopeMessages.failure mode ex)
+        | ex -> this.FailLaunchOn (gen, UntrackedPhase.wrapPending UntrackedPhase.asyncOnPending ex)
+
+        if not (Platform.isNull flight) then
+            let flight = flight
+            Tracer.FlightStart (graph, id, gen)
+            launching <- true
+
+            try
+#if !FABLE_COMPILER
+                if flight.IsCompleted && graph.IsOnGraphThread then
+                    let outcome = Platform.settledOutcome flight
+
+                    match policy with
+                    | FlightPolicy.Queue ->
+                        queued <- queued + 1
+                        chained <- chained + 1
+                        let seqNum = chained
+                        this.ApplyQueued (seqNum, gen, outcome)
+                    | KeepLatest
+                    | CancelPrevious ->
+                        flying <- flying + 1
+                        this.ApplyResult (gen, outcome)
+                    | FinishCurrent
+                    | Drop
+                    | DropWhilePending ->
+                        queued <- 1
+                        this.ApplyResult (gen, outcome)
+                else
+                    match policy with
+                    | FlightPolicy.Queue ->
+                        queued <- queued + 1
+                        chained <- chained + 1
+                        let seqNum = chained
+                        Platform.attachSettled flight (this :> Platform.ISettledWaiter<'T>) gen seqNum
+                    | KeepLatest
+                    | CancelPrevious ->
+                        flying <- flying + 1
+                        Platform.attachSettled flight (this :> Platform.ISettledWaiter<'T>) gen 0
+                    | FinishCurrent
+                    | Drop
+                    | DropWhilePending ->
+                        queued <- 1
+                        Platform.attachSettled flight (this :> Platform.ISettledWaiter<'T>) gen 0
+#else
+                match policy with
+                | FlightPolicy.Queue ->
+                    queued <- queued + 1
+                    chained <- chained + 1
+                    let seqNum = chained
+
+                    Platform.whenSettled flight (fun o -> this.PublishQueued (seqNum, gen, o))
+                    |> ignore
+                | KeepLatest ->
+                    flying <- flying + 1
+
+                    Platform.whenSettled flight (fun o -> this.Publish (gen, o))
+                    |> ignore
+                | CancelPrevious ->
+                    Platform.whenSettled flight (fun o -> this.Publish (gen, o))
+                    |> ignore
+                | FinishCurrent
+                | Drop
+                | DropWhilePending ->
+                    queued <- 1
+
+                    Platform.whenSettled flight (fun o -> this.Publish (gen, o))
+                    |> ignore
+#endif
+            finally
+                launching <- false
+
+            this.NotifyIfMovedOn (prevStatus, prevFailure, prevPending)
+            Tracer.RunEnd (graph, id, status)
+        else
+            this.RetireIfQuiet ()
+            this.NotifyIfMovedOn (prevStatus, prevFailure, prevPending)
+            Tracer.RunEnd (graph, id, status)
+
+        if freshness <> Freshness.Clean then
+            unannounced <- true
+            graph.NoteStaleTransition ()
+
+    member private this.StartOn() =
+        this.StartOnFrom (status, failure, pendingSource)
+
+    member private this.StartOnFrom(prevStatus: Status, prevFailure: Failure, prevPending: INode) =
+        freshness <- Freshness.Clean
+        unannounced <- false
+        wokeInLaunch <- false
+        let currentFailure = failure
+        runs <- runs + 1
+        Tracer.RunStart (graph, id, runs)
+        sources.BeginRun ()
+        phase1Active <- true
+        running <- running + 1
+
+        let mutable p1Outcome = AsyncPhase1Result.EqualKey
+        let mutable p1Pending: INode = Platform.nil ()
+        let mutable p1Error: exn = Platform.nil ()
+
+        try
+            try
+                p1Outcome <-
+#if FABLE_COMPILER
+                    graph.RunHosted (this :> IComputation, fun () -> keyPhase.ReadAndCompare ())
+#else
+                    let saved = graph.EnterHosted (this :> IComputation)
+
+                    try
+                        let r = keyPhase.ReadAndCompare ()
+                        graph.CheckRaised ()
+                        r
+                    finally
+                        graph.LeaveHosted saved
+#endif
+
+                if violated then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+            finally
+                phase1Active <- false
+                running <- running - 1
+
+                if disposed then
+                    sources.Clear (this :> IComputation)
+                else
+                    sources.EndRun (this :> IComputation)
+        with
+        | ex when violated ->
+            violated <- false
+            p1Outcome <- AsyncPhase1Result.Phase1Failed
+            p1Error <- ScopeMessages.failure ScopeMode.Pure ex
+        | NotReadyException src -> p1Pending <- src
+        | ex ->
+            p1Outcome <- AsyncPhase1Result.Phase1Failed
+            p1Error <- ex
+
+        if disposed then
+            Tracer.RunEnd (graph, id, status)
+        elif not (Platform.isNull (box p1Pending)) then
+            phase1Status <- Status.Pending
+            phase1PendingSource <- p1Pending
+            phase1Failure <- Platform.nil ()
+            this.SyncVisibleOn ()
+            this.NotifyIfMovedOn (prevStatus, prevFailure, prevPending)
+            Tracer.RunEnd (graph, id, status)
+
+            if freshness <> Freshness.Clean then
+                unannounced <- true
+                graph.NoteStaleTransition ()
+        elif p1Outcome = AsyncPhase1Result.Phase1Failed then
+            let err =
+                if Platform.isNull p1Error then
+                    keyPhase.Phase1Exception
+                else
+                    p1Error
+
+            phase1Status <- Status.Error
+            phase1PendingSource <- Platform.nil ()
+            phase1Failure <- graph.FailureOf (err, this, currentFailure)
+            this.SyncVisibleOn ()
+            this.NotifyIfMovedOn (prevStatus, prevFailure, prevPending)
+            Tracer.RunEnd (graph, id, status)
+
+            if freshness <> Freshness.Clean then
+                unannounced <- true
+                graph.NoteStaleTransition ()
+        elif p1Outcome = AsyncPhase1Result.EqualKey then
+            phase1Status <- Status.None
+            phase1PendingSource <- Platform.nil ()
+            phase1Failure <- Platform.nil ()
+            owedTrailing <- false
+            this.SyncVisibleOn ()
+            this.NotifyIfMovedOn (prevStatus, prevFailure, prevPending)
+            Tracer.RunEnd (graph, id, status)
+
+            if freshness <> Freshness.Clean then
+                unannounced <- true
+                graph.NoteStaleTransition ()
+        elif
+            queued <> 0
+            && (match policy with
+                | FinishCurrent
+                | Drop
+                | DropWhilePending -> true
+                | _ -> false)
+        then
+            phase1Status <- Status.None
+            phase1PendingSource <- Platform.nil ()
+            phase1Failure <- Platform.nil ()
+            this.SyncVisibleOn ()
+            queued <- 2
+
+            Tracer.RunDeferred (
+                graph,
+                id,
+                generation,
+                (match policy with
+                 | FlightPolicy.FinishCurrent -> true
+                 | _ -> false)
+            )
+
+            this.NotifyIfMovedOn (prevStatus, prevFailure, prevPending)
+            Tracer.RunEnd (graph, id, status)
+
+            if freshness <> Freshness.Clean then
+                unannounced <- true
+                graph.NoteStaleTransition ()
+        elif not scopeDirty then
+            phase1Status <- Status.None
+            phase1PendingSource <- Platform.nil ()
+            phase1Failure <- Platform.nil ()
+            owedTrailing <- false
+            unannouncedSettle <- false
+            keyPhase.CommitNextKey ()
+            this.LaunchUntracked (prevStatus, prevFailure, prevPending)
+        else
+            scopeDirty <- false
+            keyPhase.ResetKey ()
+            let before = runs
+            graph.Discharge scope
+
+            if not disposed then
+                if runs = before then
+                    if freshness = Freshness.Dirty then
+                        Tracer.RunEnd (graph, id, status)
+                        this.StartOnFrom (prevStatus, prevFailure, prevPending)
+                    else
+                        phase1Status <- Status.None
+                        phase1PendingSource <- Platform.nil ()
+                        phase1Failure <- Platform.nil ()
+                        owedTrailing <- false
+                        unannouncedSettle <- false
+                        keyPhase.CommitNextKey ()
+                        this.LaunchUntracked (prevStatus, prevFailure, prevPending)
+                elif freshness = Freshness.Dirty then
+                    this.StartOn ()
+            else
+                if runs = before then
+                    Tracer.RunEnd (graph, id, status)
+
+                if freshness = Freshness.Clean then
+                    unannounced <- false
 
     member private this.FailLaunch(gen: int, ex: exn) =
         match policy with
@@ -15071,7 +15905,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         graph.Track (this :> ISource)
 
         if freshness <> Freshness.Clean && not disposed then
-            graph.MarkReaderDirty ()
+            if isSplit then
+                graph.MarkReaderCheck ()
+            else
+                graph.MarkReaderDirty ()
 
         if StatusBits.isUnready currentStatus then
             if StatusBits.isPending currentStatus then
@@ -15090,7 +15927,10 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
         graph.Track (this :> ISource)
 
         if freshness <> Freshness.Clean && not disposed then
-            graph.MarkReaderDirty ()
+            if isSplit then
+                graph.MarkReaderCheck ()
+            else
+                graph.MarkReaderDirty ()
 
         if StatusBits.isUnready currentStatus then
             if StatusBits.isPending currentStatus then
@@ -15240,22 +16080,27 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
     interface IScopeHost with
         member _.CanOwn =
-            not (Platform.isNull (box scope))
-            || mode = ScopeMode.Owning
+            not phase1Active
+            && (not (Platform.isNull (box scope))
+                || mode = ScopeMode.Owning)
 
         member _.Scope =
-            if Platform.isNull (box scope) then
-                if mode = ScopeMode.Owning then
+            if phase1Active then
+                violated <- true
+                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+            elif mode = ScopeMode.Owning then
+                if Platform.isNull (box scope) then
                     scope <- new Owner (graph.Root)
                     Tracer.ScopeNew (scope, graph, id)
 
                     if disposed then
                         scope.Dispose ()
-                else
-                    violated <- true
-                    raise (InvalidOperationException (ScopeMessages.forMode mode))
 
-            scope
+                scopeDirty <- true
+                scope
+            else
+                violated <- true
+                raise (InvalidOperationException (ScopeMessages.forMode mode))
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -15308,7 +16153,23 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
             slot < sources.Cursor
 
         member this.MarkDirty() =
-            if freshness <> Freshness.Dirty || unannounced then
+            if isSplit then
+                if freshness <> Freshness.Dirty then
+                    let wasClean = freshness = Freshness.Clean
+                    freshness <- Freshness.Dirty
+
+                    if wasClean then
+                        graph.NoteStaleTransition ()
+                        this.NotifyObserversCheck ()
+                    elif unannounced then
+                        unannounced <- false
+                        graph.NoteStaleTransition ()
+                        this.NotifyObserversCheck ()
+                elif unannounced then
+                    unannounced <- false
+                    graph.NoteStaleTransition ()
+                    this.NotifyObserversCheck ()
+            elif freshness <> Freshness.Dirty || unannounced then
                 if freshness = Freshness.Clean || unannounced then
                     graph.NoteStaleTransition ()
 
@@ -15341,6 +16202,7 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
                     this.DetachSources ()
 
                     if not (Platform.isNull (box scope)) then
+                        scopeDirty <- false
                         graph.Retire scope
 
                     if not (Platform.isNull cts) then
@@ -15351,6 +16213,9 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 
                     if StatusBits.isPending status then
                         pendingSource <- Platform.nil ()
+                        phase1PendingSource <- Platform.nil ()
+                        phase1Status <- Status.None
+                        owedTrailing <- false
 
                         failure <- Failure (ObjectDisposedException (this.GetType().Name), (this :> INode))
                         status <- Status.Error
@@ -15504,7 +16369,14 @@ type AsyncMemo<'T> private (graph: Graph, compute: Previous<'T> -> CancellationT
 type AsyncMemo<'T> with
     /// <summary>A pure async memo over <c>compute</c>.</summary>
     new(graph: Graph, compute: Func<Previous<'T>, CancellationToken, Task<'T>>) as this =
-        new AsyncMemo<'T> (graph, (fun previous token -> compute.Invoke (previous, token)), ScopeMode.PureAsync, graph.Options.FlightPolicy)
+        new AsyncMemo<'T> (
+            graph,
+            (fun previous token -> compute.Invoke (previous, token)),
+            Platform.nil (),
+            ScopeMode.PureAsync,
+            graph.Options.FlightPolicy
+        )
+
         then this.Attach ()
 
     /// <summary>An owning async memo over <c>compute</c> when <c>owning</c> is true, a pure one otherwise.</summary>
@@ -15512,6 +16384,7 @@ type AsyncMemo<'T> with
         new AsyncMemo<'T> (
             graph,
             (fun previous token -> compute.Invoke (previous, token)),
+            Platform.nil (),
             (if owning then ScopeMode.Owning else ScopeMode.PureAsync),
             graph.Options.FlightPolicy
         )

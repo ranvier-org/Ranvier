@@ -16,6 +16,7 @@
         <Compile Include="$(MSBuildThisFileDirectory)ValueReaderCases.fs" Link="ValueReaderCases.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)ValueReaders.fs" Link="ValueReaders.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Async.fs" Link="Async.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)AsyncSplit.fs" Link="AsyncSplit.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Boundaries.fs" Link="Boundaries.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Threading.fs" Link="Threading.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Edges.fs" Link="Edges.fs" />
@@ -53,6 +54,7 @@
         <Compile Include="$(MSBuildThisFileDirectory)TimedTestClock.fs" Link="TimedTestClock.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Timed.fs" Link="Timed.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Streams.fs" Link="Streams.fs" />
+        <Compile Include="$(MSBuildThisFileDirectory)StreamSplit.fs" Link="StreamSplit.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)PreviousValues.fs" Link="PreviousValues.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)../TraceTextCases.fs" Link="TraceTextCases.fs" />
         <Compile Include="$(MSBuildThisFileDirectory)Texts.fs" Link="Texts.fs" />
