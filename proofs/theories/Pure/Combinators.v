@@ -17,12 +17,16 @@ unobserved `map`-chain fusion (`MapFusion`):
    increments `mo_scope_gen` and `mo_compute_runs` only on initial or `eq_K`-unequal settled keys.
 2. **`B17` (`async_on_flight_preservation_eq`)**: Across all six `FlightPolicy` constructors
    (`CancelPrevious`, `KeepLatest`, `Queue`, `FinishCurrent`, `Drop`, `DropWhilePending`), settling
-   on an `eq_K`-equal key clears any Phase 1 overlay and preserves `ao_flight_gen`, `ao_queued`,
-   `ao_scope_gen`, and `ao_phase2_slot`; Phase 1 unready or unequal keys while `ao_queued <> 0` under
-   `FinishCurrent`/`Drop`/`DropWhilePending` set `ao_queued = 2` without clobbering `ao_last_key`;
-   background flight completion during a Phase 1 unready overlay updates `ao_phase2_slot` and surfaces
-   immediately once Phase 1 recovers to `ao_last_key`; and `Queue` drains out-of-order completions in
-   FIFO start order.
+   on an `eq_K`-equal key clears any Phase 1 overlay and `ao_owed_trailing` while preserving
+   `ao_flight_gen`, `ao_queued`, `ao_scope_gen`, and `ao_phase2_slot`; Phase 1 `CPending`/`CFailed`
+   uniformly sets `ao_phase1_overlay` without mutating `ao_has_key`, `ao_last_key`, `ao_flight_gen`,
+   `ao_queued`, `ao_fifo`, `ao_phase2_slot`, or `ao_owed_trailing`; unequal settled `CReady k'` while
+   `ao_queued <> 0` under `FinishCurrent`/`Drop`/`DropWhilePending` sets `ao_queued = 2` without
+   clobbering `ao_last_key` (with `owed` faulted settlement resetting `ao_has_key := false` to launch
+   a fresh flight even on `K1 -> K2 -> K1`, and `owed` `FinishCurrent` `RVal` settlement holding
+   `ao_owed_trailing := true` until `CReady` settles); background flight completion during an active
+   Phase 1 unready overlay updates `ao_phase2_slot` and surfaces immediately once Phase 1 recovers to
+   `ao_last_key`; and `Queue` drains out-of-order completions in FIFO start order.
 3. **`B18` (`fused_map_chain_eq_unfused`)**: Over heterogeneous $k$-stage `map` chains with arbitrary
    boolean stage cutoffs `eq_i` (no Leibniz equality requirement) and explicit state `St` (capturing
    allocation counters and heap-identity tokens), fused evaluation with per-stage cached ready values
@@ -269,9 +273,10 @@ Record async_on_state (K U : Type) := {
   ao_phase2_slot : comb_reading U;
   ao_phase1_overlay : option (comb_reading U);
   ao_fifo : list (nat * option (result U));
+  ao_owed_trailing : bool;
 }.
 
-Arguments Build_async_on_state {K U} _ _ _ _ _ _ _ _ _ _ _.
+Arguments Build_async_on_state {K U} _ _ _ _ _ _ _ _ _ _ _ _.
 Arguments ao_policy {K U} _.
 Arguments ao_self_id {K U} _.
 Arguments ao_has_key {K U} _.
@@ -283,15 +288,21 @@ Arguments ao_scope_gen {K U} _.
 Arguments ao_phase2_slot {K U} _.
 Arguments ao_phase1_overlay {K U} _.
 Arguments ao_fifo {K U} _.
+Arguments ao_owed_trailing {K U} _.
 
-(**md Externally visible reading of an `AsyncMemo` `*On` node: Phase 1 overlay when active, otherwise Phase 2's slot. *)
+(**md Externally visible reading of an `AsyncMemo` `*On` node: Phase 1 overlay when active,
+    `CPending ao_self_id` while an owed `FinishCurrent` trailing run is pending (`Core.fs:14182-14185`),
+    otherwise Phase 2's slot. *)
 Definition ao_visible {K U : Type} (st : async_on_state K U) : comb_reading U :=
   match ao_phase1_overlay st with
   | Some r1 => r1
-  | None => ao_phase2_slot st
+  | None =>
+      if ao_owed_trailing st then CPending (ao_self_id st)
+      else ao_phase2_slot st
   end.
 
-(**md Launches a new untracked Phase 2 flight for settled key `k`, advancing `ao_flight_gen` and `ao_scope_gen`. *)
+(**md Launches a new untracked Phase 2 flight for settled key `k`, advancing `ao_flight_gen` and `ao_scope_gen`
+    and clearing `ao_phase1_overlay` and `ao_owed_trailing`. *)
 Definition async_on_launch {K U : Type} (k : K) (st : async_on_state K U) : async_on_state K U :=
   let next_gen := S (ao_flight_gen st) in
   let '(next_queued, next_flying, next_fifo) :=
@@ -311,9 +322,11 @@ Definition async_on_launch {K U : Type} (k : K) (st : async_on_state K U) : asyn
      ao_scope_gen := S (ao_scope_gen st);
      ao_phase2_slot := CPending (ao_self_id st);
      ao_phase1_overlay := None;
-     ao_fifo := next_fifo |}.
+     ao_fifo := next_fifo;
+     ao_owed_trailing := false |}.
 
-(**md Phase 1 refresh step of `createAsyncOn*` across all six `FlightPolicy` constructors. *)
+(**md Phase 1 refresh step of `createAsyncOn*` across all six `FlightPolicy` constructors:
+    Phase 1 `CPending` and `CFailed` uniformly set `ao_phase1_overlay` without mutating Phase 2 flight state. *)
 Definition async_on_step {K U : Type}
     (eq_K : K -> K -> bool) (r1 : comb_reading K) (st : async_on_state K U)
     : async_on_state K U :=
@@ -330,7 +343,8 @@ Definition async_on_step {K U : Type}
            ao_scope_gen := ao_scope_gen st;
            ao_phase2_slot := ao_phase2_slot st;
            ao_phase1_overlay := None;
-           ao_fifo := ao_fifo st |}
+           ao_fifo := ao_fifo st;
+           ao_owed_trailing := false |}
       else if is_deferring_policy (ao_policy st) && negb (Nat.eqb (ao_queued st) 0) then
         {| ao_policy := ao_policy st;
            ao_self_id := ao_self_id st;
@@ -342,88 +356,36 @@ Definition async_on_step {K U : Type}
            ao_scope_gen := ao_scope_gen st;
            ao_phase2_slot := ao_phase2_slot st;
            ao_phase1_overlay := None;
-           ao_fifo := ao_fifo st |}
+           ao_fifo := ao_fifo st;
+           ao_owed_trailing := ao_owed_trailing st |}
       else
         async_on_launch k st
   | CPending src =>
-      if is_deferring_policy (ao_policy st) && negb (Nat.eqb (ao_queued st) 0) then
-        {| ao_policy := ao_policy st;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := 2;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := ao_phase1_overlay st;
-           ao_fifo := ao_fifo st |}
-      else
-        {| ao_policy := ao_policy st;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := ao_queued st;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := Some (CPending src);
-           ao_fifo := ao_fifo st |}
+      {| ao_policy := ao_policy st;
+         ao_self_id := ao_self_id st;
+         ao_has_key := ao_has_key st;
+         ao_last_key := ao_last_key st;
+         ao_flight_gen := ao_flight_gen st;
+         ao_queued := ao_queued st;
+         ao_flying := ao_flying st;
+         ao_scope_gen := ao_scope_gen st;
+         ao_phase2_slot := ao_phase2_slot st;
+         ao_phase1_overlay := Some (CPending src);
+         ao_fifo := ao_fifo st;
+         ao_owed_trailing := ao_owed_trailing st |}
   | CFailed ex orig =>
-      if is_deferring_policy (ao_policy st) && negb (Nat.eqb (ao_queued st) 0) then
-        {| ao_policy := ao_policy st;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := 2;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := ao_phase1_overlay st;
-           ao_fifo := ao_fifo st |}
-      else
-        match ao_policy st with
-        | Queue =>
-            if negb (Nat.eqb (ao_queued st) 0) then
-              let fail_gen := S (ao_flight_gen st) in
-              {| ao_policy := Queue;
-                 ao_self_id := ao_self_id st;
-                 ao_has_key := ao_has_key st;
-                 ao_last_key := ao_last_key st;
-                 ao_flight_gen := fail_gen;
-                 ao_queued := S (ao_queued st);
-                 ao_flying := ao_flying st;
-                 ao_scope_gen := ao_scope_gen st;
-                 ao_phase2_slot := ao_phase2_slot st;
-                 ao_phase1_overlay := ao_phase1_overlay st;
-                 ao_fifo := ao_fifo st ++ [(fail_gen, Some (RThrow ex))] |}
-            else
-              {| ao_policy := Queue;
-                 ao_self_id := ao_self_id st;
-                 ao_has_key := ao_has_key st;
-                 ao_last_key := ao_last_key st;
-                 ao_flight_gen := ao_flight_gen st;
-                 ao_queued := 0;
-                 ao_flying := ao_flying st;
-                 ao_scope_gen := ao_scope_gen st;
-                 ao_phase2_slot := ao_phase2_slot st;
-                 ao_phase1_overlay := Some (CFailed ex orig);
-                 ao_fifo := ao_fifo st |}
-        | _ =>
-            {| ao_policy := ao_policy st;
-               ao_self_id := ao_self_id st;
-               ao_has_key := ao_has_key st;
-               ao_last_key := ao_last_key st;
-               ao_flight_gen := ao_flight_gen st;
-               ao_queued := ao_queued st;
-               ao_flying := ao_flying st;
-               ao_scope_gen := ao_scope_gen st;
-               ao_phase2_slot := ao_phase2_slot st;
-               ao_phase1_overlay := Some (CFailed ex orig);
-               ao_fifo := ao_fifo st |}
-        end
+      {| ao_policy := ao_policy st;
+         ao_self_id := ao_self_id st;
+         ao_has_key := ao_has_key st;
+         ao_last_key := ao_last_key st;
+         ao_flight_gen := ao_flight_gen st;
+         ao_queued := ao_queued st;
+         ao_flying := ao_flying st;
+         ao_scope_gen := ao_scope_gen st;
+         ao_phase2_slot := ao_phase2_slot st;
+         ao_phase1_overlay := Some (CFailed ex orig);
+         ao_fifo := ao_fifo st;
+         ao_owed_trailing := ao_owed_trailing st |}
   end.
 
 (**md Records a settled flight outcome in `Queue`'s start-ordered FIFO buffer. *)
@@ -447,7 +409,9 @@ Fixpoint fifo_drain {U : Type} (self_id : nat) (queued : nat) (slot : comb_readi
   end.
 
 (**md Background Phase 2 flight completion (`ApplyResult` / `ApplyQueued` in `Core.fs:14113`), updating
-    `ao_phase2_slot` without clearing any active Phase 1 unready overlay. *)
+    `ao_phase2_slot` without clearing any active Phase 1 unready overlay, resetting `ao_has_key := false`
+    when an `owed` (`ao_queued = 2`) faulted flight is dropped under `FinishCurrent` or `DropWhilePending`,
+    and setting `ao_owed_trailing := true` when an `owed` `FinishCurrent` flight completes with `RVal`. *)
 Definition async_on_settle {K U : Type}
     (gen : nat) (out : result U) (st : async_on_state K U) : async_on_state K U :=
   let settled := result_to_reading (ao_self_id st) out in
@@ -465,7 +429,8 @@ Definition async_on_settle {K U : Type}
          ao_scope_gen := ao_scope_gen st;
          ao_phase2_slot := next_slot;
          ao_phase1_overlay := ao_phase1_overlay st;
-         ao_fifo := ao_fifo st |}
+         ao_fifo := ao_fifo st;
+         ao_owed_trailing := ao_owed_trailing st |}
   | Queue =>
       let '(q', slot', fifo') :=
         fifo_drain (ao_self_id st) (ao_queued st) (ao_phase2_slot st)
@@ -480,21 +445,22 @@ Definition async_on_settle {K U : Type}
          ao_scope_gen := ao_scope_gen st;
          ao_phase2_slot := slot';
          ao_phase1_overlay := ao_phase1_overlay st;
-         ao_fifo := fifo' |}
+         ao_fifo := fifo';
+         ao_owed_trailing := ao_owed_trailing st |}
   | FinishCurrent =>
       let owed := Nat.eqb (ao_queued st) 2 in
-      let next_slot :=
+      let '(next_has_key, next_slot, next_owed_trailing) :=
         if Nat.eqb gen (ao_flight_gen st) then
           if owed then
             match out with
-            | RVal u => CReady u
-            | RThrow _ => CPending (ao_self_id st)
+            | RVal u => (ao_has_key st, CReady u, true)
+            | RThrow _ => (false, CPending (ao_self_id st), false)
             end
-          else settled
-        else ao_phase2_slot st in
+          else (ao_has_key st, settled, false)
+        else (ao_has_key st, ao_phase2_slot st, ao_owed_trailing st) in
       {| ao_policy := FinishCurrent;
          ao_self_id := ao_self_id st;
-         ao_has_key := ao_has_key st;
+         ao_has_key := next_has_key;
          ao_last_key := ao_last_key st;
          ao_flight_gen := ao_flight_gen st;
          ao_queued := 0;
@@ -502,7 +468,8 @@ Definition async_on_settle {K U : Type}
          ao_scope_gen := ao_scope_gen st;
          ao_phase2_slot := next_slot;
          ao_phase1_overlay := ao_phase1_overlay st;
-         ao_fifo := ao_fifo st |}
+         ao_fifo := ao_fifo st;
+         ao_owed_trailing := next_owed_trailing |}
   | Drop =>
       let next_slot :=
         if Nat.eqb gen (ao_flight_gen st) then settled else ao_phase2_slot st in
@@ -516,20 +483,22 @@ Definition async_on_settle {K U : Type}
          ao_scope_gen := ao_scope_gen st;
          ao_phase2_slot := next_slot;
          ao_phase1_overlay := ao_phase1_overlay st;
-         ao_fifo := ao_fifo st |}
+         ao_fifo := ao_fifo st;
+         ao_owed_trailing := ao_owed_trailing st |}
   | DropWhilePending =>
       let owed :=
         match out with
         | RVal _ => false
         | RThrow _ => Nat.eqb (ao_queued st) 2
         end in
-      let next_slot :=
+      let '(next_has_key, next_slot) :=
         if Nat.eqb gen (ao_flight_gen st) then
-          if owed then CPending (ao_self_id st) else settled
-        else ao_phase2_slot st in
+          if owed then (false, CPending (ao_self_id st))
+          else (ao_has_key st, settled)
+        else (ao_has_key st, ao_phase2_slot st) in
       {| ao_policy := DropWhilePending;
          ao_self_id := ao_self_id st;
-         ao_has_key := ao_has_key st;
+         ao_has_key := next_has_key;
          ao_last_key := ao_last_key st;
          ao_flight_gen := ao_flight_gen st;
          ao_queued := 0;
@@ -537,36 +506,44 @@ Definition async_on_settle {K U : Type}
          ao_scope_gen := ao_scope_gen st;
          ao_phase2_slot := next_slot;
          ao_phase1_overlay := ao_phase1_overlay st;
-         ao_fifo := ao_fifo st |}
+         ao_fifo := ao_fifo st;
+         ao_owed_trailing := ao_owed_trailing st |}
   end.
 
-(**md Active background flight precondition across all six policies when Phase 1 enters an unready overlay `r_unr`. *)
-Definition active_overlay_flight {K U : Type} (r_unr : comb_reading K) (st : async_on_state K U) : Prop :=
+(**md Genuinely active in-flight precondition across all six `FlightPolicy` modes when Phase 1 enters an unready overlay. *)
+Definition active_overlay_flight {K U : Type} (st : async_on_state K U) : Prop :=
+  ao_owed_trailing st = false /\
   match ao_policy st with
-  | CancelPrevious | KeepLatest => True
+  | CancelPrevious | KeepLatest =>
+      ao_flying st > 0 /\ ao_phase2_slot st = CPending (ao_self_id st)
   | Queue =>
-      ao_fifo st = [(ao_flight_gen st, None)] /\
       ao_queued st = 1 /\
-      exists src, r_unr = CPending src
-  | FinishCurrent | Drop | DropWhilePending => ao_queued st = 0
+      ao_fifo st = [(ao_flight_gen st, None)] /\
+      ao_phase2_slot st = CPending (ao_self_id st)
+  | FinishCurrent | Drop | DropWhilePending =>
+      ao_queued st = 1 /\ ao_phase2_slot st = CPending (ao_self_id st)
   end.
 
 (**md
-**Across all six `FlightPolicy` constructors, `async_on_step` preserves `ao_flight_gen`, `ao_queued`, `ao_scope_gen`, and `ao_phase2_slot` on `eq_K`-equal settled keys, marks `ao_queued = 2` without clobbering `ao_last_key` on unready or unequal keys while `ao_queued <> 0` under `FinishCurrent`/`Drop`/`DropWhilePending`, surfaces background flight completions immediately once Phase 1 recovers from an unready overlay to `ao_last_key`, and drains out-of-order `Queue` completions in FIFO start order.**
+**Across all six `FlightPolicy` constructors, `async_on_step` preserves Phase 2 state on `eq_K`-equal settled keys and Phase 1 `CPending`/`CFailed` overlays, sets `ao_queued = 2` strictly on unequal settled keys while `ao_queued <> 0` under `FinishCurrent`/`Drop`/`DropWhilePending` (resetting `ao_has_key = false` on `owed` faulted drops and holding `ao_owed_trailing = true` on `owed` `FinishCurrent` `RVal` completions), surfaces background completions across all six active policies once Phase 1 recovers, and drains `Queue` in FIFO start order.**
 
 Certifies the two-phase `AsyncMemo` `*On` engine (`createAsyncOn`, `createAsyncWithOn`, `createAsyncOnWithPolicy`, `createOwningAsyncOnWithPolicy`, `AsyncMemo.bind*`, and `AsyncSource.bind`):
-1. Equal settled keys clear `ao_phase1_overlay` and keep active flights, `ao_queued`, and settled slots intact under every `FlightPolicy`.
-2. Intervening `CPending`/`CFailed` or unequal `CReady k'` during an active deferring flight (`ao_queued <> 0`) sets `ao_queued = 2` while retaining `ao_last_key` and `ao_flight_gen`.
-3. Under `active_overlay_flight r_unr st` (covering all six policies), when Phase 1 enters `r_unr` and `ao_flight_gen`'s background flight settles, `ao_phase2_slot` updates behind the overlay and surfaces immediately with zero new launches once Phase 1 settles back to an `eq_K`-equal key.
-4. Under `Queue`, out-of-order completions `g2` then `g1` (`g1 <> g2`) hold `ao_phase2_slot` until `g1` arrives and apply `out1` then `out2` in start order.
+1. Equal settled keys clear `ao_phase1_overlay` and `ao_owed_trailing` while preserving `ao_flight_gen`, `ao_queued`, `ao_scope_gen`, `ao_last_key`, and `ao_phase2_slot`.
+2. Phase 1 `CPending`/`CFailed` readings uniformly set `ao_phase1_overlay` across all six policies without mutating `ao_has_key`, `ao_last_key`, `ao_flight_gen`, `ao_queued`, `ao_fifo`, `ao_phase2_slot`, or `ao_owed_trailing`.
+3. Unequal settled `CReady k'` during an active deferring flight (`ao_queued <> 0` under `FinishCurrent`/`Drop`/`DropWhilePending`) sets `ao_queued = 2` while retaining `ao_last_key` and `ao_flight_gen`.
+4. Under `active_overlay_flight st` (active in-flight state across all six policies, covering both `CPending` and `CFailed` Phase 1 overlays), background settlement updates `ao_phase2_slot` behind the overlay and surfaces immediately with zero new launches once Phase 1 settles back to an `eq_K`-equal key.
+5. When an `owed` (`ao_queued = 2`) flight faults under `FinishCurrent` or `DropWhilePending`, `async_on_settle` resets `ao_has_key = false` so `async_on_step` on any `CReady k` (even `k = ao_last_key`) launches a fresh flight (`ao_queued = 1`, `ao_flight_gen = S gen`); when an `owed` `FinishCurrent` flight completes with `RVal u`, `ao_phase2_slot` stores `CReady u` while `ao_owed_trailing = true` holds `ao_visible = CPending ao_self_id` until `async_on_step` on `eq_K`-equal `CReady k` clears `ao_owed_trailing` and surfaces `CReady u` with zero new launches.
+6. Under `Queue`, out-of-order completions `g2` then `g1` (`g1 <> g2`) hold `ao_phase2_slot` until `g1` arrives and apply `out1` then `out2` in start order.
 
 - [K:] Phase 1 key type.
 - [U:] Phase 2 async result type.
 - [eq_K:] boolean cutoff predicate over settled `K` keys.
-- [k:] settled Phase 1 key matching `ao_last_key`.
-- [r_chg:] Phase 1 unready or unequal key arriving during an active deferring flight.
-- [r_unr:] Phase 1 unready reading creating an overlay.
-- [out:] background flight completion outcome.
+- [k:] settled Phase 1 key.
+- [k':] unequal settled Phase 1 key arriving during an active deferring flight.
+- [r_unr:] Phase 1 unready reading (`CPending` or `CFailed`).
+- [u:] settled `RVal u` payload for `owed` `FinishCurrent` completion.
+- [ex:] exception id for `owed` `RThrow ex` faulted drop.
+- [out:] background flight completion outcome during a Phase 1 overlay.
 - [out1:] outcome of earlier queued flight `g1`.
 - [out2:] outcome of later queued flight `g2`.
 - [g1:] generation of first queued flight under `Queue`.
@@ -574,8 +551,9 @@ Certifies the two-phase `AsyncMemo` `*On` engine (`createAsyncOn`, `createAsyncW
 - [st:] `async_on_state` before the step.
 *)
 Theorem async_on_flight_preservation_eq (K U : Type)
-    (eq_K : K -> K -> bool) (k : K)
-    (r_chg r_unr : comb_reading K)
+    (eq_K : K -> K -> bool) (k k' : K)
+    (r_unr : comb_reading K)
+    (u : U) (ex : nat)
     (out out1 out2 : result U) (g1 g2 : nat)
     (st : async_on_state K U) :
   (ao_has_key st = true -> eq_K (ao_last_key st) k = true ->
@@ -586,19 +564,33 @@ Theorem async_on_flight_preservation_eq (K U : Type)
      ao_last_key st' = ao_last_key st /\
      ao_phase2_slot st' = ao_phase2_slot st /\
      ao_phase1_overlay st' = None /\
+     ao_owed_trailing st' = false /\
      ao_visible st' = ao_phase2_slot st) /\
-  (is_deferring_policy (ao_policy st) = true -> ao_queued st <> 0 ->
-     (is_unready_reading r_chg = true \/
-      exists k', r_chg = CReady k' /\ (ao_has_key st = false \/ eq_K (ao_last_key st) k' = false)) ->
-     let st' := async_on_step eq_K r_chg st in
-     ao_queued st' = 2 /\
+  (is_unready_reading r_unr = true ->
+     let st' := async_on_step eq_K r_unr st in
+     ao_phase1_overlay st' = Some (project_unready r_unr (ao_phase2_slot st)) /\
+     ao_visible st' = project_unready r_unr (ao_phase2_slot st) /\
+     ao_has_key st' = ao_has_key st /\
      ao_last_key st' = ao_last_key st /\
      ao_flight_gen st' = ao_flight_gen st /\
+     ao_queued st' = ao_queued st /\
+     ao_fifo st' = ao_fifo st /\
+     ao_phase2_slot st' = ao_phase2_slot st /\
+     ao_owed_trailing st' = ao_owed_trailing st) /\
+  (is_deferring_policy (ao_policy st) = true -> ao_queued st <> 0 ->
+     (ao_has_key st = false \/ eq_K (ao_last_key st) k' = false) ->
+     let st' := async_on_step eq_K (CReady k') st in
+     ao_queued st' = 2 /\
+     ao_last_key st' = ao_last_key st /\
+     ao_has_key st' = ao_has_key st /\
+     ao_flight_gen st' = ao_flight_gen st /\
      ao_scope_gen st' = ao_scope_gen st /\
-     ao_phase2_slot st' = ao_phase2_slot st) /\
+     ao_phase2_slot st' = ao_phase2_slot st /\
+     ao_phase1_overlay st' = None /\
+     ao_owed_trailing st' = ao_owed_trailing st) /\
   (ao_has_key st = true -> eq_K (ao_last_key st) k = true ->
      is_unready_reading r_unr = true ->
-     active_overlay_flight r_unr st ->
+     active_overlay_flight st ->
      let st_ov := async_on_step eq_K r_unr st in
      let st_bg := async_on_settle (ao_flight_gen st) out st_ov in
      let st_rec := async_on_step eq_K (CReady k) st_bg in
@@ -608,6 +600,29 @@ Theorem async_on_flight_preservation_eq (K U : Type)
      ao_flight_gen st_rec = ao_flight_gen st /\
      ao_scope_gen st_rec = ao_scope_gen st /\
      ao_last_key st_rec = ao_last_key st) /\
+  (((ao_policy st = FinishCurrent \/ ao_policy st = DropWhilePending) ->
+     ao_queued st = 2 ->
+     let st_drop := async_on_settle (ao_flight_gen st) (RThrow ex) st in
+     let st_re := async_on_step eq_K (CReady k) st_drop in
+     ao_has_key st_drop = false /\
+     ao_queued st_drop = 0 /\
+     ao_has_key st_re = true /\
+     ao_last_key st_re = k /\
+     ao_queued st_re = 1 /\
+     ao_flight_gen st_re = S (ao_flight_gen st) /\
+     ao_scope_gen st_re = S (ao_scope_gen st)) /\
+   (ao_policy st = FinishCurrent ->
+     ao_has_key st = true -> eq_K (ao_last_key st) k = true ->
+     ao_phase1_overlay st = None -> ao_queued st = 2 ->
+     let st_hold := async_on_settle (ao_flight_gen st) (RVal u) st in
+     let st_done := async_on_step eq_K (CReady k) st_hold in
+     ao_phase2_slot st_hold = CReady u /\
+     ao_owed_trailing st_hold = true /\
+     ao_visible st_hold = CPending (ao_self_id st) /\
+     ao_owed_trailing st_done = false /\
+     ao_visible st_done = CReady u /\
+     ao_flight_gen st_done = ao_flight_gen st /\
+     ao_queued st_done = 0)) /\
   (ao_policy st = Queue -> g1 <> g2 ->
      ao_queued st = 2 -> ao_fifo st = [(g1, None); (g2, None)] ->
      let st_early := async_on_settle g2 out2 st in
@@ -622,134 +637,81 @@ Proof.
   - intros Hhas Heq.
     destruct (ao_policy st); unfold async_on_step, ao_visible;
       rewrite Hhas, Heq; simpl; repeat split; reflexivity.
-  - intros Hdef Hq Hchg.
+  - intros Hunr.
+    destruct r_unr as [v|src|ex0 orig0]; [simpl in Hunr; discriminate| |];
+      unfold async_on_step, ao_visible; simpl; repeat split; reflexivity.
+  - intros Hdef Hq Hnew.
     assert (Hq_nz : negb (Nat.eqb (ao_queued st) 0) = true).
     { destruct (Nat.eqb (ao_queued st) 0) eqn:Eq0; [|reflexivity].
       apply Nat.eqb_eq in Eq0. contradiction. }
-    destruct Hchg as [Hunr | (k' & -> & Hnew)].
-    + destruct r_chg as [v|src|ex orig]; [simpl in Hunr; discriminate| |];
-        unfold async_on_step; rewrite Hdef, Hq_nz; simpl; repeat split; reflexivity.
-    + unfold async_on_step.
-      destruct Hnew as [Hno | Hneq];
-        [rewrite Hno | rewrite Hneq, andb_false_r];
-        rewrite Hdef, Hq_nz; simpl; repeat split; reflexivity.
-  - intros Hhas Heq Hunr Hact.
-    unfold active_overlay_flight in Hact.
-    destruct (ao_policy st) eqn:Epol.
-    + assert (Hov :
-        async_on_step eq_K r_unr st =
-        {| ao_policy := CancelPrevious;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := ao_queued st;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := Some (project_unready r_unr (ao_phase2_slot st));
-           ao_fifo := ao_fifo st |})
-        by (destruct r_unr as [v|src|ex orig]; [simpl in Hunr; discriminate| |];
-            unfold async_on_step; rewrite Epol; reflexivity).
-      cbv zeta; rewrite Hov; cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo].
+    unfold async_on_step.
+    destruct Hnew as [Hno | Hneq];
+      [rewrite Hno | rewrite Hneq, andb_false_r];
+      rewrite Hdef, Hq_nz; simpl; repeat split; reflexivity.
+  - intros Hhas Heq Hunr [Hot Hact].
+    assert (Hov :
+      async_on_step eq_K r_unr st =
+      {| ao_policy := ao_policy st;
+         ao_self_id := ao_self_id st;
+         ao_has_key := ao_has_key st;
+         ao_last_key := ao_last_key st;
+         ao_flight_gen := ao_flight_gen st;
+         ao_queued := ao_queued st;
+         ao_flying := ao_flying st;
+         ao_scope_gen := ao_scope_gen st;
+         ao_phase2_slot := ao_phase2_slot st;
+         ao_phase1_overlay := Some (project_unready r_unr (ao_phase2_slot st));
+         ao_fifo := ao_fifo st;
+         ao_owed_trailing := false |})
+      by (destruct r_unr as [v|src|ex0 orig0]; [simpl in Hunr; discriminate| |];
+          unfold async_on_step; rewrite Hot; reflexivity).
+    cbv zeta; rewrite Hov.
+    destruct (ao_policy st) eqn:Epol; simpl in Hact.
+    + cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo ao_owed_trailing].
       rewrite Nat.eqb_refl.
-      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen].
+      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen ao_owed_trailing].
       rewrite Hhas, Heq; simpl; repeat split; reflexivity.
-    + assert (Hov :
-        async_on_step eq_K r_unr st =
-        {| ao_policy := KeepLatest;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := ao_queued st;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := Some (project_unready r_unr (ao_phase2_slot st));
-           ao_fifo := ao_fifo st |})
-        by (destruct r_unr as [v|src|ex orig]; [simpl in Hunr; discriminate| |];
-            unfold async_on_step; rewrite Epol; reflexivity).
-      cbv zeta; rewrite Hov; cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo].
+    + cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo ao_owed_trailing].
       rewrite Nat.eqb_refl.
-      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen].
+      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen ao_owed_trailing].
       rewrite Hhas, Heq; simpl; repeat split; reflexivity.
-    + destruct Hact as (Hfifo & Hq1 & src & ->).
-      assert (Hov :
-        async_on_step eq_K (CPending src) st =
-        {| ao_policy := Queue;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := 1;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := Some (CPending src);
-           ao_fifo := [(ao_flight_gen st, None)] |})
-        by (unfold async_on_step; rewrite Epol, Hq1, Hfifo; reflexivity).
-      cbv zeta; rewrite Hov; cbn [async_on_settle fifo_record ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo].
+    + destruct Hact as (Hq1 & Hfifo & _).
+      rewrite Hq1, Hfifo.
+      cbn [async_on_settle fifo_record ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo ao_owed_trailing].
       rewrite Nat.eqb_refl; cbn [fifo_drain Nat.pred].
-      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen].
+      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen ao_owed_trailing].
       rewrite Hhas, Heq; simpl; repeat split; reflexivity.
-    + assert (Hov :
-        async_on_step eq_K r_unr st =
-        {| ao_policy := FinishCurrent;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := 0;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := Some (project_unready r_unr (ao_phase2_slot st));
-           ao_fifo := ao_fifo st |})
-        by (destruct r_unr as [v|src|ex orig]; [simpl in Hunr; discriminate| |];
-            unfold async_on_step; rewrite Epol, Hact; reflexivity).
-      cbv zeta; rewrite Hov; cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo].
+    + destruct Hact as (Hq1 & _).
+      rewrite Hq1.
+      cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo ao_owed_trailing].
       rewrite Nat.eqb_refl; simpl.
-      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen].
+      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen ao_owed_trailing].
       rewrite Hhas, Heq; simpl; repeat split; reflexivity.
-    + assert (Hov :
-        async_on_step eq_K r_unr st =
-        {| ao_policy := Drop;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := 0;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := Some (project_unready r_unr (ao_phase2_slot st));
-           ao_fifo := ao_fifo st |})
-        by (destruct r_unr as [v|src|ex orig]; [simpl in Hunr; discriminate| |];
-            unfold async_on_step; rewrite Epol, Hact; reflexivity).
-      cbv zeta; rewrite Hov; cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo].
+    + destruct Hact as (Hq1 & _).
+      rewrite Hq1.
+      cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo ao_owed_trailing].
       rewrite Nat.eqb_refl; simpl.
-      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen].
+      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen ao_owed_trailing].
       rewrite Hhas, Heq; simpl; repeat split; reflexivity.
-    + assert (Hov :
-        async_on_step eq_K r_unr st =
-        {| ao_policy := DropWhilePending;
-           ao_self_id := ao_self_id st;
-           ao_has_key := ao_has_key st;
-           ao_last_key := ao_last_key st;
-           ao_flight_gen := ao_flight_gen st;
-           ao_queued := 0;
-           ao_flying := ao_flying st;
-           ao_scope_gen := ao_scope_gen st;
-           ao_phase2_slot := ao_phase2_slot st;
-           ao_phase1_overlay := Some (project_unready r_unr (ao_phase2_slot st));
-           ao_fifo := ao_fifo st |})
-        by (destruct r_unr as [v|src|ex orig]; [simpl in Hunr; discriminate| |];
-            unfold async_on_step; rewrite Epol, Hact; reflexivity).
-      cbv zeta; rewrite Hov; cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo].
+    + destruct Hact as (Hq1 & _).
+      rewrite Hq1.
+      cbn [async_on_settle ao_policy ao_flight_gen ao_self_id ao_has_key ao_last_key ao_queued ao_flying ao_scope_gen ao_phase2_slot ao_phase1_overlay ao_fifo ao_owed_trailing].
       rewrite Nat.eqb_refl; destruct out; simpl;
-      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen];
+      cbn [async_on_step ao_visible ao_has_key ao_last_key ao_phase1_overlay ao_phase2_slot ao_flight_gen ao_scope_gen ao_owed_trailing];
       rewrite Hhas, Heq; simpl; repeat split; reflexivity.
+  - intros Hpol Hq2. cbv zeta.
+    destruct Hpol as [Hfc | Hdwp].
+    + unfold async_on_settle; rewrite Hfc, Hq2, Nat.eqb_refl; simpl.
+      unfold async_on_step, async_on_launch; simpl.
+      repeat split; reflexivity.
+    + unfold async_on_settle; rewrite Hdwp, Hq2, Nat.eqb_refl; simpl.
+      unfold async_on_step, async_on_launch; simpl.
+      repeat split; reflexivity.
+  - intros Hfc Hhas Heq Hov0 Hq2. cbv zeta.
+    unfold async_on_settle; rewrite Hfc, Hq2, Hov0, Nat.eqb_refl; simpl.
+    unfold async_on_step, ao_visible; simpl.
+    rewrite Hhas, Heq; simpl.
+    repeat split; reflexivity.
   - intros Hpol Hg12 Hq2 Hfifo.
     cbv zeta. unfold async_on_settle.
     rewrite Hpol, Hq2, Hfifo. simpl.
