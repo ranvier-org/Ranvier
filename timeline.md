@@ -189,6 +189,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 73,286 | 98,020 | 1,602,940 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 73,282 | 97,998 | 1,602,906 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 73,299 | 97,978 | 1,602,959 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 64,844 | 164,850 | 1,517,801 |
 
 ## app-table
 
@@ -379,6 +380,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,820,730 | 4,744,262 | 60,408,822 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,820,696 | 4,744,280 | 60,408,854 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,820,697 | 4,744,278 | 60,522,645 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,067,717 | 4,202,103 | 60,421,732 |
 
 ## async-recover
 
@@ -569,6 +571,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 93,861 | 30,050 | 361,696 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 93,861 | 30,048 | 361,698 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 93,861 | 30,050 | 361,701 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 92,229 | 26,035 | 312,413 |
 
 ## async-resolve
 
@@ -759,6 +762,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,754,656 | 719,020 | 9,058,227 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,754,645 | 719,028 | 9,058,184 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,753,844 | 719,060 | 9,058,187 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,706,599 | 624,759 | 7,651,583 |
 
 ## chain
 
@@ -949,6 +953,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 13,083 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 13,019 | 318 | 2,350 | 4,419 | 3,244 | 72,358 | 66,488 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 13,147 | 318 | 1,240 | 4,516 | 2,779 | 72,462 | 58,502 |
 
 ## chain-affinity
 
@@ -1139,6 +1144,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,416 | 2,941 | 2,358 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,416 | 2,941 | 2,358 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,416 | 2,941 | 2,358 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,240 | 1,985 | 1,447 |
 
 ## control
 
@@ -1329,6 +1335,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 74,709 | 458,340 | 2,267,596 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 74,709 | 458,463 | 2,267,653 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 74,709 | 466,694 | 2,267,660 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 74,709 | 467,905 | 2,262,597 |
 
 ## create
 
@@ -1519,6 +1526,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 13,573,163 | 2,866,614 | 2,265,907 | 4,442,500 | 3,093,922 | 32,788,176 | 45,466,981 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 13,447,656 | 2,866,615 | 2,265,893 | 4,442,504 | 3,093,757 | 32,788,182 | 45,467,113 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 13,637,184 | 2,896,617 | 2,264,925 | 4,443,259 | 3,093,722 | 32,788,182 | 45,467,086 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 13,572,355 | 2,880,744 | 1,574,639 | 4,542,625 | 1,662,974 | 32,890,792 | 33,517,760 |
 
 ## create-on
 
@@ -1709,6 +1717,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,673,254 | 3,406,913 | 51,017,454 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,673,212 | 3,407,139 | 51,017,163 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,686,238 | 3,407,065 | 51,017,240 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,878,271 | 2,000,800 | 38,953,020 |
 
 ## cutoff
 
@@ -1899,6 +1908,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,182 | 50 | 74 | 65 | 56 | 1,095 | 831 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,182 | 50 | 14 | 65 | 56 | 1,095 | 830 |
 
 ## derive-effect
 
@@ -2089,6 +2099,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 701 | 703 | 15,092 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 701 | 703 | 15,092 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 701 | 703 | 15,092 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 268 | 597 | 12,922 |
 
 ## derive-on
 
@@ -2279,6 +2290,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 650 | 696 | 14,938 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 650 | 696 | 14,938 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 666 | 696 | 14,938 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 276 | 589 | 13,658 |
 
 ## dispose
 
@@ -2469,6 +2481,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 2,706,758 | 806,288 | 355,483 | 480,101 | 501,558 | 11,185,044 | 9,120,785 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 2,707,645 | 806,288 | 355,483 | 480,070 | 501,594 | 11,184,829 | 9,120,395 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 2,707,646 | 806,290 | 355,483 | 480,211 | 501,548 | 11,184,819 | 9,120,661 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,707,643 | 806,290 | 284,345 | 479,220 | 856,743 | 11,185,486 | 7,329,454 |
 
 ## dispose-on
 
@@ -2659,6 +2672,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 334,483 | 493,381 | 8,917,163 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 334,483 | 493,397 | 8,916,995 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 334,483 | 493,405 | 8,916,980 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 284,345 | 856,879 | 7,329,261 |
 
 ## editable-edit
 
@@ -2849,6 +2863,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 160,709 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 160,709 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 160,709 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 73,306 |
 
 ## editable-upstream
 
@@ -3039,6 +3054,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 205,109 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 205,109 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 205,109 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 128,806 |
 
 ## fail-recompute
 
@@ -3229,6 +3245,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 55,263 | 1,310 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 55,263 | 1,310 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 55,355 | 1,310 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 54,324 | 720 |
 
 ## flight
 
@@ -3419,6 +3436,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 9,843 | 5,579 | 5,581 | 10,124 | 9,646 | 10,304 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 9,233 | 5,203 | 5,205 | 9,498 | 9,036 | 9,684 |
 
 ## keyed-insert
 
@@ -3609,6 +3627,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,791,367 | 33,802 | 34,537 | 2,414,037 | 169,145 | 536,394 | 39,867,694 | 2,738,159 | 2,761,866 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,791,450 | 33,842 | 34,584 | 2,414,033 | 169,115 | 536,428 | 39,867,707 | 2,738,070 | 2,761,886 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,791,389 | 33,816 | 34,568 | 2,414,077 | 169,111 | 536,492 | 39,867,698 | 2,738,121 | 2,761,881 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,112,587 | 26,179 | 26,827 | 2,151,505 | 470,549 | 477,698 | 36,840,117 | 2,603,592 | 2,619,918 |
 
 ## keyed-remove
 
@@ -3799,6 +3818,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,790,507 | 28,071 | 29,432 | 2,459,841 | 463,989 | 144,940 | 39,842,605 | 1,879,551 | 1,918,065 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,790,590 | 28,110 | 29,480 | 2,459,775 | 463,990 | 144,944 | 39,842,585 | 1,879,616 | 1,918,088 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,790,526 | 28,089 | 29,470 | 2,459,763 | 463,990 | 144,950 | 39,842,615 | 1,879,554 | 1,918,077 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,112,112 | 23,551 | 24,705 | 2,143,109 | 414,377 | 426,018 | 36,810,752 | 1,908,818 | 1,937,624 |
 
 ## keyed-swap
 
@@ -3989,6 +4009,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,771,465 | 31,536 | 32,155 | 3,046,218 | 365,624 | 80,334 | 40,403,455 | 692,921 | 710,063 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,771,549 | 31,566 | 32,203 | 3,046,212 | 365,620 | 80,335 | 40,403,437 | 692,899 | 710,079 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,771,489 | 31,550 | 32,187 | 3,046,204 | 365,599 | 80,344 | 40,403,451 | 692,928 | 710,112 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,092,665 | 30,690 | 31,021 | 2,692,633 | 367,689 | 92,658 | 37,428,854 | 691,958 | 704,846 |
 
 ## mvu-dispatch
 
@@ -4179,6 +4200,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 57,337 | 698 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 57,337 | 698 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 57,336 | 698 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 32,385 | 345 |
 
 ## persist-write
 
@@ -4369,6 +4391,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — |
 
 ## project-chain
 
@@ -4559,6 +4582,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 68,851 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 68,827 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 68,841 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 58,460 |
 
 ## project-churn
 
@@ -4749,6 +4773,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 24,273 | 22,028 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 24,273 | 22,027 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 24,289 | 22,027 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 23,215 | 21,225 |
 
 ## project-edit
 
@@ -4939,6 +4964,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 29,635 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 29,651 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 29,667 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 22,467 |
 
 ## project-reorder
 
@@ -5129,6 +5155,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 463,103 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 463,119 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 463,145 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 239,687 |
 
 ## server-render
 
@@ -5319,6 +5346,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | — | — | — |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | — | — | — |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | — | — | — |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | — | — | — |
 
 ## shape-diamond
 
@@ -5509,6 +5537,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 57,370 | 83,970 | 1,730,751 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 57,370 | 83,971 | 1,730,751 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 57,370 | 83,971 | 1,730,751 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 45,940 | 81,851 | 1,543,700 |
 
 ## shape-dynamic
 
@@ -5699,6 +5728,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 79,026 | 103,742 | 1,866,486 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 79,026 | 103,744 | 1,866,486 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 79,026 | 103,744 | 1,866,487 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 44,340 | 86,806 | 1,604,464 |
 
 ## stream-burst-1
 
@@ -5889,6 +5919,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,711 | 1,419 | 2,258 | 13,266 | 2,492 | 11,114 | 36,095 | 34,518 | 44,692 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,711 | 1,419 | 2,258 | 13,266 | 2,495 | 11,114 | 36,095 | 34,518 | 44,692 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,711 | 1,419 | 2,256 | 13,266 | 2,495 | 11,115 | 36,095 | 34,518 | 44,691 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,193 | 823 | 1,690 | 12,419 | 4,338 | 12,516 | 35,025 | 33,223 | 43,614 |
 
 ## stream-burst-16
 
@@ -6079,6 +6110,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 3,736 | 22,494 | 4,628 | 14,802 | 27,562 | 13,372 | 90,925 | 540,090 | 100,222 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 3,736 | 22,494 | 4,628 | 14,800 | 27,562 | 13,368 | 90,925 | 540,090 | 100,222 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 3,736 | 22,494 | 4,626 | 14,803 | 27,562 | 13,372 | 90,925 | 540,090 | 100,223 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 2,453 | 12,958 | 3,280 | 13,478 | 25,881 | 13,557 | 81,448 | 521,242 | 77,591 |
 
 ## stream-burst-256
 
@@ -6269,6 +6301,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 36,112 | 359,694 | 42,527 | 88,089 | 448,442 | 66,955 | 968,419 | 8,627,816 | 988,076 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 36,112 | 359,694 | 42,527 | 88,092 | 448,442 | 66,955 | 968,426 | 8,627,816 | 988,093 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 36,112 | 359,694 | 42,525 | 88,092 | 448,442 | 66,958 | 968,421 | 8,627,816 | 988,078 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 22,589 | 207,118 | 28,699 | 83,162 | 410,549 | 57,670 | 821,691 | 8,325,598 | 620,428 |
 
 ## stream-restart
 
@@ -6459,6 +6492,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 3,659 | 4,530 | 7,741 | 6,164 | 41,438 | 70,581 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 3,659 | 4,530 | 7,741 | 6,165 | 41,434 | 70,581 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 3,659 | 4,530 | 7,741 | 6,166 | 41,438 | 70,582 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 3,180 | 3,499 | 16,970 | 14,813 | 39,820 | 66,716 |
 
 ## timed-admit-both
 
@@ -6649,6 +6683,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,889 | 130,793 | 2,467,739 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,913 | 130,793 | 2,467,738 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,889 | 130,787 | 2,467,738 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 83,107 | 112,720 | 2,282,043 |
 
 ## timed-admit-debounce
 
@@ -6839,6 +6874,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,441 | 129,368 | 2,453,683 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,465 | 129,380 | 2,453,685 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,441 | 129,379 | 2,453,685 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 82,595 | 110,361 | 2,256,698 |
 
 ## timed-admit-first
 
@@ -7029,6 +7065,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 66,634 | 76,123 | 1,516,393 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 67,658 | 76,123 | 1,516,393 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 66,634 | 76,123 | 1,516,393 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 45,668 | 62,483 | 1,407,854 |
 
 ## timed-admit-last
 
@@ -7219,6 +7256,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 106,697 | 129,699 | 2,463,541 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 107,721 | 129,702 | 2,463,541 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 106,697 | 129,699 | 2,463,529 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 82,851 | 111,690 | 2,266,746 |
 
 ## timed-capture-both
 
@@ -7409,6 +7447,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,545 | 42,655 | 831,358 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,545 | 42,650 | 831,357 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,545 | 42,652 | 831,357 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 25,291 | 40,074 | 748,688 |
 
 ## timed-capture-debounce
 
@@ -7599,6 +7638,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,417 | 44,514 | 832,009 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,417 | 44,515 | 832,009 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,417 | 44,515 | 832,010 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 24,971 | 38,606 | 734,829 |
 
 ## timed-capture-first
 
@@ -7789,6 +7829,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 30,769 | 35,602 | 714,370 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 30,769 | 35,602 | 714,370 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 30,769 | 35,602 | 714,370 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 24,075 | 34,446 | 677,931 |
 
 ## timed-capture-last
 
@@ -7979,6 +8020,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 34,353 | 44,448 | 824,137 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 34,353 | 44,448 | 824,137 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 34,353 | 44,450 | 824,137 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 25,035 | 38,670 | 732,459 |
 
 ## update
 
@@ -8169,6 +8211,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 1,088,990 | 38,805 | 73,905 | 196,951 | 88,984 | 2,533,172 | 1,684,070 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 1,090,590 | 38,805 | 73,905 | 196,922 | 88,983 | 2,533,236 | 1,684,076 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 1,088,990 | 38,805 | 73,905 | 196,936 | 88,983 | 2,533,214 | 1,684,062 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 1,089,090 | 38,805 | 28,306 | 206,606 | 71,299 | 2,543,060 | 1,333,833 |
 
 ## update-on
 
@@ -8359,6 +8402,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 84,605 | 108,862 | 1,994,245 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 84,605 | 108,899 | 1,994,254 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 86,205 | 108,886 | 1,994,255 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 35,406 | 82,582 | 1,633,106 |
 
 ## work-form
 
@@ -8549,6 +8593,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 146,579 | 140,570 | 291,728 | 242,301 | 4,726,522 | 4,639,290 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 146,579 | 140,586 | 291,721 | 242,309 | 4,726,481 | 4,639,329 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 146,579 | 140,570 | 291,727 | 242,312 | 4,726,448 | 4,639,333 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 87,492 | 79,896 | 255,149 | 269,288 | 3,955,968 | 4,027,772 |
 
 ## work-status
 
@@ -8739,6 +8784,7 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 92,745 | 70,255 | 194,389 | 95,478 | 1,810,411 | 1,525,236 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 92,745 | 70,255 | 194,381 | 95,496 | 1,810,481 | 1,525,230 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 92,745 | 71,855 | 194,396 | 95,498 | 1,810,455 | 1,525,252 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 51,446 | 31,786 | 181,483 | 79,507 | 1,593,996 | 1,388,918 |
 
 ## work-value
 
@@ -8929,4 +8975,5 @@
 | `c613318` | 2026-11-20 | fix(docs): compile the live editor with fickl (#380) | 99,869 | 112,168 | 194,733 | 219,545 | 1,795,055 | 2,102,312 |
 | `91f1975` | 2026-11-20 | fix(docs): read the fickl version without its colour codes (#382) | 99,869 | 112,169 | 194,664 | 219,560 | 1,795,133 | 2,102,403 |
 | `6019647` | 2026-11-23 | chore(deps): update test, benchmark, and tool dependencies (#383) | 99,869 | 113,769 | 194,691 | 219,542 | 1,795,096 | 2,102,371 |
+| `ca61af4` | 2026-11-25 | perf: optimize reactive core, collections, and extensions for 0.2.2 (#386) | 58,570 | 65,870 | 181,726 | 198,064 | 1,578,618 | 1,876,541 |
 
