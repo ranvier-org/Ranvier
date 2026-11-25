@@ -159,6 +159,57 @@ module private Ranvier =
     let chainAffinity (affinity: ThreadAffinity) (n: int) =
         chainOn (new Graph (GraphOptions.Default.WithThreadAffinity affinity)) n
 
+    let chainMap (n: int) =
+        let graph = Workloads.newGraph ()
+        let source = Signal (graph, 0)
+
+        let tail =
+            source
+            |> Signal.map (fun v -> v + 1)
+            |> Memo.map (fun v -> v + 1)
+            |> Memo.map (fun v -> v + 1)
+            |> Memo.map (fun v -> v + 1)
+
+        sink <- tail.Value
+        let next = ref 0
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- next.Value + 1
+                        source.Value <- next.Value
+                        sink <- tail.Value
+            Teardown = fun () -> (graph :> IDisposable).Dispose()
+        }
+
+    let chainMemoOn (n: int) =
+        let graph = Workloads.newGraph ()
+
+        let source, tail =
+            graph.Run (fun () ->
+                let source = createSignal 0
+                let mutable tail = createMemoOn (fun () -> source.Value) (fun v -> v + 1)
+
+                for _ in 2..4 do
+                    let prev = tail
+                    tail <- createMemoOn (fun () -> prev.Value) (fun v -> v + 1)
+
+                source, tail)
+
+        sink <- tail.Value
+        let next = ref 0
+
+        {
+            Run =
+                fun () ->
+                    for _ in 1..n do
+                        next.Value <- next.Value + 1
+                        source.Value <- next.Value
+                        sink <- tail.Value
+            Teardown = fun () -> (graph :> IDisposable).Dispose()
+        }
+
     let cutoff (n: int) =
         let graph = Workloads.newGraph ()
         let source = Signal (graph, 1)
@@ -938,6 +989,8 @@ let all (scale: int) : Case list =
         yield!
             scenario "update-on" $"write every %d{UpdateStride}th of %d{RowCount} createEffectOn rows" (50 * scale) [ "Ranvier", Ranvier.update true ]
         yield! scenario "dispose-on" $"dispose one root of %d{RowCount} createEffectOn rows" (8 * scale) [ "Ranvier", Ranvier.dispose true ]
+        yield! scenario "chain-map" "write the source of 4 mapped memos, read the tail" (5000 * scale) [ "Ranvier", Ranvier.chainMap ]
+        yield! scenario "chain-on" "write the source of 4 createMemoOn memos, read the tail" (5000 * scale) [ "Ranvier", Ranvier.chainMemoOn ]
         yield!
             scenario
                 "derive-effect"
