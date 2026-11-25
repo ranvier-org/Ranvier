@@ -533,5 +533,33 @@ let tests =
                 Expect.isGreaterThan refs.Count 200 "every returning key created an aggregate"
                 Expect.isLessThan (aliveOf refs) 20 "each emptied group released its aggregate"
             }
+
+            test "retaining disposed memo and effect handles does not retain their retired owners" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 0
+                let keptEffects = ResizeArray<Effect>()
+                let keptMemos = ResizeArray<Memo<int>>()
+                let owners = ResizeArray<WeakReference>()
+
+                let spawnOne () =
+                    let owner =
+                        createRoot (fun o ->
+                            let payload = Array.zeroCreate<byte> 4096
+                            onCleanup (fun () -> ignore payload.Length)
+                            keptMemos.Add (createMemo (fun _ -> s.Value + 1))
+                            keptEffects.Add (new Effect (g, fun () -> ignore s.Value))
+                            o)
+
+                    owner.Dispose ()
+                    owners.Add (WeakReference owner)
+
+                for _ in 1..64 do
+                    spawnOne ()
+
+                Expect.isLessThan (aliveOf owners) 8 "retired owners were collected despite retained node handles"
+                GC.KeepAlive keptEffects
+                GC.KeepAlive keptMemos
+            }
 #endif
         ]

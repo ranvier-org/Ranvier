@@ -944,4 +944,233 @@ let directEdgeTests =
                 for j in 1..2 do
                     Expect.equal (snd folds[j]).Value 5 $"fold {j}"
             }
+
+            test "a foreign IComputation links, receives dirty and check marks, tracks swap-remove moves, and unlinks alongside built-in nodes" {
+                use g = new Graph ()
+                let s = Signal (g, 1)
+                let m = Make.Memo (g, fun _ -> s.Value * 10)
+                Expect.equal m.Value 10 "warmed memo"
+
+                let makeProbe id =
+                    let mutable dirty = 0
+                    let mutable checks = 0
+                    let mutable moves = 0
+                    let mutable handle = EdgeHandle.Unlinked
+                    let mutable lastSlot = -1
+
+                    let comp =
+                        { new IComputation with
+                            member _.MarkDirty() =
+                                dirty <- dirty + 1
+
+                            member _.MarkCheck() =
+                                checks <- checks + 1
+
+                            member _.AddSource _ = ()
+
+                            member _.MovedIn(slot, moved) =
+                                moves <- moves + 1
+                                lastSlot <- slot
+                                handle <- moved
+
+                            member _.HasReadSlot _ = false
+                          interface INode with
+                              member _.Id = id
+                              member _.Status = Status.None
+                        }
+
+                    comp, (fun () -> dirty, checks, moves, handle, lastSlot), (fun h -> handle <- h)
+
+                // Exercise the single non-Node observer fast branch on Signal first.
+                let solo, soloStats, setSoloHandle = makeProbe 1001
+                setSoloHandle ((s :> ISource).AddObserver(solo, 3))
+                s.Value <- 2
+                let d0, _, _, _, _ = soloStats ()
+                Expect.equal d0 1 "sole foreign observer on signal is marked dirty"
+                (s :> ISource).RemoveObserverAt(solo, (let _, _, _, h, _ = soloStats () in h))
+                Expect.equal s.ObserverCount 1 "only memo remains observing s after solo unlink"
+
+                // Now mix built-in effects and multiple foreign IComputations on both Signal and Memo.
+                let p1, p1Stats, setP1 = makeProbe 1002
+                let p2, p2Stats, setP2 = makeProbe 1003
+                let p3, p3Stats, setP3 = makeProbe 1004
+                let mutable e1Runs = 0
+                let mutable e2Runs = 0
+
+                let e1 =
+                    new Effect (
+                        g,
+                        fun () ->
+                            e1Runs <- e1Runs + 1
+                            s.Value |> ignore
+                    )
+
+                setP1 ((s :> ISource).AddObserver(p1, 5))
+
+                let e2 =
+                    new Effect (
+                        g,
+                        fun () ->
+                            e2Runs <- e2Runs + 1
+                            m.Value |> ignore
+                    )
+
+                setP2 ((s :> ISource).AddObserver(p2, 7))
+                setP3 ((m :> ISource).AddObserver(p3, 9))
+
+                s.Value <- 3
+                let p1d, _, _, _, _ = p1Stats ()
+                let p2d, _, _, _, _ = p2Stats ()
+                let _, p3c, _, _, _ = p3Stats ()
+                Expect.equal p1d 1 "p1 marked dirty by signal write"
+                Expect.equal p2d 1 "p2 marked dirty by signal write"
+                Expect.isGreaterThan p3c 0 "p3 marked check/dirty behind memo"
+                Expect.equal e1Runs 2 "built-in signal effect ran"
+                Expect.equal e2Runs 2 "built-in memo effect ran"
+
+                // Dispose interior built-in effect and first foreign probe so swap-remove moves both kinds.
+                e1.Dispose ()
+                let _, _, _, h1, _ = p1Stats ()
+                (s :> ISource).RemoveObserverAt(p1, h1)
+                e2.Dispose ()
+
+                s.Value <- 4
+                let p1d2, _, _, _, _ = p1Stats ()
+                let p2d2, _, p2moves, h2, p2slot = p2Stats ()
+                let _, _, p3moves, h3, p3slot = p3Stats ()
+                Expect.equal p1d2 1 "unlinked p1 stops receiving marks"
+                Expect.equal p2d2 2 "surviving p2 continues receiving marks after swap-remove"
+                Expect.isGreaterThan p2moves 0 "p2 received MovedIn when swapped into vacated slot"
+                Expect.equal p2slot 7 "p2 preserved its original slot index across swap-remove"
+
+                if p3moves > 0 then
+                    Expect.equal p3slot 9 "p3 preserved its original slot index across swap-remove"
+
+                // Cleanly unlink remaining foreign probes using their updated handles.
+                (s :> ISource).RemoveObserverAt(p2, h2)
+                (m :> ISource).RemoveObserverAt(p3, h3)
+                Expect.equal s.ObserverCount 1 "only memo remains observing s"
+                Expect.equal m.Value 40 "memo stays current after all mixed unlinks"
+            }
+
+            test "a foreign ISource links, propagates changes, trims on branch switch, and detaches on disposal" {
+                use g = new Graph ()
+                let gate = Signal (g, true)
+                let mutable foreignVal = 10
+                let observers = ResizeArray<IComputation * int>()
+                let mutable markCount = 0
+
+                let foreignSource =
+                    { new ISource with
+                        member _.AddObserver(observer, slot) =
+                            let idx = observers.Count
+                            observers.Add (observer, slot)
+                            idx
+
+                        member _.TryAddObserver(observer, slot) =
+                            let mutable found = false
+
+                            for i in 0 .. observers.Count - 1 do
+                                let o, _ = observers[i]
+
+                                if obj.ReferenceEquals (o, observer) then
+                                    found <- true
+
+                            if found then
+                                EdgeHandle.Unlinked
+                            else
+                                let idx = observers.Count
+                                observers.Add (observer, slot)
+                                idx
+
+                        member _.RemoveObserverAt(observer, handle) =
+                            if handle >= 0 && handle < observers.Count then
+                                let o, _ = observers[handle]
+
+                                if obj.ReferenceEquals (o, observer) then
+                                    let last = observers.Count - 1
+
+                                    if handle <> last then
+                                        let movedObs, movedSlot = observers[last]
+                                        observers[handle] <- (movedObs, movedSlot)
+                                        movedObs.MovedIn (movedSlot, handle)
+
+                                    observers.RemoveAt last
+
+                        member _.UpdateIfNecessary() = ()
+                        member _.IsStale = false
+                        member _.IsActive = false
+                      interface INode with
+                          member _.Id = 99999
+                          member _.Status = Status.None
+                    }
+
+                let readForeign () =
+                    g.Track foreignSource
+                    foreignVal
+
+                let setForeign v =
+                    foreignVal <- v
+                    markCount <- markCount + 1
+
+                    for i in observers.Count - 1 .. -1 .. 0 do
+                        let o, _ = observers[i]
+                        o.MarkDirty ()
+
+                    g.Flush ()
+
+                let m = Make.Memo (g, fun _ -> if gate.Value then readForeign () + 1 else -1)
+                let seen = ResizeArray<int>()
+
+                let e =
+                    new Effect (g, fun () -> seen.Add (if gate.Value then readForeign () + m.Value else m.Value))
+
+                Expect.equal m.Value 11 "initial memo read through foreign ISource"
+                Expect.sequenceEqual seen [ 21 ] "initial effect read through foreign ISource"
+                Expect.equal observers.Count 2 "both memo and effect linked to foreign ISource"
+
+                setForeign 20
+                Expect.equal m.Value 21 "memo updated after foreign write"
+                Expect.sequenceEqual seen [ 21; 41 ] "effect updated after foreign write"
+
+                // Switch branch off: both memo and effect must trim foreignSource cleanly.
+                gate.Value <- false
+                Expect.equal m.Value -1 "branch switched off"
+                Expect.equal observers.Count 0 "both built-in nodes detached foreign ISource on trim"
+
+                setForeign 30
+                Expect.equal m.Runs 3 "foreign write after trim does not wake memo"
+                Expect.sequenceEqual seen [ 21; 41; -1 ] "foreign write after trim does not wake effect"
+
+                // Re-link and dispose.
+                gate.Value <- true
+                Expect.equal m.Value 31 "re-linked foreign ISource reads latest value"
+                Expect.equal observers.Count 2 "both nodes re-linked"
+                e.Dispose ()
+                m.Dispose ()
+                Expect.equal observers.Count 0 "disposal detached all edges from foreign ISource"
+            }
+
+            test "swap-removing a foreign observer from a memo preserves a surviving memo reader's handle" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let up = createMemo (fun _ -> s.Value * 10)
+
+                let foreignScope =
+                    createRoot (fun o ->
+                        createProjection id id (fun () -> [ up.Value ])
+                        |> fun p ->
+                            ignore p.Keys
+                            o)
+
+                let down = createMemo (fun _ -> up.Value + 1)
+                Expect.equal down.Value 11 "initial read"
+                foreignScope.Dispose ()
+                s.Value <- 2
+                Expect.equal down.Value 21 "surviving memo reader refreshes cleanly after swap-remove"
+                down.Dispose ()
+                s.Value <- 3
+                Expect.equal up.Runs 2 "disposed survivor unlinked cleanly from upstream memo"
+            }
         ]

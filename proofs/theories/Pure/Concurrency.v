@@ -1240,3 +1240,165 @@ Proof.
       rewrite Nat2Z.id. reflexivity.
     + vm_compute. reflexivity.
 Qed.
+
+(** ** Timed.Wake volatile reset and no-lost-wakeup (B14) *)
+
+(** State of the `Timed` wake handshake between an off-thread timer callback and the graph thread. *)
+Record timed_wake_state := {
+  tw_pending_fire : bool;
+  tw_wake_posted : nat;
+  tw_wake_in_flight : bool;
+  tw_effect_queued : bool
+}.
+
+(** Initial `Timed` wake state before any timer callback fires. *)
+Definition init_timed_wake_state : timed_wake_state :=
+  {| tw_pending_fire := false; tw_wake_posted := 0; tw_wake_in_flight := false; tw_effect_queued := false |}.
+
+(** Atomic transitions for `Timed.OnTimerFired`, `Timed.Wake` (`Volatile.Write` then `Enqueue`), and `Timed.Execute`. *)
+Inductive timed_wake_op :=
+  | TwTimerFire
+  | TwWakeClear
+  | TwWakeEnqueue
+  | TwConsume.
+
+(** Executes one atomic transition preserving the ordering `wakePosted := 0` before `Enqueue`. *)
+Definition step_timed_wake (op : timed_wake_op) (st : timed_wake_state) : timed_wake_state :=
+  match op with
+  | TwTimerFire =>
+    if (tw_wake_posted st =? 0)%nat then
+      {| tw_pending_fire := true; tw_wake_posted := 1;
+         tw_wake_in_flight := true; tw_effect_queued := tw_effect_queued st |}
+    else
+      {| tw_pending_fire := true; tw_wake_posted := tw_wake_posted st;
+         tw_wake_in_flight := tw_wake_in_flight st; tw_effect_queued := tw_effect_queued st |}
+  | TwWakeClear =>
+    if tw_wake_in_flight st then
+      {| tw_pending_fire := tw_pending_fire st; tw_wake_posted := 0;
+         tw_wake_in_flight := true; tw_effect_queued := tw_effect_queued st |}
+    else st
+  | TwWakeEnqueue =>
+    if tw_wake_in_flight st then
+      {| tw_pending_fire := tw_pending_fire st; tw_wake_posted := tw_wake_posted st;
+         tw_wake_in_flight := (tw_wake_posted st =? 1)%nat; tw_effect_queued := true |}
+    else st
+  | TwConsume =>
+    if tw_effect_queued st then
+      {| tw_pending_fire := false; tw_wake_posted := tw_wake_posted st;
+         tw_wake_in_flight := tw_wake_in_flight st; tw_effect_queued := false |}
+    else st
+  end.
+
+(** Global invariant asserting no pending timer trigger can exist without a posted wake, an in-flight wake handler, or a queued execution. *)
+Definition tw_no_lost_wakeup_inv (st : timed_wake_state) : Prop :=
+  (tw_pending_fire st = true ->
+   tw_wake_posted st = 1 \/ tw_wake_in_flight st = true \/ tw_effect_queued st = true) /\
+  (tw_wake_posted st = 0 \/ tw_wake_posted st = 1) /\
+  (tw_wake_posted st = 1 -> tw_wake_in_flight st = true).
+
+(** Trace evaluator over a list of atomic `timed_wake_op` events. *)
+Fixpoint run_timed_wake_trace (st : timed_wake_state) (tr : list timed_wake_op) : timed_wake_state :=
+  match tr with
+  | [] => st
+  | op :: rest => run_timed_wake_trace (step_timed_wake op st) rest
+  end.
+
+(** Atomic transitions for a buggy wrong-order `Wake` (`Enqueue` before clearing `wakePosted`). *)
+Inductive bad_wake_op :=
+  | BadTimerFire
+  | BadWakeEnqueue
+  | BadWakeClear
+  | BadConsume.
+
+(** Executes one transition of the reversed-order (`Enqueue` before `Clear`) `Wake` model. *)
+Definition step_bad_wake (op : bad_wake_op) (st : timed_wake_state) : timed_wake_state :=
+  match op with
+  | BadTimerFire => step_timed_wake TwTimerFire st
+  | BadWakeEnqueue =>
+    if tw_wake_in_flight st then
+      {| tw_pending_fire := tw_pending_fire st; tw_wake_posted := tw_wake_posted st;
+         tw_wake_in_flight := tw_wake_in_flight st; tw_effect_queued := true |}
+    else st
+  | BadWakeClear =>
+    if tw_wake_in_flight st then
+      {| tw_pending_fire := tw_pending_fire st; tw_wake_posted := 0;
+         tw_wake_in_flight := false; tw_effect_queued := tw_effect_queued st |}
+    else st
+  | BadConsume => step_timed_wake TwConsume st
+  end.
+
+(** Trace evaluator for the buggy wrong-order `Wake` model. *)
+Fixpoint run_bad_wake_trace (st : timed_wake_state) (tr : list bad_wake_op) : timed_wake_state :=
+  match tr with
+  | [] => st
+  | op :: rest => run_bad_wake_trace (step_bad_wake op st) rest
+  end.
+
+(** Concrete wrong-order interleaving (`TimerFire` -> `Enqueue` -> `Consume` -> `TimerFire` -> delayed `Clear`) that loses a wakeup. *)
+Definition reversed_wake_bad_trace : list bad_wake_op :=
+  [BadTimerFire; BadWakeEnqueue; BadConsume; BadTimerFire; BadWakeClear].
+
+(**md
+**Clearing `wakePosted := 0` (`Volatile.Write`) strictly before `Enqueue` (`effect_queued := true`) in `Timed.Wake` makes lost wakeups unreachable across all fine-grained atomic interleavings with off-thread `Interlocked.Exchange(&wakePosted, 1)`.**
+
+Models `Timed.OnTimerFired` (`TwTimerFire`, setting `pending_fire := true` and posting a wake iff `wake_posted = 0`), graph-thread `Timed.Wake` split into two atomic steps (`TwWakeClear` clearing `wake_posted := 0` while `tw_wake_in_flight` stays `true`, followed by `TwWakeEnqueue` setting `effect_queued := true` and keeping `tw_wake_in_flight := (wake_posted =? 1)`), and `Timed.Execute` (`TwConsume`). Across any interleaving `tr` from any invariant-preserving state `st0` (and from `init_timed_wake_state`), `tw_pending_fire st = true` implies `tw_wake_posted st = 1 \/ tw_wake_in_flight st = true \/ tw_effect_queued st = true`, and a concurrent fire arriving between `TwWakeClear` and `TwWakeEnqueue` preserves both `tw_wake_posted = 1`, `tw_wake_in_flight = true`, and `tw_effect_queued = true`. By contrast, running `run_bad_wake_trace` with `Enqueue` before `Clear` reaches a lost wakeup (`tw_pending_fire = true /\ tw_wake_posted = 0 /\ tw_wake_in_flight = false /\ tw_effect_queued = false`).
+
+- [st0:] starting handshake state satisfying `tw_no_lost_wakeup_inv`.
+- [tr:] arbitrary trace of atomic timer fires, `Wake` clear/enqueue steps, and effect executions.
+*)
+Theorem timed_wake_volatile_reset_no_lost_wakeup
+    (st0 : timed_wake_state) (tr : list timed_wake_op) :
+  tw_no_lost_wakeup_inv st0 ->
+  let st := run_timed_wake_trace st0 tr in
+  (tw_pending_fire st = true ->
+   tw_wake_posted st = 1 \/ tw_wake_in_flight st = true \/ tw_effect_queued st = true) /\
+  (tw_pending_fire (run_timed_wake_trace init_timed_wake_state tr) = true ->
+   tw_wake_posted (run_timed_wake_trace init_timed_wake_state tr) = 1 \/
+   tw_wake_in_flight (run_timed_wake_trace init_timed_wake_state tr) = true \/
+   tw_effect_queued (run_timed_wake_trace init_timed_wake_state tr) = true) /\
+  (let st_race := run_timed_wake_trace st [TwTimerFire; TwWakeClear; TwTimerFire; TwWakeEnqueue] in
+   tw_pending_fire st_race = true /\
+   tw_wake_posted st_race = 1 /\
+   tw_wake_in_flight st_race = true /\
+   tw_effect_queued st_race = true) /\
+  (let st_bad := run_bad_wake_trace init_timed_wake_state reversed_wake_bad_trace in
+   tw_pending_fire st_bad = true /\
+   tw_wake_posted st_bad = 0 /\
+   tw_wake_in_flight st_bad = false /\
+   tw_effect_queued st_bad = false).
+Proof.
+  intros Hinv0.
+  assert (Hstep : forall op s, tw_no_lost_wakeup_inv s -> tw_no_lost_wakeup_inv (step_timed_wake op s)).
+  { intros op s [Hp [Hw Hinf]].
+    destruct op; simpl.
+    - destruct (tw_wake_posted s =? 0)%nat eqn:Ewp; simpl.
+      + split; [intros _; left; reflexivity|].
+        split; [right; reflexivity|intros _; reflexivity].
+      + destruct Hw as [Hw0|Hw1]; [rewrite Hw0 in Ewp; discriminate|].
+        split; [intros _; left; exact Hw1|].
+        split; [right; exact Hw1|exact Hinf].
+    - destruct (tw_wake_in_flight s) eqn:Eif; simpl.
+      + split; [intros _; right; left; reflexivity|].
+        split; [left; reflexivity|intros Hc; discriminate].
+      + unfold tw_no_lost_wakeup_inv. rewrite Eif. split; [exact Hp|split; assumption].
+    - destruct (tw_wake_in_flight s) eqn:Eif; simpl.
+      + split; [intros _; right; right; reflexivity|].
+        split; [exact Hw|intros Hw1; simpl in Hw1; rewrite Hw1; reflexivity].
+      + unfold tw_no_lost_wakeup_inv. rewrite Eif. split; [exact Hp|split; assumption].
+    - destruct (tw_effect_queued s) eqn:Heq; simpl.
+      + split; [intros Hc; discriminate|split; assumption].
+      + unfold tw_no_lost_wakeup_inv. rewrite Heq. split; [exact Hp|split; assumption]. }
+  assert (Hrun : forall tr' s, tw_no_lost_wakeup_inv s -> tw_no_lost_wakeup_inv (run_timed_wake_trace s tr')).
+  { intros tr'. induction tr' as [|op rest IH]; intros s Hs; simpl; [exact Hs|].
+    apply IH. apply Hstep. exact Hs. }
+  assert (Hinit : tw_no_lost_wakeup_inv init_timed_wake_state).
+  { split; simpl; [intros H; discriminate|split; [left; reflexivity|intros H; discriminate]]. }
+  pose proof (Hrun tr st0 Hinv0) as Hinv_st.
+  pose proof (Hrun tr init_timed_wake_state Hinit) as Hinv_init.
+  split; [intros Hp; exact (proj1 Hinv_st Hp)|].
+  split; [intros Hp; exact (proj1 Hinv_init Hp)|].
+  split; [|repeat split; reflexivity].
+  destruct Hinv_st as [_ [[Hw0|Hw1] Hinf]].
+  - simpl. rewrite Hw0. repeat split; reflexivity.
+  - pose proof (Hinf Hw1) as Hif. simpl. rewrite Hw1, Hif. repeat split; reflexivity.
+Qed.

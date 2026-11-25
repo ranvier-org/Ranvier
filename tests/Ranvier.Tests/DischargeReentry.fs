@@ -15,22 +15,8 @@ let private invalidOp (f: unit -> unit) (message: string) : InvalidOperationExce
     with :? InvalidOperationException as ex ->
         ex
 
-#if FABLE_COMPILER
-[<Fable.Core.Emit("$0.unannounced")>]
-let private isUnannounced (_memo: obj) : bool =
-    Fable.Core.Util.jsNative
-#else
-let private isUnannounced (memo: obj) : bool =
-    memo
-        .GetType()
-        .GetField(
-            "unannounced",
-            Reflection.BindingFlags.Instance
-            ||| Reflection.BindingFlags.NonPublic
-        )
-        .GetValue(memo)
-    :?> bool
-#endif
+let private isUnannounced (memo: Memo<'T>) : bool =
+    memo.IsUnannouncedForTest
 
 /// <summary>
 /// A cleanup that writes a source of its computation and then reads the

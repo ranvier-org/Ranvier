@@ -133,7 +133,21 @@ type Mvu<'Model, 'Msg>
     /// </remarks>
     member this.Dispatch(msg: 'Msg) : unit =
 #if FABLE_COMPILER
-        this.Arrive msg
+        if
+            isNull site
+            && not disposed
+            && not (graph.IsTracking ())
+        then
+            if not commanded then
+                root.Value <- update msg root.Peek
+            else
+                let model, commands = step msg root.Peek
+                root.Value <- model
+
+                if not commands.IsEmpty then
+                    this.RunCommands (commands, false)
+        else
+            this.Arrive msg
 #else
         if graph.IsOnGraphThread then
             this.Arrive msg
@@ -186,7 +200,8 @@ type Mvu<'Model, 'Msg>
     /// </remarks>
     /// <exception cref="T:System.InvalidOperationException">Called inside a pure body, such as a <c>createMemo</c> body.</exception>
     member _.Select(select: 'Model -> 'A) : Memo<'A> =
-        Memo<'A>.Create(graph, (fun _ -> select root.Value), ScopeMode.Pure)
+        let model = root
+        Memo<'A>.Create(graph, (fun _ -> select model.Value), ScopeMode.Pure)
 
 /// <summary>Constructors for <c>Mvu</c> over the current graph.</summary>
 [<RequireQualifiedAccess>]

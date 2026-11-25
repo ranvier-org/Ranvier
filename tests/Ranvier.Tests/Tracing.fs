@@ -2584,6 +2584,38 @@ let tests =
                         Expect.equal (TraceModel.fold dump.Snapshot dump.Events) (Trace.snapshot g) "the dump folds to the live snapshot"
                     }
 #endif
+
+                    test "nodes and projections constructed under a disposed owner emit NodeNew before Dispose" {
+                        use g = new Graph ()
+                        use _ = g.Activate ()
+                        let o = createRoot id
+                        o.Dispose ()
+
+                        let m = runWithOwner o (fun () -> createMemo (fun _ -> 1))
+                        let p = runWithOwner o (fun () -> createProjection id id (fun () -> [ 1 ]))
+                        let mid = (m :> INode).Id
+                        let pid = (p :> INode).Id
+                        let events = Trace.events g
+
+                        let kindsFor target =
+                            events
+                            |> Array.filter (fun e ->
+                                e.Node = target
+                                && (e.Kind = TraceEventKind.NodeNew
+                                    || e.Kind = TraceEventKind.Dispose))
+                            |> Array.map _.Kind
+
+                        let snap = Trace.snapshot g
+                        Expect.sequenceEqual (kindsFor mid) [| TraceEventKind.NodeNew; TraceEventKind.Dispose |] "memo emits NodeNew then Dispose"
+
+                        Expect.sequenceEqual
+                            (kindsFor pid)
+                            [| TraceEventKind.NodeNew; TraceEventKind.Dispose |]
+                            "projection emits NodeNew then Dispose"
+
+                        Expect.equal snap.Nodes[mid].Status TraceNodeStatus.Disposed "memo snapshot status is Disposed"
+                        Expect.equal snap.Nodes[pid].Status TraceNodeStatus.Disposed "projection snapshot status is Disposed"
+                    }
                 ]
 #endif
         ]

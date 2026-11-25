@@ -4472,3 +4472,508 @@ Proof.
     - apply IH. }
   split; apply Hgen.
 Qed.
+
+(** ** Post-selector liveness guard and direct collection row fold equivalence *)
+
+Inductive col_delta_kind := ColAdded | ColRemoved.
+
+Record col_proj_state (K V : Type) `{Countable K} := mk_col_proj {
+  cp_stopped : bool;
+  cp_items : gmap K (nat * V);
+  cp_order : list K;
+  cp_changes : list (K * col_delta_kind);
+  cp_revision : nat;
+  cp_next_gen : nat;
+}.
+Arguments mk_col_proj {K V _ _} _ _ _ _ _ _.
+Arguments cp_stopped {K V _ _} _.
+Arguments cp_items {K V _ _} _.
+Arguments cp_order {K V _ _} _.
+Arguments cp_changes {K V _ _} _.
+Arguments cp_revision {K V _ _} _.
+Arguments cp_next_gen {K V _ _} _.
+
+Definition col_liveness_inv {K V : Type} `{Countable K} (st : col_proj_state K V) : Prop :=
+  cp_stopped st = true -> cp_items st = ∅ /\ cp_order st = [].
+
+Definition col_add_or_update_core {K V : Type} `{Countable K}
+    (k : K) (v : V) (st : col_proj_state K V) : col_proj_state K V :=
+  match cp_items st !! k with
+  | Some (gen, _) =>
+      mk_col_proj (cp_stopped st) (<[k := (gen, v)]> (cp_items st))
+                  (cp_order st) (cp_changes st) (cp_revision st) (cp_next_gen st)
+  | None =>
+      mk_col_proj (cp_stopped st) (<[k := (cp_next_gen st, v)]> (cp_items st))
+                  (cp_order st ++ [k]) (cp_changes st ++ [(k, ColAdded)])
+                  (S (cp_revision st)) (S (cp_next_gen st))
+  end.
+
+Definition col_dispose {K V : Type} `{Countable K}
+    (st : col_proj_state K V) : col_proj_state K V :=
+  mk_col_proj true ∅ [] [] (cp_revision st) (cp_next_gen st).
+
+Definition col_add_or_update_by_unguarded {K V : Type} `{Countable K}
+    (selector : V -> col_proj_state K V -> option (K * col_proj_state K V))
+    (v : V) (st : col_proj_state K V) : option (col_proj_state K V) :=
+  if cp_stopped st then None
+  else match selector v st with
+       | Some (k, st1) => Some (col_add_or_update_core k v st1)
+       | None => None
+       end.
+
+Definition col_add_or_update_by_guarded {K V : Type} `{Countable K}
+    (selector : V -> col_proj_state K V -> option (K * col_proj_state K V))
+    (v : V) (st : col_proj_state K V) : option (col_proj_state K V) :=
+  if cp_stopped st then None
+  else match selector v st with
+       | Some (k, st1) =>
+           if cp_stopped st1 then None
+           else Some (col_add_or_update_core k v st1)
+       | None => None
+       end.
+
+(**md
+**Restoring `EnsureLive ()` immediately after `keyOf value` in `CollectionProjection.AddOrUpdateBy` prevents inserting zombie items after reentrant disposal during the selector, while agreeing identically with unguarded upserts whenever the collection remains live (`Collections.fs` `AddOrUpdateBy`).**
+
+Models the bug fix from `codex-astra-plan.md` §2:
+- `col_add_or_update_by_guarded` preserves `col_liveness_inv` whenever `selector` does, rejecting (`None`) any run in which `selector` disposed the collection (`cp_stopped st1 = true`) without modifying `cp_items`, `cp_order`, `cp_changes`, or `cp_revision`.
+- By contrast, `col_add_or_update_by_unguarded` permits `selector` to dispose the collection and then inserts `(k, v)` into the cleared `cp_items`, breaking `col_liveness_inv`.
+- Whenever `selector` leaves the collection live (`cp_stopped st1 = false`), including under reentrant edits to the collection during `selector`, both guarded and unguarded paths return the exact same `Some (col_add_or_update_core k v st1)`.
+
+- [selector:] the `keyOf` function, which may inspect or reentrantly mutate or dispose the collection.
+- [k:] a key returned when `selector` disposes the collection.
+- [v:] the upserted value.
+- [st:] the collection state before `AddOrUpdateBy`.
+*)
+Theorem post_selector_liveness_guard
+    {K V : Type} `{Countable K}
+    (selector : V -> col_proj_state K V -> option (K * col_proj_state K V))
+    (k : K) (v : V) (st : col_proj_state K V) :
+  (forall v0 s0 k0 s1, col_liveness_inv s0 -> selector v0 s0 = Some (k0, s1) -> col_liveness_inv s1) ->
+  (forall st', col_liveness_inv st -> col_add_or_update_by_guarded selector v st = Some st' ->
+     col_liveness_inv st' /\ cp_stopped st' = false) /\
+  (forall k0 st1, selector v st = Some (k0, st1) -> cp_stopped st1 = true ->
+     col_add_or_update_by_guarded selector v st = None) /\
+  (cp_stopped st = false ->
+     exists st_bad,
+       col_add_or_update_by_unguarded (fun _ s0 => Some (k, col_dispose s0)) v st = Some st_bad /\
+       cp_stopped st_bad = true /\
+       cp_items st_bad !! k = Some (cp_next_gen st, v) /\
+       col_add_or_update_by_guarded (fun _ s0 => Some (k, col_dispose s0)) v st = None) /\
+  (forall k0 st1, cp_stopped st = false -> selector v st = Some (k0, st1) -> cp_stopped st1 = false ->
+     col_add_or_update_by_guarded selector v st = Some (col_add_or_update_core k0 v st1) /\
+     col_add_or_update_by_unguarded selector v st = Some (col_add_or_update_core k0 v st1)).
+Proof.
+  intro Hsel. split_and!.
+  - intros st' Hinv Hres. unfold col_add_or_update_by_guarded in Hres.
+    destruct (cp_stopped st) eqn:Hst; [discriminate|].
+    destruct (selector v st) as [[k0 st1]|] eqn:Hs; [|discriminate].
+    destruct (cp_stopped st1) eqn:Hst1; [discriminate|].
+    simplify_eq. split.
+    + intros Hbad. unfold col_add_or_update_core in Hbad.
+      destruct (cp_items st1 !! k0) as [[gen _]|]; simpl in Hbad; congruence.
+    + unfold col_add_or_update_core.
+      destruct (cp_items st1 !! k0) as [[gen _]|]; simpl; exact Hst1.
+  - intros k0 st1 Hs Hst1. unfold col_add_or_update_by_guarded.
+    destruct (cp_stopped st); [reflexivity|].
+    rewrite Hs, Hst1. reflexivity.
+  - intro Hlive. unfold col_add_or_update_by_unguarded, col_add_or_update_by_guarded.
+    rewrite Hlive.
+    eexists. split_and!; [reflexivity| | |reflexivity].
+    + unfold col_add_or_update_core, col_dispose. simpl. rewrite lookup_empty. reflexivity.
+    + unfold col_add_or_update_core, col_dispose. simpl. rewrite lookup_empty. simpl.
+      apply lookup_insert_eq.
+  - intros k0 st1 Hlive Hs Hst1. unfold col_add_or_update_by_guarded, col_add_or_update_by_unguarded.
+    rewrite Hlive, Hs, Hst1. split; reflexivity.
+Qed.
+
+Inductive fold_row_reading (V : Type) :=
+  | FRReady (v : V)
+  | FRPending
+  | FRFailed (err : Z).
+Arguments FRReady {V} _.
+Arguments FRPending {V}.
+Arguments FRFailed {V} _.
+
+Record col_row_cell (V : Type) := mk_row_cell {
+  rc_gen : nat;
+  rc_signal_val : V;
+  rc_status : status;
+  rc_err : Z;
+}.
+Arguments mk_row_cell {V} _ _ _ _.
+Arguments rc_gen {V} _.
+Arguments rc_signal_val {V} _.
+Arguments rc_status {V} _.
+Arguments rc_err {V} _.
+
+Definition read_indirect_row {V : Type} (item_sig_by_gen : gmap nat (col_row_cell V))
+    (outer_gen : nat) : fold_row_reading V :=
+  match item_sig_by_gen !! outer_gen with
+  | Some cell =>
+      match rc_status cell with
+      | StPending => FRPending
+      | StError => FRFailed (rc_err cell)
+      | _ => FRReady (rc_signal_val cell)
+      end
+  | None => FRPending
+  end.
+
+Definition read_direct_row {V : Type} (cell : col_row_cell V) : fold_row_reading V :=
+  match rc_status cell with
+  | StPending => FRPending
+  | StError => FRFailed (rc_err cell)
+  | _ => FRReady (rc_signal_val cell)
+  end.
+
+Record fold_row_acc (V : Type) := mk_fold_row_acc {
+  fra_gen : nat;
+  fra_has_value : bool;
+  fra_value : V;
+  fra_err : option Z;
+}.
+Arguments mk_fold_row_acc {V} _ _ _ _.
+Arguments fra_gen {V} _.
+Arguments fra_has_value {V} _.
+Arguments fra_value {V} _.
+Arguments fra_err {V} _.
+
+Record fold_acc_state (Acc : Type) := mk_fold_acc {
+  fas_state : Acc;
+  fas_valued : nat;
+  fas_failed : nat;
+  fas_full : bool;
+  fas_moved : bool;
+}.
+Arguments mk_fold_acc {Acc} _ _ _ _ _.
+Arguments fas_state {Acc} _.
+Arguments fas_valued {Acc} _.
+Arguments fas_failed {Acc} _.
+Arguments fas_full {Acc} _.
+Arguments fas_moved {Acc} _.
+
+Definition fold_step_with {Acc A : Type}
+    (step : Acc -> A -> option Acc) (arg : A) (fs : fold_acc_state Acc) : fold_acc_state Acc :=
+  if fas_full fs then fs
+  else match step (fas_state fs) arg with
+       | Some s' => mk_fold_acc s' (fas_valued fs) (fas_failed fs) false true
+       | None => mk_fold_acc (fas_state fs) (fas_valued fs) (fas_failed fs) true (fas_moved fs)
+       end.
+
+Definition fold_fail_row {Acc V : Type} (err : Z) (r : fold_row_acc V) (fs : fold_acc_state Acc)
+    : fold_row_acc V * fold_acc_state Acc :=
+  let failed' := match fra_err r with None => S (fas_failed fs) | Some _ => fas_failed fs end in
+  let moved' := match fra_err r with Some e => if decide (e = err) then fas_moved fs else true | None => true end in
+  (mk_fold_row_acc (fra_gen r) (fra_has_value r) (fra_value r) (Some err),
+   mk_fold_acc (fas_state fs) (fas_valued fs) failed' (fas_full fs) moved').
+
+Definition fold_unfail_row {Acc V : Type} (r : fold_row_acc V) (fs : fold_acc_state Acc)
+    : fold_row_acc V * fold_acc_state Acc :=
+  match fra_err r with
+  | Some _ =>
+      (mk_fold_row_acc (fra_gen r) (fra_has_value r) (fra_value r) None,
+       mk_fold_acc (fas_state fs) (fas_valued fs) (pred (fas_failed fs)) (fas_full fs) true)
+  | None => (r, fs)
+  end.
+
+Definition fold_apply_reading {Acc V E : Type}
+    (invertible : bool)
+    (eq_v : V -> V -> option bool)
+    (add_fn sub_fn : Acc -> E -> V -> option Acc)
+    (ext : E) (default_v : V) (reading : fold_row_reading V)
+    (r : fold_row_acc V) (fs : fold_acc_state Acc)
+    : fold_row_acc V * fold_acc_state Acc :=
+  match reading with
+  | FRReady v =>
+      let '(r1, fs1) := fold_unfail_row r fs in
+      if negb (fra_has_value r1) then
+        let r2 := mk_fold_row_acc (fra_gen r1) true v (fra_err r1) in
+        let fs2 := mk_fold_acc (fas_state fs1) (S (fas_valued fs1)) (fas_failed fs1) (fas_full fs1) (fas_moved fs1) in
+        if invertible then
+          (r2, fold_step_with (fun s x => add_fn s ext x) v fs2)
+        else
+          (r2, mk_fold_acc (fas_state fs2) (fas_valued fs2) (fas_failed fs2) true (fas_moved fs2))
+      else
+        match eq_v (fra_value r1) v with
+        | None => fold_fail_row (-1)%Z r1 fs1
+        | Some true => (r1, fs1)
+        | Some false =>
+            let old := fra_value r1 in
+            let r2 := mk_fold_row_acc (fra_gen r1) true v (fra_err r1) in
+            if invertible then
+              (r2, fold_step_with (fun s '(o, n) => match sub_fn s ext o with Some s' => add_fn s' ext n | None => None end) (old, v) fs1)
+            else
+              (r2, mk_fold_acc (fas_state fs1) (fas_valued fs1) (fas_failed fs1) true (fas_moved fs1))
+        end
+  | FRPending => fold_unfail_row r fs
+  | FRFailed err => fold_fail_row err r fs
+  end.
+
+Definition fold_detach_row {Acc V E : Type}
+    (invertible : bool) (zero_s : Acc)
+    (sub_fn : Acc -> E -> V -> option Acc) (ext : E) (default_v : V)
+    (r : fold_row_acc V) (fs : fold_acc_state Acc)
+    : fold_row_acc V * fold_acc_state Acc :=
+  let '(r1, fs1) := fold_unfail_row r fs in
+  if fra_has_value r1 then
+    let old := fra_value r1 in
+    let valued' := pred (fas_valued fs1) in
+    let r2 := mk_fold_row_acc (fra_gen r1) false default_v (fra_err r1) in
+    let fs2 := mk_fold_acc (fas_state fs1) valued' (fas_failed fs1) (fas_full fs1) (fas_moved fs1) in
+    if negb invertible then
+      (r2, mk_fold_acc (fas_state fs2) valued' (fas_failed fs2) true (fas_moved fs2))
+    else if bool_decide (valued' = 0) && negb (fas_full fs2) then
+      (r2, mk_fold_acc zero_s 0 (fas_failed fs2) false true)
+    else
+      (r2, fold_step_with (fun s o => sub_fn s ext o) old fs2)
+  else (r1, fs1).
+
+Definition fold_direct_step {Acc V E : Type}
+    (invertible : bool) (zero_s : Acc)
+    (eq_v : V -> V -> option bool)
+    (add_fn sub_fn : Acc -> E -> V -> option Acc)
+    (ext : E) (default_v : V)
+    (cell : col_row_cell V)
+    (r : fold_row_acc V) (fs : fold_acc_state Acc)
+    : fold_row_acc V * fold_acc_state Acc :=
+  if decide (rc_gen cell = fra_gen r) then
+    fold_apply_reading invertible eq_v add_fn sub_fn ext default_v (read_direct_row cell) r fs
+  else
+    let '(r_det, fs_det) := fold_detach_row invertible zero_s sub_fn ext default_v r fs in
+    let r_fresh := mk_fold_row_acc (rc_gen cell) false default_v None in
+    fold_apply_reading invertible eq_v add_fn sub_fn ext default_v (read_direct_row cell) r_fresh fs_det.
+
+Definition fold_indirect_step {Acc V E : Type}
+    (invertible : bool) (zero_s : Acc)
+    (eq_v : V -> V -> option bool)
+    (add_fn sub_fn : Acc -> E -> V -> option Acc)
+    (ext : E) (default_v : V)
+    (item_sig_by_gen : gmap nat (col_row_cell V)) (outer_gen : nat)
+    (r : fold_row_acc V) (fs : fold_acc_state Acc)
+    : fold_row_acc V * fold_acc_state Acc :=
+  if decide (outer_gen = fra_gen r) then
+    fold_apply_reading invertible eq_v add_fn sub_fn ext default_v (read_indirect_row item_sig_by_gen outer_gen) r fs
+  else
+    let '(r_det, fs_det) := fold_detach_row invertible zero_s sub_fn ext default_v r fs in
+    let r_fresh := mk_fold_row_acc outer_gen false default_v None in
+    fold_apply_reading invertible eq_v add_fn sub_fn ext default_v (read_indirect_row item_sig_by_gen outer_gen) r_fresh fs_det.
+
+(**md
+**Reading a live `CollectionProjection` row's `Signal` directly and applying cached `ProjectionFold` adapters preserves exact equivalence with the two-level `RowsOf` row-memo read across steady updates, batch-restored cutoffs, generation replacement (remove + re-add), and external `FoldReads` or comparer failures (`Collections.fs`, `Combinators.fs`).**
+
+Models the Stage B direct collection-row contribution path from `codex-astra-plan.md` §3:
+- When `item_sig_by_gen !! rc_gen cell = Some cell`, `read_direct_row cell` equals `read_indirect_row item_sig_by_gen (rc_gen cell)`.
+- Under the same generation match, `fold_direct_step` produces the identical row state `(fra_gen, fra_has_value, fra_value, fra_err)` and fold accumulator state `(fas_state, fas_valued, fas_failed, fas_full, fas_moved)` as `fold_indirect_step` — both when `rc_gen cell = fra_gen r` (in-place update) and when `rc_gen cell <> fra_gen r` (remove + re-add triggering detach and re-attach).
+- Writing an unchanged or batch-restored value (`eq_v (fra_value r) (rc_signal_val cell) = Some true` with `rc_status = StNone`, `fra_has_value = true`, `fra_err = None`, `rc_gen = fra_gen`) leaves both `r` and `fs` untouched (`fas_moved` unchanged, no reducer call).
+- For an invertible, live, unfailed changed row (`rc_status = StNone`, `fra_has_value = true`, `fra_err = None`, `eq_v (fra_value r) (rc_signal_val cell) = Some false`), the replacement adapter computes `sub_fn (fas_state fs) ext (fra_value r) ≫= fun s' => add_fn s' ext (rc_signal_val cell)` under the external `FoldReads` context `ext`, setting `fas_full := true` if either fails.
+
+- [invertible:] whether `ProjectionFold` has an invertible `subtract` function.
+- [zero_s:] the fold's initial accumulator seed.
+- [eq_v:] the value equality comparer (`None` models a throwing comparer).
+- [add_fn:] the fold's `add` function taking external `FoldReads` state `ext` (`None` models throwing).
+- [sub_fn:] the fold's `subtract` function taking external `FoldReads` state `ext` (`None` models throwing).
+- [ext:] external `FoldReads` signal environment observed during `StepWith`.
+- [default_v:] default value stored on detached rows.
+- [item_sig_by_gen:] collection item signal table indexed by entry generation.
+- [cell:] direct collection row cell for the live entry.
+- [r:] the fold row's accepted contribution state.
+- [fs:] the fold's aggregate accumulator state.
+*)
+Theorem direct_collection_row_fold_eq
+    {Acc V E : Type}
+    (invertible : bool) (zero_s : Acc)
+    (eq_v : V -> V -> option bool)
+    (add_fn sub_fn : Acc -> E -> V -> option Acc)
+    (ext : E) (default_v : V)
+    (item_sig_by_gen : gmap nat (col_row_cell V))
+    (cell : col_row_cell V)
+    (r : fold_row_acc V) (fs : fold_acc_state Acc) :
+  item_sig_by_gen !! rc_gen cell = Some cell ->
+  read_direct_row cell = read_indirect_row item_sig_by_gen (rc_gen cell) /\
+  fold_direct_step invertible zero_s eq_v add_fn sub_fn ext default_v cell r fs =
+    fold_indirect_step invertible zero_s eq_v add_fn sub_fn ext default_v item_sig_by_gen (rc_gen cell) r fs /\
+  (rc_gen cell = fra_gen r -> rc_status cell = StNone -> fra_has_value r = true -> fra_err r = None ->
+   eq_v (fra_value r) (rc_signal_val cell) = Some true ->
+   fold_direct_step invertible zero_s eq_v add_fn sub_fn ext default_v cell r fs = (r, fs)) /\
+  (rc_gen cell = fra_gen r -> rc_status cell = StNone -> fra_has_value r = true -> fra_err r = None ->
+   eq_v (fra_value r) (rc_signal_val cell) = Some false -> invertible = true -> fas_full fs = false ->
+   let fs_expected :=
+     match sub_fn (fas_state fs) ext (fra_value r) ≫= fun s' => add_fn s' ext (rc_signal_val cell) with
+     | Some s'' => mk_fold_acc s'' (fas_valued fs) (fas_failed fs) false true
+     | None => mk_fold_acc (fas_state fs) (fas_valued fs) (fas_failed fs) true (fas_moved fs)
+     end in
+   fold_direct_step true zero_s eq_v add_fn sub_fn ext default_v cell r fs =
+     (mk_fold_row_acc (fra_gen r) true (rc_signal_val cell) None, fs_expected)).
+Proof.
+  intro Hcell.
+  assert (Hread : read_direct_row cell = read_indirect_row item_sig_by_gen (rc_gen cell)).
+  { unfold read_direct_row, read_indirect_row. rewrite Hcell. reflexivity. }
+  split_and!.
+  - exact Hread.
+  - unfold fold_direct_step, fold_indirect_step. rewrite Hread. reflexivity.
+  - intros Hgen Hst Hhas Herr Heq.
+    unfold fold_direct_step. rewrite decide_True by exact Hgen.
+    unfold fold_apply_reading, read_direct_row. rewrite Hst.
+    unfold fold_unfail_row. rewrite Herr, Hhas. simpl.
+    rewrite Heq. destruct r as [g hv val err]; simpl in *; subst; reflexivity.
+  - intros Hgen Hst Hhas Herr Heq Hinv Hfull fs_expected.
+    unfold fold_direct_step. rewrite decide_True by exact Hgen.
+    unfold fold_apply_reading, read_direct_row. rewrite Hst.
+    unfold fold_unfail_row. rewrite Herr, Hhas. simpl.
+    rewrite Heq. unfold fold_step_with. rewrite Hfull.
+    subst fs_expected.
+    destruct (sub_fn (fas_state fs) ext (fra_value r)) as [s'|]; simpl;
+      [destruct (add_fn s' ext (rc_signal_val cell)); rewrite Herr; reflexivity | rewrite Herr; reflexivity].
+Qed.
+
+(** ** ProjectionFold clean-ready peek and SortView certified strict-order check (B15) *)
+
+(**md
+**An untracked read (`ProjectionFold.Read` `Peek`) on a clean, ready (`StNone`, `stale_live = false`) memo returns `Ok (n_value d)` in identical state `s` with zero edge mutations, trace emissions, or refresh allocations.**
+
+Models the `Clean /\ StNone` `Peek` fast path in `ProjectionFold.Read` (`Combinators.fs`): because `read (S (S f)) m false s` runs `read_node (S f) m` inside `untracked`, `g_current` is `None` during `track m` (so `live_current = None` and no dependency edge is added), `stale_live d = false` bypasses `refresh_or_pull`, and `n_status d = StNone` directly returns `Ok (n_value d)` while restoring `s` verbatim.
+
+- [f:] extra fuel beyond the outer `read`/`read_node` frame.
+- [m:] memo node id being peeked.
+- [d:] clean ready memo node snapshot at `m`.
+- [s:] starting engine state.
+*)
+Theorem clean_ready_row_peek_refines_untracked_read
+    (f : nat) (m : node_id) (d : node) (s : state) :
+  g_nodes s !! m = Some d ->
+  n_kind d = KMemo ->
+  stale_live d = false ->
+  n_status d = StNone ->
+  read (S (S f)) m false s = Some (s, Ok (n_value d)).
+Proof.
+  intros Hm Hk Hstale Hst.
+  cbn [read read_node].
+  unfold untracked, m_bind, m_modify, m_return, get_node, track, live_current.
+  simpl. rewrite Hm, Hk, Hstale. simpl. rewrite Hm, Hst. simpl.
+  destruct s; reflexivity.
+Qed.
+
+(** Computable pairwise `rank_up_le` adjacency check matching `SortView`'s linear strict-order scan. *)
+Fixpoint is_rank_up_sorted (xs : list (nat * Z * nat)) : bool :=
+  match xs with
+  | [] => true
+  | [_] => true
+  | x :: ((y :: _) as ys) => rank_up_le_b x y && is_rank_up_sorted ys
+  end.
+
+Lemma rank_up_le_b_true_iff x y :
+  rank_up_le_b x y = true <-> rank_up_le x y.
+Proof.
+  unfold rank_up_le_b, rank_up_le.
+  apply bool_decide_eq_true.
+Qed.
+
+Lemma is_rank_up_sorted_locally ys :
+  is_rank_up_sorted ys = true ->
+  LocallySorted rank_up_le ys.
+Proof.
+  induction ys as [|a l IH]; [constructor|].
+  destruct l as [|b l'].
+  - intros _. constructor.
+  - simpl. intros H. apply andb_true_iff in H as [Hab Hl'].
+    constructor.
+    + exact (IH Hl').
+    + apply rank_up_le_b_true_iff. exact Hab.
+Qed.
+
+(**md
+**When `SortView`'s linear order scan confirms every adjacent pair `(rank, up_idx)` is ordered under `rank_up_le` (`LocallySorted` / `Sorted`), `full_insertion_sort` is the identity.**
+
+Models the certified strict-order fast path for sorted reactive collections: if incoming `(rank, up_idx)` pairs already satisfy pairwise `rank_up_le` (whether witnessed by the computable scan `is_rank_up_sorted`, adjacent `LocallySorted rank_up_le`, or standard `Sorted rank_up_le`), `full_insertion_sort xs` leaves `xs` unchanged, justifying skipping insertion-sort allocations altogether.
+
+- [xs:] list of `(item_id, rank, up_idx)` rows ordered under `rank_up_le`.
+*)
+Theorem certified_strict_order_skips_sort
+    (xs : list (nat * Z * nat)) :
+  (LocallySorted rank_up_le xs -> full_insertion_sort xs = xs) /\
+  (Sorted rank_up_le xs -> full_insertion_sort xs = xs) /\
+  (is_rank_up_sorted xs = true -> full_insertion_sort xs = xs).
+Proof.
+  assert (Hloc : forall l, LocallySorted rank_up_le l -> full_insertion_sort l = l).
+  { induction l as [|x l IH]; intros Hls; [reflexivity|].
+    destruct l as [|y ys]; [reflexivity|].
+    inversion Hls; subst.
+    unfold full_insertion_sort in *. simpl in *.
+    rewrite IH by assumption.
+    unfold sorted_insert.
+    destruct (rank_up_le_b_true_iff x y) as [_ Htrue].
+    rewrite (Htrue ltac:(assumption)). reflexivity. }
+  repeat split.
+  - exact (Hloc xs).
+  - intros Hsort. apply Hloc. induction xs as [|x l IH].
+    + constructor.
+    + inversion Hsort; subst. destruct l as [|y ys]; [constructor|].
+      inversion H2; subst. constructor; [exact (IH H1)|assumption].
+  - intros Hbool. apply Hloc.
+    eapply is_rank_up_sorted_locally. exact Hbool.
+Qed.
+
+Lemma locally_sorted_gt_forall (x : nat * Z * nat) (xs : list (nat * Z * nat)) :
+  LocallySorted (fun a b => (a.1.2 > b.1.2)%Z) (x :: xs) ->
+  Forall (fun z => (z.1.2 < x.1.2)%Z) xs.
+Proof.
+  revert x. induction xs as [|y ys IH]; intros x Hls.
+  - constructor.
+  - inversion Hls; subst.
+    constructor; [lia|].
+    assert (Hsub : Forall (fun z => (z.1.2 < y.1.2)%Z) ys) by (apply IH; assumption).
+    clear IH Hls H1.
+    induction Hsub as [|z zs Hz Htail IHzs].
+    + constructor.
+    + constructor; [eapply Z.lt_trans; [exact Hz|lia]|exact IHzs].
+Qed.
+
+Lemma forall_app_snoc_gt {A} (P : A -> Prop) (l : list A) (x : A) :
+  Forall P l -> P x -> Forall P (l ++ [x]).
+Proof.
+  intros Hl Hx. induction Hl as [|y ys Hy Htail IH]; simpl.
+  - constructor; [exact Hx|constructor].
+  - constructor; [exact Hy|exact IH].
+Qed.
+
+Lemma forall_rev_list {A} (P : A -> Prop) (xs : list A) :
+  Forall P xs -> Forall P (rev xs).
+Proof.
+  induction xs as [|x xs IH]; intros H.
+  - simpl. constructor.
+  - inversion H; subst. simpl.
+    apply forall_app_snoc_gt; [by apply IH|exact H2].
+Qed.
+
+Lemma sorted_insert_gt_all (x : nat * Z * nat) (l : list (nat * Z * nat)) :
+  Forall (fun z => (z.1.2 < x.1.2)%Z) l ->
+  sorted_insert x l = l ++ [x].
+Proof.
+  induction l as [|y ys IH]; intros Hfa.
+  - reflexivity.
+  - inversion Hfa; subst.
+    cbn [sorted_insert]. unfold rank_up_le_b.
+    rewrite bool_decide_false by lia.
+    simpl. f_equal. by apply IH.
+Qed.
+
+(**md
+**When incoming ranked items are strictly descending by rank (`LocallySorted (fun x y => (x.1.2 > y.1.2)%Z) xs`), `full_insertion_sort xs` produces `rev xs` in linear pass without general sorting (`Combinators.fs:3365`).**
+
+- [xs:] list of `(item, rank, up_idx)` entries ordered strictly descending by rank.
+*)
+Theorem certified_reverse_order_reverses_to_sorted
+    (xs : list (nat * Z * nat)) :
+  LocallySorted (fun x y => (x.1.2 > y.1.2)%Z) xs ->
+  full_insertion_sort xs = rev xs.
+Proof.
+  induction xs as [|x xs IH]; intros Hls.
+  - reflexivity.
+  - pose proof (locally_sorted_gt_forall x xs Hls) as Hfa.
+    assert (Htail : LocallySorted (fun a b => (a.1.2 > b.1.2)%Z) xs).
+    { inversion Hls; subst; [constructor|assumption]. }
+    unfold full_insertion_sort in *. simpl.
+    rewrite (IH Htail).
+    apply sorted_insert_gt_all.
+    by apply forall_rev_list.
+Qed.

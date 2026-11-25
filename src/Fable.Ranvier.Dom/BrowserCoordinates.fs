@@ -90,31 +90,32 @@ module BrowserCoordinates =
             | null -> Error CoordinateUnavailable.Detached
             | values -> Ok values
 
+        // An element map's conversions to and from client coordinates.
+        let elementSpace (m: float array) =
+            let determinant = m[0] * m[3] - m[1] * m[2]
+
+            (fun (p: CoordinatePoint) ->
+                Ok
+                    {
+                        X = m[0] * p.X + m[2] * p.Y + m[4]
+                        Y = m[1] * p.X + m[3] * p.Y + m[5]
+                    }),
+            (fun (q: CoordinatePoint) ->
+                if abs determinant < 1e-12 then
+                    Error CoordinateUnavailable.NonInvertible
+                else
+                    let x, y = q.X - m[4], q.Y - m[5]
+
+                    Ok
+                        {
+                            X = (m[3] * x - m[2] * y) / determinant
+                            Y = (m[0] * y - m[1] * x) / determinant
+                        })
+
         // A space's map to and from client coordinates.
         let resolve (space: CoordinateSpace) (view: float array) =
             match space with
-            | CoordinateSpace.Element element ->
-                map element
-                |> Result.map (fun m ->
-                    let determinant = m[0] * m[3] - m[1] * m[2]
-
-                    (fun (p: CoordinatePoint) ->
-                        Ok
-                            {
-                                X = m[0] * p.X + m[2] * p.Y + m[4]
-                                Y = m[1] * p.X + m[3] * p.Y + m[5]
-                            }),
-                    (fun (q: CoordinatePoint) ->
-                        if abs determinant < 1e-12 then
-                            Error CoordinateUnavailable.NonInvertible
-                        else
-                            let x, y = q.X - m[4], q.Y - m[5]
-
-                            Ok
-                                {
-                                    X = (m[3] * x - m[2] * y) / determinant
-                                    Y = (m[0] * y - m[1] * x) / determinant
-                                }))
+            | CoordinateSpace.Element element -> map element |> Result.map elementSpace
             | CoordinateSpace.Page ->
                 Ok ((fun p -> Ok { X = p.X - view[0]; Y = p.Y - view[1] }), (fun q -> Ok { X = q.X + view[0]; Y = q.Y + view[1] }))
             | CoordinateSpace.Client -> Ok (Ok, Ok)
@@ -151,25 +152,33 @@ module BrowserCoordinates =
                             })
                 )
 
+        // The points taken to client coordinates by toClient, then into target.
+        let convertVia
+            (toClient: CoordinatePoint -> Result<CoordinatePoint, CoordinateUnavailable>)
+            (target: CoordinateSpace)
+            (view: float array)
+            (points: CoordinatePoint array)
+            =
+            resolve target view
+            |> Result.bind (fun (_, fromClient) ->
+                let result = Array.zeroCreate points.Length
+                let mutable failure = None
+
+                for index in 0 .. points.Length - 1 do
+                    if failure.IsNone then
+                        match toClient points[index] |> Result.bind fromClient with
+                        | Ok point -> result[index] <- point
+                        | Error reason -> failure <- Some reason
+
+                match failure with
+                | Some reason -> Error reason
+                | None -> Ok result)
+
         let convert (from: CoordinateSpace) (target: CoordinateSpace) (points: CoordinatePoint array) =
             state ()
             |> Result.bind (fun view ->
                 resolve from view
-                |> Result.bind (fun (toClient, _) ->
-                    resolve target view
-                    |> Result.bind (fun (_, fromClient) ->
-                        let result = Array.zeroCreate points.Length
-                        let mutable failure = None
-
-                        for index in 0 .. points.Length - 1 do
-                            if failure.IsNone then
-                                match toClient points[index] |> Result.bind fromClient with
-                                | Ok point -> result[index] <- point
-                                | Error reason -> failure <- Some reason
-
-                        match failure with
-                        | Some reason -> Error reason
-                        | None -> Ok result)))
+                |> Result.bind (fun (toClient, _) -> convertVia toClient target view points))
 
         Coordinates.create
             {
@@ -194,13 +203,16 @@ module BrowserCoordinates =
                                 | CoordinateBox.Content -> bl + pl, bt + pt, width - bl - br - pl - pr, height - bt - bb - pt - pb
                                 | CoordinateBox.Margin -> -ml, -mt, width + ml + mr, height + mt + mb
 
-                            [|
-                                { X = x; Y = y }
-                                { X = x + w; Y = y }
-                                { X = x + w; Y = y + h }
-                                { X = x; Y = y + h }
-                            |]
-                            |> convert (CoordinateSpace.Element element) target
+                            let corners =
+                                [|
+                                    { X = x; Y = y }
+                                    { X = x + w; Y = y }
+                                    { X = x + w; Y = y + h }
+                                    { X = x; Y = y + h }
+                                |]
+
+                            state ()
+                            |> Result.bind (fun view -> convertVia (fst (elementSpace m)) target view corners)
                             |> Result.map (fun p ->
                                 {
                                     P1 = p[0]

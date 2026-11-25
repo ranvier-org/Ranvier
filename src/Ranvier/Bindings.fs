@@ -16,10 +16,10 @@ type internal Binding<'Target, 'T>
     let id = graph.NextId ()
     let mutable freshness = Freshness.Clean
     let mutable status = Status.Uninitialized
-    let mutable failure: Failure = null
+    let mutable failure: Failure = Platform.nil ()
     let mutable queued = false
     let mutable disposed = false
-    let mutable link: OwnerLink = null
+    let mutable link: OwnerLink = Platform.nil ()
     let mutable runs = 0
     let mutable handle = EdgeHandle.Unlinked
 #if RANVIER_TRACE
@@ -27,10 +27,7 @@ type internal Binding<'Target, 'T>
     let mutable traceId = 0
 #endif
 
-#if FABLE_COMPILER
-    member private _.WriteTarget(value: 'T) =
-        write target value
-#else
+#if !FABLE_COMPILER
     let writeFn = OptimizedClosures.FSharpFunc<'Target, 'T, unit>.Adapt write
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
@@ -40,21 +37,22 @@ type internal Binding<'Target, 'T>
 
     static member internal OfSignal(graph: Graph, source: Signal<'T>, target: 'Target, write: 'Target -> 'T -> unit) =
         let binding =
-            new Binding<'Target, 'T> (graph, source :> ISource, source, Unchecked.defaultof<_>, target, write)
+            new Binding<'Target, 'T> (graph, source :> ISource, source, Platform.nil (), target, write)
 
         binding.Start ()
         binding
 
     static member internal OfMemo(graph: Graph, source: Memo<'T>, target: 'Target, write: 'Target -> 'T -> unit) =
         let binding =
-            new Binding<'Target, 'T> (graph, source :> ISource, Unchecked.defaultof<_>, source, target, write)
+            new Binding<'Target, 'T> (graph, source.Node :> ISource, Platform.nil (), source, target, write)
 
         binding.Start ()
         binding
 
     member private this.Start() =
-        link <- graph.CurrentOwner.AttachLinked this
-        Tracer.BindingNew (graph, id, link.Owner)
+        let owner = graph.CurrentOwner
+        link <- owner.AttachLinked this
+        Tracer.BindingNew (graph, id, owner)
 
         if not disposed then
             Tracer.Bind (this, graph, id)
@@ -63,6 +61,7 @@ type internal Binding<'Target, 'T>
             (this :> IComputation).MarkDirty()
             graph.RequestFlush ()
 
+#if !FABLE_COMPILER
     member private this.Run() =
         runs <- runs + 1
         Tracer.RunStart (graph, id, runs)
@@ -70,27 +69,37 @@ type internal Binding<'Target, 'T>
         try
             if Platform.isNull (box memo) then
                 status <- Status.None
-                failure <- null
+
+                if not (Platform.isNull failure) then
+                    failure <- Platform.nil ()
+
                 this.WriteTarget signal.Peek
             elif memo.IsCleanAndReady then
                 status <- Status.None
-                failure <- null
+
+                if not (Platform.isNull failure) then
+                    failure <- Platform.nil ()
+
                 this.WriteTarget memo.Peek
             else
                 match memo.ReadUntracked () with
                 | Ready value ->
                     status <- Status.None
-                    failure <- null
+
+                    if not (Platform.isNull failure) then
+                        failure <- Platform.nil ()
+
                     this.WriteTarget value
                 | Pending -> status <- Status.Pending
                 | Failed _ ->
                     status <- Status.Error
                     failure <- memo.Failure
         with ex ->
-            failure <- graph.FailureOf (ex, this, null)
+            failure <- graph.FailureOf (ex, this, Platform.nil ())
             status <- Status.Error
 
         Tracer.RunEnd (graph, id, status)
+#endif
 
     /// <summary>The state after the latest run.</summary>
     member _.Status = status
@@ -115,7 +124,7 @@ type internal Binding<'Target, 'T>
 
                     if not (Platform.isNull link) then
                         link.Detach ()
-                        link <- null
+                        link <- Platform.nil ()
 
                     source.RemoveObserverAt (this :> IComputation, handle)
                     handle <- EdgeHandle.Unlinked
@@ -127,7 +136,7 @@ type internal Binding<'Target, 'T>
 
     interface IOwned with
         member this.Release() =
-            link <- null
+            link <- Platform.nil ()
             this.Dispose ()
 
 #if RANVIER_TRACE
@@ -194,7 +203,46 @@ type internal Binding<'Target, 'T>
                 freshness <- Freshness.Clean
 
                 if shouldRun && not disposed then
+#if FABLE_COMPILER
+                    runs <- runs + 1
+                    Tracer.RunStart (graph, id, runs)
+
+                    try
+                        if Platform.isNull (box memo) then
+                            status <- Status.None
+
+                            if not (Platform.isNull failure) then
+                                failure <- Platform.nil ()
+
+                            write target signal.Peek
+                        elif memo.IsCleanAndReady then
+                            status <- Status.None
+
+                            if not (Platform.isNull failure) then
+                                failure <- Platform.nil ()
+
+                            write target memo.Peek
+                        else
+                            match memo.ReadUntracked () with
+                            | Ready value ->
+                                status <- Status.None
+
+                                if not (Platform.isNull failure) then
+                                    failure <- Platform.nil ()
+
+                                write target value
+                            | Pending -> status <- Status.Pending
+                            | Failed _ ->
+                                status <- Status.Error
+                                failure <- memo.Failure
+                    with ex ->
+                        failure <- graph.FailureOf (ex, this, Platform.nil ())
+                        status <- Status.Error
+
+                    Tracer.RunEnd (graph, id, status)
+#else
                     this.Run ()
+#endif
 
 #if RANVIER_TRACE
     interface ITraced with

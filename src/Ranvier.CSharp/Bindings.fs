@@ -37,17 +37,42 @@ module private HandlerDispatch =
     let invokeEvent (handler: EventHandler) (sender: obj) (args: EventArgs) =
         handler.Invoke (sender, args)
 
+/// <summary>A handler invocation posted to a <c>SynchronizationContext</c>.</summary>
+type internal IPostedDelivery =
+    abstract Run: unit -> unit
+
+/// <summary>One handler's invocation with the sender and arguments of the raise that posted it.</summary>
+/// <remarks><c>Run</c> invokes the handler only while <c>Live ()</c> is true.</remarks>
+[<NoEquality; NoComparison>]
+type internal PostedDelivery<'H, 'Args> =
+    {
+        Invoke: 'H -> obj -> 'Args -> unit
+        Handler: 'H
+        Sender: obj
+        Args: 'Args
+        Live: unit -> bool
+    }
+
+    interface IPostedDelivery with
+        member this.Run() =
+            if this.Live () then
+                this.Invoke this.Handler this.Sender this.Args
+
+module private PostedCallback =
+    /// <summary>Runs the <c>IPostedDelivery</c> passed as the post's state.</summary>
+    let run = SendOrPostCallback (fun state -> (state :?> IPostedDelivery).Run())
+
 /// <summary>
 /// The handlers of one event, each paired with the <c>SynchronizationContext</c> current when it subscribed.
 /// </summary>
 /// <remarks>Safe to subscribe and unsubscribe from any thread.</remarks>
 [<Sealed>]
-type internal ContextHandlers<'H, 'Args when 'H: null and 'H :> Delegate>(invoke: 'H -> obj -> 'Args -> unit) as this =
+type internal ContextHandlers<'H, 'Args when 'H: null and 'H :> Delegate>(invoke: 'H -> obj -> 'Args -> unit) =
     let mutable items: struct ('H * SynchronizationContext)[] = Array.Empty ()
 
     member _.IsEmpty = items.Length = 0
 
-    member _.Add(handler: 'H) =
+    member this.Add(handler: 'H) =
         if not (isNull handler) then
             let entry = struct (handler, SynchronizationContext.Current)
 
@@ -62,7 +87,7 @@ type internal ContextHandlers<'H, 'Args when 'H: null and 'H :> Delegate>(invoke
                 items <- next)
 
     /// <summary>Removes the latest subscription of <c>handler</c>.</summary>
-    member _.Remove(handler: 'H) =
+    member this.Remove(handler: 'H) =
         if not (isNull handler) then
             lock this (fun () ->
                 let prev = items
@@ -91,7 +116,7 @@ type internal ContextHandlers<'H, 'Args when 'H: null and 'H :> Delegate>(invoke
 
                         items <- next)
 
-    member _.Clear() =
+    member this.Clear() =
         lock this (fun () -> items <- Array.Empty ())
 
     /// <summary>
@@ -124,10 +149,14 @@ type internal ContextHandlers<'H, 'Args when 'H: null and 'H :> Delegate>(invoke
                         errors.Add ex
                 else
                     context.Post (
-                        (fun _ ->
-                            if live () then
-                                invoke handler sender args),
-                        null
+                        PostedCallback.run,
+                        {
+                            Invoke = invoke
+                            Handler = handler
+                            Sender = sender
+                            Args = args
+                            Live = live
+                        }
                     )
 
 /// <summary>A bound property's state as last notified.</summary>

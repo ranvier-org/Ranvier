@@ -75,6 +75,30 @@ let private throwing: Codec<int> =
         (Decode.int
          |> Decode.map (fun (_: int) -> (failwith "boom": int)))
 
+/// <summary>A wire codec that decodes with <c>decoder</c>.</summary>
+let private reading (decoder: Decoder<'T>) : WireCodec<'T> =
+    WireCodec.ofCodec (Codec.create (fun (_: 'T) -> Encode.int 0) decoder)
+
+/// <summary>The int members <c>f0</c> to <c>f11</c> of one object, read in that order.</summary>
+let private twelve: Decoder<int list> =
+    List.foldBack
+        (fun (index: int) (rest: Decoder<int list>) ->
+            Decode.map2 (fun (item: int) (items: int list) -> item :: items) (Decode.field ("f" + string index) Decode.int) rest)
+        [ 0..11 ]
+        (Decode.succeed [])
+
+/// <summary>The members <c>f0</c> to <c>f11</c>, each holding its index, written in a scattered order.</summary>
+let private twelveMembers =
+    [ 7; 3; 11; 0; 9; 5; 1; 10; 2; 8; 4; 6 ]
+    |> List.map (fun index ->
+        quote
+        + "f"
+        + string index
+        + quote
+        + ":"
+        + string index)
+    |> String.concat ","
+
 [<Tests>]
 let tests =
     testList
@@ -335,7 +359,169 @@ let tests =
                 Expect.isTrue (isShape error) "kind"
                 Expect.isLessThan error.Message.Length 2000 "message length"
                 Expect.stringContains error.Message "…" "truncation mark"
+
+            testCase "a field reads the last value of a repeated key, written plainly or escaped"
+            <| fun () ->
+                let text =
+                    """{"name":"A","age":1,"name":"B","""
+                    + quote
+                    + esc "0061"
+                    + "ge"
+                    + quote
+                    + ":2}"
+
+                Expect.equal (people.Decode text |> expectOk "repeated keys") { Name = "B"; Age = 2; Email = None } "last values"
+
+            testCase "a field name matches by ordinal case"
+            <| fun () ->
+                let decoded =
+                    people.Decode """{"Name":"A","name":"B","AGE":7,"age":1,"EMAIL":"x"}"""
+                    |> expectOk "mixed case"
+
+                Expect.equal decoded { Name = "B"; Age = 1; Email = None } "exact names only"
+
+                let error =
+                    people.Decode """{"Name":"A","age":1}"""
+                    |> expectError "a name in another case"
+
+                Expect.isTrue (isShape error) "kind"
+
+            testCase "twelve fields of one object read whatever the member order, with repeated keys"
+            <| fun () ->
+                let text = """{"f3":30,"f9":90,""" + twelveMembers + "}"
+
+                Expect.equal
+                    ((reading twelve).Decode text
+                     |> expectOk "twelve fields")
+                    [ 0..11 ]
+                    "each field's last value"
+
+                let error =
+                    (reading twelve).Decode """{"f0":0,"f1":1,"f2":2,"f3":3,"f4":4,"f5":5,"f6":6,"f7":7,"f8":8,"f9":9,"f10":10}"""
+                    |> expectError "a missing twelfth field"
+
+                Expect.isTrue (isShape error) "kind"
+                Expect.stringContains error.Message "f11" "the missing field is named"
+
+            testCase "fields read before and after an object's keys see the same members"
+            <| fun () ->
+                let decoder =
+                    Decode.map3
+                        (fun (before: int) (pairs: (string * int) list) (after: int) -> before, pairs, after)
+                        (Decode.field "b" Decode.int)
+                        (Decode.keyValuePairs Decode.int)
+                        (Decode.field "10" Decode.int)
+
+                let decoded =
+                    (reading decoder).Decode """{"b":1,"2":2,"a":3,"b":4,"10":5}"""
+                    |> expectOk "fields around keys"
+
+                Expect.equal decoded (4, [ "2", 2; "10", 5; "b", 4; "a", 3 ], 5) "own-property order, first position, last value"
+
+            testCase "keys read after twelve fields keep own-property order"
+            <| fun () ->
+                let decoder =
+                    Decode.map2 (fun (fields: int list) (keys: string list) -> fields, keys) twelve Decode.keys
+
+                let text =
+                    """{"z":0,"5":5,"""
+                    + twelveMembers
+                    + ""","1":1,"z":9}"""
+
+                let fields, keys =
+                    (reading decoder).Decode text
+                    |> expectOk "fields then keys"
+
+                Expect.equal fields [ 0..11 ] "fields"
+
+                Expect.equal
+                    keys
+                    [
+                        "1"
+                        "5"
+                        "z"
+                        "f7"
+                        "f3"
+                        "f11"
+                        "f0"
+                        "f9"
+                        "f5"
+                        "f1"
+                        "f10"
+                        "f2"
+                        "f8"
+                        "f4"
+                        "f6"
+                    ]
+                    "array indexes ascending, then the other keys at their first position"
+
+            testCase "fields of nested and sibling objects read in any order"
+            <| fun () ->
+                let decoder =
+                    Decode.map2
+                        (fun (first: int * int * int) (second: int * int * int) -> first, second)
+                        (Decode.map3
+                            (fun (a: int) (b: int) (c: int) -> a, b, c)
+                            (Decode.at [ "a"; "x" ] Decode.int)
+                            (Decode.at [ "b"; "x" ] Decode.int)
+                            (Decode.at [ "a"; "y"; "x" ] Decode.int))
+                        (Decode.map3
+                            (fun (a: int) (b: int) (c: int) -> a, b, c)
+                            (Decode.field "x" Decode.int)
+                            (Decode.at [ "a"; "x" ] Decode.int)
+                            (Decode.at [ "b"; "x" ] Decode.int))
+
+                let decoded =
+                    (reading decoder).Decode """{"a":{"x":1,"y":{"x":2}},"b":{"x":3},"x":4}"""
+                    |> expectOk "nested objects"
+
+                Expect.equal decoded ((1, 3, 2), (4, 1, 3)) "each object keeps its own members"
+
+            testCase "an absent optional field whose name contains a lone surrogate decodes to None before and after keys"
+            <| fun () ->
+                let badName = string (char 0xD800)
+
+                let beforeKeys =
+                    (reading (Decode.optional badName Decode.int)).Decode """{"a":2}"""
+                    |> expectOk "scan path"
+
+                Expect.equal beforeKeys None "absent before keys"
+
+                let afterKeysDecoder =
+                    Decode.map2 (fun ks opt -> ks, opt) Decode.keys (Decode.optional badName Decode.int)
+
+                let ks, afterKeys =
+                    (reading afterKeysDecoder).Decode """{"a":2}"""
+                    |> expectOk "indexed path"
+
+                Expect.equal ks [ "a" ] "keys"
+                Expect.equal afterKeys None "absent after keys"
 #if !FABLE_COMPILER
+            // .NET only: GC.GetAllocatedBytesForCurrentThread has no Fable counterpart.
+            testCase "repeated lookups of two distinct field names on a large object do not build the full member index"
+            <| fun () ->
+                let extra = String.concat "," [ for i in 1..2000 -> $"\"k{i}\":{i}" ]
+
+                let large = "{\"a\":1,\"b\":2," + extra + "}"
+
+                let repeatTen =
+                    Decode.object (fun get ->
+                        let mutable sum = 0
+
+                        for i in 1..10 do
+                            sum <-
+                                sum
+                                + get.Required.Field (if i % 2 = 0 then "b" else "a") Decode.int
+
+                        sum)
+
+                let codec = reading repeatTen
+                Expect.equal (codec.Decode large |> expectOk "warm") 15 "sum"
+                let before = GC.GetAllocatedBytesForCurrentThread ()
+                Expect.equal (codec.Decode large |> expectOk "measured") 15 "sum"
+                let allocated = GC.GetAllocatedBytesForCurrentThread () - before
+                Expect.isLessThan allocated 16384L $"10 alternating lookups of 2 names allocated {allocated} B"
+
             // .NET only: GC.GetAllocatedBytesForCurrentThread has no Fable counterpart.
             testCase "a shape error on a large value allocates less than 16 MB"
             <| fun () ->

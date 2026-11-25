@@ -14,10 +14,10 @@ module internal Awaited =
     /// </remarks>
     let source (node: INode) : ISource voption =
 #if FABLE_COMPILER
-        ValueSome (unbox<ISource> node)
+        ValueSome (MemoHandles.unwrap (unbox<ISource> node))
 #else
         match node with
-        | :? ISource as source -> ValueSome source
+        | :? ISource as source -> ValueSome (MemoHandles.unwrap source)
         | _ -> ValueNone
 #endif
 
@@ -26,11 +26,16 @@ module internal Awaited =
 /// refresh, so a row that settles or fails updates <c>AnyPending</c> and <c>PendingKeys</c> without a reader of its own.
 /// </summary>
 [<Sealed>]
-type internal RowWatch(graph: Graph, refresh: unit -> unit, touched: unit -> unit) =
+type internal RowWatch(graph: Graph, touched: unit -> unit) =
     let id = graph.NextId ()
     do Tracer.RowWatchNew (graph, id)
     let mutable queued = false
     let mutable running = false
+    let mutable refresh: unit -> unit = Unchecked.defaultof<_>
+
+    /// <summary>Sets the refresh a scheduled run makes. Called once, before the first <c>Request</c>.</summary>
+    member _.Bind(run: unit -> unit) =
+        refresh <- run
 
     member this.Request() =
         if not queued && not running then
@@ -89,11 +94,16 @@ type internal IBeaconHost =
 /// reads before the reader's body runs.
 /// </remarks>
 [<Sealed; NoEquality; NoComparison>]
-type internal ProjectionBeacon(graph: Graph, host: IBeaconHost) =
+type internal ProjectionBeacon(graph: Graph) =
     let id = graph.NextId ()
     let observers = ObserverSet ()
     do Tracer.Bind (observers, graph, id)
     do Tracer.BeaconNew (graph, id)
+    let mutable host: IBeaconHost = Unchecked.defaultof<_>
+
+    /// <summary>Sets the projection behind the beacon. Called once, before the beacon has an observer.</summary>
+    member _.Bind(projection: IBeaconHost) =
+        host <- projection
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -134,20 +144,30 @@ type internal ProjectionBeacon(graph: Graph, host: IBeaconHost) =
 /// A row with its item source.
 /// </summary>
 [<AllowNullLiteral>]
-type internal ItemRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
-    inherit RowEntry<'K, 'V>(key)
+type internal ItemRow<'T, 'K, 'V> =
+    inherit RowEntry<'K, 'V>
+    val Item: Signal<'T>
 
-    member _.Item = item
+    new(key: 'K, item: Signal<'T>) =
+        {
+            inherit RowEntry<'K, 'V>(key)
+            Item = item
+        }
 
 /// <summary>
 /// A row whose value is its factory's result, held without a row memo. <c>Row</c> is null. <c>Reader</c> is null,
 /// <c>Constructing</c> while the factory runs, or raises the factory's failure.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
-type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
-    inherit ItemRow<'T, 'K, 'V>(key, item)
+type internal OnceRow<'T, 'K, 'V> =
+    inherit ItemRow<'T, 'K, 'V>
+    val mutable Value: 'V
 
-    member val Value: 'V = Unchecked.defaultof<'V> with get, set
+    new(key: 'K, item: Signal<'T>) =
+        {
+            inherit ItemRow<'T, 'K, 'V>(key, item)
+            Value = Unchecked.defaultof<'V>
+        }
 
     /// <summary>The <c>Reader</c> of a row whose factory is running.</summary>
     static member val Constructing: unit -> 'V = fun () -> Unchecked.defaultof<'V>
@@ -156,22 +176,36 @@ type internal OnceRow<'T, 'K, 'V>(key: 'K, item: Signal<'T>) =
 /// A row keyed directly without a per-row item signal, optionally tagged with an upstream identity for reset detection.
 /// </summary>
 [<Sealed; AllowNullLiteral>]
-type internal KeyRow<'K, 'V>(key: 'K, tag: obj) =
-    inherit RowEntry<'K, 'V>(key)
+type internal KeyRow<'K, 'V> =
+    inherit RowEntry<'K, 'V>
+    val mutable Tag: obj
 
-    member val Tag = tag with get, set
+    new(key: 'K, tag: obj) =
+        {
+            inherit RowEntry<'K, 'V>(key)
+            Tag = tag
+        }
 
 /// <summary>
 /// The window of the key array at version <c>To</c> that can differ from the key array at version <c>From</c>: the
 /// arrays agree before <c>Start</c>, and after <c>End</c> and <c>PreviousEnd</c>.
 /// </summary>
 [<AllowNullLiteral>]
-type internal KeyRange() =
-    member val From = -1 with get, set
-    member val To = -1 with get, set
-    member val Start = 0 with get, set
-    member val PreviousEnd = -1 with get, set
-    member val End = -1 with get, set
+type internal KeyRange =
+    val mutable From: int
+    val mutable To: int
+    val mutable Start: int
+    val mutable PreviousEnd: int
+    val mutable End: int
+
+    new() =
+        {
+            From = -1
+            To = -1
+            Start = 0
+            PreviousEnd = -1
+            End = -1
+        }
 
 /// <summary>
 /// A read-only dictionary that enumerates in insertion order. Holds every key
@@ -365,7 +399,11 @@ module internal ProjectionFailures =
 /// reader also wakes when a pass fails, suspends or recovers.
 /// </remarks>
 [<AbstractClass>]
+#if FABLE_COMPILER
 type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
+#else
+type Projection<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
+#endif
     let id = graph.NextId ()
     do Tracer.Reserve (graph, id)
     let mutable sources = SourceList.Create ()
@@ -396,12 +434,15 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     let entries = Platform.KeyMap<'K, RowEntry<'K, 'V>>()
 
+    /// <summary>The row of the last key <c>Get</c> found, or null. Valid only while <c>Live</c>: every removal retires the row.</summary>
+    let mutable lastEntry: RowEntry<'K, 'V> = null
+
     /// <summary>The live key readers, and null while none exists.</summary>
     let mutable log: KeyLog<'K> = null
 
     let mutable values: ProjectionValues<'K, 'V> = Unchecked.defaultof<_>
 
-    let beacon = ProjectionBeacon (graph, this)
+    let beacon = ProjectionBeacon graph
 #if !FABLE_COMPILER
     let mutable passCached: IProjectionPass = Unchecked.defaultof<_>
 #endif
@@ -421,6 +462,13 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let mutable status = Status.None
     let mutable disposed = false
     let mutable link: OwnerLink = null
+
+    /// <summary>
+    /// False until <c>Attach</c> returns. A projection attached to a disposed owner is disposed inside <c>Attach</c>,
+    /// ahead of its subclass's constructor, and skips the pass's <c>Abandoned</c>.
+    /// </summary>
+    let mutable attached = false
+
     let mutable runs = 0
     let mutable queued = false
 
@@ -501,16 +549,11 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         inFlightVersion.NotifyCheck ()
         Tracer.Notified graph
 
-    let watch = RowWatch (graph, (fun () -> this.RefreshSummary ()), touchSummary)
+    let watch = RowWatch (graph, touchSummary)
 
-    do link <- graph.CurrentOwner.AttachLinked this
-    do Tracer.ProjectionNew (graph, id, link.Owner)
-    do Tracer.ScopeNew (scope, graph, id)
-    do Tracer.Part (graph, (keys :> INode).Id, id, null)
-    do Tracer.Part (graph, (beacon :> INode).Id, id, null)
-    do Tracer.Part (graph, (watch :> INode).Id, id, null)
-    do Tracer.Part (graph, (anyPending :> INode).Id, id, null)
-    do Tracer.Part (graph, (inFlightVersion :> INode).Id, id, null)
+#if FABLE_COMPILER
+    do this.Attach ()
+#endif
 
     /// <summary>
     /// Links the source a suspended pass awaits into the running reader.
@@ -573,6 +616,24 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
         not (Platform.isNull (box entry.Row))
         && entry.Row.ObserverCount > (if entry.Watched then 1 else 0)
 
+    /// <summary>
+    /// Binds the beacon and the row watch to the projection and attaches it to the current owner. Disposing that owner
+    /// disposes the projection. Run once, by the constructor.
+    /// </summary>
+    member private this.Attach() =
+        beacon.Bind this
+        watch.Bind this.RefreshSummary
+        let owner = graph.CurrentOwner
+        Tracer.ProjectionNew (graph, id, owner)
+        Tracer.ScopeNew (scope, graph, id)
+        Tracer.Part (graph, (keys :> INode).Id, id, null)
+        Tracer.Part (graph, (beacon :> INode).Id, id, null)
+        Tracer.Part (graph, (watch :> INode).Id, id, null)
+        Tracer.Part (graph, (anyPending :> INode).Id, id, null)
+        Tracer.Part (graph, (inFlightVersion :> INode).Id, id, null)
+        link <- owner.AttachLinked this
+        attached <- true
+
 #if FABLE_COMPILER
     member inline private this.Pass = box this :?> IProjectionPass
 #else
@@ -584,6 +645,46 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 #endif
 
     member internal _.Graph = graph
+
+    /// <summary>The row of <c>key</c>, or null. Answers from the last row found while that row is live.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.FindEntry(key: 'K) : RowEntry<'K, 'V> =
+        let last = lastEntry
+
+        if
+            not (Platform.isNull last)
+            && last.Live
+            && Platform.keyEquals last.Key key
+            && last.Live
+            && not disposed
+        then
+            last
+        else
+            let found = entries.Find key
+
+            if
+                not (Platform.isNull found)
+                && found.Live
+                && not disposed
+            then
+                lastEntry <- found
+
+            found
+
+    /// <summary>
+    /// Whether a read of <c>entry</c> needs nothing but its two tracked reads: the projection is live, clean and observed,
+    /// and the row is live, clean and ready. False for a null entry.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.IsCleanHit(entry: RowEntry<'K, 'V>) : bool =
+        not disposed
+        && freshness = Freshness.Clean
+        && observed
+        && not (Platform.isNull entry)
+        && entry.Live
+        && not (Platform.isNull (box entry.Row))
+        && entry.Row.IsCleanAndReady
+
     member internal _.Entries = entries
     member internal _.Scope = scope
 
@@ -617,6 +718,25 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member val internal CreateFirst = false with get, set
 
     member internal _.PublishedVersion = keysVersion
+
+    /// <summary>
+    /// Makes the tracked reads of <c>Keys</c>, the beacon then the keys cell, and returns true when the projection is live,
+    /// clean and observed and <c>reader</c> holds no reset, pending changes or cursor change. Returns false before any
+    /// tracked read otherwise.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member internal _.TrackCleanKeysIfIdle(reader: ProjectionReader<'K>) : bool =
+        if
+            freshness = Freshness.Clean
+            && observed
+            && not disposed
+            && reader.IsIdleAt keys.Peek
+        then
+            graph.Track (beacon :> ISource)
+            graph.Track (keys :> ISource)
+            true
+        else
+            false
 
     member internal this.RecordKeyRange(fromVersion: int, start: int, prevEnd: int, nextEnd: int) =
         if Platform.isNull this.Range then
@@ -853,6 +973,9 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member private this.Retire(entry: RowEntry<'K, 'V>) =
         entry.Live <- false
 
+        if obj.ReferenceEquals (lastEntry, entry) then
+            lastEntry <- null
+
         if not (Platform.isNull (box values)) then
             values.Retire entry
 
@@ -1019,6 +1142,12 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 #else
                 graph.RunUntrackedBatchWith (Projection<'K, 'V>.ApplyPassFn, struct (this, delta, mine))
 #endif
+            elif runs = mine && disposed then
+                this.Pass.ClearStaged ()
+                removed.Clear ()
+                passKeys.Clear ()
+                seen.Clear ()
+                stagedKeys <- null
 
             if runs = mine then
                 // Readers parked on a pending or failed pass wake when it
@@ -1463,34 +1592,57 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
     interface IBeaconHost with
         member this.Refresh() =
-            if status = Status.None && not disposed then
-                try
-                    // A projection stays `Clean` until an upstream projection
-                    // republishes, so the upstream passes run first. Every other
-                    // source marks the projection when it goes stale.
-                    if beaconsStale then
-                        beaconsStale <- false
-                        upstreamBeacons.Clear ()
+            if this.HasRefreshWork () then
+                this.RefreshStale ()
 
-                        for i in 0 .. sources.Count - 1 do
-                            match sources.SourceAt i with
-                            | :? ProjectionBeacon as source -> upstreamBeacons.Add source
-                            | _ -> ()
+    /// <summary>
+    /// Whether <c>RefreshStale</c> changes anything: a stale, failed or disposed projection, an upstream beacon to bring
+    /// current, a pending row, or a summary to publish. Always true in the traced build, which logs every walk.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.HasRefreshWork() =
+#if !RANVIER_TRACE
+        freshness <> Freshness.Clean
+        || status <> Status.None
+        || disposed
+        || beaconsStale
+        || upstreamBeacons.Count > 0
+        || inFlight.Count > 0
+        || anyMoved
+        || versionMoved
+#else
+        true
+#endif
 
-                    Tracer.Walk (graph, id)
-                    let mutable i = 0
+    member private this.RefreshStale() =
+        if status = Status.None && not disposed then
+            try
+                // A projection stays `Clean` until an upstream projection
+                // republishes, so the upstream passes run first. Every other
+                // source marks the projection when it goes stale.
+                if beaconsStale then
+                    beaconsStale <- false
+                    upstreamBeacons.Clear ()
 
-                    while freshness = Freshness.Clean
-                          && i < upstreamBeacons.Count do
-                        (Platform.entryAt i upstreamBeacons).UpdateIfNecessary()
-                        i <- i + 1
+                    for i in 0 .. sources.Count - 1 do
+                        match sources.SourceAt i with
+                        | :? ProjectionBeacon as source -> upstreamBeacons.Add source
+                        | _ -> ()
 
-                    Tracer.Walked (graph, id)
-                    this.EnsureCurrent ()
-                with _ ->
-                    ()
+                Tracer.Walk (graph, id)
+                let mutable i = 0
 
-            this.RefreshSummary ()
+                while freshness = Freshness.Clean
+                      && i < upstreamBeacons.Count do
+                    (Platform.entryAt i upstreamBeacons).UpdateIfNecessary()
+                    i <- i + 1
+
+                Tracer.Walked (graph, id)
+                this.EnsureCurrent ()
+            with _ ->
+                ()
+
+        this.RefreshSummary ()
 
 #if RANVIER_TRACE
     interface ITracedNode with
@@ -1564,7 +1716,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             if Platform.isNull (box existing.Row) then
                 graph.Track (keys :> ISource)
             else
-                graph.Track (existing.Row :> ISource)
+                graph.Track (existing.Row.Node :> ISource)
 
     /// <summary>Marks the projection observed, and schedules a pass when it is dirty.</summary>
     member private this.MarkObserved() =
@@ -1700,7 +1852,24 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// reader's exception. Raises <c>KeyNotFoundException</c> for an absent key.
     /// </remarks>
     member this.Get(key: 'K) : 'V =
-        this.GetRow (key, false)
+        if
+            not disposed
+            && freshness = Freshness.Clean
+            && observed
+        then
+            let entry = this.FindEntry key
+
+            // A clean, observed projection whose row is live, clean and ready: the same two tracked reads as the general
+            // path, without the pass check or the handlers that only a stale, pending or failed read needs.
+            if this.IsCleanHit entry then
+                let row = entry.Row
+                graph.Track (beacon :> ISource)
+                graph.Track (row.Node :> ISource)
+                row.Peek
+            else
+                this.GetRow (key, false)
+        else
+            this.GetRow (key, false)
 
     /// <summary>
     /// <c>Get</c>, returning the last settled value of a pending row that has settled before. A failed row raises as in
@@ -1744,7 +1913,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             linkAwaited ex
             reraise ()
 
-        let entry = entries.Find key
+        let entry = this.FindEntry key
 
         if Platform.isNull entry then
             this.TrackAbsent ()
@@ -1766,7 +1935,14 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     /// to <c>entries.Find key</c> when retired or null.
     /// </summary>
     member internal this.ReadEntry(key: 'K, entry: RowEntry<'K, 'V>) : 'V =
-        if not (Platform.isNull entry) && entry.Live then
+        if
+            not (Platform.isNull entry)
+            && entry.Live
+            && this.IsCleanHit entry
+        then
+            graph.Track (beacon :> ISource)
+            entry.Row.Value
+        elif not (Platform.isNull entry) && entry.Live then
             if disposed && this.GetRaisesDisposed then
                 raise (ObjectDisposedException "The projection was disposed.")
 
@@ -2136,7 +2312,10 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member this.Dispose() =
         if not disposed then
             disposed <- true
-            this.Pass.Abandoned ()
+
+            if attached then
+                this.Pass.Abandoned ()
+
             Tracer.NodeDispose (graph, id)
 
             if not (Platform.isNull link) then
@@ -2147,6 +2326,7 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
 
             entries.Iterate (fun _ entry -> entry.Live <- false)
 
+            lastEntry <- null
             entries.Clear ()
             inFlight.Clear ()
 
@@ -2273,6 +2453,19 @@ type Projection<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             link <- null
             this.Dispose ()
 
+// The constructor lives in an intrinsic augmentation: it attaches the projection it built, which needs a self-identifier,
+// and on the type's own declaration that would put an initialisation check on every member of the type and of each
+// subclass. Fable cannot translate a secondary constructor with a self-identifier; under Fable the primary constructor
+// attaches. The attribute comes first because F# reads an accessibility keyword directly after `with` as the start of a
+// property accessor.
+#if !FABLE_COMPILER
+type Projection<'K, 'V when 'K: equality> with
+    [<System.Diagnostics.DebuggerStepThrough>]
+    internal new(graph: Graph) as this =
+        new Projection<'K, 'V> (graph, 0)
+        then this.Attach ()
+#endif
+
 /// <summary>
 /// The rows of a projection over items of type <c>'T</c>: one item source per key,
 /// written when the key's item changes.
@@ -2316,6 +2509,13 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
     let mutable construct: struct (OnceRow<'T, 'K, 'V> * int) -> unit =
         Unchecked.defaultof<_>
 
+    member inline internal _.CanSkipIdenticalWrites =
+#if !RANVIER_TRACE
+        skipRefSame && Platform.isNull graph.Journal
+#else
+        false
+#endif
+
     /// <summary>
     /// Stages one item of the pass: a write to a survivor's item source, or a
     /// row to create.
@@ -2340,14 +2540,28 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
 #if !RANVIER_TRACE
             if
                 not (
-                    skipRefSame
-                    && Platform.isNull graph.Journal
+                    this.CanSkipIdenticalWrites
                     && obj.ReferenceEquals (box itemSignal.Peek, box item)
                 )
             then
                 writes.Add (struct (itemSignal, item))
 #else
             writes.Add (struct (itemSignal, item))
+#endif
+
+    /// <summary>
+    /// The memo body of a mapped row from the row and its item, or null. Set by a projection whose live rows keep one
+    /// item for their lifetime and whose row value is a read of the item that always succeeds. The body returns that
+    /// value and sets the row's <c>Settled</c>; the row observes only the sources the body reads.
+    /// </summary>
+    member val internal DirectBody: Func<RowEntry<'K, 'V>, 'T, 'V voption -> 'V> = null with get, set
+
+#if !RANVIER_TRACE
+    /// <summary>
+    /// True for a projection whose item is the <c>Signal</c> of the row's value, kept for the row's lifetime: the row
+    /// is then a memo whose body is a read of the signal, created settled, with no body function.
+    /// </summary>
+    member val internal DirectSignalRow = false with get, set
 #endif
 
     member internal this.HasRow(key: 'K) =
@@ -2391,10 +2605,32 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
             reraise ()
 
     member private this.CreateMapped() =
+        let direct = this.DirectBody
+
         for i in 0 .. adds.Count - 1 do
             let struct (key, item) = Platform.entryAt i adds
             let entry = this.NewRow (key, item)
-            entry.Row <- Memo<'V>.CreateEncoded(graph, (fun _ -> this.RunMappedItem entry), rowMode, encodedValueEqual)
+
+#if !RANVIER_TRACE
+            if this.DirectSignalRow then
+                entry.Row <- Memo<'V>.CreateSignalRowEncoded(graph, Platform.fastCast<Signal<'V>>(box item), encodedValueEqual)
+            else
+                let body =
+                    if Platform.isNull direct then
+                        fun _ -> this.RunMappedItem entry
+                    else
+                        direct.Invoke (entry, item)
+
+                entry.Row <- Memo<'V>.CreateEncoded(graph, body, rowMode, encodedValueEqual)
+#else
+            let body =
+                if Platform.isNull direct then
+                    fun _ -> this.RunMappedItem entry
+                else
+                    direct.Invoke (entry, item)
+
+            entry.Row <- Memo<'V>.CreateEncoded(graph, body, rowMode, encodedValueEqual)
+#endif
             Tracer.Part (graph, (entry.Row :> INode).Id, (this :> INode).Id, box key)
 
     member private this.FactoryFailure(key: 'K, error: exn, advice: string, before: int) : unit -> 'V =
@@ -2404,7 +2640,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         let entry = this.NewRow (key, item)
         let source = entry.Item
         let keyScope = new Owner (graph.Root)
-        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        keyScope.AttachToParent this.Scope
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -2448,7 +2684,7 @@ type internal RowsOf<'T, 'K, 'V when 'K: equality>(graph: Graph, map: 'T -> 'V, 
         Tracer.Part (graph, (entry.Item :> INode).Id, (this :> INode).Id, box key)
         this.AddEntry (key, entry)
         let keyScope = new Owner (graph.Root)
-        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        keyScope.AttachToParent this.Scope
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -2658,7 +2894,7 @@ type internal RowsByKey<'K, 'V when 'K: equality>
 
         this.AddEntry (key, entry)
         let keyScope = new Owner (graph.Root)
-        keyScope.SetParent (this.Scope.AttachLinked keyScope)
+        keyScope.AttachToParent this.Scope
         entry.Scope <- keyScope
         Tracer.PartScope (graph, keyScope, (this :> INode).Id, box key)
 #if RANVIER_COUNTERS
@@ -2820,6 +3056,23 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             Array.blit buffer 0 next 0 count
             next
 
+    let identityItems =
+#if FABLE_COMPILER
+        Platform.isNull (box same)
+#else
+        not typeof<'T>.IsValueType
+        && obj.ReferenceEquals (same, null)
+#endif
+
+    let safeKey (key: 'K) =
+#if FABLE_COMPILER
+        Platform.primitiveKey key
+#else
+        typeof<'K>.IsPrimitive
+        || typeof<'K>.IsEnum
+        || typeof<'K> = typeof<string>
+#endif
+
     /// <summary>A buffer of at least <c>size</c> items: <c>spare</c> when it fits, else a new array.</summary>
     let take (size: int) =
         let buffer = spare
@@ -2891,13 +3144,66 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             then
                 keyPure <- false
 
+    member private this.EnumerateReverse(cur: 'T[], count: int, owned: bool) =
+        let mine = this.Runs
+        let previous = lastItems
+        let previousKeys = lastKeys
+        let keys = Array.zeroCreate<'K> count
+        // A selector can mutate its input array. Validate the same snapshot as a full pass.
+        let items =
+            if owned then
+                cur
+            else
+                let buffer = take count
+                Array.Copy (cur, buffer, count)
+                buffer
+
+        let mutable reverse = true
+        let mutable i = 0
+
+        while i < count
+              && this.Runs = mine
+              && not this.IsDisposedInternal do
+            let item = Platform.itemAt i items
+            let key = this.KeyOf item
+
+            if this.Runs = mine && not this.IsDisposedInternal then
+                if reverse then
+                    let j = count - 1 - i
+                    let oldKey = Platform.itemAt j previousKeys
+
+                    if
+                        obj.ReferenceEquals (box item, box (Platform.itemAt j previous))
+                        && safeKey key
+                        && safeKey oldKey
+                        && Platform.keyEquals key oldKey
+                        && this.HasRow key
+                    then
+                        Platform.setItemAt i keys key
+                    else
+                        reverse <- false
+                        this.Reserve count
+
+                        for k in 0 .. i - 1 do
+                            this.Visit (Platform.itemAt k keys, Platform.itemAt k items)
+
+                if not reverse then
+                    this.Visit (key, item)
+
+            i <- i + 1
+
+        if this.Runs = mine && not this.IsDisposedInternal then
+            install items count true
+
+            if reverse then
+                this.StageRemovals ()
+                this.StageKeys keys
+
     /// <summary>
     /// Reconciles the positions whose item differs from the last pass, after trimming the common prefix and suffix, and
     /// stages the removed keys and the key array. Installs <c>cur[0 .. n1 - 1]</c> as the items of the pass by writing the
     /// changed positions and every position after them. Stops after a <c>keyOf</c> call that runs a nested pass. Returns
-    /// false before any install or staging when every position is changed: at equal lengths, every item differs from the
-    /// previous item at its position; at unequal lengths, the first and last items differ from the previous pass's first
-    /// and last items.
+    /// false when the caller must enumerate the full snapshot.
     /// </summary>
     member private this.Trim(cur: 'T[], n1: int, owned: bool) : bool =
         let mine = this.Runs
@@ -2907,18 +3213,29 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
         let limit = min n0 n1
         let mutable start = 0
 
-        while start < limit
-              && ComparerSentinel.equals same (Platform.itemAt start prev) (Platform.itemAt start cur) do
-            start <- start + 1
-
         let mutable end0 = n0 - 1
         let mutable end1 = n1 - 1
 
-        while end0 >= start
-              && end1 >= start
-              && ComparerSentinel.equals same (Platform.itemAt end0 prev) (Platform.itemAt end1 cur) do
-            end0 <- end0 - 1
-            end1 <- end1 - 1
+        if identityItems then
+            while start < limit
+                  && obj.ReferenceEquals (box (Platform.itemAt start prev), box (Platform.itemAt start cur)) do
+                start <- start + 1
+
+            while end0 >= start
+                  && end1 >= start
+                  && obj.ReferenceEquals (box (Platform.itemAt end0 prev), box (Platform.itemAt end1 cur)) do
+                end0 <- end0 - 1
+                end1 <- end1 - 1
+        else
+            while start < limit
+                  && ComparerSentinel.equals same (Platform.itemAt start prev) (Platform.itemAt start cur) do
+                start <- start + 1
+
+            while end0 >= start
+                  && end1 >= start
+                  && ComparerSentinel.equals same (Platform.itemAt end0 prev) (Platform.itemAt end1 cur) do
+                end0 <- end0 - 1
+                end1 <- end1 - 1
 
         // Equal-length middles compare index by index.
         let aligned = n0 = n1
@@ -2933,11 +3250,27 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
             untrimmable <- n0 > 0 && changedAt.Count = n0
 
-        if untrimmable then
+        let singleSplice =
+            (end0 < start && end1 = start)
+            || (end1 < start && end0 = start)
+
+        if untrimmable && not singleSplice then
             changedAt.Clear ()
-            false
+
+            if
+                aligned
+                && n0 >= 4
+                && identityItems
+                && this.CanSkipIdenticalWrites
+                && safeKey (Platform.itemAt (n0 - 1) prevKeys)
+                && obj.ReferenceEquals (box (Platform.itemAt 0 cur), box (Platform.itemAt (n0 - 1) prev))
+            then
+                this.EnumerateReverse (cur, n1, owned)
+                true
+            else
+                false
         else
-            if not aligned then
+            if not aligned && not singleSplice then
                 for i in start..end0 do
                     changedAt.Add i
 
@@ -2958,7 +3291,37 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
 
             let items = lastItems
 
-            if aligned && changedAt.Count = 1 then
+            if singleSplice then
+                let inserting = n1 > n0
+
+                let key =
+                    if inserting then
+                        this.KeyOf (Platform.itemAt start items)
+                    else
+                        Platform.itemAt start prevKeys
+
+                if this.Runs = mine then
+                    let next = Array.zeroCreate<'K> n1
+                    Array.Copy (prevKeys, 0, next, 0, start)
+                    Array.Copy (prevKeys, end0 + 1, next, end1 + 1, n0 - end0 - 1)
+
+                    if inserting then
+                        if this.HasRow key then
+                            raise (ProjectionFailures.duplicateKey key)
+
+                        this.Stage (key, Platform.itemAt start items)
+                        Platform.setItemAt start next key
+                    else
+                        this.Removed.Add key
+
+                    this.StageRemovals ()
+                    this.StageKeys next
+                    trimmedKeys <- next
+                    trimmedFrom <- start
+                    trimmedStart <- start
+                    trimmedEnd0 <- end0
+                    trimmedEnd1 <- end1
+            elif aligned && changedAt.Count = 1 then
                 let i0 = Platform.entryAt 0 changedAt
                 let item0 = Platform.itemAt i0 items
                 let pk0 = Platform.itemAt i0 prevKeys
@@ -3161,10 +3524,15 @@ type internal KeyedProjection<'T, 'K, 'V when 'K: equality>
             let items = lastItems
             let mutable i = 0
 
-            while this.Runs = mine && i < count do
+            while this.Runs = mine
+                  && not this.IsDisposedInternal
+                  && i < count do
                 let item = Platform.itemAt i items
                 i <- i + 1
-                this.Visit (this.KeyOf item, item)
+                let key = this.KeyOf item
+
+                if this.Runs = mine && not this.IsDisposedInternal then
+                    this.Visit (key, item)
 
     override this.Applied() =
         if this.Runs = passRun && keyPure then
@@ -3580,7 +3948,11 @@ type internal LookupCell<'V>(graph: Graph, equal: IEqualityComparer<'V>, orphane
 /// </para>
 /// </remarks>
 [<AbstractClass>]
+#if FABLE_COMPILER
 type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
+#else
+type Lookup<'K, 'V when 'K: equality> private (graph: Graph, _tag: int) =
+#endif
     let scope = new Owner (graph.Root)
     let equal = graph.EncodedComparer<'V>()
     let cells = Platform.KeyMap<'K, LookupCell<'V>>()
@@ -3620,10 +3992,11 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     let mutable computeCached: 'K -> 'V = Unchecked.defaultof<_>
 #endif
 
-    do link <- graph.CurrentOwner.AttachLinked this
-    do Tracer.OwnerAdopt (link.Owner, scope, false)
 #if FABLE_COMPILER
-    let computeKey = fun (key: 'K) -> (box this :?> ILookupSource<'K, 'V>).Compute key
+    // One function object for every key's computation, built by Attach. A let-bound lambda compiles to a method, and
+    // passing it as a value allocates a closure at every use.
+    let mutable computeKey: 'K -> 'V = Unchecked.defaultof<_>
+    do this.Attach ()
 
     member private this.Source = box this :?> ILookupSource<'K, 'V>
 
@@ -3636,7 +4009,19 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
     member inline private _.Source = sourceCached
 #endif
 
+    /// <summary>
+    /// Attaches the lookup to the current owner. Disposing that owner disposes the lookup. Run once, by the constructor.
+    /// </summary>
+    member private this.Attach() =
+#if FABLE_COMPILER
+        computeKey <- fun key -> this.Source.Compute key
+#endif
+        let owner = graph.CurrentOwner
+        Tracer.OwnerAdopt (owner, scope, false)
+        link <- owner.AttachLinked this
+
     member internal _.Graph = graph
+
     member internal _.Scope = scope
     member internal _.IsDisposed = disposed
 
@@ -3647,7 +4032,7 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             and set value = traceHost <- value
 #endif
 
-    member private _.NewCell(key: 'K) =
+    member private this.NewCell(key: 'K) =
         let cell =
             LookupCell<'V>(
                 graph,
@@ -4046,6 +4431,15 @@ type Lookup<'K, 'V when 'K: equality> internal (graph: Graph) as this =
             link <- null
             this.Dispose ()
 
+// The constructor lives in an intrinsic augmentation, as on `Projection`.
+#if !FABLE_COMPILER
+type Lookup<'K, 'V when 'K: equality> with
+    [<System.Diagnostics.DebuggerStepThrough>]
+    internal new(graph: Graph) as this =
+        new Lookup<'K, 'V> (graph, 0)
+        then this.Attach ()
+#endif
+
 /// <summary>
 /// A lookup over a source of type <c>'S</c>. The source is held in a memo; an
 /// effect over that memo invalidates the keys returned by <c>affected</c> on each change,
@@ -4112,7 +4506,7 @@ type internal LookupOf<'S, 'K, 'V when 'K: equality>(graph: Graph, f: 'S -> 'K -
                     Effect.Create (
                         graph,
                         fun () ->
-                            graph.Track (state :> ISource)
+                            graph.Track (state.Node :> ISource)
                             this.Refresh ()
                     )
             )
@@ -4265,7 +4659,7 @@ type internal SelectorLookup<'K when 'K: equality>(graph: Graph, source: unit ->
                     Effect.Create (
                         graph,
                         fun () ->
-                            graph.Track (state :> ISource)
+                            graph.Track (state.Node :> ISource)
                             this.Refresh ()
                     )
             )

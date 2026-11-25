@@ -125,9 +125,11 @@ type internal HeldOut<'K when 'K: equality>(graph: Graph) =
 
 /// <summary>Cached pair of upstream row entries for dual-input derived views.</summary>
 [<Sealed; AllowNullLiteral>]
-type internal DualEntry<'K, 'A, 'B>(first: RowEntry<'K, 'A>, second: RowEntry<'K, 'B>) =
-    member val First = first with get, set
-    member val Second = second with get, set
+type internal DualEntry<'K, 'A, 'B> =
+    val mutable First: RowEntry<'K, 'A>
+    val mutable Second: RowEntry<'K, 'B>
+
+    new(first: RowEntry<'K, 'A>, second: RowEntry<'K, 'B>) = { First = first; Second = second }
 
 module internal EntryCache =
     let inline readSingle (upstream: Projection<'K, 'V>) (kr: KeyRow<'K, 'U>) : 'V =
@@ -489,14 +491,8 @@ type internal SlotQueue<'Slot> =
     val IsCheckQueued: unit -> bool
     val Dirty: ResizeArray<'Slot>
     val Check: ResizeArray<'Slot>
-
-    [<DefaultValue>]
     val mutable ActiveSlot: obj
-
-    [<DefaultValue>]
     val mutable CheckNotified: bool
-
-    [<DefaultValue>]
     val mutable DirtyNotified: bool
 
     new(viewNode: IComputation, isInvalidated: unit -> bool, isCheckQueued: unit -> bool) =
@@ -506,6 +502,9 @@ type internal SlotQueue<'Slot> =
             IsCheckQueued = isCheckQueued
             Dirty = ResizeArray<'Slot>()
             Check = ResizeArray<'Slot>()
+            ActiveSlot = null
+            CheckNotified = false
+            DirtyNotified = false
         }
 
     static member Create<'K, 'V when 'K: equality>(view: Projection<'K, 'V>) =
@@ -3322,6 +3321,60 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
 
             orderPosValid <- true
 
+    let tryOrdered () =
+        let mutable ascending = true
+        let mutable descendingRanks = true
+        let mutable i = 1
+#if !FABLE_COMPILER
+        let safe =
+            typeof<'S>.IsPrimitive
+            || typeof<'S>.IsEnum
+            || typeof<'S> = typeof<string>
+
+        ascending <- safe
+        descendingRanks <- safe
+#endif
+        while i < placedCount && (ascending || descendingRanks) do
+            let left = Platform.itemAt (Platform.itemAt (i - 1) order) placedSlots
+            let right = Platform.itemAt (Platform.itemAt i order) placedSlots
+#if FABLE_COMPILER
+            let cmp = Platform.compareNumberRanks left.Rank right.Rank descending
+
+            if cmp = 2 then
+                ascending <- false
+                descendingRanks <- false
+            else
+                ascending <-
+                    ascending
+                    && (cmp < 0 || (cmp = 0 && left.UpIdx < right.UpIdx))
+
+                descendingRanks <- descendingRanks && cmp > 0
+#else
+            let cmp = compareRanks left.Rank right.Rank
+
+            ascending <-
+                ascending
+                && (cmp < 0 || (cmp = 0 && left.UpIdx < right.UpIdx))
+
+            descendingRanks <- descendingRanks && cmp > 0
+#endif
+            i <- i + 1
+
+        if ascending then
+            1
+        elif descendingRanks then
+            for j in 0 .. placedCount / 2 - 1 do
+                let k = placedCount - 1 - j
+                let tmp = Platform.itemAt j order
+                Platform.setItemAt j order (Platform.itemAt k order)
+                Platform.setItemAt k order tmp
+
+            orderPosValid <- false
+            rangeOps <- 2
+            -1
+        else
+            0
+
 #if FABLE_COMPILER
     let slotOrderCmp =
         System.Func<int, int, int>(fun i j ->
@@ -3343,7 +3396,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         for i in 0 .. placedCount - 1 do
             Platform.setItemAt i order i
 
-        if placedCount > 1 then
+        if placedCount > 1 && tryOrdered () = 0 then
             Platform.sortPositions order slotOrderCmp
 
         sorted <- true
@@ -3371,7 +3424,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         for i in 0 .. placedCount - 1 do
             Platform.setItemAt i order i
 
-        if placedCount > 1 then
+        if placedCount > 1 && tryOrdered () = 0 then
             System.MemoryExtensions.Sort<int>(System.Span<int>(order, 0, placedCount), slotOrderComparison)
 
         sorted <- true
@@ -3387,7 +3440,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         for i in 0 .. placedCount - 1 do
             Platform.setItemAt i order i
 
-        if placedCount > 1 then
+        if placedCount > 1 && tryOrdered () = 0 then
             System.Array.Sort<int>(order, slotOrderComparison)
 
         sorted <- true
@@ -3489,6 +3542,9 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             slot.PlacedIdx <- -1
             placedCount <- lastIdx
             recordRangeOp oldPos oldPos (oldPos - 1)
+
+    let stageSpliceKeys () =
+        this.StageKeys (buildKeysArray ())
 
     let reinsertPlacedSlot (slot: SortSlot<'K, 'S>) =
         if placedCount <= 1 then
@@ -3805,6 +3861,16 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
         unsettledCount <- nextUnsettled
         this.StageRemovals ()
 
+        let orderCheck =
+            if
+                sorted
+                && not membershipChanged
+                && rankChangedCount > 1
+            then
+                tryOrdered ()
+            else
+                0
+
         if not membershipChanged && rankChangedCount = 0 then
             this.StageKeys null
         elif
@@ -3815,9 +3881,13 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
             ensureOrderPos ()
 
             if reinsertPlacedSlot singleChanged then
-                this.StageKeys (buildKeysArray ())
+                stageSpliceKeys ()
             else
                 this.StageKeys null
+        elif orderCheck = 1 then
+            this.StageKeys null
+        elif orderCheck = -1 then
+            this.StageKeys (buildKeysArray ())
         else
             let prevPlaced = placedCount
             ensurePlacedCapacity upCount
@@ -4451,10 +4521,7 @@ type internal SortView<'K, 'V, 'S when 'K: equality and 'S: comparison>
                     let changed = applyDirtySplice ()
                     this.StageRemovals ()
 
-                    if changed then
-                        this.StageKeys (buildKeysArray ())
-                    else
-                        this.StageKeys null
+                    if changed then stageSpliceKeys () else this.StageKeys null
                 else
                     runDenseSort ()
         else
@@ -5802,6 +5869,9 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
         dirty <- false
         moved
 
+    /// <summary>Whether a read source has signalled a check or a change since the last <c>Moved</c>.</summary>
+    member _.IsPendingCheckOrDirty = check || dirty
+
     /// <summary>Drops every read edge.</summary>
     member this.Clear() =
         for i in 0 .. order.Count - 1 do
@@ -5850,32 +5920,39 @@ type internal FoldReads(graph: Graph, changed: unit -> unit) =
 /// One live key of an aggregate: the observer of the key's row and the row's last settled value.
 /// </summary>
 [<Sealed>]
-type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: FoldRow<'K, 'V> -> unit) =
-    let id = graph.NextId ()
-
-    member _.Entry = entry
-
+type internal FoldRow<'K, 'V> =
+    val private touched: FoldRow<'K, 'V> -> unit
+    val private id: int
+    val Entry: RowEntry<'K, 'V>
     /// <summary>Whether the row waits in the aggregate's queue, or is being read.</summary>
-    member val Queued = false with get, set
-
+    val mutable Queued: bool
     /// <summary>Whether the aggregate observes the row.</summary>
-    member val Attached = false with get, set
-
+    val mutable Attached: bool
     /// <summary>Whether <c>Value</c> holds a settled value, contained in the aggregate state.</summary>
-    member val HasValue = false with get, set
-
-    member val Value = Unchecked.defaultof<'V> with get, set
-
+    val mutable HasValue: bool
+    val mutable Value: 'V
     /// <summary>The row's exception while the row is failed, or null.</summary>
-    member val Error: exn = null with get, set
-
+    val mutable Error: exn
     /// <summary>The last membership diff containing the key.</summary>
-    member val Generation = 0 with get, set
+    val mutable Generation: int
+    val mutable Handle: int
 
-    member val Handle = EdgeHandle.Unlinked with get, set
+    new(graph: Graph, entry: RowEntry<'K, 'V>, touched: FoldRow<'K, 'V> -> unit) =
+        {
+            touched = touched
+            id = graph.NextId ()
+            Entry = entry
+            Queued = false
+            Attached = false
+            HasValue = false
+            Value = Unchecked.defaultof<'V>
+            Error = null
+            Generation = 0
+            Handle = EdgeHandle.Unlinked
+        }
 
     interface INode with
-        member _.Id = id
+        member this.Id = this.id
         member _.Status = Status.None
 
     interface IComputation with
@@ -5887,10 +5964,12 @@ type internal FoldRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: Fo
         member _.HasReadSlot _ = false
 
         member this.MarkDirty() =
-            touched this
+            if not this.Queued then
+                this.touched this
 
         member this.MarkCheck() =
-            touched this
+            if not this.Queued then
+                this.touched this
 
 /// <summary>
 /// The fold of the settled row values of <c>upstream</c>, kept current in O(changed rows) when <c>subtract</c> is non-null
@@ -5907,8 +5986,16 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     let id = graph.NextId ()
     let observers = ObserverSet ()
     let equal = graph.EncodedComparer<'V>()
+
+    /// <summary>Whether a comparison through <c>equal</c> runs outside an exception handler.</summary>
+    let equalIsSafe = SafeEquality.isSafe equal
+
     let rows = Platform.KeyMap<'K, FoldRow<'K, 'V>>()
-    let queue = ResizeArray<FoldRow<'K, 'V>>()
+
+    /// <summary>The rows waiting for a read, in the first <c>queued</c> slots.</summary>
+    let mutable queue: FoldRow<'K, 'V>[] = Array.zeroCreate 4
+
+    let mutable queued = 0
     let added = ResizeArray<FoldRow<'K, 'V>>()
     let removed = ResizeArray<'K>()
 
@@ -5955,6 +6042,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     let mutable disposed = false
     let mutable link: OwnerLink = null
     let mutable keyReader: ProjectionReader<'K> = Unchecked.defaultof<_>
+
     let mutable memo: Memo<'S> = Unchecked.defaultof<Memo<'S>>
 
     let touch () =
@@ -5966,17 +6054,39 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     let touched (row: FoldRow<'K, 'V>) =
         if not row.Queued then
             row.Queued <- true
-            queue.Add row
+
+            if queued = queue.Length then
+                let grown = Array.zeroCreate<FoldRow<'K, 'V>>(queued * 2)
+
+                for i in 0 .. queued - 1 do
+                    Platform.setItemAt i grown (Platform.itemAt i queue)
+
+                queue <- grown
+
+            Platform.setItemAt queued queue row
+            queued <- queued + 1
             touch ()
 
-    let applyAdd (struct (s: 'S, v: 'V)) =
-        invokeAdd s v
+    let clearQueue () =
+        for i in 0 .. queued - 1 do
+            Platform.setItemAt i queue Unchecked.defaultof<_>
 
-    let applyReplace (struct (s: 'S, old: 'V, v: 'V)) =
-        invokeAdd (invokeSub s old) v
+        queued <- 0
 
-    let applySubtract (struct (s: 'S, old: 'V)) =
-        invokeSub s old
+    // Function objects built once by Attach. A let-bound lambda compiles to a method, and passing it as a value
+    // allocates a closure at every use; a mutable field assigned once holds one object.
+    let mutable touchedFn: FoldRow<'K, 'V> -> unit = Unchecked.defaultof<_>
+    let mutable foldAllFn: unit -> 'S = Unchecked.defaultof<_>
+#if FABLE_COMPILER
+    // Under Fable a struct tuple is an array and a Reading is an object. A step parks its row values in these fields
+    // and runs a thunk; a row read returns its status alone.
+    let mutable stepOld = Unchecked.defaultof<'V>
+    let mutable stepNew = Unchecked.defaultof<'V>
+    let mutable applyAddFn: unit -> 'S = Unchecked.defaultof<_>
+    let mutable applyReplaceFn: unit -> 'S = Unchecked.defaultof<_>
+    let mutable applySubtractFn: unit -> 'S = Unchecked.defaultof<_>
+    let mutable refreshRowFn: Memo<'V> -> bool = Unchecked.defaultof<_>
+#endif
 
     let foldAll () =
         let keys = lastKeys
@@ -6015,8 +6125,23 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         s
 
     member private this.Attach() =
+        touchedFn <- touched
+        foldAllFn <- foldAll
+#if FABLE_COMPILER
+        applyAddFn <- fun () -> invokeAdd state stepNew
+
+        applyReplaceFn <-
+            fun () ->
+                let v = stepNew
+                invokeAdd (invokeSub state stepOld) v
+
+        applySubtractFn <- fun () -> invokeSub state stepOld
+        refreshRowFn <- fun row -> row.RefreshUntrackedNoSettle ()
+#endif
         link <- graph.CurrentOwner.AttachLinked this
-        keyReader <- upstream.NewInternalKeyReader ()
+
+        if not disposed then
+            keyReader <- upstream.NewInternalKeyReader ()
 
     static member internal Create
         (graph: Graph, upstream: Projection<'K, 'V>, add: 'S -> 'V -> 'S, subtract: 'S -> 'V -> 'S, zero: 'S, invertible: bool)
@@ -6031,14 +6156,70 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         with get () = memo
         and set v = memo <- v
 
-    /// <summary>Applies <c>step arg</c> to the state, or marks the state for a full recompute when <c>step</c> raises.</summary>
-    member private _.StepWith(step: 'A -> 'S, arg: 'A) =
+#if FABLE_COMPILER
+    /// <summary>
+    /// Applies <c>step</c> to the state over the parked row values <c>old</c> and <c>v</c>, tracking its reads in
+    /// <c>reads</c>, or marks the state for a full recompute when <c>step</c> raises.
+    /// </summary>
+    member private _.StepWith(step: unit -> 'S, old: 'V, v: 'V) =
         if not full then
+            stepOld <- old
+            stepNew <- v
+
             try
-                state <- graph.RunHosted (reads :> IComputation, step, arg)
+                state <- graph.RunHosted (reads :> IComputation, step)
                 moved <- true
             with _ ->
                 full <- true
+
+            stepOld <- Unchecked.defaultof<'V>
+            stepNew <- Unchecked.defaultof<'V>
+
+    member private this.StepAdd(v: 'V) =
+        this.StepWith (applyAddFn, Unchecked.defaultof<'V>, v)
+
+    member private this.StepSubtract(old: 'V) =
+        this.StepWith (applySubtractFn, old, Unchecked.defaultof<'V>)
+
+    member private this.StepReplace(old: 'V, v: 'V) =
+        this.StepWith (applyReplaceFn, old, v)
+#else
+    /// <summary>
+    /// Applies <c>subtract old</c> when <c>subtracts</c>, then <c>add v</c> when <c>adds</c>, to the state, tracking their
+    /// reads in <c>reads</c>. A raise or a pending read in either keeps the state and marks it for a full recompute.
+    /// </summary>
+    member private _.Step(old: 'V, v: 'V, subtracts: bool, adds: bool) =
+        if not full then
+            let saved = graph.EnterHosted (reads :> IComputation)
+
+            try
+                let mutable next = state
+
+                if subtracts then
+                    next <- subFn.Invoke (next, old)
+
+                if adds then
+                    next <- addFn.Invoke (next, v)
+
+                if graph.RaisedPending then
+                    graph.CheckRaised ()
+
+                graph.LeaveHosted saved
+                state <- next
+                moved <- true
+            with _ ->
+                graph.LeaveHosted saved
+                full <- true
+
+    member private this.StepAdd(v: 'V) =
+        this.Step (Unchecked.defaultof<'V>, v, false, true)
+
+    member private this.StepSubtract(old: 'V) =
+        this.Step (old, Unchecked.defaultof<'V>, true, false)
+
+    member private this.StepReplace(old: 'V, v: 'V) =
+        this.Step (old, v, true, true)
+#endif
 
     member private this.Fail(row: FoldRow<'K, 'V>, ex: exn) =
         if Platform.isNull row.Error then
@@ -6060,46 +6241,90 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             if obj.ReferenceEquals (failure, row) then
                 failure <- Unchecked.defaultof<_>
 
-    /// <summary>Reads the row untracked and moves its contribution to the row's value.</summary>
-    member private this.Read(row: FoldRow<'K, 'V>) =
-        let reading = row.Entry.Row.TryValueUntracked ()
-        row.Queued <- false
-
-        match reading with
-        | Ready v ->
+    /// <summary>Moves the contribution of a row to its newly settled value <c>v</c>.</summary>
+    member private this.ReadReady(row: FoldRow<'K, 'V>, v: 'V) =
+        if not (Platform.isNull row.Error) then
             this.Unfail row
 
-            if not row.HasValue then
-                row.HasValue <- true
+        if not row.HasValue then
+            row.HasValue <- true
+            row.Value <- v
+            valued <- valued + 1
+
+            if invertible then this.StepAdd v else full <- true
+        else
+            let changed =
+                if equalIsSafe then
+                    not (ComparerSentinel.equals equal row.Value v)
+                else
+                    this.ChangedGuarded (row, v)
+
+            if changed then
+                let old = row.Value
                 row.Value <- v
-                valued <- valued + 1
 
                 if invertible then
-                    this.StepWith (applyAdd, struct (state, v))
+                    this.StepReplace (old, v)
                 else
                     full <- true
+
+    /// <summary>
+    /// Whether <c>v</c> differs from the row's value under a comparer that may raise. A raise fails the row as a throwing
+    /// row does, and reports the value unchanged.
+    /// </summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ChangedGuarded(row: FoldRow<'K, 'V>, v: 'V) : bool =
+        try
+            not (ComparerSentinel.equals equal row.Value v)
+        with ex ->
+            this.Fail (row, ex)
+            false
+
+    /// <summary>Reads the row untracked and moves its contribution to the row's value.</summary>
+    member private this.Read(row: FoldRow<'K, 'V>) =
+        let source = row.Entry.Row
+
+        if source.IsCleanAndReady && not source.Node.Disposed then
+            row.Queued <- false
+            this.ReadReady (row, source.Peek)
+        else
+            this.ReadStale row
+
+    /// <summary><c>Read</c> for a row that is stale, pending, failed or disposed.</summary>
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.ReadStale(row: FoldRow<'K, 'V>) =
+#if FABLE_COMPILER
+        let source = row.Entry.Row
+
+        let settle =
+            if graph.IsTracking () then
+                graph.RunUntrackedWith (refreshRowFn, source)
             else
-                // A throwing comparer fails the row as a throwing row does.
-                let mutable changed = false
-                let mutable comparerError: exn = null
+                source.RefreshUntrackedNoSettle ()
 
-                try
-                    changed <- not (ComparerSentinel.equals equal row.Value v)
-                with ex ->
-                    comparerError <- ex
+        let currentStatus = source.Node.Status
+        let currentValue = source.Peek
+        let currentFailure = source.Failure
 
-                if not (Platform.isNull comparerError) then
-                    this.Fail (row, comparerError)
-                elif changed then
-                    let old = row.Value
-                    row.Value <- v
+        if settle then
+            graph.FinishPullSettle ()
 
-                    if invertible then
-                        this.StepWith (applyReplace, struct (state, old, v))
-                    else
-                        full <- true
-        | Pending -> this.Unfail row
-        | Failed ex -> this.Fail (row, ex)
+        row.Queued <- false
+
+        if not (StatusBits.isUnready currentStatus) then
+            this.ReadReady (row, currentValue)
+        elif StatusBits.isPending currentStatus then
+            this.Unfail row
+        else
+            this.Fail (row, currentFailure.Error)
+#else
+        let struct (status, v, error) = row.Entry.Row.TryReadUntrackedStruct ()
+        row.Queued <- false
+
+        if status = Status.None then this.ReadReady (row, v)
+        elif status = Status.Pending then this.Unfail row
+        else this.Fail (row, error)
+#endif
 
     /// <summary>Stops observing the row and removes its contribution.</summary>
     member private this.Detach(row: FoldRow<'K, 'V>) =
@@ -6120,7 +6345,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 state <- zero
                 moved <- true
             else
-                this.StepWith (applySubtract, struct (state, old))
+                this.StepSubtract old
 
     /// <summary>Attaches a row to every added key and detaches the row of every removed key. O(N) in <c>keys</c>.</summary>
     member private this.Diff(keys: 'K[]) =
@@ -6144,7 +6369,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                     if not (Platform.isNull (box row)) then
                         this.Detach row
 
-                    let fresh = FoldRow<'K, 'V>(graph, entry, touched)
+                    let fresh = FoldRow<'K, 'V>(graph, entry, touchedFn)
                     fresh.Generation <- generation
                     rows.Set (key, fresh)
                     added.Add fresh
@@ -6203,7 +6428,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                     if not (Platform.isNull (box old)) then
                         this.Detach old
 
-                    let fresh = FoldRow<'K, 'V>(graph, entry, touched)
+                    let fresh = FoldRow<'K, 'V>(graph, entry, touchedFn)
                     rows.Set (change.Key, fresh)
                     added.Add fresh
 
@@ -6222,16 +6447,22 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
     /// <summary>Folds the cached row values in <c>Keys</c> order into a fresh state. O(N).</summary>
     member private _.Recompute() =
         reads.Clear ()
-        state <- graph.RunHosted (reads :> IComputation, foldAll)
+        state <- graph.RunHosted (reads :> IComputation, foldAllFn)
         full <- false
         moved <- true
+
+    member private this.DrainRow(row: FoldRow<'K, 'V>) =
+        if row.Attached && row.Entry.Live then
+            this.Read row
+        else
+            row.Queued <- false
 
     /// <summary>
     /// Brings the state current: the membership and order of <c>delta</c> when non-null, then every queued row, then a full
     /// recompute if a read of the fold functions moved or the fold is non-invertible.
     /// </summary>
     member private this.Sync(delta: ProjectionDelta<'K>) =
-        if reads.Moved () then
+        if reads.IsPendingCheckOrDirty && reads.Moved () then
             full <- true
 
         if not (Platform.isNull (box delta)) then
@@ -6250,19 +6481,28 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
             if not invertible && hadKeys && delta.OrderChanged then
                 full <- true
 
-        let mutable i = 0
+        if queued > 0 then
+            let mutable drained = 0
 
-        while i < queue.Count do
-            let row = Platform.entryAt i queue
+            try
+                this.DrainRow (Platform.itemAt 0 queue)
+                drained <- 1
 
-            if row.Attached && row.Entry.Live then
-                this.Read row
-            else
-                row.Queued <- false
+                while drained < queued do
+                    this.DrainRow (Platform.itemAt drained queue)
+                    drained <- drained + 1
+            finally
+                if queued = 1 && drained = 1 then
+                    Platform.setItemAt 0 queue Unchecked.defaultof<_>
+                    queued <- 0
+                elif queued > 0 && drained > 0 then
+                    let remaining = queued - drained
 
-            i <- i + 1
+                    if remaining > 0 then
+                        System.Array.Copy (queue, drained, queue, 0, remaining)
 
-        queue.Clear ()
+                    Array.fill queue remaining drained Unchecked.defaultof<_>
+                    queued <- remaining
 
         if full then
             this.Recompute ()
@@ -6292,9 +6532,36 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
         if disposed then
             state
         else
-            let delta = keyReader.Read ()
-            graph.Track (this :> ISource)
-            this.Sync delta
+            // When the reader is live, un-reset, holds no pending changes and its cursor matches the clean published keys,
+            // a read of the key reader makes only the tracked reads of Keys and returns an empty delta.
+            if upstream.TrackCleanKeysIfIdle keyReader then
+                let published = upstream.PublishedKeys
+                graph.Track (this :> ISource)
+
+                if not (obj.ReferenceEquals (lastKeys, published)) then
+                    lastKeys <- published
+
+                if queued <> 0 || full || reads.IsPendingCheckOrDirty then
+                    this.Sync Unchecked.defaultof<_>
+            else
+                let delta = keyReader.Read ()
+                graph.Track (this :> ISource)
+
+                // An unchanged membership with no queued row, pending read or recompute leaves Sync only the key array to
+                // keep, as after the Sync of UpdateIfNecessary.
+                if
+                    queued = 0
+                    && not full
+                    && not reads.IsPendingCheckOrDirty
+                    && not (Platform.isNull (box delta))
+                    && not delta.IsReset
+                    && delta.ChangeCount = 0
+                    && not delta.OrderChanged
+                then
+                    lastKeys <- delta.Keys
+                else
+                    this.Sync delta
+
             moved <- false
 
             if failed > 0 then
@@ -6321,7 +6588,7 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
                 row.Handle <- EdgeHandle.Unlinked)
 
             rows.Clear ()
-            queue.Clear ()
+            clearQueue ()
             reads.Clear ()
 
             if not (Platform.isNull (box memo)) then
@@ -6370,37 +6637,46 @@ type internal ProjectionFold<'K, 'V, 'S when 'K: equality>
 /// One live key of a tournament extreme aggregate: the observer of the key's rank/value row and its cached state.
 /// </summary>
 [<Sealed>]
-type internal ExtremeRow<'K, 'V, 'S>(graph: Graph, key: 'K, entry: RowEntry<'K, struct ('S * 'V)>, touched: ExtremeRow<'K, 'V, 'S> -> unit) =
-    let id = graph.NextId ()
-
-    member _.Key = key
-    member _.Entry = entry
-
+type internal ExtremeRow<'K, 'V, 'S> =
+    val private touched: ExtremeRow<'K, 'V, 'S> -> unit
+    val private id: int
+    val Key: 'K
+    val Entry: RowEntry<'K, struct ('S * 'V)>
     /// <summary>Leaf slot index in the containing tournament tree, or -1 while unplaced.</summary>
-    member val Slot = -1 with get, set
-
+    val mutable Slot: int
     /// <summary>Whether the row waits in the aggregate's queue, or is being read.</summary>
-    member val Queued = false with get, set
-
+    val mutable Queued: bool
     /// <summary>Whether the aggregate observes the row.</summary>
-    member val Attached = false with get, set
-
+    val mutable Attached: bool
     /// <summary>Whether <c>Rank</c> and <c>Value</c> hold a settled pair present in the tournament tree.</summary>
-    member val HasValue = false with get, set
-
-    member val Rank = Unchecked.defaultof<'S> with get, set
-    member val Value = Unchecked.defaultof<'V> with get, set
-
+    val mutable HasValue: bool
+    val mutable Rank: 'S
+    val mutable Value: 'V
     /// <summary>The row's exception while the row is failed, or null.</summary>
-    member val Error: exn = null with get, set
-
+    val mutable Error: exn
     /// <summary>The last membership diff containing the key.</summary>
-    member val Generation = 0 with get, set
+    val mutable Generation: int
+    val mutable Handle: int
 
-    member val Handle = EdgeHandle.Unlinked with get, set
+    new(graph: Graph, key: 'K, entry: RowEntry<'K, struct ('S * 'V)>, touched: ExtremeRow<'K, 'V, 'S> -> unit) =
+        {
+            touched = touched
+            id = graph.NextId ()
+            Key = key
+            Entry = entry
+            Slot = -1
+            Queued = false
+            Attached = false
+            HasValue = false
+            Rank = Unchecked.defaultof<'S>
+            Value = Unchecked.defaultof<'V>
+            Error = null
+            Generation = 0
+            Handle = EdgeHandle.Unlinked
+        }
 
     interface INode with
-        member _.Id = id
+        member this.Id = this.id
         member _.Status = Status.None
 
     interface IComputation with
@@ -6412,10 +6688,10 @@ type internal ExtremeRow<'K, 'V, 'S>(graph: Graph, key: 'K, entry: RowEntry<'K, 
         member _.HasReadSlot _ = false
 
         member this.MarkDirty() =
-            touched this
+            this.touched this
 
         member this.MarkCheck() =
-            touched this
+            this.touched this
 
 /// <summary>
 /// The extreme value of <c>upstream</c> ordered by rank, maintained in O(log N) comparisons across row edits,
@@ -6497,7 +6773,9 @@ type internal ProjectionExtreme<'K, 'V, 'S, 'R when 'K: equality and 'S: compari
 
     member private this.Attach() =
         link <- graph.CurrentOwner.AttachLinked this
-        keyReader <- upstream.NewInternalKeyReader ()
+
+        if not disposed then
+            keyReader <- upstream.NewInternalKeyReader ()
 
     static member internal Create
         (
@@ -7119,7 +7397,7 @@ module Projection =
     let private ownedScope (graph: Graph) =
         let parent = graph.CurrentOwner
         let owner = new Owner (graph.Root)
-        owner.SetParent (parent.AttachLinked owner)
+        owner.AttachToParent parent
         owner
 
     /// <summary>A projection over the keys of <c>upstream</c>, each row holding <c>f</c> of the upstream value.</summary>

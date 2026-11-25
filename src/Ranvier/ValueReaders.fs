@@ -5,33 +5,70 @@ open System.Collections.Generic
 /// <summary>One live key's row and factory scope.</summary>
 /// <remarks>The scope is null in the value form, where the row is the key's only node.</remarks>
 [<AllowNullLiteral>]
-type internal RowEntry<'K, 'V>(key: 'K) =
-    member _.Key = key
-    member val Row: Memo<'V> = Unchecked.defaultof<_> with get, set
-    member val Scope: Owner = Unchecked.defaultof<_> with get, set
+type internal RowEntry<'K, 'V> =
+    val mutable private settled: bool
+    val Key: 'K
+    val mutable Row: Memo<'V>
+    val mutable Scope: Owner
     /// <summary>The mapper over the item in the value form, or the factory's returned reader.</summary>
-    member val Reader: unit -> 'V = Unchecked.defaultof<_> with get, set
-    /// <summary>Whether the row memo has committed a value.</summary>
-    member val Settled = false with get, set
+    val mutable Reader: unit -> 'V
     /// <summary>Whether the pending row is observed by the projection's row watcher.</summary>
-    member val Watched = false with get, set
+    val mutable Watched: bool
     /// <summary>The row's edge to the projection's row watcher, created by the row's first pending report.</summary>
-    member val WatchEdge: ForwardingEdge = Unchecked.defaultof<_> with get, set
+    val mutable WatchEdge: ForwardingEdge
     /// <summary>False after key removal or projection disposal.</summary>
-    member val Live = true with get, set
+    val mutable Live: bool
+
+    new(key: 'K) =
+        {
+            settled = false
+            Key = key
+            Row = Unchecked.defaultof<_>
+            Scope = Unchecked.defaultof<_>
+            Reader = Unchecked.defaultof<_>
+            Watched = false
+            WatchEdge = Unchecked.defaultof<_>
+            Live = true
+        }
+
+    /// <summary>Whether the row memo has committed a value.</summary>
+    member this.Settled
+        with get () =
+#if !RANVIER_TRACE
+            this.settled
+            || (not (Platform.isNull (box this.Row))
+                && this.Row.Published
+                && this.Row.HasDirectSignal)
+#else
+            this.settled
+#endif
+        and set v = this.settled <- v
 
 [<Sealed>]
-type internal ValueRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: ValueRow<'K, 'V> -> unit) =
-    let id = graph.NextId ()
-    member _.Entry = entry
-    member val Queued = false with get, set
-    member val Attached = true with get, set
-    member val HasValue = false with get, set
-    member val Value = Unchecked.defaultof<'V> with get, set
-    member val Handle = EdgeHandle.Unlinked with get, set
+type internal ValueRow<'K, 'V> =
+    val private touched: ValueRow<'K, 'V> -> unit
+    val private id: int
+    val Entry: RowEntry<'K, 'V>
+    val mutable Queued: bool
+    val mutable Attached: bool
+    val mutable HasValue: bool
+    val mutable Value: 'V
+    val mutable Handle: int
+
+    new(graph: Graph, entry: RowEntry<'K, 'V>, touched: ValueRow<'K, 'V> -> unit) =
+        {
+            touched = touched
+            id = graph.NextId ()
+            Entry = entry
+            Queued = false
+            Attached = true
+            HasValue = false
+            Value = Unchecked.defaultof<'V>
+            Handle = EdgeHandle.Unlinked
+        }
 
     interface INode with
-        member _.Id = id
+        member this.Id = this.id
         member _.Status = Status.None
 
     interface IComputation with
@@ -43,10 +80,10 @@ type internal ValueRow<'K, 'V>(graph: Graph, entry: RowEntry<'K, 'V>, touched: V
         member _.HasReadSlot _ = false
 
         member this.MarkDirty() =
-            touched this
+            this.touched this
 
         member this.MarkCheck() =
-            touched this
+            this.touched this
 
 /// <summary>Shared settled-value observation, active only while value readers exist.</summary>
 [<Sealed>]

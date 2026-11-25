@@ -392,6 +392,53 @@ public class BindingTests
     }
 
     [Fact]
+    public void PostedHandlersRunInRaiseOrderWithTheirArguments()
+    {
+        var previous = SynchronizationContext.Current;
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(null);
+            using var graph = NewGraph();
+            var count = new Signal<int>(graph, 1);
+            var total = new Signal<int>(graph, 10);
+            using var bindings = new ReactiveBindings(null!, graph);
+            bindings.Writable("Count", count);
+            bindings.Writable("Total", total);
+            var ui = new RecordingContext();
+            var first = new List<string>();
+            var second = new List<string>();
+            var senders = new List<object?>();
+            SynchronizationContext.SetSynchronizationContext(ui);
+            bindings.PropertyChanged += (sender, e) =>
+            {
+                senders.Add(sender);
+                first.Add(e.PropertyName!);
+            };
+            PropertyChangedEventHandler removed = (_, e) => second.Add(e.PropertyName!);
+            bindings.PropertyChanged += removed;
+            SynchronizationContext.SetSynchronizationContext(null);
+
+            count.Value = 2;
+            total.Value = 20;
+            bindings.PropertyChanged -= removed;
+            count.Value = 3;
+
+            Assert.Equal(5, ui.Posts);
+            Assert.Empty(first);
+
+            ui.RunPosted();
+
+            Assert.Equal(["Count", "Total", "Count"], first);
+            Assert.Equal(["Count", "Total"], second);
+            Assert.All(senders, sender => Assert.Same(bindings, sender));
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+    }
+
+    [Fact]
     public void AfterDisposeInputChangesRaiseNothing() => WithoutContext(() =>
     {
         using var graph = NewGraph();

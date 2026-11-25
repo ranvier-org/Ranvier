@@ -38,26 +38,49 @@ module BrowserMutationObservation =
     [<Emit("$0 && $0.name === 'TypeError'")>]
     let private isTypeError (error: obj) : bool = jsNative
 
-    let private optional (value: 'T) =
+    let inline private optional (value: 'T) =
         if isNull (box value) then None else Some value
 
+    // Reads the fields the DOM Standard populates for the record's type. Each record owns its node arrays.
     let private copy (record: obj) : MutationRecord =
-        {
-            Type =
-                match field<string>(record, "type") with
-                | "childList" -> MutationType.ChildList
-                | "attributes" -> MutationType.Attributes
-                | "characterData" -> MutationType.CharacterData
-                | value -> invalidOp ("Unknown mutation record type: " + value)
-            Target = field (record, "target")
-            AddedNodes = nodes (record, "addedNodes")
-            RemovedNodes = nodes (record, "removedNodes")
-            PreviousSibling = optional (field<Node>(record, "previousSibling"))
-            NextSibling = optional (field<Node>(record, "nextSibling"))
-            AttributeName = optional (field<string>(record, "attributeName"))
-            AttributeNamespace = optional (field<string>(record, "attributeNamespace"))
-            OldValue = optional (field<string>(record, "oldValue"))
-        }
+        match field<string>(record, "type") with
+        | "childList" ->
+            {
+                Type = MutationType.ChildList
+                Target = field (record, "target")
+                AddedNodes = nodes (record, "addedNodes")
+                RemovedNodes = nodes (record, "removedNodes")
+                PreviousSibling = optional (field<Node>(record, "previousSibling"))
+                NextSibling = optional (field<Node>(record, "nextSibling"))
+                AttributeName = None
+                AttributeNamespace = None
+                OldValue = None
+            }
+        | "attributes" ->
+            {
+                Type = MutationType.Attributes
+                Target = field (record, "target")
+                AddedNodes = [||]
+                RemovedNodes = [||]
+                PreviousSibling = None
+                NextSibling = None
+                AttributeName = optional (field<string>(record, "attributeName"))
+                AttributeNamespace = optional (field<string>(record, "attributeNamespace"))
+                OldValue = optional (field<string>(record, "oldValue"))
+            }
+        | "characterData" ->
+            {
+                Type = MutationType.CharacterData
+                Target = field (record, "target")
+                AddedNodes = [||]
+                RemovedNodes = [||]
+                PreviousSibling = None
+                NextSibling = None
+                AttributeName = None
+                AttributeNamespace = None
+                OldValue = optional (field<string>(record, "oldValue"))
+            }
+        | value -> invalidOp ("Unknown mutation record type: " + value)
 
     /// <summary>The provider using document's realm, or the calling realm for a document without a Window.</summary>
     /// <remarks>Accessible foreign-document targets and adoption retain ordinary DOM semantics.</remarks>

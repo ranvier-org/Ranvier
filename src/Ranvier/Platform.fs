@@ -27,9 +27,42 @@ module internal Platform =
     [<Emit("$0 == null")>]
     let isNull (value: 'T when 'T: null) : bool =
         nativeOnly
+
+    /// <summary>Literal JavaScript <c>null</c>, avoiding fable-library's <c>defaultOf()</c> call on hot paths.</summary>
+    [<Emit("null")>]
+    let nil<'T when 'T: not struct> () : 'T = jsNative
+
+    /// <summary>Uninitialized slot placeholder (<c>null</c> under Fable, <c>Unchecked.defaultof</c> on .NET).</summary>
+    [<Emit("null")>]
+    let zero<'T> () : 'T = jsNative
 #else
     let inline isNull (value: 'T when 'T: null) =
         Operators.isNull value
+
+    /// <summary>Null reference for <c>'T</c>; compiles to <c>ldnull</c> on .NET.</summary>
+    let inline nil<'T when 'T: not struct> () : 'T =
+        Unchecked.defaultof<'T>
+
+    /// <summary>Default slot placeholder for <c>'T</c>.</summary>
+    let inline zero<'T> () : 'T =
+        Unchecked.defaultof<'T>
+#endif
+
+    /// <summary>
+    /// Reinterprets <c>value</c> as <c>'T</c> without a type check. The caller guarantees the runtime type: a tag stored
+    /// beside the reference says what it is. <c>Unsafe.As</c> on .NET 8 and later, a checked <c>unbox</c> elsewhere.
+    /// </summary>
+#if FABLE_COMPILER
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T =
+        unbox<'T> value
+#else
+#if NET8_0_OR_GREATER
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T =
+        System.Runtime.CompilerServices.Unsafe.As<'T> value
+#else
+    let inline fastCast<'T when 'T: not struct> (value: obj) : 'T =
+        unbox<'T> value
+#endif
 #endif
 
     /// <summary>
@@ -39,6 +72,11 @@ module internal Platform =
 #if FABLE_COMPILER
     [<Emit("($0 == null ? 'null' : (typeof $0 === 'object' ? (($0.constructor && $0.constructor.name) || 'object') : typeof $0))")>]
     let typeName (value: obj) : string =
+        nativeOnly
+
+    /// <summary>True when <c>value</c> is a non-null instance of the exact JavaScript class of <c>exemplar</c> (excluding subclasses).</summary>
+    [<Emit("($0 != null && Object.getPrototypeOf($0) === Object.getPrototypeOf($1))")>]
+    let sameExactClass (value: obj) (exemplar: obj) : bool =
         nativeOnly
 #else
     let typeName (value: obj) : string =
@@ -178,13 +216,60 @@ module internal Platform =
     let private invokeAfter =
         Func<Task, obj, Task>(fun _ s -> (s :?> (unit -> Task)) ())
 
+    /// <summary>Typed receiver notified when an async flight task completes, without allocating a closure.</summary>
+    type internal ISettledWaiter<'T> =
+        abstract OnSettled: outcome: FlightOutcome<'T> * gen: int * seqNum: int -> unit
+
+    /// <summary>Typed receiver notified when a unit stream task completes, without allocating a closure.</summary>
+    type internal IDoneWaiter =
+        abstract OnDone: outcome: FlightOutcome<unit> * gen: int -> unit
+
+    [<Sealed>]
+    type private FlightSettledWaiter<'T>(waiter: ISettledWaiter<'T>, gen: int, seqNum: int) =
+        member _.Run(task: Task<'T>) =
+            waiter.OnSettled (settledOutcome task, gen, seqNum)
+
+    [<Sealed>]
+    type private StreamDoneWaiter(waiter: IDoneWaiter, gen: int) =
+        member _.Run(task: Task) =
+            waiter.OnDone (settledUnitOutcome task, gen)
+
+    let private invokeDoneWaiter =
+        Action<Task, obj>(fun t s -> (s :?> StreamDoneWaiter).Run t)
+
     [<Sealed>]
     type private SettledContinuation<'T>() =
         static member val InvokeSettled = Action<Task<'T>, obj>(fun t s -> (s :?> (FlightOutcome<'T> -> unit)) (settledOutcome t))
 
+        static member val InvokeWaiter = Action<Task<'T>, obj>(fun t s -> (s :?> FlightSettledWaiter<'T>).Run t)
+
         static member val Outcome = Func<Task<'T>, FlightOutcome<'T>>(settledOutcome)
 
         static member val Apply = Func<Task<FlightOutcome<'T>>, obj, Task>(fun t s -> (s :?> (FlightOutcome<'T> -> Task)) t.Result)
+
+    /// <summary>
+    /// Attaches <c>waiter</c> to <c>flight</c> via a fault-containing, scheduler-neutral synchronous continuation.
+    /// </summary>
+    let attachSettled (flight: Task<'T>) (waiter: ISettledWaiter<'T>) (gen: int) (seqNum: int) : unit =
+        let w = FlightSettledWaiter<'T>(waiter, gen, seqNum)
+
+        flight.ContinueWith (
+            SettledContinuation<'T>.InvokeWaiter,
+            box w,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default
+        )
+        |> ignore
+
+    /// <summary>
+    /// Attaches <c>waiter</c> to <c>work</c> via a fault-containing, scheduler-neutral synchronous continuation.
+    /// </summary>
+    let attachDone (work: Task) (waiter: IDoneWaiter) (gen: int) : unit =
+        let w = StreamDoneWaiter (waiter, gen)
+
+        work.ContinueWith (invokeDoneWaiter, box w, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default)
+        |> ignore
 #endif
 
     /// <summary>
@@ -200,7 +285,13 @@ module internal Platform =
             settle (settledOutcome flight)
             completedTask
         else
-            flight.ContinueWith (SettledContinuation<'T>.InvokeSettled, box settle, TaskContinuationOptions.ExecuteSynchronously)
+            flight.ContinueWith (
+                SettledContinuation<'T>.InvokeSettled,
+                box settle,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            )
 #endif
 
     /// <summary>
@@ -215,7 +306,13 @@ module internal Platform =
         if work.IsCompleted then
             settle (settledUnitOutcome work)
         else
-            work.ContinueWith (invokeUnitSettled, box settle, TaskContinuationOptions.ExecuteSynchronously)
+            work.ContinueWith (
+                invokeUnitSettled,
+                box settle,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            )
             |> ignore
 #endif
 
@@ -344,16 +441,25 @@ module internal Platform =
         Task.FromResult value
 
 #if !FABLE_COMPILER
+    /// <summary>Detaches and restores graph tracking around flight continuations on .NET.</summary>
+    type internal IContinuationHost =
+        abstract EnterContinuation: frame: obj -> bool
+        abstract LeaveContinuation: frame: obj -> unit
+
     /// <summary>The synchronous part of a flight body: live until the body returns.</summary>
-    [<AllowNullLiteral>]
-    type private FlightFrame(enter: obj -> bool, leave: obj -> unit) =
-        member val Live = true with get, set
+    [<AllowNullLiteral; Sealed>]
+    type private FlightFrame(host: IContinuationHost) =
+        let mutable live = true
+
+        member _.Live
+            with get () = live
+            and set v = live <- v
 
         member this.Enter() =
-            enter this
+            host.EnterContinuation this
 
         member this.Leave() =
-            leave this
+            host.LeaveContinuation this
 
     /// <summary>
     /// Flows with the execution context into every continuation of a flight
@@ -381,35 +487,14 @@ module internal Platform =
 
     /// <summary>Runs the synchronous part of a flight body.</summary>
     /// <remarks>
-    /// On .NET, <c>enter</c> runs before, and <c>leave</c> after, each continuation of the body,
-    /// on the thread the continuation starts on. Both receive the body's frame; <c>enter</c>
-    /// returns false when the frame is already entered, as on the return from a nested
-    /// continuation. Under Fable neither runs.
+    /// On .NET, <c>host</c> runs before and after each continuation of the body,
+    /// on the thread the continuation starts on. Under Fable neither runs.
     /// </remarks>
 #if FABLE_COMPILER
-    let inline runFlightBody (enter: obj -> bool) (leave: obj -> unit) ([<InlineIfLambda>] body: unit -> 'T) : 'T =
-        ignore enter
-        ignore leave
-        body ()
-
-    let inline runFlightBodyWith (enter: obj -> bool) (leave: obj -> unit) (f: 'A -> 'B -> 'T) (a: 'A) (b: 'B) : 'T =
-        ignore enter
-        ignore leave
-        f a b
+    let inline runFlightBodyWith (_host: obj) (f: 'A -> 'B -> 'T) (a: 'A) (b: 'B) : 'T = f a b
 #else
-    let runFlightBody (enter: obj -> bool) (leave: obj -> unit) (body: unit -> 'T) : 'T =
-        let frame = FlightFrame (enter, leave)
-        let previous = flightFrame.Value
-        flightFrame.Value <- frame
-
-        try
-            body ()
-        finally
-            frame.Live <- false
-            flightFrame.Value <- previous
-
-    let runFlightBodyWith (enter: obj -> bool) (leave: obj -> unit) (f: 'A -> 'B -> 'T) (a: 'A) (b: 'B) : 'T =
-        let frame = FlightFrame (enter, leave)
+    let runFlightBodyWith (host: IContinuationHost) (f: 'A -> 'B -> 'T) (a: 'A) (b: 'B) : 'T =
+        let frame = FlightFrame host
         let previous = flightFrame.Value
         flightFrame.Value <- frame
 
@@ -818,11 +903,8 @@ module internal Platform =
     [<Emit("($0 === $1 || ($0 !== $0 && $1 !== $1))")>]
     let primitiveKeyEquals (a: 'K) (b: 'K) : bool = jsNative
 
-    let inline keyEquals (a: 'K) (b: 'K) : bool =
-        if primitiveKey a then
-            primitiveKeyEquals a b
-        else
-            EqualityComparer<'K>.Default.Equals(a, b)
+    let inline keyEquals<'K when 'K: equality> (a: 'K) (b: 'K) : bool =
+        if primitiveKey a then primitiveKeyEquals a b else a = b
 #else
     let inline keyEquals<'K when 'K: equality> (a: 'K) (b: 'K) : bool =
         if DefaultKeyTrait<'K>.UseDefault then
@@ -835,52 +917,58 @@ module internal Platform =
     /// A map under structural key equality. Holds every key of <c>'K</c>, <c>None</c>
     /// and <c>()</c> included.
     /// </summary>
-    [<Sealed>]
-    type KeyMap<'K, 'V when 'K: equality>() =
 #if FABLE_COMPILER
-        let prims = newJsMap<'K, 'V>()
-        let mutable objs: Dictionary<'K, 'V> = Unchecked.defaultof<_>
+    [<Sealed>]
+    type KeyMap<'K, 'V when 'K: equality> =
+        val Prims: JS.Map<'K, 'V>
+        val mutable Objs: Dictionary<'K, 'V>
 
-        member _.Prims = prims
-        member _.Objs = objs
+        new() =
+            {
+                Prims = newJsMap<'K, 'V>()
+                Objs = nil ()
+            }
 
-        member _.Count =
-            if isNull (box objs) then
-                prims.size
+        member inline this.Count =
+            if isNull (box this.Objs) then
+                this.Prims.size
             else
-                prims.size + objs.Count
+                this.Prims.size + this.Objs.Count
 
         /// <summary>
         /// The value at <c>key</c>, or <c>Unchecked.defaultof&lt;'V></c> for an absent key.
         /// </summary>
-        member _.Find(key: 'K) : 'V =
-            if primitiveKey key then jsMapFind prims key
-            elif isNull (box objs) then Unchecked.defaultof<'V>
-            else findOrDefault objs key
+        member inline this.Find(key: 'K) : 'V =
+            if primitiveKey key then jsMapFind this.Prims key
+            elif isNull (box this.Objs) then Unchecked.defaultof<'V>
+            else findOrDefault this.Objs key
 
-        member _.Set(key: 'K, value: 'V) =
+        member internal this.SetObj(key: 'K, value: 'V) =
+            if isNull (box this.Objs) then
+                this.Objs <- Dictionary<'K, 'V>(HashIdentity.Structural)
+
+            this.Objs[key] <- value
+
+        member inline this.Set(key: 'K, value: 'V) =
             if primitiveKey key then
-                prims.set (key, value) |> ignore
+                this.Prims.set (key, value) |> ignore
             else
-                if isNull (box objs) then
-                    objs <- Dictionary<'K, 'V>(HashIdentity.Structural)
+                this.SetObj (key, value)
 
-                objs[key] <- value
-
-        member _.Remove(key: 'K) =
+        member inline this.Remove(key: 'K) =
             if primitiveKey key then
-                prims.delete key |> ignore
-            elif not (isNull (box objs)) then
-                objs.Remove key |> ignore
+                this.Prims.delete key |> ignore
+            elif not (isNull (box this.Objs)) then
+                this.Objs.Remove key |> ignore
 
-        member _.Clear() =
-            prims.clear ()
+        member inline this.Clear() =
+            this.Prims.clear ()
 
-            if not (isNull (box objs)) then
-                objs.Clear ()
+            if not (isNull (box this.Objs)) then
+                this.Objs.Clear ()
 
         /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
-        member _.Reserve(_count: int) = ()
+        member inline _.Reserve(_count: int) = ()
 
         /// <summary>
         /// Visits every entry: primitive keys first, then object keys.
@@ -895,17 +983,19 @@ module internal Platform =
         /// <summary>
         /// Whether <c>predicate</c> holds for some value. Stops at the first match.
         /// </summary>
-        member _.Exists(predicate: 'V -> bool) =
-            let mutable found = jsMapExists prims predicate
+        member this.Exists(predicate: 'V -> bool) =
+            let mutable found = jsMapExists this.Prims predicate
 
-            if not found && not (isNull (box objs)) then
-                let mutable e = objs.GetEnumerator ()
+            if not found && not (isNull (box this.Objs)) then
+                let mutable e = this.Objs.GetEnumerator ()
 
                 while not found && e.MoveNext () do
                     found <- predicate e.Current.Value
 
             found
 #else
+    [<Sealed>]
+    type KeyMap<'K, 'V when 'K: equality>() =
         let table =
             if DefaultKeyTrait<'K>.UseDefault then
                 Dictionary<'K, 'V>()
@@ -981,56 +1071,62 @@ module internal Platform =
     /// A set under structural equality. Holds every value of <c>'K</c>, <c>None</c> and
     /// <c>()</c> included.
     /// </summary>
-    [<Sealed>]
-    type KeySet<'K when 'K: equality>() =
 #if FABLE_COMPILER
-        let prims = newJsSet<'K>()
-        let mutable objs: HashSet<'K> = Unchecked.defaultof<_>
+    [<Sealed>]
+    type KeySet<'K when 'K: equality> =
+        val Prims: JS.Set<'K>
+        val mutable Objs: HashSet<'K>
 
-        member _.Prims = prims
-        member _.Objs = objs
+        new() =
+            {
+                Prims = newJsSet<'K>()
+                Objs = nil ()
+            }
 
-        member _.Count =
-            if isNull (box objs) then
-                prims.size
+        member inline this.Count =
+            if isNull (box this.Objs) then
+                this.Prims.size
             else
-                prims.size + objs.Count
+                this.Prims.size + this.Objs.Count
 
-        member _.Contains(key: 'K) =
-            if primitiveKey key then prims.has key
-            elif isNull (box objs) then false
-            else objs.Contains key
+        member inline this.Contains(key: 'K) =
+            if primitiveKey key then this.Prims.has key
+            elif isNull (box this.Objs) then false
+            else this.Objs.Contains key
+
+        member internal this.AddObj(key: 'K) =
+            if isNull (box this.Objs) then
+                this.Objs <- HashSet<'K>(HashIdentity.Structural)
+
+            this.Objs.Add key
 
         /// <summary>
         /// Adds <c>key</c>. Returns false if it was already present.
         /// </summary>
-        member _.Add(key: 'K) =
+        member inline this.Add(key: 'K) =
             if primitiveKey key then
-                if prims.has key then
+                if this.Prims.has key then
                     false
                 else
-                    prims.add key |> ignore
+                    this.Prims.add key |> ignore
                     true
             else
-                if isNull (box objs) then
-                    objs <- HashSet<'K>(HashIdentity.Structural)
+                this.AddObj key
 
-                objs.Add key
-
-        member _.Remove(key: 'K) =
+        member inline this.Remove(key: 'K) =
             if primitiveKey key then
-                prims.delete key |> ignore
-            elif not (isNull (box objs)) then
-                objs.Remove key |> ignore
+                this.Prims.delete key |> ignore
+            elif not (isNull (box this.Objs)) then
+                this.Objs.Remove key |> ignore
 
-        member _.Clear() =
-            prims.clear ()
+        member inline this.Clear() =
+            this.Prims.clear ()
 
-            if not (isNull (box objs)) then
-                objs.Clear ()
+            if not (isNull (box this.Objs)) then
+                this.Objs.Clear ()
 
         /// <summary>Holds at least <c>count</c> keys without growing; does nothing under Fable.</summary>
-        member _.Reserve(_count: int) = ()
+        member inline _.Reserve(_count: int) = ()
 
         /// <summary>
         /// Visits every key: primitive keys first, then object keys.
@@ -1042,6 +1138,8 @@ module internal Platform =
                 for key in this.Objs do
                     f key
 #else
+    [<Sealed>]
+    type KeySet<'K when 'K: equality>() =
         let table =
             if DefaultKeyTrait<'K>.UseDefault then
                 HashSet<'K>()

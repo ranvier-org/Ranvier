@@ -24,9 +24,16 @@ type GraphExtensions =
         body.Invoke ()
 
     /// <summary>Writes <c>update</c> applied to the signal's current value, read untracked.</summary>
+    /// <exception cref="T:System.ArgumentNullException"><c>signal</c> or <c>update</c> is null.</exception>
     [<Extension>]
     static member Update<'T>(signal: Signal<'T>, update: Func<'T, 'T>) : unit =
-        Signal.update signal update.Invoke
+        if isNull (box signal) then
+            nullArg "signal"
+
+        if isNull (box update) then
+            nullArg "update"
+
+        signal.Value <- update.Invoke signal.Peek
 
 /// <summary>
 /// Awaitable reads of <c>Previous.Settled</c> for C#: the value or a seed, or a <c>(HasValue, Value)</c> pair.

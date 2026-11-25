@@ -98,6 +98,86 @@ let tests =
                 Expect.equal proj.Count 2 "and its length"
             }
 
+            test "a reverse with a changed key evaluates each selector once and retains earlier snapshots" {
+                use graph = new Graph ()
+                use _ = graph.Activate ()
+                let original = Array.init 8 Item
+                let source = createSignal original
+                let calls = ResizeArray<int>()
+                let mutable changed = false
+
+                let keyOf (item: Item) =
+                    calls.Add item.N
+                    if changed && item.N = 3 then 30 else item.N
+
+                let projection =
+                    createProjection keyOf (fun item -> item.N) (fun () -> source.Value)
+
+                let reader = projection.NewKeyReader ()
+                let first = (reader.Read ()).Keys
+                calls.Clear ()
+                source.Value <- Array.rev original
+                let reverse = reader.Read ()
+                Expect.sequenceEqual calls [ 7..-1..0 ] "selectors run in source order"
+                Expect.sequenceEqual reverse.Keys [ 7..-1..0 ] "all keys reversed"
+                Expect.equal reverse.Changes.Count 0 "reordering preserves membership"
+                calls.Clear ()
+                changed <- true
+                source.Value <- original
+                let delta = reader.Read ()
+                Expect.sequenceEqual calls [ 0..7 ] "the fallback consumes the validated prefix once"
+                Expect.sequenceEqual delta.Keys [ 0; 1; 2; 30; 4; 5; 6; 7 ] "the changed key is staged"
+                Expect.equal (projection.Get 30) 3 "the replacement row reads the original item"
+                Expect.sequenceEqual first [ 0..7 ] "the original snapshot is retained"
+                Expect.sequenceEqual reverse.Keys [ 7..-1..0 ] "the reverse snapshot is retained"
+            }
+
+            test "a reverse selector can dispose the projection during validation" {
+                use graph = new Graph ()
+                use _ = graph.Activate ()
+                let original = Array.init 6 Item
+                let source = createSignal original
+                let mutable onKey = ignore
+
+                let projection =
+                    createProjection
+                        (fun (item: Item) ->
+                            onKey item.N
+                            item.N)
+                        id
+                        (fun () -> source.Value)
+
+                let initial = projection.Keys
+
+                onKey <-
+                    fun key ->
+                        if key = 3 then
+                            projection.Dispose ()
+
+                source.Value <- Array.rev original
+                Expect.isEmpty projection.Keys "disposal publishes empty keys"
+                Expect.sequenceEqual initial [ 0..5 ] "disposal preserves the earlier snapshot"
+            }
+
+            test "a sparse sort batch publishes the one move when another rank changes in place" {
+                use graph = new Graph ()
+                use _ = graph.Activate ()
+                let collection = createKeyedCollection fst
+
+                for key in 0..31 do
+                    collection.AddOrUpdate (key, key * 10)
+
+                let sorted = collection.Rows |> Projection.sortBy snd
+                let initial = sorted.Keys
+
+                collection.Edit (fun edit ->
+                    edit.AddOrUpdate (3, 65)
+                    edit.AddOrUpdate (11, 111))
+
+                Expect.sequenceEqual sorted.Keys ([ 0..2 ] @ [ 4; 5; 6; 3 ] @ [ 7..31 ]) "only key 3 moves"
+                Expect.sequenceEqual initial [ 0..31 ] "the old order is retained"
+            }
+
             test "a projection nothing reads is never recomputed" {
                 use g = new Graph ()
                 use _ = g.Activate ()
@@ -2955,4 +3035,37 @@ let rowOptionTests =
             }
 
             test "ensureUniqueKeys keeps boxed keys of different types apart, as = does" { Projection.ensureUniqueKeys id [ box 1; box 1L; box "1" ] }
+
+            test "disposing a projection from keyOf during a reversed array pass stops invoking remaining selectors" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let a = box "a"
+                let b = box "b"
+                let c = box "c"
+                let d = box "d"
+                let items = createSignal [| a; b; c; d |]
+                let armed = ref false
+                let calls = ref 0
+                let holder = ref Unchecked.defaultof<Projection<string, obj>>
+
+                let proj =
+                    createProjection
+                        (fun x ->
+                            calls.Value <- calls.Value + 1
+
+                            if armed.Value then
+                                holder.Value.Dispose ()
+
+                            unbox<string> x)
+                        id
+                        (fun () -> items.Value :> seq<obj>)
+
+                holder.Value <- proj
+                Expect.equal proj.Keys.Length 4 "initial pass"
+                calls.Value <- 0
+                armed.Value <- true
+                items.Value <- [| d; c; b; a |]
+                Expect.isEmpty proj.Keys "disposed projection reports no keys"
+                Expect.equal calls.Value 1 "selector ran only once before reentrant disposal"
+            }
         ]

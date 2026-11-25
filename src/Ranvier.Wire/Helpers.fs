@@ -400,33 +400,98 @@ let netEncoding: IEncoderHelpers<JsonNode> =
             inner.encodeUnsignedIntegralNumber value
     }
 
-/// <summary>
-/// An object's members, read from the element at the first lookup: its keys in ECMAScript own-property order, and a
-/// repeated key at its first position with its last value, as <c>JSON.parse</c> gives them.
-/// </summary>
-[<Sealed>]
-type private ObjectMembers(element: JsonElement) =
-    let found = Dictionary<string, JsonElement>(StringComparer.Ordinal)
+/// <summary>The distinct member lookups an object answers by scanning its element before it builds an index.</summary>
+[<Literal>]
+let private MaxMemberScans = 8
 
-    let keys =
+/// <summary>
+/// An object's members as <c>JSON.parse</c> gives them: its keys in ECMAScript own-property order, and a repeated key
+/// at its first position with its last value. Key matching is ordinal.
+/// </summary>
+/// <remarks>
+/// The first <c>MaxMemberScans</c> distinct lookups scan the element; a later lookup or the first read of
+/// <c>Keys</c> indexes every member.
+/// </remarks>
+[<Sealed; AllowNullLiteral>]
+type private ObjectMembers(element: JsonElement) =
+    let mutable found: Dictionary<string, JsonElement> = null
+    // The distinct keys: in first-position order once indexed, in own-property order once Keys has been read.
+    let mutable keys: string array = null
+    let mutable ordered = false
+    let mutable seenKeys: string array = null
+    let mutable seenValues: JsonElement array = null
+    let mutable seenPresent: bool array = null
+    let mutable scans = 0
+
+    member private _.Index() =
+        let index = Dictionary<string, JsonElement>(StringComparer.Ordinal)
         let order = ResizeArray<string>()
 
         for property in element.EnumerateObject () do
             let name = property.Name
-            let prevCount = found.Count
-            found[name] <- property.Value
+            let prevCount = index.Count
+            index[name] <- property.Value
 
-            if found.Count > prevCount then
+            if index.Count > prevCount then
                 order.Add name
 
-        inPropertyOrder id (order.ToArray ())
+        keys <- order.ToArray ()
+        found <- index
 
-    member _.Keys = keys
-
-    member _.TryFind(key: string) : JsonElement voption =
+    member private _.Indexed(key: string) : JsonElement voption =
         match found.TryGetValue key with
         | true, value -> ValueSome value
         | _ -> ValueNone
+
+    member this.Keys: string array =
+        if isNull found then
+            this.Index ()
+
+        if not ordered then
+            keys <- inPropertyOrder id keys
+            ordered <- true
+
+        keys
+
+    member this.TryFind(key: string) : JsonElement voption =
+        if not (isNull found) then
+            this.Indexed key
+        elif loneSurrogate key >= 0 then
+            ValueNone
+        else
+            let mutable hit = -1
+
+            if scans > 0 then
+                let mutable i = 0
+
+                while hit < 0 && i < scans do
+                    if String.Equals (seenKeys[i], key, StringComparison.Ordinal) then
+                        hit <- i
+
+                    i <- i + 1
+
+            if hit >= 0 then
+                if seenPresent[hit] then
+                    ValueSome seenValues[hit]
+                else
+                    ValueNone
+            elif scans < MaxMemberScans then
+                if isNull seenKeys then
+                    seenKeys <- Array.zeroCreate MaxMemberScans
+                    seenValues <- Array.zeroCreate MaxMemberScans
+                    seenPresent <- Array.zeroCreate MaxMemberScans
+
+                let mutable value = Unchecked.defaultof<JsonElement>
+                let present = element.TryGetProperty (key, &value)
+                let idx = scans
+                seenKeys[idx] <- key
+                seenValues[idx] <- value
+                seenPresent[idx] <- present
+                scans <- idx + 1
+                if present then ValueSome value else ValueNone
+            else
+                this.Index ()
+                this.Indexed key
 
 /// <summary>The byte offset of the element's text from the root's, which identifies the element within its document.</summary>
 let private offsetIn (root: JsonElement) (element: JsonElement) : int64 =
@@ -484,86 +549,114 @@ let private echo (element: JsonElement) : string =
 
         capEcho buffer.Text
 
-/// <summary>
-/// The System.Text.Json decoder helpers for one decode of the document whose root is <c>root</c>. An object's members
-/// are read once, so each lookup is a hash lookup and <c>getProperties</c> gives the keys in ECMAScript own-property
-/// order; a value is echoed as <c>echo</c> gives it.
-/// </summary>
-let netDecoding (root: JsonElement) : IDecoderHelpers<JsonElement> =
-    let inner = Ranvier.Wire.Thoth.Json.System.Text.Json.Decode.helpers
-    let objects = Dictionary<int64, ObjectMembers>()
+let private netInner = Ranvier.Wire.Thoth.Json.System.Text.Json.Decode.helpers
 
-    let membersOf (value: JsonElement) =
+/// <summary>
+/// The System.Text.Json decoder helpers for one decode of the document whose root is <c>root</c>. Each object keeps
+/// one <c>ObjectMembers</c> for the decode, and <c>getProperties</c> gives the keys in ECMAScript own-property order;
+/// a value is echoed as <c>echo</c> gives it.
+/// </summary>
+[<Sealed>]
+type private NetDecoderHelpers(root: JsonElement) =
+    // The members of the object read last, at its offset; -1 before the first object.
+    let mutable lastOffset = -1L
+    let mutable lastMembers: ObjectMembers = null
+    // Every object's members by offset, from the second object read; null before it.
+    let mutable objects: Dictionary<int64, ObjectMembers> = null
+
+    member private _.MembersOf(value: JsonElement) : ObjectMembers =
         if value.ValueKind <> JsonValueKind.Object then
             raise (InvalidOperationException "Object members are read from a JSON object only.")
 
         let offset = offsetIn root value
 
-        match objects.TryGetValue offset with
-        | true, members -> members
-        | _ ->
-            let members = ObjectMembers value
-            objects[offset] <- members
+        if offset = lastOffset then
+            lastMembers
+        else
+            let members =
+                if isNull objects then
+                    if isNull lastMembers then
+                        ObjectMembers value
+                    else
+                        let created = ObjectMembers value
+                        let all = Dictionary<int64, ObjectMembers>()
+                        all[lastOffset] <- lastMembers
+                        all[offset] <- created
+                        objects <- all
+                        created
+                else
+                    match objects.TryGetValue offset with
+                    | true, known -> known
+                    | _ ->
+                        let created = ObjectMembers value
+                        objects[offset] <- created
+                        created
+
+            lastOffset <- offset
+            lastMembers <- members
             members
 
-    { new IDecoderHelpers<JsonElement> with
+    interface IDecoderHelpers<JsonElement> with
         member _.isString value =
-            inner.isString value
+            netInner.isString value
 
         member _.isNumber value =
-            inner.isNumber value
+            netInner.isNumber value
 
         member _.isBoolean value =
-            inner.isBoolean value
+            netInner.isBoolean value
 
         member _.isNullValue value =
-            inner.isNullValue value
+            netInner.isNullValue value
 
         member _.isArray value =
-            inner.isArray value
+            netInner.isArray value
 
         member _.isObject value =
-            inner.isObject value
+            netInner.isObject value
 
-        member _.hasProperty name value =
+        member this.hasProperty name value =
             value.ValueKind = JsonValueKind.Object
-            && (membersOf value).TryFind(name).IsSome
+            && (this.MembersOf value).TryFind(name).IsSome
 
         member _.isIntegralValue value =
-            inner.isIntegralValue value
+            netInner.isIntegralValue value
 
         member _.asString value =
-            inner.asString value
+            netInner.asString value
 
         member _.asFloat value =
-            inner.asFloat value
+            netInner.asFloat value
 
         member _.asFloat32 value =
-            inner.asFloat32 value
+            netInner.asFloat32 value
 
         member _.asInt value =
-            inner.asInt value
+            netInner.asInt value
 
         member _.asBoolean value =
-            inner.asBoolean value
+            netInner.asBoolean value
 
         member _.asArray value =
-            inner.asArray value
+            netInner.asArray value
 
-        member _.getProperty(name, value) =
-            match (membersOf value).TryFind name with
+        member this.getProperty(name, value) =
+            match (this.MembersOf value).TryFind name with
             | ValueSome found -> found
             | ValueNone -> raise (KeyNotFoundException ("The object has no member named " + name + "."))
 
-        member _.getProperties value =
-            (membersOf value).Keys :> string seq
+        member this.getProperties value =
+            (this.MembersOf value).Keys :> string seq
 
         member _.anyToString value =
             echo value
 
         member _.numberToString value =
-            inner.numberToString value
-    }
+            netInner.numberToString value
+
+/// <summary>The System.Text.Json decoder helpers for one decode of the document whose root is <c>root</c>.</summary>
+let netDecoding (root: JsonElement) : IDecoderHelpers<JsonElement> =
+    NetDecoderHelpers root
 
 /// <summary>A number's text, read verbatim from the document.</summary>
 let netNumberText (value: JsonElement) : string option =

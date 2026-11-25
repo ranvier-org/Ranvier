@@ -28,7 +28,11 @@ exception Boom of int
 exception Abandoned
 
 let privateField (o: obj) (name: string) =
-    o.GetType().GetField(name, BindingFlags.Instance ||| BindingFlags.NonPublic).GetValue o
+    match o.GetType().GetField(name, BindingFlags.Instance ||| BindingFlags.NonPublic) with
+    | null -> // A memo's or effect's reactive state lives on its `node` record, as properties named like the old fields.
+        let node = o.GetType().GetField("node", BindingFlags.Instance ||| BindingFlags.NonPublic).GetValue o
+        node.GetType().GetProperty(name, BindingFlags.Instance ||| BindingFlags.NonPublic ||| BindingFlags.IgnoreCase).GetValue node
+    | field -> field.GetValue o
 
 let internalProp (o: obj) (name: string) =
     o

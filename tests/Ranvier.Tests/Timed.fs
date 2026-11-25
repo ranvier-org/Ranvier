@@ -845,6 +845,89 @@ let debounceTests =
                 input.Value <- 7
                 Expect.equal output.Value 7 "pass-through"
                 Expect.equal clock.TimerCount 0 "no timer"
+            testCase "a timer factory that advances the clock past the window admits in the same flush"
+            <| fun _ ->
+                use graph = new Graph ()
+                use _active = graph.Activate ()
+                let mutable now = 0.
+                let mutable arms = 0
+
+                let advancingClock =
+                    { new TimedClock() with
+                        override _.NowMilliseconds = now
+
+                        override _.CreateTimer _ =
+                            now <- 11.
+
+                            { new TimedTimer() with
+                                member _.Arm _ =
+                                    arms <- arms + 1
+
+                                member _.Disarm() = ()
+                                member _.Dispose() = ()
+                            }
+                    }
+
+                let input = createSignal 1
+
+                let output =
+                    debounceWith
+                        {
+                            Clock = advancingClock
+                            Comparer = None
+                        }
+                        (TimeSpan.FromMilliseconds 10.)
+                        (fun () -> input.Value)
+                        graph
+
+                Expect.equal output.Value 1 "initial ready value"
+                input.Value <- 2
+                Expect.equal output.Value 2 "deadline elapsed during CreateTimer admitted immediately"
+                Expect.equal arms 0 "timer was not armed after window already expired"
+            testCase "positive delay holds publication at clock origin 2^53"
+            <| fun _ ->
+                use graph = new Graph ()
+                use _active = graph.Activate ()
+                let origin = 9007199254740992.
+                let mutable now = origin
+                let mutable lastDelay = -1.
+                let mutable fire: Action = null
+
+                let highOriginClock =
+                    { new TimedClock() with
+                        override _.NowMilliseconds = now
+
+                        override _.CreateTimer cb =
+                            fire <- cb
+
+                            { new TimedTimer() with
+                                member _.Arm d =
+                                    lastDelay <- d.TotalMilliseconds
+
+                                member _.Disarm() = ()
+                                member _.Dispose() = ()
+                            }
+                    }
+
+                let input = createSignal 1
+
+                let output =
+                    debounceWith
+                        {
+                            Clock = highOriginClock
+                            Comparer = None
+                        }
+                        (TimeSpan.FromMilliseconds 1.)
+                        (fun () -> input.Value)
+                        graph
+
+                Expect.equal output.Value 1 "initial ready value"
+                input.Value <- 2
+                Expect.equal output.Value 1 "value held at t = 2^53"
+                Expect.equal lastDelay 1. "armed for full 1 ms delay without float rounding to zero"
+                now <- origin + 2.
+                fire.Invoke ()
+                Expect.equal output.Value 2 "published once elapsed time exceeds 1 ms"
         ]
 
 [<Tests>]

@@ -2150,6 +2150,22 @@ let sortKeyOrderTests =
                     $"a sort pass over %d{rowCount} rows allocated %d{sorted} bytes, a filter pass %d{filtered}"
             }
 #endif
+
+            test "mutating a returned Keys array cannot corrupt a subsequent single-row rank move" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let source = createSignal [ 1, 10; 2, 20; 3, 30 ]
+
+                let view =
+                    createProjection fst snd (fun () -> source.Value)
+                    |> Projection.sortBy id
+
+                let keys0 = view.Keys
+                Expect.sequenceEqual keys0 [| 1; 2; 3 |] "initial sorted keys"
+                keys0[2] <- 99
+                source.Value <- [ 1, 25; 2, 20; 3, 30 ]
+                Expect.sequenceEqual view.Keys [| 2; 1; 3 |] "caller mutation of previous Keys array did not leak into sort move"
+            }
         ]
 
 [<Tests>]

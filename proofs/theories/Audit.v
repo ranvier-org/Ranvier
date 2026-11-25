@@ -1,6 +1,6 @@
 From Ranvier.Base Require Import Prelude.
 From Ranvier.Reference Require Import Properties.
-From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections Concurrency Extensions Deltas.
+From Ranvier.Pure Require Import ObserverSet SourceList Witnesses State Edges Marking Check Runs Scheduler Ownership WholeGraph Refinement Optimised Ledger Collections Concurrency Extensions Deltas FastPaths.
 From Ranvier.Conformance Require Check.
 From Ranvier.Heap Require ObserverSet SourceList Ghost Marking Run Scheduler Ownership Adequacy Collections Concurrency Extensions Deltas.
 From Ranvier Require Extract.
@@ -519,3 +519,35 @@ Print Assumptions reactive_command_inline_exec_and_lazy_notify_eq.
 Print Assumptions any_pending_loop_and_unsubscribed_publish_eq.
 Print Assumptions wire_surrogate_prefix_skip_and_char_scalar_eq.
 Print Assumptions wire_property_order_member_dedup_and_decimal_scan_eq.
+Print Assumptions post_selector_liveness_guard.
+Print Assumptions direct_collection_row_fold_eq.
+Print Assumptions flushing_implies_no_flush_owed.
+Print Assumptions deferring_with_flushing_eq.
+Print Assumptions disposed_empty_sources.
+Print Assumptions track_slot0_fast_eq.
+Print Assumptions track_slot1_fast_eq.
+Print Assumptions leaf_clean_memo_mark_dirty_eq.
+Print Assumptions notify_moved_single_check_memo_eq.
+Print Assumptions iterative_mark_check_chain_eq.
+Print Assumptions iterative_chain_refresh_eq.
+Print Assumptions fused_single_signal_effect_eq.
+Print Assumptions fused_single_memo_effect_flush_eq.
+Print Assumptions memo_published_ready_cutoff_eq.
+Print Assumptions edge_handle_tag_lossless.
+Print Assumptions observer_slot_tag_lossless.
+Print Assumptions tagged_swap_remove_preserves_edge_match.
+Print Assumptions packed_node_flags_bijection.
+Print Assumptions packed_guard_refines_unpacked.
+Print Assumptions leaf_memo_no_cutoff_eq.
+Print Assumptions custom_comparer_fused_flush_eq.
+Print Assumptions ambient_lazy_epoch_trace_eq.
+Print Assumptions try_promote_top_effect_eq.
+Print Assumptions chain_direct_moved_step_eq.
+Print Assumptions deferring_pull_refines_enter_pull.
+Print Assumptions timed_capture_now_reuse_no_immediate_fire.
+Print Assumptions stamp_version_eq_equivalence.
+Print Assumptions timed_wake_volatile_reset_no_lost_wakeup.
+Print Assumptions clean_ready_row_peek_refines_untracked_read.
+Print Assumptions certified_strict_order_skips_sort.
+Print Assumptions idle_first_run_effect_fusion_eq.
+Print Assumptions certified_reverse_order_reverses_to_sorted.
