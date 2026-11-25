@@ -402,17 +402,3 @@ Allocations and library counters identical in every run.
 | Engine | instr/op main | instr/op all | cycles/op main | cycles/op all | br-miss/op main | br-miss/op all | bytes/op | bytes range | heapUsed/op | objects/op | counters/op |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | Ranvier cdef427 | -7,997.66 (-10,754.99..-7,248.94) | -7,997.66 (-10,754.99..-7,248.94) | -58,093.81 (-62,725.93..-36,768.61) | -58,093.81 (-62,725.93..-36,768.61) | -833.72 (-883.42..-828.59) | -833.72 (-883.42..-828.59) | 6,491.09 | 0 | 6,429.23 (6,428.96..6,429.23) | 0 | EdgesAdded 20, EdgesRemoved 20, ObserverInserts 20, ObserverRemoves 20, EffectRuns 4, Flushes 4 |
-
-
-# Appendix: instructions per operation
-
-The instr/op medians from the tables above; Node.js bars are main-thread figures. Each panel has its own scale.
-
-## .NET
-
-![.NET instructions per operation](cdef427-dotnet.svg)
-
-## Fable under Node.js
-
-![Node.js instructions per operation](cdef427-node.svg)
-
