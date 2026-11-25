@@ -4867,6 +4867,15 @@ type Graph(options: GraphOptions) =
         queueCount <- queueCount + 1
 #endif
 
+#if FABLE_COMPILER && !RANVIER_TRACE
+    member inline internal _.Schedule(item: IScheduled) =
+        if queueCount < queue.Count then
+            Platform.setEntryAt queueCount queue item
+        else
+            queue.Add item
+
+        queueCount <- queueCount + 1
+#else
     member internal this.Schedule(item: IScheduled) =
         Tracer.Schedule (this, item, queueCount - queueHead + passCount - passHead)
 
@@ -4882,6 +4891,7 @@ type Graph(options: GraphOptions) =
         queueSlots[queueCount] <- QueueSlot (item, Unchecked.defaultof<Node>)
 #endif
         queueCount <- queueCount + 1
+#endif
 
     /// <summary>Queues a projection pass or a lookup refresh. A flush runs it before the next item <c>Schedule</c> queued.</summary>
     member internal this.SchedulePass(item: IScheduled) =
@@ -5116,7 +5126,22 @@ type Graph(options: GraphOptions) =
 #endif
             flushingThread <- 1
             flushOwed <- false
-            this.DrainQueue (this.EnterAmbient ())
+            let previousAmbient = this.EnterAmbient ()
+
+            try
+                if passCount <> 0 then
+                    this.RunPasses ()
+
+                while queueHead < queueCount do
+                    let item = Platform.entryAt queueHead queue
+                    Platform.releaseSlot queue queueHead
+                    queueHead <- queueHead + 1
+                    item.Execute ()
+
+                queueHead <- 0
+                queueCount <- 0
+            finally
+                this.CloseFlush previousAmbient
 
     /// <summary>
     /// Runs the queued passes and items of an open flush, then closes it. An exception closes the flush and leaves the
@@ -6042,17 +6067,28 @@ type Graph(options: GraphOptions) =
 #endif
 
 #if FABLE_COMPILER && !RANVIER_TRACE
-    member internal this.NotifyMovedList(observers: ObserverList) =
-        if
-            not (Platform.isNull observers)
-            && observers.Count <> 0
-        then
-            let c = this.CurrentObserver
+    member inline internal this.NotifyMovedList(observers: ObserverList) =
+        if not (Platform.isNull observers) then
+            let count = observers.Count
 
-            if staleTransitions = 0 then
-                observers.NotifyDirtyOther c
-            else
-                observers.NotifyDirtyExcept c
+            if count = 1 then
+                let refObj = observers.FirstRef
+                let c = this.CurrentObserver
+
+                if not (obj.ReferenceEquals (refObj, box c)) then
+                    NodeOps.MarkDirtyOf (refObj, observers.FirstSlot)
+                elif
+                    staleTransitions <> 0
+                    && NodeOps.HasReadSlotOf (refObj, observers.FirstSlot)
+                then
+                    NodeOps.MarkDirtyOf (refObj, observers.FirstSlot)
+            elif count > 1 then
+                let c = this.CurrentObserver
+
+                if staleTransitions = 0 then
+                    observers.NotifyDirtyOther c
+                else
+                    observers.NotifyDirtyExcept c
 #endif
 
     /// <summary>
@@ -9008,10 +9044,16 @@ and [<AbstractClass; Sealed>] internal NodeOps =
                 n.Flags <- f'
 
     /// <summary>Tells a memo's observers <c>Check</c>; no call when it has none.</summary>
+#if FABLE_COMPILER
+    static member inline NotifyCheck(n: MemoNode) =
+        if n.ObserverCount <> 0 then
+            NodeOps.NotifyCheckSpine n
+#else
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member NotifyCheck(n: MemoNode) =
         if n.ObserverCount <> 0 then
             NodeOps.NotifyCheckSpine n
+#endif
 
     /// <summary>Iterative single-memo <c>MarkCheck</c> spine walk (Theorem B3).</summary>
     static member NotifyCheckSpine(n: MemoNode) =
@@ -9019,8 +9061,10 @@ and [<AbstractClass; Sealed>] internal NodeOps =
         let mutable walking = true
 
         while walking do
+            let count = cur.ObserverCount
+
             if
-                cur.ObserverCount = 1
+                count = 1
                 && EdgeHandle.isNodeSlot cur.Observers.FirstSlot
             then
                 let next = Platform.fastCast<Node> cur.Observers.FirstRef
@@ -9033,7 +9077,7 @@ and [<AbstractClass; Sealed>] internal NodeOps =
                 else
                     NodeOps.MarkCheck next
                     walking <- false
-            elif cur.ObserverCount <> 0 then
+            elif count <> 0 then
                 cur.Observers.NotifyCheck ()
                 walking <- false
             else
@@ -9057,6 +9101,25 @@ and [<AbstractClass; Sealed>] internal NodeOps =
         else
             NodeOps.EffectMarkDirty n
 
+#if FABLE_COMPILER
+    static member inline MarkCheck(n: Node) =
+        if (n.Flags &&& NodeFlags.KindMask) = NodeFlags.KindMemo then
+            NodeOps.MemoMarkCheck (Platform.fastCast<MemoNode> n)
+        else
+            NodeOps.EffectMarkCheck n
+
+    static member inline MarkDirtyOf(refObj: obj, slot: int) =
+        if EdgeHandle.isNodeSlot slot then
+            NodeOps.MarkDirty (Platform.fastCast<Node> refObj)
+        else
+            (Platform.fastCast<IComputation> refObj).MarkDirty()
+
+    static member inline MarkCheckOf(refObj: obj, slot: int) =
+        if EdgeHandle.isNodeSlot slot then
+            NodeOps.MarkCheck (Platform.fastCast<Node> refObj)
+        else
+            (Platform.fastCast<IComputation> refObj).MarkCheck()
+#else
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member MarkCheck(n: Node) =
         if (n.Flags &&& NodeFlags.KindMask) = NodeFlags.KindMemo then
@@ -9077,6 +9140,7 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             NodeOps.MarkCheck (Platform.fastCast<Node> refObj)
         else
             (Platform.fastCast<IComputation> refObj).MarkCheck()
+#endif
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member HasReadSlotOf(refObj: obj, slot: int) =

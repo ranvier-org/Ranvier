@@ -5,20 +5,34 @@ open System.Threading
 open System.Threading.Tasks
 
 /// <summary>The accumulator behind a <c>StreamSink</c>.</summary>
+#if FABLE_COMPILER
+type internal StreamInlet<'T> =
+    abstract Deliver: item: 'T -> unit
+#else
 [<AbstractClass>]
 type internal StreamInlet<'T>() =
     abstract Deliver: item: 'T -> unit
+#endif
 
 /// <summary>The receiver of a running stream's items.</summary>
 [<Sealed>]
 type StreamSink<'T> internal (inlet: StreamInlet<'T>) =
     internal new(deliver: 'T -> unit) =
+#if FABLE_COMPILER
+        StreamSink<'T>(
+            { new StreamInlet<'T> with
+                member _.Deliver item =
+                    deliver item
+            }
+        )
+#else
         StreamSink<'T>(
             { new StreamInlet<'T>() with
                 member _.Deliver item =
                     deliver item
             }
         )
+#endif
 
     /// <summary>Folds <c>item</c> into the stream's state. Callable from any thread. Calls from other threads may overlap each other; a call on the graph thread must not overlap any other call.</summary>
     member _.Next(item: 'T) =
@@ -48,6 +62,8 @@ type internal IStreamRequester =
 type internal IStreamRun<'S> =
     /// <summary>Captures the state as <c>Captured</c>; returns the number of items folded since the previous snapshot.</summary>
     abstract Snapshot: unit -> int
+    /// <summary>Clears the graph-thread queue flag and captures <c>state</c> when an item has been folded; returns folded count.</summary>
+    abstract SnapshotIfReceived: unit -> int
     /// <summary>Clears the cached graph-thread queue flag when the owning <c>StreamMemo</c> dequeues.</summary>
     abstract OnDequeued: unit -> unit
     /// <summary>The state captured by the latest <c>Snapshot</c>.</summary>
@@ -90,7 +106,9 @@ module internal FoldFn =
 [<Sealed>]
 type internal StreamRun<'S, 'T>
     (graph: Graph, seed: 'S, fold: FoldDelegate<'S, 'T>, requester: IStreamRequester, gen: int, source: StreamSource<'T>, token: CancellationToken) =
+#if !FABLE_COMPILER
     inherit StreamInlet<'T>()
+#endif
     let mutable state = seed
     let mutable captured = seed
     let mutable folded = 0
@@ -129,33 +147,9 @@ type internal StreamRun<'S, 'T>
             requester.RequestOffGraph ()
         elif outcome = 2 then
             requester.ReportFoldFailure (gen, foldError)
-#endif
 
     /// <summary>Folds <c>item</c> and requests a publication; a throwing fold closes the run and reports the exception.</summary>
     override this.Deliver(item: 'T) =
-#if FABLE_COMPILER
-        if not closed then
-            let mutable raised: exn = Platform.nil ()
-
-            try
-                state <- FoldFn.invoke fold state item
-                folded <- folded + 1
-                received <- true
-            with error ->
-                closed <- true
-                raised <- error
-
-            if Platform.isNull raised then
-                if
-                    not (
-                        onGraphQueued
-                        && (graph.BatchDepth > 0 || graph.IsFlushing)
-                    )
-                then
-                    onGraphQueued <- requester.RequestOnGraph ()
-            else
-                requester.ReportFoldFailure (gen, raised)
-#else
         // The graph thread folds without the lock; this depends on StreamSink.Next calls never overlapping.
         if graph.IsOnGraphThread then
             if not closed then
@@ -181,6 +175,31 @@ type internal StreamRun<'S, 'T>
                     requester.ReportFoldFailure (gen, raised)
         else
             this.DeliverOffGraph item
+#else
+    interface StreamInlet<'T> with
+        /// <summary>Folds <c>item</c> and requests a publication; a throwing fold closes the run and reports the exception.</summary>
+        member _.Deliver(item: 'T) =
+            if not closed then
+                let mutable raised: exn = Platform.nil ()
+
+                try
+                    state <- FoldFn.invoke fold state item
+                    folded <- folded + 1
+                    received <- true
+                with error ->
+                    closed <- true
+                    raised <- error
+
+                if Platform.isNull raised then
+                    if
+                        not (
+                            onGraphQueued
+                            && (graph.BatchDepth > 0 || graph.IsFlushing)
+                        )
+                    then
+                        onGraphQueued <- requester.RequestOnGraph ()
+                else
+                    requester.ReportFoldFailure (gen, raised)
 #endif
 
     interface IStreamRun<'S> with
@@ -199,6 +218,31 @@ type internal StreamRun<'S, 'T>
                 folded <- 0
                 captured <- state
                 count
+            finally
+                System.Threading.Monitor.Exit this
+#endif
+
+        member this.SnapshotIfReceived() =
+            onGraphQueued <- false
+#if FABLE_COMPILER
+            if not received then
+                0
+            else
+                let count = folded
+                folded <- 0
+                captured <- state
+                count
+#else
+            System.Threading.Monitor.Enter this
+
+            try
+                if not received then
+                    0
+                else
+                    let count = folded
+                    folded <- 0
+                    captured <- state
+                    count
             finally
                 System.Threading.Monitor.Exit this
 #endif
@@ -305,7 +349,19 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
 #if !FABLE_COMPILER
     let mutable wakePosted = 0
     let mutable wakeAction: unit -> unit = Unchecked.defaultof<_>
+#endif
 
+    member private this.Attach() =
+        let owner = graph.CurrentOwner
+        link <- owner.AttachLinked this
+        Tracer.StreamNew (graph, id, owner)
+
+    member inline private this.Enqueue() =
+        if not queued then
+            queued <- true
+            graph.Schedule (this :> IScheduled)
+
+#if !FABLE_COMPILER
     member private this.Wake() =
         Volatile.Write (&wakePosted, 0)
 
@@ -314,17 +370,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
             graph.RequestFlushFromEntered ()
 #endif
 
-    member private this.Attach() =
-        let owner = graph.CurrentOwner
-        link <- owner.AttachLinked this
-        Tracer.StreamNew (graph, id, owner)
-
-    member private this.Enqueue() =
-        if not queued then
-            queued <- true
-            graph.Schedule (this :> IScheduled)
-
-    member private this.RequestOnGraph() : bool =
+    member inline private this.RequestOnGraph() : bool =
         if not launching && not disposed then
             this.Enqueue ()
 
@@ -364,7 +410,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
             graph.PostQueued (fun () -> this.FoldFailed (gen, error))
 #endif
 
-    member private _.NotifyObserversDirty() =
+    member inline private _.NotifyObserversDirty() =
 #if FABLE_COMPILER && !RANVIER_TRACE
         if not (Platform.isNull observers) then
             observers.NotifyDirty ()
@@ -372,7 +418,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         observers.NotifyDirty ()
 #endif
 
-    member private _.NotifyObserversCheck() =
+    member inline private _.NotifyObserversCheck() =
 #if FABLE_COMPILER && !RANVIER_TRACE
         if not (Platform.isNull observers) then
             observers.NotifyCheck ()
@@ -380,7 +426,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         observers.NotifyCheck ()
 #endif
 
-    member private _.Notify() =
+    member inline private _.Notify() =
 #if !FABLE_COMPILER && !RANVIER_TRACE
         graph.NotifyMovedList &observers
 #else
@@ -393,7 +439,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         Tracer.Notified graph
         graph.RequestFlush ()
 
-    member private _.NotifyInFlush() =
+    member inline private _.NotifyInFlush() =
 #if !FABLE_COMPILER && !RANVIER_TRACE
         graph.NotifyMovedList &observers
 #else
@@ -451,6 +497,22 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
                     this.Notify ()
                 elif notice = StreamNotice.InFlush then
                     this.NotifyInFlush ()
+        with error ->
+            this.Fail error
+
+    member inline private this.PublishInFlush(state: 'S, count: int) =
+        try
+            let moved =
+                status <> Status.None
+                || not (ComparerSentinel.equals equal value state)
+
+            value <- state
+            status <- Status.None
+            failure <- Platform.nil ()
+            Tracer.StreamPublished (graph, id, int (byte status), count, box state)
+
+            if moved then
+                this.NotifyInFlush ()
         with error ->
             this.Fail error
 
@@ -754,7 +816,12 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
 #endif
 
         member this.UpdateIfNecessary() =
+#if FABLE_COMPILER
+            if freshness <> Freshness.Clean && not disposed then
+                this.EnsureCurrent ()
+#else
             this.EnsureCurrent ()
+#endif
 
         member _.IsStale = freshness <> Freshness.Clean && not disposed
 
@@ -793,9 +860,6 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         member this.Execute() =
             queued <- false
 
-            if not (Platform.isNull (box run)) then
-                run.OnDequeued ()
-
             if not disposed && running then
                 if freshness = Freshness.Check then
                     if graph.Deferring then
@@ -813,12 +877,15 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
                     freshness = Freshness.Clean
                     && running
                     && not disposed
-                    && run.Received
                 then
-                    let count = run.Snapshot ()
+                    let count = run.SnapshotIfReceived ()
 
                     if count > 0 then
-                        this.Publish (run.Captured, count, StreamNotice.InFlush)
+                        this.PublishInFlush (run.Captured, count)
+                elif not (Platform.isNull (box run)) then
+                    run.OnDequeued ()
+            elif not (Platform.isNull (box run)) then
+                run.OnDequeued ()
 
     interface IStreamRequester with
         member this.RequestOnGraph() =
