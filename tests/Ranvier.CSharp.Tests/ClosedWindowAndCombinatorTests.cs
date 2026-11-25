@@ -669,13 +669,56 @@ public class ClosedWindowAndCombinatorTests
         Assert.Throws<NullReferenceException>(() => _ = nullInner3.Value);
         Assert.Throws<NullReferenceException>(() => _ = nullMemoInner3.Value);
 
-        // Cross-graph inner Memo returned at evaluation fails with InvalidOperationException without leaking onto foreign graph.
+        // Cross-graph inner Memo returned at evaluation fails with InvalidOperationException without leaking onto or mutating foreign graph.
         using var foreignGraph = new Graph();
-        var foreignMemo = new Signal<int>(foreignGraph, 99).Select(x => x);
+        var foreignSig = new Signal<int>(foreignGraph, 99);
+        var foreignMemo = foreignSig.Select(x => x);
+#if RANVIER_TRACE
+        var foreignEventsBefore = Tracing.Events(foreignGraph).Length;
+#endif
+        var crossSig2 = useFirst.SelectMany(_ => foreignMemo);
         var crossSig3 = useFirst.SelectMany(_ => foreignMemo, (_, v) => v);
         var crossMemo3 = first.SelectMany(_ => foreignMemo, (_, v) => v);
-        Assert.Throws<InvalidOperationException>(() => _ = crossSig3.Value);
-        Assert.Throws<InvalidOperationException>(() => _ = crossMemo3.Value);
+        var expectedCrossGraphMsg = Assert.Throws<InvalidOperationException>(() => _ = crossSig2.Value).Message;
+        Assert.Equal(expectedCrossGraphMsg, Assert.Throws<InvalidOperationException>(() => _ = crossSig3.Value).Message);
+        Assert.Equal(expectedCrossGraphMsg, Assert.Throws<InvalidOperationException>(() => _ = crossMemo3.Value).Message);
+#if RANVIER_TRACE
+        Assert.Equal(foreignEventsBefore, Tracing.Events(foreignGraph).Length);
+#endif
+        // foreignMemo stays unmutated, readable, and still eligible to fuse on its own graph.
+        var foreignDownstream = foreignMemo.Select(x => x + 1);
+        Assert.Equal(99, foreignMemo.Value);
+        Assert.Equal(100, foreignDownstream.Value);
+        foreignSig.Value = 41;
+        Assert.Equal(42, foreignDownstream.Value);
+
+        // Guarded foreign graph owned by another thread still fails with crossGraphBind rather than off-thread creation error.
+        using var bgReady = new ManualResetEventSlim();
+        using var bgRelease = new ManualResetEventSlim();
+        Memo<int>? bgMemo = null;
+        var ct = TestContext.Current.CancellationToken;
+        var bgThread = new Thread(() =>
+        {
+            using var bgGraph = new Graph();
+            bgMemo = new Signal<int>(bgGraph, 7).Select(x => x * 2);
+            bgReady.Set();
+            bgRelease.Wait(ct);
+        });
+        bgThread.Start();
+        bgReady.Wait(ct);
+
+        try
+        {
+            var crossBgSig3 = useFirst.SelectMany(_ => bgMemo!, (_, v) => v);
+            var crossBgMemo3 = first.SelectMany(_ => bgMemo!, (_, v) => v);
+            Assert.Equal(expectedCrossGraphMsg, Assert.Throws<InvalidOperationException>(() => _ = crossBgSig3.Value).Message);
+            Assert.Equal(expectedCrossGraphMsg, Assert.Throws<InvalidOperationException>(() => _ = crossBgMemo3.Value).Message);
+        }
+        finally
+        {
+            bgRelease.Set();
+            bgThread.Join();
+        }
     }
 
     [Fact]

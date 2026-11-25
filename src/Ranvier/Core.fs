@@ -25287,3 +25287,11 @@ module internal CombinatorMemos =
                 state.Bind memo.Node
                 memo
         )
+
+    let ensureSameSignalMemoGraph (outer: Signal<'T>) (inner: Memo<'U>) : unit =
+        if not (obj.ReferenceEquals (outer.Graph, inner.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphBind)
+
+    let ensureSameMemoGraph (outer: Memo<'T>) (inner: Memo<'U>) : unit =
+        if not (obj.ReferenceEquals (outer.Graph, inner.Graph)) then
+            raise (InvalidOperationException UntrackedPhase.crossGraphBind)

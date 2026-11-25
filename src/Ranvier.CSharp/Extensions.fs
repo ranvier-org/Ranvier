@@ -190,7 +190,7 @@ type ProjectionExtensions =
 /// signals, memos, async values, and streams.
 /// </summary>
 /// <remarks>
-/// Each operator resolves <c>source.Graph</c> directly and attaches to the enclosing scope on that graph's thread.
+/// Each operator resolves the source node's graph directly and attaches to the enclosing scope on that graph's thread.
 /// Dependency tracking is closed inside mapping and projection callbacks.
 /// </remarks>
 [<Extension; AbstractClass; Sealed>]
@@ -512,6 +512,7 @@ type RanvierExtensions =
                 if isNull (box inner) then
                     Unchecked.defaultof<Memo<'R>>
                 else
+                    CombinatorMemos.ensureSameSignalMemoGraph source inner
                     Memo.map (fun y -> resultSelector.Invoke (x, y)) inner)
             source
 
@@ -561,6 +562,7 @@ type RanvierExtensions =
                 if isNull (box inner) then
                     Unchecked.defaultof<Memo<'R>>
                 else
+                    CombinatorMemos.ensureSameMemoGraph source inner
                     Memo.map (fun y -> resultSelector.Invoke (x, y)) inner)
             source
 
