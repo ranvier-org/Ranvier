@@ -1160,6 +1160,59 @@ let tests =
                     Expect.equal k4Payload (if expectEqualOnRun2 then 16 else 26) "k4 payload committed"
                     s5.Value <- 40
                     Expect.equal k5.Value 405 "5-stage Run 3 = 405 (not wedged)"
+
+                // Verify stage-4 (prevMemo) custom comparer on 5-stage and 6-stage FusedChainMap when eqPrev de-fuses, mutates s, and reads k4.Value
+                for stageCount in [ 5; 6 ] do
+                    let sMut = createSignal 10
+                    let armMut = ref false
+                    let mutable readK1Mut: unit -> int = fun () -> -1
+
+                    let mutable readK4Mut: unit -> DeFuseCompareVal =
+                        fun () -> DeFuseCompareVal (-1, -1, ignore)
+
+                    let seenK4InEq = ResizeArray<int * int>()
+
+                    let cbMut () =
+                        if armMut.Value then
+                            armMut.Value <- false
+                            readK1Mut () |> ignore
+                            sMut.Value <- 99
+                            let (DeFuseCompareVal (k, p, _)) = readK4Mut ()
+                            seenK4InEq.Add (k, p)
+
+                    let k1m = Signal.map ((+) 0) sMut
+                    let k2m = Memo.map ((+) 0) k1m
+                    let k3m = Memo.map ((+) 0) k2m
+                    let k4m = Memo.map (fun x -> DeFuseCompareVal (x / 10, x, cbMut)) k3m
+                    let k5m = Memo.map (fun (DeFuseCompareVal (k, _, _)) -> k * 100 + 5) k4m
+                    let k6m = if stageCount = 6 then Some (Memo.map ((+) 1) k5m) else None
+                    readK1Mut <- fun () -> k1m.Value
+                    readK4Mut <- fun () -> k4m.Value
+
+                    match k6m with
+                    | None -> Expect.equal k5m.Value 105 "5-stage mut Run 1 = 105"
+                    | Some m6 -> Expect.equal m6.Value 106 "6-stage mut Run 1 = 106"
+
+                    armMut.Value <- true
+                    sMut.Value <- 16
+
+#if !RANVIER_TRACE
+                    match k6m with
+                    | None -> Expect.equal k5m.Value 105 "5-stage mut Run 2 returns pre-flush cutoff 105"
+                    | Some m6 -> Expect.equal m6.Value 106 "6-stage mut Run 2 returns pre-flush cutoff 106"
+#else
+                    match k6m with
+                    | None -> Expect.equal k5m.Value 905 "unfused 5-stage Check chain resolves s = 99 via ResolveCheckAgain"
+                    | Some m6 -> Expect.equal m6.Value 906 "unfused 6-stage Check chain resolves s = 99 via ResolveCheckAgain"
+#endif
+
+                    Expect.sequenceEqual seenK4InEq [ (1, 10) ] "k4.Value inside eqPrev saw pre-compare (1, 10) via ActiveBody"
+                    let (DeFuseCompareVal (postK, postP, _)) = k4m.Value
+                    Expect.equal (postK, postP) (9, 99) "post-run k4 reflects mutated s = 99 (not overwritten with stale vPrev 16)"
+
+                    match k6m with
+                    | None -> Expect.equal k5m.Value 905 "post-run k5 reflects mutated s = 99"
+                    | Some m6 -> Expect.equal m6.Value 906 "post-run k6 reflects mutated s = 99"
             }
 
             test "EvalSignalLeaf returns pre-flush snapshot when woken effect mutates root signal during owed flush" {
@@ -1220,6 +1273,79 @@ let tests =
                 Expect.sequenceEqual effSeen [ 115; 215; 1005 ] "effect saw 215 then updated tail to 1005"
                 Expect.equal tail.Value 1005 "subsequent read observes post-flush 1005"
                 eff.Dispose ()
+            }
+
+            test "EvalSignalLeaf custom output comparer defers woken effects and preserves pre-flush snapshot" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Equality = StructuralPolicy ()
+                        }
+                    )
+
+                use _ = g.Activate ()
+
+                for stages in 1..4 do
+                    let s = createSignal 15
+                    let side = createSignal 0
+                    let arm = ref false
+                    let events = ResizeArray<string>()
+                    let effPayloads = ResizeArray<int>()
+                    let mutable tailRef: Memo<DeFuseCompareVal> = Unchecked.defaultof<_>
+
+                    let eff =
+                        new Effect (
+                            g,
+                            fun () ->
+                                if side.Value > 0 then
+                                    events.Add "eff-start"
+                                    let (DeFuseCompareVal (_, pBefore, _)) = g.Untrack (fun () -> tailRef.Value)
+                                    effPayloads.Add pBefore
+                                    s.Value <- 99
+                                    let (DeFuseCompareVal (_, pAfter, _)) = g.Untrack (fun () -> tailRef.Value)
+                                    effPayloads.Add pAfter
+                        )
+
+                    let cb () =
+                        if arm.Value then
+                            arm.Value <- false
+                            events.Add "cmp-start"
+                            side.Value <- 1
+                            s.Value <- 85
+                            events.Add "cmp-end"
+
+                    let tail =
+                        if stages = 1 then
+                            Signal.map (fun x -> DeFuseCompareVal (x / 10, x, cb)) s
+                        elif stages = 2 then
+                            s
+                            |> Signal.map ((+) 0)
+                            |> Memo.map (fun x -> DeFuseCompareVal (x / 10, x, cb))
+                        elif stages = 3 then
+                            s
+                            |> Signal.map ((+) 0)
+                            |> Memo.map ((+) 0)
+                            |> Memo.map (fun x -> DeFuseCompareVal (x / 10, x, cb))
+                        else
+                            s
+                            |> Signal.map ((+) 0)
+                            |> Memo.map ((+) 0)
+                            |> Memo.map ((+) 0)
+                            |> Memo.map (fun x -> DeFuseCompareVal (x / 10, x, cb))
+
+                    tailRef <- tail
+                    let (DeFuseCompareVal (k1, p1, _)) = tail.Value
+                    Expect.equal (k1, p1) (1, 15) "Run 1 warms custom-eq leaf chain"
+
+                    arm.Value <- true
+                    s.Value <- 25
+                    let (DeFuseCompareVal (k2, p2, _)) = tail.Value
+                    Expect.equal (k2, p2) (2, 25) "outer tail.Value returns pre-flush snapshot (2, 25)"
+                    Expect.sequenceEqual events [ "cmp-start"; "cmp-end"; "eff-start" ] "woken effect deferred until after custom comparer finished"
+                    Expect.sequenceEqual effPayloads [ 85; 99 ] "woken effect refreshed dirty tail to 85 then 99 after comparer committed"
+                    let (DeFuseCompareVal (k3, p3, _)) = tail.Value
+                    Expect.equal (k3, p3) (9, 99) "subsequent read observes post-flush (9, 99)"
+                    eff.Dispose ()
             }
 
 #if RANVIER_TRACE

@@ -7230,6 +7230,7 @@ type Graph(options: GraphOptions) =
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member internal _.EnterUntrackedPureTop(host: IScopeHost) =
         ownerAmbient.EnterFrame ()
+        pullDepth <- 1
         ownerPending <- true
         untrackedHost <- host
         untrackedInBody <- true
@@ -7239,75 +7240,6 @@ type Graph(options: GraphOptions) =
         ownerPending <- false
         untrackedHost <- Platform.nil ()
         untrackedInBody <- false
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal _.ConvertLeafPureTopToPullDirect() =
-        ownerPending <- false
-        untrackedHost <- Platform.nil ()
-        untrackedInBody <- false
-        pullDepth <- 1
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal this.LeaveLeafPureAmbient() =
-        let depth = ownerAmbient.LeaveFrame ()
-
-        if
-            flushOwed
-            || disposed
-            || not (Platform.isNull lastRaised)
-            || staleTransitions <> 0
-        then
-            this.ExitLeafPureSlow depth
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
-    member internal this.LeaveUntrackedPureTop() =
-        this.CloseLeafPureBody ()
-        this.LeaveLeafPureAmbient ()
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member internal this.LeaveLeafPureAmbientFailed() =
-        let depth = ownerAmbient.LeaveFrame ()
-
-        if
-            depth = 0
-            && disposed
-            && obj.ReferenceEquals (ownerAmbient.Hosting, this)
-        then
-            ownerAmbient.Hosting <- null
-
-        if not (Platform.isNull lastRaised) then
-            lastRaised <- null
-
-        if staleTransitions <> 0 && flushingThread = 0 then
-            staleTransitions <- 0
-            activeSkips <- 0
-
-        if flushOwed then
-            this.SettleFlush ()
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member internal this.LeaveUntrackedPureTopFailed() =
-        this.CloseLeafPureBody ()
-        this.LeaveLeafPureAmbientFailed ()
-
-    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
-    member private this.ExitLeafPureSlow(depth: int) =
-        if
-            depth = 0
-            && disposed
-            && obj.ReferenceEquals (ownerAmbient.Hosting, this)
-        then
-            ownerAmbient.Hosting <- null
-
-        if not (Platform.isNull lastRaised) then
-            lastRaised <- null
-
-        if staleTransitions <> 0 && flushingThread = 0 then
-            staleTransitions <- 0
-            activeSkips <- 0
-
-        if flushOwed then
-            this.SettleFlush ()
 #endif
 
 #if !FABLE_COMPILER
@@ -13785,7 +13717,16 @@ type Memo<'T> private (initialComputeObj: obj, initialComputeKind: byte, seed: '
                 && not g.QueuePending
                 && g.CanPullTopDirect ()
             then
-                if runner.EvalSignalLeaf (box this, n, g, SafeEquality.isSafe equal, equal, value) then
+                let needsSettle =
+                    try
+                        runner.EvalSignalLeaf (box this, n, g, SafeEquality.isSafe equal, equal, value)
+                    with _ ->
+                        g.CloseLeafPureBody ()
+                        n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
+                        g.ExitPullFastOnException ()
+                        reraise ()
+
+                if needsSettle then
                     this.SettlePullAndRead ()
                 elif (n.Flags &&& NodeFlags.StatusUnreadyMask) <> 0 then
                     this.RaiseUnready n
@@ -17936,10 +17877,12 @@ module internal CombinatorHelpers =
         ) : 'U =
         try
             let changed = not (ComparerSentinel.equals outputEqual previous result)
+            clearActive n
             setPublished n
             runner.Moved <- changed
             result
         with ex ->
+            clearActive n
             n.PendingSourceField <- Platform.nil ()
             n.FailureField <- g.FailureOf (ex, origin, previousFailure)
             n.SetStatusError ()
@@ -17958,16 +17901,17 @@ module internal CombinatorHelpers =
             previousStatus: Status,
             previousFailure: Failure
         ) : 'U =
-        clearActive n
         n.PendingSourceField <- Platform.nil ()
         n.FailureField <- Platform.nil ()
         n.SetStatusNone ()
 
         if previousStatus <> Status.None then
+            clearActive n
             setPublished n
             runner.Moved <- true
             result
         elif SafeEquality.isSafe outputEqual then
+            clearActive n
             setPublished n
 
             runner.Moved <-
@@ -18937,6 +18881,12 @@ and [<AbstractClass; Sealed>] internal FusedStageHelpers =
     static member finishLeafCustomEq<'U>
         (tailMemo: Memo<'U>, n: MemoNode, g: Graph, outputEqual: IEqualityComparer<'U>, previous: 'U, nextVal: 'U)
         : bool =
+        tailMemo.SetMaterializedValue nextVal
+
+        n.Flags <-
+            (n.Flags &&& ~~~NodeFlags.ActiveMask)
+            ||| NodeFlags.Published
+
         let mutable compEx: exn = Platform.nil ()
 
         try
@@ -18955,30 +18905,17 @@ and [<AbstractClass; Sealed>] internal FusedStageHelpers =
 #else
             let rawEx = compEx
 #endif
-            n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
+            tailMemo.SetMaterializedValue previous
             n.PendingSourceField <- Platform.nil ()
             n.FailureField <- g.FailureOf (rawEx, tailMemo :> INode, null)
             n.SetStatusError ()
 
-            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
-                n.Flags <- n.Flags ||| NodeFlags.Unannounced
-                g.NoteStaleTransition ()
+        if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
+            n.Flags <- n.Flags ||| NodeFlags.Unannounced
+            g.NoteStaleTransition ()
 
-            g.ExitPullFast ()
-            || (n.Flags &&& NodeFlags.FreshMask) <> 0
-        else
-            tailMemo.SetMaterializedValue nextVal
-
-            n.Flags <-
-                (n.Flags &&& ~~~NodeFlags.ActiveMask)
-                ||| NodeFlags.Published
-
-            if (n.Flags &&& NodeFlags.FreshMask) <> 0 then
-                n.Flags <- n.Flags ||| NodeFlags.Unannounced
-                g.NoteStaleTransition ()
-
-            g.ExitPullFast ()
-            || (n.Flags &&& NodeFlags.FreshMask) <> 0
+        g.ExitPullFast ()
+        || (n.Flags &&& NodeFlags.FreshMask) <> 0
 
     static member inline finishLeafSuccess<'U>
         (tailMemo: Memo<'U>, n: MemoNode, g: Graph, safeTailEq: bool, outputEqual: IEqualityComparer<'U>, previous: 'U, cutoff: bool, nextVal: 'U)
@@ -19329,19 +19266,24 @@ and [<AbstractClass; Sealed>] internal FusedStageHelpers =
             m.PublishDeFusedMove (prevSt <> Status.None || precomputedCmp = 1y)
         else
             let prevVal = m.PeekRaw
-            nj.Flags <- nj.Flags &&& ~~~NodeFlags.ActiveMask
             nj.PendingSourceField <- Platform.nil ()
             nj.FailureField <- Platform.nil ()
             nj.SetStatusNone ()
             let eq = m.EncodedEqual
 
             if prevSt <> Status.None then
+                nj.Flags <-
+                    (nj.Flags &&& ~~~NodeFlags.ActiveMask)
+                    ||| NodeFlags.Published
+
                 m.SetMaterializedValue v
-                nj.Flags <- nj.Flags ||| NodeFlags.Published
                 m.PublishDeFusedMove true
             elif SafeEquality.isSafe eq then
+                nj.Flags <-
+                    (nj.Flags &&& ~~~NodeFlags.ActiveMask)
+                    ||| NodeFlags.Published
+
                 m.SetMaterializedValue v
-                nj.Flags <- nj.Flags ||| NodeFlags.Published
 
                 let moved =
                     (nj.ObserverCount <> 0 || g.QueuePending)
@@ -19354,8 +19296,12 @@ and [<AbstractClass; Sealed>] internal FusedStageHelpers =
                 try
                     moved <- not (ComparerSentinel.equals eq prevVal v)
                     m.SetMaterializedValue v
-                    nj.Flags <- nj.Flags ||| NodeFlags.Published
+
+                    nj.Flags <-
+                        (nj.Flags &&& ~~~NodeFlags.ActiveMask)
+                        ||| NodeFlags.Published
                 with ex ->
+                    nj.Flags <- nj.Flags &&& ~~~NodeFlags.ActiveMask
                     nj.FailureField <- g.FailureOf (ex, m :> INode, prevFail)
                     nj.SetStatusError ()
                     moved <- true
@@ -19766,7 +19712,7 @@ and [<Sealed>] internal FusedSignalMap2<'R, 'A, 'B>(sig0: Signal<'R>, f1: 'R -> 
         activeStep <- 0uy
 
         if wasDeFused && stepIdx < 2 then
-            g.ConvertLeafPureTopToPullDirect ()
+            g.CloseLeafPureBody ()
 
             let res =
                 this.CompleteDeFused2 (
@@ -20248,7 +20194,7 @@ and [<Sealed>] internal FusedSignalMap3<'R, 'A, 'B, 'C>(sig0: Signal<'R>, f1: 'R
         activeStep <- 0uy
 
         if wasDeFused && stepIdx < 3 then
-            g.ConvertLeafPureTopToPullDirect ()
+            g.CloseLeafPureBody ()
 
             let res =
                 this.CompleteDeFused3 (
@@ -21021,7 +20967,7 @@ and [<Sealed>] internal FusedSignalMap4<'R, 'A, 'B, 'C, 'D>
         activeStep <- 0uy
 
         if wasDeFused && stepIdx < 4 then
-            g.ConvertLeafPureTopToPullDirect ()
+            g.CloseLeafPureBody ()
 
             let res =
                 this.CompleteDeFused4 (
@@ -24996,6 +24942,11 @@ and [<Sealed>] internal FusedChainMap<'Prev, 'U>(prefix: FusedExtendable<'Prev>,
         elif step = 3uy then
             prefix.MaterializeWarmPrefix (prevMemo, NodeFlags.FreshClean, Status.None, null, hasPrevReady, hasPrevPublished, prevVal, prevRuns)
 
+            if not prevMemo.Node.IsDisposed then
+                prevMemo.Node.Flags <-
+                    (prevMemo.Node.Flags &&& ~~~NodeFlags.ActiveMask)
+                    ||| NodeFlags.ActiveBody
+
             FusedStageHelpers.populateWaitingStage (
                 selfMemo,
                 box (FusedSourceMap1<'Prev, 'U>(MemoSource<'Prev>(prevMemo), fTail, not selfMemo.Node.IsDisposed)),
@@ -25038,6 +24989,12 @@ and [<Sealed>] internal FusedChainMap<'Prev, 'U>(prefix: FusedExtendable<'Prev>,
                 FusedStageHelpers.finishActiveTailMaterialization (tailMemo, prevMemo, fTail)
             elif step = 3uy then
                 prefix.MaterializeWarmPrefix (prevMemo, NodeFlags.FreshClean, Status.None, null, hasPrevReady, hasPrevPublished, prevVal, prevRuns)
+
+                if not prevMemo.Node.IsDisposed then
+                    prevMemo.Node.Flags <-
+                        (prevMemo.Node.Flags &&& ~~~NodeFlags.ActiveMask)
+                        ||| NodeFlags.ActiveBody
+
                 FusedStageHelpers.finishActiveTailMaterialization (tailMemo, prevMemo, fTail)
             else
                 let tailFresh = tn.Flags &&& NodeFlags.FreshMask
