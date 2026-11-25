@@ -15099,6 +15099,7 @@ type AsyncMemo<'T>
                         this.Wake ()
                 | Platform.FlightOutcome.Faulted ex
                 | Platform.FlightOutcome.Canceled ex ->
+                    let ex = UntrackedPhase.wrapPending UntrackedPhase.asyncOnPending ex
                     let masked = phase1Status <> Status.None
 
                     Tracer.FlightSettled (
@@ -15379,6 +15380,9 @@ type AsyncMemo<'T>
             ||| (phase2Status &&& Status.Uninitialized)
 
         this.SyncVisibleOn ()
+
+        if graph.HasLastRaised then
+            graph.ClearLastRaised ()
 
         let mutable flight = Platform.nil ()
         running <- running + 1

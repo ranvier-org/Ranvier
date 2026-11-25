@@ -276,6 +276,83 @@ let tests =
                 Expect.equal exStart.Message expectedPure "Phase 2 start enforces ScopeMode.Pure"
             }
 
+            testCaseAsync
+                "task-wrapped and fold NotReadyException wrap into InvalidOperationException for downstream readers, and caught Phase 1 error rethrown in Phase 2 sets ErrorOrigin to self"
+            <| async {
+                use g = new Graph ()
+                let pending = AsyncSource<int> g
+
+                let sTask =
+                    g.Run (fun () -> createStreamOn (fun () -> 1) (fun _ _ -> StreamSource.create (fun _ _ -> task { pending.Value |> ignore })))
+
+                let downTask = g.Run (fun () -> createMemo (fun _ -> sTask.Value + 1))
+                downTask.TryValue |> ignore
+                do! drained ()
+
+                let exTask = failedWith sTask.TryValue
+                let exDownTask = failedWith downTask.TryValue
+                Expect.equal sTask.Status Status.Error "sTask enters Status.Error"
+                Expect.equal downTask.Status Status.Error "downstream Memo over sTask enters Status.Error rather than Pending"
+                Expect.isTrue (isInvalidOperation exTask) "wrapped into InvalidOperationException"
+                Expect.equal exTask.Message UntrackedPhase.streamOnPending "carries streamOnPending message"
+                Expect.isTrue (obj.ReferenceEquals (exDownTask, exTask)) "downstream sees wrapped InvalidOperationException"
+                Expect.isTrue (obj.ReferenceEquals (sTask.ErrorOrigin, sTask :> INode)) "sTask.ErrorOrigin is sTask"
+                Expect.isTrue (obj.ReferenceEquals (downTask.ErrorOrigin, sTask :> INode)) "downTask.ErrorOrigin is sTask"
+
+                let hasPendingInnerTask =
+                    match exTask.InnerException with
+                    | NotReadyException src -> obj.ReferenceEquals (src, pending :> INode)
+                    | _ -> false
+
+                Expect.isTrue hasPendingInnerTask "sTask InnerException preserves NotReadyException(pending)"
+
+                // Fold reading pending.Value also wraps into InvalidOperationException rather than stranding downstream in Pending.
+                let feed = ManualStream<int>()
+
+                let sFold =
+                    g.Run (fun () -> createStreamFoldOn 0 (fun acc x -> acc + x + pending.Value) (fun () -> 1) (fun _ _ -> feed.Source))
+
+                let downFold = g.Run (fun () -> createMemo (fun _ -> sFold.Value + 1))
+                downFold.TryValue |> ignore
+                feed.Push 5
+                do! drained ()
+
+                let exFold = failedWith sFold.TryValue
+                let exDownFold = failedWith downFold.TryValue
+                Expect.equal sFold.Status Status.Error "sFold enters Status.Error"
+                Expect.equal downFold.Status Status.Error "downstream Memo over sFold enters Status.Error rather than Pending"
+                Expect.isTrue (isInvalidOperation exFold) "fold NotReadyException wrapped into InvalidOperationException"
+                Expect.equal exFold.Message UntrackedPhase.streamOnPending "fold carries streamOnPending message"
+                Expect.isTrue (obj.ReferenceEquals (exDownFold, exFold)) "downFold sees wrapped InvalidOperationException"
+                Expect.isTrue (obj.ReferenceEquals (downFold.ErrorOrigin, sFold :> INode)) "downFold.ErrorOrigin is sFold"
+
+                let hasPendingInnerFold =
+                    match exFold.InnerException with
+                    | NotReadyException src -> obj.ReferenceEquals (src, pending :> INode)
+                    | _ -> false
+
+                Expect.isTrue hasPendingInnerFold "sFold InnerException preserves NotReadyException(pending)"
+
+                // Caught failed read in Phase 1 rethrown in Phase 2 start attributes ErrorOrigin to self, not failedNode.
+                let failedNode = Make.Memo (g, fun _ -> failwith "upstream-stream-failed": int)
+                let mutable caught: exn = null
+
+                let sOrigin =
+                    g.Run (fun () ->
+                        createStreamOn
+                            (fun () ->
+                                try
+                                    failedNode.Value
+                                with ex ->
+                                    caught <- ex
+                                    1)
+                            (fun _ _ -> raise caught))
+
+                let exOrigin = failedWith sOrigin.TryValue
+                Expect.equal exOrigin.Message "upstream-stream-failed" "rethrown message preserved"
+                Expect.isTrue (obj.ReferenceEquals (sOrigin.ErrorOrigin, sOrigin :> INode)) "Phase 2 start rethrow sets ErrorOrigin to self"
+            }
+
 #if RANVIER_TRACE
             test "Trace.reconcile holds across createStreamOn and createStreamFoldOn lifecycles" {
                 use g = new Graph ()

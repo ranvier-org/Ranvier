@@ -581,6 +581,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
         this.Stop StreamEnd.Failed
 
         if isSplit then
+            let error = UntrackedPhase.wrapPending UntrackedPhase.streamOnPending error
             let next = graph.FailureOf (error, this, phase2Failure)
 
             let moved =
@@ -939,6 +940,10 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
                     ||| (phase2Status &&& Status.Uninitialized)
 
                 this.SyncVisibleOn ()
+
+                if graph.HasLastRaised then
+                    graph.ClearLastRaised ()
+
                 let source = new CancellationTokenSource ()
                 cts <- source
 

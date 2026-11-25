@@ -761,6 +761,79 @@ let tests =
                 Expect.equal flights.Count 1 "no new flight launched"
             }
 
+            testCaseAsync
+                "task-wrapped NotReadyException in compute wraps into InvalidOperationException for downstream readers, and caught Phase 1 error rethrown in Phase 2 sets ErrorOrigin to self"
+            <| async {
+                use g = new Graph ()
+                let s = Signal (g, 1)
+                let pending = AsyncSource<int> g
+
+                let a =
+                    g.Run (fun () ->
+                        createAsyncOn (fun () -> s.Value) (fun x _ _ ->
+                            task {
+                                let y = pending.Value
+                                return x + y
+                            }))
+
+                let downstream = g.Run (fun () -> createMemo (fun _ -> a.Value + 10))
+                downstream.TryValue |> ignore
+                do! drained ()
+
+                let exA = failedWith a.TryValue
+                let exDown = failedWith downstream.TryValue
+                Expect.equal a.Status Status.Error "AsyncMemo enters Status.Error"
+                Expect.equal downstream.Status Status.Error "downstream Memo enters Status.Error rather than stranding in Pending"
+                Expect.isTrue (isInvalidOperation exA) "wrapped into InvalidOperationException"
+                Expect.equal exA.Message UntrackedPhase.asyncOnPending "carries asyncOnPending message"
+                Expect.isTrue (obj.ReferenceEquals (exDown, exA)) "downstream sees wrapped InvalidOperationException"
+                Expect.isTrue (obj.ReferenceEquals (a.ErrorOrigin, a :> INode)) "a.ErrorOrigin is a"
+                Expect.isTrue (obj.ReferenceEquals (downstream.ErrorOrigin, a :> INode)) "downstream.ErrorOrigin is a"
+
+                let hasPendingInner =
+                    match exA.InnerException with
+                    | NotReadyException src -> obj.ReferenceEquals (src, pending :> INode)
+                    | _ -> false
+
+                Expect.isTrue hasPendingInner "InnerException preserves NotReadyException(pending)"
+
+                // Caught failed read in Phase 1 rethrown in Phase 2 attributes ErrorOrigin to self, not failedNode.
+                let failedNode = Make.Memo (g, fun _ -> failwith "upstream-failed": int)
+                let mutable caught: exn = null
+
+                let aSync =
+                    g.Run (fun () ->
+                        createAsyncOn
+                            (fun () ->
+                                try
+                                    failedNode.Value
+                                with ex ->
+                                    caught <- ex
+                                    1)
+                            (fun _ _ _ -> raise caught))
+
+                let exSync = failedWith aSync.TryValue
+                Expect.equal exSync.Message "upstream-failed" "rethrown message preserved"
+                Expect.isTrue (obj.ReferenceEquals (aSync.ErrorOrigin, aSync :> INode)) "synchronous Phase 2 rethrow sets ErrorOrigin to self"
+
+                let aTask =
+                    g.Run (fun () ->
+                        createAsyncOn
+                            (fun () ->
+                                try
+                                    failedNode.Value
+                                with ex ->
+                                    caught <- ex
+                                    2)
+                            (fun _ _ _ -> task { return raise caught }))
+
+                aTask.TryValue |> ignore
+                do! drained ()
+                let exTask = failedWith aTask.TryValue
+                Expect.equal exTask.Message "upstream-failed" "task Phase 2 rethrow message preserved"
+                Expect.isTrue (obj.ReferenceEquals (aTask.ErrorOrigin, aTask :> INode)) "task Phase 2 rethrow sets ErrorOrigin to self"
+            }
+
 #if RANVIER_TRACE
             testCaseAsync "Trace.reconcile holds across createAsyncOn and createAsyncWithOn lifecycles"
             <| async {
