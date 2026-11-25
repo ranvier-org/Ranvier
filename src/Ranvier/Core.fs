@@ -8500,32 +8500,30 @@ and [<Sealed; NoEquality; NoComparison>] internal MemoNode =
     override this.ReleaseChild() =
         this.DisposeMemoFromOwner ()
 
-    override this.CanOwnNode =
-        not (Platform.isNull (box this.ScopeField))
-        || this.Mode = ScopeMode.Owning
+    override this.CanOwnNode = this.Mode = ScopeMode.Owning
 
     override this.GetScopeNode() =
-        if Platform.isNull (box this.ScopeField) then
-            if this.Mode = ScopeMode.Owning then
+        if this.Mode = ScopeMode.Owning then
+            if Platform.isNull (box this.ScopeField) then
                 let s = new Owner (this.Graph.Root)
                 this.ScopeField <- s
                 Tracer.ScopeNew (s, this.Graph, this.NodeId)
 
                 if this.IsDisposed then
                     s.Dispose ()
-            else
+
+            this.ScopeField
+        else
 #if !RANVIER_TRACE
-                this.Flags <- this.Flags ||| NodeFlags.Violated
+            this.Flags <- this.Flags ||| NodeFlags.Violated
 #else
 #if FABLE_COMPILER
-                this.Violated <- true
+            this.Violated <- true
 #else
-                this.ViolatedField <- true
+            this.ViolatedField <- true
 #endif
 #endif
-                raise (InvalidOperationException (ScopeMessages.forMode this.Mode))
-
-        this.ScopeField
+            raise (InvalidOperationException (ScopeMessages.forMode this.Mode))
 
     interface ISource with
         member this.AddObserver(c, slot) =
@@ -9826,7 +9824,10 @@ and [<AbstractClass; Sealed>] internal NodeOps =
             if g.HasLastRaised then
                 g.ClearLastRaisedIfTop ()
 
-            if Platform.isNull (box x.ScopeField) then
+            if
+                Platform.isNull (box x.ScopeField)
+                || x.Mode <> ScopeMode.Owning
+            then
                 x.RunCallback.Invoke (x, child)
             else
                 x.Flags <-
@@ -9861,7 +9862,10 @@ and [<AbstractClass; Sealed>] internal NodeOps =
 
             false
         elif (x.Flags &&& NodeFlags.FreshMask) = NodeFlags.FreshDirty then
-            if Platform.isNull (box x.ScopeField) then
+            if
+                Platform.isNull (box x.ScopeField)
+                || x.Mode <> ScopeMode.Owning
+            then
                 x.RunCallback.Invoke (x, child)
             else
                 NodeOps.RecomputeScoped x
@@ -10017,7 +10021,10 @@ and [<AbstractClass; Sealed>] internal NodeOps =
     /// <summary>Discharges the previous run's scope, then runs the body once, unless the memo was disposed meanwhile.</summary>
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     static member Recompute(n: MemoNode) =
-        if Platform.isNull (box n.ScopeField) then
+        if
+            Platform.isNull (box n.ScopeField)
+            || n.Mode <> ScopeMode.Owning
+        then
             n.RunDirect ()
         else
             NodeOps.RecomputeScoped n
@@ -11494,6 +11501,379 @@ type AsyncSource<'T>(graph: Graph) =
 
     member internal _.Graph = graph
 
+/// <summary>Helpers shared by closed-window Phase 2 callbacks of <c>*On</c> computations and combinators.</summary>
+module internal UntrackedPhase =
+    [<Literal>]
+    let memoOnPending =
+        "A split memo's compute read a pending source. Read pending sources in read, which suspends the memo until they settle."
+
+    /// <summary>
+    /// Wraps a <c>NotReadyException</c> raised inside an untracked Phase 2 callback into an
+    /// <c>InvalidOperationException</c> carrying <c>ex</c> as its <c>InnerException</c>.
+    /// </summary>
+    let wrapPending (message: string) (ex: exn) : exn =
+        match ex with
+        | NotReadyException _ ->
+#if FABLE_COMPILER
+            let failure = InvalidOperationException message
+            Platform.setInner failure ex
+            failure :> exn
+#else
+            InvalidOperationException (message, ex) :> exn
+#endif
+        | _ -> ex
+
+/// <summary>Type-erased Phase 1/Phase 2 driver stored in <c>Memo&lt;'U&gt;</c> for split memos.</summary>
+[<AbstractClass>]
+type internal MemoOnRunner<'U>() =
+    let mutable moved = false
+
+    member inline _.Moved
+        with get () = moved
+        and set (v: bool) = moved <- v
+
+    abstract Execute:
+        origin: INode * n: MemoNode * outputEqual: IEqualityComparer<'U> * previous: 'U * previousStatus: Status * previousFailure: Failure -> 'U
+
+/// <summary>
+/// Typed state of a two-phase <c>Memo&lt;'U&gt;</c> created by <c>createMemoOn*</c> or <c>createMemoWithOn</c> (Theorem B16).
+/// </summary>
+[<Sealed>]
+type internal MemoOnState<'T, 'U>(graph: Graph, read: unit -> 'T, compute: 'T -> 'U, ownerMode: ScopeMode) =
+    inherit MemoOnRunner<'U>()
+
+    let keyEqual = graph.EncodedComparer<'T>()
+    let mutable node: MemoNode = Platform.nil ()
+    let mutable hasKey = false
+    let mutable lastKey = Unchecked.defaultof<'T>
+    let mutable phase2Failure: Failure = Platform.nil ()
+    let mutable computing = false
+
+    member internal _.Bind(n: MemoNode) = node <- n
+
+    member inline private _.ClearActive(n: MemoNode) =
+#if !RANVIER_TRACE
+        n.Flags <- n.Flags &&& ~~~NodeFlags.ActiveMask
+#else
+#if FABLE_COMPILER
+        n.Active <- 0uy
+#else
+        n.ActiveField <- 0uy
+#endif
+#endif
+
+    member inline private _.IsViolated(n: MemoNode) =
+#if !RANVIER_TRACE
+        (n.Flags &&& NodeFlags.Violated) <> 0
+#else
+#if FABLE_COMPILER
+        n.Violated
+#else
+        n.ViolatedField
+#endif
+#endif
+
+    member inline private _.ClearViolated(n: MemoNode) =
+#if !RANVIER_TRACE
+        n.Flags <- n.Flags &&& ~~~NodeFlags.Violated
+#else
+#if FABLE_COMPILER
+        n.Violated <- false
+#else
+        n.ViolatedField <- false
+#endif
+#endif
+
+    member inline private _.SetPublished(n: MemoNode) =
+#if !RANVIER_TRACE
+        n.Flags <- n.Flags ||| NodeFlags.Published
+#else
+#if FABLE_COMPILER
+        n.Published <- true
+#else
+        n.PublishedField <- true
+#endif
+#endif
+
+    member inline private _.StatusMoved(n: MemoNode, previousStatus: Status, previousFailure: Failure) =
+        n.Status <> previousStatus
+        || (not (obj.ReferenceEquals (n.FailureField, previousFailure))
+            && Failure.Moved (n.FailureField, previousFailure))
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RecordPhase1Failure(origin: INode, n: MemoNode, ex: exn, previousFailure: Failure) =
+        let g = n.Graph
+        this.ClearActive n
+
+        if this.IsViolated n then
+            this.ClearViolated n
+            n.FailureField <- g.FailureOf (ScopeMessages.failure ScopeMode.Pure ex, origin, previousFailure)
+            n.SetStatusError ()
+        else
+            match ex with
+            | NotReadyException source ->
+                n.PendingSourceField <- source
+                n.SetStatusPending ()
+            | _ ->
+                n.FailureField <- g.FailureOf (ex, origin, previousFailure)
+                n.SetStatusError ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.RecordPhase2Failure(origin: INode, n: MemoNode, ex: exn, previousFailure: Failure) =
+        let g = n.Graph
+        this.ClearActive n
+
+        let err =
+            if this.IsViolated n then
+                this.ClearViolated n
+                ScopeMessages.failure ScopeMode.Pure ex
+            else
+                UntrackedPhase.wrapPending UntrackedPhase.memoOnPending ex
+
+        let f = g.FailureOf (err, origin, previousFailure)
+        phase2Failure <- f
+        n.FailureField <- f
+        n.SetStatusError ()
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.CompareKeyGuarded(origin: INode, n: MemoNode, nextKey: 'T, previousFailure: Failure) : byte =
+        try
+            if ComparerSentinel.equals keyEqual lastKey nextKey then
+                1uy
+            else
+                0uy
+        with ex ->
+            this.ClearActive n
+            n.FailureField <- n.Graph.FailureOf (ex, origin, previousFailure)
+            n.SetStatusError ()
+            2uy
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)>]
+    member private this.CompareOutputGuarded
+        (origin: INode, n: MemoNode, outputEqual: IEqualityComparer<'U>, previous: 'U, result: 'U, previousFailure: Failure)
+        : 'U =
+        try
+            let changed = not (ComparerSentinel.equals outputEqual previous result)
+            phase2Failure <- Platform.nil ()
+            this.Moved <- changed
+            result
+        with ex ->
+            let f = n.Graph.FailureOf (ex, origin, previousFailure)
+            phase2Failure <- f
+            n.FailureField <- f
+            n.SetStatusError ()
+            this.Moved <- true
+            previous
+
+    override this.Execute
+        (origin: INode, n: MemoNode, outputEqual: IEqualityComparer<'U>, previous: 'U, previousStatus: Status, previousFailure: Failure)
+        : 'U =
+        let g = n.Graph
+        let mutable nextKey = Unchecked.defaultof<'T>
+        let mutable phase1Ok = false
+
+#if FABLE_COMPILER
+        try
+            try
+#if !RANVIER_TRACE
+                nextKey <- g.RunHostedNode (n, read, ())
+#else
+                nextKey <- g.RunHosted (n :> IComputation, read)
+#endif
+                if this.IsViolated n then
+                    raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                phase1Ok <- true
+            finally
+                if n.IsDisposed then
+                    n.SourcesField.Clear (n :> IComputation)
+                else
+                    n.SourcesField.EndRun (n :> IComputation)
+        with ex ->
+            this.RecordPhase1Failure (origin, n, ex, previousFailure)
+#else
+        let saved = g.EnterHostedNode n
+
+        let phase1Ex =
+            try
+                nextKey <- read ()
+
+                if g.RaisedPending || this.IsViolated n then
+                    g.CheckRaised ()
+
+                    if this.IsViolated n then
+                        raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                null
+            with ex ->
+                ex
+
+        g.LeaveHosted saved
+
+        if not (Platform.isNull phase1Ex) then
+            if n.IsDisposed then
+                n.SourcesField.Clear (n :> IComputation)
+            else
+                n.SourcesField.EndRun (n :> IComputation)
+
+            this.RecordPhase1Failure (origin, n, phase1Ex, previousFailure)
+        else
+            if
+                n.IsDisposed
+                || n.SourcesField.Cursor < n.SourcesField.Count
+            then
+                if n.IsDisposed then
+                    n.SourcesField.Clear (n :> IComputation)
+                else
+                    n.SourcesField.EndRun (n :> IComputation)
+
+            phase1Ok <- true
+#endif
+
+        if not phase1Ok then
+            this.Moved <- this.StatusMoved (n, previousStatus, previousFailure)
+            previous
+        else
+            let keyCmp =
+                if not hasKey then
+                    0uy
+                elif SafeEquality.isSafe keyEqual then
+                    if ComparerSentinel.equals keyEqual lastKey nextKey then
+                        1uy
+                    else
+                        0uy
+                else
+                    this.CompareKeyGuarded (origin, n, nextKey, previousFailure)
+
+            if keyCmp = 2uy then
+                this.Moved <- this.StatusMoved (n, previousStatus, previousFailure)
+                previous
+            elif keyCmp = 1uy then
+                this.ClearActive n
+
+                if not (Platform.isNull phase2Failure) then
+                    n.FailureField <- phase2Failure
+                    n.SetStatusError ()
+
+                this.Moved <- this.StatusMoved (n, previousStatus, previousFailure)
+                previous
+            else
+                lastKey <- nextKey
+                hasKey <- true
+
+                if not (Platform.isNull (box n.ScopeField)) then
+                    g.Discharge n.ScopeField
+
+                if n.IsDisposed then
+                    this.ClearActive n
+
+                    if StatusBits.isError previousStatus then
+                        n.FailureField <- previousFailure
+                        n.SetStatusError ()
+                    elif StatusBits.isPending previousStatus then
+                        n.SetStatusPending ()
+
+                    this.Moved <- false
+                    previous
+                else
+                    let mutable result = Unchecked.defaultof<'U>
+                    computing <- true
+
+#if FABLE_COMPILER
+                    let mutable phase2Ex: exn = Platform.nil ()
+
+                    try
+                        try
+                            result <- g.RunUntrackedHostedArg (this :> IScopeHost, compute, nextKey)
+
+                            if this.IsViolated n then
+                                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+                        finally
+                            computing <- false
+                    with ex ->
+                        phase2Ex <- Thrown.hold ex
+
+                    if not (Platform.isNull phase2Ex) then
+                        this.RecordPhase2Failure (origin, n, Thrown.take phase2Ex, previousFailure)
+                        this.Moved <- this.StatusMoved (n, previousStatus, previousFailure)
+                        previous
+#else
+                    let hasJournal = not (Platform.isNull g.Journal)
+
+                    if hasJournal then
+                        g.Journal.EnterDerived ()
+
+                    let savedPhase2 = g.EnterUntrackedHosted (this :> IScopeHost)
+
+                    let phase2Ex =
+                        try
+                            result <- compute nextKey
+
+                            if this.IsViolated n then
+                                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
+                            null
+                        with ex ->
+                            ex
+
+                    g.LeaveUntrackedHosted savedPhase2
+
+                    if hasJournal then
+                        g.Journal.LeaveDerived ()
+
+                    computing <- false
+
+                    if not (Platform.isNull phase2Ex) then
+                        this.RecordPhase2Failure (origin, n, phase2Ex, previousFailure)
+                        this.Moved <- this.StatusMoved (n, previousStatus, previousFailure)
+                        previous
+#endif
+                    else
+                        this.ClearActive n
+                        this.SetPublished n
+                        phase2Failure <- Platform.nil ()
+
+                        if previousStatus <> Status.None then
+                            this.Moved <- true
+                            result
+                        elif SafeEquality.isSafe outputEqual then
+                            this.Moved <-
+#if !RANVIER_TRACE
+                                (n.ObserverCount <> 0 || g.QueuePending)
+                                && not (ComparerSentinel.equals outputEqual previous result)
+#else
+                                not (ComparerSentinel.equals outputEqual previous result)
+#endif
+                            result
+                        else
+                            this.CompareOutputGuarded (origin, n, outputEqual, previous, result, previousFailure)
+
+    interface IScopeHost with
+        member _.CanOwn = computing && ownerMode = ScopeMode.Owning
+
+        member _.Scope =
+            if computing && ownerMode = ScopeMode.Owning then
+                if Platform.isNull (box node.ScopeField) then
+                    let s = new Owner (node.Graph.Root)
+                    node.ScopeField <- s
+                    Tracer.ScopeNew (s, node.Graph, node.NodeId)
+
+                    if node.IsDisposed then
+                        s.Dispose ()
+
+                node.ScopeField
+            else
+#if !RANVIER_TRACE
+                node.Flags <- node.Flags ||| NodeFlags.Violated
+#else
+#if FABLE_COMPILER
+                node.Violated <- true
+#else
+                node.ViolatedField <- true
+#endif
+#endif
+                raise (InvalidOperationException (ScopeMessages.forMode ScopeMode.Pure))
+
 /// <summary>
 /// A derived, cached computation.
 /// </summary>
@@ -11730,6 +12110,12 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
     static member val private SeededFuncCb: Func<MemoNode, Node, bool> =
         Func<MemoNode, Node, bool>(fun n child -> Memo<'T>.RunSeededFuncNode(n, child))
 
+    static member private RunMemoOnNode(n: MemoNode, _child: Node) : bool =
+        (Platform.fastCast<Memo<'T>> n.OwnerMemo).RunMemoOn n
+        false
+
+    static member val private MemoOnCb: Func<MemoNode, Node, bool> = Func<MemoNode, Node, bool>(fun n child -> Memo<'T>.RunMemoOnNode(n, child))
+
     static member private MakeNode(graph: Graph, mode: ScopeMode, equal: IEqualityComparer<'T>, cb: Func<MemoNode, Node, bool>) =
         MemoNode (graph, mode, SafeEquality.isSafe equal, cb)
 #else
@@ -11740,13 +12126,20 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
 #if FABLE_COMPILER
     static member val internal RunFn: MemoNode -> unit = fun (n: MemoNode) -> (Platform.fastCast<Memo<'T>> n.OwnerMemo).RunGeneral n
 
+    static member val private MemoOnRunFn: MemoNode -> unit = fun (n: MemoNode) -> (Platform.fastCast<Memo<'T>> n.OwnerMemo).RunMemoOn n
+
     static member private MakeNode(graph: Graph, mode: ScopeMode) =
         MemoNode (graph, mode, Memo<'T>.RunFn)
 #else
     static member private RunNode(n: MemoNode) =
         (Platform.fastCast<Memo<'T>> n.OwnerMemo).RunGeneral n
 
+    static member private RunMemoOnTraced(n: MemoNode) =
+        (Platform.fastCast<Memo<'T>> n.OwnerMemo).RunMemoOn n
+
     static member val internal RunFn: Action<MemoNode> = Action<MemoNode>(Memo<'T>.RunNode)
+
+    static member val private MemoOnRunFn: Action<MemoNode> = Action<MemoNode>(Memo<'T>.RunMemoOnTraced)
 
     static member private MakeNode(graph: Graph, mode: ScopeMode) =
         MemoNode (graph, mode, Memo<'T>.RunFn)
@@ -11844,6 +12237,40 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
         memo.Attach ()
         memo
 
+    /// <summary>A two-phase split memo over pure <c>read</c> and untracked <c>compute</c>, owned by the current owner.</summary>
+    static member internal CreateOn
+        (graph: Graph, read: unit -> 'K, compute: 'K -> 'T, mode: ScopeMode, comparer: IEqualityComparer<'T> voption)
+        : Memo<'T> =
+        if Platform.isNull (box read) then
+            nullArg (nameof read)
+
+        if Platform.isNull (box compute) then
+            nullArg (nameof compute)
+
+        let eq =
+            match comparer with
+            | ValueSome c ->
+                if Platform.isNull c then
+                    nullArg (nameof comparer)
+
+                ComparerSentinel.encode c
+            | ValueNone -> graph.EncodedComparer<'T>()
+
+        let state = MemoOnState<'K, 'T>(graph, read, compute, mode)
+#if !FABLE_COMPILER && !RANVIER_TRACE
+        let n = MemoNode (graph, ScopeMode.Pure, false, Memo<'T>.MemoOnCb)
+#else
+#if FABLE_COMPILER && !RANVIER_TRACE
+        let n = MemoNode (graph, ScopeMode.Pure, false)
+#else
+        let n = MemoNode (graph, ScopeMode.Pure, Memo<'T>.MemoOnRunFn)
+#endif
+#endif
+        state.Bind n
+        let memo = Memo<'T>(box state, 5uy, Unchecked.defaultof<'T>, eq, n)
+        memo.Attach ()
+        memo
+
     /// <summary>Attaches the memo to the current owner. Disposing that owner disposes the memo.</summary>
     member internal this.Attach() =
         node.OwnerMemo <- box this
@@ -11901,6 +12328,8 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
                 this.RunReadyNested n
             else
                 this.RunGeneral n
+        elif computeKind = 5uy then
+            this.RunMemoOn n
         else
             this.RunGeneral n
 
@@ -12383,6 +12812,52 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
                 n.SetStatusError ()
 #endif
 
+    member internal this.RunMemoOn(n: MemoNode) =
+        let g = n.Graph
+#if !RANVIER_TRACE
+        n.Flags <-
+            n.Flags
+            &&& ~~~(NodeFlags.FreshMask ||| NodeFlags.Unannounced)
+#else
+#if FABLE_COMPILER
+        n.Freshness <- Freshness.Clean
+        n.Unannounced <- false
+#else
+        n.FreshnessField <- Freshness.Clean
+        n.UnannouncedField <- false
+#endif
+#endif
+        n.SourcesField.BeginRun ()
+
+        if not (Platform.isNull (box n.PendingSourceField)) then
+            n.PendingSourceField <- Platform.nil ()
+
+        let previous = value
+        let previousStatus = n.Status
+        let previousFailure = n.FailureField
+
+        n.SetStatusNone ()
+        n.FailureField <- Platform.nil ()
+        n.RunsField <- n.RunsField + 1
+#if RANVIER_COUNTERS
+        Counters.MemoRecomputed ()
+#endif
+        Tracer.RunStart (g, n.NodeId, n.RunsField)
+#if !RANVIER_TRACE
+        n.Flags <-
+            (n.Flags &&& ~~~NodeFlags.ActiveMask)
+            ||| NodeFlags.ActiveBody
+#else
+#if FABLE_COMPILER
+        n.Active <- 1uy
+#else
+        n.ActiveField <- 1uy
+#endif
+#endif
+        let runner = Platform.fastCast<MemoOnRunner<'T>> computeObj
+        value <- runner.Execute (this :> INode, n, equal, previous, previousStatus, previousFailure)
+        this.FinishPublish (n, g, runner.Moved)
+
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
     member private this.Publish(previous: 'T, previousStatus: Status, previousFailure: Failure) =
         let n = node
@@ -12406,6 +12881,10 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
                 else
                     this.CompareGuarded (previous, previousFailure)
 
+        this.FinishPublish (n, g, moved)
+
+    [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]
+    member private _.FinishPublish(n: MemoNode, g: Graph, moved: bool) =
         if moved then
             Tracer.Moved (g, n.NodeId, Failure.Payload (n.FailureField, box value))
             NodeOps.NotifyMoved n
@@ -12415,7 +12894,7 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
             if g.QueuePending then
                 g.OweFlush ()
         else
-            Tracer.RunEnd (g, n.NodeId, curStatus)
+            Tracer.RunEnd (g, n.NodeId, n.Status)
 
         if
 #if !RANVIER_TRACE

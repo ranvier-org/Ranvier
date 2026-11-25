@@ -406,6 +406,62 @@ module Api =
         requireComparer comparer
         Memo.CreateWithComparer (Graph.Current, compute, ScopeMode.Owning, comparer)
 
+    let private requireRead (read: unit -> 'T) =
+        if Platform.isNull (box read) then
+            nullArg "read"
+
+    let private requireCompute (compute: 'T -> 'U) =
+        if Platform.isNull (box compute) then
+            nullArg "compute"
+
+    /// <summary>
+    /// A derived value split into a tracked pure <c>read</c> and an untracked pure <c>compute</c> invoked when
+    /// <c>read</c> settles on an unequal key.
+    /// </summary>
+    /// <remarks>
+    /// A pending or failed <c>read</c> surfaces on the memo while preserving the last settled key and cached
+    /// <c>compute</c> outcome; reading a pending source inside <c>compute</c> fails the memo with
+    /// <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createMemoOn (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Pure, ValueNone)
+
+    /// <summary>A split pure memo whose output cutoff uses <c>comparer</c> instead of the graph's equality policy.</summary>
+    /// <remarks>Input keys from <c>read</c> compare under the graph's equality policy; pending and failed transitions still propagate.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>comparer</c>, <c>read</c>, or <c>compute</c> is null.</exception>
+    let createMemoOnWithComparer (comparer: IEqualityComparer<'U>) (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireComparer comparer
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Pure, ValueSome comparer)
+
+    /// <summary>
+    /// A split memo whose <c>compute</c> owns the nodes and cleanups it creates, discharged before the next
+    /// <c>compute</c> on an unequal settled key and at disposal.
+    /// </summary>
+    /// <remarks>
+    /// <c>read</c> remains pure and tracked. A pending, failed, or equal <c>read</c> keeps the active <c>compute</c>
+    /// scope and outcome intact; reading a pending source inside <c>compute</c> fails the memo with
+    /// <c>InvalidOperationException</c>.
+    /// </remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>read</c> or <c>compute</c> is null.</exception>
+    let createMemoWithOn (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Owning, ValueNone)
+
+    /// <summary>An owning split memo whose output cutoff uses <c>comparer</c> instead of the graph's equality policy.</summary>
+    /// <remarks>An unequal settled key from <c>read</c> discharges the previous <c>compute</c> scope even when outputs compare equal.</remarks>
+    /// <exception cref="T:System.ArgumentNullException"><c>comparer</c>, <c>read</c>, or <c>compute</c> is null.</exception>
+    let createOwningMemoOnWithComparer (comparer: IEqualityComparer<'U>) (read: unit -> 'T) (compute: 'T -> 'U) : Memo<'U> =
+        requireComparer comparer
+        requireRead read
+        requireCompute compute
+        Memo.CreateOn (Graph.Current, read, compute, ScopeMode.Owning, ValueSome comparer)
+
     /// <summary>
     /// A side effect, run once now and again whenever something it read changes. Disposed with the enclosing scope.
     /// </summary>

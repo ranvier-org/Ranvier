@@ -25,6 +25,7 @@ let all =
             testList "Effects.fs" [ Ranvier.Tests.Effects.tests ]
             testList "Bindings.fs" [ Ranvier.Tests.Bindings.tests ]
             testList "EffectSplit.fs" [ Ranvier.Tests.EffectSplit.tests ]
+            testList "MemoSplit.fs" [ Ranvier.Tests.MemoSplit.tests ]
             testList "AmbientGraph.fs" [ Ranvier.Tests.AmbientGraph.tests ]
             testList "Owners.fs" [ Ranvier.Tests.Owners.tests ]
             testList "Equality.fs" [ Ranvier.Tests.Equality.tests ]
