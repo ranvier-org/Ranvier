@@ -11533,7 +11533,14 @@ type internal MemoOnRunner<'U>() =
         and set (v: bool) = moved <- v
 
     abstract Execute:
-        origin: INode * n: MemoNode * outputEqual: IEqualityComparer<'U> * previous: 'U * previousStatus: Status * previousFailure: Failure -> 'U
+        origin: INode *
+        n: MemoNode *
+        outputEqual: IEqualityComparer<'U> *
+        previous: 'U *
+        previousStatus: Status *
+        previousFailure: Failure *
+        previousPending: INode ->
+            'U
 
 /// <summary>
 /// Typed state of a two-phase <c>Memo&lt;'U&gt;</c> created by <c>createMemoOn*</c> or <c>createMemoWithOn</c> (Theorem B16).
@@ -11666,8 +11673,15 @@ type internal MemoOnState<'T, 'U>(graph: Graph, read: unit -> 'T, compute: 'T ->
             previous
 
     override this.Execute
-        (origin: INode, n: MemoNode, outputEqual: IEqualityComparer<'U>, previous: 'U, previousStatus: Status, previousFailure: Failure)
-        : 'U =
+        (
+            origin: INode,
+            n: MemoNode,
+            outputEqual: IEqualityComparer<'U>,
+            previous: 'U,
+            previousStatus: Status,
+            previousFailure: Failure,
+            previousPending: INode
+        ) : 'U =
         let g = n.Graph
         let mutable nextKey = Unchecked.defaultof<'T>
         let mutable phase1Ok = false
@@ -11771,6 +11785,7 @@ type internal MemoOnState<'T, 'U>(graph: Graph, read: unit -> 'T, compute: 'T ->
                         n.FailureField <- previousFailure
                         n.SetStatusError ()
                     elif StatusBits.isPending previousStatus then
+                        n.PendingSourceField <- previousPending
                         n.SetStatusPending ()
 
                     this.Moved <- false
@@ -12829,7 +12844,9 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
 #endif
         n.SourcesField.BeginRun ()
 
-        if not (Platform.isNull (box n.PendingSourceField)) then
+        let previousPending = n.PendingSourceField
+
+        if not (Platform.isNull (box previousPending)) then
             n.PendingSourceField <- Platform.nil ()
 
         let previous = value
@@ -12855,7 +12872,7 @@ type Memo<'T> private (computeObj: obj, computeKind: byte, seed: 'T, equal: IEqu
 #endif
 #endif
         let runner = Platform.fastCast<MemoOnRunner<'T>> computeObj
-        value <- runner.Execute (this :> INode, n, equal, previous, previousStatus, previousFailure)
+        value <- runner.Execute (this :> INode, n, equal, previous, previousStatus, previousFailure, previousPending)
         this.FinishPublish (n, g, runner.Moved)
 
     [<System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>]

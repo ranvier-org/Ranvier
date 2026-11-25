@@ -39,6 +39,24 @@ let private isInvalidOperation (ex: exn) =
     ex :? InvalidOperationException
 #endif
 
+[<CustomEquality; NoComparison>]
+type private GuardedKey =
+    | GuardedKey of id: int * throwOnCompare: bool
+
+    override this.Equals(other: obj) =
+        match other with
+        | :? GuardedKey as that ->
+            let (GuardedKey (a, ta)) = this
+            let (GuardedKey (b, tb)) = that
+
+            if ta || tb then
+                raise (InvalidOperationException "key comparer")
+
+            a = b
+        | _ -> false
+
+    override _.GetHashCode() = 0
+
 /// <summary>
 /// Closed-window two-phase semantics of <c>createMemoOn</c>, <c>createMemoOnWithComparer</c>,
 /// <c>createMemoWithOn</c>, and <c>createOwningMemoOnWithComparer</c>.
@@ -421,6 +439,252 @@ let tests =
                 s.Value <- 3
                 Expect.equal m.Value 300 "recovered on key 3"
                 Expect.sequenceEqual computeLog [ 1; 2; 3 ] "compute ran for key 3"
+            }
+
+            test "createMemoWithOn cleanup self-disposal after Pending restores Status.Pending and PendingSources" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let gate = createSignal false
+                let pending = createAsyncSource<int>()
+                let log = ResizeArray<string>()
+                let mutable root = Unchecked.defaultof<Owner>
+
+                let m =
+                    createRoot (fun owner ->
+                        root <- owner
+
+                        createMemoWithOn
+                            (fun () ->
+                                if gate.Value then
+                                    pending.Value |> ignore
+
+                                s.Value)
+                            (fun v ->
+                                log.Add $"compute:{v}"
+
+                                onCleanup (fun () ->
+                                    log.Add $"cleanup:{v}"
+                                    root.Dispose ())
+
+                                v * 10))
+
+                Expect.equal m.Value 10 "initial Ready state"
+
+                // Enter transient Phase 1 Pending while Phase 2 scope remains active.
+                gate.Value <- true
+                Expect.equal m.TryValue Pending "Phase 1 is Pending"
+                Expect.equal m.Status Status.Pending "Status is Pending before cleanup self-disposal"
+                Expect.equal (Seq.length m.PendingSources) 1 "one pending source recorded"
+                Expect.isTrue (obj.ReferenceEquals (Seq.head m.PendingSources, pending :> INode)) "PendingSources names pending"
+
+                // Settle Phase 1 on unequal key 2 -> scope discharge disposes root before compute:2 runs.
+                gate.Value <- false
+                s.Value <- 2
+                Expect.equal m.TryValue Pending "disposed memo retains prior Pending reading"
+                Expect.equal m.Status Status.Pending "Status restored to Pending"
+                Expect.sequenceEqual log [ "compute:1"; "cleanup:1" ] "stopped before compute:2"
+                Expect.equal (Seq.length m.PendingSources) 1 "PendingSources preserved across self-disposal"
+                Expect.isTrue (obj.ReferenceEquals (Seq.head m.PendingSources, pending :> INode)) "PendingSources still names pending"
+            }
+
+            test "Memo chain through createMemoWithOn preserves Phase 2 scope on equal key and propagates on unequal key" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                // 1. Single-observer chain (UnwindChain fast path: Signal -> Memo -> createMemoWithOn -> Memo -> Effect).
+                let items = createSignal [ 1; 2 ]
+                let tick = createSignal 0
+                let computeRuns = ref 0
+                let innerLog = ResizeArray<string>()
+                let downstreamRuns = ref 0
+                let seen = ResizeArray<int>()
+
+                let upstream = createMemo (fun _ -> List.map ((+) 1) items.Value)
+
+                let split =
+                    createMemoWithOn (fun () -> List.length upstream.Value) (fun len ->
+                        computeRuns.Value <- computeRuns.Value + 1
+                        createEffect (fun () -> innerLog.Add $"inner:{len}:{tick.Value}")
+                        onCleanup (fun () -> innerLog.Add $"clean:{len}")
+                        len * 100)
+
+                let downstream =
+                    createMemo (fun _ ->
+                        downstreamRuns.Value <- downstreamRuns.Value + 1
+                        split.Value + 1)
+
+                createEffect (fun () -> seen.Add downstream.Value)
+
+                Expect.sequenceEqual seen [ 201 ] "initial chain propagation"
+                Expect.equal computeRuns.Value 1 "initial Phase 2 run"
+                Expect.equal downstreamRuns.Value 1 "initial downstream memo run"
+                Expect.sequenceEqual innerLog [ "inner:2:0" ] "inner effect live"
+
+                // Upstream Memo moves ([2; 3] -> [4; 5]), entering UnwindChain on split with equal Phase 1 key (length 2).
+                items.Value <- [ 3; 4 ]
+                Expect.sequenceEqual seen [ 201 ] "equal key cuts off downstream effect"
+                Expect.equal downstream.Value 201 "downstream memo keeps 201"
+                Expect.equal computeRuns.Value 1 "Phase 2 compute skipped"
+                Expect.equal downstreamRuns.Value 1 "downstream memo not dirtied"
+                tick.Value <- 1
+                Expect.sequenceEqual innerLog [ "inner:2:0"; "inner:2:1" ] "Phase 2 scope was NOT discharged by UnwindChain"
+
+                // Upstream Memo moves to unequal Phase 1 key ([5; 6; 7] -> length 3).
+                items.Value <- [ 5; 6; 7 ]
+                Expect.sequenceEqual seen [ 201; 301 ] "unequal key wakes downstream chain"
+                Expect.equal computeRuns.Value 2 "Phase 2 compute ran for length 3"
+                Expect.equal downstreamRuns.Value 2 "downstream memo recomputed once"
+                Expect.sequenceEqual innerLog [ "inner:2:0"; "inner:2:1"; "clean:2"; "inner:3:1" ] "old scope discharged before new compute"
+
+                // 2. Multi-observer upstream Memo (UnwindChainSlow path: upstream has 2 observers).
+                let itemsSlow = createSignal [ 10; 20 ]
+                let tickSlow = createSignal 0
+                let slowLog = ResizeArray<string>()
+                let slowSeen = ResizeArray<int>()
+                let siblingSeen = ResizeArray<int>()
+
+                let upstreamSlow = createMemo (fun _ -> List.map ((+) 1) itemsSlow.Value)
+                createEffect (fun () -> siblingSeen.Add (List.head upstreamSlow.Value))
+
+                let splitSlow =
+                    createMemoWithOn (fun () -> List.length upstreamSlow.Value) (fun len ->
+                        createEffect (fun () -> slowLog.Add $"slow:{len}:{tickSlow.Value}")
+                        onCleanup (fun () -> slowLog.Add $"slowClean:{len}")
+                        len * 10)
+
+                let downstreamSlow = createMemo (fun _ -> splitSlow.Value + 5)
+                createEffect (fun () -> slowSeen.Add downstreamSlow.Value)
+
+                itemsSlow.Value <- [ 30; 40 ]
+                tickSlow.Value <- 1
+                Expect.sequenceEqual siblingSeen [ 11; 31 ] "sibling observer saw upstream move"
+                Expect.sequenceEqual slowSeen [ 25 ] "equal key suppressed downstream under UnwindChainSlow"
+                Expect.sequenceEqual slowLog [ "slow:2:0"; "slow:2:1" ] "Phase 2 scope preserved under UnwindChainSlow"
+
+                itemsSlow.Value <- [ 50; 60; 70 ]
+                Expect.sequenceEqual slowSeen [ 25; 35 ] "unequal key propagated under UnwindChainSlow"
+                Expect.sequenceEqual slowLog [ "slow:2:0"; "slow:2:1"; "slowClean:2"; "slow:3:1" ] "scope cycled on unequal key"
+            }
+
+            test "throwing keyEqual and outputEqual comparers fail the memo, preserve scope on key throw, and latch phase2Failure" {
+                // Part 1: Throwing keyEqual (CompareKeyGuarded) under StructuralPolicy.
+                use gKey =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Equality = StructuralPolicy ()
+                        }
+                    )
+
+                gKey.Run (fun () ->
+                    let s = createSignal 1
+                    let armKeyThrow = createSignal false
+                    let tick = createSignal 0
+                    let keyComputeRuns = ref 0
+                    let keyScopeLog = ResizeArray<string>()
+
+                    let mKey =
+                        createMemoWithOn (fun () -> GuardedKey (s.Value % 10, armKeyThrow.Value)) (fun (GuardedKey (k, _)) ->
+                            keyComputeRuns.Value <- keyComputeRuns.Value + 1
+                            createEffect (fun () -> keyScopeLog.Add $"inner:{k}:{tick.Value}")
+                            onCleanup (fun () -> keyScopeLog.Add $"clean:{k}")
+                            k * 10)
+
+                    Expect.equal mKey.Value 10 "initial GuardedKey(1) succeeds"
+                    Expect.equal keyComputeRuns.Value 1 "compute ran once"
+                    Expect.sequenceEqual keyScopeLog [ "inner:1:0" ] "Phase 2 scope created"
+
+                    // Arm key comparer throw -> CompareKeyGuarded records Status.Error, preserves Peek and ScopeField.
+                    armKeyThrow.Value <- true
+                    s.Value <- 2
+                    let keyEx = failedWith mKey.TryValue
+                    Expect.equal mKey.Status Status.Error "keyEqual throw puts memo in Status.Error"
+                    Expect.equal keyEx.Message "key comparer" "surfaces keyEqual exception"
+                    Expect.isTrue (obj.ReferenceEquals (mKey.ErrorOrigin, mKey)) "ErrorOrigin is memo"
+                    Expect.equal mKey.Peek 10 "previous published value preserved"
+                    Expect.equal keyComputeRuns.Value 1 "compute did not run when keyEqual threw"
+                    tick.Value <- 1
+                    Expect.sequenceEqual keyScopeLog [ "inner:1:0"; "inner:1:1" ] "Phase 2 scope preserved across keyEqual throw"
+
+                    // Disarm and return to equal key 11 % 10 = 1 -> recovers without discharging scope or re-running compute.
+                    armKeyThrow.Value <- false
+                    s.Value <- 11
+                    Expect.equal mKey.Value 10 "recovered Ready 10 on equal key"
+                    Expect.equal keyComputeRuns.Value 1 "compute still ran once"
+                    Expect.sequenceEqual keyScopeLog [ "inner:1:0"; "inner:1:1" ] "scope still intact"
+
+                    // Unequal key 2 discharges old scope and runs compute.
+                    s.Value <- 2
+                    Expect.equal mKey.Value 20 "updated to 20 on unequal key"
+                    Expect.equal keyComputeRuns.Value 2 "compute ran second time"
+                    Expect.sequenceEqual keyScopeLog [ "inner:1:0"; "inner:1:1"; "clean:1"; "inner:2:1" ] "old scope discharged")
+
+                // Part 2: Throwing outputEqual (CompareOutputGuarded) on pure and owning comparer variants.
+                use gOut = new Graph ()
+                use _ = gOut.Activate ()
+                let sOut = createSignal 1
+                let armOutThrow = ref false
+
+                let guardedOutComparer =
+                    comparer (fun (a: int) b ->
+                        if armOutThrow.Value then
+                            raise (InvalidOperationException "output comparer")
+
+                        a = b)
+
+                let pureRuns = ref 0
+                let owningRuns = ref 0
+                let owningCleanups = ResizeArray<int>()
+
+                let pureOut =
+                    createMemoOnWithComparer guardedOutComparer (fun () -> sOut.Value % 10) (fun k ->
+                        pureRuns.Value <- pureRuns.Value + 1
+                        k * 100)
+
+                let owningOut =
+                    createOwningMemoOnWithComparer guardedOutComparer (fun () -> sOut.Value % 10) (fun k ->
+                        owningRuns.Value <- owningRuns.Value + 1
+                        onCleanup (fun () -> owningCleanups.Add k)
+                        k * 100)
+
+                Expect.equal pureOut.Value 100 "initial pure output"
+                Expect.equal owningOut.Value 100 "initial owning output"
+
+                // Arm outputEqual throw on unequal key 2 -> CompareOutputGuarded fails memo and latches phase2Failure.
+                armOutThrow.Value <- true
+                sOut.Value <- 2
+                let pureEx1 = failedWith pureOut.TryValue
+                let owningEx1 = failedWith owningOut.TryValue
+                Expect.equal pureOut.Status Status.Error "pure Status.Error on outputEqual throw"
+                Expect.equal owningOut.Status Status.Error "owning Status.Error on outputEqual throw"
+                Expect.equal pureEx1.Message "output comparer" "pure output comparer exception"
+                Expect.equal owningEx1.Message "output comparer" "owning output comparer exception"
+                Expect.isTrue (obj.ReferenceEquals (pureOut.ErrorOrigin, pureOut)) "pure ErrorOrigin is memo"
+                Expect.isTrue (obj.ReferenceEquals (owningOut.ErrorOrigin, owningOut)) "owning ErrorOrigin is memo"
+                Expect.equal pureOut.Peek 100 "pure Peek preserved"
+                Expect.equal owningOut.Peek 100 "owning Peek preserved"
+                Expect.equal pureRuns.Value 2 "pure compute ran for key 2"
+                Expect.equal owningRuns.Value 2 "owning compute ran for key 2"
+                Expect.sequenceEqual owningCleanups [ 1 ] "key 1 scope discharged before key 2 compute"
+
+                // Disarm outputEqual and feed equal key 12 % 10 = 2 -> latched phase2Failure stays Error without re-running compute.
+                armOutThrow.Value <- false
+                sOut.Value <- 12
+                let pureEx2 = failedWith pureOut.TryValue
+                let owningEx2 = failedWith owningOut.TryValue
+                Expect.isTrue (obj.ReferenceEquals (pureEx2, pureEx1)) "pure latched phase2Failure preserved on equal key"
+                Expect.isTrue (obj.ReferenceEquals (owningEx2, owningEx1)) "owning latched phase2Failure preserved on equal key"
+                Expect.equal pureRuns.Value 2 "pure compute skipped on equal key 12"
+                Expect.equal owningRuns.Value 2 "owning compute skipped on equal key 12"
+                Expect.sequenceEqual owningCleanups [ 1 ] "key 2 scope not discharged on equal key 12"
+
+                // Unequal key 3 runs compute and recovers cleanly.
+                sOut.Value <- 3
+                Expect.equal pureOut.Value 300 "pure recovered on key 3"
+                Expect.equal owningOut.Value 300 "owning recovered on key 3"
+                Expect.equal pureRuns.Value 3 "pure compute ran for key 3"
+                Expect.equal owningRuns.Value 3 "owning compute ran for key 3"
+                Expect.sequenceEqual owningCleanups [ 1; 2 ] "key 2 scope discharged on key 3"
             }
 
 #if RANVIER_TRACE
