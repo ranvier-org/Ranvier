@@ -1411,6 +1411,7 @@ type StreamMemo<'S> internal (graph: Graph, seed: 'S, emptyFails: bool, starter:
     member _.ErrorOrigin: INode = Failure.OriginOf failure
 
     member inline internal _.Failure = failure
+    member inline internal _.IsSplit = isSplit
 
     /// <summary>Tracks and reads the published state; raises while it is pending or failed.</summary>
 #if FABLE_COMPILER

@@ -10,6 +10,26 @@ open Ranvier.Tests.Streams
 type private TierRef(tier: int) =
     member _.Tier = tier
 
+[<CustomEquality; NoComparison>]
+type private PendingCompareVal =
+    | PendingCompareVal of id: int * pending: AsyncSource<int> * throwPending: bool
+
+    override this.Equals(other: obj) =
+        match other with
+        | :? PendingCompareVal as that ->
+            let (PendingCompareVal (a, pa, ta)) = this
+            let (PendingCompareVal (b, pb, tb)) = that
+
+            if ta then
+                pa.Value |> ignore
+            elif tb then
+                pb.Value |> ignore
+
+            a = b
+        | _ -> false
+
+    override _.GetHashCode() = 0
+
 let private failedWith (reading: Reading<'T>) =
     match reading with
     | Failed ex -> ex
@@ -523,6 +543,313 @@ let tests =
                 // Disposing innerOwner disposes innerM2, leaving outerM1 alive and reactive!
                 s.Value <- 5
                 Expect.equal outerM1.Value 6 "outerM1 remains alive and updates after innerOwner.Dispose()"
+            }
+
+            test "tail.Dispose preserves FreshDirty, Pending, and Failed state on live intermediates across 2..5 stage chains" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                // 1. FreshDirty Signal & 5-stage chains: s mutates after warmup, then tail.Dispose() runs before reading intermediates.
+                let s = createSignal 1
+                let m1 = Signal.map ((+) 1) s
+                let m2 = Memo.map ((*) 10) m1
+                let m3 = Memo.map ((+) 2) m2
+                let m4 = Memo.map ((*) 3) m3
+                let m5 = Memo.map ((+) 1) m4
+
+                Expect.equal m5.Value 67 "warm 5-stage chain ((((1+1)*10 + 2)*3)+1 = 67)"
+                s.Value <- 4
+                m5.Dispose ()
+
+                Expect.equal m1.Value 5 "m1 recomputes from s=4 after dirty m5.Dispose()"
+                Expect.equal m2.Value 50 "m2 recomputes from s=4 after dirty m5.Dispose()"
+                Expect.equal m3.Value 52 "m3 recomputes from s=4 after dirty m5.Dispose()"
+                Expect.equal m4.Value 156 "m4 recomputes from s=4 after dirty m5.Dispose()"
+
+                // Also verify 3-stage Signal chain dirty tail.Dispose()
+                let s3 = createSignal 2
+                let a1 = Signal.map ((+) 1) s3
+                let a2 = Memo.map ((*) 10) a1
+                let a3 = Memo.map ((+) 5) a2
+                Expect.equal a3.Value 35 "warm 3-stage chain"
+                s3.Value <- 6
+                a3.Dispose ()
+                Expect.equal a1.Value 7 "a1 recomputes after dirty a3.Dispose()"
+                Expect.equal a2.Value 70 "a2 recomputes after dirty a3.Dispose()"
+
+                // 2. Pending chains (2, 3, 4, and 5 stages): tail.Dispose() leaves live intermediates in Status.Pending, not Status.Error!
+                let pendSrc = createAsyncSource<int>()
+                let p1 = AsyncSource.map ((+) 1) pendSrc
+                let p2 = Memo.map ((*) 2) p1
+                let p3 = Memo.map ((+) 3) p2
+                let p4 = Memo.map ((*) 4) p3
+                let p5 = Memo.map ((+) 5) p4
+
+                Expect.equal p5.TryValue Pending "5-stage pending before tail.Dispose()"
+                p5.Dispose ()
+
+                Expect.equal p1.Status Status.Pending "p1 stays Status.Pending after p5.Dispose()"
+                Expect.equal p2.Status Status.Pending "p2 stays Status.Pending after p5.Dispose()"
+                Expect.equal p3.Status Status.Pending "p3 stays Status.Pending after p5.Dispose()"
+                Expect.equal p4.Status Status.Pending "p4 stays Status.Pending after p5.Dispose()"
+                Expect.equal p1.TryValue Pending "p1.TryValue is Pending"
+                Expect.equal p4.TryValue Pending "p4.TryValue is Pending"
+                Expect.sequenceEqual (Seq.toArray p1.PendingSources) [| pendSrc :> INode |] "p1.PendingSources points to pendSrc"
+                Expect.sequenceEqual (Seq.toArray p4.PendingSources) [| p3 :> INode |] "p4.PendingSources points to p3"
+
+                pendSrc.Settle 10
+                Expect.equal p4.Value 100 "p4 settles (((10+1)*2 + 3)*4 = 100) after p5.Dispose()"
+
+                // 3. Failed chains (root failure and stage-2 throw): tail.Dispose() preserves FailureField and ErrorOrigin without NRE!
+                let failSrc = createAsyncSource<int>()
+                let rootErr = InvalidOperationException "root-boom"
+                failSrc.Fail rootErr
+                let f1 = AsyncSource.map ((+) 1) failSrc
+                let f2 = Memo.map ((*) 2) f1
+                let f3 = Memo.map ((+) 3) f2
+                let f4 = Memo.map ((*) 4) f3
+
+                Expect.isTrue (obj.ReferenceEquals (failedWith f4.TryValue, rootErr)) "f4 surfaces rootErr"
+                f4.Dispose ()
+
+                Expect.isTrue (obj.ReferenceEquals (failedWith f1.TryValue, rootErr)) "f1 preserves rootErr after f4.Dispose()"
+                Expect.isTrue (obj.ReferenceEquals (failedWith f3.TryValue, rootErr)) "f3 preserves rootErr after f4.Dispose()"
+                Expect.isTrue (obj.ReferenceEquals (f3.ErrorOrigin, failSrc :> INode)) "f3 preserves ErrorOrigin = failSrc"
+
+                let sThrow = createSignal 1
+                let stageErr = InvalidOperationException "stage2-boom"
+                let st1 = Signal.map ((+) 1) sThrow
+                let st2 = Memo.map (fun x -> if x = 2 then raise stageErr else x * 10) st1
+                let st3 = Memo.map ((+) 5) st2
+                let st4 = Memo.map ((*) 2) st3
+
+                Expect.isTrue (obj.ReferenceEquals (failedWith st4.TryValue, stageErr)) "st4 surfaces stageErr"
+                st4.Dispose ()
+
+                Expect.equal st1.Value 2 "st1 is Ready 2 after st4.Dispose()"
+                Expect.isTrue (obj.ReferenceEquals (failedWith st2.TryValue, stageErr)) "st2 preserves stageErr"
+                Expect.isTrue (obj.ReferenceEquals (st2.ErrorOrigin, st2 :> INode)) "st2 ErrorOrigin = st2"
+                Expect.isTrue (obj.ReferenceEquals (failedWith st3.TryValue, stageErr)) "st3 preserves stageErr"
+                Expect.isTrue (obj.ReferenceEquals (st3.ErrorOrigin, st2 :> INode)) "st3 ErrorOrigin = st2"
+            }
+
+            test "mid-execution de-fusion inside stage callbacks preserves intermediate state without false cutoffs or StackOverflowException" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                // (a) Leaf & observed 3-stage and 5-stage chains: f2 reads m1.Value on Run 2, then s reverts to Run 1's input!
+                for observe in [ false; true ] do
+                    let s = createSignal 10
+                    let m1 = Signal.map ((+) 1) s
+                    let m2 = Memo.map (fun v -> if v > 15 then m1.Value * 2 else v * 2) m1
+                    let m3 = Memo.map ((+) 100) m2
+
+                    let obsLog = ResizeArray<int>()
+
+                    let eff =
+                        if observe then
+                            Some (new Effect (g, fun () -> obsLog.Add m3.Value))
+                        else
+                            None
+
+                    Expect.equal m3.Value 122 $"Run 1 (observe={observe})"
+                    s.Value <- 20
+                    Expect.equal m3.Value 142 $"Run 2 de-fused inside f2 (observe={observe})"
+                    Expect.equal m1.Value 21 $"m1 holds Run 2 value 21 (observe={observe})"
+                    Expect.equal m2.Value 42 $"m2 holds Run 2 value 42, not Run 1's 22 (observe={observe})"
+
+                    // Revert s back to 10 -> m2 MUST recompute 22 and NOT falsely cut off against stale 22!
+                    s.Value <- 10
+                    Expect.equal m2.Value 22 $"Run 3 m2 updated back to 22 (observe={observe})"
+                    Expect.equal m3.Value 122 $"Run 3 m3 updated back to 122 (observe={observe})"
+
+                    eff |> Option.iter (fun e -> e.Dispose ())
+
+                // 5-stage mid-execution de-fusion inside stage 2 on Run 2, then revert!
+                let s5 = createSignal 10
+                let c1 = Signal.map ((+) 1) s5
+                let c2 = Memo.map (fun v -> if v > 15 then c1.Value * 2 else v * 2) c1
+                let c3 = Memo.map ((+) 3) c2
+                let c4 = Memo.map ((*) 2) c3
+                let c5 = Memo.map ((+) 1) c4
+
+                Expect.equal c5.Value 51 "5-stage Run 1 ((((11*2)+3)*2)+1 = 51)"
+                s5.Value <- 20
+                Expect.equal c5.Value 91 "5-stage Run 2 de-fused in f2 ((((21*2)+3)*2)+1 = 91)"
+                Expect.equal c2.Value 42 "5-stage c2 holds 42"
+                s5.Value <- 10
+                Expect.equal c5.Value 51 "5-stage Run 3 reverts to 51 without false cutoff"
+
+                // (b) Stage f1 self-reading m1.Value on Run 1 (and Run 2) without StackOverflowException!
+                for observe in [ false; true ] do
+                    let sSelf = createSignal 5
+                    let mutable self1: Memo<int> = Unchecked.defaultof<_>
+                    let r1 = Signal.map (fun x -> self1.Value + x) sSelf
+                    self1 <- r1
+                    let r2 = Memo.map ((*) 10) r1
+
+                    let eff =
+                        if observe then
+                            Some (new Effect (g, fun () -> r2.Value |> ignore))
+                        else
+                            None
+
+                    Expect.equal r2.Value 50 $"Run 1 self-read yields default 0 + 5 -> 50 (observe={observe})"
+                    Expect.equal r1.Value 5 $"r1.Value is 5 after Run 1 (observe={observe})"
+                    Expect.equal r1.Runs 1 $"r1 ran once on Run 1 (observe={observe})"
+
+                    sSelf.Value <- 7
+                    Expect.equal r2.Value 120 $"Run 2 self-read yields previous 5 + 7 -> 120 (observe={observe})"
+                    Expect.equal r1.Value 12 $"r1.Value is 12 after Run 2 (observe={observe})"
+
+                    eff |> Option.iter (fun e -> e.Dispose ())
+            }
+
+            test "EvalSignalLeaf commits Memo.value before settling owed flush, and custom comparer throw is unwrapped" {
+                // (a) Signal write inside leaf EvalSignalLeaf schedules an effect that reads tail.Value during LeaveUntrackedPureTop!
+                use g = new Graph ()
+                use _ = g.Activate ()
+                let s = createSignal 1
+                let side = createSignal 0
+                let seen = ResizeArray<int>()
+                let mutable tailRef: Memo<int> = Unchecked.defaultof<_>
+
+                let eff =
+                    new Effect (
+                        g,
+                        fun () ->
+                            if side.Value > 0 then
+                                seen.Add tailRef.Value
+                    )
+
+                let tail =
+                    s
+                    |> Signal.map ((+) 1)
+                    |> Memo.map (fun x ->
+                        if x > 5 then
+                            side.Value <- x
+
+                        x * 10)
+
+                tailRef <- tail
+                Expect.equal tail.Value 20 "Run 1 warms leaf chain to 20"
+                Expect.isEmpty seen "side is still 0"
+
+                // Run 2 enters EvalSignalLeaf: writing side.Value <- 11 owes a flush settled on exit; eff MUST read 110, not stale 20!
+                s.Value <- 10
+                Expect.equal tail.Value 110 "Run 2 leaf returns 110"
+                Expect.sequenceEqual seen [ 110 ] "owed flush saw updated tail.Value 110, not pre-commit 20"
+                eff.Dispose ()
+
+                // (b) Custom comparer throwing NotReadyException on leaf chain records raw exception without mapPending wrapper!
+                use gEq =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Equality = StructuralPolicy ()
+                        }
+                    )
+
+                use _ = gEq.Activate ()
+                let sEq = createSignal 1
+                let pend = createAsyncSource<int>()
+                let arm = ref false
+
+                let leafEq =
+                    sEq
+                    |> Signal.map ((+) 1)
+                    |> Memo.map (fun x -> PendingCompareVal (x, pend, arm.Value))
+
+                let (PendingCompareVal (initId, _, _)) = leafEq.Value
+                Expect.equal initId 2 "Run 1 succeeds"
+
+                arm.Value <- true
+                sEq.Value <- 2
+                let compEx = failedWith leafEq.TryValue
+                Expect.equal leafEq.Status Status.Error "comparer throw puts leaf memo in Status.Error"
+                Expect.isFalse (compEx.Message.Contains "mapping attempted to read a pending source") "comparer throw is not wrapped as mapPending"
+                Expect.isTrue (obj.ReferenceEquals (leafEq.ErrorOrigin, leafEq :> INode)) "ErrorOrigin is leafEq"
+            }
+
+            test "5-stage FusedChainMap refreshes root outside Pure, clears root lastRaised, and tracks stage-3 unready transitions" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                // (a) 5-stage chain over an owning createMemoWith root that catches an upstream error
+                let s = createSignal 1
+                let rootCleans = ResizeArray<int>()
+                let caughtEx = ref (null: exn)
+
+                let failingUp: Memo<int> =
+                    createMemo (fun _ -> raise (InvalidOperationException "upstream-caught"))
+
+                let owningRoot =
+                    createMemoWith (fun _ ->
+                        let v = s.Value
+                        onCleanup (fun () -> rootCleans.Add v)
+
+                        let fallback =
+                            try
+                                failingUp.Value
+                            with ex ->
+                                caughtEx.Value <- ex
+                                0
+
+                        v + fallback)
+
+                let tail5 =
+                    owningRoot
+                    |> Memo.map ((+) 1)
+                    |> Memo.map ((+) 1)
+                    |> Memo.map ((+) 1)
+                    |> Memo.map ((+) 1)
+                    |> Memo.map (fun x -> if x > 10 then raise caughtEx.Value else x)
+
+                Expect.equal tail5.Value 5 "owningRoot refreshed outside Pure (onCleanup allowed)"
+                s.Value <- 20
+                let ex5 = failedWith tail5.TryValue
+                Expect.equal ex5.Message "upstream-caught" "stage 5 rethrew caught exception"
+                Expect.sequenceEqual rootCleans [ 1 ] "owningRoot discharged Run 1 scope"
+                Expect.isTrue (obj.ReferenceEquals (tail5.ErrorOrigin, tail5 :> INode)) "ErrorOrigin is tail5, not failingUp"
+
+                // (b) Stage-3 Ready -> Error transition when stage-4 was already in Error with the same exception
+                let mode = createSignal 1
+                let sharedErr = InvalidOperationException "shared-err"
+                let k1 = Signal.map ((+) 1) mode
+                let k2 = Memo.map ((+) 1) k1
+
+                let k3 = Memo.map (fun x -> if x = 4 then raise sharedErr else x + 1) k2
+
+                let k4 = Memo.map (fun x -> if x = 4 then raise sharedErr else x + 1) k3
+
+                let k5 = Memo.map ((+) 1) k4
+
+                // mode = 1 -> k1=2, k2=3, k3=4 (Ready!), k4 throws sharedErr!
+                Expect.isTrue (obj.ReferenceEquals (failedWith k5.TryValue, sharedErr)) "Run 1 k4 throws sharedErr"
+
+                // mode = 2 -> k1=3, k2=4, k3 throws sharedErr (k3 transitions Ready -> Error!)
+                mode.Value <- 2
+                Expect.isTrue (obj.ReferenceEquals (failedWith k5.TryValue, sharedErr)) "Run 2 k3 throws sharedErr"
+                Expect.equal k4.Runs 2 "k4 incremented runs when k3 transitioned Ready -> Error (Signal root)"
+                Expect.isTrue (obj.ReferenceEquals (k4.ErrorOrigin, k3 :> INode)) "Run 2 k4.ErrorOrigin moves to k3"
+                Expect.equal k5.Runs 1 "k5 cuts off on identical Failure.ErrorOf when k4 was already unready"
+
+                // Same stage-3 Ready -> Error transition over a Memo root (FusedSourceMap4.EvalPrefix)
+                let modeSrc = createSignal 1
+                let rootMemo = createMemo (fun _ -> modeSrc.Value)
+                let s1 = Memo.map ((+) 1) rootMemo
+                let s2 = Memo.map ((+) 1) s1
+
+                let s3 = Memo.map (fun x -> if x = 4 then raise sharedErr else x + 1) s2
+
+                let s4 = Memo.map (fun x -> if x = 4 then raise sharedErr else x + 1) s3
+
+                let s5 = Memo.map ((+) 1) s4
+                Expect.isTrue (obj.ReferenceEquals (failedWith s5.TryValue, sharedErr)) "Run 1 s4 throws sharedErr"
+                modeSrc.Value <- 2
+                Expect.isTrue (obj.ReferenceEquals (failedWith s5.TryValue, sharedErr)) "Run 2 s3 throws sharedErr"
+                Expect.equal s4.Runs 2 "s4 incremented runs when s3 transitioned Ready -> Error (Memo root)"
+                Expect.isTrue (obj.ReferenceEquals (s4.ErrorOrigin, s3 :> INode)) "Run 2 s4.ErrorOrigin moves to s3"
+                Expect.equal s5.Runs 1 "s5 cuts off on identical Failure.ErrorOf when s4 was already unready"
             }
 
 #if RANVIER_TRACE

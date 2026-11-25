@@ -1075,8 +1075,11 @@ type private StreamMemoAdapter<'T>(src: StreamMemo<'T>) =
     override _.Source = src :> ISource
     override _.Node = src :> INode
 
-    override _.Refresh() =
+    override _.RefreshAndCheckStale(n: MemoNode) =
         (src :> ISource).UpdateIfNecessary()
+
+        if not n.IsDisposed && (src :> ISource).IsStale then
+            CombinatorHelpers.markStaleAfterRefresh (n, src.IsSplit)
 
     override _.Status = src.Status
     override _.Peek = src.Peek

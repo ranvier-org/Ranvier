@@ -820,6 +820,67 @@ let tests =
                 Expect.equal root.ObserverCount 0 "diamond disposed cleanly"
             }
 
+            test
+                "static combinators mark reader Check when upstream source remains stale after Refresh, and Signal.map2 deduplicates identical source slots" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                // 1. Upstream active memo that remains IsStale after Refresh() (self-dirties then returns equal value after reading combinator)!
+                let makeActiveStaleScenario (attach: Memo<int> -> (unit -> int)) =
+                    let s = createSignal 1
+                    let mutable readComb: unit -> int = fun () -> 0
+
+                    let up =
+                        createMemo (fun _ ->
+                            let v = s.Value
+
+                            if v = 2 then
+                                s.Value <- 99
+                                readComb () |> ignore
+                                10
+                            else
+                                v * 10)
+
+                    let combReader = attach up
+                    readComb <- combReader
+                    Expect.equal (combReader ()) 11 "Run 1 warms combinator to 11"
+                    s.Value <- 2
+                    Expect.equal up.Value 10 "up Run 2 self-dirties to 99, reads combinator while Active+Stale, and cuts off at 10"
+                    Expect.equal (combReader ()) 991 "combinator marked Check from IsStale up refreshes up to 990 -> 991"
+
+                makeActiveStaleScenario (fun up ->
+                    let m = Memo.map ((+) 1) up
+                    fun () -> m.Value)
+
+#if !RANVIER_TRACE
+                makeActiveStaleScenario (fun up ->
+                    let m = up |> Memo.map ((+) 0) |> Memo.map ((+) 1)
+                    fun () -> m.Value)
+#endif
+
+                makeActiveStaleScenario (fun up ->
+                    let one = createMemo (fun _ -> 1)
+                    let m = Memo.map2 (+) up one
+                    fun () -> m.Value)
+
+                makeActiveStaleScenario (fun up ->
+                    let m = Memo.bind (fun x -> createMemo (fun _ -> x + 1)) up
+                    fun () -> m.Value)
+
+                // 2. Signal.map2 (+) s s links a single slot on s
+                let sSame = createSignal 7
+                let sameMap2 = Signal.map2 (+) sSame sSame
+                Expect.equal sameMap2.Value 14 "Signal.map2 (+) sSame sSame = 14"
+                Expect.equal sSame.ObserverCount 1 "single observer registered on sSame"
+#if RANVIER_TRACE
+                let snap = Trace.snapshot g
+                let sameSources = snap.Sources |> Map.find (sameMap2 :> INode).Id
+                Expect.sequenceEqual sameSources [ (sSame :> INode).Id ] "Signal.map2 (+) s s records 1 source slot, not 2"
+#endif
+                sameMap2.Dispose ()
+                Expect.equal sSame.ObserverCount 0 "disposed cleanly"
+            }
+
 #if RANVIER_TRACE
             test "Trace.reconcile holds across map, map2, zip, and split bind lifecycles" {
                 use g = new Graph ()
