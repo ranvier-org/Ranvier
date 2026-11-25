@@ -30,6 +30,22 @@ type private PendingCompareVal =
 
     override _.GetHashCode() = 0
 
+[<CustomEquality; NoComparison>]
+type private DeFuseCompareVal =
+    | DeFuseCompareVal of key: int * payload: int * onCompare: (unit -> unit)
+
+    override this.Equals(other: obj) =
+        match other with
+        | :? DeFuseCompareVal as that ->
+            let (DeFuseCompareVal (ka, _, cbA)) = this
+            let (DeFuseCompareVal (kb, _, cbB)) = that
+            cbA ()
+            cbB ()
+            ka = kb
+        | _ -> false
+
+    override _.GetHashCode() = 0
+
 let private failedWith (reading: Reading<'T>) =
     match reading with
     | Failed ex -> ex
@@ -850,6 +866,360 @@ let tests =
                 Expect.equal s4.Runs 2 "s4 incremented runs when s3 transitioned Ready -> Error (Memo root)"
                 Expect.isTrue (obj.ReferenceEquals (s4.ErrorOrigin, s3 :> INode)) "Run 2 s4.ErrorOrigin moves to s3"
                 Expect.equal s5.Runs 1 "s5 cuts off on identical Failure.ErrorOf when s4 was already unready"
+            }
+
+            test "de-fusion inside upstream root refresh preserves intermediate state across 3-stage and 5-stage chains on Run 1 and Run 2" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                // (a) Run 1 de-fusion inside Memo root on 3-stage chain
+                let s3a = createSignal 10
+                let mutable readM1_3a: unit -> int = fun () -> -1
+                let seenInRoot3a = ResizeArray<int>()
+                let f1Calls3a = ref 0
+
+                let root3a =
+                    createMemo (fun _ ->
+                        let v = s3a.Value
+
+                        if v = 10 then
+                            seenInRoot3a.Add (readM1_3a ())
+
+                        v)
+
+                let m1_3a =
+                    Memo.map
+                        (fun x ->
+                            f1Calls3a.Value <- f1Calls3a.Value + 1
+                            x + 1)
+                        root3a
+
+                let m2_3a = Memo.map ((+) 1) m1_3a
+                let m3_3a = Memo.map ((+) 1) m2_3a
+                readM1_3a <- fun () -> m1_3a.Value
+
+                Expect.equal m3_3a.Value 13 "3-stage Run 1 tail = 13"
+                Expect.sequenceEqual seenInRoot3a [ 0 ] "3-stage Run 1 root saw default 0 on active/waiting m1"
+                Expect.equal f1Calls3a.Value 1 "f1 ran once on Run 1 (not twice)"
+                Expect.equal m1_3a.Value 11 "m1 = 11"
+                Expect.equal m2_3a.Value 12 "m2 = 12"
+                s3a.Value <- 20
+                Expect.equal m3_3a.Value 23 "3-stage subsequent write updates to 23"
+
+                // (b) Run 1 de-fusion inside Memo root on 5-stage chain
+                let s5a = createSignal 10
+                let mutable readM1_5a: unit -> int = fun () -> -1
+                let seenInRoot5a = ResizeArray<int>()
+                let f1Calls5a = ref 0
+
+                let root5a =
+                    createMemo (fun _ ->
+                        let v = s5a.Value
+
+                        if v = 10 then
+                            seenInRoot5a.Add (readM1_5a ())
+
+                        v)
+
+                let m1_5a =
+                    Memo.map
+                        (fun x ->
+                            f1Calls5a.Value <- f1Calls5a.Value + 1
+                            x + 1)
+                        root5a
+
+                let m2_5a = Memo.map ((+) 1) m1_5a
+                let m3_5a = Memo.map ((+) 1) m2_5a
+                let m4_5a = Memo.map ((+) 1) m3_5a
+                let m5_5a = Memo.map ((+) 1) m4_5a
+                readM1_5a <- fun () -> m1_5a.Value
+
+                Expect.equal m5_5a.Value 15 "5-stage Run 1 tail = 15"
+                Expect.sequenceEqual seenInRoot5a [ 0 ] "5-stage Run 1 root saw default 0"
+                Expect.equal f1Calls5a.Value 1 "5-stage f1 ran once on Run 1"
+                Expect.equal m4_5a.Value 14 "5-stage m4 = 14 (not wedged in ActiveBody)"
+                s5a.Value <- 20
+                Expect.equal m4_5a.Value 24 "5-stage m4 updates to 24 on subsequent write"
+                Expect.equal m5_5a.Value 25 "5-stage m5 updates to 25 on subsequent write"
+
+                // (c) Run 2 de-fusion inside Memo root when tail is FreshDirty on 3-stage and 5-stage chains
+                let s3b = createSignal 10
+                let arm3b = ref false
+                let mutable readM1_3b: unit -> int = fun () -> -1
+                let f1Calls3b = ref 0
+
+                let root3b =
+                    createMemo (fun _ ->
+                        let v = s3b.Value
+
+                        if arm3b.Value then
+                            arm3b.Value <- false
+                            readM1_3b () |> ignore
+
+                        v)
+
+                let m1_3b =
+                    Memo.map
+                        (fun x ->
+                            f1Calls3b.Value <- f1Calls3b.Value + 1
+                            x + 1)
+                        root3b
+
+                let m2_3b = Memo.map ((+) 1) m1_3b
+                let m3_3b = Memo.map ((+) 1) m2_3b
+                readM1_3b <- fun () -> m1_3b.Value
+
+                Expect.equal m3_3b.Value 13 "3-stage Run 1 = 13"
+                s3b.Value <- 15
+                Expect.equal root3b.Value 15 "root3b moves to 15, marking fused m3_3b FreshDirty"
+                arm3b.Value <- true
+                s3b.Value <- 20
+                Expect.equal m3_3b.Value 23 "3-stage Run 2 tail = 23"
+                Expect.equal m1_3b.Value 21 "3-stage Run 2 m1 = 21"
+                Expect.equal f1Calls3b.Value 2 "3-stage f1 ran twice total (no dead fused run)"
+                arm3b.Value <- false
+                s3b.Value <- 30
+                Expect.equal m3_3b.Value 33 "3-stage Run 3 tail = 33"
+
+                let s5b = createSignal 10
+                let arm5b = ref false
+                let mutable readM1_5b: unit -> int = fun () -> -1
+                let f1Calls5b = ref 0
+
+                let root5b =
+                    createMemo (fun _ ->
+                        let v = s5b.Value
+
+                        if arm5b.Value then
+                            arm5b.Value <- false
+                            readM1_5b () |> ignore
+
+                        v)
+
+                let m1_5b =
+                    Memo.map
+                        (fun x ->
+                            f1Calls5b.Value <- f1Calls5b.Value + 1
+                            x + 1)
+                        root5b
+
+                let m2_5b = Memo.map ((+) 1) m1_5b
+                let m3_5b = Memo.map ((+) 1) m2_5b
+                let m4_5b = Memo.map ((+) 1) m3_5b
+                let m5_5b = Memo.map ((+) 1) m4_5b
+                readM1_5b <- fun () -> m1_5b.Value
+
+                Expect.equal m5_5b.Value 15 "5-stage Run 1 = 15"
+                s5b.Value <- 15
+                Expect.equal root5b.Value 15 "root5b moves to 15, marking fused m5_5b FreshDirty"
+                arm5b.Value <- true
+                s5b.Value <- 20
+                Expect.equal m5_5b.Value 25 "5-stage Run 2 tail = 25"
+                Expect.equal m4_5b.Value 24 "5-stage Run 2 m4 = 24"
+                Expect.equal f1Calls5b.Value 2 "5-stage f1 ran twice total (no dead fused run)"
+                arm5b.Value <- false
+                s5b.Value <- 30
+                Expect.equal m4_5b.Value 34 "5-stage Run 3 m4 = 34 (not wedged in ActiveBody)"
+                Expect.equal m5_5b.Value 35 "5-stage Run 3 m5 = 35"
+
+                // (d) Run 2 de-fusion inside Memo root when tail is FreshCheck (direct signal write -> tail.Value)
+                let s5c = createSignal 10
+                let arm5c = ref false
+                let mutable readM1_5c: unit -> int = fun () -> -1
+                let seenInRoot5c = ResizeArray<int>()
+                let f1Calls5c = ref 0
+
+                let root5c =
+                    createMemo (fun _ ->
+                        let v = s5c.Value
+
+                        if arm5c.Value then
+                            arm5c.Value <- false
+                            seenInRoot5c.Add (readM1_5c ())
+
+                        v)
+
+                let m1_5c =
+                    Memo.map
+                        (fun x ->
+                            f1Calls5c.Value <- f1Calls5c.Value + 1
+                            x + 1)
+                        root5c
+
+                let m2_5c = Memo.map ((+) 1) m1_5c
+                let m3_5c = Memo.map ((+) 1) m2_5c
+                let m4_5c = Memo.map ((+) 1) m3_5c
+                let m5_5c = Memo.map ((+) 1) m4_5c
+                readM1_5c <- fun () -> m1_5c.Value
+
+                Expect.equal m5_5c.Value 15 "5-stage FreshCheck Run 1 = 15"
+                arm5c.Value <- true
+                s5c.Value <- 20
+                Expect.equal m5_5c.Value 25 "5-stage FreshCheck Run 2 tail = 25"
+                Expect.sequenceEqual seenInRoot5c [ 11 ] "5-stage FreshCheck Run 2 root saw cached m1 = 11"
+                Expect.equal f1Calls5c.Value 2 "5-stage FreshCheck f1 ran twice total"
+                Expect.equal m4_5c.Value 24 "5-stage FreshCheck m4 = 24"
+                s5c.Value <- 30
+                Expect.equal m5_5c.Value 35 "5-stage FreshCheck Run 3 tail = 35"
+            }
+
+            test "de-fusion inside intermediate custom equality comparer preserves values on both true and false comparisons" {
+                use g =
+                    new Graph (
+                        { GraphOptions.Default with
+                            Equality = StructuralPolicy ()
+                        }
+                    )
+
+                use _ = g.Activate ()
+
+                let checkChain (useLeaf: bool) (expectEqualOnRun2: bool) =
+                    let s = createSignal 10
+                    let arm = ref false
+
+                    let mutable readM1: unit -> DeFuseCompareVal =
+                        fun () -> DeFuseCompareVal (-1, -1, ignore)
+
+                    let seenKeys = ResizeArray<int>()
+
+                    let cb () =
+                        if arm.Value then
+                            arm.Value <- false
+                            let (DeFuseCompareVal (k, _, _)) = readM1 ()
+                            seenKeys.Add k
+
+                    let m1 = Signal.map (fun x -> DeFuseCompareVal (x / 10, x, cb)) s
+                    let m2 = Memo.map (fun (DeFuseCompareVal (k, _, _)) -> k * 100) m1
+                    let m3 = Memo.map ((+) 1) m2
+                    readM1 <- fun () -> m1.Value
+
+                    let obs = ResizeArray<int>()
+
+                    let effOpt =
+                        if useLeaf then
+                            None
+                        else
+                            Some (new Effect (g, fun () -> obs.Add m3.Value))
+
+                    if useLeaf then
+                        Expect.equal m3.Value 101 "Run 1 leaf m3 = 101"
+                    else
+                        Expect.sequenceEqual obs [ 101 ] "Run 1 observed m3 = 101"
+
+                    arm.Value <- true
+                    s.Value <- if expectEqualOnRun2 then 14 else 24
+
+                    let expectedRun2 = if expectEqualOnRun2 then 101 else 201
+
+                    if useLeaf then
+                        Expect.equal m3.Value expectedRun2 "Run 2 leaf m3"
+                    else
+                        Expect.equal m3.Value expectedRun2 "Run 2 observed m3"
+
+                    Expect.sequenceEqual seenKeys [ 1 ] "comparer read pre-commit m1 key = 1"
+                    let (DeFuseCompareVal (kAfter2, pAfter2, _)) = m1.Value
+                    Expect.equal kAfter2 (if expectEqualOnRun2 then 1 else 2) "m1 key after Run 2 is not default"
+                    Expect.equal pAfter2 (if expectEqualOnRun2 then 14 else 24) "m1 payload committed v1"
+
+                    // Run 3 verifies neither m1 nor m2 is wedged in ActiveBody / ActiveCheck
+                    s.Value <- 35
+                    Expect.equal m3.Value 301 "Run 3 m3 updates to 301"
+                    let (DeFuseCompareVal (kAfter3, _, _)) = m1.Value
+                    Expect.equal kAfter3 3 "Run 3 m1 key updates to 3"
+                    effOpt |> Option.iter (fun e -> e.Dispose ())
+
+                checkChain true true
+                checkChain true false
+                checkChain false true
+                checkChain false false
+
+                // Also verify stage-4 (prevMemo) custom comparer on a 5-stage FusedChainMap
+                for expectEqualOnRun2 in [ true; false ] do
+                    let s5 = createSignal 10
+                    let arm5 = ref false
+                    let mutable readK1: unit -> int = fun () -> -1
+
+                    let cb5 () =
+                        if arm5.Value then
+                            arm5.Value <- false
+                            readK1 () |> ignore
+
+                    let k1 = Signal.map ((+) 0) s5
+                    let k2 = Memo.map ((+) 0) k1
+                    let k3 = Memo.map ((+) 0) k2
+                    let k4 = Memo.map (fun x -> DeFuseCompareVal (x / 10, x, cb5)) k3
+                    let k5 = Memo.map (fun (DeFuseCompareVal (k, _, _)) -> k * 100 + 5) k4
+                    readK1 <- fun () -> k1.Value
+
+                    Expect.equal k5.Value 105 "5-stage Run 1 = 105"
+                    arm5.Value <- true
+                    s5.Value <- if expectEqualOnRun2 then 16 else 26
+                    Expect.equal k5.Value (if expectEqualOnRun2 then 105 else 205) "5-stage Run 2"
+                    let (DeFuseCompareVal (k4Key, k4Payload, _)) = k4.Value
+                    Expect.equal k4Key (if expectEqualOnRun2 then 1 else 2) "k4 key after Run 2"
+                    Expect.equal k4Payload (if expectEqualOnRun2 then 16 else 26) "k4 payload committed"
+                    s5.Value <- 40
+                    Expect.equal k5.Value 405 "5-stage Run 3 = 405 (not wedged)"
+            }
+
+            test "EvalSignalLeaf returns pre-flush snapshot when woken effect mutates root signal during owed flush" {
+                use g = new Graph ()
+                use _ = g.Activate ()
+
+                let s = createSignal 1
+                let side = createSignal 0
+                let effSeen = ResizeArray<int>()
+                let mutable tailRef: Memo<int> = Unchecked.defaultof<_>
+
+                let eff =
+                    new Effect (
+                        g,
+                        fun () ->
+                            let sv = side.Value
+
+                            if sv = 1 then
+                                effSeen.Add (g.Untrack (fun () -> tailRef.Value))
+                                // Mutate root signal to an error state and evaluate tail inside the owed flush!
+                                s.Value <- -10
+                                g.Untrack (fun () -> tailRef.TryValue) |> ignore
+                            elif sv = 2 then
+                                effSeen.Add (g.Untrack (fun () -> tailRef.Value))
+                                // Mutate root signal to a new ready value and evaluate tail inside the owed flush!
+                                s.Value <- 99
+                                effSeen.Add (g.Untrack (fun () -> tailRef.Value))
+                    )
+
+                let tail =
+                    s
+                    |> Signal.map ((+) 1)
+                    |> Memo.map (fun x ->
+                        if x = 11 then
+                            side.Value <- 1
+                        elif x = 21 then
+                            side.Value <- 2
+
+                        if x < 0 then
+                            raise (InvalidOperationException "post-flush-boom")
+
+                        x * 10)
+                    |> Memo.map ((+) 5)
+
+                tailRef <- tail
+                Expect.equal tail.Value 25 "Run 1 warms leaf chain to 25"
+
+                // Case 1: Owed flush mutates s to -10 (putting tail into Status.Error); outer tail.Value MUST still return 115!
+                s.Value <- 10
+                Expect.equal tail.Value 115 "outer tail.Value returns pre-flush snapshot 115 despite post-flush error"
+                Expect.sequenceEqual effSeen [ 115 ] "effect saw committed 115 before mutating s"
+                let postEx = failedWith tail.TryValue
+                Expect.equal postEx.Message "post-flush-boom" "subsequent read observes post-flush error"
+
+                // Case 2: Recover and test owed flush mutating s to a new ready value 99 (1005); outer tail.Value MUST return 215!
+                s.Value <- 20
+                Expect.equal tail.Value 215 "outer tail.Value returns pre-flush snapshot 215, not post-flush 1005"
+                Expect.sequenceEqual effSeen [ 115; 215; 1005 ] "effect saw 215 then updated tail to 1005"
+                Expect.equal tail.Value 1005 "subsequent read observes post-flush 1005"
+                eff.Dispose ()
             }
 
 #if RANVIER_TRACE
