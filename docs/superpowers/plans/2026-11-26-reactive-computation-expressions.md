@@ -233,6 +233,43 @@ Commit `src/Ranvier/Builders.fs`, `tests/Ranvier.Tests/Builders.fs`, and `docs/.
 
 ---
 
+### Task 5B: Comprehensive Documentation Audit & Update (`docs/content/` + `docs/Site.fs`)
+
+*(Runs in parallel in isolated worktree `C:\wk\ranvier-release\_wt\ranvier-docs-update` on branch `feat/ce-docs-audit`, merged into `feat/computation-expressions` in Task 5 Step 2.)*
+
+**Files:**
+- Modify/Create: `C:\wk\ranvier-release\_wt\ranvier-docs-update\docs\content\guide\*.md` and `*.fsx` (including new `docs/content/guide/computation-expressions.md`)
+- Modify: `C:\wk\ranvier-release\_wt\ranvier-docs-update\docs\content\concepts\*.md`, `docs/content/fable/index.md`, `docs/content/index.md` (where public APIs or capabilities changed)
+- Modify: `C:\wk\ranvier-release\_wt\ranvier-docs-update\docs\Site.fs`
+
+**Interfaces:**
+- Consumes: All public APIs across `src/Ranvier/`, `src/Ranvier.CSharp/`, `src/Ranvier.Query/`, `src/Ranvier.Elmish/`, `src/Ranvier.Dom/`, `src/Ranvier.Wire/`, `src/Ranvier.Mcp/`, plus the approved CE & collection descriptor spec (`docs/superpowers/specs/2026-11-26-reactive-computation-expressions-design.md`).
+- Produces: Complete, accurate user documentation covering every shipped public API/feature, passing `dotnet run --project docs/docs.fsproj -- check-menus` and literate `.fsx` / site build checks.
+
+- [ ] **Step 1: Audit all public APIs across `src/` against `docs/content/`**
+
+Compare every public type, module, function, and C# extension across `src/Ranvier/{Types,Core,Timed,Streams,Projections,Collections,Api,Journal,Combinators,TraceApi}.fs`, `src/Ranvier.CSharp/{Reactive,Extensions,Bindings}.fs`, `src/Ranvier.Query/`, `src/Ranvier.Elmish/`, `src/Ranvier.Dom/`, `src/Ranvier.Wire/`, and `src/Ranvier.Mcp/` (plus Spec §3–§4 for `Ranvier.CE` and `Projection`/`Lookup`/`KeyedCollection` descriptors) against existing `docs/content/` pages, writing an explicit inventory of missing/stale APIs in the task report:
+- PR `#389` additions: `createMemoOn`, `createMemoOnWithComparer`, `createMemoWithOn`, `createOwningMemoOnWithComparer`, `createAsyncOn`, `createAsyncWithOn`, `createAsyncOnWithPolicy`, `createOwningAsyncOnWithPolicy`, `createStreamOn`, `createStreamFoldOn`; `Signal`/`Memo`/`AsyncMemo`/`AsyncSource`/`StreamMemo` companion modules (`map`, `map2`, `zip`, `bind`, `bindWithPolicy`, `bindFold`) and unobserved `map`-chain fusion; C# `Reactive.*On` factories and `RanvierExtensions` LINQ operators (`Select`, `Zip`, `SelectMany`, `SelectManyFold`).
+- Any previously undocumented or under-documented core/collection/timing/C#/Dom/Wire/Mcp/Query/Elmish APIs (`createEffectNode`, `createOptionMemo`, `createKeyedCollection` / `KeyedCollection`, `List.updateBy` / `Array.updateBy`, `Grouping.aggregate`, `Projection` combinators, `FlightPolicy` 6 cases, `ThreadAffinity.Serialised`, `debounce*`/`throttle*`, etc.).
+- New `Ranvier.CE` surface (`open Ranvier.CE`, `memo`, `effect`, `asyncMemo`, `stream`, `editable`, `draft`, `boundary`, `row`, header custom operations, `withComparer`, context tokens, and `Projection.at`/`tryAt`/`keys`, `Lookup.at`/`tryAt`, `KeyedCollection.at`/`tryAt`/`keys`).
+
+- [ ] **Step 2: Update existing guide/concept pages and author `docs/content/guide/computation-expressions.md`**
+
+Update all relevant guide pages (`memos.md`, `effects.md`, `async-memos.md`, `async-sources.md`, `streams.md`, `csharp.md`, `projections.fsx`, `lookups.fsx`, `collections.fsx`, `collection-views.fsx`, `aggregates.fsx`, `editable.md`, `drafts.md`, `boundaries.md`, `timing.md`, `threading.md`, etc.), create `docs/content/guide/computation-expressions.md`, and register every new page in `docs/Site.fs` (`Theme.menu`). Follow `AGENTS.md` figure-labeling rules (`from documentation` / `measured here`) whenever numbers appear.
+
+- [ ] **Step 3: Verify menu coverage and literate `.fsx` compilation**
+
+Run:
+- `dotnet run --project C:\wk\ranvier-release\_wt\ranvier-docs-update\docs\docs.fsproj -- check-menus`
+- Compile/verify literate `.fsx` scripts under `docs/content/guide/*.fsx` (`rfs check` / `dotnet fsi --exec docs/literate.fsx` or `dotnet fsi --exec build.fsx -- docs`).
+Expected: `0` unlisted/missing menu entries, `0` literate compile or link errors.
+
+- [ ] **Step 4: Commit**
+
+Commit all `docs/` updates on `feat/ce-docs-audit` with message `docs: document *On primitives, combinators, Ranvier.CE, and missing public APIs`.
+
+---
+
 ### Task 5: NativeAOT Smoke, Benchmark/Counter Parity, Guide Docs, `0.2.3` Bump, and PR 1 Publish (`ranvier-org/Ranvier`)
 
 **Files:**
@@ -257,9 +294,9 @@ Commit `src/Ranvier/Builders.fs`, `tests/Ranvier.Tests/Builders.fs`, and `docs/.
 
 Open `Ranvier.CE` in `tests/Ranvier.AotSmoke/Program.fs` and add smoke assertions exercising `memo` (1-source fused chain, `and!`, `owning`, `comparer`, `option`, `memo.previousOr`, `match!` over `Projection.tryAt` + `Lookup.at`, `return!`), `effect` (`node` + `withComparer`), `asyncMemo` (`policy` + `cancellationToken`), `stream` (`fold`), `editable`, `draft`, `boundary` (`pending` + `failed`), and `row` (`createProjectionWith`). Publish & run NativeAOT smoke with both `-p:RanvierTrace=false` and `-p:RanvierTrace=true`.
 
-- [ ] **Step 2: Author `docs/content/guide/computation-expressions.md`, register in `docs/Site.fs`, and bump core family `<Version>` to `0.2.3`**
+- [ ] **Step 2: Integrate Full Documentation Suite (Task 5B) and bump core family `<Version>` to `0.2.3`**
 
-1. Write `docs/content/guide/computation-expressions.md` documenting `open Ranvier.CE`, all 8 builders, header custom operations, `withComparer`, builder-scoped context tokens, pointwise collection descriptors, and the compile-time dispatch rules, and add `Menu.page "guide/computation-expressions.md"` in `docs/Site.fs`.
+1. Merge the reviewed documentation branch from Task 5B (`feat/ce-docs-audit`: comprehensive audit and documentation of all previously undocumented `Ranvier` / `Ranvier.CSharp` / `Ranvier.Query` / `Ranvier.Elmish` / `Ranvier.Dom` / `Ranvier.Wire` / `Ranvier.Mcp` APIs, PR `#389` `*On` + combinators + LINQ extensions, plus `docs/content/guide/computation-expressions.md` and `docs/Site.fs` menu updates), verifying any literate `.fsx` snippets using `Ranvier.CE` compile cleanly against `src/Ranvier/Builders.fs`.
 2. Bump `<Version>` from `0.2.2` to `0.2.3` across `Ranvier`, `Ranvier.CSharp`, `Ranvier.Elmish`, `Ranvier.Query`, `Ranvier.Wire`, and `Ranvier.Mcp`, plus `docs/content/fable/index.md` and `docs/content/guide/installation.md` (matching commit `1fd09a3`).
 
 - [ ] **Step 3: Run the full `Ranvier` local verification gate**
