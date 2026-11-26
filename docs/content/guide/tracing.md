@@ -740,6 +740,25 @@ Ship against the untraced `Ranvier` package.
 
 :::
 
+## Read a saved trace without the graph
+
+`TraceModel.parseDump` reads a saved JSONL dump. Start from its snapshot (or `TraceModel.emptySnapshot` before
+any events) and use `TraceModel.fold` to advance it with events in sequence. `TraceDump.SeqFrom` locates the
+first event after the snapshot. `TraceModel.sources` and `observers` reconstruct edges. `pathOf` names a node
+using its incarnation. A snapshot retains owner parents and sibling and incarnation counts so later events can
+be resolved consistently.
+
+| Inspect | Data and formatting |
+| --- | --- |
+| A run and its cause | `TraceHistory` lists recorded runs. `Why.Steps` ends at a `WhyRoot`. `WhyNotReason` includes `CheckedClean`, `NotReached` and `SkippedAsRunningReader`. Use `TraceModel.renderHistory`, `renderWhy` or `renderWhyNot`. |
+| Pending work | `TraceFlight` carries a `TraceFlightState`. `TraceModel.renderWaiting` describes suspensions and flights. `TraceTiming` records captured and published status, the winning capture and time left in the window. |
+| State and events | `TraceNodeState.LastRun` and `PendingMark` refer to event sequence numbers. `TraceModel.renderSnapshot` draws the owner tree and `renderEvents` formats events. Use `valueText` or `payloadText` to display a recorded value. |
+| Export | `SinkPolicy` controls queuing, encoding and checkpoints. `MemoryTraceSink` retains `TraceExportRecord` values. `JsonlTraceSink` writes their text on .NET. |
+
+`TraceEventKind` identifies individual changes such as `EdgeAdd`, `MarkSkip`, `FlightDrop` or
+`TimedPublished`. Use the structured events when implementing a tool. The
+[core API reference](/reference/ranvier/index.md) lists the event, status, cause, payload and export types.
+
 ## Verification
 
 `tools/verify-trace.fsx` checks untraced IL, label overhead, Fable imports, deterministic sample

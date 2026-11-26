@@ -51,6 +51,10 @@ to touch the graph. `ThreadAffinity = Serialised` suits a host that runs its wor
 synchronisation context but on varying threads, such as a Blazor Server circuit; see
 [Blazor Server](blazor-server.md).
 
+`graph.AssertOnGraphThread ()` checks entry before application code touches graph state. Under `Serialised` an
+entry from another context or while another thread is inside the graph raises. `graph.IsOnGraphThread` lets a
+host test access, and `DispatchAsync` returns a task for work that needs to cross the boundary.
+
 :::details Recognise an off-thread write
 
 The write guard's message names both threads:

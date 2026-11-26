@@ -158,6 +158,27 @@ converged at 3 after 4 runs
 
 :::
 
+## Inspect or compare an effect
+
+`createEffectNode body` tracks the same reads as `createEffect body` and returns an `INode`. Read its `Id` to
+identify the effect and its `Status` to inspect a pending or failed run. Dispose the enclosing owner to stop
+it.
+
+`createEffectOnWithComparer cmp read act` compares the last key acted on using `cmp`. The pure `read` collects
+dependencies. The untracked `act` owns its subscriptions and cleanups. An equal key, a pending read or a
+failed read leaves the previous action in place. An unequal settled key releases that action's resources
+before installing the next action.
+
+```fsharp
+let watchName (name: Signal<string>) subscribe =
+    createEffectOnWithComparer System.StringComparer.OrdinalIgnoreCase
+        (fun () -> name.Value)
+        (fun key -> onCleanup (subscribe key))
+```
+
+For explicit inputs and an optional node handle in one block, see the
+[`effect` builder](computation-expressions.md#memos-and-effects).
+
 ## Binding a source to a target
 
 To copy a single signal or memo into a view property or other target without reading other reactive

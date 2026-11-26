@@ -41,6 +41,7 @@
         <ProjectReference Include="../src/Ranvier.Query/Ranvier.Query.fsproj" />
         <ProjectReference Include="../src/Ranvier.Wire/Ranvier.Wire.fsproj" />
         <ProjectReference Include="../src/Ranvier.Dom/Ranvier.Dom.fsproj" />
+        <ProjectReference Include="../src/Ranvier.Mcp/Ranvier.Mcp.fsproj" />
     </ItemGroup>
     <ItemGroup>
         <!-- The Partas.Nacara packages were built with the .NET 11 SDK and need FSharp.Core 11;

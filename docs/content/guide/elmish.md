@@ -153,6 +153,11 @@ Until then, the message stays queued. See
 [Serialised hosts](../concepts/contracts.md#serialised-hosts).
 :::
 
+`Mvu.create` and `Mvu.withCmd` return `Mvu<'Model,'Msg>`. Use `Model` to read the whole model, `Select` for a
+memo of a field and `Dispatch` to send a message. The loop belongs to its creating scope. If a command
+completes after that scope closes, its dispatch is dropped. See the
+[Elmish API reference](/reference/ranvier-elmish/index.md).
+
 ## Recording messages
 
 `Mvu.journal key codec` registers the loop's messages on the graph's

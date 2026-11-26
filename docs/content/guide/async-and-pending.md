@@ -51,7 +51,9 @@ that reads a pending node becomes pending itself until a [boundary](boundaries.m
 
 ## Reading pending or failed nodes
 
-There are two ways to read a node that may be pending:
+`graph.TrackStatus node` accepts nodes of different value types. It refreshes a readable node
+and tracks its status inside a computation. For an effect it reads the status untracked.
+To inspect the value, choose a read according to what the caller should see while waiting.
 
 - `TryValue` returns a `Reading<'T>`: `Ready value`, `Pending`, or `Failed error`.
 - `.Value` returns the value. On a pending node it raises `NotReadyException`, which carries the

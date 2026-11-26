@@ -188,6 +188,8 @@ one-element edit first copies the whole array.
 
 ### When to publish in place
 
+The timings below were **measured here** with the buffer-handoff benchmark described later on this page.
+
 - **Up to a few kilobytes:** keep writing a new array. At 4 KB it cost about 110 to 170 ns more
   per write than publishing in place.
 - **From 85,000 bytes:** publish in place. .NET allocates each new array of that size on the large
@@ -247,7 +249,7 @@ memo returning a sum         wakes: 1
 
 :::
 
-:::details Measured cost on .NET
+:::details Buffer handoff on .NET (measured here)
 
 One tick rewrites a `float32` array, publishes it and runs one effect that reads two elements.
 **No graph** is the rewrite and the read alone. Times are per tick.
@@ -284,6 +286,11 @@ application's performance.
 :::
 
 ## Graph-wide policies
+
+`GraphOptions.Default.WithEquality(policy)` returns options for constructing a graph with that policy.
+In a split memo, the graph policy compares settled input keys. Pass an explicit output comparer to
+`createMemoOnWithComparer` to control which results reach readers. See
+[Memos](memos.md#compute-from-a-settled-key).
 
 :::details Define a custom equality policy
 

@@ -199,6 +199,51 @@ var shown = Suspense(() => name.Value, previous => previous, "Loading");
 `Boundary<T>.Suspense`, `Errors` and `Catching` take the graph explicitly, with the seed before the handlers.
 :::
 
+### Closed-window factories
+
+Pass the reactive reads in the first delegate. The second delegate receives a settled key and runs with
+tracking closed. A pending or failed read preserves the work attached to the last settled key.
+
+| Factory | Work for each unequal settled key |
+| --- | --- |
+| `Reactive.MemoOn(read, compute)`, `Reactive.OwningMemoOn(read, compute)` | Calculate a value. Both accept a trailing output comparer. The owning form disposes the previous key's children and cleanups. |
+| `Reactive.AsyncOn(read, compute)`, `Reactive.OwningAsyncOn(read, compute)` | Start a task using `(key, token)` or `(key, previous, token)`. Pass a trailing `FlightPolicy` to override the graph default. The owning window ends at the first suspending await. |
+| `Reactive.StreamOn(read, start)`, `Reactive.StreamFoldOn(seed, fold, read, start)` | Subscribe to `start(key, token)` and publish the latest item or the fold. An equal key keeps the subscription. |
+
+### LINQ over reactive values
+
+Import `Ranvier.CSharp` for `RanvierExtensions`. `Select` maps the published value to a memo. `Zip` combines
+two inputs of the same node family and graph, returning a value tuple or the result of a supplied selector.
+Both work on signals, memos, async memos, async sources and stream memos.
+
+```csharp
+using Ranvier;
+using Ranvier.CSharp;
+
+using var graph = new Graph();
+graph.Run(() =>
+{
+    var active = Reactive.Signal(true);
+    var retail = Reactive.Signal(15m);
+    var wholesale = Reactive.Signal(10m);
+    var retailPrice = retail.Select(p => p);
+    var wholesalePrice = wholesale.Select(p => p);
+    var spread = retail.Zip(wholesale, (a, b) => a - b);
+
+    var selected = from useRetail in active
+                   from price in (useRetail ? retailPrice : wholesalePrice)
+                   select price;
+    active.Value = false;
+    System.Console.WriteLine(selected.Value); // 10
+});
+```
+
+The second `from` translates to `SelectMany`. A signal or memo selects an inner `Memo<T>`. An inner change
+updates the result and retains the outer selection. For an async memo or async source use
+`source.SelectMany((value, ct) => LoadAsync(value, ct))` to start a flight. The async-memo overload also
+accepts a policy. For a stream memo, `SelectMany` selects a `StreamSource<T>`. Use
+`keys.SelectManyFold(seed, fold, start)` to restart an accumulator on each unequal key.
+
 ### Per-node equality
 
 Pass an `IEqualityComparer<T>` to `Signal`, `Memo`, `OwningMemo`, `EffectOn`, or an unseeded

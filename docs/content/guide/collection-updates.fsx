@@ -98,6 +98,11 @@ matches or `f` returns its argument, so a reference test decides whether the par
 
 
 *)
+let renamedArray =
+    store.Value.Items
+    |> List.toArray
+    |> Array.updateBy _.Id 2 (fun todo -> { todo with Title = "Reviewed" })
+
 let rename id title =
     Signal.update store (fun s ->
         let items =
@@ -163,6 +168,10 @@ updates preserve insertion order; removals unlink an intrusive doubly-linked lis
 membership passes copy key order. Map, filter, choose, partition, sort, distinct and grouping views
 consume sparse row edits and bounded key deltas incrementally, falling back to full passes on dense
 bursts or upstream reorderings.
+
+`Remove key` reports whether it removed a row. `Clear ()` retires all rows together. `Dispose ()` also ends
+the collection's lifetime. In a CE, bind `KeyedCollection.tryAt key directTodos` when an edit can remove the
+key. See [pointwise collection reads](computation-expressions.md#pointwise-collection-reads).
 
 ### Selecting one element
 
